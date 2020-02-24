@@ -19,6 +19,7 @@ outputs csv file:
   * SubscriptionId
 * Policy
   * PolicyDisplayName
+  * PolicyId
   * PolicyType
   * PolicyScope
   * PolicyVariant (Policy/PolicySet)
