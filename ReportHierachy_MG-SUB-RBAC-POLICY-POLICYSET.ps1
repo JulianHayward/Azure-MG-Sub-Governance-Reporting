@@ -1,7 +1,7 @@
 #Requires -Modules @{ ModuleName="Az"; ModuleVersion="3.3.0" }
 
 #enter the Management Group Id from where to start
-$ManagementGroupRootId = "xxx"
+$ManagementGroupRootId = "<yourMgRootIdGoesHere>"
 
 #helper
 $csvPath = "c:\temp"
@@ -22,11 +22,16 @@ $table = New-Object system.Data.DataTable "MG Report"
 $table.columns.add((New-Object system.Data.DataColumn Level, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn MgName, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn MgId, ([string])))
+$table.columns.add((New-Object system.Data.DataColumn mgParentId, ([string])))
+$table.columns.add((New-Object system.Data.DataColumn mgParentName, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn Subscription, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn SubscriptionId, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn Policy, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyType, ([string])))
-$table.columns.add((New-Object system.Data.DataColumn PolicyScope, ([string])))
+$table.columns.add((New-Object system.Data.DataColumn PolicyDefinitionIdGuid, ([string])))
+$table.columns.add((New-Object system.Data.DataColumn PolicyDefinitionIdFull, ([string])))
+$table.columns.add((New-Object system.Data.DataColumn PolicyAssignmentScope, ([string])))
+$table.columns.add((New-Object system.Data.DataColumn PolicyAssignmentId, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyVariant, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn RoleDefinitionName, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn RoleDefinitionId, ([string])))
@@ -39,16 +44,21 @@ $table.columns.add((New-Object system.Data.DataColumn RoleAssignmentId, ([string
 $table.columns.add((New-Object system.Data.DataColumn RoleAssignmentScope, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn RoleAssignableScopes, ([string])))
 
-function row($l, $mgName, $mgId, $subName, $subId, $Policy, $PolicyType, $PolicyScope, $PolicyVariant, $RoleDefinitionId, $RoleDefinitionName, $RoleAssignmentDisplayname, $RoleAssignmentSignInName, $RoleAssignmentObjectId, $RoleAssignmentObjectType, $RoleAssignmentId, $RoleAssignmentScope, $RoleIsCustom, $RoleAssignableScopes) {
+function row($l, $mgName, $mgId, $mgParentId, $mgParentName, $subName, $subId, $Policy, $PolicyType, $PolicyDefinitionIdFull, $PolicyDefinitionIdGuid, $PolicyAssignmentScope, $PolicyAssignmentId, $PolicyVariant, $RoleDefinitionId, $RoleDefinitionName, $RoleAssignmentDisplayname, $RoleAssignmentSignInName, $RoleAssignmentObjectId, $RoleAssignmentObjectType, $RoleAssignmentId, $RoleAssignmentScope, $RoleIsCustom, $RoleAssignableScopes) {
     $row = $table.NewRow()
     $row.Level = $l
     $row.MgName = $mgName
     $row.MgId = $mgId
+    $row.mgParentId = $mgParentId
+    $row.mgParentName = $mgParentName
     $row.Subscription = $subName
     $row.SubscriptionId = $subId
     $row.Policy = $Policy
     $row.PolicyType = $PolicyType
-    $row.PolicyScope = $PolicyScope
+    $row.PolicyDefinitionIdFull = $PolicyDefinitionIdFull
+    $row.PolicyDefinitionIdGuid = $PolicyDefinitionIdGuid
+    $row.PolicyAssignmentScope = $PolicyAssignmentScope
+    $row.PolicyAssignmentId = $PolicyAssignmentId
     $row.PolicyVariant = $PolicyVariant
     $row.RoleDefinitionId = $RoleDefinitionId 
     $row.RoleDefinitionName = $RoleDefinitionName
@@ -66,7 +76,7 @@ function row($l, $mgName, $mgId, $subName, $subId, $Policy, $PolicyType, $Policy
 $htPolicies = @{}
 $htPolicySets = @{}
 $htRoles = @{}
-function mgfunc($mgId, $l) {
+function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
     Write-Output "...................."
     $l++
     $getMg = Get-AzManagementGroup -groupname $mgId -Expand -Recurse
@@ -95,7 +105,8 @@ function mgfunc($mgId, $l) {
                         $htPolicies.$($policyId) = @{}
                         $htPolicies.$($policyId).Id = $($L0mgmtGroupPolicyDef.name)
                         $htPolicies.$($policyId).DisplayName = $($L0mgmtGroupPolicyDef.Properties.displayname)
-                        $htPolicies.$($policyId).Type = $($L0mgmtGroupPolicyDef.Properties.policyType)  
+                        $htPolicies.$($policyId).Type = $($L0mgmtGroupPolicyDef.Properties.policyType)
+                        $htPolicies.$($policyId).PolicyDefinitionId = $($L0mgmtGroupPolicyDef.PolicyDefinitionId)
                     }   
                 }
                 else {
@@ -110,15 +121,22 @@ function mgfunc($mgId, $l) {
                         $htPolicies.$($policyId).Id = $($L0mgmtGroupPolicyDef.name)
                         $htPolicies.$($policyId).DisplayName = $($L0mgmtGroupPolicyDef.Properties.displayname)  
                         $htPolicies.$($policyId).Type = $($L0mgmtGroupPolicyDef.Properties.policyType)  
+                        $htPolicies.$($policyId).PolicyDefinitionId = $($L0mgmtGroupPolicyDef.PolicyDefinitionId)
                     }
                 }
                 $Policy = $htPolicies[$policyId].DisplayName
                 $PolicyType = $htPolicies[$policyId].Type
-                $PolicyScope = $L0mgmtGroupPolicyAssignment.Properties.Scope
-                row -l $l -mgName $getMg.DisplayName -mgId $getMg.Name -Policy $Policy -PolicyType $PolicyType -PolicyScope $PolicyScope -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+                $PolicyDefinitionIdFull = $htPolicies[$policyId].PolicyDefinitionId
+                $PolicyDefinitionIdGuid = $htPolicies[$policyId].Id
+                $PolicyAssignmentScope = $L0mgmtGroupPolicyAssignment.Properties.Scope
+                $PolicyAssignmentId = $L0mgmtGroupPolicyAssignment.PolicyAssignmentId
+                row -l $l -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
                 Clear-Variable -Name "Policy"
                 Clear-Variable -Name "PolicyType"
-                Clear-Variable -Name "PolicyScope"
+                Clear-Variable -Name "PolicyDefinitionIdFull"
+                Clear-Variable -Name "PolicyDefinitionIdGuid"
+                Clear-Variable -Name "PolicyAssignmentScope"
+                Clear-Variable -Name "PolicyAssignmentId"
                 Clear-Variable -Name "PolicyVariant"
             }
             if ($L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/") {
@@ -136,6 +154,7 @@ function mgfunc($mgId, $l) {
                         $htPolicySets.$($policyId).Id = $($L0mgmtGroupPolicySetDef.name)
                         $htPolicySets.$($policyId).DisplayName = $($L0mgmtGroupPolicySetDef.Properties.displayname)
                         $htPolicySets.$($policyId).Type = $($L0mgmtGroupPolicySetDef.Properties.policyType)  
+                        $htPolicySets.$($policyId).PolicySetDefinitionId = $($L0mgmtGroupPolicySetDef.PolicySetDefinitionId)
                     }   
                 }
                 else {
@@ -149,15 +168,22 @@ function mgfunc($mgId, $l) {
                         $htPolicySets.$($policyId).Id = $($L0mgmtGroupPolicySetDef.name)
                         $htPolicySets.$($policyId).DisplayName = $($L0mgmtGroupPolicySetDef.Properties.displayname)
                         $htPolicySets.$($policyId).Type = $($L0mgmtGroupPolicySetDef.Properties.policyType)  
+                        $htPolicySets.$($policyId).PolicySetDefinitionId = $($L0mgmtGroupPolicySetDef.PolicySetDefinitionId)
                     }   
                 }
                 $Policy = $htPolicySets[$policyId].DisplayName
                 $PolicyType = $htPolicySets[$policyId].Type
-                $PolicyScope = $L0mgmtGroupPolicyAssignment.Properties.Scope
-                row -l $l -mgName $getMg.DisplayName -mgId $getMg.Name -Policy $Policy -PolicyType $PolicyType -PolicyScope $PolicyScope -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+                $PolicyDefinitionIdFull = $htPolicySets[$policyId].PolicySetDefinitionId
+                $PolicyDefinitionIdGuid = $htPolicySets[$policyId].Id
+                $PolicyAssignmentScope = $L0mgmtGroupPolicyAssignment.Properties.Scope
+                $PolicyAssignmentId = $L0mgmtGroupPolicyAssignment.PolicyAssignmentId
+                row -l $l -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
                 Clear-Variable -Name "Policy"
                 Clear-Variable -Name "PolicyType"
-                Clear-Variable -Name "PolicyScope"
+                Clear-Variable -Name "PolicyDefinitionIdFull"
+                Clear-Variable -Name "PolicyDefinitionIdGuid"
+                Clear-Variable -Name "PolicyAssignmentScope"
+                Clear-Variable -Name "PolicyAssignmentId"
                 Clear-Variable -Name "PolicyVariant"
             }
         }
@@ -195,7 +221,7 @@ function mgfunc($mgId, $l) {
         $RoleAssignmentScope = $L0mgmtGroupRoleAssignment.Scope
         $RoleIsCustom = $htRoles.$($roleId).IsCustom
         $RoleAssignableScopes = [string]$htRoles.$($roleId).assignableScopes
-        row -l $l -mgName $getMg.DisplayName -mgId $getMg.Name -Policy $Policy -PolicyType $PolicyType -PolicyScope $PolicyScope -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentId $RoleAssignmentId -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+        row -l $l -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentId $RoleAssignmentId -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
         Clear-Variable -Name "RoleDefinitionId"
         Clear-Variable -Name "RoleDefinitionName"
         Clear-Variable -Name "RoleIsCustom"
@@ -236,14 +262,21 @@ function mgfunc($mgId, $l) {
                             $htPolicies.$($policyId).Id = $($L1mgmtGroupSubPolicyDef.name)
                             $htPolicies.$($policyId).DisplayName = $($L1mgmtGroupSubPolicyDef.Properties.displayname)  
                             $htPolicies.$($policyId).Type = $($L1mgmtGroupSubPolicyDef.Properties.policyType)  
+                            $htPolicies.$($policyId).PolicyDefinitionId = $($L1mgmtGroupSubPolicyDef.PolicyDefinitionId)
                         }
                         $Policy = $htPolicies[$policyId].DisplayName
                         $PolicyType = $htPolicies[$policyId].Type
-                        $PolicyScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
-                        row -l $l -mgName $getMg.DisplayName -mgId $getMg.Name -subName $childMg.DisplayName -subId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyScope $PolicyScope -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+                        $PolicyDefinitionIdFull = $htPolicies[$policyId].PolicyDefinitionId
+                        $PolicyDefinitionIdGuid = $htPolicies[$policyId].Id
+                        $PolicyAssignmentScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
+                        $PolicyAssignmentId = $L1mgmtGroupSubPolicyAssignment.PolicyAssignmentId
+                        row -l $l -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -subName $childMg.DisplayName -subId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
                         Clear-Variable -Name "Policy"
                         Clear-Variable -Name "PolicyType"
-                        Clear-Variable -Name "PolicyScope"
+                        Clear-Variable -Name "PolicyDefinitionIdFull"
+                        Clear-Variable -Name "PolicyDefinitionIdGuid"
+                        Clear-Variable -Name "PolicyAssignmentScope"
+                        Clear-Variable -Name "PolicyAssignmentId"
                         Clear-Variable -Name "PolicyVariant"
                     }
                     if ($L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/") {
@@ -257,15 +290,23 @@ function mgfunc($mgId, $l) {
                             $htPolicySets.$($policyId) = @{}
                             $htPolicySets.$($policyId).Id = $($L1mgmtGroupSubPolicySetDef.name)
                             $htPolicySets.$($policyId).DisplayName = $($L1mgmtGroupSubPolicySetDef.Properties.displayname)
-                            $htPolicySets.$($policyId).Type = $($L1mgmtGroupSubPolicySetDef.Properties.policyType)  
+                            $htPolicySets.$($policyId).Type = $($L1mgmtGroupSubPolicySetDef.Properties.policyType) 
+                            $htPolicySets.$($policyId).PolicySetDefinitionId = $($L1mgmtGroupSubPolicySetDef.PolicySetDefinitionId) 
+                            
                         }   
                         $Policy = $htPolicySets[$policyId].DisplayName
                         $PolicyType = $htPolicySets[$policyId].Type
-                        $PolicyScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
-                        row -l $l -mgName $getMg.DisplayName -mgId $getMg.Name -subName $childMg.DisplayName -subId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyScope $PolicyScope -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+                        $PolicyDefinitionIdFull = $htPolicySets[$policyId].PolicySetDefinitionId
+                        $PolicyDefinitionIdGuid = $htPolicySets[$policyId].Id
+                        $PolicyAssignmentScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
+                        $PolicyAssignmentId = $L1mgmtGroupSubPolicyAssignment.PolicyAssignmentId
+                        row -l $l -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -subName $childMg.DisplayName -subId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
                         Clear-Variable -Name "Policy"
                         Clear-Variable -Name "PolicyType"
-                        Clear-Variable -Name "PolicyScope"
+                        Clear-Variable -Name "PolicyDefinitionIdFull"
+                        Clear-Variable -Name "PolicyDefinitionIdGuid"
+                        Clear-Variable -Name "PolicyAssignmentScope"
+                        Clear-Variable -Name "PolicyAssignmentId"
                         Clear-Variable -Name "PolicyVariant"
                     }
                 }
@@ -296,7 +337,7 @@ function mgfunc($mgId, $l) {
                 $RoleAssignmentScope = $L1mgmtGroupSubRoleAssignment.Scope
                 $RoleIsCustom = $htRoles.$($roleId).IsCustom
                 $RoleAssignableScopes = [string]$htRoles.$($roleId).assignableScopes
-                row -l $l -mgName $getMg.DisplayName -mgId $getMg.Name -subName $childMg.DisplayName -subId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyScope $PolicyScope -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentId $RoleAssignmentId -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+                row -l $l -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -subName $childMg.DisplayName -subId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentId $RoleAssignmentId -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
                 Clear-Variable -Name "RoleDefinitionId"
                 Clear-Variable -Name "RoleDefinitionName"
                 Clear-Variable -Name "RoleAssignmentDisplayname"
@@ -310,9 +351,9 @@ function mgfunc($mgId, $l) {
         }
         foreach ($childMg in $getMg.Children | Where-Object { $_.Type -eq "/providers/Microsoft.Management/managementGroups" }) {
             Write-Output "Trigger Report for: MG-Name:'$($childMg.DisplayName)' MG-ID:'$($childMg.Name)'"
-            mgfunc -mgId $childMg.Name -l $l
+            mgfunc -mgId $childMg.Name -l $l -mgParentId $getMg.Name -mgParentName $getMg.DisplayName
         }
     }
 }
-mgfunc -mgId $ManagementGroupRootId -l 0
+mgfunc -mgId $ManagementGroupRootId -l 0 -mgParentId "Tenant" -mgParentName "Tenant"
 $table | Export-Csv -Path "$csvPath\MG-Report_$ManagementGroupRootId`_$csvFileTimestamp.csv" -Delimiter "," -NoTypeInformation
