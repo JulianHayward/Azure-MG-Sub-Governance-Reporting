@@ -1,12 +1,12 @@
-#Requires -Modules @{ ModuleName="Az"; ModuleVersion="3.3.0" }
+#Requires -Modules @{ ModuleName="Az.Resources"; ModuleVersion="1.9.1" }
 
 #enter the Management Group Id from where to start
 $ManagementGroupRootId = "<your tenantId>"
 
 #helper
 $csvDelimiter = ";" # ';' or ',' 
-$outputPathCsvHtml = "c:\tempH"
-$csvFileTimestamp = get-date -format "yyyyMMddHHmmss"
+$outputPathCsvHtml = "c:\temp"
+$fileTimestamp = get-date -format "yyyyMMddHHmmss"
 
 #validate given path
 if ((Test-Path $outputPathCsvHtml) -eq $false) {
@@ -834,7 +834,7 @@ $script:html += @"
 
 #Build the Array, CSV
 mgfunc -mgId $ManagementGroupRootId -l 0 -mgParentId "Tenant" -mgParentName "Tenant"
-$table | Export-Csv -Path "$outputPathCsvHtml\mg-sub-hierachy_$ManagementGroupRootId`_$csvFileTimestamp.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+$table | Export-Csv -Path "$outputPathCsvHtml\mg-sub-hierachy_$ManagementGroupRootId`_$fileTimestamp.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
 
 #Build the hierachy
 $html = $null
@@ -893,4 +893,4 @@ $html += @"
 </html>
 "@  
 
-$html | Out-File -FilePath "$outputPathCsvHtml\mg-sub-hierachy_$ManagementGroupRootId`_$csvFileTimestamp.html" -Encoding utf8 -Force
+$html | Out-File -FilePath "$outputPathCsvHtml\mg-sub-hierachy_$ManagementGroupRootId`_$fileTimestamp.html" -Encoding utf8 -Force
