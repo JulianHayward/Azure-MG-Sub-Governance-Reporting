@@ -2,6 +2,8 @@
 
 this script iterates MG hierachy down to Subscription level capturing RBAC, Policies and Policy Initiatives
 
+![alt text](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/mg-sub-governance-reporting.jpg "example")
+
 requirements:
 
 * RBAC 'Management Group Reader' Role
