@@ -2,7 +2,7 @@
 
 this script iterates MG hierachy down to Subscription level capturing RBAC, Policies and Policy Initiatives
 
-![alt text](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/mg-sub-governance-reporting.jpg "example")
+![alt text](mg-sub-governance-reporting.jpg "example output")
 
 requirements:
 
@@ -10,7 +10,7 @@ requirements:
 * RBAC 'Reader' Role
 * PowerShell Az Modules
 
-outputs csv file:  
+outputs html hierachy view and detailed csv file:  
 
 * Management Group
   * MGHierachyLevel
