@@ -1,7 +1,7 @@
 #Requires -Modules @{ ModuleName="Az"; ModuleVersion="3.3.0" }
 
 #enter the Management Group Id from where to start
-$ManagementGroupRootId = "11a5557c-f80f-4925-9d04-c05ecd061ffa"
+$ManagementGroupRootId = "<your tenantId>"
 
 #helper
 $csvDelimiter = ";" # ';' or ',' 
