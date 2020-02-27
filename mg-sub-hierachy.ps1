@@ -1,17 +1,11 @@
 #Requires -Modules @{ ModuleName="Az.Resources"; ModuleVersion="1.9.1" }
 
 #enter the Management Group Id from where to start
-$ManagementGroupRootId = "<your tenantId>"
+$ManagementGroupRootId = "11a5557c-f80f-4925-9d04-c05ecd061ffa"
 
 #helper
 $csvDelimiter = ";" # ';' or ',' 
-$outputPathCsvHtml = "c:\temp"
 $fileTimestamp = get-date -format "yyyyMMddHHmmss"
-
-#validate given path
-if ((Test-Path $outputPathCsvHtml) -eq $false) {
-    Write-Output "The path '$outputPathCsvHtml' does NOT exists - please create it";break
-}
 
 <#notes
 Role assignments to Unknown Object happens when the graph object(User/Group/Service principal) gets deleted from the directory after the Role assignment was created.
@@ -22,7 +16,7 @@ Since the graph entity is deleted, we cannot figure out the object's displayname
 #CODE--------------------------------------------------------------------------------
 #create table object
 $table = $null
-$table = New-Object system.Data.DataTable "MG Report"
+$table = New-Object system.Data.DataTable "MG-Sub-Governance-Report"
 
 #create common columns
 $table.columns.add((New-Object system.Data.DataColumn Level, ([string])))
@@ -834,7 +828,7 @@ $script:html += @"
 
 #Build the Array, CSV
 mgfunc -mgId $ManagementGroupRootId -l 0 -mgParentId "Tenant" -mgParentName "Tenant"
-$table | Export-Csv -Path "$outputPathCsvHtml\mg-sub-hierachy_$ManagementGroupRootId`_$fileTimestamp.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+$table | Export-Csv "mg-sub-hierachy_$ManagementGroupRootId`_$fileTimestamp.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
 
 #Build the hierachy
 $html = $null
@@ -893,4 +887,4 @@ $html += @"
 </html>
 "@  
 
-$html | Out-File -FilePath "$outputPathCsvHtml\mg-sub-hierachy_$ManagementGroupRootId`_$fileTimestamp.html" -Encoding utf8 -Force
+$html | Out-File "mg-sub-hierachy_$ManagementGroupRootId`_$fileTimestamp.html" -Encoding utf8 -Force
