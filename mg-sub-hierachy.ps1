@@ -1,17 +1,26 @@
-#Requires -Modules @{ ModuleName="Az.Resources"; ModuleVersion="1.9.1" }
-
-#enter the Management Group Id from where to start
-$ManagementGroupRootId = "<your tenantId>"
-
-#helper
-$csvDelimiter = ";" # ';' or ',' 
-$fileTimestamp = get-date -format "yyyyMMddHHmmss"
-
 <#notes
 Role assignments to Unknown Object happens when the graph object(User/Group/Service principal) gets deleted from the directory after the Role assignment was created.
 Since the graph entity is deleted, we cannot figure out the object's displayname or type from graph, due to which we show the objecType as Unknown.
 #>
 
+#Requires -Modules @{ ModuleName="Az.Resources"; ModuleVersion="1.9.1" }
+
+Param
+(
+    #enter your tenantId #(Get-AzContext).Tenant.Id
+    [Parameter(Mandatory = $False)][string]$managementGroupRootId = "<your tenantId>",
+    #CSV file delimiter use either semicolon or comma 
+    [Parameter(Mandatory = $False)][string]$csvDelimiter = ";",
+    #helper for file naming
+    [Parameter(Mandatory = $False)][string]$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
+)
+
+#validate tenantId
+if ((Get-AzContext).Tenant.Id -ne $ManagementGroupRootId) {
+    Write-Output "context does not match! you are currently connected to tenantId:'$((Get-AzContext).Tenant.Id)'";break
+}
+
+pause
 
 #CODE--------------------------------------------------------------------------------
 #create table object
@@ -89,13 +98,11 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
     foreach ($L0mgmtGroupPolicyAssignment in $L0mgmtGroupPolicyAssignments) {
         if ($L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -OR $L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/") {
             $policyId = ($L0mgmtGroupPolicyAssignment.properties.policydefinitionid -replace '.*/')
-            #Write-Output "PolicyId = $policyId"
             if ($L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/") {
                 #policy
                 $PolicyVariant = "Policy"
                 if ($L0mgmtGroupPolicyAssignment.properties.policydefinitionid -match "/providers/Microsoft.Management/managementGroups/") {
                     #custom policy
-                    #Write-Output "MG custom policy"
                     if ($htPolicies[$policyId]){
                         #write-output "existing ht policy entry############################"
                     }
@@ -110,7 +117,7 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
                     }   
                 }
                 else {
-                    #Write-Output "MG built-in policy"
+                    #built-in policy
                     if ($htPolicies[$policyId]){
                         #write-output "existing ht policy entry############################"
                     }
@@ -158,6 +165,7 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
                     }   
                 }
                 else {
+                    #built-in policySet
                     if ($htPolicySets[$policyId]){
                         #write-output "existing ht policySet entry############################"
                     }
@@ -195,10 +203,7 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
     $L0mgmtGroupRoleAssignments = Get-AzRoleAssignment -scope "/providers/Microsoft.Management/managementGroups/$($getMg.Name)" -verbose
     Write-Output "MG Role Assignments: $($L0mgmtGroupRoleAssignments.count)"
     foreach ($L0mgmtGroupRoleAssignment in $L0mgmtGroupRoleAssignments) {
-        #Write-Output "------------------------------------------------"
         #$htRoles
-        #Write-Output "------------------------------------------------"
-        #Write-Output "MG Role"
         $roleId = $L0mgmtGroupRoleAssignment.RoleDefinitionId
         if ($htRoles[$L0mgmtGroupRoleAssignment.RoleDefinitionId]){
             #write-output "existing role ht entry############################"
@@ -241,15 +246,10 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
             $L1mgmtGroupSubPolicyAssignments = Get-AzPolicyAssignment -Scope "$($childMg.Id)"
             Write-Output "SUB Policy Assignments: $($L1mgmtGroupSubPolicyAssignments.count)"
             foreach ($L1mgmtGroupSubPolicyAssignment in $L1mgmtGroupSubPolicyAssignments) {
-                #Write-Output "++++++++++++++++++++++++++++++++++++++++++++++++"
                 #$htpolicies
-                #Write-Output "++++++++++++++++++++++++++++++++++++++++++++++++"
-                #Write-Output "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                 #$htpolicySets
-                #Write-Output "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                 if ($L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -OR $L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/") {
                     $policyId = ($L1mgmtGroupSubPolicyAssignment.properties.policydefinitionid -replace '.*/')
-                    #Write-Output "PolicyId = $policyId"
                     if ($L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/") {
                         $PolicyVariant = "Policy"
                         if ($htPolicies[$policyId]){
@@ -366,7 +366,7 @@ function subForMgFunc($mgChild) {
             write-output "subscription: $subscription"
         }
 $script:html += @"
-                    <li><a style="Background-Color:#A2DCF6" href="#$mgChild"><p id="hierachySub_$mgChild">$($subscriptions.Count)x<br>Subscription</p></a></li>
+                    <li><a class="aSub" href="#$mgChild"><p id="hierachySub_$mgChild">$($subscriptions.Count)x<br>Subscription</p></a></li>
 "@
     }
 }
@@ -386,7 +386,7 @@ $script:html += @"
 "@
         }
 $script:html += @"
-                    <li><a style="Background-Color:#A2DCF6" class="hover" href="#$mgChild"><p id="hierachySub_$mgChild">$($subscriptions.Count)x<br>Subscription</p></a></li></ul>
+                    <li><a class="aSub" href="#$mgChild"><p id="hierachySub_$mgChild">$($subscriptions.Count)x<br>Subscription</p></a></li></ul>
 "@
     }
 }
@@ -397,7 +397,7 @@ function mgHierachyFunc($mgChild) {
     #$subscriptions = ($table | Where-Object { "" -ne $_.Subscription -and $_.mgId -eq $mgChild }).Subscription | Get-Unique
     $mgName = ($table | Where-Object {$_.mgId -eq "$mgChild"}).mgName | Get-Unique
 $script:html += @"
-                    <li><a style="Background-Color:#FFE000" href="#$mgChild"><p id="hierachy_$mgChild">$mgName<br><i>$mgChild</i></p></a>
+                    <li><a class="aMg" href="#$mgChild"><p id="hierachy_$mgChild">$mgName<br><i>$mgChild</i></p></a>
 "@
     write-output "checking for childMgs for $mgChild"
     $childMgs = ($table | Where-Object {$_.mgParentId -eq "$mgChild"}).mgId | Get-Unique
@@ -436,7 +436,7 @@ if ($mgOrSub -eq "sub"){
 
 if ($policiesCount -gt 0){
 
-    $script:html += @"
+$script:html += @"
     <button type="button" class="collapsible"><p><i class="fa fa-plus" aria-hidden="true"></i> $policiesCount Policy Assignment(s) ($policiesInherited inherited)</p></button>
     <div class="content">
         <table class="$cssClass">
@@ -459,7 +459,7 @@ if ($policiesCount -gt 0){
                 else{
                     $policyWithWithoutLinkToAzAdvertizer = $policyAssignment.policy
                 }
-    $script:html += @"
+$script:html += @"
             <tr>
                 <td>
                     $policyWithWithoutLinkToAzAdvertizer
@@ -473,23 +473,23 @@ if ($policiesCount -gt 0){
             </tr>
 "@        
             }
-    $script:html += @"
+$script:html += @"
         </table>
     </div>
 "@
         }
         else{
-    $script:html += @"
+$script:html += @"
             <p><i class="fa fa-minus" aria-hidden="true"></i> $policiesCount Policy Assignment(s) ($policiesInherited inherited)</p>
 "@
         }
-    $script:html += @"
+$script:html += @"
         </td></tr>
         <tr><td>
 "@
         if ($policySetsCount -gt 0){
     
-    $script:html += @"
+$script:html += @"
     <button type="button" class="collapsible"><p><i class="fa fa-plus" aria-hidden="true"></i> $policySetsCount PolicySet Assignment(s) ($policySetsInherited inherited)</p></button>
     <div class="content">
         <table class="$cssClass">
@@ -512,7 +512,7 @@ if ($policiesCount -gt 0){
                 else{
                     $policyWithWithoutLinkToAzAdvertizer = $policySetAssignment.policy
                 }
-    $script:html += @"
+$script:html += @"
             <tr>
                 <td>
                     $policyWithWithoutLinkToAzAdvertizer
@@ -526,24 +526,24 @@ if ($policiesCount -gt 0){
             </tr>
 "@        
             }
-    $script:html += @"
+$script:html += @"
         </table>
     </div>
 "@
         }
         else{
-    $script:html += @"
+$script:html += @"
             <p><i class="fa fa-minus" aria-hidden="true"></i> $policySetsCount PolicySet Assignment(s) ($policySetsInherited inherited)</p>
 "@
         }
-    $script:html += @"
+$script:html += @"
         </td></tr>
         <tr><td>
 "@
     
     if ($scopePoliciesCount -gt 0){
     
-        $script:html += @"
+$script:html += @"
         <button type="button" class="collapsible"><p><i class="fa fa-plus" aria-hidden="true"></i> $scopePoliciesCount Policies (custom) scoped (where an assignment exists)</p></button>
         <div class="content">
             <table class="$cssClass">
@@ -558,7 +558,7 @@ if ($policiesCount -gt 0){
 "@
                 foreach ($scopePolicy in $scopePolicies){
         
-    $script:html += @"
+$script:html += @"
                 <tr>
                     <td>
                         $($scopePolicy.policy)
@@ -569,24 +569,24 @@ if ($policiesCount -gt 0){
                 </tr>
 "@        
                 }
-    $script:html += @"
+$script:html += @"
             </table>
         </div>
 "@
             }
             else{
-    $script:html += @"
+$script:html += @"
                     <p><i class="fa fa-minus" aria-hidden="true"></i> $scopePoliciesCount Policies (custom) scoped (where an assignment exists)</p>
 "@
             }
-    $script:html += @"
+$script:html += @"
                 </td></tr>
                 <tr><td>
 "@
     
     if ($scopePolicySetsCount -gt 0){
     
-        $script:html += @"
+$script:html += @"
         <button type="button" class="collapsible"><p><i class="fa fa-plus" aria-hidden="true"></i> $scopePolicySetsCount PolicySets/Initiatives (custom) scoped (where an assignment exists)</p></button>
         <div class="content">
             <table class="$cssClass">
@@ -601,7 +601,7 @@ if ($policiesCount -gt 0){
 "@
                 foreach ($scopePolicySet in $scopePolicySets){
         
-    $script:html += @"
+$script:html += @"
                 <tr>
                     <td>
                         $($scopePolicySet.policy)
@@ -612,24 +612,24 @@ if ($policiesCount -gt 0){
                 </tr>
 "@        
                 }
-    $script:html += @"
+$script:html += @"
             </table>
         </div>
 "@
             }
             else{
-    $script:html += @"
+$script:html += @"
                     <p><i class="fa fa-minus" aria-hidden="true"></i> $scopePolicySetsCount PolicySets/Initiatives (custom) scoped (where an assignment exists)</p>
 "@
             }
-    $script:html += @"
+$script:html += @"
                 </td></tr>
                 <tr><td>
 "@
     
     if ($rolesAssignedCount -gt 0){
     
-        $script:html += @"
+$script:html += @"
         <button type="button" class="collapsible"><p><i class="fa fa-plus" aria-hidden="true"></i> $rolesAssignedCount Role Assignment(s) ($rolesAssignedInherited inherited)</p></button>
         <div class="content">
             <table class="$cssClass">
@@ -662,7 +662,7 @@ if ($policiesCount -gt 0){
                         $roleType = "Custom"
                         $roleWithWithoutLinkToAzAdvertizer = $roleAssigned.RoleDefinitionName
                     }
-    $script:html += @"
+$script:html += @"
                 <tr>
                     <td>
                         $roleWithWithoutLinkToAzAdvertizer
@@ -682,17 +682,17 @@ if ($policiesCount -gt 0){
                 </tr>
 "@        
                 }
-    $script:html += @"
+$script:html += @"
             </table>
         </div>
 "@
             }
             else{
-    $script:html += @"
+$script:html += @"
                 <p><i class="fa fa-minus" aria-hidden="true"></i> $rolesAssignedCount Role Assignment(s) ($rolesAssignedInherited inherited)</p>
 "@
             }
-    $script:html += @"
+$script:html += @"
                 </td></tr>
                 <tr><td>
 "@
@@ -750,7 +750,7 @@ mgSubDetailsTable -mgOrSub "sub" -policiesCount $policiesCount -policiesAssigned
         }
     }
     else{
-        $script:html += @"
+$script:html += @"
 
             <p><i class="fa fa-info-circle" aria-hidden="true"></i> $($subscriptions.Count) Subscription(s) linked</p>
 
@@ -791,7 +791,7 @@ $script:html += @"
     <br>
     <table id="$mgChild">
         <tr>
-            <th class="mg" bgcolor="FFE000" style="text-decoration: none;">
+            <th class="mg">
                 <span><b>$mgName</b> (Id: <i>$mgChild</i>)</span>
             </th>
         </tr>
@@ -801,7 +801,7 @@ $script:html += @"
             </td>
         </tr>
         <tr>
-            <td bgcolor="#ffffff">
+            <td>
                 <p>Child of '$mgChildOfName' (Id: <i>$mgChildOf</i>)</p>
             </td>
         </tr>
@@ -838,7 +838,8 @@ $html += @"
 <html style="height: 100%">
 <head>
     <meta charset="utf-8" />
-    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/hierachy.css">
+    <!--<link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/hierachy.css">-->
+    <link rel="stylesheet" type="text/css" href="hierachy.css">
     <script src="https://code.jquery.com/jquery-1.7.2.js" integrity="sha256-FxfqH96M63WENBok78hchTCDxmChGFlo+/lFIPcZPeI=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/ui/1.8.18/jquery-ui.js" integrity="sha256-lzf/CwLt49jbVoZoFcPZOc0LlMYPFBorVSwMsTs2zsA=" crossorigin="anonymous"></script>
     <script type="text/javascript" src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/hover.js"></script>
