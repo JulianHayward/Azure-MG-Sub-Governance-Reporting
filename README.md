@@ -10,7 +10,7 @@ requirements:
 
 outputs html hierachy view and detailed csv file:  
 
-![alt text](mg-sub-governance-reporting.jpg "example output")
+![alt text](img/mg-sub-governance-reporting.jpg "example output")
 
 * Management Group
   * MGHierachyLevel
