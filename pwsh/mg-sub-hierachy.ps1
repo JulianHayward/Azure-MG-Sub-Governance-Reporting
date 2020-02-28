@@ -8,7 +8,7 @@ Since the graph entity is deleted, we cannot figure out the object's displayname
 Param
 (
     #enter your tenantId #(Get-AzContext).Tenant.Id
-    [Parameter(Mandatory = $False)][string]$managementGroupRootId = "<your tenantId>",
+    [Parameter(Mandatory = $False)][string]$managementGroupRootId = "11a5557c-f80f-4925-9d04-c05ecd061ffa",
     #CSV file delimiter use either semicolon or comma 
     [Parameter(Mandatory = $False)][string]$csvDelimiter = ";",
     #helper for file naming
