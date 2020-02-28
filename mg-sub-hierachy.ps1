@@ -16,7 +16,7 @@ Param
 )
 
 #validate tenantId
-if ((Get-AzContext).Tenant.Id -ne $ManagementGroupRootId) {
+if ((Get-AzContext).Tenant.Id -ne $managementGroupRootId) {
     Write-Output "context does not match! you are currently connected to tenantId:'$((Get-AzContext).Tenant.Id)'";break
 }
 
@@ -827,8 +827,8 @@ $script:html += @"
 ###########FUNCTIONS END
 
 #Build the Array, CSV
-mgfunc -mgId $ManagementGroupRootId -l 0 -mgParentId "Tenant" -mgParentName "Tenant"
-$table | Export-Csv "mg-sub-hierachy_$ManagementGroupRootId`_$fileTimestamp.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+mgfunc -mgId $managementGroupRootId -l 0 -mgParentId "Tenant" -mgParentName "Tenant"
+$table | Export-Csv "mg-sub-hierachy_$managementGroupRootId`_$fileTimestamp.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
 
 #Build the hierachy
 $html = $null
@@ -838,8 +838,8 @@ $html += @"
 <html style="height: 100%">
 <head>
     <meta charset="utf-8" />
-    <!--<link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/hierachy.css">-->
-    <link rel="stylesheet" type="text/css" href="hierachy.css">
+    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/hierachy.css">
+    <!--<link rel="stylesheet" type="text/css" href="hierachy.css">-->
     <script src="https://code.jquery.com/jquery-1.7.2.js" integrity="sha256-FxfqH96M63WENBok78hchTCDxmChGFlo+/lFIPcZPeI=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/ui/1.8.18/jquery-ui.js" integrity="sha256-lzf/CwLt49jbVoZoFcPZOc0LlMYPFBorVSwMsTs2zsA=" crossorigin="anonymous"></script>
     <script type="text/javascript" src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/hover.js"></script>
@@ -854,7 +854,7 @@ $html += @"
                     <ul>
 "@    
 #hierachyTree
-mgHierachyFunc -mgChild $ManagementGroupRootId
+mgHierachyFunc -mgChild $managementGroupRootId
 
 $html += @"
                     </ul>
@@ -865,7 +865,7 @@ $html += @"
     <div class="hierachyTables">
 "@  
 #hierachyDetails/Tables
-mgHierachyTextFunc -mgChild $ManagementGroupRootId -mgChildOf "tenant"
+mgHierachyTextFunc -mgChild $managementGroupRootId -mgChildOf "tenant"
 
 $html += @"
     </div>
@@ -888,4 +888,4 @@ $html += @"
 </html>
 "@  
 
-$html | Out-File "mg-sub-hierachy_$ManagementGroupRootId`_$fileTimestamp.html" -Encoding utf8 -Force
+$html | Out-File "mg-sub-hierachy_$managementGroupRootId`_$fileTimestamp.html" -Encoding utf8 -Force
