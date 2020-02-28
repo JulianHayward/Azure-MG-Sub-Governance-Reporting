@@ -8,7 +8,7 @@ Since the graph entity is deleted, we cannot figure out the object's displayname
 Param
 (
     #enter your tenantId #(Get-AzContext).Tenant.Id
-    [Parameter(Mandatory = $False)][string]$managementGroupRootId = "11a5557c-f80f-4925-9d04-c05ecd061ffa",
+    [Parameter(Mandatory = $False)][string]$managementGroupRootId = "<your tenantId>",
     #CSV file delimiter use either semicolon or comma 
     [Parameter(Mandatory = $False)][string]$csvDelimiter = ";",
     #helper for file naming
@@ -19,8 +19,6 @@ Param
 if ((Get-AzContext).Tenant.Id -ne $managementGroupRootId) {
     Write-Output "context does not match! you are currently connected to tenantId:'$((Get-AzContext).Tenant.Id)'";break
 }
-
-pause
 
 #CODE--------------------------------------------------------------------------------
 #create table object
