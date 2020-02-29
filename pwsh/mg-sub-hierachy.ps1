@@ -867,6 +867,11 @@ mgHierachyTextFunc -mgChild $managementGroupRootId -mgChildOf "tenant"
 
 $html += @"
     </div>
+
+    <div class="footer">
+        Also check <a class="foot" href="https://www.azadvertizer.net" target="_blank"><b>AzAdvertizer</b></a> to keep up with the pace on Azure Governance capabilities <b>|</b> <a class="foot" href="https://www.linkedin.com/in/julianhayward" target="_blank"><i class="fa fa-linkedin-square fa-sm" aria-hidden="true"></i></a>
+    </div>
+
     <script>
         var coll = document.getElementsByClassName("collapsible");
         var i;
