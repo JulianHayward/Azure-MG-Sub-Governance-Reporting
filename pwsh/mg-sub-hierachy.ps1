@@ -8,12 +8,14 @@ Since the graph entity is deleted, we cannot figure out the object's displayname
 Param
 (
     #enter your tenantId #(Get-AzContext).Tenant.Id
-    [Parameter(Mandatory = $False)][string]$managementGroupRootId = "<your tenantId>",
+    [Parameter(Mandatory = $False)][string]$managementGroupRootId = "11a5557c-f80f-4925-9d04-c05ecd061ffa",
     #CSV file delimiter use either semicolon or comma 
-    [Parameter(Mandatory = $False)][string]$csvDelimiter = ";",
-    #helper for file naming
-    [Parameter(Mandatory = $False)][string]$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
+    [Parameter(Mandatory = $False)][string]$csvDelimiter = ";"
 )
+
+
+#helper for file naming
+$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 
 #validate tenantId
 if ((Get-AzContext).Tenant.Id -ne $managementGroupRootId) {
@@ -366,6 +368,10 @@ function subForMgFunc($mgChild) {
 $script:html += @"
                     <li><a class="aSub" href="#$mgChild"><p id="hierachySub_$mgChild">$($subscriptions.Count)x<br>Subscription</p></a></li>
 "@
+$script:markdown += @"
+ $mgChild[$mgChild] --> Subsof$mgChild[Subs: $($subscriptions.Count)]`r`n
+"@
+$script:arraySubs += "Subsof$mgChild"
     }
 }
 
@@ -386,6 +392,10 @@ $script:html += @"
 $script:html += @"
                     <li><a class="aSub" href="#$mgChild"><p id="hierachySub_$mgChild">$($subscriptions.Count)x<br>Subscription</p></a></li></ul>
 "@
+$script:markdown += @"
+ $mgChild[$mgChild] --> Subsof$mgChild[Subs: $($subscriptions.Count)]`r`n
+"@
+$script:arraySubs += "Subsof$mgChild"
     }
 }
 
@@ -406,6 +416,12 @@ $script:html += @"
         foreach ($childMg in $childMgs){
             write-output "processingFMg: $childMg"
             mgHierachyFunc -mgChild $childMg
+
+$script:markdown += @"
+ $mgChild[$mgChild] --> $childMg[$childMg]`r`n
+"@
+$script:arrayMgs += "$childMg"
+
         }
         subForMgFunc -mgChild $mgChild
 $script:html += @"
@@ -829,7 +845,12 @@ mgfunc -mgId $managementGroupRootId -l 0 -mgParentId "Tenant" -mgParentName "Ten
 $table | Export-Csv "mg-sub-hierachy_$managementGroupRootId`_$fileTimestamp.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
 
 #Build the hierachy
+$arrayMgs = @()
+$stringMgs =""
+$arraySubs = @()
+$stringSubs =""
 $html = $null
+$markdown = $null
 $html += @"
 <!doctype html>
 <html lang="en">
@@ -851,6 +872,10 @@ $html += @"
                     <a style="Background-Color:#DDDDDA" href="#"><b>Tenant</b></a>
                     <ul>
 "@    
+$script:markdown += @"
+::: mermaid`r`n
+ graph TD;`r`n
+"@
 #hierachyTree
 mgHierachyFunc -mgChild $managementGroupRootId
 
@@ -891,4 +916,32 @@ $html += @"
 </html>
 "@  
 
+foreach ($mg in $arrayMgs) {
+    $stringMgs = $stringMgs + $mg + ","
+}
+foreach ($sub in $arraySubs) {
+    $stringSubs = $stringSubs + $sub + ","
+}
+
+$subsstring = $subsstring.TrimEnd(",")
+$script:markdown += @"
+ classDef mgr fill:#f9f,stroke:#333,stroke-width:4px;
+ classDef subs fill:#fee,stroke:#333,stroke-width:4px;
+ class $stringMgs mgr;
+ class $stringSubs subs;
+:::`r`n
+"@
+
+
 $html | Out-File "mg-sub-hierachy_$managementGroupRootId`_$fileTimestamp.html" -Encoding utf8 -Force
+$markdown | Out-File "mg-sub-hierachy_$managementGroupRootId`_$fileTimestamp.md" -Encoding utf8 -Force
+
+$subsstring =""
+foreach ($sub in $mgSubs) {
+    write-output "$sub"
+    Write-Output "next"
+    $subsstring = $subsstring + $sub + ", "
+
+}
+
+$subsstring = $subsstring.TrimEnd(", ")
