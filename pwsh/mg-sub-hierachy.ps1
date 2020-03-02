@@ -846,9 +846,7 @@ $table | Export-Csv "mg-sub-hierachy_$managementGroupRootId`_$fileTimestamp.csv"
 
 #Build the hierachy
 $arrayMgs = @()
-$stringMgs =""
 $arraySubs = @()
-$stringSubs =""
 $html = $null
 $markdown = $null
 $html += @"
@@ -873,7 +871,7 @@ $html += @"
                     <ul>
 "@    
 $script:markdown += @"
-::: mermaid`r`n
+::: mermaid
  graph TD;`r`n
 "@
 #hierachyTree
@@ -916,32 +914,15 @@ $html += @"
 </html>
 "@  
 
-foreach ($mg in $arrayMgs) {
-    $stringMgs = $stringMgs + $mg + ","
-}
-foreach ($sub in $arraySubs) {
-    $stringSubs = $stringSubs + $sub + ","
-}
-
-$subsstring = $subsstring.TrimEnd(",")
 $script:markdown += @"
- classDef mgr fill:#f9f,stroke:#333,stroke-width:4px;
- classDef subs fill:#fee,stroke:#333,stroke-width:4px;
- class $stringMgs mgr;
- class $stringSubs subs;
-:::`r`n
+ classDef mgr fill:#FFE000,stroke:#333,stroke-width:4px;
+ classDef subs fill:#A2DCF6,stroke:#333,stroke-width:4px;
+ class $($arrayMgs -join ",") mgr;
+ class $($arraySubs -join ",") subs;
+:::
 "@
-
 
 $html | Out-File "mg-sub-hierachy_$managementGroupRootId`_$fileTimestamp.html" -Encoding utf8 -Force
 $markdown | Out-File "mg-sub-hierachy_$managementGroupRootId`_$fileTimestamp.md" -Encoding utf8 -Force
 
-$subsstring =""
-foreach ($sub in $mgSubs) {
-    write-output "$sub"
-    Write-Output "next"
-    $subsstring = $subsstring + $sub + ", "
 
-}
-
-$subsstring = $subsstring.TrimEnd(", ")
