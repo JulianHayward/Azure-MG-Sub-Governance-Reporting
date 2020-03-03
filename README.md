@@ -1,41 +1,37 @@
 # Azure-MG-Sub-Governance-Reporting
 
-this script iterates MG hierachy down to Subscription level capturing RBAC, Policies and Policy Initiatives
+This script iterates MG hierachy down to Subscription level capturing RBAC, Policies and Policy Initiatives
 
-requirements:
+## Required permissions
 
 * RBAC 'Management Group Reader' Role
 * RBAC 'Reader' Role
+
+## Powershell requirements
+
 * PowerShell Az Modules
 
-outputs html hierachy view and detailed csv file:  
+## Outputs
+
+* detailed csv file
+  * Management Groups, Subscriptions, Policy, Policy Initiative, RBAC
+* detailed html file
+  * Management Groups, Subscriptions, Policy, Policy Initiative, RBAC
+* basic markdown file
+  * Management Groups, Subscriptions
+
+## Run script
+
+`.\mg-sub-hierachy.ps1 -managementGroupRootId <your tenantId>`
+
+## Screenshots
+
+detailed html file
 
 ![alt text](img/mg-sub-governance-reporting.jpg "example output")
 
-* Management Group
-  * MGHierachyLevel
-  * MGName
-  * MGId
-* Subscription
-  * SubscriptionName
-  * SubscriptionId
-* Policy
-  * PolicyDisplayName
-  * PolicyId
-  * PolicyType
-  * PolicyScope
-  * PolicyVariant (Policy/PolicySet)
-* Role
-  * RoleDefinitionName
-  * RoleDefinitionId
-  * RoleIsCustom
-* RoleAssignment
-  * RoleAssignmentDisplayName
-  * RoleAssignmentSignInName
-  * RoleAssignmentObjectId
-  * RoleAssignmentObjectType
-  * RoleAssignmentId
-  * RoleAssignmentScope
-  * RoleAssignableScopes
+basic markdown in Azure DevOps Wiki
+
+![alt text](img/mg-sub-governance-reporting_md.jpg "example output")
 
 Also check <https://www.azadvertizer.net> to keep up with the pace on Azure Governance capabilities such as Azure Policy, Policy Initiatives, Policy Aliases and RBAC/Roles
