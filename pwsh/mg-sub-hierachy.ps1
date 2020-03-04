@@ -1,9 +1,9 @@
 <#notes
 Role assignments to Unknown Object happens when the graph object(User/Group/Service principal) gets deleted from the directory after the Role assignment was created.
 Since the graph entity is deleted, we cannot figure out the object's displayname or type from graph, due to which we show the objecType as Unknown.
-#>
 
-#Requires -Modules @{ ModuleName="Az.Resources"; ModuleVersion="1.9.1" }
+If you run this script in Azure Automation you will need to grant API permissions in Azure Active Directory. The Automation Account App registration must be granted with: Azure Active Directory API | Application | Directory | Read.All
+#>
 
 Param
 (
@@ -13,6 +13,13 @@ Param
     [Parameter(Mandatory = $False)][string]$csvDelimiter = ";",
     [Parameter(Mandatory = $False)][string]$outputPath = ""
 )
+
+#check for required module #not using non-reliable ps 'requires'
+$moduleName = "Az.Resources"
+$azresources = Get-InstalledModule | Where-Object { $_.Name -eq $moduleName }
+if (!$azresources){
+    Write-Output "module $moduleName not installed -install it!";break
+}
 
 #helper file/dir
 if (-not [IO.Path]::IsPathRooted($outputPath)){
