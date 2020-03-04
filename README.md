@@ -1,11 +1,11 @@
 # Azure-MG-Sub-Governance-Reporting
 
-This script iterates MG hierachy down to Subscription level capturing RBAC, Policies and Policy Initiatives
+This script iterates MG hierachy down to Subscription level capturing RBAC, Policies and Policy Initiatives to provide you with full insights into your Azure Governance.
 
-## Required permissions
+## Required permissions in Azure on Root Management Group
 
-* RBAC 'Management Group Reader' Role
-* RBAC 'Reader' Role
+* RBAC: _Management Group Reader_
+* RBAC: _Reader_
 
 ## Powershell requirements
 
@@ -17,7 +17,7 @@ This script iterates MG hierachy down to Subscription level capturing RBAC, Poli
   * Management Groups, Subscriptions, Policy, Policy Initiative, RBAC
 * detailed html file
   * Management Groups, Subscriptions, Policy, Policy Initiative, RBAC
-* basic markdown file
+* basic markdown file for use in Azure DevOps Wiki leveraging [Mermaid](https://docs.microsoft.com/en-us/azure/devops/release-notes/2019/sprint-158-update#mermaid-diagram-support-in-wiki) plugin
   * Management Groups, Subscriptions
 
 ## Run script
@@ -33,5 +33,13 @@ detailed html file
 basic markdown in Azure DevOps Wiki
 
 ![alt text](img/mg-sub-governance-reporting_md.jpg "example output")
+
+note: there is some fixing ongoing at the mermaid project to optimize the graphical experience:
+
+<https://github.com/mermaid-js/mermaid/issues/1289>
+
+<https://github.com/mermaid-js/mermaid/issues/1177>
+
+## AzAdvertizer
 
 Also check <https://www.azadvertizer.net> to keep up with the pace on Azure Governance capabilities such as Azure Policy, Policy Initiatives, Policy Aliases and RBAC/Roles
