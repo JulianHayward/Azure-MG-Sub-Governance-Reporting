@@ -2,29 +2,28 @@
 
 ..want to have visibility on your Management Group hierarchy, document it in markdown? This script iterates Management Group hierachy down to Subscription level capturing RBAC, Policies and Policy Initiatives.
 
-## Required permissions in Azure on Root Management Group
-
-* RBAC: _Management Group Reader_
-* RBAC: _Reader_
-
-## Powershell requirements
-
-* PowerShell Az Modules
-
-## Outputs
+### Outputs
 
 * detailed csv file
   * Management Groups, Subscriptions, Policy, Policy Initiative, RBAC
 * detailed html file
   * Management Groups, Subscriptions, Policy, Policy Initiative, RBAC
-* basic markdown file for use in Azure DevOps Wiki leveraging [Mermaid](https://docs.microsoft.com/en-us/azure/devops/release-notes/2019/sprint-158-update#mermaid-diagram-support-in-wiki) plugin
+* basic markdown file for use with Azure DevOps Wiki leveraging the [Mermaid](https://docs.microsoft.com/en-us/azure/devops/release-notes/2019/sprint-158-update#mermaid-diagram-support-in-wiki) plugin
   * Management Groups, Subscriptions
 
-## Run script
+### Required permissions in Azure on Root Management Group
 
-`.\mg-sub-hierachy.ps1 -managementGroupRootId <your tenantId>`
+* RBAC: _Management Group Reader_
+* RBAC: _Reader_
 
-## Screenshots
+### Powershell
+
+* Requires: PowerShell Az Modules
+* Usage: `.\mg-sub-hierachy.ps1 -managementGroupRootId <your tenantId>`
+* Passed tests: Powershell Core on Windows
+* Passed tests: Powershell Core on Linux Ubuntu 18.04 LTS
+
+### Screenshots
 
 detailed html file
 
