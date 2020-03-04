@@ -8,13 +8,25 @@ Since the graph entity is deleted, we cannot figure out the object's displayname
 Param
 (
     #enter your tenantId #(Get-AzContext).Tenant.Id
-    [Parameter(Mandatory = $False)][string]$managementGroupRootId = "11a5557c-f80f-4925-9d04-c05ecd061ffa",
+    [Parameter(Mandatory = $False)][string]$managementGroupRootId = "<your tenantId>",
     #CSV file delimiter use either semicolon or comma 
-    [Parameter(Mandatory = $False)][string]$csvDelimiter = ";"
+    [Parameter(Mandatory = $False)][string]$csvDelimiter = ";",
+    [Parameter(Mandatory = $False)][string]$outputPath = ""
 )
 
-
-#helper for file naming
+#helper file/dir
+if (-not [IO.Path]::IsPathRooted($outputPath)){
+    $outputPath = Join-Path -Path (Get-Location).Path -ChildPath $outputPath
+}
+$outputPath = Join-Path -Path $outputPath -ChildPath '.'
+$outputPath = [IO.Path]::GetFullPath($outputPath)
+if (!(test-path $outputPath)){
+     Write-Output "path $outputPath does not exist -create it!";break
+}
+else{
+    Write-Output "output will be created in path $outputPath"
+}
+$DirectorySeparatorChar = [IO.Path]::DirectorySeparatorChar
 $fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 
 #validate tenantId
@@ -311,7 +323,7 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
                     }
                 }
             }
-            $L1mgmtGroupSubRoleAssignments = Get-AzRoleAssignment -Scope "$($childMg.Id)"
+            $L1mgmtGroupSubRoleAssignments = Get-AzRoleAssignment -Scope "$($childMg.Id)" | where-object { $_.RoleAssignmentId -notmatch "$($childMg.Id)/resourcegroups/" } #exclude rg roleassignments
             Write-Output "SUB Role Assignments: $($L1mgmtGroupSubRoleAssignments.count)"
             foreach ($L1mgmtGroupSubRoleAssignment in $L1mgmtGroupSubRoleAssignments) {
                 $roleId = $L1mgmtGroupSubRoleAssignment.RoleDefinitionId
@@ -359,31 +371,31 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
 function subForMgFunc($mgChild) {
 #sub
     write-output "checking for Subs for $mgChild"
-    $subscriptions = ($table | Where-Object { "" -ne $_.Subscription -and $_.mgId -eq $mgChild }).SubscriptionId | Get-Unique
+    $subscriptions = ($table | Where-Object { "" -ne $_.Subscription -and $_.MgId -eq $mgChild }).SubscriptionId | Get-Unique
     if ($subscriptions.Count -gt 0){
         foreach ($subscriptionId in $subscriptions){
-            $subscription = ($table | Where-Object { "$subscriptionId" -eq $_.SubscriptionId -and $_.mgId -eq $mgChild }).Subscription | Get-Unique
+            $subscription = ($table | Where-Object { "$subscriptionId" -eq $_.SubscriptionId -and $_.MgId -eq $mgChild }).Subscription | Get-Unique
             write-output "subscription: $subscription"
         }
 $script:html += @"
                     <li><a class="aSub" href="#$mgChild"><p id="hierachySub_$mgChild">$($subscriptions.Count)x<br>Subscription</p></a></li>
 "@
 $script:markdown += @"
- $mgChild[$mgChild] --> Subsof$mgChild[Subs: $($subscriptions.Count)]`r`n
+ $mgChild[$mgChild] --> SubsOf$mgChild[$($subscriptions.Count)]`n
 "@
-$script:arraySubs += "Subsof$mgChild"
+$script:arraySubs += "SubsOf$mgChild"
     }
 }
 
 function subForMgUlFunc($mgChild) {
     write-output "checking for Subs for $mgChild"
-    $subscriptions = ($table | Where-Object { "" -ne $_.Subscription -and $_.mgId -eq $mgChild }).SubscriptionId | Get-Unique
+    $subscriptions = ($table | Where-Object { "" -ne $_.Subscription -and $_.MgId -eq $mgChild }).SubscriptionId | Get-Unique
     if ($subscriptions.Count -gt 0){
 $script:html += @"
                 <ul>
 "@
         foreach ($subscriptionId in $subscriptions){
-            $subscription = ($table | Where-Object { "$subscriptionId" -eq $_.SubscriptionId -and $_.mgId -eq $mgChild }).Subscription | Get-Unique
+            $subscription = ($table | Where-Object { "$subscriptionId" -eq $_.SubscriptionId -and $_.MgId -eq $mgChild }).Subscription | Get-Unique
             write-output "subscription: $subscription"
 $script:html += @"
         
@@ -393,32 +405,32 @@ $script:html += @"
                     <li><a class="aSub" href="#$mgChild"><p id="hierachySub_$mgChild">$($subscriptions.Count)x<br>Subscription</p></a></li></ul>
 "@
 $script:markdown += @"
- $mgChild[$mgChild] --> Subsof$mgChild[Subs: $($subscriptions.Count)]`r`n
+ $mgChild[$mgChild] --> SubsOf$mgChild[$($subscriptions.Count)]`n
 "@
-$script:arraySubs += "Subsof$mgChild"
+$script:arraySubs += "SubsOf$mgChild"
     }
 }
 
 function mgHierachyFunc($mgChild) {
-
     write-output "processingInFunction: $mgChild"
-    #$subscriptions = ($table | Where-Object { "" -ne $_.Subscription -and $_.mgId -eq $mgChild }).Subscription | Get-Unique
-    $mgName = ($table | Where-Object {$_.mgId -eq "$mgChild"}).mgName | Get-Unique
+    #$subscriptions = ($table | Where-Object { "" -ne $_.Subscription -and $_.MgId -eq $mgChild }).Subscription | Get-Unique
+    $mgName = ($table | Where-Object { $_.MgId -eq "$mgChild" }).mgName | Get-Unique
 $script:html += @"
                     <li><a class="aMg" href="#$mgChild"><p id="hierachy_$mgChild">$mgName<br><i>$mgChild</i></p></a>
 "@
     write-output "checking for childMgs for $mgChild"
-    $childMgs = ($table | Where-Object {$_.mgParentId -eq "$mgChild"}).mgId | Get-Unique
+    $childMgs = ($table | Where-Object { $_.mgParentId -eq "$mgChild" }).MgId | Get-Unique
     if ($childMgs.count -gt 0){
 $script:html += @"
                 <ul>
 "@
         foreach ($childMg in $childMgs){
             write-output "processingFMg: $childMg"
+            $childMgName = ($table | Where-Object {$_.MgId -eq $childMg }).MgName | Get-Unique
             mgHierachyFunc -mgChild $childMg
 
 $script:markdown += @"
- $mgChild[$mgChild] --> $childMg[$childMg]`r`n
+ $mgChild[$mgChild] --> $childMg[$childMgName<br>$childMg]`r`n
 "@
 $script:arrayMgs += "$childMg"
 
@@ -676,6 +688,12 @@ $script:html += @"
                         $roleType = "Custom"
                         $roleWithWithoutLinkToAzAdvertizer = $roleAssigned.RoleDefinitionName
                     }
+                    if (($roleAssigned.RoleAssignmentDisplayname).length -eq 1){
+                        $objDisplayName = "N/A"
+                    }
+                    else{
+                        $objDisplayName = $roleAssigned.RoleAssignmentDisplayname
+                    }
 $script:html += @"
                 <tr>
                     <td>
@@ -688,7 +706,7 @@ $script:html += @"
                         $($roleAssigned.RoleAssignmentObjectType)
                     </td>
                     <td>
-                        $($roleAssigned.RoleAssignmentDisplayname)
+                        $objDisplayName
                     </td>
                     <td>
                         $($roleAssigned.RoleAssignmentId)
@@ -714,7 +732,7 @@ $script:html += @"
 
 function subForMgTextFunc($mgChild) {
     write-output "checking for Subs for $mgChild"
-    $subscriptions = ($table | Where-Object { "" -ne $_.Subscription -and $_.mgId -eq $mgChild }).SubscriptionId | Get-Unique
+    $subscriptions = ($table | Where-Object { "" -ne $_.Subscription -and $_.MgId -eq $mgChild }).SubscriptionId | Get-Unique
     if ($subscriptions.Count -gt 0){
 $script:html += @"
             <p><i class="fa fa-info-circle" aria-hidden="true"></i> $($subscriptions.Count) Subscription(s) linked</p>
@@ -725,16 +743,16 @@ $script:html += @"
             <table class="subTable">
 "@
         foreach ($subscriptionId in $subscriptions){
-            $subscription = ($table | Where-Object { "$subscriptionId" -eq $_.SubscriptionId -and $_.mgId -eq $mgChild }).Subscription | Get-Unique
+            $subscription = ($table | Where-Object { "$subscriptionId" -eq $_.SubscriptionId -and $_.MgId -eq $mgChild }).Subscription | Get-Unique
             write-output "subscriptionId: $subscriptionId"
             #POLICY
-            $policyReleatedQuery = $table | Where-Object { $_.SubscriptionId -eq "$subscriptionId" -and "" -ne $_.Policy}
-            $policiesCount = ($policyReleatedQuery | where-object {$_.PolicyVariant -eq "Policy"}).count
-            $policiesAssigned = $policyReleatedQuery | where-object {$_.PolicyVariant -eq "Policy"} | Sort-Object -Property Policy, PolicyType
-            $policySetsCount = ($policyReleatedQuery | where-object {$_.PolicyVariant -eq "PolicySet"}).count
-            $policySetsAssigned = $policyReleatedQuery | where-object {$_.PolicyVariant -eq "PolicySet"} | Sort-Object -Property Policy, PolicyType
-            $policiesInherited = ($policyReleatedQuery | where-object {$_.PolicyVariant -eq "Policy" -and $_.PolicyAssignmentId -notmatch "$subscriptionId/"}).count
-            $policySetsInherited = ($policyReleatedQuery | where-object {$_.PolicyVariant -eq "PolicySet" -and $_.PolicyAssignmentId -notmatch "$subscriptionId/"}).count
+            $policyReleatedQuery = $table | Where-Object { $_.SubscriptionId -eq "$subscriptionId" -and "" -ne $_.Policy }
+            $policiesCount = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "Policy" }).count
+            $policiesAssigned = $policyReleatedQuery | where-object { $_.PolicyVariant -eq "Policy" } | Sort-Object -Property Policy, PolicyType
+            $policySetsCount = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "PolicySet" }).count
+            $policySetsAssigned = $policyReleatedQuery | where-object { $_.PolicyVariant -eq "PolicySet" } | Sort-Object -Property Policy, PolicyType
+            $policiesInherited = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "Policy" -and $_.PolicyAssignmentId -notmatch "$subscriptionId/" }).count
+            $policySetsInherited = ($policyReleatedQuery | where-object {$_.PolicyVariant -eq "PolicySet" -and $_.PolicyAssignmentId -notmatch "$subscriptionId/" }).count
             $scopePolicies = (($policyReleatedQuery| Where-Object { $_.PolicyVariant -eq "Policy" -and $_.PolicyDefinitionIdFull -match "$subscriptionId/" }))
             $scopePoliciesCount = (($policyReleatedQuery| Where-Object { $_.PolicyVariant -eq "Policy" -and $_.PolicyDefinitionIdFull -match "$subscriptionId/" }).PolicyDefinitionIdFull | sort-object -Unique ).count
             $scopePolicySets = (($policyReleatedQuery| Where-Object { $_.PolicyVariant -eq "PolicySet" -and $_.PolicyDefinitionIdFull -match "$subscriptionId/" }))
@@ -782,22 +800,22 @@ $script:html += @"
 function mgHierachyTextFunc($mgChild, $mgChildOf) {
     write-output "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
     write-output "processingInFunction: $mgChild"
-    $mgName = ($table | Where-Object {$_.mgId -eq "$mgChild"}).mgName | Get-Unique
-    $mgChildOfName = ($table | Where-Object {$_.mgId -eq "$mgChildOf"}).mgName | Get-Unique
+    $mgName = ($table | Where-Object {$_.MgId -eq "$mgChild"}).mgName | Get-Unique
+    $mgChildOfName = ($table | Where-Object {$_.MgId -eq "$mgChildOf"}).mgName | Get-Unique
     #POLICY
-    $policyReleatedQuery = $table | Where-Object { $_.mgId -eq $mgChild -and "" -ne $_.Policy -and "" -eq $_.Subscription}
-    $policiesCount = ($policyReleatedQuery | where-object {$_.PolicyVariant -eq "Policy"}).count
-    $policiesAssigned = $policyReleatedQuery | where-object {$_.PolicyVariant -eq "Policy"} | Sort-Object -Property Policy, PolicyType
-    $policySetsCount = ($policyReleatedQuery | where-object {$_.PolicyVariant -eq "PolicySet"}).count
-    $policySetsAssigned = $policyReleatedQuery | where-object {$_.PolicyVariant -eq "PolicySet"} | Sort-Object -Property Policy, PolicyType
-    $policiesInherited = ($policyReleatedQuery | where-object {$_.PolicyVariant -eq "Policy" -and $_.PolicyAssignmentId -notmatch "/providers/Microsoft.Management/managementGroups/$mgChild/"}).count
-    $policySetsInherited = ($policyReleatedQuery | where-object {$_.PolicyVariant -eq "PolicySet" -and $_.PolicyAssignmentId -notmatch "/providers/Microsoft.Management/managementGroups/$mgChild/"}).count
+    $policyReleatedQuery = $table | Where-Object { $_.MgId -eq $mgChild -and "" -ne $_.Policy -and "" -eq $_.Subscription }
+    $policiesCount = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "Policy" }).count
+    $policiesAssigned = $policyReleatedQuery | where-object { $_.PolicyVariant -eq "Policy" } | Sort-Object -Property Policy, PolicyType
+    $policySetsCount = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "PolicySet" }).count
+    $policySetsAssigned = $policyReleatedQuery | where-object { $_.PolicyVariant -eq "PolicySet" } | Sort-Object -Property Policy, PolicyType
+    $policiesInherited = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "Policy" -and $_.PolicyAssignmentId -notmatch "/providers/Microsoft.Management/managementGroups/$mgChild/" }).count
+    $policySetsInherited = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "PolicySet" -and $_.PolicyAssignmentId -notmatch "/providers/Microsoft.Management/managementGroups/$mgChild/" }).count
     $scopePolicies = (($policyReleatedQuery| Where-Object { $_.PolicyVariant -eq "Policy" -and $_.PolicyDefinitionIdFull -match "/providers/Microsoft.Management/managementGroups/$mgChild/" }))
     $scopePoliciesCount = (($policyReleatedQuery| Where-Object { $_.PolicyVariant -eq "Policy" -and $_.PolicyDefinitionIdFull -match "/providers/Microsoft.Management/managementGroups/$mgChild/" }).PolicyDefinitionIdFull | sort-object -Unique ).count
     $scopePolicySets = (($policyReleatedQuery| Where-Object { $_.PolicyVariant -eq "PolicySet" -and $_.PolicyDefinitionIdFull -match "/providers/Microsoft.Management/managementGroups/$mgChild/" }))
     $scopePolicySetsCount = (($policyReleatedQuery| Where-Object { $_.PolicyVariant -eq "PolicySet" -and $_.PolicyDefinitionIdFull -match "/providers/Microsoft.Management/managementGroups/$mgChild/" }).PolicyDefinitionIdFull | sort-object -Unique ).count
     #RBAC
-    $rbacReleatedQuery = $table | Where-Object { $_.mgId -eq $mgChild -and "" -eq $_.Subscription -and "" -ne $_.RoleDefinitionName }
+    $rbacReleatedQuery = $table | Where-Object { $_.MgId -eq $mgChild -and "" -eq $_.Subscription -and "" -ne $_.RoleDefinitionName }
     $rolesAssigned = $rbacReleatedQuery
     $rolesAssignedCount = $rbacReleatedQuery.count
     $rolesAssignedInherited = ($rbacReleatedQuery | Where-Object { $_.RoleAssignmentId -notmatch "/providers/Microsoft.Management/managementGroups/$mgChild/" }).count
@@ -826,7 +844,7 @@ $script:html += @"
     mgSubDetailsTable -mgOrSub "mg" -policiesCount $policiesCount -policiesAssigned $policiesAssigned -policySetsCount $policySetsCount -policySetsAssigned $policySetsAssigned -policiesInherited $policiesInherited -policySetsInherited $policySetsInherited -scopePolicies $scopePolicies -scopePoliciesCount $scopePoliciesCount -scopePolicySets $scopePolicySets -scopePolicySetsCount $scopePolicySetsCount -rolesAssigned $rolesAssigned -rolesAssignedCount $rolesAssignedCount -rolesAssignedInherited $rolesAssignedInherited
     write-output "checking for subs for $mgChild"
     subForMgTextFunc -mgChild $mgChild
-    $childMgs = ($table | Where-Object {$_.mgParentId -eq "$mgChild"}).mgId | sort-object -Unique
+    $childMgs = ($table | Where-Object {$_.mgParentId -eq "$mgChild"}).MgId | sort-object -Unique
     if ($childMgs.count -gt 0){
         foreach ($childMg in $childMgs){
             write-output "checking for childmgs for $mgChild"
@@ -842,7 +860,7 @@ $script:html += @"
 
 #Build the Array, CSV
 mgfunc -mgId $managementGroupRootId -l 0 -mgParentId "Tenant" -mgParentName "Tenant"
-$table | Export-Csv "mg-sub-hierachy_$managementGroupRootId`_$fileTimestamp.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+$table | Export-Csv -Path "$outputPath$DirectorySeparatorChar`mg-sub-hierachy_$managementGroupRootId`_$fileTimestamp.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
 
 #Build the hierachy
 $arrayMgs = @()
@@ -871,9 +889,14 @@ $html += @"
                     <ul>
 "@    
 $script:markdown += @"
+# Management Group Hierachy
+
+## Hierachy Diagram (Mermaid)
+
 ::: mermaid
- graph TD;`r`n
+ graph TD;
 "@
+
 #hierachyTree
 mgHierachyFunc -mgChild $managementGroupRootId
 
@@ -894,7 +917,6 @@ $html += @"
     <div class="footer">
         Also check <a class="foot" href="https://www.azadvertizer.net" target="_blank"><b>AzAdvertizer</b></a> to keep up with the pace on Azure Governance capabilities <b>|</b> <a class="foot" href="https://www.linkedin.com/in/julianhayward" target="_blank"><i class="fa fa-linkedin-square fa-sm" aria-hidden="true"></i></a>
     </div>
-
     <script>
         var coll = document.getElementsByClassName("collapsible");
         var i;
@@ -915,14 +937,44 @@ $html += @"
 "@  
 
 $script:markdown += @"
- classDef mgr fill:#FFE000,stroke:#333,stroke-width:4px;
- classDef subs fill:#A2DCF6,stroke:#333,stroke-width:4px;
+ classDef mgr fill:#FFE000,stroke:#000,stroke-width:1px;
+ classDef subs fill:#A2DCF6,stroke:#000,stroke-width:1px;
  class $($arrayMgs -join ",") mgr;
  class $($arraySubs -join ",") subs;
 :::
+
+## Hierachy Table
+
+| **MgLevel** | **MgName** | **MgId** | **MgParentName** | **MgParentId** | **SubName** | **SubId** |
+|-------------|------------|----------|-------------|-----------|-------------|-----------|`n
 "@
 
-$html | Out-File "mg-sub-hierachy_$managementGroupRootId`_$fileTimestamp.html" -Encoding utf8 -Force
-$markdown | Out-File "mg-sub-hierachy_$managementGroupRootId`_$fileTimestamp.md" -Encoding utf8 -Force
+$mgLevels = ($table | Sort-Object -Property Level -Unique).Level
+foreach ($mgLevel in $mgLevels){
+    $mgsInLevel = ($table | Where-Object { $_.Level -eq $mgLevel }).MgId | Get-Unique
+    foreach ($mgInLevel in $mgsInLevel){ 
+        $subsUnderMg = ($table | Where-Object { $_.Level -eq $mgLevel -and "" -ne $_.Subscription -and $_.MgId -eq $mgInLevel }).SubscriptionId | Get-Unique
+        if ($subsUnderMg.count -gt 0){
+            foreach ($subUnderMg in $subsUnderMg){
+                $mgName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgName | Get-Unique
+                $mgParentId = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgParentId | Get-Unique
+                $mgParentName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgParentName | Get-Unique
+                $subName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel -and $_.SubscriptionId -eq $subUnderMg }).Subscription | Get-Unique
+$script:markdown += @"
+| $mgLevel | $mgName | $mgInLevel | $mgParentName | $mgParentId | $subName | $($subUnderMg -replace '.*/') |`n
+"@
+            }
+        }
+        else{
+            $mgName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgName | Get-Unique
+            $mgParentId = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgParentId | Get-Unique
+            $mgParentName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgParentName | Get-Unique
+$script:markdown += @"
+| $mgLevel | $mgName | $mgInLevel | $mgParentName | $mgParentId | none | none |`n
+"@
+        }
+    }
+}
 
-
+$html | Out-File -FilePath "$outputPath$DirectorySeparatorChar`mg-sub-hierachy_$managementGroupRootId`_$fileTimestamp.html" -Encoding utf8 -Force
+$markdown | Out-File -FilePath "$outputPath$DirectorySeparatorChar`mg-sub-hierachy_$managementGroupRootId`_$fileTimestamp.md" -Encoding utf8 -Force
