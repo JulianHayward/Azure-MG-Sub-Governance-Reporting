@@ -11,11 +11,15 @@ Param
     [Parameter(Mandatory = $False)][string]$managementGroupRootId = "<your tenantId>",
     #CSV file delimiter use either semicolon or comma 
     [Parameter(Mandatory = $False)][string]$csvDelimiter = ";",
-    [Parameter(Mandatory = $False)][string]$outputPath = ""
+    [Parameter(Mandatory = $False)][string]$outputPath = "",
+    [Parameter(Mandatory = $False)][string]$AzOrAzureRmModule = "Az"# Az or AzureRm
 )
 
+#az/azurerm -ugly yes but helpful for various automation scenarios
+$AzOrAzureRm = "get-$AzOrAzureRmModule" 
+
 #check for required module #not using non-reliable ps 'requires'
-$moduleName = "Az.Resources"
+$moduleName = "$AzOrAzureRmModule.Resources"
 $azresources = Get-InstalledModule | Where-Object { $_.Name -eq $moduleName }
 if (!$azresources){
     Write-Output "module $moduleName not installed -install it!";break
@@ -37,8 +41,8 @@ $DirectorySeparatorChar = [IO.Path]::DirectorySeparatorChar
 $fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 
 #validate tenantId
-if ((Get-AzContext).Tenant.Id -ne $managementGroupRootId) {
-    Write-Output "context does not match! you are currently connected to tenantId:'$((Get-AzContext).Tenant.Id)'";break
+if ((&$AzOrAzureRm`Context).Tenant.Id -ne $managementGroupRootId) {
+    Write-Output "context does not match! you are currently connected to tenantId:'$((&$AzOrAzureRm`Context).Tenant.Id)'";break
 }
 
 #CODE--------------------------------------------------------------------------------
@@ -107,12 +111,12 @@ $htRoles = @{}
 function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
     Write-Output "...................."
     $l++
-    $getMg = Get-AzManagementGroup -groupname $mgId -Expand -Recurse
+    $getMg = &$AzOrAzureRm`ManagementGroup -groupname $mgId -Expand -Recurse
     if (!$getMg){
         write-output "fail - check the provided ManagementGroup Id: '$mgI'"; break
     }
     Write-Output "Processing L$l MG-Name:'$($getMg.DisplayName)' MG-ID:'$($getMg.Name)'"
-    $L0mgmtGroupPolicyAssignments = Get-AzPolicyAssignment -Scope "/providers/Microsoft.Management/managementGroups/$($getMg.Name)"
+    $L0mgmtGroupPolicyAssignments = &$AzOrAzureRm`PolicyAssignment -Scope "/providers/Microsoft.Management/managementGroups/$($getMg.Name)"
     Write-Output "MG Policy Assignments: $($L0mgmtGroupPolicyAssignments.count)"
     foreach ($L0mgmtGroupPolicyAssignment in $L0mgmtGroupPolicyAssignments) {
         if ($L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -OR $L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/") {
@@ -127,7 +131,7 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
                     }
                     else{
                         #write-output "not existing ht policy entry"
-                        $L0mgmtGroupPolicyDef = Get-AzPolicyDefinition -custom -ManagementGroupName $getMg.Name | Where-Object { $_.policydefinitionid -eq $L0mgmtGroupPolicyAssignment.properties.policydefinitionid }
+                        $L0mgmtGroupPolicyDef = &$AzOrAzureRm`PolicyDefinition -custom -ManagementGroupName $getMg.Name | Where-Object { $_.policydefinitionid -eq $L0mgmtGroupPolicyAssignment.properties.policydefinitionid }
                         $htPolicies.$($policyId) = @{}
                         $htPolicies.$($policyId).Id = $($L0mgmtGroupPolicyDef.name)
                         $htPolicies.$($policyId).DisplayName = $($L0mgmtGroupPolicyDef.Properties.displayname)
@@ -142,7 +146,7 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
                     }
                     else{
                         #write-output "not existing ht policy entry"
-                        $L0mgmtGroupPolicyDef = Get-AzPolicyDefinition | Where-Object { $_.policydefinitionid -eq $L0mgmtGroupPolicyAssignment.properties.policydefinitionid }
+                        $L0mgmtGroupPolicyDef = &$AzOrAzureRm`PolicyDefinition | Where-Object { $_.policydefinitionid -eq $L0mgmtGroupPolicyAssignment.properties.policydefinitionid }
                         $htPolicies.$($policyId) = @{}
                         $htPolicies.$($policyId).Id = $($L0mgmtGroupPolicyDef.name)
                         $htPolicies.$($policyId).DisplayName = $($L0mgmtGroupPolicyDef.Properties.displayname)  
@@ -175,7 +179,7 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
                     }
                     else{
                         #write-output "not existing ht policySet entry"
-                        $L0mgmtGroupPolicySetDef = Get-AzPolicySetDefinition -custom -ManagementGroupName $getMg.Name | Where-Object { $_.policysetdefinitionid -eq $L0mgmtGroupPolicyAssignment.properties.policydefinitionid }
+                        $L0mgmtGroupPolicySetDef = &$AzOrAzureRm`PolicySetDefinition -custom -ManagementGroupName $getMg.Name | Where-Object { $_.policysetdefinitionid -eq $L0mgmtGroupPolicyAssignment.properties.policydefinitionid }
                         $htPolicySets.$($policyId) = @{}
                         $htPolicySets.$($policyId).Id = $($L0mgmtGroupPolicySetDef.name)
                         $htPolicySets.$($policyId).DisplayName = $($L0mgmtGroupPolicySetDef.Properties.displayname)
@@ -190,7 +194,7 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
                     }
                     else{
                         #write-output "not existing ht policySet entry"
-                        $L0mgmtGroupPolicySetDef = Get-AzPolicySetDefinition | Where-Object { $_.policysetdefinitionid -eq $L0mgmtGroupPolicyAssignment.properties.policydefinitionid }
+                        $L0mgmtGroupPolicySetDef = &$AzOrAzureRm`PolicySetDefinition | Where-Object { $_.policysetdefinitionid -eq $L0mgmtGroupPolicyAssignment.properties.policydefinitionid }
                         $htPolicySets.$($policyId) = @{}
                         $htPolicySets.$($policyId).Id = $($L0mgmtGroupPolicySetDef.name)
                         $htPolicySets.$($policyId).DisplayName = $($L0mgmtGroupPolicySetDef.Properties.displayname)
@@ -219,7 +223,7 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
             Write-Output "unexpected"
         }
     }
-    $L0mgmtGroupRoleAssignments = Get-AzRoleAssignment -scope "/providers/Microsoft.Management/managementGroups/$($getMg.Name)" -verbose
+    $L0mgmtGroupRoleAssignments = &$AzOrAzureRm`RoleAssignment -scope "/providers/Microsoft.Management/managementGroups/$($getMg.Name)" -verbose
     Write-Output "MG Role Assignments: $($L0mgmtGroupRoleAssignments.count)"
     foreach ($L0mgmtGroupRoleAssignment in $L0mgmtGroupRoleAssignments) {
         #$htRoles
@@ -229,7 +233,7 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
         }
         else{
             #write-output "not existing role ht entry"
-            $L0mgmtGroupRoleDefinition = Get-AzRoleDefinition -Id $L0mgmtGroupRoleAssignment.RoleDefinitionId -Scope $L0mgmtGroupRoleAssignment.Scope -verbose
+            $L0mgmtGroupRoleDefinition = &$AzOrAzureRm`RoleDefinition -Id $L0mgmtGroupRoleAssignment.RoleDefinitionId -Scope $L0mgmtGroupRoleAssignment.Scope -verbose
             $htRoles.$($roleId) = @{}
             $htRoles.$($roleId).Id = $($L0mgmtGroupRoleDefinition.Id)
             $htRoles.$($roleId).IsCustom = $($L0mgmtGroupRoleDefinition.IsCustom)
@@ -262,7 +266,7 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
     if ($getMg.children.count -gt 0) {
         foreach ($childMg in $getMg.Children | Where-Object { $_.Type -eq "/subscriptions" }) {
             Write-Output "Processing SUB Name:'$($childMg.DisplayName) ID:'$($childMg.Id)''"
-            $L1mgmtGroupSubPolicyAssignments = Get-AzPolicyAssignment -Scope "$($childMg.Id)"
+            $L1mgmtGroupSubPolicyAssignments = &$AzOrAzureRm`PolicyAssignment -Scope "$($childMg.Id)"
             Write-Output "SUB Policy Assignments: $($L1mgmtGroupSubPolicyAssignments.count)"
             foreach ($L1mgmtGroupSubPolicyAssignment in $L1mgmtGroupSubPolicyAssignments) {
                 #$htpolicies
@@ -276,7 +280,7 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
                         }
                         else{
                             #write-output "not existing ht policy entry"
-                            $L1mgmtGroupSubPolicyDef = Get-AzPolicydefinition -Id $L1mgmtGroupSubPolicyAssignment.properties.policydefinitionid
+                            $L1mgmtGroupSubPolicyDef = &$AzOrAzureRm`Policydefinition -Id $L1mgmtGroupSubPolicyAssignment.properties.policydefinitionid
                             $htPolicies.$($policyId) = @{}
                             $htPolicies.$($policyId).Id = $($L1mgmtGroupSubPolicyDef.name)
                             $htPolicies.$($policyId).DisplayName = $($L1mgmtGroupSubPolicyDef.Properties.displayname)  
@@ -305,7 +309,7 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
                         }
                         else{
                             #write-output "not existing ht policySet entry"
-                            $L1mgmtGroupSubPolicySetDef = Get-AzPolicySetdefinition -Id $L1mgmtGroupSubPolicyAssignment.properties.policydefinitionid
+                            $L1mgmtGroupSubPolicySetDef = &$AzOrAzureRm`PolicySetdefinition -Id $L1mgmtGroupSubPolicyAssignment.properties.policydefinitionid
                             $htPolicySets.$($policyId) = @{}
                             $htPolicySets.$($policyId).Id = $($L1mgmtGroupSubPolicySetDef.name)
                             $htPolicySets.$($policyId).DisplayName = $($L1mgmtGroupSubPolicySetDef.Properties.displayname)
@@ -330,7 +334,7 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
                     }
                 }
             }
-            $L1mgmtGroupSubRoleAssignments = Get-AzRoleAssignment -Scope "$($childMg.Id)" | where-object { $_.RoleAssignmentId -notmatch "$($childMg.Id)/resourcegroups/" } #exclude rg roleassignments
+            $L1mgmtGroupSubRoleAssignments = &$AzOrAzureRm`RoleAssignment -Scope "$($childMg.Id)" | where-object { $_.RoleAssignmentId -notmatch "$($childMg.Id)/resourcegroups/" } #exclude rg roleassignments
             Write-Output "SUB Role Assignments: $($L1mgmtGroupSubRoleAssignments.count)"
             foreach ($L1mgmtGroupSubRoleAssignment in $L1mgmtGroupSubRoleAssignments) {
                 $roleId = $L1mgmtGroupSubRoleAssignment.RoleDefinitionId
@@ -339,7 +343,7 @@ function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
                 }
                 else{
                     #write-output "not existing role ht entry"
-                    $L1mgmtGroupSubRoleDefinition = Get-AzRoleDefinition -Id $L1mgmtGroupSubRoleAssignment.RoleDefinitionId -Scope $L1mgmtGroupSubRoleAssignment.Scope
+                    $L1mgmtGroupSubRoleDefinition = &$AzOrAzureRm`RoleDefinition -Id $L1mgmtGroupSubRoleAssignment.RoleDefinitionId -Scope $L1mgmtGroupSubRoleAssignment.Scope
                     $htRoles.$($roleId) = @{}
                     $htRoles.$($roleId).Id = $($L1mgmtGroupSubRoleDefinition.Id)
                     $htRoles.$($roleId).IsCustom = $($L1mgmtGroupSubRoleDefinition.IsCustom)
