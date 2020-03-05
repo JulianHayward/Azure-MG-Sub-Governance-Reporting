@@ -41,4 +41,4 @@ note: there is some fixing ongoing at the mermaid project to optimize the graphi
 
 ## AzAdvertizer
 
-Also check <https://www.azadvertizer.net> to keep up with the pace on Azure Governance capabilities such as Azure Policy, Policy Initiatives, Policy Aliases and RBAC/Roles
+Also check <https://www.azadvertizer.net> to keep up with the pace on Azure Governance capabilities such as Azure Policies, Policy Initiatives, Policy Aliases and RBAC Roles
