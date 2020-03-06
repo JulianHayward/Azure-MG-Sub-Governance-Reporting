@@ -12,7 +12,7 @@
     ..want to have visibility on your Management Group hierarchy, document it in markdown? This script iterates Management Group hierachy down to Subscription level capturing RBAC Roles, Policies and Policy Initiatives.
  
 .PARAMETER managementGroupId
-    This ManagementGroup id which should be used to generate report for
+    Define the Management Group Id for which the outputs shall be generated
  
 .PARAMETER csvDelimiter
     The script outputs a csv file depending on your delimit defaults choose semicolon or comma
@@ -42,9 +42,9 @@
 
 Param
 (
-    [Parameter(Mandatory = $False)][string]$managementGroupId = "<your tenantId>",
+    [Parameter(Mandatory = $False)][string]$managementGroupId = "9", #11a5557c-f80f-4925-9d04-c05ecd061ffa
     [Parameter(Mandatory = $False)][string]$csvDelimiter = ";",
-    [Parameter(Mandatory = $False)][string]$outputPath = "",
+    [Parameter(Mandatory = $False)][string]$outputPath = "obs",
     [Parameter(Mandatory = $False)][string]$AzOrAzureRmModule = "Az"# Az or AzureRm
 )
 
@@ -73,10 +73,9 @@ else{
 $DirectorySeparatorChar = [IO.Path]::DirectorySeparatorChar
 $fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 
-#validate tenantId
-if ((&$AzOrAzureRm`Context).Tenant.Id -ne $managementGroupId) {
-    Write-Output "context does not match! you are currently connected to tenantId:'$((&$AzOrAzureRm`Context).Tenant.Id)'";
-}
+#MgLevel 
+$l = 0
+
 
 #CODE--------------------------------------------------------------------------------
 #create table object
@@ -142,6 +141,7 @@ $htPolicies = @{}
 $htPolicySets = @{}
 $htRoles = @{}
 function mgfunc($mgId, $l, $mgParentId, $mgParentName) {
+
     Write-Output "...................."
     $l++
     $getMg = &$AzOrAzureRm`ManagementGroup -groupname $mgId -Expand -Recurse
@@ -456,6 +456,7 @@ $script:arraySubs += "SubsOf$mgChild"
 }
 
 function mgHierachyFunc($mgChild) {
+
     write-output "processingInFunction: $mgChild"
     #$subscriptions = ($table | Where-Object { "" -ne $_.Subscription -and $_.MgId -eq $mgChild }).Subscription | Get-Unique
     $mgName = ($table | Where-Object { $_.MgId -eq "$mgChild" }).mgName | Get-Unique
@@ -902,15 +903,41 @@ $script:html += @"
 
 ###########FUNCTIONS END
 
+#validate if Tenant Root
+if ((&$AzOrAzureRm`Context).Tenant.Id -ne $managementGroupId) {
+    #managementGroupId is not RootMgId - get the parents..
+    $getMgParent = Get-AzManagementGroup -GroupName $managementGroupId
+    $getMgParentId = $getMgParent.ParentName
+    $getMgParentName = $getMgParent.ParentDisplayName
+    $l++
+    row -l $l -mgName $getMgParentName -mgId $getMgParentId -mgParentId "N/A" -mgParentName "N/A" -Policy "N/A" -PolicyType "N/A" -PolicyDefinitionIdFull "N/A" -PolicyDefinitionIdGuid "N/A" -PolicyAssignmentScope "N/A" -PolicyAssignmentId "N/A" -PolicyVariant "N/A" -RoleDefinitionId "N/A" -RoleDefinitionName "N/A" -RoleAssignmentDisplayname "N/A" -RoleAssignmentSignInName "N/A" -RoleAssignmentObjectId "N/A" -RoleAssignmentObjectType "N/A" -RoleAssignmentScope "N/A" -RoleIsCustom "N/A" -RoleAssignableScopes "N/A"
+}
+else{
+    $getMgParentId = "Tenant"
+    $getMgParentId = "Tenant"
+}
+
 #Build the Array, CSV
-mgfunc -mgId $managementGroupId -l 0 -mgParentId "Tenant" -mgParentName "Tenant"
+mgfunc -mgId $managementGroupId -l $l -mgParentId $getMgParentId -mgParentName $getMgParentName
 $table | Export-Csv -Path "$outputPath$DirectorySeparatorChar`mg-sub-hierachy_$managementGroupId`_$fileTimestamp.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
 
+
+
+
+
+
+$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 #Build the hierachy
 $arrayMgs = @()
 $arraySubs = @()
 $html = $null
 $markdown = $null
+
+$parentMgNamex = ($table | Where-Object { $_.MgParentId -eq $getMgParentId }).mgParentId | Get-Unique
+$parentMgIdx = ($table | Where-Object { $_.MgParentId -eq $getMgParentId }).mgParentName | Get-Unique
+$MgNamex = ($table | Where-Object { $_.MgParentId -eq $getMgParentId }).mgId | Get-Unique
+$MgIdx = ($table | Where-Object { $_.MgParentId -eq $getMgParentId }).mgName | Get-Unique
+
 $html += @"
 <!doctype html>
 <html lang="en">
@@ -922,7 +949,7 @@ $html += @"
     <meta http-equiv="Expires" content="0" />
     <title>Azure MG-Sub Governance Reporting</title>
     <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/hierachy.css">
-    <!--<link rel="stylesheet" type="text/css" href="hierachy.css">-->
+    <!--<link rel="stylesheet" type="text/css" href="../../hierachy.css">-->
     <script src="https://code.jquery.com/jquery-1.7.2.js" integrity="sha256-FxfqH96M63WENBok78hchTCDxmChGFlo+/lFIPcZPeI=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/ui/1.8.18/jquery-ui.js" integrity="sha256-lzf/CwLt49jbVoZoFcPZOc0LlMYPFBorVSwMsTs2zsA=" crossorigin="anonymous"></script>
     <script type="text/javascript" src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/hover.js"></script>
@@ -931,33 +958,71 @@ $html += @"
 <body style="display: flex; height: 100%; flex-direction: column">
     <div class="tree">
         <div class="hierachyTree">
+"@
+
+if ($getMgParentId -eq "Tenant"){
+$html += @"
             <ul>
                 <li>
                     <a style="Background-Color:#DDDDDA" href="#"><b>Tenant</b></a>
                     <ul>
-"@    
-$script:markdown += @"
+"@
+}
+else{
+$html += @"
+            <ul>
+                <li>
+                    <a style="Background-Color:#DDDDDA" href="#"><b>Tenant</b></a>
+                    <ul>
+                        <li><a style="Background-Color:#F5F8F9" href="#">$parentMgNamex<br><i>$parentMgIdx</i></a>
+                            <ul>
+"@
+}
+
+$markdown += @"
 # Management Group Hierachy
 
 ## Hierachy Diagram (Mermaid)
 
 ::: mermaid
- graph TD;
+ graph TD;`n
 "@
+
+if ($getMgParentId -ne "Tenant"){
+$markdown += @"
+ $parentMgIdx[$parentMgNamex<br>$parentMgIdx] --> $MgIdx[$MgNamex<br>$MgIdx]`n
+"@
+}
 
 #hierachyTree
 mgHierachyFunc -mgChild $managementGroupId
 
-$html += @"
-                    </ul>
-                </li>
-            </ul>
+
+if ($getMgParentId -eq "Tenant"){
+    $html += @"
+                        </ul>
+                    </li>
+                </ul>
+            </div>
         </div>
-    </div>
     <div class="hierachyTables">
-"@  
+"@
+}
+else{
+$html += @"
+                                </ul>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    <div class="hierachyTables">
+"@
+}
+
 #hierachyDetails/Tables
-mgHierachyTextFunc -mgChild $managementGroupId -mgChildOf "tenant"
+mgHierachyTextFunc -mgChild $managementGroupId -mgChildOf $getMgParentId
 
 $html += @"
     </div>
@@ -984,7 +1049,7 @@ $html += @"
 </html>
 "@  
 
-$script:markdown += @"
+$markdown += @"
  classDef mgr fill:#FFE000,stroke:#000,stroke-width:1px;
  classDef subs fill:#A2DCF6,stroke:#000,stroke-width:1px;
  class $($arrayMgs -join ",") mgr;
