@@ -11,8 +11,8 @@
 .DESCRIPTION  
     ..want to have visibility on your Management Group hierarchy, document it in markdown? This script iterates Management Group hierachy down to Subscription level capturing RBAC Roles, Policies and Policy Initiatives.
  
-.PARAMETER managementGroupRootId
-    This ManagementGroup Root id which should be the same as your tenantId
+.PARAMETER managementGroupId
+    This ManagementGroup id which should be used to generate report for
  
 .PARAMETER csvDelimiter
     The script outputs a csv file depending on your delimit defaults choose semicolon or comma
@@ -25,9 +25,9 @@
     Az or AzureRm
 
 .EXAMPLE
-    .\mg-sub-hierachy.ps1 -managementGroupRootId <your tenantId>
+    .\mg-sub-hierachy.ps1 -managementGroupId <your tenantId>
     Optional parameters:
-    .\mg-sub-hierachy.ps1 -managementGroupRootId <your tenantId> -csvDelimiter "," -outputPath 123 -AzOrAzureRmModule AzureRm
+    .\mg-sub-hierachy.ps1 -managementGroupId <your tenantId> -csvDelimiter "," -outputPath 123 -AzOrAzureRmModule AzureRm
 
 .NOTES
     AUTHOR: Julian Hayward - Premier Field Engineer - Azure Infrastucture/Automation/Devops/Governance
@@ -42,7 +42,7 @@
 
 Param
 (
-    [Parameter(Mandatory = $False)][string]$managementGroupRootId = "<your tenantId>",
+    [Parameter(Mandatory = $False)][string]$managementGroupId = "<your tenantId>",
     [Parameter(Mandatory = $False)][string]$csvDelimiter = ";",
     [Parameter(Mandatory = $False)][string]$outputPath = "",
     [Parameter(Mandatory = $False)][string]$AzOrAzureRmModule = "Az"# Az or AzureRm
@@ -74,8 +74,8 @@ $DirectorySeparatorChar = [IO.Path]::DirectorySeparatorChar
 $fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 
 #validate tenantId
-if ((&$AzOrAzureRm`Context).Tenant.Id -ne $managementGroupRootId) {
-    Write-Output "context does not match! you are currently connected to tenantId:'$((&$AzOrAzureRm`Context).Tenant.Id)'";break
+if ((&$AzOrAzureRm`Context).Tenant.Id -ne $managementGroupId) {
+    Write-Output "context does not match! you are currently connected to tenantId:'$((&$AzOrAzureRm`Context).Tenant.Id)'";
 }
 
 #CODE--------------------------------------------------------------------------------
@@ -903,8 +903,8 @@ $script:html += @"
 ###########FUNCTIONS END
 
 #Build the Array, CSV
-mgfunc -mgId $managementGroupRootId -l 0 -mgParentId "Tenant" -mgParentName "Tenant"
-$table | Export-Csv -Path "$outputPath$DirectorySeparatorChar`mg-sub-hierachy_$managementGroupRootId`_$fileTimestamp.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+mgfunc -mgId $managementGroupId -l 0 -mgParentId "Tenant" -mgParentName "Tenant"
+$table | Export-Csv -Path "$outputPath$DirectorySeparatorChar`mg-sub-hierachy_$managementGroupId`_$fileTimestamp.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
 
 #Build the hierachy
 $arrayMgs = @()
@@ -946,7 +946,7 @@ $script:markdown += @"
 "@
 
 #hierachyTree
-mgHierachyFunc -mgChild $managementGroupRootId
+mgHierachyFunc -mgChild $managementGroupId
 
 $html += @"
                     </ul>
@@ -957,7 +957,7 @@ $html += @"
     <div class="hierachyTables">
 "@  
 #hierachyDetails/Tables
-mgHierachyTextFunc -mgChild $managementGroupRootId -mgChildOf "tenant"
+mgHierachyTextFunc -mgChild $managementGroupId -mgChildOf "tenant"
 
 $html += @"
     </div>
@@ -1024,5 +1024,5 @@ $script:markdown += @"
     }
 }
 
-$html | Out-File -FilePath "$outputPath$DirectorySeparatorChar`mg-sub-hierachy_$managementGroupRootId`_$fileTimestamp.html" -Encoding utf8 -Force
-$markdown | Out-File -FilePath "$outputPath$DirectorySeparatorChar`mg-sub-hierachy_$managementGroupRootId`_$fileTimestamp.md" -Encoding utf8 -Force
+$html | Out-File -FilePath "$outputPath$DirectorySeparatorChar`mg-sub-hierachy_$managementGroupId`_$fileTimestamp.html" -Encoding utf8 -Force
+$markdown | Out-File -FilePath "$outputPath$DirectorySeparatorChar`mg-sub-hierachy_$managementGroupId`_$fileTimestamp.md" -Encoding utf8 -Force
