@@ -1,6 +1,6 @@
 # Azure-MG-Sub-Governance-Reporting
 
-..want to have visibility on your Management Group hierarchy, document it in markdown? This script iterates Management Group hierachy down to Subscription level capturing RBAC, Policies and Policy Initiatives.
+..want to have visibility on your Management Group hierarchy, document it in markdown? This script iterates Management Group hierachy down to Subscription level capturing RBAC Roles, Policies and Policy Initiatives.
 
 ### Outputs
 

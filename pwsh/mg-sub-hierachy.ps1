@@ -1,13 +1,48 @@
-<#notes
-Role assignments to Unknown Object happens when the graph object(User/Group/Service principal) gets deleted from the directory after the Role assignment was created.
-Since the graph entity is deleted, we cannot figure out the object's displayname or type from graph, due to which we show the objecType as Unknown.
+<#  
+.SYNOPSIS  
+    script creates files
+    detailed csv file
+        Management Groups, Subscriptions, Policy, Policy Initiative, RBAC
+    detailed html file
+        Management Groups, Subscriptions, Policy, Policy Initiative, RBAC
+    basic markdown file for use with Azure DevOps Wiki leveraging the Mermaid plugin
+        Management Groups, Subscriptions
+  
+.DESCRIPTION  
+    ..want to have visibility on your Management Group hierarchy, document it in markdown? This script iterates Management Group hierachy down to Subscription level capturing RBAC Roles, Policies and Policy Initiatives.
+ 
+.PARAMETER managementGroupRootId
+    This ManagementGroup Root id which should be the same as your tenantId
+ 
+.PARAMETER csvDelimiter
+    The script outputs a csv file depending on your delimit defaults choose semicolon or comma
 
-If you run this script in Azure Automation you will need to grant API permissions in Azure Active Directory. The Automation Account App registration must be granted with: Azure Active Directory API | Application | Directory | Read.All
+.PARAMETER outputPath
+    full path or relative path
+
+.PARAMETER AzOrAzureRmModule
+    choose which module to use
+    Az or AzureRm
+
+.EXAMPLE
+    .\mg-sub-hierachy.ps1 -managementGroupRootId <your tenantId>
+    Optional parameters:
+    .\mg-sub-hierachy.ps1 -managementGroupRootId <your tenantId> -csvDelimiter "," -outputPath 123 -AzOrAzureRmModule AzureRm
+
+.NOTES
+    AUTHOR: Julian Hayward - Premier Field Engineer - Azure Infrastucture/Automation/Devops/Governance
+
+    Role assignments to Unknown Object happens when the graph object(User/Group/Service principal) gets deleted from the directory after the Role assignment was created. Since the graph entity is deleted, we cannot figure out the object's displayname or type from graph, due to which we show the objecType as Unknown.
+    
+    If you run this script in Azure Automation you will need to grant API permissions in Azure Active Directory. The Automation Account App registration must be granted with: Azure Active Directory API | Application | Directory | Read.All
+
+.LINK
+    https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 #>
 
 Param
 (
-    #enter your tenantId #(Get-AzContext).Tenant.Id
+    #enter your tenantId
     [Parameter(Mandatory = $False)][string]$managementGroupRootId = "<your tenantId>",
     #CSV file delimiter use either semicolon or comma 
     [Parameter(Mandatory = $False)][string]$csvDelimiter = ";",
@@ -15,10 +50,10 @@ Param
     [Parameter(Mandatory = $False)][string]$AzOrAzureRmModule = "Az"# Az or AzureRm
 )
 
-#az/azurerm -ugly yes but helpful for various automation scenarios
+#az/azurerm - ugly yes but helpful for various automation scenarios
 $AzOrAzureRm = "get-$AzOrAzureRmModule" 
 
-#check for required module #not using non-reliable ps 'requires'
+#check for required module #intentionally not using ps 'requires'
 $moduleName = "$AzOrAzureRmModule.Resources"
 $azresources = Get-InstalledModule | Where-Object { $_.Name -eq $moduleName }
 if (!$azresources){
