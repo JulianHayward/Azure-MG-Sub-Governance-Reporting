@@ -42,9 +42,7 @@
 
 Param
 (
-    #enter your tenantId
     [Parameter(Mandatory = $False)][string]$managementGroupRootId = "<your tenantId>",
-    #CSV file delimiter use either semicolon or comma 
     [Parameter(Mandatory = $False)][string]$csvDelimiter = ";",
     [Parameter(Mandatory = $False)][string]$outputPath = "",
     [Parameter(Mandatory = $False)][string]$AzOrAzureRmModule = "Az"# Az or AzureRm
