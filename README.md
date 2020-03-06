@@ -15,6 +15,7 @@
 
 * RBAC: _Management Group Reader_
 * RBAC: _Reader_
+* API permissions: If you run the script in Azure Automation you will need to grant API permissions in Azure Active Directory (get-AzRoleAssignment cmdlet). The Automation Account App registration must be granted with: Azure Active Directory API | Application | Directory | Read.All
 
 ### Powershell
 
