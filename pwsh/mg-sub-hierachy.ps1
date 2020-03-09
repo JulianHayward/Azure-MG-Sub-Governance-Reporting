@@ -42,7 +42,7 @@
 
 Param
 (
-    [Parameter(Mandatory = $False)][string]$managementGroupId = "<yourManagementGroupId>",
+    [Parameter(Mandatory = $True)][string]$managementGroupId,
     [Parameter(Mandatory = $False)][string]$csvDelimiter = ";",
     [Parameter(Mandatory = $False)][string]$outputPath = "",
     [Parameter(Mandatory = $False)][string]$AzOrAzureRmModule = "Az"# Az or AzureRm
