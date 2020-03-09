@@ -42,9 +42,9 @@
 
 Param
 (
-    [Parameter(Mandatory = $False)][string]$managementGroupId = "9", #11a5557c-f80f-4925-9d04-c05ecd061ffa
+    [Parameter(Mandatory = $False)][string]$managementGroupId = "<yourManagementGroupId>",
     [Parameter(Mandatory = $False)][string]$csvDelimiter = ";",
-    [Parameter(Mandatory = $False)][string]$outputPath = "obs",
+    [Parameter(Mandatory = $False)][string]$outputPath = "",
     [Parameter(Mandatory = $False)][string]$AzOrAzureRmModule = "Az"# Az or AzureRm
 )
 
@@ -422,12 +422,8 @@ function subForMgFunc($mgChild) {
             write-output "subscription: $subscription"
         }
 $script:html += @"
-                    <li><a class="aSub" href="#$mgChild"><p id="hierachySub_$mgChild">$($subscriptions.Count)x<br>Subscription</p></a></li>
+                    <li><a class="aSub" href="#$mgChild"><p id="hierachySub_$mgChild"><img src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/Icon-general-2-Subscriptions.svg"><br>$($subscriptions.Count)x<br>Subscription</p></a></li>
 "@
-$script:markdown += @"
- $mgChild[$mgChild] --> SubsOf$mgChild[$($subscriptions.Count)]`n
-"@
-$script:arraySubs += "SubsOf$mgChild"
     }
 }
 
@@ -446,12 +442,8 @@ $script:html += @"
 "@
         }
 $script:html += @"
-                    <li><a class="aSub" href="#$mgChild"><p id="hierachySub_$mgChild">$($subscriptions.Count)x<br>Subscription</p></a></li></ul>
+                    <li><a class="aSub" href="#$mgChild"><p id="hierachySub_$mgChild"><img src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/Icon-general-2-Subscriptions.svg"><br>$($subscriptions.Count)x<br>Subscription</p></a></li></ul>
 "@
-$script:markdown += @"
- $mgChild[$mgChild] --> SubsOf$mgChild[$($subscriptions.Count)]`n
-"@
-$script:arraySubs += "SubsOf$mgChild"
     }
 }
 
@@ -459,9 +451,15 @@ function mgHierachyFunc($mgChild) {
 
     write-output "processingInFunction: $mgChild"
     #$subscriptions = ($table | Where-Object { "" -ne $_.Subscription -and $_.MgId -eq $mgChild }).Subscription | Get-Unique
-    $mgName = ($table | Where-Object { $_.MgId -eq "$mgChild" }).mgName | Get-Unique
+    $mgName = ($table | Where-Object { $_.MgId -eq $mgChild }).mgName | Get-Unique
+    if ($mgChild -eq (&$AzOrAzureRm`Context).Tenant.Id){
+        $class= "tenantRootGroup"
+    }
+    else{
+        $class= "aMg"       
+    }
 $script:html += @"
-                    <li><a class="aMg" href="#$mgChild"><p id="hierachy_$mgChild">$mgName<br><i>$mgChild</i></p></a>
+                    <li><a class="$class" href="#$mgChild"><p id="hierachy_$mgChild"><img src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/Icon-general-11-Management-Groups.svg"><br>$mgName<br><i>$mgChild</i></p></a>
 "@
     write-output "checking for childMgs for $mgChild"
     $childMgs = ($table | Where-Object { $_.mgParentId -eq "$mgChild" }).MgId | Get-Unique
@@ -471,14 +469,8 @@ $script:html += @"
 "@
         foreach ($childMg in $childMgs){
             write-output "processingFMg: $childMg"
-            $childMgName = ($table | Where-Object {$_.MgId -eq $childMg }).MgName | Get-Unique
+            #$childMgName = ($table | Where-Object {$_.MgId -eq $childMg }).MgName | Get-Unique
             mgHierachyFunc -mgChild $childMg
-
-$script:markdown += @"
- $mgChild[$mgChild] --> $childMg[$childMgName<br>$childMg]`r`n
-"@
-$script:arrayMgs += "$childMg"
-
         }
         subForMgFunc -mgChild $mgChild
 $script:html += @"
@@ -810,7 +802,7 @@ $script:html += @"
 $script:html += @"
     <tr>
         <th>
-            <p><span id="$subscriptionId"><b>$subscription</b> (Id: <i>$($subscriptionId -replace '.*/')</i>)</span></p>
+            <img class="imgTable" src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/Icon-general-2-Subscriptions.svg"> <span id="$subscriptionId"><b>$subscription</b> (Id: $($subscriptionId -replace '.*/'))</span>
         </th>
     </tr>
     <tr>
@@ -869,7 +861,7 @@ $script:html += @"
     <table id="$mgChild">
         <tr>
             <th class="mg">
-                <span><b>$mgName</b> (Id: <i>$mgChild</i>)</span>
+                <img class="imgTable" src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/Icon-general-11-Management-Groups.svg"> <span><b>$mgName</b> (Id: $mgChild)</span>
             </th>
         </tr>
         <tr>
@@ -879,7 +871,7 @@ $script:html += @"
         </tr>
         <tr>
             <td>
-                <p>Child of '$mgChildOfName' (Id: <i>$mgChildOf</i>)</p>
+                <p>Child of '$mgChildOfName' (Id: $mgChildOf)</p>
             </td>
         </tr>
         <tr>
@@ -901,20 +893,70 @@ $script:html += @"
     }
 }
 
+function mgHierachyMermaid() {
+    $mgLevels = ($table | Sort-Object -Property Level -Unique).Level
+    foreach ($mgLevel in $mgLevels){
+        $mgsInLevel = ($table | Where-Object { $_.Level -eq $mgLevel}).MgId | Get-Unique
+        foreach ($mgInLevel in $mgsInLevel){ 
+            $mgName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgName | Get-Unique
+            $mgParentId = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).mgParentId | Get-Unique
+            $mgParentName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).mgParentName | Get-Unique
+            if ($mgInLevel -ne $getMgParentId){
+                $script:arrayMgs += $mgInLevel
+            }
+$script:markdownHierachyMgs += @"
+$mgParentId[$mgParentName<br>$mgParentId] --> $mgInLevel[$mgName<br>$mgInLevel]`n
+"@
+            $subsUnderMg = ($table | Where-Object { $_.Level -eq $mgLevel -and "" -ne $_.Subscription -and $_.MgId -eq $mgInLevel }).SubscriptionId | Get-Unique
+            if ($subsUnderMg.count -gt 0){
+                foreach ($subUnderMg in $subsUnderMg){
+                    $script:arraySubs += "SubsOf$mgInLevel"
+                    $mgName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgName | Get-Unique
+                    $mgParentId = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgParentId | Get-Unique
+                    $mgParentName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgParentName | Get-Unique
+                    $subName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel -and $_.SubscriptionId -eq $subUnderMg }).Subscription | Get-Unique
+$script:markdownTable += @"
+| $mgLevel | $mgName | $mgInLevel | $mgParentName | $mgParentId | $subName | $($subUnderMg -replace '.*/') |`n
+"@
+                }
+                $mgName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgName | Get-Unique
+                #write-output "$mgInLevel[$mgName<br>$mgInLevel] --> SubsOf$mgInLevel[$($subsUnderMg.count)]"
+$script:markdownHierachySubs += @"
+$mgInLevel[$mgName<br>$mgInLevel] --> SubsOf$mgInLevel[$($subsUnderMg.count)]`n
+"@
+            }
+            else{
+                $mgName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgName | Get-Unique
+                $mgParentId = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgParentId | Get-Unique
+                $mgParentName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgParentName | Get-Unique
+$script:markdownTable += @"
+| $mgLevel | $mgName | $mgInLevel | $mgParentName | $mgParentId | none | none |`n
+"@
+            }
+        }
+    }
+}
+
 ###########FUNCTIONS END
 
 #validate if Tenant Root
 if ((&$AzOrAzureRm`Context).Tenant.Id -ne $managementGroupId) {
     #managementGroupId is not RootMgId - get the parents..
     $getMgParent = Get-AzManagementGroup -GroupName $managementGroupId
+    if (!$getMgParent){
+        write-output "fail - check the provided ManagementGroup Id: '$managementGroupId'"; break
+    }
     $getMgParentId = $getMgParent.ParentName
     $getMgParentName = $getMgParent.ParentDisplayName
+    $mermaidprnts = "'$((&$AzOrAzureRm`Context).Tenant.Id)',$getMgParentId"
     $l++
-    row -l $l -mgName $getMgParentName -mgId $getMgParentId -mgParentId "N/A" -mgParentName "N/A" -Policy "N/A" -PolicyType "N/A" -PolicyDefinitionIdFull "N/A" -PolicyDefinitionIdGuid "N/A" -PolicyAssignmentScope "N/A" -PolicyAssignmentId "N/A" -PolicyVariant "N/A" -RoleDefinitionId "N/A" -RoleDefinitionName "N/A" -RoleAssignmentDisplayname "N/A" -RoleAssignmentSignInName "N/A" -RoleAssignmentObjectId "N/A" -RoleAssignmentObjectType "N/A" -RoleAssignmentScope "N/A" -RoleIsCustom "N/A" -RoleAssignableScopes "N/A"
+    #write-output "here"
+    row -l $l -mgName $getMgParentName -mgId $getMgParentId -mgParentId "'$((&$AzOrAzureRm`Context).Tenant.Id)'" -mgParentName "Tenant" -Policy "N/A" -PolicyType "N/A" -PolicyDefinitionIdFull "N/A" -PolicyDefinitionIdGuid "N/A" -PolicyAssignmentScope "N/A" -PolicyAssignmentId "N/A" -PolicyVariant "N/A" -RoleDefinitionId "N/A" -RoleDefinitionName "N/A" -RoleAssignmentDisplayname "N/A" -RoleAssignmentSignInName "N/A" -RoleAssignmentObjectId "N/A" -RoleAssignmentObjectType "N/A" -RoleAssignmentScope "N/A" -RoleIsCustom "N/A" -RoleAssignableScopes "N/A"
 }
 else{
-    $getMgParentId = "Tenant"
-    $getMgParentId = "Tenant"
+    $getMgParentId = "'$managementGroupId'"
+    $getMgParentName = "Tenant"
+    $mermaidprnts = "'$getMgParentId',$getMgParentId"
 }
 
 #Build the Array, CSV
@@ -922,21 +964,19 @@ mgfunc -mgId $managementGroupId -l $l -mgParentId $getMgParentId -mgParentName $
 $table | Export-Csv -Path "$outputPath$DirectorySeparatorChar`mg-sub-hierachy_$managementGroupId`_$fileTimestamp.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
 
 
-
-
-
-
-$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 #Build the hierachy
+$executionDateTimeInternationalReadable = get-date -format "dd-MMM-yyyy HH:mm:ss"
+$currentTimeZone = (Get-TimeZone).Id
 $arrayMgs = @()
 $arraySubs = @()
 $html = $null
 $markdown = $null
+$markdownHierachyMgs = $null
+$markdownHierachySubs = $null
+$markdownTable = $null
 
-$parentMgNamex = ($table | Where-Object { $_.MgParentId -eq $getMgParentId }).mgParentId | Get-Unique
-$parentMgIdx = ($table | Where-Object { $_.MgParentId -eq $getMgParentId }).mgParentName | Get-Unique
-$MgNamex = ($table | Where-Object { $_.MgParentId -eq $getMgParentId }).mgId | Get-Unique
-$MgIdx = ($table | Where-Object { $_.MgParentId -eq $getMgParentId }).mgName | Get-Unique
+$parentMgNamex = ($table | Where-Object { $_.MgParentId -eq $getMgParentId }).mgParentName | Get-Unique
+$parentMgIdx = ($table | Where-Object { $_.MgParentId -eq $getMgParentId }).mgParentId | Get-Unique
 
 $html += @"
 <!doctype html>
@@ -948,7 +988,7 @@ $html += @"
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Azure MG-Sub Governance Reporting</title>
-    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/hierachy.css">
+    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/hierachy_202003090751.css">
     <!--<link rel="stylesheet" type="text/css" href="../../hierachy.css">-->
     <script src="https://code.jquery.com/jquery-1.7.2.js" integrity="sha256-FxfqH96M63WENBok78hchTCDxmChGFlo+/lFIPcZPeI=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/ui/1.8.18/jquery-ui.js" integrity="sha256-lzf/CwLt49jbVoZoFcPZOc0LlMYPFBorVSwMsTs2zsA=" crossorigin="anonymous"></script>
@@ -960,11 +1000,11 @@ $html += @"
         <div class="hierachyTree">
 "@
 
-if ($getMgParentId -eq "Tenant"){
+if ($getMgParentName -eq "Tenant"){
 $html += @"
             <ul>
                 <li>
-                    <a style="Background-Color:#DDDDDA" href="#"><b>Tenant</b></a>
+                    <a class="tenant" style="Background-Color:#DDDDDA" href="#"><b>Tenant</b><br><i>$getMgParentId</i></a>
                     <ul>
 "@
 }
@@ -972,9 +1012,9 @@ else{
 $html += @"
             <ul>
                 <li>
-                    <a style="Background-Color:#DDDDDA" href="#"><b>Tenant</b></a>
+                    <a class="tenant" style="Background-Color:#DDDDDA" href="#"><b>Tenant</b><br><i>$((&$AzOrAzureRm`Context).Tenant.Id)</i></a>
                     <ul>
-                        <li><a style="Background-Color:#F5F8F9" href="#">$parentMgNamex<br><i>$parentMgIdx</i></a>
+                        <li><a style="Background-Color:#EEEEEE" href="#"><img src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/Icon-general-11-Management-Groups.svg"><p>$parentMgNamex<br><i>$parentMgIdx</i></p></a>
                             <ul>
 "@
 }
@@ -982,23 +1022,19 @@ $html += @"
 $markdown += @"
 # Management Group Hierachy
 
+$executionDateTimeInternationalReadable ($currentTimeZone)
+
 ## Hierachy Diagram (Mermaid)
 
 ::: mermaid
  graph TD;`n
 "@
 
-if ($getMgParentId -ne "Tenant"){
-$markdown += @"
- $parentMgIdx[$parentMgNamex<br>$parentMgIdx] --> $MgIdx[$MgNamex<br>$MgIdx]`n
-"@
-}
-
 #hierachyTree
 mgHierachyFunc -mgChild $managementGroupId
 
 
-if ($getMgParentId -eq "Tenant"){
+if ($getMgParentName -eq "Tenant"){
     $html += @"
                         </ul>
                     </li>
@@ -1028,7 +1064,8 @@ $html += @"
     </div>
 
     <div class="footer">
-        Also check <a class="foot" href="https://www.azadvertizer.net" target="_blank"><b>AzAdvertizer</b></a> to keep up with the pace on Azure Governance capabilities <b>|</b> <a class="foot" href="https://www.linkedin.com/in/julianhayward" target="_blank"><i class="fa fa-linkedin-square fa-sm" aria-hidden="true"></i></a>
+    <b>AzGovViz</b> check for latest release on GitHub <a href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting" target="_blank"><i class="fa fa-github" aria-hidden="true"></i></a> | .. also check <a class="foot" href="https://www.azadvertizer.net" target="_blank"><b>AzAdvertizer</b></a> to keep up with the pace on Azure Governance capabilities <b>|</b> <a class="foot" href="https://www.linkedin.com/in/julianhayward" target="_blank"><i class="fa fa-linkedin-square fa-sm" aria-hidden="true"></i></a>
+    <hr>
     </div>
     <script>
         var coll = document.getElementsByClassName("collapsible");
@@ -1049,45 +1086,25 @@ $html += @"
 </html>
 "@  
 
+mgHierachyMermaid
+
 $markdown += @"
- classDef mgr fill:#FFE000,stroke:#000,stroke-width:1px;
- classDef subs fill:#A2DCF6,stroke:#000,stroke-width:1px;
- class $($arrayMgs -join ",") mgr;
- class $($arraySubs -join ",") subs;
+$markdownHierachyMgs
+$markdownHierachySubs
+ classDef mgr fill:#D9F0FF,stroke:#56595E,stroke-width:1px;
+ classDef subs fill:#EEEEEE,stroke:#56595E,stroke-width:1px;
+ classDef mgrprnts fill:#FFFFFF,stroke:#56595E,stroke-width:1px;
+ class $(($arrayMgs | sort-object -unique) -join ",") mgr;
+ class $(($arraySubs | sort-object -unique) -join ",") subs;
+ class $mermaidprnts mgrprnts;
 :::
 
 ## Hierachy Table
 
 | **MgLevel** | **MgName** | **MgId** | **MgParentName** | **MgParentId** | **SubName** | **SubId** |
-|-------------|------------|----------|-------------|-----------|-------------|-----------|`n
+|-------------|-------------|-------------|-------------|-------------|-------------|-------------|
+$markdownTable
 "@
-
-$mgLevels = ($table | Sort-Object -Property Level -Unique).Level
-foreach ($mgLevel in $mgLevels){
-    $mgsInLevel = ($table | Where-Object { $_.Level -eq $mgLevel }).MgId | Get-Unique
-    foreach ($mgInLevel in $mgsInLevel){ 
-        $subsUnderMg = ($table | Where-Object { $_.Level -eq $mgLevel -and "" -ne $_.Subscription -and $_.MgId -eq $mgInLevel }).SubscriptionId | Get-Unique
-        if ($subsUnderMg.count -gt 0){
-            foreach ($subUnderMg in $subsUnderMg){
-                $mgName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgName | Get-Unique
-                $mgParentId = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgParentId | Get-Unique
-                $mgParentName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgParentName | Get-Unique
-                $subName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel -and $_.SubscriptionId -eq $subUnderMg }).Subscription | Get-Unique
-$script:markdown += @"
-| $mgLevel | $mgName | $mgInLevel | $mgParentName | $mgParentId | $subName | $($subUnderMg -replace '.*/') |`n
-"@
-            }
-        }
-        else{
-            $mgName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgName | Get-Unique
-            $mgParentId = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgParentId | Get-Unique
-            $mgParentName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgParentName | Get-Unique
-$script:markdown += @"
-| $mgLevel | $mgName | $mgInLevel | $mgParentName | $mgParentId | none | none |`n
-"@
-        }
-    }
-}
 
 $html | Out-File -FilePath "$outputPath$DirectorySeparatorChar`mg-sub-hierachy_$managementGroupId`_$fileTimestamp.html" -Encoding utf8 -Force
 $markdown | Out-File -FilePath "$outputPath$DirectorySeparatorChar`mg-sub-hierachy_$managementGroupId`_$fileTimestamp.md" -Encoding utf8 -Force

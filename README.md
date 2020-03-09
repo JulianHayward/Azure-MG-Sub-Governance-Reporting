@@ -1,6 +1,8 @@
 # Azure-MG-Sub-Governance-Reporting
 
-..want to have visibility on your Management Group hierarchy, document it in markdown? This script iterates Management Group hierachy down to Subscription level capturing RBAC Roles, Policies and Policy Initiatives.
+..want to have visibility on your Management Group hierarchy, document it in markdown? This script iterates Management Group hierachy down to Subscription level. It captures all RBAC Role assignments and Policy assignments and creates a visible hierachy.
+
+You can run the script either for your Management Group Root or any other Management Group that you have read access on. Thanks to [javierjeronimo](https://github.com/javierjeronimo) for initiating this update.
 
 ### Outputs
 
@@ -19,8 +21,9 @@
 
 ### Powershell
 
-* Requires: PowerShell Az Modules
-* Usage: `.\mg-sub-hierachy.ps1 -managementGroupRootId <your tenantId>`
+* Requires: PowerShell Az/AzureRm Modules
+* Usage:  
+  * `.\mg-sub-hierachy.ps1 -managementGroupId <your Management Group Id>`
 * Passed tests: Powershell Core on Windows
 * Passed tests: Powershell Core on Linux Ubuntu 18.04 LTS
 
