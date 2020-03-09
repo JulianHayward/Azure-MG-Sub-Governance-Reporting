@@ -13,7 +13,7 @@ You can run the script either for your Management Group Root or any other Manage
 * basic markdown file for use with Azure DevOps Wiki leveraging the [Mermaid](https://docs.microsoft.com/en-us/azure/devops/release-notes/2019/sprint-158-update#mermaid-diagram-support-in-wiki) plugin
   * Management Groups, Subscriptions
 
-### Required permissions in Azure on Root Management Group
+### Required permissions in Azure on the target Management Group
 
 * RBAC: _Management Group Reader_
 * RBAC: _Reader_
