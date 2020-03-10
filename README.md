@@ -17,7 +17,7 @@ You can run the script either for your Management Group Root or any other Manage
 
 * RBAC: _Management Group Reader_
 * RBAC: _Reader_
-* API permissions: If you run the script in Azure Automation you will need to grant API permissions in Azure Active Directory (get-AzRoleAssignment cmdlet). The Automation Account App registration must be granted with: Azure Active Directory API | Application | Directory | Read.All
+* API permissions: If you run the script in Azure Automation or Azure DevOps hosted agent you will need to grant API permissions in Azure Active Directory (get-AzRoleAssignment cmdlet). The Automation Account App registration must be granted with: Azure Active Directory API | Application | Directory | Read.All
 
 ### Powershell
 
