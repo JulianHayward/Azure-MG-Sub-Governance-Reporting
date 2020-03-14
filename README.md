@@ -13,11 +13,11 @@ You can run the script either for your Management Group Root or any other Manage
 * basic markdown file for use with Azure DevOps Wiki leveraging the [Mermaid](https://docs.microsoft.com/en-us/azure/devops/release-notes/2019/sprint-158-update#mermaid-diagram-support-in-wiki) plugin
   * Management Groups, Subscriptions
 
-### Required permissions in Azure on the target Management Group
+### Required permissions in Azure
 
-* RBAC: _Management Group Reader_
-* RBAC: _Reader_
-* API permissions: If you run the script in Azure Automation or Azure DevOps hosted agent you will need to grant API permissions in Azure Active Directory (get-AzRoleAssignment cmdlet). The Automation Account App registration must be granted with: Azure Active Directory API | Application | Directory | Read.All
+* RBAC: _Management Group Reader_ on Management Group
+* RBAC: _Reader_ on Management Group
+* API permissions: If you run the script in Azure Automation or on Azure DevOps hosted agent you will need to grant API permissions in Azure Active Directory (get-AzRoleAssignment cmdlet requirements?!). The Automation Account´s App registration must be granted with: Azure Active Directory API | Application | Directory | Read.All
 
 ### Powershell
 
