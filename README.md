@@ -23,7 +23,7 @@ You can run the script either for your Management Group Root or any other Manage
 
 * Requires: PowerShell Az/AzureRm Modules
 * Usage:  
-  * `.\mg-sub-hierachy.ps1 -managementGroupId <your Management Group Id>`
+  * `.\AzGovViz.ps1 -managementGroupId <your-Management-Group-Id>`
 * Passed tests: Powershell Core on Windows
 * Passed tests: Powershell Core on Linux Ubuntu 18.04 LTS
 
