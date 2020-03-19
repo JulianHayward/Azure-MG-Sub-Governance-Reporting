@@ -60,24 +60,28 @@ else{
 }
 
 #check for required cmdlets
-#Az.Accounts
+#context
 $testCommandAzAccounts = "Get-$($azOrAzureRmModule)Context"
 if (-not (Get-Command $testCommandAzAccounts -ErrorAction Ignore)) {
-	Write-Output "cmdlet $testCommandAzAccounts not available - install ps module $azOrAzureRmModule.Accounts"
+    if ($UseAzureRM) { 
+        Write-Output "cmdlet $testCommandAzAccounts not available - install ps module $azOrAzureRmModule.Profile"
+    }
+    else{
+        Write-Output "cmdlet $testCommandAzAccounts not available - install ps module $azOrAzureRmModule.Accounts"
+    }
 	return
 }
-#Az.Resources
+else{
+    Write-Output "passed: $azOrAzureRmModule module for cmdlet $testCommandAzAccounts installed"
+}
+#resources
 $testCommandAzResources = "Get-$($azOrAzureRmModule)PolicyDefinition"
 if (-not (Get-Command $testCommandAzResources -ErrorAction Ignore)) {
 	Write-Output "cmdlet $testCommandAzResources not available - install ps module $azOrAzureRmModule.Resources"
 	return
 }
-
-#check if connected/login
-$checkContext = get-azcontext
-if (-not $checkContext){
-    Write-Output "no context found, please login to Azure using connect-$($azOrAzureRmModule)Account at first"
-    return
+else{
+    Write-Output "passed: $azOrAzureRmModule module for cmdlet $testCommandAzResources installed"
 }
 
 #commands
@@ -95,6 +99,13 @@ $commandGetManagementGroup = "Get-$($azOrAzureRmModule)ManagementGroup"
 $script:command_GetManagementGroup = Get-Command $commandGetManagementGroup
 $commandGetContext = "Get-$($azOrAzureRmModule)Context"
 $script:command_GetContext = Get-Command $commandGetContext
+
+#check if connected/login
+$checkContext = &$script:command_GetContext
+if (-not $checkContext){
+    Write-Output "no context found, please login to Azure using connect-$($azOrAzureRmModule)Account at first"
+    return
+}
 
 #helper file/dir
 if (-not [IO.Path]::IsPathRooted($outputPath)){
@@ -963,7 +974,7 @@ $script:html += @"
                     if ($roleAssigned.RoleIsCustom -eq "FALSE"){
                         $roleType = "Builtin"
                         #$roleWithWithoutLinkToAzAdvertizer = "<a href=`"https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($policySetAssignment.policyDefinitionIdGuid).html`" target=`"_blank`">$($policySetAssignment.policy)</a>"
-                        $roleWithWithoutLinkToAzAdvertizer = "<a href=`"https://www.azadvertizer.net/azrolesadvertizer_all.html`" target=`"_blank`"><i class=`"fa fa-link`" aria-hidden=`"true`"></i> $($roleAssigned.RoleDefinitionName)</a>"
+                        $roleWithWithoutLinkToAzAdvertizer = "<a href=`"https://www.azadvertizer.net/azrolesadvertizer/$($roleAssigned.RoleDefinitionId).html`" target=`"_blank`"><i class=`"fa fa-link`" aria-hidden=`"true`"></i> $($roleAssigned.RoleDefinitionName)</a>"
                         #$roleWithWithoutLinkToAzAdvertizer = $roleAssigned.RoleDefinitionName
                     }
                     else{
@@ -1060,7 +1071,7 @@ $script:markdownTable += @"
 #region dataCollection
 if ((&$script:command_GetContext).Tenant.Id -ne $ManagementGroupId) {
     #managementGroupId is not RootMgId - get the parents..
-    $getMgParent = Get-AzManagementGroup -GroupName $ManagementGroupId
+    $getMgParent = &$script:command_GetManagementGroup -GroupName $ManagementGroupId
     if (!$getMgParent){
         write-output "fail - check the provided ManagementGroup Id: '$ManagementGroupId'"
         return
