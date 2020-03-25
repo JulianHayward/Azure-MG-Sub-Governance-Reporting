@@ -54,9 +54,9 @@ The provided example Pipeline is configured to run based on a [shedule](https://
 5. Create Pipeline, configure your pipeline selecting __Existing Azure Pipelines YAML file__, select the AzGovViz YAML from the AzGovViz (Azure-MG-Sub-Governance-Reporting) Repo.
 6. Permissions: In order to allow the pipeline to push files to our wikiRepo the __Project Collection Build Service(%USERNAME%)__ must be granted __Contribute__ and __Create Branch__ permissions.
 
-> The __Project Collection Build Service(%USERNAME%)__ seems only to become available after at least one pipeline has run - so just trigger the pipeline, expect an error and after the run grant the permissions as pointed out in 6.
-
+> The __Project Collection Build Service(%USERNAME%)__ seems only to become available after at least one pipeline has run - so just trigger the pipeline, expect an error and after the run grant the permissions as pointed out in 6.  
 > Make sure your Service Connection has the required permissions (see __Required permissions in Azure__)
+
 ## Contributions
 
 Thanks to [javierjeronimo](https://github.com/javierjeronimo) for initiating the update to define any Management Group / before the tenantId was used.
