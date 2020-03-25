@@ -1,0 +1,67 @@
+# AzGovViz
+# https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
+# Also check https://www.azadvertizer.net to keep up with the pace on Azure Governance capabilities such as Azure Policies, Policy Initiatives, Policy Aliases and RBAC Roles
+
+trigger: none
+
+pr: none
+
+variables:
+  ManagementGroupId: 010
+  GitDir: /home/vsts/wiki
+  OutputPath: /home/vsts/wiki/wikiRepo
+  CsvDelimiter: ;
+  Repository: wikiRepo
+  AzGovVizScriptFolder: pwsh
+  AzGovVizScript: AzGovViz.ps1
+
+schedules:
+- cron: "0 0,6,12,18 * * *"
+  displayName: every 6h
+  always: true
+  branches:
+    include:
+    - master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- powershell: |
+   write-host $(System.TeamProject)
+   write-host $(Build.Repository.Name)
+   write-host $(System.TeamFoundationCollectionUri)
+  displayName: 'PowerShell Script - testing'
+  env:
+    workingdirectory: $(Agent.BuildDirectory)
+
+- powershell: |
+   mkdir $(GitDir)
+   cd $(GitDir)
+   git clone -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" $(System.TeamFoundationCollectionUri)$(System.TeamProject)/_git/$(Repository)
+  displayName: 'PowerShell Script - Git clone'
+  env:
+    workingdirectory: $(Agent.BuildDirectory)
+
+- task: AzurePowerShell@4
+  displayName: 'Azure PowerShell script: FilePath'
+  continueOnError: true
+  inputs:
+    azureSubscription: 'VS0063 (19f26644-2e08-4119-8ade-5e1e93e3dca3)'
+    ScriptPath: '$(System.DefaultWorkingDirectory)/$(AzGovVizScriptFolder)/$(AzGovVizScript)'
+    ScriptArguments: '-ManagementGroupId $(ManagementGroupId) -OutputPath $(OutputPath) -CsvDelimiter "$(CsvDelimiter)" -AzureDevOpsWikiAsCode'
+    preferredAzurePowerShellVersion: 3.1.0
+    errorActionPreference: continue
+
+- powershell: |
+   write-host $(Agent.Name)
+   cd $(OutputPath)
+   $executionDateTimeInternationalReadable = get-date -format "dd-MMM-yyyy HH:mm:ss"
+   $currentTimeZone = (Get-TimeZone).Id
+   git config --global user.email "pipeline@ado.com"
+   git config --global user.name "Pipeline"
+   git pull
+   git add --all
+   git commit -m "wiki $executionDateTimeInternationalReadable ($currentTimeZone)"
+   git push
+  displayName: 'PowerShell Script - Git push'

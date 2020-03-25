@@ -28,7 +28,7 @@
 
 .EXAMPLE
     Optional parameters:
-    PS C:\>.\AzGovViz.ps1 -managementGroupId <your-Management-Group-Id> -csvDelimiter "," -outputPath 123 -UseAzureRM
+    PS C:\>.\AzGovViz.ps1 -managementGroupId <your-Management-Group-Id> -csvDelimiter "," -outputPath 123 -UseAzureRM -AzureDevOpsWikiAsCode
 
 .NOTES
     AUTHOR: Julian Hayward - Premier Field Engineer - Azure Infrastucture/Automation/Devops/Governance
@@ -48,7 +48,8 @@ Param
     [Parameter(Mandatory = $True)][string]$ManagementGroupId,
     [string]$CsvDelimiter = ";",
     [string]$OutputPath,
-    [switch]$UseAzureRm
+    [switch]$UseAzureRm,
+    [switch]$AzureDevOpsWikiAsCode
 )
 
 #az/azurerm
@@ -72,7 +73,7 @@ if (-not (Get-Command $testCommandAzAccounts -ErrorAction Ignore)) {
 	return
 }
 else{
-    Write-Output "passed: $azOrAzureRmModule module for cmdlet $testCommandAzAccounts installed"
+    Write-Output "passed: $azOrAzureRmModule module supporting cmdlet $testCommandAzAccounts installed"
 }
 #resources
 $testCommandAzResources = "Get-$($azOrAzureRmModule)PolicyDefinition"
@@ -81,7 +82,7 @@ if (-not (Get-Command $testCommandAzResources -ErrorAction Ignore)) {
 	return
 }
 else{
-    Write-Output "passed: $azOrAzureRmModule module for cmdlet $testCommandAzResources installed"
+    Write-Output "passed: $azOrAzureRmModule module supporting cmdlet $testCommandAzResources installed"
 }
 
 #commands
@@ -122,6 +123,13 @@ else{
 }
 $DirectorySeparatorChar = [IO.Path]::DirectorySeparatorChar
 $fileTimestamp = (get-date -format "yyyyMMddHHmmss")
+
+if ($AzureDevOpsWikiAsCode) { 
+    $fileName = "AzGovViz_$($ManagementGroupId)"
+}
+else{
+    $fileName = "AzGovViz_$($fileTimestamp)_$($ManagementGroupId)"
+}
 
 #helper 
 $executionDateTimeInternationalReadable = get-date -format "dd-MMM-yyyy HH:mm:ss"
@@ -1093,7 +1101,7 @@ dataCollection -mgId $ManagementGroupId -hierachyLevel $hierachyLevel -mgParentI
 #region createoutputs
 
 #region BuildCSV
-$table | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)AzGovViz_$($fileTimestamp)_$($ManagementGroupId).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+$table | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
 #endregion BuildCSV
 
 #region BuildHTML
@@ -1197,7 +1205,7 @@ $html += @"
 </html>
 "@  
 
-$html | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)AzGovViz_$($fileTimestamp)_$($ManagementGroupId).html" -Encoding utf8 -Force
+$html | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
 #endregion BuildHTML
 
 #region BuildMD
@@ -1208,6 +1216,17 @@ $markdownHierachyMgs = $null
 $markdownHierachySubs = $null
 $markdownTable = $null
 
+if ($AzureDevOpsWikiAsCode) { 
+$markdown += @"
+# AzGovViz - Management Group Hierachy
+
+## Hierachy Diagram (Mermaid)
+
+::: mermaid
+    graph TD;`n
+"@
+}
+else{
 $markdown += @"
 # AzGovViz - Management Group Hierachy
 
@@ -1216,8 +1235,9 @@ $executionDateTimeInternationalReadable ($currentTimeZone)
 ## Hierachy Diagram (Mermaid)
 
 ::: mermaid
- graph TD;`n
+    graph TD;`n
 "@
+}
 
 diagramMermaid
 
@@ -1239,7 +1259,7 @@ $markdownHierachySubs
 $markdownTable
 "@
 
-$markdown | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)AzGovViz_$($fileTimestamp)_$($ManagementGroupId).md" -Encoding utf8 -Force
+$markdown | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).md" -Encoding utf8 -Force
 #endregion BuildMD
 
 #endregion createoutputs
