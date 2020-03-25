@@ -61,7 +61,7 @@ The provided example Pipeline is configured to run based on a [shedule](https://
 
 Thanks to [javierjeronimo](https://github.com/javierjeronimo) for initiating the update to define any Management Group / before the tenantId was used.
 
-Thanks to [Fred](https://github.com/FriedrichWeinmann) helping me to drastically optimize the PowerShell code.
+Thanks to [Fred](https://github.com/FriedrichWeinmann) for his help to optimize the PowerShell code.
 
 ## AzAdvertizer
 
