@@ -1,6 +1,6 @@
 # Azure-MG-Sub-Governance-Reporting aka AzGovViz
 
-..want to have visibility on your Management Group hierarchy, document it in markdown? This script iterates Management Group hierachy down to Subscription level. It captures all RBAC Role assignments and Policy assignments and creates a visible hierachy.
+..want to have visibility on your Management Group hierarchy, document it in markdown? This script iterates Management Group hierarchy down to Subscription level. It captures all RBAC Role assignments and Policy assignments and creates a visible hierarchy.
 
 You can run the script either for your Management Group Root or any other Management Group that you have read access on.
 

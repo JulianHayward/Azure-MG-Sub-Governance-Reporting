@@ -9,7 +9,7 @@
         Management Groups, Subscriptions
   
 .DESCRIPTION  
-    Do you want to have visibility on your Management Group hierarchy, document it in markdown? This script iterates Management Group hierachy down to Subscription level capturing RBAC Roles, Policies and Policy Initiatives.
+    Do you want to have visibility on your Management Group hierarchy, document it in markdown? This script iterates Management Group hierarchy down to Subscription level capturing RBAC Roles, Policies and Policy Initiatives.
  
 .PARAMETER managementGroupId
     Define the Management Group Id for which the outputs/files shall be generated
@@ -136,7 +136,7 @@ $executionDateTimeInternationalReadable = get-date -format "dd-MMM-yyyy HH:mm:ss
 $currentTimeZone = (Get-TimeZone).Id
 
 #MgLevel 
-$hierachyLevel = 0
+$hierarchyLevel = 0
 
 #region Code
 #region table
@@ -168,9 +168,9 @@ $table.columns.add((New-Object system.Data.DataColumn RoleAssignableScopes, ([st
 #endregion table
 
 #region Function
-function addRowToTable($hierachyLevel, $mgName, $mgId, $mgParentId, $mgParentName, $subName, $subId, $Policy, $PolicyType, $PolicyDefinitionIdFull, $PolicyDefinitionIdGuid, $PolicyAssignmentScope, $PolicyAssignmentId, $PolicyVariant, $RoleDefinitionId, $RoleDefinitionName, $RoleAssignmentDisplayname, $RoleAssignmentSignInName, $RoleAssignmentObjectId, $RoleAssignmentObjectType, $RoleAssignmentId, $RoleAssignmentScope, $RoleIsCustom, $RoleAssignableScopes) {
+function addRowToTable($hierarchyLevel, $mgName, $mgId, $mgParentId, $mgParentName, $subName, $subId, $Policy, $PolicyType, $PolicyDefinitionIdFull, $PolicyDefinitionIdGuid, $PolicyAssignmentScope, $PolicyAssignmentId, $PolicyVariant, $RoleDefinitionId, $RoleDefinitionName, $RoleAssignmentDisplayname, $RoleAssignmentSignInName, $RoleAssignmentObjectId, $RoleAssignmentObjectType, $RoleAssignmentId, $RoleAssignmentScope, $RoleIsCustom, $RoleAssignableScopes) {
     $row = $table.NewRow()
-    $row.Level = $hierachyLevel
+    $row.Level = $hierarchyLevel
     $row.MgName = $mgName
     $row.MgId = $mgId
     $row.mgParentId = $mgParentId
@@ -203,15 +203,15 @@ $htPolicySets = @{}
 $htRoles = @{}
 
 #region Function_dataCollection
-function dataCollection($mgId, $hierachyLevel, $mgParentId, $mgParentName) {
+function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
     Write-Output "...................."
-    $hierachyLevel++
+    $hierarchyLevel++
     $getMg = &$script:command_GetManagementGroup -groupname $mgId -Expand -Recurse
     if (!$getMg){
         write-output "fail - check the provided ManagementGroup Id: '$mgI'"
         return
     }
-    Write-Output "Processing L$hierachyLevel MG-Name:'$($getMg.DisplayName)' MG-ID:'$($getMg.Name)'"
+    Write-Output "Processing L$hierarchyLevel MG-Name:'$($getMg.DisplayName)' MG-ID:'$($getMg.Name)'"
     $L0mgmtGroupPolicyAssignments = &$script:command_GetPolicyAssignment -Scope "/providers/Microsoft.Management/managementGroups/$($getMg.Name)"
     Write-Output "MG Policy Assignments: $($L0mgmtGroupPolicyAssignments.count)"
     foreach ($L0mgmtGroupPolicyAssignment in $L0mgmtGroupPolicyAssignments) {
@@ -256,7 +256,7 @@ function dataCollection($mgId, $hierachyLevel, $mgParentId, $mgParentName) {
                 $PolicyDefinitionIdGuid = $htPolicies[$policyId].Id
                 $PolicyAssignmentScope = $L0mgmtGroupPolicyAssignment.Properties.Scope
                 $PolicyAssignmentId = $L0mgmtGroupPolicyAssignment.PolicyAssignmentId
-                addRowToTable -hierachyLevel $hierachyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+                addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
                 Clear-Variable -Name "Policy"
                 Clear-Variable -Name "PolicyType"
                 Clear-Variable -Name "PolicyDefinitionIdFull"
@@ -304,7 +304,7 @@ function dataCollection($mgId, $hierachyLevel, $mgParentId, $mgParentName) {
                 $PolicyDefinitionIdGuid = $htPolicySets[$policyId].Id
                 $PolicyAssignmentScope = $L0mgmtGroupPolicyAssignment.Properties.Scope
                 $PolicyAssignmentId = $L0mgmtGroupPolicyAssignment.PolicyAssignmentId
-                addRowToTable -hierachyLevel $hierachyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+                addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
                 Clear-Variable -Name "Policy"
                 Clear-Variable -Name "PolicyType"
                 Clear-Variable -Name "PolicyDefinitionIdFull"
@@ -373,7 +373,7 @@ function dataCollection($mgId, $hierachyLevel, $mgParentId, $mgParentName) {
         $RoleAssignmentScope = $L0mgmtGroupRoleAssignment.Scope
         $RoleIsCustom = $htRoles.$($roleId).IsCustom
         $RoleAssignableScopes = [string]$htRoles.$($roleId).assignableScopes
-        addRowToTable -hierachyLevel $hierachyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentId $RoleAssignmentId -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+        addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentId $RoleAssignmentId -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
         Clear-Variable -Name "RoleDefinitionId"
         Clear-Variable -Name "RoleDefinitionName"
         Clear-Variable -Name "RoleIsCustom"
@@ -385,7 +385,7 @@ function dataCollection($mgId, $hierachyLevel, $mgParentId, $mgParentName) {
         Clear-Variable -Name "RoleAssignableScopes"
     }
 
-    Write-Output "L$hierachyLevel MG Name:'$($getMg.DisplayName)' ID:'$($getMg.Name)' child items: $($getMg.children.count) (MG or Sub)"
+    Write-Output "L$hierarchyLevel MG Name:'$($getMg.DisplayName)' ID:'$($getMg.Name)' child items: $($getMg.children.count) (MG or Sub)"
 
     if ($getMg.children.count -gt 0) {
         foreach ($childMg in $getMg.Children | Where-Object { $_.Type -eq "/subscriptions" }) {
@@ -417,7 +417,7 @@ function dataCollection($mgId, $hierachyLevel, $mgParentId, $mgParentName) {
                         $PolicyDefinitionIdGuid = $htPolicies[$policyId].Id
                         $PolicyAssignmentScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
                         $PolicyAssignmentId = $L1mgmtGroupSubPolicyAssignment.PolicyAssignmentId
-                        addRowToTable -hierachyLevel $hierachyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -subName $childMg.DisplayName -subId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+                        addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -subName $childMg.DisplayName -subId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
                         Clear-Variable -Name "Policy"
                         Clear-Variable -Name "PolicyType"
                         Clear-Variable -Name "PolicyDefinitionIdFull"
@@ -447,7 +447,7 @@ function dataCollection($mgId, $hierachyLevel, $mgParentId, $mgParentName) {
                         $PolicyDefinitionIdGuid = $htPolicySets[$policyId].Id
                         $PolicyAssignmentScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
                         $PolicyAssignmentId = $L1mgmtGroupSubPolicyAssignment.PolicyAssignmentId
-                        addRowToTable -hierachyLevel $hierachyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -subName $childMg.DisplayName -subId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+                        addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -subName $childMg.DisplayName -subId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
                         Clear-Variable -Name "Policy"
                         Clear-Variable -Name "PolicyType"
                         Clear-Variable -Name "PolicyDefinitionIdFull"
@@ -511,7 +511,7 @@ function dataCollection($mgId, $hierachyLevel, $mgParentId, $mgParentName) {
                 $RoleAssignmentScope = $L1mgmtGroupSubRoleAssignment.Scope
                 $RoleIsCustom = $htRoles.$($roleId).IsCustom
                 $RoleAssignableScopes = [string]$htRoles.$($roleId).assignableScopes
-                addRowToTable -hierachyLevel $hierachyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -subName $childMg.DisplayName -subId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentId $RoleAssignmentId -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+                addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -subName $childMg.DisplayName -subId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentId $RoleAssignmentId -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
                 Clear-Variable -Name "RoleDefinitionId"
                 Clear-Variable -Name "RoleDefinitionName"
                 Clear-Variable -Name "RoleAssignmentDisplayname"
@@ -525,14 +525,14 @@ function dataCollection($mgId, $hierachyLevel, $mgParentId, $mgParentName) {
         }
         foreach ($childMg in $getMg.Children | Where-Object { $_.Type -eq "/providers/Microsoft.Management/managementGroups" }) {
             Write-Output "Trigger: MG-Name:'$($childMg.DisplayName)' MG-ID:'$($childMg.Name)'"
-            dataCollection -mgId $childMg.Name -hierachyLevel $hierachyLevel -mgParentId $getMg.Name -mgParentName $getMg.DisplayName
+            dataCollection -mgId $childMg.Name -hierarchyLevel $hierarchyLevel -mgParentId $getMg.Name -mgParentName $getMg.DisplayName
         }
     }
 }
 #endregion Function_dataCollection
 
 #HTML
-function hierachyMgHTML($mgChild) {
+function hierarchyMgHTML($mgChild) {
     write-output "processingInFunction: $mgChild"
     #$subscriptions = ($table | Where-Object { "" -ne $_.Subscription -and $_.MgId -eq $mgChild }).Subscription | Get-Unique
     $mgName = ($table | Where-Object { $_.MgId -eq $mgChild }).mgName | Get-Unique
@@ -543,7 +543,7 @@ function hierachyMgHTML($mgChild) {
         $class= "aMg"       
     }
 $script:html += @"
-                    <li><a class="$class" href="#$mgChild"><p id="hierachy_$mgChild"><img src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/Icon-general-11-Management-Groups.svg"><br>$mgName<br><i>$mgChild</i></p></a>
+                    <li><a class="$class" href="#$mgChild"><p id="hierarchy_$mgChild"><img src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/Icon-general-11-Management-Groups.svg"><br>$mgName<br><i>$mgChild</i></p></a>
 "@
     write-output "checking for childMgs for $mgChild"
     $childMgs = ($table | Where-Object { $_.mgParentId -eq "$mgChild" }).MgId | Get-Unique
@@ -554,9 +554,9 @@ $script:html += @"
         foreach ($childMg in $childMgs){
             write-output "processingFMg: $childMg"
             #$childMgName = ($table | Where-Object {$_.MgId -eq $childMg }).MgName | Get-Unique
-            hierachyMgHTML -mgChild $childMg
+            hierarchyMgHTML -mgChild $childMg
         }
-        hierachySubForMgHTML -mgChild $mgChild
+        hierarchySubForMgHTML -mgChild $mgChild
 $script:html += @"
                 </ul>
             </li>    
@@ -564,7 +564,7 @@ $script:html += @"
     }
     else{
         write-output "processingF: no childMgs for $mgChild"
-        hierachySubForMgUlHTML -mgChild $mgChild
+        hierarchySubForMgUlHTML -mgChild $mgChild
 
 $script:html += @"
             </li>
@@ -572,7 +572,7 @@ $script:html += @"
     }
 }
 
-function hierachySubForMgHTML($mgChild) {
+function hierarchySubForMgHTML($mgChild) {
 #sub
     write-output "checking for Subs for $mgChild"
     $subscriptions = ($table | Where-Object { "" -ne $_.Subscription -and $_.MgId -eq $mgChild }).SubscriptionId | Get-Unique
@@ -582,12 +582,12 @@ function hierachySubForMgHTML($mgChild) {
             write-output "subscription: $subscription"
         }
 $script:html += @"
-                    <li><a class="aSub" href="#$mgChild"><p id="hierachySub_$mgChild"><img src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/Icon-general-2-Subscriptions.svg"><br>$($subscriptions.Count)x<br>Subscription</p></a></li>
+                    <li><a class="aSub" href="#$mgChild"><p id="hierarchySub_$mgChild"><img src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/Icon-general-2-Subscriptions.svg"><br>$($subscriptions.Count)x<br>Subscription</p></a></li>
 "@
     }
 }
 
-function hierachySubForMgUlHTML($mgChild) {
+function hierarchySubForMgUlHTML($mgChild) {
     write-output "checking for Subs for $mgChild"
     $subscriptions = ($table | Where-Object { "" -ne $_.Subscription -and $_.MgId -eq $mgChild }).SubscriptionId | Get-Unique
     if ($subscriptions.Count -gt 0){
@@ -602,7 +602,7 @@ $script:html += @"
 "@
         }
 $script:html += @"
-                    <li><a class="aSub" href="#$mgChild"><p id="hierachySub_$mgChild"><img src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/Icon-general-2-Subscriptions.svg"><br>$($subscriptions.Count)x<br>Subscription</p></a></li></ul>
+                    <li><a class="aSub" href="#$mgChild"><p id="hierarchySub_$mgChild"><img src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/Icon-general-2-Subscriptions.svg"><br>$($subscriptions.Count)x<br>Subscription</p></a></li></ul>
 "@
     }
 }
@@ -647,7 +647,7 @@ $script:html += @"
         </tr>
         <tr>
             <td>
-                <p><a href="#hierachy_$mgChild"><i class="fa fa-eye" aria-hidden="true"></i> <i>Highlight MG in hierachy</i></a></p>
+                <p><a href="#hierarchy_$mgChild"><i class="fa fa-eye" aria-hidden="true"></i> <i>Highlight MG in hierarchy</i></a></p>
             </td>
         </tr>
         <tr>
@@ -724,7 +724,7 @@ $script:html += @"
     </tr>
     <tr>
         <td>
-            <p><a href="#hierachySub_$mgChild"><i class="fa fa-eye" aria-hidden="true"></i> <i>Highlight Sub in hierachy</i></a></p>
+            <p><a href="#hierarchySub_$mgChild"><i class="fa fa-eye" aria-hidden="true"></i> <i>Highlight Sub in hierarchy</i></a></p>
         </td>
     </tr>
     <tr>
@@ -1043,7 +1043,7 @@ function diagramMermaid() {
             if ($mgInLevel -ne $getMgParentId){
                 $script:arrayMgs += $mgInLevel
             }
-$script:markdownHierachyMgs += @"
+$script:markdownhierarchyMgs += @"
 $mgParentId($mgParentName<br>$mgParentId) --> $mgInLevel($mgName<br>$mgInLevel)`n
 "@
             $subsUnderMg = ($table | Where-Object { $_.Level -eq $mgLevel -and "" -ne $_.Subscription -and $_.MgId -eq $mgInLevel }).SubscriptionId | Get-Unique
@@ -1059,7 +1059,7 @@ $script:markdownTable += @"
 "@
                 }
                 $mgName = ($table | Where-Object { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).MgName | Get-Unique
-$script:markdownHierachySubs += @"
+$script:markdownhierarchySubs += @"
 $mgInLevel($mgName<br>$mgInLevel) --> SubsOf$mgInLevel(($($subsUnderMg.count)))`n
 "@
             }
@@ -1088,14 +1088,14 @@ if ((&$script:command_GetContext).Tenant.Id -ne $ManagementGroupId) {
     $getMgParentName = $getMgParent.ParentDisplayName
     $mermaidprnts = "'$((&$script:command_GetContext).Tenant.Id)',$getMgParentId"
     $l++
-    addRowToTable -hierachyLevel $hierachyLevel -mgName $getMgParentName -mgId $getMgParentId -mgParentId "'$((&$script:command_GetContext).Tenant.Id)'" -mgParentName "Tenant" -Policy "N/A" -PolicyType "N/A" -PolicyDefinitionIdFull "N/A" -PolicyDefinitionIdGuid "N/A" -PolicyAssignmentScope "N/A" -PolicyAssignmentId "N/A" -PolicyVariant "N/A" -RoleDefinitionId "N/A" -RoleDefinitionName "N/A" -RoleAssignmentDisplayname "N/A" -RoleAssignmentSignInName "N/A" -RoleAssignmentObjectId "N/A" -RoleAssignmentObjectType "N/A" -RoleAssignmentScope "N/A" -RoleIsCustom "N/A" -RoleAssignableScopes "N/A"
+    addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMgParentName -mgId $getMgParentId -mgParentId "'$((&$script:command_GetContext).Tenant.Id)'" -mgParentName "Tenant" -Policy "N/A" -PolicyType "N/A" -PolicyDefinitionIdFull "N/A" -PolicyDefinitionIdGuid "N/A" -PolicyAssignmentScope "N/A" -PolicyAssignmentId "N/A" -PolicyVariant "N/A" -RoleDefinitionId "N/A" -RoleDefinitionName "N/A" -RoleAssignmentDisplayname "N/A" -RoleAssignmentSignInName "N/A" -RoleAssignmentObjectId "N/A" -RoleAssignmentObjectType "N/A" -RoleAssignmentScope "N/A" -RoleIsCustom "N/A" -RoleAssignableScopes "N/A"
 }
 else{
     $getMgParentId = "'$ManagementGroupId'"
     $getMgParentName = "Tenant"
     $mermaidprnts = "'$getMgParentId',$getMgParentId"
 }
-dataCollection -mgId $ManagementGroupId -hierachyLevel $hierachyLevel -mgParentId $getMgParentId -mgParentName $getMgParentName
+dataCollection -mgId $ManagementGroupId -hierarchyLevel $hierarchyLevel -mgParentId $getMgParentId -mgParentName $getMgParentName
 #endregion dataCollection
 
 #region createoutputs
@@ -1120,8 +1120,8 @@ $html += @"
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>AzGovViz</title>
-    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/hierachy_202003141014.css">
-    <!--<link rel="stylesheet" type="text/css" href="../hierachy_202003141014.css">-->
+    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/hierarchy_202003252354.css">
+    <!--<link rel="stylesheet" type="text/css" href="../hierarchy_202003252354.css">-->
     <script src="https://code.jquery.com/jquery-1.7.2.js" integrity="sha256-FxfqH96M63WENBok78hchTCDxmChGFlo+/lFIPcZPeI=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/ui/1.8.18/jquery-ui.js" integrity="sha256-lzf/CwLt49jbVoZoFcPZOc0LlMYPFBorVSwMsTs2zsA=" crossorigin="anonymous"></script>
     <script type="text/javascript" src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/hover.js"></script>
@@ -1129,7 +1129,7 @@ $html += @"
 </head>
 <body style="display: flex; height: 100%; flex-direction: column">
     <div class="tree">
-        <div class="hierachyTree">
+        <div class="hierarchyTree">
 "@
 
 if ($getMgParentName -eq "Tenant"){
@@ -1151,7 +1151,7 @@ $html += @"
 "@
 }
 
-hierachyMgHTML -mgChild $ManagementGroupId
+hierarchyMgHTML -mgChild $ManagementGroupId
 
 
 if ($getMgParentName -eq "Tenant"){
@@ -1161,7 +1161,7 @@ if ($getMgParentName -eq "Tenant"){
                 </ul>
             </div>
         </div>
-    <div class="hierachyTables">
+    <div class="hierarchyTables">
 "@
 }
 else{
@@ -1173,7 +1173,7 @@ $html += @"
                 </ul>
             </div>
         </div>
-    <div class="hierachyTables">
+    <div class="hierarchyTables">
 "@
 }
 
@@ -1212,15 +1212,15 @@ $html | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).
 $arrayMgs = @()
 $arraySubs = @()
 $markdown = $null
-$markdownHierachyMgs = $null
-$markdownHierachySubs = $null
+$markdownhierarchyMgs = $null
+$markdownhierarchySubs = $null
 $markdownTable = $null
 
 if ($AzureDevOpsWikiAsCode) { 
 $markdown += @"
-# AzGovViz - Management Group Hierachy
+# AzGovViz - Management Group Hierarchy
 
-## Hierachy Diagram (Mermaid)
+## Hierarchy Diagram (Mermaid)
 
 ::: mermaid
     graph TD;`n
@@ -1228,11 +1228,11 @@ $markdown += @"
 }
 else{
 $markdown += @"
-# AzGovViz - Management Group Hierachy
+# AzGovViz - Management Group Hierarchy
 
 $executionDateTimeInternationalReadable ($currentTimeZone)
 
-## Hierachy Diagram (Mermaid)
+## Hierarchy Diagram (Mermaid)
 
 ::: mermaid
     graph TD;`n
@@ -1242,8 +1242,8 @@ $executionDateTimeInternationalReadable ($currentTimeZone)
 diagramMermaid
 
 $markdown += @"
-$markdownHierachyMgs
-$markdownHierachySubs
+$markdownhierarchyMgs
+$markdownhierarchySubs
  classDef mgr fill:#D9F0FF,stroke:#56595E,stroke-width:1px;
  classDef subs fill:#EEEEEE,stroke:#56595E,stroke-width:1px;
  classDef mgrprnts fill:#FFFFFF,stroke:#56595E,stroke-width:1px;
@@ -1252,7 +1252,7 @@ $markdownHierachySubs
  class $mermaidprnts mgrprnts;
 :::
 
-## Hierachy Table
+## Hierarchy Table
 
 | **MgLevel** | **MgName** | **MgId** | **MgParentName** | **MgParentId** | **SubName** | **SubId** |
 |-------------|-------------|-------------|-------------|-------------|-------------|-------------|
