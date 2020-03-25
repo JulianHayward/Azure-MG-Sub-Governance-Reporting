@@ -47,7 +47,7 @@ steps:
   displayName: 'Azure PowerShell script: FilePath'
   continueOnError: true
   inputs:
-    azureSubscription: 'VS0063 (19f26644-2e08-4119-8ade-5e1e93e3dca3)'
+    azureSubscription: '<yourServiceConnection>'
     ScriptPath: '$(System.DefaultWorkingDirectory)/$(AzGovVizScriptFolder)/$(AzGovVizScript)'
     ScriptArguments: '-ManagementGroupId $(ManagementGroupId) -OutputPath $(OutputPath) -CsvDelimiter "$(CsvDelimiter)" -AzureDevOpsWikiAsCode'
     preferredAzurePowerShellVersion: 3.1.0
