@@ -1,11 +1,11 @@
 <#  
 .SYNOPSIS  
     This script creates the following files to help better understand and audit your governance setup
-    very detailed csv file
+    csv file
         Management Groups, Subscriptions, Policy, Policy Initiative, RBAC
-    detailed html file
+    html file
         Management Groups, Subscriptions, Policy, Policy Initiative, RBAC
-    basic markdown file for use with Azure DevOps Wiki leveraging the Mermaid plugin
+    markdown file for use with Azure DevOps Wiki leveraging the Mermaid plugin
         Management Groups, Subscriptions
   
 .DESCRIPTION  
@@ -21,7 +21,7 @@
     Full- or relative path
 
 .PARAMETER UseAzureRM
-    default is Az Module, if you use the paramenter then AzureRM will be used
+    default is Az Powershell-Module, if you use the parameter -UseAzureRM then AzureRM Powershell-Module will be used
 
 .EXAMPLE
     PS C:\> .\AzGovViz.ps1 -managementGroupId <your-Management-Group-IdtId>
@@ -73,7 +73,7 @@ if (-not (Get-Command $testCommandAzAccounts -ErrorAction Ignore)) {
 	return
 }
 else{
-    Write-Output "passed: $azOrAzureRmModule module supporting cmdlet $testCommandAzAccounts installed"
+    Write-Output "passed: $azOrAzureRmModule ps module supporting cmdlet $testCommandAzAccounts installed"
 }
 #resources
 $testCommandAzResources = "Get-$($azOrAzureRmModule)PolicyDefinition"
@@ -82,7 +82,7 @@ if (-not (Get-Command $testCommandAzResources -ErrorAction Ignore)) {
 	return
 }
 else{
-    Write-Output "passed: $azOrAzureRmModule module supporting cmdlet $testCommandAzResources installed"
+    Write-Output "passed: $azOrAzureRmModule ps module supporting cmdlet $testCommandAzResources installed"
 }
 
 #commands
@@ -1124,7 +1124,7 @@ $html += @"
     <!--<link rel="stylesheet" type="text/css" href="../hierarchy_202003252354.css">-->
     <script src="https://code.jquery.com/jquery-1.7.2.js" integrity="sha256-FxfqH96M63WENBok78hchTCDxmChGFlo+/lFIPcZPeI=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/ui/1.8.18/jquery-ui.js" integrity="sha256-lzf/CwLt49jbVoZoFcPZOc0LlMYPFBorVSwMsTs2zsA=" crossorigin="anonymous"></script>
-    <script type="text/javascript" src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/hover.js"></script>
+    <script type="text/javascript" src="https://www.azadvertizer.net/azure-mg-sub-governance-reporting/hover_202003252354.js"></script>
     <script src="https://use.fontawesome.com/0c0b5cbde8.js"></script>
 </head>
 <body style="display: flex; height: 100%; flex-direction: column">
