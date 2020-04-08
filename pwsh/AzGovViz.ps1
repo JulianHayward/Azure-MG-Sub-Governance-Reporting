@@ -5,6 +5,7 @@
         Management Groups, Subscriptions, Policy, Policy Initiative, RBAC
     html file
         Management Groups, Subscriptions, Policy, Policy Initiative, RBAC
+        The html file uses Java Script and CSS files which are hosted on various CDNs (Content Delivery Network). For details review the BuildHTML region in this script. 
     markdown file for use with Azure DevOps Wiki leveraging the Mermaid plugin
         Management Groups, Subscriptions
   
@@ -152,12 +153,18 @@ $table.columns.add((New-Object system.Data.DataColumn Policy, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyType, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyDefinitionIdGuid, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyDefinitionIdFull, ([string])))
+$table.columns.add((New-Object system.Data.DataColumn PolicyDefinitionsScoped, ([string])))
+$table.columns.add((New-Object system.Data.DataColumn PolicySetDefinitionsScoped, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyAssignmentScope, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyAssignmentId, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyVariant, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn RoleDefinitionName, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn RoleDefinitionId, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn RoleIsCustom, ([string])))
+$table.columns.add((New-Object system.Data.DataColumn RoleActions, ([string])))
+$table.columns.add((New-Object system.Data.DataColumn RoleNotActions, ([string])))
+$table.columns.add((New-Object system.Data.DataColumn RoleDataActions, ([string])))
+$table.columns.add((New-Object system.Data.DataColumn RoleNotDataActions, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn RoleAssignmentDisplayname, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn RoleAssignmentSignInName, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn RoleAssignmentObjectId, ([string])))
@@ -168,25 +175,31 @@ $table.columns.add((New-Object system.Data.DataColumn RoleAssignableScopes, ([st
 #endregion table
 
 #region Function
-function addRowToTable($hierarchyLevel, $mgName, $mgId, $mgParentId, $mgParentName, $subName, $subId, $Policy, $PolicyType, $PolicyDefinitionIdFull, $PolicyDefinitionIdGuid, $PolicyAssignmentScope, $PolicyAssignmentId, $PolicyVariant, $RoleDefinitionId, $RoleDefinitionName, $RoleAssignmentDisplayname, $RoleAssignmentSignInName, $RoleAssignmentObjectId, $RoleAssignmentObjectType, $RoleAssignmentId, $RoleAssignmentScope, $RoleIsCustom, $RoleAssignableScopes) {
+function addRowToTable($hierarchyLevel, $mgName, $mgId, $mgParentId, $mgParentName, $Subscription, $SubscriptionId, $Policy, $PolicyType, $PolicyDefinitionIdGuid, $PolicyDefinitionIdFull, $PolicyDefinitionsScoped, $PolicySetDefinitionsScoped, $PolicyAssignmentScope, $PolicyAssignmentId, $PolicyVariant, $RoleDefinitionId, $RoleDefinitionName, $RoleAssignmentDisplayname, $RoleAssignmentSignInName, $RoleAssignmentObjectId, $RoleAssignmentObjectType, $RoleAssignmentId, $RoleAssignmentScope, $RoleIsCustom, $RoleAssignableScopes, $RoleActions, $RoleNotActions, $RoleDataActions, $RoleNotDataActions) {
     $row = $table.NewRow()
     $row.Level = $hierarchyLevel
     $row.MgName = $mgName
     $row.MgId = $mgId
     $row.mgParentId = $mgParentId
     $row.mgParentName = $mgParentName
-    $row.Subscription = $subName
-    $row.SubscriptionId = $subId
+    $row.Subscription = $Subscription
+    $row.SubscriptionId = $SubscriptionId
     $row.Policy = $Policy
     $row.PolicyType = $PolicyType
-    $row.PolicyDefinitionIdFull = $PolicyDefinitionIdFull
     $row.PolicyDefinitionIdGuid = $PolicyDefinitionIdGuid
+    $row.PolicyDefinitionIdFull = $PolicyDefinitionIdFull
+    $row.PolicyDefinitionsScoped = $PolicyDefinitionsScoped
+    $row.PolicySetDefinitionsScoped = $PolicySetDefinitionsScoped
     $row.PolicyAssignmentScope = $PolicyAssignmentScope
     $row.PolicyAssignmentId = $PolicyAssignmentId
     $row.PolicyVariant = $PolicyVariant
     $row.RoleDefinitionId = $RoleDefinitionId 
     $row.RoleDefinitionName = $RoleDefinitionName
     $row.RoleIsCustom = $RoleIsCustom
+    $row.RoleActions = $RoleActions
+    $row.RoleNotActions = $RoleNotActions
+    $row.RoleDataActions = $RoleDataActions
+    $row.RoleNotDataActions = $RoleNotDataActions
     $row.RoleAssignmentDisplayname = $RoleAssignmentDisplayname
     $row.RoleAssignmentSignInName = $RoleAssignmentSignInName
     $row.RoleAssignmentObjectId = $RoleAssignmentObjectId
@@ -213,6 +226,8 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
     }
     Write-Output "Processing L$hierarchyLevel MG-Name:'$($getMg.DisplayName)' MG-ID:'$($getMg.Name)'"
     $L0mgmtGroupPolicyAssignments = &$script:command_GetPolicyAssignment -Scope "/providers/Microsoft.Management/managementGroups/$($getMg.Name)"
+    $PolicyDefinitionsScoped = (&$script:command_GetPolicyDefinition -ManagementGroupName $getMg.Name -custom | Where-Object { $_.ResourceName -eq $getMg.Name }).count
+    $PolicySetDefinitionsScoped = (&$script:command_GetPolicySetDefinition -ManagementGroupName $getMg.Name -custom | Where-Object { $_.ResourceName -eq $getMg.Name }).count
     Write-Output "MG Policy Assignments: $($L0mgmtGroupPolicyAssignments.count)"
     foreach ($L0mgmtGroupPolicyAssignment in $L0mgmtGroupPolicyAssignments) {
         if ($L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -OR $L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/") {
@@ -256,7 +271,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                 $PolicyDefinitionIdGuid = $htPolicies[$policyId].Id
                 $PolicyAssignmentScope = $L0mgmtGroupPolicyAssignment.Properties.Scope
                 $PolicyAssignmentId = $L0mgmtGroupPolicyAssignment.PolicyAssignmentId
-                addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+                addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionsScoped $PolicyDefinitionsScoped -PolicySetDefinitionsScoped $PolicySetDefinitionsScoped -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
                 Clear-Variable -Name "Policy"
                 Clear-Variable -Name "PolicyType"
                 Clear-Variable -Name "PolicyDefinitionIdFull"
@@ -304,7 +319,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                 $PolicyDefinitionIdGuid = $htPolicySets[$policyId].Id
                 $PolicyAssignmentScope = $L0mgmtGroupPolicyAssignment.Properties.Scope
                 $PolicyAssignmentId = $L0mgmtGroupPolicyAssignment.PolicyAssignmentId
-                addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+                addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionsScoped $PolicyDefinitionsScoped -PolicySetDefinitionsScoped $PolicySetDefinitionsScoped -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
                 Clear-Variable -Name "Policy"
                 Clear-Variable -Name "PolicyType"
                 Clear-Variable -Name "PolicyDefinitionIdFull"
@@ -336,17 +351,29 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                 $L0mgmtGroupRoleDefinitionId = $L0mgmtGroupRoleAssignment.RoleDefinitionId
                 $L0mgmtGroupRoleDefinitionType = "N/A"
                 $L0mgmtGroupRoleDefinitionAssignableScopes = "N/A"
+                $L0mgmtGroupRoleDefinitionRoleActions = "N/A"
+                $L0mgmtGroupRoleDefinitionRoleNotActions = "N/A"
+                $L0mgmtGroupRoleDefinitionRoleDataActions = "N/A"
+                $L0mgmtGroupRoleDefinitionRoleNotDataActions = "N/A"
             }
             else{
                 $L0mgmtGroupRoleDefinitionId = $L0mgmtGroupRoleDefinition.Id
                 $L0mgmtGroupRoleDefinitionType = $L0mgmtGroupRoleDefinition.IsCustom
                 $L0mgmtGroupRoleDefinitionAssignableScopes = $L0mgmtGroupRoleDefinition.AssignableScopes
+                $L0mgmtGroupRoleDefinitionRoleActions = $L0mgmtGroupRoleDefinition.Actions
+                $L0mgmtGroupRoleDefinitionRoleNotActions = $L0mgmtGroupRoleDefinition.NotActions
+                $L0mgmtGroupRoleDefinitionRoleDataActions = $L0mgmtGroupRoleDefinition.DataActions
+                $L0mgmtGroupRoleDefinitionRoleNotDataActions = $L0mgmtGroupRoleDefinition.NotDataActions
 
             }
             $htRoles.$($roleId) = @{}
             $htRoles.$($roleId).Id = $L0mgmtGroupRoleDefinitionId
             $htRoles.$($roleId).IsCustom = $L0mgmtGroupRoleDefinitionType
             $htRoles.$($roleId).assignableScopes = $L0mgmtGroupRoleDefinitionAssignableScopes
+            $htRoles.$($roleId).RoleActions = [string]$L0mgmtGroupRoleDefinitionRoleActions
+            $htRoles.$($roleId).RoleNotActions = [string]$L0mgmtGroupRoleDefinitionRoleNotActions
+            $htRoles.$($roleId).RoleDataActions = [string]$L0mgmtGroupRoleDefinitionRoleDataActions
+            $htRoles.$($roleId).RoleNotDataActions = [string]$L0mgmtGroupRoleDefinitionRoleNotDataActions
         }  
         $RoleDefinitionId = $L0mgmtGroupRoleAssignment.RoleDefinitionId 
         if (($L0mgmtGroupRoleAssignment.RoleDefinitionName).length -eq 0) {
@@ -373,7 +400,11 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
         $RoleAssignmentScope = $L0mgmtGroupRoleAssignment.Scope
         $RoleIsCustom = $htRoles.$($roleId).IsCustom
         $RoleAssignableScopes = [string]$htRoles.$($roleId).assignableScopes
-        addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentId $RoleAssignmentId -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+        $RoleActions = [string]$htRoles.$($roleId).RoleActions
+        $RoleNotActions = [string]$htRoles.$($roleId).RoleNotActions
+        $RoleDataActions = [string]$htRoles.$($roleId).RoleDataActions
+        $RoleNotDataActions = [string]$htRoles.$($roleId).RoleNotDataActions
+        addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentId $RoleAssignmentId -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes -RoleActions $RoleActions -RoleNotActions $RoleNotActions -RoleDataActions $RoleDataActions -RoleNotDataActions $RoleNotDataActions
         Clear-Variable -Name "RoleDefinitionId"
         Clear-Variable -Name "RoleDefinitionName"
         Clear-Variable -Name "RoleIsCustom"
@@ -389,8 +420,11 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
 
     if ($getMg.children.count -gt 0) {
         foreach ($childMg in $getMg.Children | Where-Object { $_.Type -eq "/subscriptions" }) {
-            Write-Output "Processing SUB Name:'$($childMg.DisplayName) ID:'$($childMg.Id)''"
+            $childMgSubId = $childMg.Id -replace '/subscriptions/',''
+            Write-Output "Processing SUB Name:'$($childMg.DisplayName) ID:'$childMgSubId''"
             $L1mgmtGroupSubPolicyAssignments = &$script:command_GetPolicyAssignment -Scope "$($childMg.Id)"
+            $PolicyDefinitionsScoped = (&$script:command_GetPolicyDefinition -SubscriptionId $childMgSubId -custom | Where-Object { $_.SubscriptionId -eq $childMgSubId }).count
+            $PolicySetDefinitionsScoped = (&$script:command_GetPolicySetDefinition -SubscriptionId $childMgSubId -custom | Where-Object { $_.SubscriptionId -eq $childMgSubId }).count
             Write-Output "SUB Policy Assignments: $($L1mgmtGroupSubPolicyAssignments.count)"
             foreach ($L1mgmtGroupSubPolicyAssignment in $L1mgmtGroupSubPolicyAssignments) {
                 #$htpolicies
@@ -417,7 +451,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         $PolicyDefinitionIdGuid = $htPolicies[$policyId].Id
                         $PolicyAssignmentScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
                         $PolicyAssignmentId = $L1mgmtGroupSubPolicyAssignment.PolicyAssignmentId
-                        addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -subName $childMg.DisplayName -subId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+                        addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Subscription $childMg.DisplayName -SubscriptionId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionsScoped $PolicyDefinitionsScoped -PolicySetDefinitionsScoped $PolicySetDefinitionsScoped -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
                         Clear-Variable -Name "Policy"
                         Clear-Variable -Name "PolicyType"
                         Clear-Variable -Name "PolicyDefinitionIdFull"
@@ -447,7 +481,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         $PolicyDefinitionIdGuid = $htPolicySets[$policyId].Id
                         $PolicyAssignmentScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
                         $PolicyAssignmentId = $L1mgmtGroupSubPolicyAssignment.PolicyAssignmentId
-                        addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -subName $childMg.DisplayName -subId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+                        addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Subscription $childMg.DisplayName -SubscriptionId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionsScoped $PolicyDefinitionsScoped -PolicySetDefinitionsScoped $PolicySetDefinitionsScoped -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -PolicyVariant $PolicyVariant -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
                         Clear-Variable -Name "Policy"
                         Clear-Variable -Name "PolicyType"
                         Clear-Variable -Name "PolicyDefinitionIdFull"
@@ -474,17 +508,29 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         $L1mgmtGroupSubRoleDefinitionId = $L1mgmtGroupSubRoleAssignment.RoleDefinitionId
                         $L1mgmtGroupSubRoleDefinitionType = "N/A"
                         $L1mgmtGroupSubRoleDefinitionAssignableScopes = "N/A"
+                        $L1mgmtGroupSubRoleDefinitionRoleActions = "N/A"
+                        $L1mgmtGroupSubRoleDefinitionRoleNotActions = "N/A"
+                        $L1mgmtGroupSubRoleDefinitionRoleDataActions = "N/A"
+                        $L1mgmtGroupSubRoleDefinitionRoleNotDataActions = "N/A"
                     }
                     else{
                         $L1mgmtGroupSubRoleDefinitionId = $L1mgmtGroupSubRoleDefinition.Id
                         $L1mgmtGroupSubRoleDefinitionType = $L1mgmtGroupSubRoleDefinition.IsCustom
                         $L1mgmtGroupSubRoleDefinitionAssignableScopes = $L1mgmtGroupSubRoleDefinition.AssignableScopes
+                        $L1mgmtGroupSubRoleDefinitionRoleActions = $L1mgmtGroupSubRoleDefinition.Actions
+                        $L1mgmtGroupSubRoleDefinitionRoleNotActions = $L1mgmtGroupSubRoleDefinition.NotActions
+                        $L1mgmtGroupSubRoleDefinitionRoleDataActions = $L1mgmtGroupSubRoleDefinition.DataActions
+                        $L1mgmtGroupSubRoleDefinitionRoleNotDataActions = $L1mgmtGroupSubRoleDefinition.NotDataActions
 
                     }
                     $htRoles.$($roleId) = @{}
                     $htRoles.$($roleId).Id = $L1mgmtGroupSubRoleDefinitionId
                     $htRoles.$($roleId).IsCustom = $L1mgmtGroupSubRoleDefinitionType
                     $htRoles.$($roleId).assignableScopes = $L1mgmtGroupSubRoleDefinitionAssignableScopes
+                    $htRoles.$($roleId).RoleActions = [string]$L1mgmtGroupSubRoleDefinitionRoleActions
+                    $htRoles.$($roleId).RoleNotActions = [string]$L1mgmtGroupSubRoleDefinitionRoleNotActions
+                    $htRoles.$($roleId).RoleDataActions = [string]$L1mgmtGroupSubRoleDefinitionRoleDataActions
+                    $htRoles.$($roleId).RoleNotDataActions = [string]$L1mgmtGroupSubRoleDefinitionRoleNotDataActions
                 }  
                 $RoleDefinitionId = $L1mgmtGroupSubRoleAssignment.RoleDefinitionId 
                 if (($L1mgmtGroupSubRoleAssignment.RoleDefinitionName).length -eq 0) {
@@ -511,7 +557,11 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                 $RoleAssignmentScope = $L1mgmtGroupSubRoleAssignment.Scope
                 $RoleIsCustom = $htRoles.$($roleId).IsCustom
                 $RoleAssignableScopes = [string]$htRoles.$($roleId).assignableScopes
-                addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -subName $childMg.DisplayName -subId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentId $RoleAssignmentId -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes
+                $RoleActions = [string]$htRoles.$($roleId).RoleActions
+                $RoleNotActions = [string]$htRoles.$($roleId).RoleNotActions
+                $RoleDataActions = [string]$htRoles.$($roleId).RoleDataActions
+                $RoleNotDataActions = [string]$htRoles.$($roleId).RoleNotDataActions
+                addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMg.DisplayName -mgId $getMg.Name -mgParentId $mgParentId -mgParentName $mgParentName -Subscription $childMg.DisplayName -SubscriptionId $childMg.Id -Policy $Policy -PolicyType $PolicyType -PolicyDefinitionIdFull $PolicyDefinitionIdFull -PolicyDefinitionIdGuid $PolicyDefinitionIdGuid -PolicyAssignmentScope $PolicyAssignmentScope -PolicyAssignmentId $PolicyAssignmentId -RoleDefinitionId $RoleDefinitionId -RoleDefinitionName $RoleDefinitionName -RoleAssignmentDisplayname $RoleAssignmentDisplayname -RoleAssignmentSignInName $RoleAssignmentSignInName -RoleAssignmentObjectId $RoleAssignmentObjectId -RoleAssignmentObjectType $RoleAssignmentObjectType -RoleAssignmentId $RoleAssignmentId -RoleAssignmentScope $RoleAssignmentScope -RoleIsCustom $RoleIsCustom -RoleAssignableScopes $RoleAssignableScopes -RoleActions $RoleActions -RoleNotActions $RoleNotActions -RoleDataActions $RoleDataActions -RoleNotDataActions $RoleNotDataActions
                 Clear-Variable -Name "RoleDefinitionId"
                 Clear-Variable -Name "RoleDefinitionName"
                 Clear-Variable -Name "RoleAssignmentDisplayname"
@@ -618,16 +668,19 @@ function tableMgHTML($mgChild, $mgChildOf) {
     $policiesCountBuiltin = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "Policy" -and $_.PolicyType -eq "BuiltIn" }).count
     $policiesCountCustom = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "Policy" -and $_.PolicyType -eq "Custom" }).count
     $policiesAssigned = $policyReleatedQuery | where-object { $_.PolicyVariant -eq "Policy" } | Sort-Object -Property Policy, PolicyType
+    $policiesAssignedAtScope = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "Policy" -and $_.PolicyAssignmentScope -match "/providers/Microsoft.Management/managementGroups/$mgChild" }).count
     $policySetsCount = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "PolicySet" }).count
     $policySetsCountBuiltin = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "PolicySet" -and $_.PolicyType -eq "BuiltIn" }).count
     $policySetsCountCustom = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "PolicySet" -and $_.PolicyType -eq "Custom" }).count
     $policySetsAssigned = $policyReleatedQuery | where-object { $_.PolicyVariant -eq "PolicySet" } | Sort-Object -Property Policy, PolicyType
+    $policySetsAssignedAtScope = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "PolicySet" -and $_.PolicyAssignmentScope -match "/providers/Microsoft.Management/managementGroups/$mgChild" }).count
     $policiesInherited = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "Policy" -and $_.PolicyAssignmentId -notmatch "/providers/Microsoft.Management/managementGroups/$mgChild/" }).count
     $policySetsInherited = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "PolicySet" -and $_.PolicyAssignmentId -notmatch "/providers/Microsoft.Management/managementGroups/$mgChild/" }).count
     $scopePolicies = (($policyReleatedQuery| Where-Object { $_.PolicyVariant -eq "Policy" -and $_.PolicyDefinitionIdFull -match "/providers/Microsoft.Management/managementGroups/$mgChild/" }))
     $scopePoliciesCount = (($policyReleatedQuery| Where-Object { $_.PolicyVariant -eq "Policy" -and $_.PolicyDefinitionIdFull -match "/providers/Microsoft.Management/managementGroups/$mgChild/" }).PolicyDefinitionIdFull | sort-object -Unique ).count
     $scopePolicySets = (($policyReleatedQuery| Where-Object { $_.PolicyVariant -eq "PolicySet" -and $_.PolicyDefinitionIdFull -match "/providers/Microsoft.Management/managementGroups/$mgChild/" }))
     $scopePolicySetsCount = (($policyReleatedQuery| Where-Object { $_.PolicyVariant -eq "PolicySet" -and $_.PolicyDefinitionIdFull -match "/providers/Microsoft.Management/managementGroups/$mgChild/" }).PolicyDefinitionIdFull | sort-object -Unique ).count
+
     #RBAC
     $rbacReleatedQuery = $table | Where-Object { $_.MgId -eq $mgChild -and "" -eq $_.Subscription -and "" -ne $_.RoleDefinitionName }
     $rolesAssigned = $rbacReleatedQuery
@@ -637,6 +690,9 @@ function tableMgHTML($mgChild, $mgChildOf) {
     $rolesAssignedCountServicePrincipal = ($rbacReleatedQuery | Where-Object { $_.RoleAssignmentObjectType -eq "ServicePrincipal" }).count
     $rolesAssignedCountUnknown = ($rbacReleatedQuery | Where-Object { $_.RoleAssignmentObjectType -eq "Unknown" }).count
     $rolesAssignedInherited = ($rbacReleatedQuery | Where-Object { $_.RoleAssignmentId -notmatch "/providers/Microsoft.Management/managementGroups/$mgChild/" }).count
+    $rolesAssignedScope = ($rbacReleatedQuery | Where-Object { $_.RoleAssignmentId -match "/providers/Microsoft.Management/managementGroups/$mgChild/" }).count
+    $roleCustomDefinitionsOwnerSecurityWarning = ($rbacReleatedQuery | Where-Object { $_.RoleActions -eq '*' -and $_.RoleIsCustom -eq "TRUE" }).count
+    $roleAssignmentSpOwnerSecurityWarning = ($rbacReleatedQuery | Where-Object { $_.RoleDefinitionName -eq "Owner" -and $_.RoleAssignmentObjectType -eq "ServicePrincipal" }).count
 $script:html += @"
     <br>
     <table>
@@ -659,7 +715,7 @@ $script:html += @"
             <td>
 "@
     write-output "creating mgDetailsTable content"    
-    tableMgSubDetailsHTML -mgOrSub "mg" -policiesCount $policiesCount -policiesAssigned  $policiesAssigned -policiesCountBuiltin $policiesCountBuiltin -policiesCountCustom $policiesCountCustom -policySetsCount $policySetsCount -policySetsAssigned $policySetsAssigned -policySetsCountBuiltin $policySetsCountBuiltin -policySetsCountCustom $policySetsCountCustom -policiesInherited $policiesInherited -policySetsInherited $policySetsInherited -scopePolicies $scopePolicies -scopePoliciesCount $scopePoliciesCount -scopePolicySets $scopePolicySets -scopePolicySetsCount $scopePolicySetsCount -rolesAssigned $rolesAssigned -rolesAssignedCount $rolesAssignedCount -rolesAssignedInherited $rolesAssignedInherited -rolesAssignedCountUser $rolesAssignedCountUser -rolesAssignedCountGroup $rolesAssignedCountGroup -rolesAssignedCountServicePrincipal $rolesAssignedCountServicePrincipal -rolesAssignedCountUnknown $rolesAssignedCountUnknown
+    tableMgSubDetailsHTML -mgOrSub "mg" -policiesCount $policiesCount -policiesAssigned  $policiesAssigned -policiesAssignedAtScope $policiesAssignedAtScope -policySetsAssignedAtScope $policySetsAssignedAtScope -policiesCountBuiltin $policiesCountBuiltin -policiesCountCustom $policiesCountCustom -policySetsCount $policySetsCount -policySetsAssigned $policySetsAssigned -policySetsCountBuiltin $policySetsCountBuiltin -policySetsCountCustom $policySetsCountCustom -policiesInherited $policiesInherited -policySetsInherited $policySetsInherited -scopePolicies $scopePolicies -scopePoliciesCount $scopePoliciesCount -scopePolicySets $scopePolicySets -scopePolicySetsCount $scopePolicySetsCount -rolesAssigned $rolesAssigned -rolesAssignedCount $rolesAssignedCount -rolesAssignedInherited $rolesAssignedInherited -rolesAssignedScope $rolesAssignedScope -rolesAssignedCountUser $rolesAssignedCountUser -rolesAssignedCountGroup $rolesAssignedCountGroup -rolesAssignedCountServicePrincipal $rolesAssignedCountServicePrincipal -rolesAssignedCountUnknown $rolesAssignedCountUnknown -roleCustomDefinitionsOwnerSecurityWarning $roleCustomDefinitionsOwnerSecurityWarning -roleAssignmentSpOwnerSecurityWarning $roleAssignmentSpOwnerSecurityWarning
     write-output "checking for subs for $mgChild"
     tableSubForMgHTML -mgChild $mgChild
     $childMgs = ($table | Where-Object {$_.mgParentId -eq "$mgChild"}).MgId | sort-object -Unique
@@ -695,12 +751,14 @@ $script:html += @"
             $policiesCountBuiltin = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "Policy" -and $_.PolicyType -eq "BuiltIn" }).count
             $policiesCountCustom = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "Policy" -and $_.PolicyType -eq "Custom" }).count
             $policiesAssigned = $policyReleatedQuery | where-object { $_.PolicyVariant -eq "Policy" } | Sort-Object -Property Policy, PolicyType
+            $policiesAssignedAtScope = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "Policy" -and $_.PolicyAssignmentScope -match "$subscriptionId" }).count
             $policiesInherited = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "Policy" -and $_.PolicyAssignmentId -notmatch "$subscriptionId/" }).count
 
             $policySetsCount = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "PolicySet" }).count
             $policySetsCountBuiltin = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "PolicySet" -and $_.PolicyType -eq "BuiltIn" }).count
             $policySetsCountCustom = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "PolicySet" -and $_.PolicyType -eq "Custom" }).count
             $policySetsAssigned = $policyReleatedQuery | where-object { $_.PolicyVariant -eq "PolicySet" } | Sort-Object -Property Policy, PolicyType
+            $policySetsAssignedAtScope = ($policyReleatedQuery | where-object { $_.PolicyVariant -eq "PolicySet" -and $_.PolicyAssignmentScope -match "$subscriptionId" }).count
             $policySetsInherited = ($policyReleatedQuery | where-object {$_.PolicyVariant -eq "PolicySet" -and $_.PolicyAssignmentId -notmatch "$subscriptionId/" }).count
 
             $scopePolicies = (($policyReleatedQuery| Where-Object { $_.PolicyVariant -eq "Policy" -and $_.PolicyDefinitionIdFull -match "$subscriptionId/" }))
@@ -716,6 +774,9 @@ $script:html += @"
             $rolesAssignedCountServicePrincipal = ($rbacReleatedQuery | Where-Object { $_.RoleAssignmentObjectType -eq "ServicePrincipal" }).count
             $rolesAssignedCountUnknown = ($rbacReleatedQuery | Where-Object { $_.RoleAssignmentObjectType -eq "Unknown" }).count
             $rolesAssignedInherited = ($rbacReleatedQuery | Where-Object { $_.RoleAssignmentId -notmatch "$subscriptionId/" }).count
+            $rolesAssignedScope = ($rbacReleatedQuery | Where-Object { $_.RoleAssignmentId -match "$subscriptionId/" }).count
+            $roleCustomDefinitionsOwnerSecurityWarning = ($rbacReleatedQuery | Where-Object { $_.RoleActions -eq '*' -and $_.RoleIsCustom -eq "TRUE" }).count
+            $roleAssignmentSpOwnerSecurityWarning = ($rbacReleatedQuery | Where-Object { $_.RoleDefinitionName -eq "Owner" -and $_.RoleAssignmentObjectType -eq "ServicePrincipal" }).count
 $script:html += @"
     <tr>
         <th>
@@ -731,7 +792,7 @@ $script:html += @"
         <td>
 "@
 
-tableMgSubDetailsHTML -mgOrSub "sub" -policiesCount $policiesCount -policiesAssigned $policiesAssigned -policiesCountBuiltin $policiesCountBuiltin -policiesCountCustom $policiesCountCustom -policySetsCount $policySetsCount -policySetsAssigned $policySetsAssigned -policySetsCountBuiltin $policySetsCountBuiltin -policySetsCountCustom $policySetsCountCustom -policiesInherited $policiesInherited -policySetsInherited $policySetsInherited -scopePolicies $scopePolicies -scopePoliciesCount $scopePoliciesCount -scopePolicySets $scopePolicySets -scopePolicySetsCount $scopePolicySetsCount -rolesAssigned $rolesAssigned -rolesAssignedCount $rolesAssignedCount -rolesAssignedInherited $rolesAssignedInherited -rolesAssignedCountUser $rolesAssignedCountUser -rolesAssignedCountGroup $rolesAssignedCountGroup -rolesAssignedCountServicePrincipal $rolesAssignedCountServicePrincipal -rolesAssignedCountUnknown $rolesAssignedCountUnknown
+tableMgSubDetailsHTML -mgOrSub "sub" -policiesCount $policiesCount -policiesAssigned $policiesAssigned -policiesAssignedAtScope $policiesAssignedAtScope -policySetsAssignedAtScope $policySetsAssignedAtScope -policiesCountBuiltin $policiesCountBuiltin -policiesCountCustom $policiesCountCustom -policySetsCount $policySetsCount -policySetsAssigned $policySetsAssigned -policySetsCountBuiltin $policySetsCountBuiltin -policySetsCountCustom $policySetsCountCustom -policiesInherited $policiesInherited -policySetsInherited $policySetsInherited -rolesAssignedScope $rolesAssignedScope -scopePolicies $scopePolicies -scopePoliciesCount $scopePoliciesCount -scopePolicySets $scopePolicySets -scopePolicySetsCount $scopePolicySetsCount -rolesAssigned $rolesAssigned -rolesAssignedCount $rolesAssignedCount -rolesAssignedInherited $rolesAssignedInherited -rolesAssignedCountUser $rolesAssignedCountUser -rolesAssignedCountGroup $rolesAssignedCountGroup -rolesAssignedCountServicePrincipal $rolesAssignedCountServicePrincipal -rolesAssignedCountUnknown $rolesAssignedCountUnknown -roleCustomDefinitionsOwnerSecurityWarning $roleCustomDefinitionsOwnerSecurityWarning -roleAssignmentSpOwnerSecurityWarning $roleAssignmentSpOwnerSecurityWarning
 
         }
     }
@@ -752,7 +813,7 @@ $script:html += @"
 "@
 }
 
-function tableMgSubDetailsHTML($mgOrSub, $policiesCount, $policiesAssigned, $policySetsCount, $policySetsAssigned, $policiesInherited, $policySetsInherited, $scopePolicies, $scopePoliciesCount, $scopePolicySets, $scopePolicySetsCount, $rolesAssigned, $rolesAssignedCount, $rolesAssignedInherited){
+function tableMgSubDetailsHTML($mgOrSub, $policiesCount, $policiesAssigned, $policiesAssignedAtScope, $policySetsCount, $policySetsAssigned, $policySetsAssignedAtScope, $policiesInherited, $policySetsInherited, $scopePolicies, $scopePoliciesCount, $scopePolicySets, $scopePolicySetsCount, $rolesAssigned, $rolesAssignedCount, $rolesAssignedInherited, $roleCustomDefinitionsOwnerSecurityWarning, $roleAssignmentSpOwnerSecurityWarning){
 
 if ($mgOrSub -eq "mg"){
     $cssClass = "mgDetailsTable"
@@ -764,7 +825,7 @@ if ($mgOrSub -eq "sub"){
 if ($policiesCount -gt 0){
 
 $script:html += @"
-    <button type="button" class="collapsible"><p><i class="fa fa-plus" aria-hidden="true"></i> $policiesCount Policy Assignment(s) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom) ($policiesInherited inherited)</p></button>
+    <button type="button" class="collapsible"><p><i class="fa fa-plus" aria-hidden="true"></i> $policiesCount Policy Assignment(s) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom) ($policiesAssignedAtScope at scope, $policiesInherited inherited)</p></button>
     <div class="content">
         <table class="$cssClass">
             <tr>
@@ -807,7 +868,7 @@ $script:html += @"
         }
         else{
 $script:html += @"
-            <p><i class="fa fa-minus" aria-hidden="true"></i> $policiesCount Policy Assignment(s) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom) ($policiesInherited inherited)</p>
+            <p><i class="fa fa-minus" aria-hidden="true"></i> $policiesCount Policy Assignment(s) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom) ($policiesAssignedAtScope at scope, $policiesInherited inherited)</p>
 "@
         }
 $script:html += @"
@@ -817,7 +878,7 @@ $script:html += @"
         if ($policySetsCount -gt 0){
     
 $script:html += @"
-    <button type="button" class="collapsible"><p><i class="fa fa-plus" aria-hidden="true"></i> $policySetsCount PolicySet Assignment(s) (Builtin: $policySetsCountBuiltin | Custom: $policySetsCountCustom) ($policySetsInherited inherited)</p></button>
+    <button type="button" class="collapsible"><p><i class="fa fa-plus" aria-hidden="true"></i> $policySetsCount PolicySet Assignment(s) (Builtin: $policySetsCountBuiltin | Custom: $policySetsCountCustom) ($policySetsAssignedAtScope at scope, $policySetsInherited inherited)</p></button>
     <div class="content">
         <table class="$cssClass">
             <tr>
@@ -860,7 +921,7 @@ $script:html += @"
         }
         else{
 $script:html += @"
-            <p><i class="fa fa-minus" aria-hidden="true"></i> $policySetsCount PolicySet Assignment(s) (Builtin: $policySetsCountBuiltin | Custom: $policySetsCountCustom) ($policySetsInherited inherited)</p>
+            <p><i class="fa fa-minus" aria-hidden="true"></i> $policySetsCount PolicySet Assignment(s) (Builtin: $policySetsCountBuiltin | Custom: $policySetsCountCustom) ($policySetsAssignedAtScope at scope, $policySetsInherited inherited)</p>
 "@
         }
 $script:html += @"
@@ -957,7 +1018,7 @@ $script:html += @"
     if ($rolesAssignedCount -gt 0){
     
 $script:html += @"
-        <button type="button" class="collapsible"><p><i class="fa fa-plus" aria-hidden="true"></i> $rolesAssignedCount Role Assignment(s) (User: $rolesAssignedCountUser | Group: $rolesAssignedCountGroup | ServicePrincipal: $rolesAssignedCountServicePrincipal | Unknown: $rolesAssignedCountUnknown) ($rolesAssignedInherited inherited)</p></button>
+        <button type="button" class="collapsible"><p><i class="fa fa-plus" aria-hidden="true"></i> $rolesAssignedCount Role Assignment(s) (User: $rolesAssignedCountUser | Group: $rolesAssignedCountGroup | ServicePrincipal: $rolesAssignedCountServicePrincipal | Unknown: $rolesAssignedCountUnknown) ($rolesAssignedInherited inherited) (CriticalCustom: $roleCustomDefinitionsOwnerSecurityWarning, CriticalBuiltin: $roleAssignmentSpOwnerSecurityWarning)</p></button>
         <div class="content">
             <table class="$cssClass">
                 <tr>
@@ -1022,7 +1083,7 @@ $script:html += @"
             }
             else{
 $script:html += @"
-                <p><i class="fa fa-minus" aria-hidden="true"></i> $rolesAssignedCount Role Assignment(s) (User: $rolesAssignedCountUser | Group: $rolesAssignedCountGroup | ServicePrincipal: $rolesAssignedCountServicePrincipal | Unknown: $rolesAssignedCountUnknown) ($rolesAssignedInherited inherited)</p>
+                <p><i class="fa fa-minus" aria-hidden="true"></i> $rolesAssignedCount Role Assignment(s) (User: $rolesAssignedCountUser | Group: $rolesAssignedCountGroup | ServicePrincipal: $rolesAssignedCountServicePrincipal | Unknown: $rolesAssignedCountUnknown) ($rolesAssignedInherited inherited) (CriticalCustom: $roleCustomDefinitionsOwnerSecurityWarning, CriticalBuiltin: $roleAssignmentSpOwnerSecurityWarning)</p>
 "@
             }
 $script:html += @"
@@ -1088,7 +1149,7 @@ if ((&$script:command_GetContext).Tenant.Id -ne $ManagementGroupId) {
     $getMgParentName = $getMgParent.ParentDisplayName
     $mermaidprnts = "'$((&$script:command_GetContext).Tenant.Id)',$getMgParentId"
     $l++
-    addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMgParentName -mgId $getMgParentId -mgParentId "'$((&$script:command_GetContext).Tenant.Id)'" -mgParentName "Tenant" -Policy "N/A" -PolicyType "N/A" -PolicyDefinitionIdFull "N/A" -PolicyDefinitionIdGuid "N/A" -PolicyAssignmentScope "N/A" -PolicyAssignmentId "N/A" -PolicyVariant "N/A" -RoleDefinitionId "N/A" -RoleDefinitionName "N/A" -RoleAssignmentDisplayname "N/A" -RoleAssignmentSignInName "N/A" -RoleAssignmentObjectId "N/A" -RoleAssignmentObjectType "N/A" -RoleAssignmentScope "N/A" -RoleIsCustom "N/A" -RoleAssignableScopes "N/A"
+    addRowToTable -hierarchyLevel $hierarchyLevel -mgName $getMgParentName -mgId $getMgParentId -mgParentId "'$((&$script:command_GetContext).Tenant.Id)'" -mgParentName "Tenant" -Subscription "N/A" -SubscriptionId "N/A" -Policy "N/A" -PolicyType "N/A" -PolicyDefinitionIdFull "N/A" -PolicyDefinitionIdGuid "N/A" -PolicyAssignmentScope "N/A" -PolicyAssignmentId "N/A" -PolicyVariant "N/A" -RoleDefinitionId "N/A" -RoleDefinitionName "N/A" -RoleAssignmentDisplayname "N/A" -RoleAssignmentSignInName "N/A" -RoleAssignmentObjectId "N/A" -RoleAssignmentObjectType "N/A" -RoleAssignmentId "N/A" -RoleAssignmentScope "N/A" -RoleIsCustom "N/A" -RoleAssignableScopes "N/A" -RoleActions "N/A" -RoleNotActions "N/A" -RoleDataActions "N/A" -RoleNotDataActions "N/A"
 }
 else{
     $getMgParentId = "'$ManagementGroupId'"

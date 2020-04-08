@@ -19,7 +19,7 @@ basic markdown in Azure DevOps Wiki
 * csv file
   * Management Groups, Subscriptions, Policy, Policy Initiative, RBAC
 * html file
-  * Management Groups, Subscriptions, Policy, Policy Initiative, RBAC
+  * Management Groups, Subscriptions, Policy, Policy Initiative, RBAC. The html file uses Java Script and CSS files which are hosted on various CDNs (Content Delivery Network). For details review the BuildHTML region in the AzGovViz.ps1 script file.
 * markdown file for use with Azure DevOps Wiki leveraging the [Mermaid](https://docs.microsoft.com/en-us/azure/devops/release-notes/2019/sprint-158-update#mermaid-diagram-support-in-wiki) plugin
   * Management Groups, Subscriptions
 
