@@ -691,7 +691,7 @@ function tableMgHTML($mgChild, $mgChildOf) {
     $rolesAssignedCountUnknown = ($rbacReleatedQuery | Where-Object { $_.RoleAssignmentObjectType -eq "Unknown" }).count
     $rolesAssignedInherited = ($rbacReleatedQuery | Where-Object { $_.RoleAssignmentId -notmatch "/providers/Microsoft.Management/managementGroups/$mgChild/" }).count
     $rolesAssignedScope = ($rbacReleatedQuery | Where-Object { $_.RoleAssignmentId -match "/providers/Microsoft.Management/managementGroups/$mgChild/" }).count
-    $roleCustomDefinitionsOwnerSecurityWarning = ($rbacReleatedQuery | Where-Object { $_.RoleActions -eq '*' -and $_.RoleIsCustom -eq "TRUE" }).count
+    $roleCustomDefinitionsOwnerSecurityWarning = ($rbacReleatedQuery | Where-Object { $_.RoleActions -eq '*' -and $_.RoleIsCustom -eq "TRUE" -and "" -eq $_.RoleNotActions }).count
     $roleAssignmentSpOwnerSecurityWarning = ($rbacReleatedQuery | Where-Object { $_.RoleDefinitionName -eq "Owner" -and $_.RoleAssignmentObjectType -eq "ServicePrincipal" }).count
 $script:html += @"
     <br>
@@ -775,7 +775,7 @@ $script:html += @"
             $rolesAssignedCountUnknown = ($rbacReleatedQuery | Where-Object { $_.RoleAssignmentObjectType -eq "Unknown" }).count
             $rolesAssignedInherited = ($rbacReleatedQuery | Where-Object { $_.RoleAssignmentId -notmatch "$subscriptionId/" }).count
             $rolesAssignedScope = ($rbacReleatedQuery | Where-Object { $_.RoleAssignmentId -match "$subscriptionId/" }).count
-            $roleCustomDefinitionsOwnerSecurityWarning = ($rbacReleatedQuery | Where-Object { $_.RoleActions -eq '*' -and $_.RoleIsCustom -eq "TRUE" }).count
+            $roleCustomDefinitionsOwnerSecurityWarning = ($rbacReleatedQuery | Where-Object { $_.RoleActions -eq '*' -and $_.RoleIsCustom -eq "TRUE" -and "" -eq $_.RoleNotActions }).count
             $roleAssignmentSpOwnerSecurityWarning = ($rbacReleatedQuery | Where-Object { $_.RoleDefinitionName -eq "Owner" -and $_.RoleAssignmentObjectType -eq "ServicePrincipal" }).count
 $script:html += @"
     <tr>
