@@ -1,4 +1,5 @@
 # AzGovViz
+# First things first: edit line 11 and line 56 
 # https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 # Also check https://www.azadvertizer.net to keep up with the pace on Azure Governance capabilities such as Azure Policies, Policy Initiatives, Policy Aliases and RBAC Roles
 
@@ -7,7 +8,7 @@ trigger: none
 pr: none
 
 variables:
-  ManagementGroupId: 010
+  ManagementGroupId: <yourManagementGroupId>
   GitDir: /home/vsts/wiki
   OutputPath: /home/vsts/wiki/wikiRepo
   CsvDelimiter: ;
@@ -28,9 +29,11 @@ pool:
 
 steps:
 - powershell: |
-   write-host $(System.TeamProject)
-   write-host $(Build.Repository.Name)
-   write-host $(System.TeamFoundationCollectionUri)
+   write-host "Project: $(System.TeamProject)"
+   write-host "Repository: $(Build.Repository.Name)"
+   write-host "URL: $(System.TeamFoundationCollectionUri)"
+   $PipelineInfo = "Pipeline: '$(Build.DefinitionName)' 'rev $(Build.BuildNumber)' (Project: $([uri]::EscapeDataString("$(System.TeamProject)")); Repository: $(Build.Repository.Name); Branch: $(Build.SourceBranchName) Commit: $(Build.SourceVersion))"
+   write-host "PipelineInfo: $PipelineInfo" 
   displayName: 'PowerShell Script - testing'
   env:
     workingdirectory: $(Agent.BuildDirectory)
@@ -38,7 +41,10 @@ steps:
 - powershell: |
    mkdir $(GitDir)
    cd $(GitDir)
-   git clone -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" $(System.TeamFoundationCollectionUri)$(System.TeamProject)/_git/$(Repository)
+   $TeamProjectUriFormat = [uri]::EscapeDataString("$(System.TeamProject)")
+   git clone -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" $(System.TeamFoundationCollectionUri)$TeamProjectUriFormat/_git/$(Repository)
+   write-host "install Az.ResourceGraph"
+   Install-Module -Name Az.ResourceGraph -Force
   displayName: 'PowerShell Script - Git clone'
   env:
     workingdirectory: $(Agent.BuildDirectory)
@@ -59,7 +65,8 @@ steps:
    $executionDateTimeInternationalReadable = get-date -format "dd-MMM-yyyy HH:mm:ss"
    $currentTimeZone = (Get-TimeZone).Id
    git config --global user.email "pipeline@ado.com"
-   git config --global user.name "Pipeline"
+   $PipelineInfo = "Pipeline: '$(Build.DefinitionName)' 'rev $(Build.BuildNumber)' (Project: $([uri]::EscapeDataString("$(System.TeamProject)")); Repository: $(Build.Repository.Name); Branch: $(Build.SourceBranchName) Commit: $(Build.SourceVersion))"
+   git config --global user.name "$PipelineInfo"
    git pull
    git add --all
    git commit -m "wiki $executionDateTimeInternationalReadable ($currentTimeZone)"
