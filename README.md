@@ -102,6 +102,8 @@ Limits are not acquired programmatically, they are hardcoded. The links used to 
 
 Please feel free to contribute. Thanks to so many supporters - testing, giving feedback, making suggestions, presenting use-case, posting/blogging articles, refactoring code - THANK YOU!
 
+Special thanks to Tim Wanierke, Brooks Vaughn, Friedrich Weinmann
+
 ## AzAdvertizer
 
 Also check <https://www.azadvertizer.net> to keep up with the pace on Azure Governance capabilities such as Azure Policies, Policy Initiatives, Policy Aliases, RBAC Roles and Resource Providers including operations.
