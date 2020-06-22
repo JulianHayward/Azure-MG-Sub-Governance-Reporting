@@ -13,7 +13,7 @@ The new version comes with a handful of enhancements:
 * Reflect Tenant, ManagementGroup and Subscription Limits for Azure Governance capabilities
 * Some security related best practice highlighting
 * More details: Management Groups, Subscriptions, Policies, Policy Sets (Initiatives), Orphaned Policies, RBAC and Policy related RBAC (DINE MI), Orphaned Roles, Orphaned RoleAssignments, Blueprints, Subscription State, Subscription QuotaId, Subscription Tags, Azure Scurity Center Secure Score, ResourceGroups count, Resource types and count by region, Limits, Security findings
-* Resources / ResourceGraph paging; supports tenants with > 1000 subscriptions
+* Resources / leveraging Azure Resource Graph
 * Parameter based output (hierarchy only, 'srubbed' user information and more..)
 * HTML version check
 
