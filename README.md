@@ -49,7 +49,7 @@ basic markdown in Azure DevOps Wiki
 ### Required permissions in Azure
 
 * RBAC Role: _Reader_ on Management Group level
-* API permissions: If you run the script in Azure Automation or on Azure DevOps hosted agent you will need to grant API permissions in Azure Active Directory (get-AzRoleAssignment cmdlet requirements?!). The Automation Account or Service Connection __App registration (Application)__ must be granted with: __Azure Active Directory API | Application | Directory | Read.All__ (admin consent might be required)
+* API permissions: If you run the script in Azure Automation or on Azure DevOps hosted agent you will need to grant API permissions in Azure Active Directory (get-AzRoleAssignment cmdlet requirements). The Automation Account or Service Connection __App registration (Application)__ must be granted with: __Azure Active Directory API | Application | Directory | Read.All__ (admin consent might be required)
 
 ### Usage
 
