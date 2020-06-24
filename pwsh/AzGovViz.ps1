@@ -202,6 +202,22 @@ else {
     return
 }
 
+#helper file/dir
+if (-not [IO.Path]::IsPathRooted($outputPath)) {
+    $outputPath = Join-Path -Path (Get-Location).Path -ChildPath $outputPath
+}
+$outputPath = Join-Path -Path $outputPath -ChildPath '.'
+$outputPath = [IO.Path]::GetFullPath($outputPath)
+if (-not (test-path $outputPath)) {
+    Write-Output "path $outputPath does not exist -create it!"
+    return
+}
+else {
+    Write-Output "Output/Files will be created in path $outputPath"
+}
+$DirectorySeparatorChar = [IO.Path]::DirectorySeparatorChar
+$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
+
 #ManagementGroup helper
 #thx @Jim Britt https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts Create-AzDiagPolicy.ps1
 if (-not $ManagementGroupId) {
@@ -226,22 +242,6 @@ if (-not $ManagementGroupId) {
     Write-Output "Selected Management Group: $ManagementGroupName (Id: $ManagementGroupId)"
 }
 
-#helper file/dir
-if (-not [IO.Path]::IsPathRooted($outputPath)) {
-    $outputPath = Join-Path -Path (Get-Location).Path -ChildPath $outputPath
-}
-$outputPath = Join-Path -Path $outputPath -ChildPath '.'
-$outputPath = [IO.Path]::GetFullPath($outputPath)
-if (-not (test-path $outputPath)) {
-    Write-Output "path $outputPath does not exist -create it!"
-    return
-}
-else {
-    Write-Output "Output/Files will be created in path $outputPath"
-}
-$DirectorySeparatorChar = [IO.Path]::DirectorySeparatorChar
-$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
-
 if ($AzureDevOpsWikiAsCode) {
         $fileName = "AzGovViz_$($ManagementGroupId)"
 }
@@ -258,11 +258,6 @@ else {
 $executionDateTimeInternationalReadable = get-date -format "dd-MMM-yyyy HH:mm:ss"
 $currentTimeZone = (Get-TimeZone).Id
 
-#run
-Write-Output "Running AzGovViz for ManagementGroupId: '$ManagementGroupId'"
-$startAzGovViz = get-date
-
-#region Code
 #region table
 $table = [System.Data.DataTable]::new("AzGovViz")
 $table.columns.add((New-Object system.Data.DataColumn Level, ([string])))
@@ -450,67 +445,6 @@ function addRowToTable() {
     $row.BlueprintScoped = $BlueprintScoped
     $row.BlueprintAssignmentId = $BlueprintAssignmentId
     $table.Rows.Add($row)
-}
-
-if (-not $HierarchyTreeOnly) {
-    $startDefinitionsCaching = get-date
-    Write-Output "Definitions caching"
-
-    #helper ht / collect results /save some time
-    $htCacheDefinitions = @{ }
-    ($htCacheDefinitions).policy = @{ }
-    ($htCacheDefinitions).policySet = @{ }
-    ($htCacheDefinitions).role = @{ }
-    $htPolicyUsedInPolicySet = @{ }
-    $htSubscriptionTags = @{ }
-
-    $currentContextSubscriptionQuotaId = (Search-AzGraph -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | where subscriptionId == '$($checkContext.Subscription.Id)' | project properties.subscriptionPolicies.quotaId").properties_subscriptionPolicies_quotaId
-    if (-not $currentContextSubscriptionQuotaId){
-        Write-Output "Bad Subscription context for Definition Caching (SubscriptionName: $($checkContext.Subscription.Name); SubscriptionId: $($checkContext.Subscription.Id); likely an AAD_ QuotaId"
-        $alternativeSubscriptionIdForDefinitionCaching = (Search-AzGraph -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | where properties.subscriptionPolicies.quotaId !startswith 'AAD_' | project properties.subscriptionPolicies.quotaId, subscriptionId" -first 1)
-        Write-Output "Using other Subscription for Definition Caching (SubscriptionId: $($alternativeSubscriptionIdForDefinitionCaching.subscriptionId); QuotaId: $($alternativeSubscriptionIdForDefinitionCaching.properties_subscriptionPolicies_quotaId))"
-        $subscriptionIdForDefinitionCaching = $alternativeSubscriptionIdForDefinitionCaching.subscriptionId
-    }
-    else{
-        Write-Output "OK Subscription context (QuotaId not 'AAD_*') for Definition Caching (SubscriptionId: $($checkContext.Subscription.Id); QuotaId: $currentContextSubscriptionQuotaId)"
-        $subscriptionIdForDefinitionCaching = $checkContext.Subscription.Id
-    }
-
-    $builtinPolicyDefinitions = Get-AzPolicyDefinition -Builtin -SubscriptionId $SubscriptionIdForDefinitionCaching
-    foreach ($builtinPolicyDefinition in $builtinPolicyDefinitions) {
-        ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name) = @{ }
-        ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).Id = $builtinPolicyDefinition.name
-        ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).DisplayName = $builtinPolicyDefinition.Properties.displayname
-        ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).Type = $builtinPolicyDefinition.Properties.policyType
-        ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).Category = $builtinPolicyDefinition.Properties.metadata.category
-        ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).PolicyDefinitionId = $builtinPolicyDefinition.PolicyDefinitionId
-    }
-
-    $builtinPolicySetDefinitions = Get-AzPolicySetDefinition -Builtin -SubscriptionId $SubscriptionIdForDefinitionCaching
-    foreach ($builtinPolicySetDefinition in $builtinPolicySetDefinitions) {
-        ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name) = @{ }
-        ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).Id = $builtinPolicySetDefinition.name
-        ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).DisplayName = $builtinPolicySetDefinition.Properties.displayname
-        ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).Type = $builtinPolicySetDefinition.Properties.policyType
-        ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).Category = $builtinPolicySetDefinition.Properties.metadata.category
-        ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).PolicyDefinitionId = $builtinPolicySetDefinition.PolicySetDefinitionId
-    }
-
-    $roleDefinitions = Get-AzRoleDefinition -Scope "/subscriptions/$SubscriptionIdForDefinitionCaching" | where-object { $_.IsCustom -eq $false }
-    foreach ($roleDefinition in $roleDefinitions) {
-        $($htCacheDefinitions).role.$($roleDefinition.Id) = @{ }
-        $($htCacheDefinitions).role.$($roleDefinition.Id).Id = $($roleDefinition.Id)
-        $($htCacheDefinitions).role.$($roleDefinition.Id).Name = $($roleDefinition.Name)
-        $($htCacheDefinitions).role.$($roleDefinition.Id).IsCustom = $($roleDefinition.IsCustom)
-        $($htCacheDefinitions).role.$($roleDefinition.Id).AssignableScopes = $($roleDefinition.AssignableScopes)
-        $($htCacheDefinitions).role.$($roleDefinition.Id).Actions = $($roleDefinition.Actions)
-        $($htCacheDefinitions).role.$($roleDefinition.Id).NotActions = $($roleDefinition.NotActions)
-        $($htCacheDefinitions).role.$($roleDefinition.Id).DataActions = $($roleDefinition.DataActions)
-        $($htCacheDefinitions).role.$($roleDefinition.Id).NotDataActions = $($roleDefinition.NotDataActions)
-    }
-
-    $endDefinitionsCaching = get-date
-    Write-Output "Definitions caching duration: $((NEW-TIMESPAN -Start $startDefinitionsCaching -End $endDefinitionsCaching).TotalSeconds) seconds"
 }
 
 #region Function_dataCollection
@@ -4230,19 +4164,26 @@ $script:markdownTable += @"
 #endregion Function
 
 #region dataCollection
+
+#run
+Write-Output "Running AzGovViz for ManagementGroupId: '$ManagementGroupId'"
+$startAzGovViz = get-date
+
+#validation / check ManagementGroup Access
+$selectedManagementGroupId = Get-AzManagementGroup -GroupName $ManagementGroupId -ErrorAction SilentlyContinue
+if (-not $selectedManagementGroupId){
+    Write-Output "Access test failed: ManagementGroupId '$ManagementGroupId' is not accessible. Make sure you have required permissions (RBAC: Reader) / check typ0"
+    return
+}
+else{
+    Write-Output "Access test passed: ManagementGroupId '$($selectedManagementGroupId.Name)' is accessible" 
+}
+
 if (($checkContext).Tenant.Id -ne $ManagementGroupId) {
-    #managementGroupId is not RootMgId - get the parents..
-    $getMgParent = Get-AzManagementGroup -GroupName "contoso"
-    $getMgParent = Get-AzManagementGroup -GroupName $ManagementGroupId
-    if (!$getMgParent){
-        write-output "fail - check the provided ManagementGroup Id: '$ManagementGroupId' (RBAC role: Reader; MgId correct?)"
-        return
-    }
-    $mgSubPathTopMg = $getMgParent.ParentName
-    $getMgParentId = $getMgParent.ParentName
-    $getMgParentName = $getMgParent.ParentDisplayName
+    $mgSubPathTopMg = $selectedManagementGroupId.ParentName
+    $getMgParentId = $selectedManagementGroupId.ParentName
+    $getMgParentName = $selectedManagementGroupId.ParentDisplayName
     $mermaidprnts = "'$(($checkContext).Tenant.Id)',$getMgParentId"
-    #$scopeNamingSummary = "MG '$ManagementGroupId' and descendants wide"
     $hierarchyLevel = 0
     addRowToTable `
         -hierarchyLevel $hierarchyLevel `
@@ -4273,6 +4214,67 @@ if (-not $AzureDevOpsWikiAsCode){
     }
 }
 
+if (-not $HierarchyTreeOnly) {
+    $startDefinitionsCaching = get-date
+    Write-Output "Definitions caching"
+
+    #helper ht / collect results /save some time
+    $htCacheDefinitions = @{ }
+    ($htCacheDefinitions).policy = @{ }
+    ($htCacheDefinitions).policySet = @{ }
+    ($htCacheDefinitions).role = @{ }
+    $htPolicyUsedInPolicySet = @{ }
+    $htSubscriptionTags = @{ }
+
+    $currentContextSubscriptionQuotaId = (Search-AzGraph -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | where subscriptionId == '$($checkContext.Subscription.Id)' | project properties.subscriptionPolicies.quotaId").properties_subscriptionPolicies_quotaId
+    if (-not $currentContextSubscriptionQuotaId){
+        Write-Output "Bad Subscription context for Definition Caching (SubscriptionName: $($checkContext.Subscription.Name); SubscriptionId: $($checkContext.Subscription.Id); likely an AAD_ QuotaId"
+        $alternativeSubscriptionIdForDefinitionCaching = (Search-AzGraph -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | where properties.subscriptionPolicies.quotaId !startswith 'AAD_' | project properties.subscriptionPolicies.quotaId, subscriptionId" -first 1)
+        Write-Output "Using other Subscription for Definition Caching (SubscriptionId: $($alternativeSubscriptionIdForDefinitionCaching.subscriptionId); QuotaId: $($alternativeSubscriptionIdForDefinitionCaching.properties_subscriptionPolicies_quotaId))"
+        $subscriptionIdForDefinitionCaching = $alternativeSubscriptionIdForDefinitionCaching.subscriptionId
+    }
+    else{
+        Write-Output "OK Subscription context (QuotaId not 'AAD_*') for Definition Caching (SubscriptionId: $($checkContext.Subscription.Id); QuotaId: $currentContextSubscriptionQuotaId)"
+        $subscriptionIdForDefinitionCaching = $checkContext.Subscription.Id
+    }
+
+    $builtinPolicyDefinitions = Get-AzPolicyDefinition -Builtin -SubscriptionId $SubscriptionIdForDefinitionCaching
+    foreach ($builtinPolicyDefinition in $builtinPolicyDefinitions) {
+        ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name) = @{ }
+        ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).Id = $builtinPolicyDefinition.name
+        ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).DisplayName = $builtinPolicyDefinition.Properties.displayname
+        ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).Type = $builtinPolicyDefinition.Properties.policyType
+        ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).Category = $builtinPolicyDefinition.Properties.metadata.category
+        ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).PolicyDefinitionId = $builtinPolicyDefinition.PolicyDefinitionId
+    }
+
+    $builtinPolicySetDefinitions = Get-AzPolicySetDefinition -Builtin -SubscriptionId $SubscriptionIdForDefinitionCaching
+    foreach ($builtinPolicySetDefinition in $builtinPolicySetDefinitions) {
+        ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name) = @{ }
+        ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).Id = $builtinPolicySetDefinition.name
+        ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).DisplayName = $builtinPolicySetDefinition.Properties.displayname
+        ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).Type = $builtinPolicySetDefinition.Properties.policyType
+        ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).Category = $builtinPolicySetDefinition.Properties.metadata.category
+        ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).PolicyDefinitionId = $builtinPolicySetDefinition.PolicySetDefinitionId
+    }
+
+    $roleDefinitions = Get-AzRoleDefinition -Scope "/subscriptions/$SubscriptionIdForDefinitionCaching" | where-object { $_.IsCustom -eq $false }
+    foreach ($roleDefinition in $roleDefinitions) {
+        $($htCacheDefinitions).role.$($roleDefinition.Id) = @{ }
+        $($htCacheDefinitions).role.$($roleDefinition.Id).Id = $($roleDefinition.Id)
+        $($htCacheDefinitions).role.$($roleDefinition.Id).Name = $($roleDefinition.Name)
+        $($htCacheDefinitions).role.$($roleDefinition.Id).IsCustom = $($roleDefinition.IsCustom)
+        $($htCacheDefinitions).role.$($roleDefinition.Id).AssignableScopes = $($roleDefinition.AssignableScopes)
+        $($htCacheDefinitions).role.$($roleDefinition.Id).Actions = $($roleDefinition.Actions)
+        $($htCacheDefinitions).role.$($roleDefinition.Id).NotActions = $($roleDefinition.NotActions)
+        $($htCacheDefinitions).role.$($roleDefinition.Id).DataActions = $($roleDefinition.DataActions)
+        $($htCacheDefinitions).role.$($roleDefinition.Id).NotDataActions = $($roleDefinition.NotDataActions)
+    }
+
+    $endDefinitionsCaching = get-date
+    Write-Output "Definitions caching duration: $((NEW-TIMESPAN -Start $startDefinitionsCaching -End $endDefinitionsCaching).TotalSeconds) seconds"
+}
+
 Write-Output "Data Collection"
 $startDataCollection = get-date
 dataCollection -mgId $ManagementGroupId -hierarchyLevel $hierarchyLevel -mgParentId $getMgParentId -mgParentName $getMgParentName
@@ -4283,11 +4285,9 @@ if (-not $HierarchyTreeOnly){
     Write-Output "Resource caching"
     $startResourceCaching = get-date
 
-    #Resources https://docs.microsoft.com/en-us/azure/governance/resource-graph/troubleshoot/general#toomanysubscription
     $subscriptionIds = ($table | Where-Object { "" -ne $_.SubscriptionId} | select-Object SubscriptionId | Sort-Object -Property SubscriptionId -Unique).SubscriptionId
     $queryResources = "resources | project id, subscriptionId, location, type | summarize count() by subscriptionId, location, type"
     $queryResourceGroups = "resourcecontainers | where type =~ 'microsoft.resources/subscriptions/resourcegroups' | project id, subscriptionId | summarize count() by subscriptionId"
-    #$Query = "resources | project id, subscriptionId, location, type | order by id asc | summarize count() by subscriptionId, location, type"
     $resourcesAll = @()
     $resourceGroupsAll = @()    
     foreach ($subscriptionId in $subscriptionIds){
@@ -4309,9 +4309,6 @@ $table | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).
 #region BuildHTML
 $startBuildHTML = get-date
 $html = $null
-
-#testing helper
-#$fileTimestamp = (get-date -format "yyyyMMddHHmmss")##############################
 
 #preQueries
 $mgAndSubBaseQuery = ($table | Select-Object -Property level, mgid, mgname, mgParentName, mgParentId, subscriptionId, subscription)
@@ -4541,8 +4538,6 @@ $markdown | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileNa
 #endregion BuildMD
 
 #endregion createoutputs
-
-#endregion Code
 
 $endAzGovViz = get-date
 Write-Output "AzGovViz duration: $((NEW-TIMESPAN -Start $startAzGovViz -End $endAzGovViz).TotalMinutes) minutes"
