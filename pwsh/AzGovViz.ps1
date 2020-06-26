@@ -126,7 +126,7 @@ if ($CsvDelimiter -eq ",") {
 $testCommands = @('Get-AzContext', 'Get-AzPolicyDefinition', 'Search-AzGraph')
 foreach ($testCommand in $testCommands){
     if (-not (Get-Command $testCommand -ErrorAction Ignore)) {
-        Write-Output "cmdlet $testCommand not available - make sure the modules Az.Accounts, Az.Resources and Az.ResourceGrpah are installed"
+        Write-Output "cmdlet $testCommand not available - make sure the modules Az.Accounts, Az.Resources and Az.ResourceGraph are installed"
         return
     }
     else {
