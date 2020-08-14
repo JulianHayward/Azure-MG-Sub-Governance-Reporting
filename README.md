@@ -4,6 +4,17 @@ Do you want to have visibility on your Tenant´s Management Group hierarchy - do
 
 You can run the script either for your Tenant Root Group or any other Management Group that you have read access on.
 
+## AzGovViz Version 3
+
+The new version comes with a handful of enhancements:
+
+* HTML filterable tables
+* Resource Types Diagnostics
+* Resource Provider details
+* Policy Assignments filter excluded scopes
+* Use of deprecated built-in policies
+* Subscription QuotaId Whitelist
+
 ## AzGovViz Version 2
 
 The new version comes with a handful of enhancements:
@@ -69,6 +80,7 @@ basic markdown in Azure DevOps Wiki
   * DoNotShowRoleAssignmentsUserData (scrub user information)
   * LimitCriticalPercentage (limit warning level, default is 80%)
   * HierarchyTreeOnly (output only the hierarchy tree for Management Groups including linked Subscriptions)
+  * SubscriptionQuotaIdWhitelist (process only subscriptions with defined QuotaId(s))
   * ~~UseAzureRM parameter~~ support for AzureRm modules has been deprecated
 * Passed tests: Powershell Core on Windows
 * Passed tests: Powershell 5.1.18362.752 on Windows
