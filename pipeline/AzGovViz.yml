@@ -1,20 +1,19 @@
 # AzGovViz
-# First things first: edit line 11 and line 56 
+# First things first: edit line 10 and line 11 
 # https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 # Also check https://www.azadvertizer.net to keep up with the pace on Azure Governance capabilities such as Azure Policies, Policy Initiatives, Policy Aliases and RBAC Roles
-
 trigger: none
 
 pr: none
 
 variables:
-  ManagementGroupId: <yourManagementGroupId>
-  GitDir: /home/vsts/wiki
-  OutputPath: /home/vsts/wiki/wikiRepo
+  ServiceConnection: <YourServiceConnection>
+  ManagementGroupId: <YourManagementGroupId>
+  SubscriptionQuotaIdWhitelist: undefined
+  WikiDir: wiki
   CsvDelimiter: ;
-  Repository: wikiRepo
-  AzGovVizScriptFolder: pwsh
-  AzGovVizScript: AzGovViz.ps1
+  ScriptDir: pwsh
+  Script: AzGovViz.ps1
 
 schedules:
 - cron: "0 0,6,12,18 * * *"
@@ -28,47 +27,38 @@ pool:
   vmImage: 'ubuntu-latest'
 
 steps:
-- powershell: |
-   write-host "Project: $(System.TeamProject)"
-   write-host "Repository: $(Build.Repository.Name)"
-   write-host "URL: $(System.TeamFoundationCollectionUri)"
-   $PipelineInfo = "Pipeline: '$(Build.DefinitionName)' 'rev $(Build.BuildNumber)' (Project: $([uri]::EscapeDataString("$(System.TeamProject)")); Repository: $(Build.Repository.Name); Branch: $(Build.SourceBranchName) Commit: $(Build.SourceVersion))"
-   write-host "PipelineInfo: $PipelineInfo" 
-  displayName: 'PowerShell Script - testing'
-  env:
-    workingdirectory: $(Agent.BuildDirectory)
 
 - powershell: |
-   mkdir $(GitDir)
-   cd $(GitDir)
-   $TeamProjectUriFormat = [uri]::EscapeDataString("$(System.TeamProject)")
-   git clone -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" $(System.TeamFoundationCollectionUri)$TeamProjectUriFormat/_git/$(Repository)
-   write-host "install Az.ResourceGraph"
+   write-host "#################################"
+   write-host "Ensure AzGovViz prerequisites"
+   write-host "#################################"
+   write-host "wiki dir check"
+   if(!(test-path $(System.DefaultWorkingDirectory)/$(WikiDir))){New-Item -ItemType Directory -Force -Path $(System.DefaultWorkingDirectory)/$(WikiDir)}
+   write-host "install Azure Powershell Module 'Az.ResourceGraph'"
    Install-Module -Name Az.ResourceGraph -Force
-  displayName: 'PowerShell Script - Git clone'
+  displayName: 'Ensure AzGovViz prerequisites'
   env:
     workingdirectory: $(Agent.BuildDirectory)
 
 - task: AzurePowerShell@4
-  displayName: 'Azure PowerShell script: FilePath'
-  continueOnError: true
   inputs:
-    azureSubscription: '<yourServiceConnection>'
-    ScriptPath: '$(System.DefaultWorkingDirectory)/$(AzGovVizScriptFolder)/$(AzGovVizScript)'
-    ScriptArguments: '-ManagementGroupId $(ManagementGroupId) -OutputPath $(OutputPath) -CsvDelimiter "$(CsvDelimiter)" -AzureDevOpsWikiAsCode'
+    azureSubscription: '$(ServiceConnection)'
+    ScriptPath: '$(System.DefaultWorkingDirectory)/$(ScriptDir)/$(Script)'
+    ScriptArguments: '-ManagementGroupId $(ManagementGroupId) -OutputPath $(WikiDir) -CsvDelimiter "$(CsvDelimiter)" -AzureDevOpsWikiAsCode -SubscriptionQuotaIdWhitelist $(SubscriptionQuotaIdWhitelist)'
     preferredAzurePowerShellVersion: 3.1.0
-    errorActionPreference: continue
+  displayName: 'Run AzGovViz'
 
 - powershell: |
-   write-host $(Agent.Name)
-   cd $(OutputPath)
+   write-host "#################################"
+   write-host "Push AzGovViz output to repository"
+   write-host "#################################"
    $executionDateTimeInternationalReadable = get-date -format "dd-MMM-yyyy HH:mm:ss"
    $currentTimeZone = (Get-TimeZone).Id
-   git config --global user.email "pipeline@ado.com"
+   git config --global user.email "AzGovVizPipeline@azdo.com"
    $PipelineInfo = "Pipeline: '$(Build.DefinitionName)' 'rev $(Build.BuildNumber)' (Project: $([uri]::EscapeDataString("$(System.TeamProject)")); Repository: $(Build.Repository.Name); Branch: $(Build.SourceBranchName) Commit: $(Build.SourceVersion))"
    git config --global user.name "$PipelineInfo"
-   git pull
+   git config pull.rebase false
    git add --all
    git commit -m "wiki $executionDateTimeInternationalReadable ($currentTimeZone)"
-   git push
-  displayName: 'PowerShell Script - Git push'
+   git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" push origin HEAD:master
+  displayName: 'Push AzGovViz output to repository'
