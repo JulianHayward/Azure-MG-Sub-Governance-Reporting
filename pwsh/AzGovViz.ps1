@@ -12,13 +12,13 @@
 .DESCRIPTION  
     Do you want to have visibility on your Management Group hierarchy, document it in markdown? This script iterates Management Group hierarchy down to Subscription level capturing RBAC Roles, Policies and PolicySets (Initiatives).
  
-.PARAMETER managementGroupId
+.PARAMETER ManagementGroupId
     Define the Management Group Id for which the outputs/files shall be generated
  
-.PARAMETER csvDelimiter
+.PARAMETER CsvDelimiter
     The script outputs a csv file depending on your delimit defaults choose semicolon or comma
 
-.PARAMETER outputPath
+.PARAMETER OutputPath
     Full- or relative path
 
 .PARAMETER DoNotShowRoleAssignmentsUserData
@@ -31,7 +31,10 @@
     default is to add timestamp to the MD output, use the parameter to remove the timestamp - the MD file will then only be pushed to Wiki Repo if the Management Group structure and/or Subscription linkage changed
 
 .PARAMETER LimitCriticalPercentage
-    default is 80%, this parameter indicates the warning level for approaching Limits (e.g. 80% of Role Assignment limit reached) change as per your preference
+    default is 80%, this parameter defines the warning level for approaching Limits (e.g. 80% of Role Assignment limit reached) change as per your preference
+
+.PARAMETER SubscriptionQuotaIdWhitelist
+    default is 'undefined', this parameter defines the QuotaIds the subscriptions must match so that AzGovViz processes them.  
 
 .EXAMPLE
     Define the ManagementGroup ID
@@ -43,26 +46,23 @@
     Define the outputPath (must exist)
     PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -OutputPath 123
     
-    Define if the script runs in AzureDevOps. This will not print any timestamps into the markdown output so that only true deviation will force a push to the wiki repository (default prints timestamps to the markdown output)
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -AzureDevOpsWikiAsCode
-    
     Define if User information shall be scrubbed (default prints Userinformation to the CSV and HTML output)
     PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -DoNotShowRoleAssignmentsUserData
+    
+    Define if only the hierarchy tree output shall be created. Will ignore the parameters 'LimitCriticalPercentage' and 'DoNotShowRoleAssignmentsUserData' (default queries for Governance capabilities such as policy-, role-, blueprints assignments and more)
+    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -HierarchyTreeOnly
+
+    Define if the script runs in AzureDevOps. This will not print any timestamps into the markdown output so that only true deviation will force a push to the wiki repository (default prints timestamps to the markdown output)
+    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -AzureDevOpsWikiAsCode
     
     Define when limits should be highlited as warning (default is 80 percent)
     PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -LimitCriticalPercentage
 
-    Define if only the hierarchy tree output shall be created. Will ignore the parameters 'LimitCriticalPercentage' and 'DoNotShowRoleAssignmentsUserData' (default queries for Governance capabilities such as policy-, role-, blueprints assignments and more)
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -HierarchyTreeOnly
+    Define the QuotaId whitelist by providing strings separated by a backslash
+    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionQuotaIdWhitelist MSDN_\EnterpriseAgreement_
 
 .NOTES
-    AUTHOR: Julian Hayward - Premier Field Engineer - Azure Infrastucture/Automation/Devops/Governance
-
-    Role assignments to Unknown Object happens when the graph object(User/Group/Service principal) gets deleted from the directory after the Role assignment was created. Since the graph entity is deleted, we cannot figure out the object's displayname or type from graph, due to which we show the objecType as Unknown.
-    
-    API permissions: If you run the script in Azure Automation or Azure DevOps hosted agent you will need to grant API permissions in Azure Active Directory (get-AzRoleAssignment cmdlet). The Automation Account App registration must be granted with: Azure Active Directory API | Application | Directory | Read.All
-
-    The Limits might change, use the paramters to reflect changes
+    AUTHOR: Julian Hayward - Customer Engineer - Azure Infrastucture/Automation/Devops/Governance
 
 .LINK
     https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
@@ -80,6 +80,7 @@ Param
     [switch]$HierarchyTreeOnly,
     [switch]$AzureDevOpsWikiAsCode,
     [int]$LimitCriticalPercentage = 80,
+    [string]$SubscriptionQuotaIdWhitelist = "undefined",
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]$LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -126,79 +127,96 @@ if ($CsvDelimiter -eq ",") {
 $testCommands = @('Get-AzContext', 'Get-AzPolicyDefinition', 'Search-AzGraph')
 foreach ($testCommand in $testCommands){
     if (-not (Get-Command $testCommand -ErrorAction Ignore)) {
-        Write-Output "cmdlet $testCommand not available - make sure the modules Az.Accounts, Az.Resources and Az.ResourceGraph are installed"
-        return
+        Write-Host "cmdlet $testCommand not available - make sure the modules Az.Accounts, Az.Resources and Az.ResourceGraph are installed"
+        break
     }
     else {
-        Write-Output "passed: Az ps module supporting cmdlet $testCommandAzAccounts installed"
+        Write-Host "passed: Az ps module supporting cmdlet $testCommand installed"
     }
 }
 
 #check if connected, verify Access Token lifetime
 $tokenExirationMinimumInMinutes = 5
-$checkContext = Get-AzContext
+$checkContext = Get-AzContext -ErrorAction Stop
+$checkAzEnvironments = Get-AzEnvironment -ErrorAction Stop
+
+#FutureUse
+#Graph Endpoints https://docs.microsoft.com/en-us/graph/deployments#microsoft-graph-and-graph-explorer-service-root-endpoints
+#AzureCloud https://graph.microsoft.com
+#AzureUSGovernment L4 https://graph.microsoft.us
+#AzureUSGovernment L5 (DOD) https://dod-graph.microsoft.us
+#AzureChinaCloud https://microsoftgraph.chinacloudapi.cn
+#AzureGermanCloud https://graph.microsoft.de
+
+#AzureEnvironmentRelatedUrls
+$htAzureEnvironmentRelatedUrls = @{ }
+foreach ($checkAzEnvironment in $checkAzEnvironments){
+    ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name) = @{ }
+    ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).ResourceManagerUrl = $checkAzEnvironment.ResourceManagerUrl
+    ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).ServiceManagementUrl = $checkAzEnvironment.ServiceManagementUrl
+    ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).ActiveDirectoryAuthority = $checkAzEnvironment.ActiveDirectoryAuthority
+}
 
 function refreshToken() {
-    $checkContext = Get-AzContext
-    Write-Output "Creating new Token"
+    $checkContext = Get-AzContext -ErrorAction Stop
+    Write-Host "Creating new Token"
     $azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile;
     $profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile);
     $newAccessToken = ($profileClient.AcquireAccessToken($checkContext.Subscription.TenantId))
     if ($AzureDevOpsWikiAsCode) {
-        $script:accessTokenExipresOn = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.Resource -eq "https://management.core.windows.net/") }).ExpiresOn
+        $script:accessTokenExipresOn = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) }).ExpiresOn
     }
     else {
-        $script:accessTokenExipresOn = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.TenantId -eq $checkContext.Tenant.Id) -and ($_.Resource -eq "https://management.core.windows.net/") -and ($_.DisplayableId -eq $checkContext.account.id) }).ExpiresOn
+        $script:accessTokenExipresOn = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.TenantId -eq $checkContext.Tenant.Id) -and ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) -and ($_.DisplayableId -eq $checkContext.account.id) }).ExpiresOn
     }
-    #$script:accessTokenExipresOn = $newAccessToken.expiresOn
     $script:accessToken = $newAccessToken.AccessToken
 }
 
 function checkToken() {
     $tokenExirationInMinutes = ($accessTokenExipresOn - (get-date)).Minutes
     if ($tokenExirationInMinutes -lt $tokenExirationMinimumInMinutes) {
-        Write-Output "Access Token for REST AUTH has has less than $tokenExirationMinimumInMinutes minutes lifetime ($tokenExirationInMinutes minutes). Creating new token"
+        Write-Host "Access Token for REST AUTH has has less than $tokenExirationMinimumInMinutes minutes lifetime ($tokenExirationInMinutes minutes). Creating new token"
         refreshToken
-        Write-output "New Token expires: $($($script:accessTokenExipresOn).LocalDateTime) ($(($script:accessTokenExipresOn - (get-date)).Minutes) minutes)"
+        Write-Host "New Token expires: $($($script:accessTokenExipresOn).LocalDateTime) ($(($script:accessTokenExipresOn - (get-date)).Minutes) minutes)"
     }
     else {
-        #Write-Output "Access Token for REST AUTH remaining lifetime ($tokenExirationInMinutes minutes) above minimum lifetime ($tokenExirationMinimumInMinutes minutes)"
+        #Write-Host "Access Token for REST AUTH remaining lifetime ($tokenExirationInMinutes minutes) above minimum lifetime ($tokenExirationMinimumInMinutes minutes)"
     }
 }
 
 if ($checkContext) {
     if ($AzureDevOpsWikiAsCode) {
-        $accessTokenExipresOn = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.Resource -eq "https://management.core.windows.net/") }).ExpiresOn
+        $accessTokenExipresOn = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) }).ExpiresOn
     }
     else {
-        $accessTokenExipresOn = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.TenantId -eq $checkContext.Tenant.Id) -and ($_.Resource -eq "https://management.core.windows.net/") -and ($_.DisplayableId -eq $checkContext.account.id) }).ExpiresOn
+        $accessTokenExipresOn = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.TenantId -eq $checkContext.Tenant.Id) -and ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) -and ($_.DisplayableId -eq $checkContext.account.id) }).ExpiresOn
     }
 
     if ($accessTokenExipresOn -lt $(Get-Date)) {
-        Write-output "Access Token for REST AUTH has has expired"
+        Write-Host "Access Token for REST AUTH has has expired"
         refreshToken
-        Write-output "New Token expires: $($($script:accessTokenExipresOn).LocalDateTime) ($(($script:accessTokenExipresOn - (get-date)).Minutes) minutes)"
+        Write-Host "New Token expires: $($($script:accessTokenExipresOn).LocalDateTime) ($(($script:accessTokenExipresOn - (get-date)).Minutes) minutes)"
     }
     else {
         $tokenExirationInMinutes = ($accessTokenExipresOn - (get-date)).Minutes
         if ($tokenExirationInMinutes -lt $tokenExirationMinimumInMinutes) {
-            Write-Output "Access Token for REST AUTH has has less than $tokenExirationMinimumInMinutes minutes lifetime ($tokenExirationInMinutes minutes)"
+            Write-Host "Access Token for REST AUTH has has less than $tokenExirationMinimumInMinutes minutes lifetime ($tokenExirationInMinutes minutes)"
             refreshToken
-            Write-output "New Token expires: $($($script:accessTokenExipresOn).LocalDateTime) ($(($script:accessTokenExipresOn - (get-date)).Minutes) minutes)"
+            Write-Host "New Token expires: $($($script:accessTokenExipresOn).LocalDateTime) ($(($script:accessTokenExipresOn - (get-date)).Minutes) minutes)"
         }
         else {
             if ($AzureDevOpsWikiAsCode) {
-                $accessToken = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.Resource -eq "https://management.core.windows.net/") }).AccessToken
+                $accessToken = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) }).AccessToken
             }
             else {
-                $accessToken = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.TenantId -eq $checkContext.Tenant.Id) -and ($_.Resource -eq "https://management.core.windows.net/") -and ($_.DisplayableId -eq $checkContext.account.id) }).AccessToken
+                $accessToken = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.TenantId -eq $checkContext.Tenant.Id) -and ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) -and ($_.DisplayableId -eq $checkContext.account.id) }).AccessToken
             }
-            Write-Output "Found Access Token for REST AUTH (expires in $tokenExirationInMinutes minutes; defined minimum lifetime: $tokenExirationMinimumInMinutes minutes).."
+            Write-Host "Found Access Token for REST AUTH (expires in $tokenExirationInMinutes minutes; defined minimum lifetime: $tokenExirationMinimumInMinutes minutes).."
         }
     }
 }
 else {
-    Write-Output "No context found. Please connect to Azure (run: Connect-AzAccount) and re-run script"
+    Write-Host "No context found. Please connect to Azure (run: Connect-AzAccount) and re-run script"
     return
 }
 
@@ -209,11 +227,11 @@ if (-not [IO.Path]::IsPathRooted($outputPath)) {
 $outputPath = Join-Path -Path $outputPath -ChildPath '.'
 $outputPath = [IO.Path]::GetFullPath($outputPath)
 if (-not (test-path $outputPath)) {
-    Write-Output "path $outputPath does not exist -create it!"
+    Write-Host "path $outputPath does not exist -create it!"
     return
 }
 else {
-    Write-Output "Output/Files will be created in path $outputPath"
+    Write-Host "Output/Files will be created in path $outputPath"
 }
 $DirectorySeparatorChar = [IO.Path]::DirectorySeparatorChar
 $fileTimestamp = (get-date -format "yyyyMMddHHmmss")
@@ -221,37 +239,49 @@ $fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 #ManagementGroup helper
 #thx @Jim Britt https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts Create-AzDiagPolicy.ps1
 if (-not $ManagementGroupId) {
-    [array]$MgtGroupArray = Add-IndexNumberToArray (Get-AzManagementGroup)
+    [array]$MgtGroupArray = Add-IndexNumberToArray (Get-AzManagementGroup -ErrorAction Stop)
     if (-not $MgtGroupArray) {
-        Write-Output "Seems you do not have access to any Management Group. Please make sure you have the required RBAC role [Reader] assigned on at least one Management Group"
+        Write-Host "Seems you do not have access to any Management Group. Please make sure you have the required RBAC role [Reader] assigned on at least one Management Group"
         return
     }
-    Write-Output "Please select a Management Group from the list below"
-    $MgtGroupArray | Select-Object "#", Name, DisplayName, Id | Format-Table
-    try {
-        Write-Output "If you don't see your ManagementGroupID try using the parameter -ManagementGroupID"
-        $SelectedMG = Read-Host "Please enter a selection from 1 to $(($MgtGroupArray | measure-object).count)"
+    function selectMg() {
+        Write-Host "Please select a Management Group from the list below"
+        $MgtGroupArray | Select-Object "#", Name, DisplayName, Id | Format-Table
+
+        Write-Host "If you don't see your ManagementGroupID try using the parameter -ManagementGroupID" -ForegroundColor Yellow
+        if ($msg){
+            Write-Host $msg -ForegroundColor Red
+        }
+        
+        $script:SelectedMG = Read-Host "Please enter a selection from 1 to $(($MgtGroupArray | measure-object).count)"
+
+        function IsNumeric ($Value) {
+            return $Value -match "^[\d\.]+$"
+        }
+        if (IsNumeric $SelectedMG){
+            if ([int]$SelectedMG -lt 1 -or [int]$SelectedMG -gt ($MgtGroupArray | measure-object).count) {
+                $msg = "last input '$SelectedMG' is out of range, enter a number from the selection!"
+                selectMg
+            }
+        }
+        else{
+            $msg = "last input '$SelectedMG' is not numeric, enter a number from the selection!"
+            selectMg
+        }
     }
-    catch {
-        Write-Warning -Message 'Invalid option, please try again.'
-    }
+    selectMg
+    
+
     if ($($MgtGroupArray[$SelectedMG - 1].Name)) {
         $ManagementGroupID = $($MgtGroupArray[$SelectedMG - 1].Name)
         $ManagementGroupName = $($MgtGroupArray[$SelectedMG - 1].DisplayName)
     }
-    Write-Output "Selected Management Group: $ManagementGroupName (Id: $ManagementGroupId)"
-}
-
-if ($AzureDevOpsWikiAsCode) {
-        $fileName = "AzGovViz_$($ManagementGroupId)"
-}
-else {
-    if ($HierarchyTreeOnly){
-        $fileName = "AzGovViz_$($fileTimestamp)_$($ManagementGroupId)_HierarchyOnly"
-    }
     else{
-        $fileName = "AzGovViz_$($fileTimestamp)_$($ManagementGroupId)"
+        Write-Host "s.th. unexpected happened" -ForegroundColor Red
+        return
     }
+    Write-Host "Selected Management Group: $ManagementGroupName (Id: $ManagementGroupId)" -ForegroundColor Green
+    Write-Host "_______________________________________"
 }
 
 #helper 
@@ -285,8 +315,10 @@ $table.columns.add((New-Object system.Data.DataColumn PolicyDefinitionsScopedCou
 $table.columns.add((New-Object system.Data.DataColumn PolicySetDefinitionsScopedLimit, ([int])))
 $table.columns.add((New-Object system.Data.DataColumn PolicySetDefinitionsScopedCount, ([int])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyAssignmentScope, ([string])))
+$table.columns.add((New-Object system.Data.DataColumn PolicyAssignmentNotScope, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyAssignmentId, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyAssignmentName, ([string])))
+$table.columns.add((New-Object system.Data.DataColumn PolicyAssignmentDisplayName, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyAssignmentIdentity, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyAssigmentLimit, ([int])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyAssigmentCount, ([int])))
@@ -318,6 +350,7 @@ $table.columns.add((New-Object system.Data.DataColumn BlueprintId, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn BlueprintDisplayName, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn BlueprintDescription, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn BlueprintScoped, ([string])))
+$table.columns.add((New-Object system.Data.DataColumn BlueprintAssignmentVersion, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn BlueprintAssignmentId, ([string])))
 #endregion table
 
@@ -348,8 +381,10 @@ function addRowToTable() {
         $PolicySetDefinitionsScopedLimit = 0, 
         $PolicySetDefinitionsScopedCount = 0, 
         $PolicyAssignmentScope, 
+        $PolicyAssignmentNotScope, 
         $PolicyAssignmentId, 
         $PolicyAssignmentName, 
+        $PolicyAssignmentDisplayName, 
         $PolicyAssignmentIdentity, 
         $PolicyVariant, 
         $PolicyAssigmentLimit = 0, 
@@ -382,6 +417,7 @@ function addRowToTable() {
         $BlueprintDisplayName, 
         $BlueprintDescription, 
         $BlueprintScoped, 
+        $BlueprintAssignmentVersion,
         $BlueprintAssignmentId
     )
     $row = $table.NewRow()
@@ -409,8 +445,10 @@ function addRowToTable() {
     $row.PolicySetDefinitionsScopedLimit = $PolicySetDefinitionsScopedLimit
     $row.PolicySetDefinitionsScopedCount = $PolicySetDefinitionsScopedCount
     $row.PolicyAssignmentScope = $PolicyAssignmentScope
+    $row.PolicyAssignmentNotScope = $PolicyAssignmentNotScope
     $row.PolicyAssignmentId = $PolicyAssignmentId
     $row.PolicyAssignmentName = $PolicyAssignmentName
+    $row.PolicyAssignmentDisplayName = $PolicyAssignmentDisplayName
     $row.PolicyAssignmentIdentity = $PolicyAssignmentIdentity
     $row.PolicyVariant = $PolicyVariant 
     $row.PolicyAssigmentLimit = $PolicyAssigmentLimit
@@ -443,7 +481,8 @@ function addRowToTable() {
     $row.BlueprintDisplayName = $BlueprintDisplayName
     $row.BlueprintDescription = $BlueprintDescription
     $row.BlueprintScoped = $BlueprintScoped
-    $row.BlueprintAssignmentId = $BlueprintAssignmentId
+    $row.BlueprintAssignmentVersion = $BlueprintAssignmentVersion
+    $row.BlueprintAssignmentId = $BlueprintAssignmentId 
     $table.Rows.Add($row)
 }
 
@@ -452,14 +491,48 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
     checkToken
     $startMgLoop = get-date
     $hierarchyLevel++
-    $getMg = Get-AzManagementGroup -groupname $mgId -Expand -Recurse
-    Write-Output "DataCollection: Processing L$hierarchyLevel MG '$($getMg.DisplayName)' ('$($getMg.Name)')"
+    $getMg = Get-AzManagementGroup -groupname $mgId -Expand -Recurse -ErrorAction Stop
+    Write-Host "DataCollection: Processing L$hierarchyLevel MG '$($getMg.DisplayName)' ('$($getMg.Name)')"
 
     if (-not $HierarchyTreeOnly) {
-        $uriMgBlueprintDefinitionScoped = "https://management.azure.com//providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
+
+        #MGPolicyCompliance
+        ($htCachePolicyCompliance).mg.($getMg.Name) = @{ }
+        $url = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)/providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
+        $result = Invoke-RestMethod -Uri $url -Method POST -Headers @{"Authorization" = "Bearer $accesstoken" }
+
+        foreach ($policyAssignment in $result.value.policyassignments | sort-object -Property policyAssignmentId){
+            ($htCachePolicyCompliance).mg.($getMg.Name).($policyAssignment.policyAssignmentId) = @{ }
+            foreach ($policyComplianceState in $policyAssignment.results.policydetails){
+                if ($policyComplianceState.ComplianceState -eq "compliant"){
+                    ($htCachePolicyCompliance).mg.($getMg.Name).($policyAssignment.policyAssignmentId).CompliantPolicies = $policyComplianceState.count
+                }
+                if ($policyComplianceState.ComplianceState -eq "noncompliant"){
+                    ($htCachePolicyCompliance).mg.($getMg.Name).($policyAssignment.policyAssignmentId).NonCompliantPolicies = $policyComplianceState.count
+                }
+            }
+
+            foreach ($resourceComplianceState in $policyAssignment.results.resourcedetails){
+                if ($resourceComplianceState.ComplianceState -eq "compliant"){
+                    ($htCachePolicyCompliance).mg.($getMg.Name).($policyAssignment.policyAssignmentId).CompliantResources = $resourceComplianceState.count
+                }
+                if ($resourceComplianceState.ComplianceState -eq "nonCompliant"){
+                    ($htCachePolicyCompliance).mg.($getMg.Name).($policyAssignment.policyAssignmentId).NonCompliantResources = $resourceComplianceState.count
+                }
+            }
+        }
+
+        #MGBlueprints
+        $uriMgBlueprintDefinitionScoped = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)/providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
         $mgBlueprintDefinitionResult = Invoke-RestMethod -Uri $uriMgBlueprintDefinitionScoped -Method Get -Headers @{"Authorization" = "Bearer $accesstoken" }
         if (($mgBlueprintDefinitionResult.value | measure-object).count -gt 0) {
             foreach ($blueprint in $mgBlueprintDefinitionResult.value) {
+
+                if (-not $($htCacheDefinitions).blueprint[$blueprint.Id]) {
+                    $($htCacheDefinitions).blueprint.$($blueprint.Id) = @{ }
+                    $($htCacheDefinitions).blueprint.$($blueprint.Id) = $blueprint
+                }  
+
                 $blueprintName = $blueprint.name
                 $blueprintId = $blueprint.id
                 $blueprintDisplayName = $blueprint.properties.displayName
@@ -479,43 +552,74 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
             }
         }
 
-        $mgPolicyDefinitions = Get-AzPolicyDefinition -ManagementGroupName $getMg.Name -custom
-        $PolicyDefinitionsScopedCount = ((($mgPolicyDefinitions | Where-Object { $_.ResourceName -eq $getMg.Name }) | measure-object) | measure-object).count
+        #MGCustomPolicies
+        $uriPolicyDefinitionAPI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($getMg.Name)/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+        $requestPolicyDefinitionAPI = Invoke-RestMethod -Uri $uriPolicyDefinitionAPI -Headers  @{"Authorization" = "Bearer $accesstoken" }
+        $mgPolicyDefinitions = $requestPolicyDefinitionAPI.value | Where-Object { $_.properties.policyType -eq "custom" }
+        $PolicyDefinitionsScopedCount = (($mgPolicyDefinitions | Where-Object { ($_.Id).startswith("/providers/Microsoft.Management/managementGroups/$($getMg.Name)/") }) | measure-object).count
         foreach ($mgPolicyDefinition in $mgPolicyDefinitions) {
             if (-not $($htCacheDefinitions).policy[$mgPolicyDefinition.name]) {
-                #write-output "mgLoop not existing ht policy entry"
                 $($htCacheDefinitions).policy.$($mgPolicyDefinition.name) = @{ }
                 $($htCacheDefinitions).policy.$($mgPolicyDefinition.name).Id = $($mgPolicyDefinition.name)
                 $($htCacheDefinitions).policy.$($mgPolicyDefinition.name).DisplayName = $($mgPolicyDefinition.Properties.displayname)
                 $($htCacheDefinitions).policy.$($mgPolicyDefinition.name).Type = $($mgPolicyDefinition.Properties.policyType)
                 $($htCacheDefinitions).policy.$($mgPolicyDefinition.name).Category = $($mgPolicyDefinition.Properties.metadata.Category)
-                $($htCacheDefinitions).policy.$($mgPolicyDefinition.name).PolicyDefinitionId = $($mgPolicyDefinition.PolicyDefinitionId)
+                $($htCacheDefinitions).policy.$($mgPolicyDefinition.name).PolicyDefinitionId = $($mgPolicyDefinition.id)
+                #effects
+                if ($mgPolicyDefinition.properties.parameters.effect.defaultvalue) {
+                    ($htCacheDefinitions).policy.$($mgPolicyDefinition.name).effectDefaultValue = $mgPolicyDefinition.properties.parameters.effect.defaultvalue
+                    if ($mgPolicyDefinition.properties.parameters.effect.allowedValues){
+                        ($htCacheDefinitions).policy.$($mgPolicyDefinition.name).effectAllowedValue = $mgPolicyDefinition.properties.parameters.effect.allowedValues -join ","
+                    }
+                    else{
+                        ($htCacheDefinitions).policy.$($mgPolicyDefinition.name).effectAllowedValue = "n/a"
+                    }
+                    ($htCacheDefinitions).policy.$($mgPolicyDefinition.name).effectFixedValue = "n/a"
+                }
+                else {
+                    if ($mgPolicyDefinition.properties.parameters.policyEffect.defaultValue) {
+                        ($htCacheDefinitions).policy.$($mgPolicyDefinition.name).effectDefaultValue = $mgPolicyDefinition.properties.parameters.policyEffect.defaultvalue
+                        if ($mgPolicyDefinition.properties.parameters.policyEffect.allowedValues){
+                            ($htCacheDefinitions).policy.$($mgPolicyDefinition.name).effectAllowedValue = $mgPolicyDefinition.properties.parameters.policyEffect.allowedValues -join ","
+                        }
+                        else{
+                            ($htCacheDefinitions).policy.$($mgPolicyDefinition.name).effectAllowedValue = "n/a"
+                        }
+                        ($htCacheDefinitions).policy.$($mgPolicyDefinition.name).effectFixedValue = "n/a"
+                    }
+                    else {
+                        ($htCacheDefinitions).policy.$($mgPolicyDefinition.name).effectFixedValue = $mgPolicyDefinition.Properties.policyRule.then.effect
+                        ($htCacheDefinitions).policy.$($mgPolicyDefinition.name).effectDefaultValue = "n/a"
+                        ($htCacheDefinitions).policy.$($mgPolicyDefinition.name).effectAllowedValue = "n/a"
+                    }
+                }
+                ($htCacheDefinitions).policy.$($mgPolicyDefinition.name).json = $mgPolicyDefinition
+            }
+            if (-not $($htCacheDefinitionsAsIs).policy[$mgPolicyDefinition.name]) {
+                ($htCacheDefinitionsAsIs).policy.$($mgPolicyDefinition.name) = @{ }
+                ($htCacheDefinitionsAsIs).policy.$($mgPolicyDefinition.name) = $mgPolicyDefinition
             }  
         }
-        $mgPolicySetDefinitions = Get-AzPolicySetDefinition -ManagementGroupName $getMg.Name -custom
-        $PolicySetDefinitionsScopedCount = ((($mgPolicySetDefinitions | Where-Object { $_.ResourceName -eq $getMg.Name }) | measure-object) | measure-object).count
+
+        #MGPolicySets
+        $uriPolicySetDefinitionAPI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($getMg.Name)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2019-09-01"
+        $requestPolicySetDefinitionAPI = Invoke-RestMethod -Uri $uriPolicySetDefinitionAPI -Headers  @{"Authorization" = "Bearer $accesstoken" }
+        $mgPolicySetDefinitions = $requestPolicySetDefinitionAPI.value | Where-Object { $_.properties.policyType -eq "custom" }
+        $PolicySetDefinitionsScopedCount = (($mgPolicySetDefinitions | Where-Object { ($_.Id).startswith("/providers/Microsoft.Management/managementGroups/$($getMg.Name)/") }) | measure-object).count
         foreach ($mgPolicySetDefinition in $mgPolicySetDefinitions) {
             if (-not $($htCacheDefinitions).policySet[$mgPolicySetDefinition.name]) {
-                #write-output "mgLoop not existing ht policySet entry"
                 $($htCacheDefinitions).policySet.$($mgPolicySetDefinition.name) = @{ }
                 $($htCacheDefinitions).policySet.$($mgPolicySetDefinition.name).Id = $($mgPolicySetDefinition.name)
                 $($htCacheDefinitions).policySet.$($mgPolicySetDefinition.name).DisplayName = $($mgPolicySetDefinition.Properties.displayname)
                 $($htCacheDefinitions).policySet.$($mgPolicySetDefinition.name).Type = $($mgPolicySetDefinition.Properties.policyType)
                 $($htCacheDefinitions).policySet.$($mgPolicySetDefinition.name).Category = $($mgPolicySetDefinition.Properties.metadata.Category)
-                $($htCacheDefinitions).policySet.$($mgPolicySetDefinition.name).PolicyDefinitionId = $($mgPolicySetDefinition.PolicySetDefinitionId)
-                $policySetPoliciesArray = @()
-                foreach ($policydefinitionMgPolicySetDefinition in $mgPolicySetDefinition.properties.policydefinitions){
-                    $policySetPoliciesArray += $policydefinitionMgPolicySetDefinition.policyDefinitionId
-                }
-                $($htCacheDefinitions).policySet.$($mgPolicySetDefinition.name).PolicySetPolicyIds = $policySetPoliciesArray
+                $($htCacheDefinitions).policySet.$($mgPolicySetDefinition.name).PolicyDefinitionId = $($mgPolicySetDefinition.id)
+                $($htCacheDefinitions).policySet.$($mgPolicySetDefinition.name).PolicySetPolicyIds = $mgPolicySetDefinition.properties.policydefinitions.policyDefinitionId
+                ($htCacheDefinitions).policySet.$($mgPolicySetDefinition.name).json = $mgPolicySetDefinition
             }  
 
             foreach ($policydefinitionMgPolicySetDefinition in $mgPolicySetDefinition.properties.policydefinitions){
-                if (($htPolicyUsedInPolicySet).$($policydefinitionMgPolicySetDefinition.policyDefinitionId -replace '.*/')) {
-                    #write-output "existing ht policySet policy entry $($policydefinitionMgPolicySetDefinition.policyDefinitionId -replace '.*/')"
-                }
-                else{
-                    #write-output "NOT existing ht policySet policy entry $($policydefinitionMgPolicySetDefinition.policyDefinitionId -replace '.*/')"
+                if (-not($htPolicyUsedInPolicySet).$($policydefinitionMgPolicySetDefinition.policyDefinitionId -replace '.*/')) {
                     $($htPolicyUsedInPolicySet).$($policydefinitionMgPolicySetDefinition.policyDefinitionId -replace '.*/') = @{ }
                     $($htPolicyUsedInPolicySet).$($policydefinitionMgPolicySetDefinition.policyDefinitionId -replace '.*/').Id = ($policydefinitionMgPolicySetDefinition.policyDefinitionId -replace '.*/')
                 }
@@ -523,24 +627,29 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
         }
 
         #MgPolicyAssignments
-        $L0mgmtGroupPolicyAssignments = Get-AzPolicyAssignment -Scope "/providers/Microsoft.Management/managementGroups/$($getMg.Name)"
-        #Write-Output "MG Policy Assignments: $($L0mgmtGroupPolicyAssignments.count)"
+        $L0mgmtGroupPolicyAssignments = Get-AzPolicyAssignment -Scope "/providers/Microsoft.Management/managementGroups/$($getMg.Name)" -ErrorAction Stop
         $L0mgmtGroupPolicyAssignmentsPolicyCount = (($L0mgmtGroupPolicyAssignments | where-object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" }) | measure-object).count
         $L0mgmtGroupPolicyAssignmentsPolicySetCount = (($L0mgmtGroupPolicyAssignments | where-object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" }) | measure-object).count
         $L0mgmtGroupPolicyAssignmentsPolicyAtScopeCount = (($L0mgmtGroupPolicyAssignments | where-object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.PolicyAssignmentId -match "/providers/Microsoft.Management/managementGroups/$($getMg.Name)" }) | measure-object).count
         $L0mgmtGroupPolicyAssignmentsPolicySetAtScopeCount = (($L0mgmtGroupPolicyAssignments | where-object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.PolicyAssignmentId -match "/providers/Microsoft.Management/managementGroups/$($getMg.Name)" }) | measure-object).count
         $L0mgmtGroupPolicyAssignmentsPolicyAndPolicySetAtScopeCount = ($L0mgmtGroupPolicyAssignmentsPolicyAtScopeCount + $L0mgmtGroupPolicyAssignmentsPolicySetAtScopeCount)
-
         foreach ($L0mgmtGroupPolicyAssignment in $L0mgmtGroupPolicyAssignments) {
+
+            if (-not $($htCacheAssignments).policy[$L0mgmtGroupPolicyAssignment.PolicyAssignmentId]) {
+                $($htCacheAssignments).policy.$($L0mgmtGroupPolicyAssignment.PolicyAssignmentId) = @{ }
+                $($htCacheAssignments).policy.$($L0mgmtGroupPolicyAssignment.PolicyAssignmentId) = $L0mgmtGroupPolicyAssignment
+            }  
+
             if ($L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -OR $L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/") {
                 if ($L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/") {
-                    #policy
                     $PolicyVariant = "Policy"
                     $definitiontype = "policy"
                     $Id = $L0mgmtGroupPolicyAssignment.properties.policydefinitionid -replace '.*/'
                     $PolicyAssignmentScope = $L0mgmtGroupPolicyAssignment.Properties.Scope
+                    $PolicyAssignmentNotScope = $L0mgmtGroupPolicyAssignment.Properties.NotScopes -join "$CsvDelimiterOpposite "
                     $PolicyAssignmentId = $L0mgmtGroupPolicyAssignment.PolicyAssignmentId
                     $PolicyAssignmentName = $L0mgmtGroupPolicyAssignment.Name
+                    $PolicyAssignmentDisplayName = $L0mgmtGroupPolicyAssignment.Properties.DisplayName
 
                     if ($L0mgmtGroupPolicyAssignment.Identity) {
                         $PolicyAssignmentIdentity = $L0mgmtGroupPolicyAssignment.Identity.principalId
@@ -573,8 +682,10 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         -PolicySetDefinitionsScopedLimit $LimitPOLICYPolicySetDefinitionsScopedManagementGroup `
                         -PolicySetDefinitionsScopedCount $PolicySetDefinitionsScopedCount `
                         -PolicyAssignmentScope $PolicyAssignmentScope `
+                        -PolicyAssignmentNotScope $PolicyAssignmentNotScope `
                         -PolicyAssignmentId $PolicyAssignmentId `
                         -PolicyAssignmentName $PolicyAssignmentName `
+                        -PolicyAssignmentDisplayName $PolicyAssignmentDisplayName `
                         -PolicyAssignmentIdentity $PolicyAssignmentIdentity `
                         -PolicyVariant $PolicyVariant `
                         -PolicyAssigmentLimit $LimitPOLICYPolicyAssignmentsManagementGroup `
@@ -591,8 +702,10 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                     $definitiontype = "policySet"
                     $Id = $L0mgmtGroupPolicyAssignment.properties.policydefinitionid -replace '.*/'
                     $PolicyAssignmentScope = $L0mgmtGroupPolicyAssignment.Properties.Scope
+                    $PolicyAssignmentNotScope = $L0mgmtGroupPolicyAssignment.Properties.NotScopes -join "$CsvDelimiterOpposite "
                     $PolicyAssignmentId = $L0mgmtGroupPolicyAssignment.PolicyAssignmentId
                     $PolicyAssignmentName = $L0mgmtGroupPolicyAssignment.Name
+                    $PolicyAssignmentDisplayName = $L0mgmtGroupPolicyAssignment.Properties.DisplayName
 
                     if ($L0mgmtGroupPolicyAssignment.Identity) {
                         $PolicyAssignmentIdentity = $L0mgmtGroupPolicyAssignment.Identity.principalId
@@ -625,8 +738,10 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         -PolicySetDefinitionsScopedLimit $LimitPOLICYPolicySetDefinitionsScopedManagementGroup `
                         -PolicySetDefinitionsScopedCount $PolicySetDefinitionsScopedCount `
                         -PolicyAssignmentScope $PolicyAssignmentScope `
+                        -PolicyAssignmentNotScope $PolicyAssignmentNotScope `
                         -PolicyAssignmentId $PolicyAssignmentId `
                         -PolicyAssignmentName $PolicyAssignmentName `
+                        -PolicyAssignmentDisplayName $PolicyAssignmentDisplayName `
                         -PolicyAssignmentIdentity $PolicyAssignmentIdentity `
                         -PolicyVariant $PolicyVariant `
                         -PolicyAssigmentLimit $LimitPOLICYPolicyAssignmentsManagementGroup `
@@ -640,16 +755,14 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
             }
             else {
                 #s.th unexpected
-                Write-Output "DataCollection: unexpected"
+                Write-Host "DataCollection: unexpected"
                 return
             }
         }
-        #Write-Output "mg RoleDefinitions caching start"
-        $mgCustomRoleDefinitions = Get-AzRoleDefinition -custom -Scope "/providers/Microsoft.Management/managementGroups/$($getMg.Name)"
-        #$mgCustomRoleDefinitions.count
+        #MGCustomRolesRoles
+        $mgCustomRoleDefinitions = Get-AzRoleDefinition -custom -Scope "/providers/Microsoft.Management/managementGroups/$($getMg.Name)" -ErrorAction Stop
         foreach ($mgCustomRoleDefinition in $mgCustomRoleDefinitions) {
             if (-not $($htCacheDefinitions).role[$mgCustomRoleDefinition.Id]) {
-                #write-output "mgLoop not existing ht role entry"
                 $($htCacheDefinitions).role.$($mgCustomRoleDefinition.Id) = @{ }
                 $($htCacheDefinitions).role.$($mgCustomRoleDefinition.Id).Id = $($mgCustomRoleDefinition.Id)
                 $($htCacheDefinitions).role.$($mgCustomRoleDefinition.Id).Name = $($mgCustomRoleDefinition.Name)
@@ -661,17 +774,20 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                 $($htCacheDefinitions).role.$($mgCustomRoleDefinition.Id).NotDataActions = $($mgCustomRoleDefinition.NotDataActions)
             }  
         }
-        #Write-Output "mg RoleDefinitions caching stop"
-        $L0mgmtGroupRoleAssignments = Get-AzRoleAssignment -scope "/providers/Microsoft.Management/managementGroups/$($getMg.Name)"
+        $L0mgmtGroupRoleAssignments = Get-AzRoleAssignment -scope "/providers/Microsoft.Management/managementGroups/$($getMg.Name)" -ErrorAction Stop
         $L0mgmtGroupRoleAssignmentsLimitUtilization = (($L0mgmtGroupRoleAssignments | where-object { $_.Scope -eq "/providers/Microsoft.Management/managementGroups/$($getMg.Name)" }) | measure-object).count
-        #Write-Output "MG Role Assignments: $($L0mgmtGroupRoleAssignments.count)"
         foreach ($L0mgmtGroupRoleAssignment in $L0mgmtGroupRoleAssignments) {
-            #$htRoles
+            
+            if (-not $($htCacheAssignments).role[$L0mgmtGroupRoleAssignment.RoleAssignmentId]) {
+                $($htCacheAssignments).role.$($L0mgmtGroupRoleAssignment.RoleAssignmentId) = @{ }
+                $($htCacheAssignments).role.$($L0mgmtGroupRoleAssignment.RoleAssignmentId) = $L0mgmtGroupRoleAssignment
+            }  
+
             $Id = $L0mgmtGroupRoleAssignment.RoleDefinitionId
             $definitiontype = "role"
 
             if (($L0mgmtGroupRoleAssignment.RoleDefinitionName).length -eq 0) {
-                $RoleDefinitionName = "'This roleDefinition was likely deleted although a roleAssignment existed'" 
+                $RoleDefinitionName = "'This roleDefinition likely was deleted although a roleAssignment existed'" 
             }
             else {
                 $RoleDefinitionName = $L0mgmtGroupRoleAssignment.RoleDefinitionName
@@ -756,9 +872,8 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
             -mgParentId $mgParentId `
             -mgParentName $mgParentName
     }
-    Write-Output "DataCollection: L$hierarchyLevel MG '$($getMg.DisplayName)' ('$($getMg.Name)') child items: $(($getMg.children | measure-object).count) (MG or Sub)"
     $endMgLoop = get-date
-    Write-Output "DataCollection: Mg processing duration: $((NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalSeconds) seconds"
+    Write-Host "DataCollection: L$hierarchyLevel MG '$($getMg.DisplayName)' ('$($getMg.Name)') processing duration: $((NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalSeconds) seconds"
 
     #SUBSCRIPTION
     if (($getMg.children | measure-object).count -gt 0) {
@@ -767,12 +882,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
             checkToken
             $startSubLoop = get-date
             $childMgSubId = $childMg.Id -replace '/subscriptions/', ''
-            Write-Output "DataCollection: Processing Subscription $($childMg.DisplayName) ('$childMgSubId')"
+            Write-Host "DataCollection: Processing Subscription $($childMg.DisplayName) ('$childMgSubId')"
 
             if (-not $HierarchyTreeOnly) {
                 #SubscriptionDetails
                 #https://docs.microsoft.com/en-us/rest/api/resources/subscriptions/list
-                $uriSubscriptionsGet = "https://management.azure.com/subscriptions/$($childMgSubId)?api-version=2020-01-01"
+                $uriSubscriptionsGet = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)?api-version=2020-01-01"
                 $result = "letscheck"
                 try {
                     $subscriptionsGetResult = Invoke-RestMethod -Uri $uriSubscriptionsGet -Method Get -Headers @{"Authorization" = "Bearer $accesstoken" }
@@ -781,12 +896,57 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                 }
                 if ($result -eq "letscheck"){              
 
-                    if ($subscriptionsGetResult.subscriptionPolicies.quotaId.startswith("AAD_")) {
-                        Write-Output "DataCollection: Subscription Quota Id: $($subscriptionsGetResult.subscriptionPolicies.quotaId) is out of scope for AzGovViz"
+                    if (($subscriptionsGetResult.subscriptionPolicies.quotaId).startswith("AAD_","CurrentCultureIgnoreCase") -or $subscriptionsGetResult.state -ne "enabled") {
+                        if (($subscriptionsGetResult.subscriptionPolicies.quotaId).startswith("AAD_","CurrentCultureIgnoreCase")) {
+                            Write-Host "DataCollection: Subscription Quota Id: $($subscriptionsGetResult.subscriptionPolicies.quotaId) is out of scope for AzGovViz"
+                            $htOutOfScopeSubscriptions.($childMgSubId) = @{ }
+                            $htOutOfScopeSubscriptions.($childMgSubId).subscriptionId = $childMgSubId
+                            $htOutOfScopeSubscriptions.($childMgSubId).subscriptionName = $childMg.DisplayName
+                            $htOutOfScopeSubscriptions.($childMgSubId).outOfScopeReason = "QuotaId: AAD_"
+                            $htOutOfScopeSubscriptions.($childMgSubId).ManagementGroupId = $getMg.Name
+                            $htOutOfScopeSubscriptions.($childMgSubId).ManagementGroupName = $getMg.DisplayName
+                        }
+                        if ($subscriptionsGetResult.state -ne "enabled") {
+                            Write-Host "DataCollection: Subscription State: $($subscriptionsGetResult.state) is out of scope for AzGovViz"
+                            $htOutOfScopeSubscriptions.($childMgSubId) = @{ }
+                            $htOutOfScopeSubscriptions.($childMgSubId).subscriptionId = $childMgSubId
+                            $htOutOfScopeSubscriptions.($childMgSubId).subscriptionName = $childMg.DisplayName
+                            $htOutOfScopeSubscriptions.($childMgSubId).outOfScopeReason = "State: $($subscriptionsGetResult.state)"
+                            $htOutOfScopeSubscriptions.($childMgSubId).ManagementGroupId = $getMg.Name
+                            $htOutOfScopeSubscriptions.($childMgSubId).ManagementGroupName = $getMg.DisplayName
+                        }
                         $subscriptionIsInScopeforAzGovViz = $False
                     }
                     else {
-                        $subscriptionIsInScopeforAzGovViz = $True
+                        if ($subscriptionQuotaIdWhitelistMode -eq $true){
+                            $whitelistMatched = $false
+                            foreach ($subscriptionQuotaIdWhitelistQuotaId in $subscriptionQuotaIdWhitelistArray){
+                                if (($subscriptionsGetResult.subscriptionPolicies.quotaId).startswith($subscriptionQuotaIdWhitelistQuotaId,"CurrentCultureIgnoreCase")){
+                                    $whitelistMatched = $true
+                                }
+                            }
+
+                            if ($true -eq $whitelistMatched){
+                                $subscriptionIsInScopeforAzGovViz = $True
+                            }
+                            else{
+                                Write-Host "DataCollection: Subscription Quota Id: $($subscriptionsGetResult.subscriptionPolicies.quotaId) is out of scope for AzGovViz (not in Whitelist)"
+                                $htOutOfScopeSubscriptions.($childMgSubId) = @{ }
+                                $htOutOfScopeSubscriptions.($childMgSubId).subscriptionId = $childMgSubId
+                                $htOutOfScopeSubscriptions.($childMgSubId).subscriptionName = $childMg.DisplayName
+                                $htOutOfScopeSubscriptions.($childMgSubId).outOfScopeReason = "QuotaId: '$($subscriptionsGetResult.subscriptionPolicies.quotaId)' not in Whitelist"
+                                $htOutOfScopeSubscriptions.($childMgSubId).ManagementGroupId = $getMg.Name
+                                $htOutOfScopeSubscriptions.($childMgSubId).ManagementGroupName = $getMg.DisplayName
+                                $subscriptionIsInScopeforAzGovViz = $False
+                            }
+                        }
+                        else{
+                            $subscriptionIsInScopeforAzGovViz = $True
+                        }
+                    }
+
+                    if ($True -eq $subscriptionIsInScopeforAzGovViz) {
+                        #SubscriptionTags
                         if ($subscriptionsGetResult.tags) {
                             $SubscriptionTagsCount = ((($subscriptionsGetResult.tags).PSObject.Properties) | Measure-Object).Count
                             $subscriptionTags = @()
@@ -803,12 +963,35 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         }
                         $subscriptionQuotaId = $subscriptionsGetResult.subscriptionPolicies.quotaId
                         $subscriptionState = $subscriptionsGetResult.state
-                    }
 
-                    if ($True -eq $subscriptionIsInScopeforAzGovViz) {
-                        Write-Output "DataCollection: Subscription Quota Id: $($subscriptionsGetResult.subscriptionPolicies.quotaId) is in scope for AzGovViz: $subscriptionIsInScopeforAzGovViz"
-                        #ASC SecureScore
-                        $uriSubASCSecureScore = "https://management.azure.com/subscriptions/$childMgSubId/providers/Microsoft.Security/securescores?api-version=2020-01-01-preview"
+                        #SubscriptionPolicyCompliance
+                        ($htCachePolicyCompliance).sub.$childMgSubId = @{ }
+                        $url = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
+                        $result = Invoke-RestMethod -Uri $url -Method POST -Headers @{"Authorization" = "Bearer $accesstoken" }
+
+                        foreach ($policyAssignment in $result.value.policyassignments | sort-object -Property policyAssignmentId){
+                            ($htCachePolicyCompliance).sub.($childMgSubId).($policyAssignment.policyAssignmentId) = @{ }
+                            foreach ($policyComplianceState in $policyAssignment.results.policydetails){
+                                if ($policyComplianceState.ComplianceState -eq "compliant"){
+                                    ($htCachePolicyCompliance).sub.($childMgSubId).($policyAssignment.policyAssignmentId).CompliantPolicies = $policyComplianceState.count
+                                }
+                                if ($policyComplianceState.ComplianceState -eq "noncompliant"){
+                                    ($htCachePolicyCompliance).sub.($childMgSubId).($policyAssignment.policyAssignmentId).NonCompliantPolicies = $policyComplianceState.count
+                                }
+                            }
+                
+                            foreach ($resourceComplianceState in $policyAssignment.results.resourcedetails){
+                                if ($resourceComplianceState.ComplianceState -eq "compliant"){
+                                    ($htCachePolicyCompliance).sub.($childMgSubId).($policyAssignment.policyAssignmentId).CompliantResources = $resourceComplianceState.count
+                                }
+                                if ($resourceComplianceState.ComplianceState -eq "nonCompliant"){
+                                    ($htCachePolicyCompliance).sub.($childMgSubId).($policyAssignment.policyAssignmentId).NonCompliantResources = $resourceComplianceState.count
+                                }
+                            }
+                        }
+
+                        #SubscriptionASCSecureScore
+                        $uriSubASCSecureScore = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Security/securescores?api-version=2020-01-01-preview"
                         $result = "letscheck"
                         try {
                             $subASCSecureScoreResult = Invoke-RestMethod -Uri $uriSubASCSecureScore -Method Get -Headers @{"Authorization" = "Bearer $accesstoken" }
@@ -816,7 +999,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                             $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
                         }
                         if ($result -ne "letscheck"){
-                            Write-Output "DataCollection: Subscription Id: $childMgSubId Getting ASC Secure Score error: '$result' -> skipping ASC Secure Score for this subscription"
+                            Write-Host "DataCollection: Subscription Id: $childMgSubId Getting ASC Secure Score error: '$result' -> skipping ASC Secure Score for this subscription"
                             $subscriptionASCSecureScore = "n/a"
                         }
                         else{
@@ -828,10 +1011,17 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                             }
                         }
 
-                        $uriSubBlueprintDefinitionScoped = "https://management.azure.com//subscriptions/$childMgSubId/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
+                        #SubscriptionBlueprint
+                        $uriSubBlueprintDefinitionScoped = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)/subscriptions/$childMgSubId/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
                         $subBlueprintDefinitionResult = Invoke-RestMethod -Uri $uriSubBlueprintDefinitionScoped -Method Get -Headers @{"Authorization" = "Bearer $accesstoken" }
                         if (($subBlueprintDefinitionResult.value | measure-object).count -gt 0) {
                             foreach ($blueprint in $subBlueprintDefinitionResult.value) {
+
+                                if (-not $($htCacheDefinitions).blueprint[$blueprint.Id]) {
+                                    $($htCacheDefinitions).blueprint.$($blueprint.Id) = @{ }
+                                    $($htCacheDefinitions).blueprint.$($blueprint.Id) = $blueprint
+                                }  
+
                                 $blueprintName = $blueprint.name
                                 $blueprintId = $blueprint.id
                                 $blueprintDisplayName = $blueprint.properties.displayName
@@ -859,12 +1049,17 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                             }
                         }
 
-                        #SubBlueprints
-                        $urisubscriptionBlueprintAssignments = "https://management.azure.com/subscriptions/$childMgSubId/providers/Microsoft.Blueprint/blueprintAssignments?api-version=2018-11-01-preview"
+                        #SubscriptionBlueprintAssignment
+                        $urisubscriptionBlueprintAssignments = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Blueprint/blueprintAssignments?api-version=2018-11-01-preview"
                         $subscriptionBlueprintAssignmentsResult = Invoke-RestMethod -Uri $urisubscriptionBlueprintAssignments -Method Get -Headers @{"Authorization" = "Bearer $accesstoken" }
                         if (($subscriptionBlueprintAssignmentsResult.value | measure-object).count -gt 0) {
-                            #Write-Output "SUB Blueprint Assignments: $($subscriptionBlueprintAssignmentsResult.value.count)"
                             foreach ($subscriptionBlueprintAssignment in $subscriptionBlueprintAssignmentsResult.value) {
+
+                                if (-not $($htCacheAssignments).blueprint[$subscriptionBlueprintAssignment.Id]) {
+                                    $($htCacheAssignments).blueprint.$($subscriptionBlueprintAssignment.Id) = @{ }
+                                    $($htCacheAssignments).blueprint.$($subscriptionBlueprintAssignment.Id) = $subscriptionBlueprintAssignment
+                                }  
+
                                 if (($subscriptionBlueprintAssignment.properties.blueprintId).StartsWith("/subscriptions/")) {
                                     $blueprintScope = $subscriptionBlueprintAssignment.properties.blueprintId -replace "/providers/Microsoft.Blueprint/blueprints/.*", ""
                                     $blueprintName = $subscriptionBlueprintAssignment.properties.blueprintId -replace ".*/blueprints/", "" -replace "/versions/.*", ""
@@ -873,10 +1068,11 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                     $blueprintScope = $subscriptionBlueprintAssignment.properties.blueprintId -replace "/providers/Microsoft.Blueprint/blueprints/.*", ""
                                     $blueprintName = $subscriptionBlueprintAssignment.properties.blueprintId -replace ".*/blueprints/", "" -replace "/versions/.*", ""
                                 }
-                                $uriSubscriptionBlueprintDefinition = "https://management.azure.com/$($blueprintScope)/providers/Microsoft.Blueprint/blueprints/$($blueprintName)?api-version=2018-11-01-preview"
+                                $uriSubscriptionBlueprintDefinition = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)$($blueprintScope)/providers/Microsoft.Blueprint/blueprints/$($blueprintName)?api-version=2018-11-01-preview"
                                 $subscriptionBlueprintDefinitionResult = Invoke-RestMethod -Uri $uriSubscriptionBlueprintDefinition -Method Get -Headers @{"Authorization" = "Bearer $accesstoken" }
                                 $blueprintName = $subscriptionBlueprintDefinitionResult.name
                                 $blueprintId = $subscriptionBlueprintDefinitionResult.id
+                                $blueprintAssignmentVersion = $subscriptionBlueprintAssignment.properties.blueprintId -replace ".*/"
                                 $blueprintDisplayName = $subscriptionBlueprintDefinitionResult.properties.displayName
                                 $blueprintDescription = $subscriptionBlueprintDefinitionResult.properties.description
                                 $blueprintScoped = $blueprintScope
@@ -900,62 +1096,99 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                     -BlueprintDisplayName $blueprintDisplayName `
                                     -BlueprintDescription $blueprintDescription `
                                     -BlueprintScoped $blueprintScoped `
+                                    -BlueprintAssignmentVersion $blueprintAssignmentVersion `
                                     -BlueprintAssignmentId $blueprintAssignmentId
                             }
                         }
 
-                        $subPolicyDefinitions = Get-AzPolicyDefinition -custom -SubscriptionId $childMgSubId
-                        $PolicyDefinitionsScopedCount = (($subPolicyDefinitions | Where-Object { $_.SubscriptionId -eq $childMgSubId }) | measure-object).count
+                        #SubscriptionPolicies
+                        $uriPolicyDefinitionAPI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+                        $requestPolicyDefinitionAPI = Invoke-RestMethod -Uri $uriPolicyDefinitionAPI -Headers  @{"Authorization" = "Bearer $accesstoken" }
+                        $subPolicyDefinitions = $requestPolicyDefinitionAPI.value | Where-Object { $_.properties.policyType -eq "custom" }
+                        $PolicyDefinitionsScopedCount = (($subPolicyDefinitions | Where-Object { ($_.Id).startswith("/subscriptions/$childMgSubId/") }) | measure-object).count
                         foreach ($subPolicyDefinition in $subPolicyDefinitions) {
                             if (-not $($htCacheDefinitions).policy[$subPolicyDefinition.name]) {
-                                #write-output "subLoop not existing ht policy entry"
                                 $($htCacheDefinitions).policy.$($subPolicyDefinition.name) = @{ }
                                 $($htCacheDefinitions).policy.$($subPolicyDefinition.name).Id = $($subPolicyDefinition.name)
                                 $($htCacheDefinitions).policy.$($subPolicyDefinition.name).DisplayName = $($subPolicyDefinition.Properties.displayname)
                                 $($htCacheDefinitions).policy.$($subPolicyDefinition.name).Type = $($subPolicyDefinition.Properties.policyType)
                                 $($htCacheDefinitions).policy.$($subPolicyDefinition.name).Category = $($subPolicyDefinition.Properties.metadata.category)
-                                $($htCacheDefinitions).policy.$($subPolicyDefinition.name).PolicyDefinitionId = $($subPolicyDefinition.PolicyDefinitionId)
+                                $($htCacheDefinitions).policy.$($subPolicyDefinition.name).PolicyDefinitionId = $($subPolicyDefinition.id)
+                                #effects
+                                if ($subPolicyDefinition.properties.parameters.effect.defaultvalue) {
+                                    ($htCacheDefinitions).policy.$($subPolicyDefinition.name).effectDefaultValue = $subPolicyDefinition.properties.parameters.effect.defaultvalue
+                                    if ($subPolicyDefinition.properties.parameters.effect.allowedValues){
+                                        ($htCacheDefinitions).policy.$($subPolicyDefinition.name).effectAllowedValue = $subPolicyDefinition.properties.parameters.effect.allowedValues -join ","
+                                    }
+                                    else{
+                                        ($htCacheDefinitions).policy.$($subPolicyDefinition.name).effectAllowedValue = "n/a"
+                                    }
+                                    ($htCacheDefinitions).policy.$($subPolicyDefinition.name).effectFixedValue = "n/a"
+                                }
+                                else {
+                                    if ($subPolicyDefinition.properties.parameters.policyEffect.defaultValue) {
+                                        ($htCacheDefinitions).policy.$($subPolicyDefinition.name).effectDefaultValue = $subPolicyDefinition.properties.parameters.policyEffect.defaultvalue
+                                        if ($subPolicyDefinition.properties.parameters.policyEffect.allowedValues){
+                                            ($htCacheDefinitions).policy.$($subPolicyDefinition.name).effectAllowedValue = $subPolicyDefinition.properties.parameters.policyEffect.allowedValues -join ","
+                                        }
+                                        else{
+                                            ($htCacheDefinitions).policy.$($subPolicyDefinition.name).effectAllowedValue = "n/a"
+                                        }
+                                        ($htCacheDefinitions).policy.$($subPolicyDefinition.name).effectFixedValue = "n/a"
+                                    }
+                                    else {
+                                        ($htCacheDefinitions).policy.$($subPolicyDefinition.name).effectFixedValue = $subPolicyDefinition.Properties.policyRule.then.effect
+                                        ($htCacheDefinitions).policy.$($subPolicyDefinition.name).effectDefaultValue = "n/a"
+                                        ($htCacheDefinitions).policy.$($subPolicyDefinition.name).effectAllowedValue = "n/a"
+                                    }
+                                }
+                                $($htCacheDefinitions).policy.$($subPolicyDefinition.name).json = $subPolicyDefinition
+                            }  
+                            if (-not $($htCacheDefinitionsAsIs).policy[$subPolicyDefinition.name]) {
+                                ($htCacheDefinitionsAsIs).policy.$($subPolicyDefinition.name) = @{ }
+                                ($htCacheDefinitionsAsIs).policy.$($subPolicyDefinition.name) = $subPolicyDefinition
                             }  
                         }
 
-                        $subPolicySetDefinitions = Get-AzPolicySetDefinition -custom -SubscriptionId $childMgSubId
-                        $PolicySetDefinitionsScopedCount = (($subPolicySetDefinitions | Where-Object { $_.SubscriptionId -eq $childMgSubId }) | measure-object).count
+                        #SubscriptionPolicySets
+                        $uriPolicySetDefinitionAPI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2019-09-01"
+                        $requestPolicySetDefinitionAPI = Invoke-RestMethod -Uri $uriPolicySetDefinitionAPI -Headers  @{"Authorization" = "Bearer $accesstoken" }
+                        $subPolicySetDefinitions = $requestPolicySetDefinitionAPI.value | Where-Object { $_.properties.policyType -eq "custom" }
+                        $PolicySetDefinitionsScopedCount = (($subPolicySetDefinitions | Where-Object { ($_.Id).startswith("/subscriptions/$childMgSubId/") }) | measure-object).count
                         foreach ($subPolicySetDefinition in $subPolicySetDefinitions) {
                             if (-not $($htCacheDefinitions).policySet[$subPolicySetDefinition.name]) {
-                                #write-output "subLoop not existing ht policySet entry"
                                 $($htCacheDefinitions).policySet.$($subPolicySetDefinition.name) = @{ }
                                 $($htCacheDefinitions).policySet.$($subPolicySetDefinition.name).Id = $($subPolicySetDefinition.name)
                                 $($htCacheDefinitions).policySet.$($subPolicySetDefinition.name).DisplayName = $($subPolicySetDefinition.Properties.displayname)
                                 $($htCacheDefinitions).policySet.$($subPolicySetDefinition.name).Type = $($subPolicySetDefinition.Properties.policyType)
                                 $($htCacheDefinitions).policySet.$($subPolicySetDefinition.name).Category = $($subPolicySetDefinition.Properties.metadata.category)
-                                $($htCacheDefinitions).policySet.$($subPolicySetDefinition.name).PolicyDefinitionId = $($subPolicySetDefinition.PolicySetDefinitionId)
-                                $policySetPoliciesArray = @()
-                                foreach ($policydefinitionSubPolicySetDefinition in $subPolicySetDefinition.properties.policydefinitions){
-                                    $policySetPoliciesArray += $policydefinitionSubPolicySetDefinition.policyDefinitionId
-                                }
-                                $($htCacheDefinitions).policySet.$($subPolicySetDefinition.name).PolicySetPolicyIds = $policySetPoliciesArray
+                                $($htCacheDefinitions).policySet.$($subPolicySetDefinition.name).PolicyDefinitionId = $($subPolicySetDefinition.id)
+                                $($htCacheDefinitions).policySet.$($subPolicySetDefinition.name).PolicySetPolicyIds = $subPolicySetDefinition.properties.policydefinitions.policyDefinitionId
+                                $($htCacheDefinitions).policySet.$($subPolicySetDefinition.name).json = $subPolicySetDefinition
                             }  
 
                             foreach ($policydefinitionSubPolicySetDefinition in $subPolicySetDefinition.properties.policydefinitions){
-                                if (($htPolicyUsedInPolicySet).$($policydefinitionSubPolicySetDefinition.policyDefinitionId -replace '.*/')) {
-                                    #write-output "sub existing ht policySet policy entry $($policydefinitionSubPolicySetDefinition.policyDefinitionId -replace '.*/')"
-                                }
-                                else{
-                                    #write-output "sub NOT existing ht policySet policy entry $($policydefinitionSubPolicySetDefinition.policyDefinitionId -replace '.*/')"
+                                if (-not($htPolicyUsedInPolicySet).$($policydefinitionSubPolicySetDefinition.policyDefinitionId -replace '.*/')) {
                                     $($htPolicyUsedInPolicySet).$($policydefinitionSubPolicySetDefinition.policyDefinitionId -replace '.*/') = @{ }
                                     $($htPolicyUsedInPolicySet).$($policydefinitionSubPolicySetDefinition.policyDefinitionId -replace '.*/').Id = ($policydefinitionSubPolicySetDefinition.policyDefinitionId -replace '.*/')
                                 }
                             }
                         }
 
-                        $L1mgmtGroupSubPolicyAssignments = Get-AzPolicyAssignment -Scope "$($childMg.Id)"
+                        #SubscriptionPolicyAssignments
+                        $L1mgmtGroupSubPolicyAssignments = Get-AzPolicyAssignment -Scope "$($childMg.Id)" -ErrorAction Stop
                         $L1mgmtGroupSubPolicyAssignmentsPolicyCount = (($L1mgmtGroupSubPolicyAssignments | where-object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" }) | measure-object).count
                         $L1mgmtGroupSubPolicyAssignmentsPolicySetCount = (($L1mgmtGroupSubPolicyAssignments | where-object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" }) | measure-object).count
                         $L1mgmtGroupSubPolicyAssignmentsPolicyAtScopeCount = (($L1mgmtGroupSubPolicyAssignments | where-object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.PolicyAssignmentId -match $childMg.Id }) | measure-object).count
                         $L1mgmtGroupSubPolicyAssignmentsPolicySetAtScopeCount = (($L1mgmtGroupSubPolicyAssignments | where-object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.PolicyAssignmentId -match $childMg.Id }) | measure-object).count
                         $L1mgmtGroupSubPolicyAssignmentsPolicyAndPolicySetAtScopeCount = ($L1mgmtGroupSubPolicyAssignmentsPolicyAtScopeCount + $L1mgmtGroupSubPolicyAssignmentsPolicySetAtScopeCount)
                         foreach ($L1mgmtGroupSubPolicyAssignment in $L1mgmtGroupSubPolicyAssignments) {
-                            #$htpolicies&htpolicySets
+
+                            if (-not $($htCacheAssignments).policy[$L1mgmtGroupSubPolicyAssignment.PolicyAssignmentId]) {
+                                $($htCacheAssignments).policy.$($L1mgmtGroupSubPolicyAssignment.PolicyAssignmentId) = @{ }
+                                $($htCacheAssignments).policy.$($L1mgmtGroupSubPolicyAssignment.PolicyAssignmentId) = $L1mgmtGroupSubPolicyAssignment
+                            }  
+
                             if ($L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -OR $L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/") {
                                 if ($L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/") {
                                     $PolicyVariant = "Policy"
@@ -963,8 +1196,10 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                     $Id = $L1mgmtGroupSubPolicyAssignment.properties.policydefinitionid -replace '.*/'
 
                                     $PolicyAssignmentScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
+                                    $PolicyAssignmentNotScope = $L1mgmtGroupSubPolicyAssignment.Properties.NotScopes -join "$CsvDelimiterOpposite "
                                     $PolicyAssignmentId = $L1mgmtGroupSubPolicyAssignment.PolicyAssignmentId
                                     $PolicyAssignmentName = $L1mgmtGroupSubPolicyAssignment.Name
+                                    $PolicyAssignmentDisplayName = $L1mgmtGroupSubPolicyAssignment.Properties.DisplayName
 
                                     if ($L1mgmtGroupSubPolicyAssignment.Identity) {
                                         $PolicyAssignmentIdentity = $L1mgmtGroupSubPolicyAssignment.Identity.principalId
@@ -1010,8 +1245,10 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                         -PolicySetDefinitionsScopedLimit $LimitPOLICYPolicySetDefinitionsScopedSubscription `
                                         -PolicySetDefinitionsScopedCount $PolicySetDefinitionsScopedCount `
                                         -PolicyAssignmentScope $PolicyAssignmentScope `
+                                        -PolicyAssignmentNotScope $PolicyAssignmentNotScope `
                                         -PolicyAssignmentId $PolicyAssignmentId `
                                         -PolicyAssignmentName $PolicyAssignmentName `
+                                        -PolicyAssignmentDisplayName $PolicyAssignmentDisplayName `
                                         -PolicyAssignmentIdentity $PolicyAssignmentIdentity `
                                         -PolicyVariant $PolicyVariant `
                                         -PolicyAssigmentLimit $LimitPOLICYPolicyAssignmentsSubscription `
@@ -1028,8 +1265,10 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                     $Id = $L1mgmtGroupSubPolicyAssignment.properties.policydefinitionid -replace '.*/'
 
                                     $PolicyAssignmentScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
+                                    $PolicyAssignmentNotScope = $L1mgmtGroupSubPolicyAssignment.Properties.NotScopes -join "$CsvDelimiterOpposite "
                                     $PolicyAssignmentId = $L1mgmtGroupSubPolicyAssignment.PolicyAssignmentId
                                     $PolicyAssignmentName = $L1mgmtGroupSubPolicyAssignment.Name
+                                    $PolicyAssignmentDisplayName = $L1mgmtGroupSubPolicyAssignment.Properties.DisplayName
 
                                     if ($L1mgmtGroupSubPolicyAssignment.Identity) {
                                         $PolicyAssignmentIdentity = $L1mgmtGroupSubPolicyAssignment.Identity.principalId
@@ -1075,8 +1314,10 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                         -PolicySetDefinitionsScopedLimit $LimitPOLICYPolicySetDefinitionsScopedSubscription `
                                         -PolicySetDefinitionsScopedCount $PolicySetDefinitionsScopedCount `
                                         -PolicyAssignmentScope $PolicyAssignmentScope `
+                                        -PolicyAssignmentNotScope $PolicyAssignmentNotScope `
                                         -PolicyAssignmentId $PolicyAssignmentId `
                                         -PolicyAssignmentName $PolicyAssignmentName `
+                                        -PolicyAssignmentDisplayName $PolicyAssignmentDisplayName `
                                         -PolicyAssignmentIdentity $PolicyAssignmentIdentity `
                                         -PolicyVariant $PolicyVariant `
                                         -PolicyAssigmentLimit $LimitPOLICYPolicyAssignmentsSubscription `
@@ -1089,11 +1330,11 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                 }
                             }
                         }
-                        #Write-Output "Sub RoleDefinitions caching start"
-                        $subCustomRoleDefinitions = Get-AzRoleDefinition -custom -Scope "/subscriptions/$childMgSubId"
+
+                        #SubscriptionRoles
+                        $subCustomRoleDefinitions = Get-AzRoleDefinition -custom -Scope "/subscriptions/$childMgSubId" -ErrorAction Stop
                         foreach ($subCustomRoleDefinition in $subCustomRoleDefinitions) {
                             if (-not $($htCacheDefinitions).role[$subCustomRoleDefinition.Id]) {
-                                #write-output "subLoop not existing ht role entry"
                                 $($htCacheDefinitions).role.$($subCustomRoleDefinition.Id) = @{ }
                                 $($htCacheDefinitions).role.$($subCustomRoleDefinition.Id).Id = $($subCustomRoleDefinition.Id)
                                 $($htCacheDefinitions).role.$($subCustomRoleDefinition.Id).Name = $($subCustomRoleDefinition.Name)
@@ -1106,15 +1347,22 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                             }  
                         }
 
-                        $uriRoleAssignmentsUsageMetrics = "https://management.azure.com/subscriptions/$childMgSubId/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics?api-version=2019-08-01-preview"
+                        #SubscriptionRoleAssignments
+                        $uriRoleAssignmentsUsageMetrics = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics?api-version=2019-08-01-preview"
                         $roleAssignmentsUsage = Invoke-RestMethod -Uri $uriRoleAssignmentsUsageMetrics -Method Get -Headers @{"Authorization" = "Bearer $accesstoken" }
-                        $L1mgmtGroupSubRoleAssignments = Get-AzRoleAssignment -Scope "$($childMg.Id)" | where-object { $_.RoleAssignmentId -notmatch "$($childMg.Id)/resourcegroups/" } #exclude rg roleassignments
+                        $L1mgmtGroupSubRoleAssignments = Get-AzRoleAssignment -Scope "$($childMg.Id)" -ErrorAction Stop | where-object { $_.RoleAssignmentId -notmatch "$($childMg.Id)/resourcegroups/" } #exclude rg roleassignments
                         foreach ($L1mgmtGroupSubRoleAssignment in $L1mgmtGroupSubRoleAssignments) {
+
+                            if (-not $($htCacheAssignments).role[$L1mgmtGroupSubRoleAssignment.RoleAssignmentId]) {
+                                $($htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId) = @{ }
+                                $($htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId) = $L1mgmtGroupSubRoleAssignment
+                            }  
+
                             $Id = $L1mgmtGroupSubRoleAssignment.RoleDefinitionId
                             $definitiontype = "role"
 
                             if (($L1mgmtGroupSubRoleAssignment.RoleDefinitionName).length -eq 0) {
-                                $RoleDefinitionName = "'This roleDefinition was likely deleted although a roleAssignment existed'" 
+                                $RoleDefinitionName = "'This roleDefinition likely was deleted although a roleAssignment existed'" 
                             }
                             else {
                                 $RoleDefinitionName = $L1mgmtGroupSubRoleAssignment.RoleDefinitionName
@@ -1200,29 +1448,13 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                 -RoleSecurityOwnerAssignmentSP $RoleSecurityOwnerAssignmentSP
                         }
                     }
-                    else {
-                        Write-Output "DataCollection: Subscription Quota Id: $($subscriptionsGetResult.subscriptionPolicies.quotaId) is in scope for AzGovViz: $subscriptionIsInScopeforAzGovViz"
-                        addRowToTable `
-                            -hierarchyLevel $hierarchyLevel `
-                            -mgName $getMg.DisplayName `
-                            -mgId $getMg.Name `
-                            -mgParentId $mgParentId `
-                            -mgParentName $mgParentName `
-                            -Subscription $childMg.DisplayName `
-                            -SubscriptionId $childMgSubId `
-                            -SubscriptionQuotaId $subscriptionQuotaId
-                    }
                 }
                 else{
-                    Write-Output "DataCollection: Subscription Id: $childMgSubId error: '$result' -> skipping this subscription"
-                    addRowToTable `
-                    -hierarchyLevel $hierarchyLevel `
-                    -mgName $getMg.DisplayName `
-                    -mgId $getMg.Name `
-                    -mgParentId $mgParentId `
-                    -mgParentName $mgParentName `
-                    -Subscription $childMg.DisplayName `
-                    -SubscriptionId $childMgSubId
+                    Write-Host "DataCollection: Subscription Error: '$result' -> skipping this subscription"
+                    $htOutOfScopeSubscriptions.($childMgSubId) = @{ }
+                    $htOutOfScopeSubscriptions.($childMgSubId).subscriptionId = $childMgSubId
+                    $htOutOfScopeSubscriptions.($childMgSubId).subscriptionName = $childMg.DisplayName
+                    $htOutOfScopeSubscriptions.($childMgSubId).outOfScopeReason = $result
                 }
             }
             else {
@@ -1236,10 +1468,9 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                     -SubscriptionId $childMgSubId
             }
             $endSubLoop = get-date
-            Write-Output "DataCollection: Subscription processing duration: $((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds) seconds"
+            Write-Host "DataCollection: Subscription processing duration: $((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds) seconds"
         }
         foreach ($childMg in $getMg.Children | Where-Object { $_.Type -eq "/providers/Microsoft.Management/managementGroups" }) {
-            Write-Output "DataCollection: Trigger Management Group '$($childMg.DisplayName)' ('$($childMg.Name)')"
             dataCollection -mgId $childMg.Name -hierarchyLevel $hierarchyLevel -mgParentId $getMg.Name -mgParentName $getMg.DisplayName
         }
     }
@@ -1299,9 +1530,9 @@ function hierarchyMgHTML($mgChild){
         $mgNameAndOrId = "$mgName<br><i>$mgId</i>"
     }
 $script:html += @"
-                    <li $liId $liclass><a $class href="#table_$mgId"><p><img id="hierarchy_$mgId" class="imgMgTree" src="https://www.azadvertizer.net/azgovviz/icon/Icon-general-11-Management-Groups.svg"></p><div class="fitme" id="fitme">$($tenantDisplayNameAndDefaultDomain)$($mgNameAndOrId)</div></a>
+                    <li $liId $liclass><a $class href="#table_$mgId" id="hierarchy_$mgId"><p><img class="imgMgTree" src="https://www.azadvertizer.net/azgovviz/icon/Icon-general-11-Management-Groups.svg"></p><div class="fitme" id="fitme">$($tenantDisplayNameAndDefaultDomain)$($mgNameAndOrId)</div></a>
 "@
-    $childMgs = ($mgAndSubBaseQuery | Where-Object { $_.mgParentId -eq "$mgId" }).MgId | Get-Unique
+    $childMgs = ($mgAndSubBaseQuery | Where-Object { $_.mgParentId -eq "$mgId" }).MgId | Sort-Object -Unique
     if (($childMgs | measure-object).count -gt 0){
 $script:html += @"
                 <ul>
@@ -1325,21 +1556,21 @@ $script:html += @"
 
 function hierarchySubForMgHTML($mgChild){
     $subscriptions = ($mgAndSubBaseQuery | Where-Object { "" -ne $_.Subscription -and $_.MgId -eq $mgChild }).SubscriptionId | Get-Unique
-    write-output "Build HTML Hierarchy Tree for MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
+    Write-Host "Build HTML Hierarchy Tree for MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
     if (($subscriptions | measure-object).count -gt 0){
 $script:html += @"
-                    <li><a href="#table_$mgChild"><p><img id="hierarchySub_$mgChild" class="imgSubTree" src="https://www.azadvertizer.net/azgovviz/icon/Icon-general-2-Subscriptions.svg"> $(($subscriptions | measure-object).count)x</p></a></li>
+                    <li><a href="#table_$mgChild"><p id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovviz/icon/Icon-general-2-Subscriptions.svg"> $(($subscriptions | measure-object).count)x</p></a></li>
 "@
     }
 }
 
 function hierarchySubForMgUlHTML($mgChild){
     $subscriptions = ($mgAndSubBaseQuery | Where-Object { "" -ne $_.Subscription -and $_.MgId -eq $mgChild }).SubscriptionId | Get-Unique
-    write-output "Build HTML Hierarchy Tree for MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
+    Write-Host "Build HTML Hierarchy Tree for MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
     if (($subscriptions | measure-object).count -gt 0){
 $script:html += @"
                 <ul>
-                    <li><a href="#table_$mgChild"><p><img id="hierarchySub_$mgChild" class="imgSubTree" src="https://www.azadvertizer.net/azgovviz/icon/Icon-general-2-Subscriptions.svg"> $($subscriptions.Count)x</p></a></li></ul>
+                    <li><a href="#table_$mgChild" id="hierarchySub_$mgChild"><p><img class="imgSubTree" src="https://www.azadvertizer.net/azgovviz/icon/Icon-general-2-Subscriptions.svg"> $($subscriptions.Count)x</p></a></li></ul>
 "@
     }
 }
@@ -1388,27 +1619,27 @@ $script:html += @"
 
     <table class="bottomrow">
         <tr>
-            <td>
+            <td class="detailstd">
                 <p><a href="#hierarchy_$mgId"><i class="fa fa-eye" aria-hidden="true"></i> <i>Highlight Management Group in hierarchy tree</i></a></p>
             </td>
         </tr>
         <tr>
-            <td>
+            <td class="detailstd">
                 <p>Management Group Name: <b>$mgName</b></p>
             </td>
         </tr>
         <tr>
-            <td>
+            <td class="detailstd">
                 <p>Management Group Id: <b>$mgId</b></p>
             </td>
         </tr>
         <tr>
-            <td>
+            <td class="detailstd">
                 <p>Management Group Path: $mgPath</p>
             </td>
         </tr>
         <tr><!--x-->
-            <td><!--x-->
+            <td class="detailstd"><!--x-->
 "@
     tableMgSubDetailsHTML -mgOrSub "mg" -mgchild $mgId
     tableSubForMgHTML -mgChild $mgId
@@ -1422,18 +1653,17 @@ $script:html += @"
 
 function tableSubForMgHTML($mgChild){ 
     $subscriptions = ($mgAndSubBaseQuery | Where-Object { "" -ne $_.SubscriptionId -and $_.MgId -eq $mgChild } | Sort-Object -Property Subscription -Unique).SubscriptionId
-    write-output "Build HTML Hierarchy Table MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
+    Write-Host "Build HTML Hierarchy Table MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
     if (($subscriptions | measure-object).count -gt 0){
 $script:html += @"
     <tr>
-        <td>
+        <td class="detailstd">
             <button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $(($subscriptions | measure-object).count) Subscriptions linked</p>
             </button>
             <div class="content"><!--collapsible-->
 "@
         foreach ($subscriptionId in $subscriptions){
             $subscription = ($mgAndSubBaseQuery | Where-Object { $subscriptionId -eq $_.SubscriptionId -and $_.MgId -eq $mgChild }).Subscription | Get-Unique
-            #write-output "Build HTML Hierarchy Details Tables for MG '$mgChild': Subscription linked: $subscription ($subscriptionId)"
             createMgPathSub -subid $subscriptionId
             [array]::Reverse($script:submgPathArray)
             $subPath = $script:submgPathArray -join "/"
@@ -1454,35 +1684,35 @@ $script:html += @"
 $script:html += @"
                 <table class="subTable">
                     <tr>
-                        <td>
+                        <td class="detailstd">
                             <p>
                                 <a href="#hierarchySub_$mgChild"><i class="fa fa-eye" aria-hidden="true"></i> <i>Highlight Subscription in hierarchy tree</i></a>
                             </p>
                         </td>
                     </tr>
                     <tr>
-                        <td>
+                        <td class="detailstd">
                             <p>
                                 Subscription Name: <b>$subscription</b>
                             </p>
                         </td>
                     </tr>
                     <tr>
-                        <td>
+                        <td class="detailstd">
                             <p>
                                 Subscription Id: <b>$subscriptionId</b>
                             </p>
                         </td>
                     </tr>
                     <tr>
-                        <td>
+                        <td class="detailstd">
                             <p>
                                 Subscription Path: $subPath
                             </p>
                         </td>
                     </tr>
                     <tr>
-                        <td>
+                        <td class="detailstd">
 "@
             tableMgSubDetailsHTML -mgOrSub "sub" -subscriptionId $subscriptionId
 $script:html += @"
@@ -1517,6 +1747,9 @@ $script:html += @"
 }
 
 function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId){
+    #testtiming
+    #$startdatafortable = get-date
+
     if ($mgOrSub -eq "mg"){
         #POLICY
         $policyReleatedQuery = $policyBaseQuery | Where-Object { $_.MgId -eq $mgChild -and "" -eq $_.SubscriptionId }
@@ -1643,9 +1876,22 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId){
         }
         #SubscriptionASCPoints
         $subscriptionASCPoints = ($subscriptionDetailsReleatedQuery).SubscriptionASCSecureScore | Get-Unique
+        #Resources
+        $resourcesSubscription = $resourcesAll | where-object { $_.subscriptionId -eq $subscriptionId } | Sort-Object -Property type, location
+        $resourcesSubscriptionTotal = 0
+        $resourcesSubscription.count_ | ForEach-Object { $resourcesSubscriptionTotal += $_ }
+        $resourcesSubscriptionResourceTypeCount = (($resourcesSubscription | sort-object -Property type -Unique) | measure-object).count
 
         $cssClass = "subDetailsTable"
+
+
     }
+    #testtiming
+    #$enddatafortable = get-date
+    #Write-Host "datafortable duration ($mgOrSub $subscriptionId): $((NEW-TIMESPAN -Start $startdatafortable -End $enddatafortable).TotalSeconds) seconds"
+
+    #testtiming
+    #$startprocesstable = get-date
 
 if ($mgOrSub -eq "sub"){
 $script:html += @"
@@ -1653,17 +1899,128 @@ $script:html += @"
         </td>
     </tr>
     <tr>
-        <td>
+        <td class="detailstd">
             <p>QuotaId: $subscriptionQuotaId</p>
         </td>
     </tr>
     <tr>
-        <td>
+        <td class="detailstd">
             <p><i class="fa fa-shield" aria-hidden="true"></i> ASC Secure Score: $subscriptionASCPoints</p>
         </td>
     </tr>
     <tr>
-        <td>
+        <td class="detailstd">
+"@
+
+#ResourceProvider
+#region ResourceProvidersDetailed
+if (($htResourceProvidersAll.Keys | Measure-Object).count -gt 0){
+    $tfCount = ($arrayResourceProvidersAll | Measure-Object).Count
+    $tableId = "DetailsTable_ResourceProvider_$($subscriptionId -replace '-','_')"
+$script:html += @"
+    <button type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
+    <div class="content">
+
+        <table id="$tableId" class="$cssClass">
+            <thead>
+                <tr>
+                    <th>
+                        Provider
+                    </th>
+                    <th>
+                        State
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+"@
+    foreach ($provider in ($htResourceProvidersAll).($subscriptionId).Providers){
+$script:html += @"
+                <tr>
+                    <td>
+                        $($provider.namespace)
+                    </td>
+                    <td>
+                        $($provider.registrationState)
+                    </td>
+                </tr>
+"@ 
+    }
+    
+$script:html += @"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+            
+"@      
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            }, 
+"@      
+}
+$script:html += @"
+            btn_reset: true, 
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_1: 'select',
+            col_types: [
+                'string',
+                'select'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+}
+else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($htResourceProvidersAll.Keys | Measure-Object).count) Resource Providers</span></p>
+"@
+}
+#endregion ResourceProvidersDetailed
+
+$script:html += @"
+        </td>
+    </tr>
+    <tr>
+        <td class="detailstd">
 "@
 
 #ResourceGroups
@@ -1681,41 +2038,101 @@ $script:html += @"
         </td>
     </tr>
     <tr>
-        <td>
+        <td class="detailstd">
 "@
 }
 
 #Tags
 if ($mgOrSub -eq "sub"){
     if ($tagsSubscriptionCount -gt 0){
+        $tfCount = $tagsSubscriptionCount
+        $tableId = "DetailsTable_Tags_$($subscriptionId -replace '-','_')"
 $script:html += @"
     <button type="button" class="collapsible">
         <p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $tagsSubscriptionCount Subscription Tags | Limit: ($tagsSubscriptionCount/$LimitTagsSubscription)</p></button>
     <div class="content">
-        <table class="$cssClass">
-            <tr>
-                <th class="widthCustom">
-                    Tag Name
-                </th>
-                <th>
-                    Tag Value
-                </th>
-            </tr>
+        <table id="$tableId" class="$cssClass">
+            <thead>
+                <tr>
+                    <th class="widthCustom">
+                        Tag Name
+                    </th>
+                    <th>
+                        Tag Value
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
 "@
         foreach ($tag in (($htSubscriptionTags).($subscriptionId)).keys | Sort-Object){
 $script:html += @"
-            <tr>
-                <td>
-                    $tag
-                </td>
-                <td>
-                    $($htSubscriptionTags.$subscriptionId[$tag])
-                </td>
-            </tr>
+                <tr>
+                    <td>
+                        $tag
+                    </td>
+                    <td>
+                        $($htSubscriptionTags.$subscriptionId[$tag])
+                    </td>
+                </tr>
 "@        
         }
 $script:html += @"
+            </tbody>
         </table>
+        <script>
+            var tfConfig4$tableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+                btn_reset: true, 
+                highlight_keywords: true,
+                alternate_rows: true,
+                auto_filter: {
+                    delay: 1100 //milliseconds
+                },
+                no_results_message: true,
+                col_types: [
+                    'string',
+                    'string'
+                ],
+                extensions: [{
+                    name: 'sort'
+                }]
+            };
+            var tf = new TableFilter('$tableId', tfConfig4$tableId);
+            tf.init();
+        </script>
     </div>
 "@
     }
@@ -1726,51 +2143,110 @@ $script:html += @"
     }
 $script:html += @"
         </td></tr>
-        <tr><!--y--><td><!--y-->
+        <tr><!--y--><td class="detailstd"><!--y-->
 "@
 }
 
 #resources
 if ($mgOrSub -eq "sub"){
-    $resourcesSubscription = $resourcesAll | where-object { $_.subscriptionId -eq $subscriptionId }
-    $resourcesSubscriptionTotal = 0
-    $resourcesSubscription.count_ | ForEach-Object { $resourcesSubscriptionTotal += $_ }
-    $resourcesSubscriptionResourceTypeCount = (($resourcesSubscription | sort-object -Property type -Unique) | measure-object).count
+
     $resourcesSubscriptionLocationCount = (($resourcesSubscription | sort-object -Property location -Unique) | measure-object).count
     if ($resourcesSubscriptionResourceTypeCount -gt 0){
+        $tfCount = $resourcesSubscriptionResourceTypeCount
+        
+        $tableId = "DetailsTable_Resources_$($subscriptionId -replace '-','_')"
 $script:html += @"
     <button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $resourcesSubscriptionResourceTypeCount ResourceTypes ($resourcesSubscriptionTotal Resources) in $resourcesSubscriptionLocationCount Locations</p></button>
     <div class="content">
-        <table class="$cssClass">
-            <tr>
-                <th class="widthCustom">
-                    ResourceType
-                </th>
-                <th>
-                    Location
-                </th>
-                <th>
-                    Count
-                </th>
-            </tr>
+        <table id="$tableId" class="$cssClass">
+            <thead>
+                <tr>
+                    <th class="widthCustom">
+                        ResourceType
+                    </th>
+                    <th>
+                        Location
+                    </th>
+                    <th>
+                        Count
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
 "@
         foreach ($resourceSubscriptionResourceTypePerLocation in $resourcesSubscription){
 $script:html += @"
-            <tr>
-                <td>
-                    $($resourceSubscriptionResourceTypePerLocation.type)
-                </td>
-                <td>
-                    $($resourceSubscriptionResourceTypePerLocation.location)
-                </td>
-                <td>
-                    $($resourceSubscriptionResourceTypePerLocation.count_)
-                </td>
-            </tr>
+                <tr>
+                    <td>
+                        $($resourceSubscriptionResourceTypePerLocation.type)
+                    </td>
+                    <td>
+                        $($resourceSubscriptionResourceTypePerLocation.location)
+                    </td>
+                    <td>
+                        $($resourceSubscriptionResourceTypePerLocation.count_)
+                    </td>
+                </tr>
 "@        
         }
 $script:html += @"
+            </tbody>
         </table>
+        <script>
+            var tfConfig4$tableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+                btn_reset: true,
+                highlight_keywords: true,
+                alternate_rows: true,
+                auto_filter: {
+                    delay: 1100 //milliseconds
+                },
+                no_results_message: true,
+                col_types: [
+                    'string',
+                    'string',
+                    'number'
+                ],
+                extensions: [{
+                    name: 'sort'
+                }]
+            };
+            var tf = new TableFilter('$tableId', tfConfig4$tableId);
+            tf.init();
+        </script>
     </div>
 "@
     }
@@ -1781,35 +2257,265 @@ $script:html += @"
     }
 $script:html += @"
             </td></tr>
-            <tr><td>
+            <tr><td class="detailstd">
 "@
 }
 
+#resourcesDiagnosticsCapable
+
+#$subscriptionId = "583470b9-4bbd-4ce3-b289-49a46e626f3a"
+if ($mgOrSub -eq "sub"){
+    #$resourcesSubscription = $resourcesAll | where-object { $_.subscriptionId -eq $subscriptionId } | select-Object -Property type, count_| Sort-Object -Property type
+
+    $resourceTypesUnique = ($resourcesSubscription | select-object type -Unique).type
+    $resourceTypesSummarizedArray = @()
+    foreach ($resourceTypeUnique in $resourceTypesUnique){
+        $resourcesTypeCountTotal = 0
+        ($resourcesSubscription | Where-Object { $_.type -eq $resourceTypeUnique }).count_ | ForEach-Object { $resourcesTypeCountTotal += $_ }
+        $resourceTypesSummarizedObject = New-Object -TypeName PSObject -Property @{'ResourceType' = $resourceTypeUnique; 'ResourceCount' = $resourcesTypeCountTotal }
+        $resourceTypesSummarizedArray += $resourceTypesSummarizedObject
+    }
+
+    $subscriptionResourcesDiagnosticsCapableArray = @()
+    $subscriptionResourcesDiagnosticsCapableArray += foreach ($resourceSubscriptionResourceType in $resourceTypesSummarizedArray){
+        $dataFromResourceTypesDiagnosticsArray = $resourceTypesDiagnosticsArray | Where-Object { $_.ResourceType -eq $resourceSubscriptionResourceType.ResourceType}
+        if ($dataFromResourceTypesDiagnosticsArray.Metrics -eq $true -or $dataFromResourceTypesDiagnosticsArray.Logs -eq $true){
+            $resourceDiagnosticscapable = $true
+        }
+        else{
+            $resourceDiagnosticscapable = $false
+        }
+        New-Object -TypeName PSObject -Property @{'ResourceType' = $resourceSubscriptionResourceType.ResourceType; 'ResourceCount'= $resourceSubscriptionResourceType.ResourceCount; 'DiagnosticsCapable'= $resourceDiagnosticscapable; 'Metrics'= $dataFromResourceTypesDiagnosticsArray.Metrics; 'Logs' = $dataFromResourceTypesDiagnosticsArray.Logs; 'LogCategories' = ($dataFromResourceTypesDiagnosticsArray.LogCategories -join "$CsvDelimiterOpposite ") }
+    }
+    $subscriptionResourceTypesDiagnosticsCapableMetricsCount = ($subscriptionResourcesDiagnosticsCapableArray | Where-Object { $_.Metrics -eq $true } | Measure-Object).count
+    $subscriptionResourceTypesDiagnosticsCapableLogsCount = ($subscriptionResourcesDiagnosticsCapableArray | Where-Object { $_.Logs -eq $true } | Measure-Object).count
+    $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount = ($subscriptionResourcesDiagnosticsCapableArray | Where-Object { $_.Metrics -eq $true -or $_.Logs -eq $true } | Measure-Object).count
+
+    if ($resourcesSubscriptionResourceTypeCount -gt 0){
+        $tfCount = $resourcesSubscriptionResourceTypeCount
+        
+        $tableId = "DetailsTable_resourcesDiagnosticsCapable_$($subscriptionId -replace '-','_')"
+$script:html += @"
+    <button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesSubscriptionResourceTypeCount ResourceTypes Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs)</p></button>
+    <div class="content">
+        <table id="$tableId" class="$cssClass">
+            <thead>
+                <tr>
+                    <th class="widthCustom">
+                        ResourceType
+                    </th>
+                    <th>
+                        Resource Count
+                    </th>
+                    <th>
+                        Diagnostics capable
+                    </th>
+                    <th>
+                        Metrics
+                    </th>
+                    <th>
+                        Logs
+                    </th>
+                    <th>
+                        LogCategories
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+"@
+        foreach ($resourceSubscriptionResourceType in $subscriptionResourcesDiagnosticsCapableArray){
+            
+$script:html += @"
+                <tr>
+                    <td>
+                        $($resourceSubscriptionResourceType.ResourceType)
+                    </td>
+                    <td>
+                        $($resourceSubscriptionResourceType.ResourceCount)
+                    </td>
+                    <td>
+                        $($resourceSubscriptionResourceType.DiagnosticsCapable)
+                    </td>
+                    <td>
+                        $($resourceSubscriptionResourceType.Metrics)
+                    </td>
+                    <td>
+                        $($resourceSubscriptionResourceType.Logs)
+                    </td>
+                    <td>
+                        $($resourceSubscriptionResourceType.LogCategories)
+                    </td>
+                </tr>
+"@        
+        }
+$script:html += @"
+            </tbody>
+        </table>
+        <script>
+            var tfConfig4$tableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+                btn_reset: true,
+                highlight_keywords: true,
+                alternate_rows: true,
+                auto_filter: {
+                    delay: 1100 //milliseconds
+                },
+                no_results_message: true,
+                col_2: 'select',
+                col_types: [
+                    'string',
+                    'number',
+                    'select',
+                    'string',
+                    'string',
+                    'string'
+                ],
+                extensions: [{
+                    name: 'sort'
+                }]
+            };
+            var tf = new TableFilter('$tableId', tfConfig4$tableId);
+            tf.init();
+        </script>
+    </div>
+"@
+    }
+    else{
+$script:html += @"
+            <p><i class="fa fa-ban" aria-hidden="true"></i> $resourcesSubscriptionResourceTypeCount ResourceTypes</p>
+"@
+    }
+$script:html += @"
+            </td></tr>
+            <tr><td class="detailstd">
+"@
+}
+
+#testtiming
+#$startPolicyAssignments = get-date
+
 #policyAssignments
 if ($policiesCount -gt 0){
+    $tfCount = $policiesCount
+    
+    if ($mgOrSub -eq "mg"){
+        $tableIdentifier = $mgChild
+    }
+    if ($mgOrSub -eq "sub"){
+        $tableIdentifier = $subscriptionId
+    }
+    $tableId = "DetailsTable_PolicyAssignments_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
 $script:html += @"
     <button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $policiesCount Policy Assignments ($policiesAssignedAtScope at scope, $policiesInherited inherited) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom)</p></button>
     <div class="content">
-        <table class="$cssClass">
-            <tr>
-                <th class="widthCustom">
-                    Policy DisplayName
-                </th>
-                <th>
-                    Type
-                </th>
-                <th>
-                    Category
-                </th>
-                <th>
-                    Inheritance
-                </th>
-                <th>
-                    Policy AssignmentId
-                </th>
-            </tr>
+        <table id="$tableId" class="$cssClass">
+            <thead>
+                <tr>
+                    <th>
+                        Inheritance
+                    </th>
+                    <th>
+                        Scope Excluded
+                    </th>
+                    <th>
+                        Policy
+                    </th>
+                    <th>
+                        Type
+                    </th>
+                    <th>
+                        Category
+                    </th>
+                    <th>
+                        Effect
+                    </th>
+                    <th>
+                        Policies NonCmplnt
+                    </th>
+                    <th>
+                        Policies Compliant
+                    </th>
+                    <th>
+                        Resources NonCmplnt
+                    </th>
+                    <th>
+                        Resources Compliant
+                    </th>
+                    <th>
+                        Role/Assignment
+                    </th>
+                    <th>
+                        Assignment DisplayName
+                    </th>
+                    <th>
+                        Assignment Id
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
 "@
             foreach ($policyAssignment in $policiesAssigned){
+                
+                $excludedScope = "false"
+                $policyAssignmentNotScopes = ($htCacheAssignments).policy.($policyAssignment.PolicyAssignmentId).Properties.NotScopes
+
+                if (($policyAssignmentNotScopes | Measure-Object).count -gt 0){
+                    foreach ($policyAssignmentNotScope in $policyAssignmentNotScopes){
+        
+                        if ("" -ne $policyAssignment.subscriptionId){
+                            createMgPathSub -subid $policyAssignment.subscriptionId
+                            [array]::Reverse($script:submgPathArray)
+                            $subPath = $script:submgPathArray -join "/"
+                            
+                            if ($submgPathArray -contains "'$($policyAssignmentNotScope -replace "/subscriptions/" -replace "/providers/Microsoft.Management/managementGroups/")'"){
+                                $excludedScope = "true"
+                            }
+                        }
+                        else{
+                            createMgPath -mgid $policyAssignment.MgId
+                            [array]::Reverse($script:mgPathArray)
+                            $mgPath = $script:mgPathArray -join "/"
+                            
+                            if ($mgPathArray -contains "'$($policyAssignmentNotScope -replace "/providers/Microsoft.Management/managementGroups/")'"){
+                                $excludedScope = "true"
+                            }
+                        }
+                    }
+                }
+
                 if ($policyAssignment.PolicyType -eq "builtin"){
                     $policyWithWithoutLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$($policyAssignment.policyDefinitionIdGuid).html`" target=`"_blank`">$($policyAssignment.policy)</a>"
                 }
@@ -1820,7 +2526,6 @@ $script:html += @"
                 if ($mgOrSub -eq "mg"){
                     if ($policyAssignment.PolicyAssignmentId -notmatch "/providers/Microsoft.Management/managementGroups/$mgChild/"){
                         $policyAssignedAtScopeOrInherted = "inherited MG"
-
                     }
                     else{
                         $policyAssignedAtScopeOrInherted = "this resource"
@@ -1834,30 +2539,196 @@ $script:html += @"
                     else{
                         $policyAssignedAtScopeOrInherted = "this resource"
                     }
-                }  
+                }
 
+                $relatedRoleAssignmentsArray = @()
+                $relatedRoleAssignmentsArray += foreach ($roleassignment in ($htCacheAssignments).role.keys){
+                    $tRoleAssignment = ($htCacheAssignments).role.($roleassignment)
+                    if ($tRoleAssignment.DisplayName -replace '.*/' -eq ($policyAssignment.PolicyAssignmentId -replace '.*/')){
+                        Write-Output "<u>$($tRoleAssignment.RoleDefinitionName)</u> ($($tRoleAssignment.RoleAssignmentId))"
+                    }
+                }
+                if (($relatedRoleAssignmentsArray | Measure-Object).count -gt 0){
+                    $relatedRoleAssignments = $relatedRoleAssignmentsArray -join "$CsvDelimiterOpposite "
+                }
+                else{
+                    $relatedRoleAssignments = "n/a"
+                }
+
+                if (($htCacheAssignments).policy.($policyAssignment.PolicyAssignmentId).properties.parameters.effect.value){
+                    $effect = ($htCacheAssignments).policy.($policyAssignment.PolicyAssignmentId).properties.parameters.effect.value
+                }
+                else{
+                    $tPolicyDefinition = ($htCacheDefinitions).policy.(($htCacheAssignments).policy.($policyAssignment.PolicyAssignmentId).properties.PolicyDefinitionId -replace '.*/')
+                    if ($tPolicyDefinition.effectDefaultValue -ne "n/a"){
+                        $effect = $tPolicyDefinition.effectDefaultValue
+                    }
+                    if ($tPolicyDefinition.effectFixedValue -ne "n/a"){
+                        $effect = $tPolicyDefinition.effectFixedValue
+                    }
+                }
 $script:html += @"
-            <tr>
-                <td>
-                    $policyWithWithoutLinkToAzAdvertizer
-                </td>
-                <td>
-                    $($policyAssignment.PolicyType)
-                </td>
-                <td>
-                    $($policyAssignment.PolicyCategory)
-                </td>
-                <td>
-                    $policyAssignedAtScopeOrInherted
-                </td>
-                <td>
-                    $($policyAssignment.PolicyAssignmentId)
-                </td>
-            </tr>
+                <tr>
+                    <td>
+                        $policyAssignedAtScopeOrInherted
+                    </td>
+                    <td>
+                        $excludedScope
+                    </td>
+                    <td>
+                        $policyWithWithoutLinkToAzAdvertizer
+                    </td>
+                    <td>
+                        $($policyAssignment.PolicyType)
+                    </td>
+                    <td>
+                        $($policyAssignment.PolicyCategory)
+                    </td>
+                    <td>
+                        $effect
+                    </td>
+                    <td>
+"@
+if ($($policyAssignment.PolicyAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/")){
+$script:html += @"
+                        $(($htCachePolicyCompliance).mg.($policyAssignment.MgId).($policyAssignment.policyAssignmentId).NonCompliantPolicies)
+"@
+}
+if ($($policyAssignment.PolicyAssignmentId).StartsWith("/subscriptions/")){
+$script:html += @"
+                        $(($htCachePolicyCompliance).sub.($policyAssignment.SubscriptionId).($policyAssignment.policyAssignmentId).NonCompliantPolicies)
+"@
+}
+$script:html += @"
+                    </td>
+                    <td>
+"@
+if ($($policyAssignment.PolicyAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/")){
+$script:html += @"
+                        $(($htCachePolicyCompliance).mg.($policyAssignment.MgId).($policyAssignment.policyAssignmentId).CompliantPolicies)
+"@
+}
+if ($($policyAssignment.PolicyAssignmentId).StartsWith("/subscriptions/")){
+$script:html += @"
+                        $(($htCachePolicyCompliance).sub.($policyAssignment.SubscriptionId).($policyAssignment.policyAssignmentId).CompliantPolicies)
+"@
+}
+$script:html += @"
+                    </td>
+                    <td>
+"@
+#noncomp
+if ($($policyAssignment.PolicyAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/")){
+$script:html += @"
+    $(($htCachePolicyCompliance).mg.($policyAssignment.MgId).($policyAssignment.policyAssignmentId).NonCompliantResources)
+"@
+}
+if ($($policyAssignment.PolicyAssignmentId).StartsWith("/subscriptions/")){
+$script:html += @"
+    $(($htCachePolicyCompliance).sub.($policyAssignment.SubscriptionId).($policyAssignment.policyAssignmentId).NonCompliantResources)
+"@
+}    
+$script:html += @"
+                    </td>
+                    <td>
+"@
+#compl
+if ($($policyAssignment.PolicyAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/")){
+$script:html += @"
+    $(($htCachePolicyCompliance).mg.($policyAssignment.MgId).($policyAssignment.policyAssignmentId).CompliantResources)
+"@
+}
+if ($($policyAssignment.PolicyAssignmentId).StartsWith("/subscriptions/")){
+$script:html += @"
+    $(($htCachePolicyCompliance).sub.($policyAssignment.SubscriptionId).($policyAssignment.policyAssignmentId).CompliantResources)
+"@
+}    
+$script:html += @"
+                    </td>
+                    <td class="breakwordall">
+                        $relatedRoleAssignments
+                    </td>
+                    <td>
+                        $($policyAssignment.PolicyAssignmentDisplayName)
+                    </td>
+                    <td class="breakwordall">
+                        $($policyAssignment.PolicyAssignmentId)
+                    </td>
+                </tr>
 "@        
             }
 $script:html += @"
+            </tbody>
         </table>
+        <script>
+            var tfConfig4$tableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+                btn_reset: true,
+                highlight_keywords: true,
+                alternate_rows: true,
+                auto_filter: {
+                    delay: 1100 //milliseconds
+                },
+                no_results_message: true,
+                col_0: 'select',
+                col_1: 'select',
+                col_3: 'select',
+                col_5: 'select',
+                col_types: [
+                    'select',
+                    'select',
+                    'string',
+                    'select',
+                    'string',
+                    'select',
+                    'number',
+                    'number',
+                    'number',
+                    'number',
+                    'string',
+                    'string',
+                    'string'
+                ],
+                extensions: [{
+                    name: 'sort'
+                }]
+            };
+            var tf = new TableFilter('$tableId', tfConfig4$tableId);
+            tf.init();
+        </script>
     </div>
 "@
         }
@@ -1868,34 +2739,95 @@ $script:html += @"
         }
 $script:html += @"
         </td></tr>
-        <tr><!--y--><td><!--y-->
+        <tr><!--y--><td class="detailstd"><!--y-->
 "@
 
 #PolicySetAssignments
 if ($policySetsCount -gt 0){
+    $tfCount = $policySetsCount
+    
+    if ($mgOrSub -eq "mg"){
+        $tableIdentifier = $mgChild
+    }
+    if ($mgOrSub -eq "sub"){
+        $tableIdentifier = $subscriptionId
+    }
+    $tableId = "DetailsTable_PolicySetAssignments_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
 $script:html += @"
     <button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $policySetsCount PolicySet Assignments ($policySetsAssignedAtScope at scope, $policySetsInherited inherited) (Builtin: $policySetsCountBuiltin | Custom: $policySetsCountCustom)</p></button>
     <div class="content">
-        <table class="$cssClass">
-            <tr>
-                <th class="widthCustom">
-                    PolicySet DisplayName
-                </th>
-                <th>
-                    Type
-                </th>
-                <th>
-                    Category
-                </th>
-                <th>
-                    Inheritance
-                </th>
-                <th>
-                    PolicySet AssignmentId
-                </th>
-            </tr>
+        <table id="$tableId" class="$cssClass">
+            <thead>
+                <tr>
+                    <th>
+                        Inheritance
+                    </th>
+                    <th>
+                        Scope Excluded
+                    </th>
+                    <th>
+                        PolicySet
+                    </th>
+                    <th>
+                        Type
+                    </th>
+                    <th>
+                        Category
+                    </th>
+                    <th>
+                        Policies NonCmplnt
+                    </th>
+                    <th>
+                        Policies Compliant
+                    </th>
+                    <th>
+                        Resources NonCmplnt
+                    </th>
+                    <th>
+                        Resources Compliant
+                    </th>
+                    <th>
+                        Role/Assignment
+                    </th>
+                    <th>
+                        Assignment DisplayName
+                    </th>
+                    <th>
+                        Assignment Id
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
 "@
     foreach ($policySetAssignment in $policySetsAssigned){
+
+        $excludedScope = "false"
+        $policyAssignmentNotScopes = ($htCacheAssignments).policy.($policySetAssignment.PolicyAssignmentId).Properties.NotScopes
+
+        if (($policyAssignmentNotScopes | Measure-Object).count -gt 0){
+            foreach ($policyAssignmentNotScope in $policyAssignmentNotScopes){
+
+                if ("" -ne $policySetAssignment.subscriptionId){
+                    createMgPathSub -subid $policySetAssignment.subscriptionId
+                    [array]::Reverse($script:submgPathArray)
+                    $subPath = $script:submgPathArray -join "/"
+                    
+                    if ($submgPathArray -contains "'$($policyAssignmentNotScope -replace "/subscriptions/" -replace "/providers/Microsoft.Management/managementGroups/")'"){
+                        $excludedScope = "true"
+                    }
+                }
+                else{
+                    createMgPath -mgid $policySetAssignment.MgId
+                    [array]::Reverse($script:mgPathArray)
+                    $mgPath = $script:mgPathArray -join "/"
+                    
+                    if ($mgPathArray -contains "'$($policyAssignmentNotScope -replace "/providers/Microsoft.Management/managementGroups/")'"){
+                        $excludedScope = "true"
+                    }
+                }
+            }
+        }
+
         if ($policySetAssignment.PolicyType -eq "builtin"){
             $policyWithWithoutLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($policySetAssignment.policyDefinitionIdGuid).html`" target=`"_blank`">$($policySetAssignment.policy)</a>"
         }
@@ -1921,29 +2853,180 @@ $script:html += @"
                 $policyAssignedAtScopeOrInherted = "this resource"
             }
         }  
+
+        $relatedRoleAssignmentsArray = @()
+        $relatedRoleAssignmentsArray += foreach ($roleassignment in ($htCacheAssignments).role.keys){
+            $tRoleAssignment = ($htCacheAssignments).role.($roleassignment)
+            if ($tRoleAssignment.DisplayName -replace '.*/' -eq ($policySetAssignment.PolicyAssignmentId -replace '.*/')){
+                Write-Output "<u>$($tRoleAssignment.RoleDefinitionName)</u> ($($tRoleAssignment.RoleAssignmentId))"
+            }
+        }
+        if (($relatedRoleAssignmentsArray | Measure-Object).count -gt 0){
+            $relatedRoleAssignments = $relatedRoleAssignmentsArray -join "$CsvDelimiterOpposite "
+        }
+        else{
+            $relatedRoleAssignments = "n/a"
+        }
 $script:html += @"
-            <tr>
-                <td>
-                    $policyWithWithoutLinkToAzAdvertizer
-                </td>
-                <td>
-                    $($policySetAssignment.PolicyType)
-                </td>
-                <td>
-                    $($policySetAssignment.PolicyCategory)
-                </td>
-                <td>
-                    $policyAssignedAtScopeOrInherted
-                </td>
-                <td>
-                    $($policySetAssignment.PolicyAssignmentId)
-                </td>
-            </tr>
+                <tr>
+                    <td>
+                        $policyAssignedAtScopeOrInherted
+                    </td>
+                    <td>
+                        $excludedScope
+                    </td>
+                    <td>
+                        $policyWithWithoutLinkToAzAdvertizer
+                    </td>
+                    <td>
+                        $($policySetAssignment.PolicyType)
+                    </td>
+                    <td>
+                        $($policySetAssignment.PolicyCategory)
+                    </td>
+
+
+                    <td>
+"@
+if ($($policySetAssignment.PolicyAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/")){
+$script:html += @"
+                        $(($htCachePolicyCompliance).mg.($policySetAssignment.MgId).($policySetAssignment.policyAssignmentId).NonCompliantPolicies)
+"@
+}
+if ($($policySetAssignment.PolicyAssignmentId).StartsWith("/subscriptions/")){
+$script:html += @"
+                        $(($htCachePolicyCompliance).sub.($policySetAssignment.SubscriptionId).($policySetAssignment.policyAssignmentId).NonCompliantPolicies)
+"@
+}
+$script:html += @"
+                    </td>
+                    <td>
+"@
+if ($($policySetAssignment.PolicyAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/")){
+$script:html += @"
+                        $(($htCachePolicyCompliance).mg.($policySetAssignment.MgId).($policySetAssignment.policyAssignmentId).CompliantPolicies)
+"@
+}
+if ($($policySetAssignment.PolicyAssignmentId).StartsWith("/subscriptions/")){
+$script:html += @"
+                        $(($htCachePolicyCompliance).sub.($policySetAssignment.SubscriptionId).($policySetAssignment.policyAssignmentId).CompliantPolicies)
+"@
+}
+$script:html += @"
+                    </td>
+                    <td>
+"@
+#noncomp
+if ($($policySetAssignment.PolicyAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/")){
+$script:html += @"
+    $(($htCachePolicyCompliance).mg.($policySetAssignment.MgId).($policySetAssignment.policyAssignmentId).NonCompliantResources)
+"@
+}
+if ($($policySetAssignment.PolicyAssignmentId).StartsWith("/subscriptions/")){
+$script:html += @"
+    $(($htCachePolicyCompliance).sub.($policySetAssignment.SubscriptionId).($policySetAssignment.policyAssignmentId).NonCompliantResources)
+"@
+}    
+$script:html += @"
+                    </td>
+                    <td>
+"@
+#compl
+if ($($policySetAssignment.PolicyAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/")){
+$script:html += @"
+    $(($htCachePolicyCompliance).mg.($policySetAssignment.MgId).($policySetAssignment.policyAssignmentId).CompliantResources)
+"@
+}
+if ($($policySetAssignment.PolicyAssignmentId).StartsWith("/subscriptions/")){
+$script:html += @"
+    $(($htCachePolicyCompliance).sub.($policySetAssignment.SubscriptionId).($policySetAssignment.policyAssignmentId).CompliantResources)
+"@
+}    
+$script:html += @"
+                    </td>
+
+                    <td class="breakwordall">
+                        $relatedRoleAssignments
+                    </td>
+                    <td>
+                        $($policySetAssignment.PolicyAssignmentDisplayName)
+                    </td>
+                    <td class="breakwordall">
+                        $($policySetAssignment.PolicyAssignmentId)
+                    </td>
+                </tr>
 "@        
     }
 $script:html += @"
+            </tbody>
         </table>
     </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_0: 'select',
+            col_1: 'select',
+            col_types: [
+                'select',
+                'select',
+                'string',
+                'string',
+                'string',
+                'number',
+                'number',
+                'number',
+                'number',
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
 "@
 }
 else{
@@ -1953,8 +3036,12 @@ $script:html += @"
 }
 $script:html += @"
         </td></tr>
-        <tr><td><!--z-->
+        <tr><td class="detailstd"><!--z-->
 "@
+
+#testtiming
+#$endPolicyAssignments = get-date
+#Write-Host "policyAssignments duration ($mgOrSub $subscriptionId): $((NEW-TIMESPAN -Start $startPolicyAssignments -End $endPolicyAssignments).TotalSeconds) seconds"
 
 #PolicyAssigments Limit (Policy+PolicySet)
 if ($policiesAssignedAtScope -eq 0 -and $policySetsAssignedAtScope -eq 0){
@@ -1994,11 +3081,20 @@ $script:html += @"
         </td>
     </tr>
     <tr>
-        <td>
+        <td class="detailstd">
 "@
 
 #Scoped Policies
 if ($scopePoliciesCount -gt 0){
+    $tfCount = $scopePoliciesCount
+    
+    if ($mgOrSub -eq "mg"){
+        $tableIdentifier = $mgChild
+    }
+    if ($mgOrSub -eq "sub"){
+        $tableIdentifier = $subscriptionId
+    }
+    $tableId = "DetailsTable_ScopedPolicies_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
     if ($mgOrSub -eq "mg"){
         $LimitPOLICYPolicyScoped = $LimitPOLICYPolicyDefinitionsScopedManagementGroup
         if ($scopePoliciesCount -gt (($LimitPOLICYPolicyScoped * $LimitCriticalPercentage) / 100)){
@@ -2021,18 +3117,30 @@ if ($scopePoliciesCount -gt 0){
 $script:html += @"
         <button type="button" class="collapsible"><p>$faIcon $scopePoliciesCount Custom Policies scoped | Limit: ($scopePoliciesCount/$LimitPOLICYPolicyScoped)</p></button>
         <div class="content">
-            <table class="$cssClass">
-                <tr>
-                    <th class="widthCustom">
-                        Policy DisplayName
-                    </th>
-                    <th>
-                        PolicyDefinitionId
-                    </th>
-                    <th>
-                        Unique Assignments
-                    </th>
-                </tr>
+            <table id="$tableId" class="$cssClass">
+                <thead>
+                    <tr>
+                        <th class="widthCustom">
+                            Policy DisplayName
+                        </th>
+                        <th>
+                            PolicyDefinitionId
+                        </th>
+                        <th>
+                            Policy effect
+                        </th>
+                        <th>
+                            RoleDefinitions
+                        </th>
+                        <th>
+                            Unique Assignments
+                        </th>
+                        <th>
+                            Used in PolicySets
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
 "@
     foreach ($scopePolicyArray in $scopePoliciesArray){
         
@@ -2041,36 +3149,151 @@ $script:html += @"
         foreach ($scopePoliciesUniqueAssignment in $scopePoliciesUniqueAssignments){
             $scopePoliciesUniqueAssignmentArray += $scopePoliciesUniqueAssignment
         }
-        $scopePoliciesUniqueAssignmentsCount = ($scopePoliciesUniqueAssignments | measure-object).count  
+        $scopePoliciesUniqueAssignmentsCount = ($scopePoliciesUniqueAssignments | measure-object).count
+        
+        $currentPolicy = $scopePolicyArray
+        $usedInPolicySet = @()
+        $customPolicySets = ($htCacheDefinitions).policySet.keys | where-object { ($htCacheDefinitions).policySet.$_.Type -eq "Custom" }
+        foreach ($customPolicySet in $customPolicySets){
+            if ((($htCacheDefinitions).policySet.($customPolicySet).PolicySetPolicyIds).contains($currentPolicy)){
+                $usedInPolicySet += (($htCacheDefinitions).policySet.($customPolicySet).Id)                          
+            }
+        }
+        $usedInPolicySetList = @()
+        foreach ($usedPolicySet in $usedInPolicySet){
+            $usedInPolicySetList += "$(($htCacheDefinitions).policySet.($usedPolicySet).DisplayName) ($(($htCacheDefinitions).policySet.($usedPolicySet).PolicyDefinitionId))"
+        }
+        $usedInPolicySetListCount = ($usedInPolicySetList | Measure-Object).count
+
+        if (($htCacheDefinitions).policy.($scopePolicyArray).effectDefaultValue -ne "n/a"){
+            $effect = "Default: $(($htCacheDefinitions).policy.($scopePolicyArray).effectDefaultValue); Allowed: $(($htCacheDefinitions).policy.($scopePolicyArray).effectAllowedValue)"
+        }
+        else{
+            $effect = "Fixed: $(($htCacheDefinitions).policy.($scopePolicyArray).effectFixedValue)"
+        }
+
+        $policyRoleDefinitionsArray = @()
+        if (($htCacheDefinitionsAsIs).policy.($scopePolicyArray).properties.policyrule.then.details.roledefinitionIds){
+            $policyRoleDefinitionsArray += foreach ($policyRoledefinitionId in ($htCacheDefinitionsAsIs).policy.($scopePolicyArray).properties.policyrule.then.details.roledefinitionIds){
+                ($htCacheDefinitions).role.($policyRoledefinitionId -replace '.*/').Name
+            }
+        }
+        if (($policyRoleDefinitionsArray | Measure-Object).count -gt 0){
+            $policyRoleDefinitions =  $policyRoleDefinitionsArray -join "$CsvDelimiterOpposite "
+        }
+        else{
+            $policyRoleDefinitions = "n/a"
+        }
+        
 $script:html += @"
-                <tr>
-                    <td>
-                        $(($htCacheDefinitions).policy[$scopePolicyArray].DisplayName)
-                    </td>
-                    <td>
-                        $(($htCacheDefinitions).policy[$scopePolicyArray].PolicyDefinitionId)
-                    </td>
-                    <td>
+                    <tr>
+                        <td>
+                            $(($htCacheDefinitions).policy[$scopePolicyArray].DisplayName)
+                        </td>
+                        <td>
+                            $(($htCacheDefinitions).policy[$scopePolicyArray].PolicyDefinitionId)
+                        </td>
+                        <td>
+                            $effect
+                        </td>
+                        <td>
+                            $policyRoleDefinitions
+                        </td>
+                        <td class="breakwordall">
 "@
         if ($scopePoliciesUniqueAssignmentsCount -gt 0){
             $scopePoliciesUniqueAssignmentsList = "($($scopePoliciesUniqueAssignmentArray -join "$CsvDelimiterOpposite "))"
 $script:html += @"
-            $scopePoliciesUniqueAssignmentsCount $scopePoliciesUniqueAssignmentsList
+                $scopePoliciesUniqueAssignmentsCount $scopePoliciesUniqueAssignmentsList
 "@
         }
         else{
 $script:html += @"
-            $scopePoliciesUniqueAssignmentsCount
+                $scopePoliciesUniqueAssignmentsCount
 "@
         }
 $script:html += @"
-                    </td>
-                </tr>
+                        </td>
+                        <td class="breakwordall">
+"@
+        if ($usedInPolicySetListCount -gt 0){
+            $usedInPolicySetListInBrackets = "($(($usedInPolicySetList | Sort-Object) -join "$CsvDelimiterOpposite "))"
+$script:html += @"
+                $usedInPolicySetListCount $usedInPolicySetListInBrackets
+"@
+        }
+        else{
+$script:html += @"
+                $usedInPolicySetListCount
+"@
+        }
+$script:html += @"
+                        </td>
+                    </tr>
 "@
     }
 $script:html += @"
+                </tbody>
             </table>
         </div>
+        <script>
+            var tfConfig4$tableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+                btn_reset: true,
+                highlight_keywords: true,
+                alternate_rows: true,
+                auto_filter: {
+                    delay: 1100 //milliseconds
+                },
+                no_results_message: true,
+                col_types: [
+                    'string',
+                    'string',
+                    'string',
+                    'string',
+                    'string',
+                    'string'
+                ],
+                extensions: [{
+                    name: 'sort'
+                }]
+            };
+            var tf = new TableFilter('$tableId', tfConfig4$tableId);
+            tf.init();
+        </script>
 "@
 }
 else{
@@ -2080,11 +3303,20 @@ $script:html += @"
 }
 $script:html += @"
                 </td></tr>
-                <tr><td>
+                <tr><td class="detailstd">
 "@
 
 #Scoped PolicySets
 if ($scopePolicySetsCount -gt 0){
+    $tfCount = $scopePolicySetsCount
+    
+    if ($mgOrSub -eq "mg"){
+        $tableIdentifier = $mgChild
+    }
+    if ($mgOrSub -eq "sub"){
+        $tableIdentifier = $subscriptionId
+    }
+    $tableId = "DetailsTable_ScopedPolicySets_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
     if ($mgOrSub -eq "mg"){
         $LimitPOLICYPolicySetScoped = $LimitPOLICYPolicySetDefinitionsScopedManagementGroup
         if ($scopePolicySetsCount -gt (($LimitPOLICYPolicySetScoped * $LimitCriticalPercentage) / 100)){
@@ -2106,18 +3338,21 @@ if ($scopePolicySetsCount -gt 0){
 $script:html += @"
         <button type="button" class="collapsible"><p>$faIcon $scopePolicySetsCount Custom PolicySets scoped | Limit: ($scopePolicySetsCount/$LimitPOLICYPolicySetScoped)</p></button>
         <div class="content">
-            <table class="$cssClass">
-                <tr>
-                    <th class="widthCustom">
-                        PolicySet DisplayName
-                    </th>
-                    <th>
-                        PolicySet DefinitionId
-                    </th>
-                    <th>
-                        Unique Assignments
-                    </th>
-                </tr>
+            <table id="$tableId" class="$cssClass">
+                <thead>
+                    <tr>
+                        <th class="widthCustom">
+                            PolicySet DisplayName
+                        </th>
+                        <th>
+                            PolicySet DefinitionId
+                        </th>
+                        <th>
+                            Unique Assignments
+                        </th>
+                    </tr>
+                </thead
+                <tbody>
 "@
     foreach ($scopePolicySetArray in $scopePolicySetsArray){ 
         $scopePolicySetsUniqueAssignments = (($policyPolicySetBaseQuery | Where-Object { $_.PolicyDefinitionIdGuid -eq $scopePolicySetArray }).PolicyAssignmentId | sort-object -Unique)
@@ -2127,34 +3362,90 @@ $script:html += @"
         }
         $scopePolicySetsUniqueAssignmentsCount = ($scopePolicySetsUniqueAssignments | measure-object).count              
 $script:html += @"
-                <tr>
-                    <td>
-                        $(($htCacheDefinitions).policySet[$scopePolicySetArray].DisplayName)
-                    </td>
-                    <td>
-                        $(($htCacheDefinitions).policySet[$scopePolicySetArray].PolicyDefinitionId)
-                    </td>
-                    <td>
+                    <tr>
+                        <td>
+                            $(($htCacheDefinitions).policySet[$scopePolicySetArray].DisplayName)
+                        </td>
+                        <td>
+                            $(($htCacheDefinitions).policySet[$scopePolicySetArray].PolicyDefinitionId)
+                        </td>
+                        <td>
 "@
         if ($scopePolicySetsUniqueAssignmentsCount -gt 0){
             $scopePolicySetsUniqueAssignmentsList = "($($scopePolicySetsUniqueAssignmentArray -join "$CsvDelimiterOpposite "))"
 $script:html += @"
-            $scopePolicySetsUniqueAssignmentsCount $scopePolicySetsUniqueAssignmentsList
+                $scopePolicySetsUniqueAssignmentsCount $scopePolicySetsUniqueAssignmentsList
 "@
         }
         else{
 $script:html += @"
-            $scopePolicySetsUniqueAssignmentsCount
+                $scopePolicySetsUniqueAssignmentsCount
 "@
         }
 $script:html += @"
-                    </td>
-                </tr>
+                        </td>
+                    </tr>
 "@        
     }
 $script:html += @"
+                </tbody>
             </table>
         </div>
+        <script>
+            var tfConfig4$tableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+                btn_reset: true,
+                highlight_keywords: true,
+                alternate_rows: true,
+                auto_filter: {
+                    delay: 1100 //milliseconds
+                },
+                no_results_message: true,
+                col_types: [
+                    'string',
+                    'string',
+                    'string'
+                ],
+                extensions: [{
+                    name: 'sort'
+                }]
+            };
+            var tf = new TableFilter('$tableId', tfConfig4$tableId);
+            tf.init();
+        </script>
 "@
 }
 else{
@@ -2164,58 +3455,134 @@ $script:html += @"
 }
 $script:html += @"
                 </td></tr>
-                <tr><td>
+                <tr><td class="detailstd">
 "@
 
 #Blueprint Assignment
 if ($mgOrSub -eq "sub"){
     if ($blueprintsAssignedCount -gt 0){
+        
+        if ($mgOrSub -eq "mg"){
+            $tableIdentifier = $mgChild
+        }
+        if ($mgOrSub -eq "sub"){
+            $tableIdentifier = $subscriptionId
+        }
+        $tableId = "DetailsTable_BlueprintAssignment_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
 $script:html += @"
         <button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintsAssignedCount Blueprints assigned</p></button>
         <div class="content">
-            <table class="$cssClass">
-                <tr>
-                    <th class="widthCustom">
-                        Blueprint Name
-                    </th>
-                    <th>
-                        Blueprint DisplayName
-                    </th>
-                    <th>
-                        Blueprint Description
-                    </th>
-                    <th>
-                        Blueprint Id
-                    </th>
-                    <th>
-                        Blueprint AssignmentId
-                    </th>
-                </tr>
+            <table id="$tableId" class="$cssClass">
+                <thead>
+                    <tr>
+                        <th class="widthCustom">
+                            Blueprint Name
+                        </th>
+                        <th>
+                            Blueprint DisplayName
+                        </th>
+                        <th>
+                            Blueprint Description
+                        </th>
+                        <th>
+                            Blueprint Id
+                        </th>
+                        <th>
+                            Blueprint Version
+                        </th>
+                        <th>
+                            Blueprint AssignmentId
+                        </th>
+                    </tr>
+                </thead>
+                <tbody
 "@
         foreach ($blueprintAssigned in $blueprintsAssigned){
 $script:html += @"
-                <tr>
-                    <td>
-                        $($blueprintAssigned.BlueprintName)
-                    </td>
-                    <td>
-                        $($blueprintAssigned.BlueprintDisplayName)
-                    </td>
-                    <td>
-                        $($blueprintAssigned.BlueprintDescription)
-                    </td>
-                    <td>
-                        $($blueprintAssigned.BlueprintId)
-                    </td>
-                    <td>
-                        $($blueprintAssigned.BlueprintAssignmentId)
-                    </td>
-                </tr>
+                    <tr>
+                        <td>
+                            $($blueprintAssigned.BlueprintName)
+                        </td>
+                        <td>
+                            $($blueprintAssigned.BlueprintDisplayName)
+                        </td>
+                        <td>
+                            $($blueprintAssigned.BlueprintDescription)
+                        </td>
+                        <td>
+                            $($blueprintAssigned.BlueprintId)
+                        </td>
+                        <td>
+                            $($blueprintAssigned.BlueprintAssignmentVersion)
+                        </td>
+                        <td>
+                            $($blueprintAssigned.BlueprintAssignmentId)
+                        </td>
+                    </tr>
 "@        
         }
 $script:html += @"
+                </tbody>
             </table>
         </div>
+        <script>
+            var tfConfig4$tableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+                btn_reset: true,
+                highlight_keywords: true,
+                alternate_rows: true,
+                auto_filter: {
+                    delay: 1100 //milliseconds
+                },
+                no_results_message: true,
+                col_types: [
+                    'string',
+                    'string',
+                    'string',
+                    'string',
+                    'string',
+                    'string'
+                ],
+                extensions: [{
+                    name: 'sort'
+                }]
+            };
+            var tf = new TableFilter('$tableId', tfConfig4$tableId);
+            tf.init();
+        </script>
 "@
     }
     else{
@@ -2225,52 +3592,121 @@ $script:html += @"
     }
 $script:html += @"
                 </td></tr>
-                <tr><td>
+                <tr><td class="detailstd">
 "@
 }
 
 #blueprints Scoped
 if ($blueprintsScopedCount -gt 0){
+    $tfCount = $blueprintsScopedCount
+    
+    if ($mgOrSub -eq "mg"){
+        $tableIdentifier = $mgChild
+    }
+    if ($mgOrSub -eq "sub"){
+        $tableIdentifier = $subscriptionId
+    }
+    $tableId = "DetailsTable_BlueprintScoped_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
 $script:html += @"
         <button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintsScopedCount Blueprints scoped</p></button>
         <div class="content">
-            <table class="$cssClass">
-                <tr>
-                    <th class="widthCustom">
-                        Blueprint Name
-                    </th>
-                    <th>
-                        Blueprint DisplayName
-                    </th>
-                    <th>
-                        Blueprint Description
-                    </th>
-                    <th>
-                        Blueprint Id
-                    </th>
-                </tr>
+            <table id="$tableId" class="$cssClass">
+                <thead>
+                    <tr>
+                        <th class="widthCustom">
+                            Blueprint Name
+                        </th>
+                        <th>
+                            Blueprint DisplayName
+                        </th>
+                        <th>
+                            Blueprint Description
+                        </th>
+                        <th>
+                            Blueprint Id
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
 "@
     foreach ($blueprintScoped in $blueprintsScoped){
 $script:html += @"
-                <tr>
-                    <td>
-                        $($blueprintScoped.BlueprintName)
-                    </td>
-                    <td>
-                        $($blueprintScoped.BlueprintDisplayName)
-                    </td>
-                    <td>
-                        $($blueprintScoped.BlueprintDescription)
-                    </td>
-                    <td>
-                        $($blueprintScoped.BlueprintId)
-                    </td>
-                </tr>
+                    <tr>
+                        <td>
+                            $($blueprintScoped.BlueprintName)
+                        </td>
+                        <td>
+                            $($blueprintScoped.BlueprintDisplayName)
+                        </td>
+                        <td>
+                            $($blueprintScoped.BlueprintDescription)
+                        </td>
+                        <td>
+                            $($blueprintScoped.BlueprintId)
+                        </td>
+                    </tr>
 "@        
     }
 $script:html += @"
+                </tbody>
             </table>
         </div>
+        <script>
+            var tfConfig4$tableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+                btn_reset: true,
+                highlight_keywords: true,
+                alternate_rows: true,
+                auto_filter: {
+                    delay: 1100 //milliseconds
+                },
+                no_results_message: true,
+                col_types: [
+                    'string',
+                    'string',
+                    'string',
+                    'string'
+                ],
+                extensions: [{
+                    name: 'sort'
+                }]
+            };
+            var tf = new TableFilter('$tableId', tfConfig4$tableId);
+            tf.init();
+        </script>
 "@
 }
 else{
@@ -2280,11 +3716,12 @@ $script:html += @"
 }
 $script:html += @"
                 </td></tr>
-                <tr><td>
+                <tr><td class="detailstd">
 "@
 
-#Role Assignments
+#RoleAssignments
 if ($rolesAssignedCount -gt 0){
+    $tfCount = $rolesAssignedCount
     if ($mgOrSub -eq "mg"){
         $LimitRoleAssignmentsScope = $LimitRBACRoleAssignmentsManagementGroup
         if ($rolesAssignedScope -gt (($LimitRoleAssignmentsScope * $LimitCriticalPercentage) / 100)){
@@ -2315,36 +3752,50 @@ if ($rolesAssignedCount -gt 0){
     else{
         $RoleSecurityFindingOwnerAssignmentSPImg = ""
     }
+    
+    if ($mgOrSub -eq "mg"){
+        $tableIdentifier = $mgChild
+    }
+    if ($mgOrSub -eq "sub"){
+        $tableIdentifier = $subscriptionId
+    }
+    $tableId = "DetailsTable_RoleAssignments_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
 $script:html += @"
         <button type="button" class="collapsible"><p>$faIcon $rolesAssignedCount Role Assignments ($rolesAssignedInherited inherited) (User: $rolesAssignedCountUser | Group: $rolesAssignedCountGroup | ServicePrincipal: $rolesAssignedCountServicePrincipal | Orphaned: $rolesAssignedCountOrphaned) ($($roleSecurityFindingCustomRoleOwnerImg)CustomRoleOwner: $roleSecurityFindingCustomRoleOwner, $($RoleSecurityFindingOwnerAssignmentSPImg)OwnerAssignmentSP: $RoleSecurityFindingOwnerAssignmentSP) (Policy related: $roleAssignmentsRelatedToPolicyCount) | Limit: ($rolesAssignedScope/$LimitRoleAssignmentsScope)</p></button>
         <div class="content">
-            <table class="$cssClass">
-                <tr>
-                    <th>
-                        Role DisplayName
-                    </th>
-                    <th>
-                        Role Type
-                    </th>
-                    <th>
-                        Obj Type
-                    </th>
-                    <th>
-                        Obj DisplayName
-                    </th>
-                    <th>
-                        Obj Id
-                    </th>
-                    <th>
-                        Scope
-                    </th>
-                    <th>
-                        Role Assignment
-                    </th>
-                    <th>
-                        Related Policy Assignment
-                    </th>
-                </tr>
+            <table id="$tableId" class="$cssClass">
+                <thead>
+                    <tr>
+                        <th>
+                            Role DisplayName
+                        </th>
+                        <th>
+                            Role Type
+                        </th>
+                        <th>
+                            Obj Type
+                        </th>
+                        <th>
+                            Obj DisplayName
+                        </th>
+                        <th>
+                            Obj SignInName
+                        </th>
+                        <th>
+                            Obj Id
+                        </th>
+                        <th>
+                            Scope
+                        </th>
+                        <th>
+                            Role Assignment
+                        </th>
+                        <th>
+                            Related Policy Assignment
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
 "@
     foreach ($roleAssigned in $rolesAssigned){
         if ($roleAssigned.RoleIsCustom -eq "FALSE"){
@@ -2373,6 +3824,13 @@ $script:html += @"
                 $objectType = $($roleAssigned.RoleAssignmentObjectType)
             }
             $objDisplayName = $roleAssigned.RoleAssignmentDisplayname
+        }
+        
+        if (($roleAssigned.RoleAssignmentSignInName).length -eq 1){
+            $objSignInName = "n/a"
+        }
+        else{
+            $objSignInName = $roleAssigned.RoleAssignmentSignInName
         }
 
         if ($mgOrSub -eq "mg"){
@@ -2403,29 +3861,32 @@ $script:html += @"
             }
         }   
 $script:html += @"
-                <tr>
-                    <td>
-                        $roleWithWithoutLinkToAzAdvertizer
-                    </td>
-                    <td>
-                        $roleType
-                    </td>
-                    <td>
-                        $objectType
-                    </td>
-                    <td class="breakwordall">
-                        $objDisplayName
-                    </td>
-                    <td class="breakwordall">
-                        $($roleAssigned.RoleAssignmentObjectId)
-                    </td>
-                    <td>
-                        $roleAssignedAtScopeOrInherted
-                    </td>
-                    <td class="breakwordall">
-                        $($roleAssigned.RoleAssignmentId)
-                    </td>
-                    <td class="breakwordall">
+                    <tr>
+                        <td>
+                            $roleWithWithoutLinkToAzAdvertizer
+                        </td>
+                        <td>
+                            $roleType
+                        </td>
+                        <td>
+                            $objectType
+                        </td>
+                        <td class="breakwordall">
+                            $objDisplayName
+                        </td>
+                        <td class="breakwordall">
+                            $objSignInName
+                        </td>
+                        <td class="breakwordall">
+                            $($roleAssigned.RoleAssignmentObjectId)
+                        </td>
+                        <td>
+                            $roleAssignedAtScopeOrInherted
+                        </td>
+                        <td class="breakwordall">
+                            $($roleAssigned.RoleAssignmentId)
+                        </td>
+                        <td class="breakwordall">
 "@
         $relatedPolicyAssignment = ($policyBaseQuery | where-Object { $_.PolicyAssignmentName -eq $roleAssigned.RoleAssignmentDisplayname }) | Get-Unique
         if ($relatedPolicyAssignment){
@@ -2441,22 +3902,88 @@ $script:html += @"
                 $LinkOrNotLinkToAzAdvertizer = $relatedPolicyAssignment.Policy
             }
 $script:html += @"
-                        $($relatedPolicyAssignment.PolicyAssignmentId) ($LinkOrNotLinkToAzAdvertizer)
+                            $($relatedPolicyAssignment.PolicyAssignmentId) ($LinkOrNotLinkToAzAdvertizer)
 "@
         }
         else{
 $script:html += @"
-                        none 
+                            none 
 "@
         }
 $script:html += @"
-                    </td>
-                </tr>
+                        </td>
+                    </tr>
 "@        
     }
 $script:html += @"
+                </tbody>
             </table>
         </div>
+        <script>
+            var tfConfig4$tableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+                btn_reset: true,
+                highlight_keywords: true,
+                alternate_rows: true,
+                auto_filter: {
+                    delay: 1100 //milliseconds
+                },
+                no_results_message: true,
+                col_1: 'select',
+                col_2: 'select',
+                col_5: 'select',
+                col_types: [
+                    'string',
+                    'select',
+                    'select',
+                    'string',
+                    'string',
+                    'string',
+                    'select',
+                    'string',
+                    'string'
+                ],
+                extensions: [{
+                    name: 'sort'
+                }]
+            };
+            var tf = new TableFilter('$tableId', tfConfig4$tableId);
+            tf.init();
+        </script>
+
 "@
 }
 else{
@@ -2467,13 +3994,15 @@ $script:html += @"
 $script:html += @"
     </td></tr>
 "@
+    #testtiming
+    #$endprocesstable = get-date
+    #Write-Host "processtable duration ($mgOrSub $subscriptionId ----------------): $((NEW-TIMESPAN -Start $startprocesstable -End $endprocesstable).TotalSeconds) seconds"
 }
 
 #region Summary
 function summary() {
-$startSummary = get-date
-write-output "Build HTML Summary"
-
+#$startSummary = get-date
+Write-Host "Build HTML Summary"
 
 if ($getMgParentName -eq "Tenant Root"){
     $scopeNamingSummary = "Tenant wide"
@@ -2482,32 +4011,46 @@ else{
     $scopeNamingSummary = "MG '$ManagementGroupIdCaseSensitived' and descendants wide"
 }
 
-#SUMMARY tenant total custom policies
+#region SUMMARYcustompolicies
 if ($getMgParentName -eq "Tenant Root"){
 $customPoliciesArray = @()
 foreach ($tenantCustomPolicy in $tenantCustomPolicies){
     $customPoliciesArray += ($htCacheDefinitions).policy.($tenantCustomPolicy)
 }
 if ($tenantCustomPoliciesCount -gt 0){
+    $tfCount = $tenantCustomPoliciesCount
+
+    
+    $tableId = "SummaryTable_customPolicies"
+
 $script:html += @"
     <button type="button" class="collapsible" id="summary_customPolicies"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tenantCustomPoliciesCount Custom Policies ($scopeNamingSummary)</span></button>
     <div class="content">
 
-        <table class="summaryTable">
-            <tr>
-                <th>
-                    Policy DisplayName
-                </th>
-                <th>
-                    Policy DefinitionId
-                </th>
-                <th>
-                    Unique Assignments
-                </th>
-                <th>
-                    Used in PolicySets
-                </th>
-            </tr>
+        <table id="$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Policy DisplayName
+                    </th>
+                    <th>
+                        Policy DefinitionId
+                    </th>
+                    <th>
+                        Policy Effect
+                    </th>
+                    <th>
+                        RoleDefinitions
+                    </th>
+                    <th>
+                        Unique Assignments
+                    </th>
+                    <th>
+                        Used in PolicySets
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
 "@
     foreach ($customPolicy in ($customPoliciesArray | Sort-Object @{Expression={$_.DisplayName}})){
         $policyUniqueAssignments = (($policyPolicyBaseQuery | Where-Object { $_.PolicyDefinitionIdGuid -eq ($htCacheDefinitions).policy.($customPolicy.Id).Id }).PolicyAssignmentId | sort-object -Unique)
@@ -2525,57 +4068,141 @@ $script:html += @"
                 $usedInPolicySet += (($htCacheDefinitions).policySet.($customPolicySet).Id)                          
             }
         }
-
         $usedInPolicySetList = @()
         foreach ($usedPolicySet in $usedInPolicySet){
             $usedInPolicySetList += "$(($htCacheDefinitions).policySet.($usedPolicySet).DisplayName) ($(($htCacheDefinitions).policySet.($usedPolicySet).PolicyDefinitionId))"
         }
         $usedInPolicySetListCount = ($usedInPolicySetList | Measure-Object).count
 
+        if (($htCacheDefinitions).policy.($customPolicy.Id).effectDefaultValue -ne "n/a"){
+            $effect = "Default: $(($htCacheDefinitions).policy.($customPolicy.Id).effectDefaultValue); Allowed: $(($htCacheDefinitions).policy.($customPolicy.Id).effectAllowedValue)"
+        }
+        else{
+            $effect = "Fixed: $(($htCacheDefinitions).policy.($customPolicy.Id).effectFixedValue)"
+        }
+
+        $policyRoleDefinitionsArray = @()
+        if (($htCacheDefinitionsAsIs).policy.($customPolicy.Id).properties.policyrule.then.details.roledefinitionIds){
+            $policyRoleDefinitionsArray += foreach ($policyRoledefinitionId in ($htCacheDefinitionsAsIs).policy.($customPolicy.Id).properties.policyrule.then.details.roledefinitionIds){
+                ($htCacheDefinitions).role.($policyRoledefinitionId -replace '.*/').Name
+            }
+        }
+        if (($policyRoleDefinitionsArray | Measure-Object).count -gt 0){
+            $policyRoleDefinitions =  $policyRoleDefinitionsArray -join "$CsvDelimiterOpposite "
+        }
+        else{
+            $policyRoleDefinitions = "n/a"
+        }
+
 $script:html += @"
-            <tr>
-                <td>
-                    $(($htCacheDefinitions).policy.($customPolicy.Id).DisplayName)
-                </td>
-                <td>
-                    $(($htCacheDefinitions).policy.($customPolicy.Id).PolicyDefinitionId)
-                </td>
-                <td>
+                <tr>
+                    <td>
+                        $(($htCacheDefinitions).policy.($customPolicy.Id).DisplayName)
+                    </td>
+                    <td class="breakwordall">
+                        $(($htCacheDefinitions).policy.($customPolicy.Id).PolicyDefinitionId)
+                    </td>
+                    <td>
+                        $effect
+                    </td>
+                    <td>
+                        $policyRoleDefinitions
+                    </td>
+                    <td class="breakwordall">
 "@
         if ($policyUniqueAssignmentsCount -gt 0){
             $policyUniqueAssignmentsList = "($($policyUniqueAssignmentsArray -join "$CsvDelimiterOpposite "))"
 $script:html += @"
-            $policyUniqueAssignmentsCount $policyUniqueAssignmentsList
+                $policyUniqueAssignmentsCount $policyUniqueAssignmentsList
 "@
         }
         else{
 $script:html += @"
-            $policyUniqueAssignmentsCount
+                $policyUniqueAssignmentsCount
 "@
         }
 $script:html += @"
-                </td>
-                <td>
+                    </td>
+                    <td class="breakwordall">
 "@
         if ($usedInPolicySetListCount -gt 0){
             $usedInPolicySetListInBrackets = "($(($usedInPolicySetList | Sort-Object) -join "$CsvDelimiterOpposite "))"
 $script:html += @"
-            $usedInPolicySetListCount $usedInPolicySetListInBrackets
+                $usedInPolicySetListCount $usedInPolicySetListInBrackets
 "@
         }
         else{
 $script:html += @"
-            $usedInPolicySetListCount
+                $usedInPolicySetListCount
 "@
         }
 $script:html += @"
-                </td>
-            </tr>
+                    </td>
+                </tr>
 "@ 
     }
 $script:html += @"
+            </tbody>
         </table>
     </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+            
+"@      
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
 "@
 }
 else{
@@ -2588,6 +4215,7 @@ $script:html += @"
 else{
     $faimage = "<i class=`"fa fa-check-circle`" aria-hidden=`"true`"></i>"
     if ($tenantCustomPoliciesCount -gt 0){
+        $tfCount = $tenantCustomPoliciesCount
         $customPoliciesInScopeArray = @()
         foreach ($customPolicy in $tenantCustomPolicies) {
             if (($htCacheDefinitions).policy.$customPolicy.PolicyDefinitionId.startswith("/providers/Microsoft.Management/managementGroups/","CurrentCultureIgnoreCase")) {
@@ -2603,7 +4231,7 @@ else{
                     $customPoliciesInScopeArray += ($htCacheDefinitions).policy.$customPolicy
                 }
                 else {
-                    Write-Output "$policyScopedMgSub NOT in Scope"
+                    Write-Host "$policyScopedMgSub NOT in Scope"
                 }
             }
         }
@@ -2618,25 +4246,37 @@ else{
     }
 
 if ($tenantCustomPoliciesCount -gt 0){
+    $tfCount = $tenantCustomPoliciesCount
+    
+    $tableId = "SummaryTable_customPolicies"
 $script:html += @"
     <button type="button" class="collapsible" id="summary_customPolicies"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tenantCustomPoliciesCount Custom Policies ($customPoliciesFromSuperiorMGs from superior Management Groups) ($scopeNamingSummary)</span></button>
     <div class="content">
 
-        <table class="summaryTable">
-            <tr>
-                <th>
-                    Policy DisplayName
-                </th>
-                <th>
-                    Policy DefinitionId
-                </th>
-                <th>
-                    Unique Assignments
-                </th>
-                <th>
-                    Used in PolicySets
-                </th>
-            </tr>
+        <table id="$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Policy DisplayName
+                    </th>
+                    <th>
+                        Policy DefinitionId
+                    </th>
+                    <th>
+                        Policy Effect
+                    </th>
+                    <th>
+                        RoleDefinitions
+                    </th>
+                    <th>
+                        Unique Assignments
+                    </th>
+                    <th>
+                        Used in PolicySets
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
 "@
     foreach ($customPolicy in ($customPoliciesArray | Sort-Object @{Expression={$_.DisplayName}})){
         $policyUniqueAssignments = (($policyPolicyBaseQuery | Where-Object { $_.PolicyDefinitionIdGuid -eq ($htCacheDefinitions).policy.($customPolicy.Id).Id }).PolicyAssignmentId | sort-object -Unique)
@@ -2661,50 +4301,134 @@ $script:html += @"
         }
         $usedInPolicySetListCount = ($usedInPolicySetList | Measure-Object).count
 
+        if (($htCacheDefinitions).policy.($customPolicy.Id).effectDefaultValue -ne "n/a"){
+            $effect = "Default: $(($htCacheDefinitions).policy.($customPolicy.Id).effectDefaultValue); Allowed: $(($htCacheDefinitions).policy.($customPolicy.Id).effectAllowedValue)"
+        }
+        else{
+            $effect = "Fixed: $(($htCacheDefinitions).policy.($customPolicy.Id).effectFixedValue)"
+        }
+
+        $policyRoleDefinitionsArray = @()
+        if (($htCacheDefinitionsAsIs).policy.($customPolicy.Id).properties.policyrule.then.details.roledefinitionIds){
+            $policyRoleDefinitionsArray += foreach ($policyRoledefinitionId in ($htCacheDefinitionsAsIs).policy.($customPolicy.Id).properties.policyrule.then.details.roledefinitionIds){
+                ($htCacheDefinitions).role.($policyRoledefinitionId -replace '.*/').Name
+            }
+        }
+        if (($policyRoleDefinitionsArray | Measure-Object).count -gt 0){
+            $policyRoleDefinitions =  $policyRoleDefinitionsArray -join "$CsvDelimiterOpposite "
+        }
+        else{
+            $policyRoleDefinitions = "n/a"
+        }
+
 $script:html += @"
-            <tr>
-                <td>
-                    $(($htCacheDefinitions).policy.($customPolicy.Id).DisplayName)
-                </td>
-                <td>
-                    $(($htCacheDefinitions).policy.($customPolicy.Id).PolicyDefinitionId)
-                </td>
-                <td>
+                <tr>
+                    <td>
+                        $(($htCacheDefinitions).policy.($customPolicy.Id).DisplayName)
+                    </td>
+                    <td class="breakwordall">
+                        $(($htCacheDefinitions).policy.($customPolicy.Id).PolicyDefinitionId)
+                    </td>
+                    <td>
+                        $effect
+                    </td>
+                    <td>
+                        $policyRoleDefinitions
+                    </td>
+                    <td class="breakwordall">
 "@
         if ($policyUniqueAssignmentsCount -gt 0){
             $policyUniqueAssignmentsList = "($($policyUniqueAssignmentsArray -join "$CsvDelimiterOpposite "))"
 $script:html += @"
-            $policyUniqueAssignmentsCount $policyUniqueAssignmentsList
+                $policyUniqueAssignmentsCount $policyUniqueAssignmentsList
 "@
         }
         else{
 $script:html += @"
-            $policyUniqueAssignmentsCount
+                $policyUniqueAssignmentsCount
 "@
         }
 $script:html += @"
-                </td>
-                <td>
+                    </td>
+                    <td class="breakwordall">
 "@
         if ($usedInPolicySetListCount -gt 0){
             $usedInPolicySetListInBrackets = "($(($usedInPolicySetList | Sort-Object) -join "$CsvDelimiterOpposite "))"
 $script:html += @"
-            $usedInPolicySetListCount $usedInPolicySetListInBrackets
+                $usedInPolicySetListCount $usedInPolicySetListInBrackets
 "@
         }
         else{
 $script:html += @"
-            $usedInPolicySetListCount
+                $usedInPolicySetListCount
 "@
         }
 $script:html += @"
-                </td>
-            </tr>
+                    </td>
+                </tr>
 "@ 
     }
 $script:html += @"
+            </tbody>
         </table>
     </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
 "@
 }
 else{
@@ -2712,10 +4436,280 @@ $script:html += @"
     <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$tenantCustomPoliciesCount Custom Policies ($scopeNamingSummary)</span></p>
 "@
 }
-
 }
+#endregion SUMMARYcustompolicies
 
-#SUMMARY tenant total custom policySets
+#region SUMMARYCustomPoliciesOrphandedTenantRoot
+if ($getMgParentName -eq "Tenant Root"){
+    $customPoliciesInUse = ($policyBaseQuery | where-object {$_.PolicyType -eq "Custom" -and $_.PolicyVariant -eq "Policy"}).PolicyDefinitionIdGuid | Sort-Object -Unique
+    $customPoliciesOrphaned = @()
+    foreach ($customPolicyAll in ($htCacheDefinitions).policy.keys) {
+        if (($customPoliciesInUse | measure-object).count -eq 0) {
+            if (($htCacheDefinitions).policy.$customPolicyAll.Type -eq "Custom") {
+                $customPoliciesOrphaned += ($htCacheDefinitions).policy.$customPolicyAll
+            }
+        }
+        else {
+            if ($customPoliciesInUse.contains("$customPolicyAll")) {
+            }
+            else {
+        
+                if (($htCacheDefinitions).policy.$customPolicyAll.Type -eq "Custom") {
+                    $customPoliciesOrphaned += ($htCacheDefinitions).policy.$customPolicyAll
+                }
+            }
+        }
+    }
+
+    $customPoliciesOrphanedFinal = @()
+    foreach ($customPolicyOrphaned in $customPoliciesOrphaned){
+        if (-not ($htPolicyUsedInPolicySet).$($customPolicyOrphaned.Id)){
+            $customPoliciesOrphanedFinal += ($htCacheDefinitions).policy.$($customPolicyOrphaned.id)
+        }
+    }
+
+    if (($customPoliciesOrphanedFinal | measure-object).count -gt 0){
+        $tfCount = ($customPoliciesOrphanedFinal | measure-object).count
+        
+        $tableId = "SummaryTable_customPoliciesOrphaned"
+$script:html += @"
+    <button type="button" class="collapsible" id="summary_customPoliciesOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($customPoliciesOrphanedFinal | measure-object).count) Orphaned Custom Policies ($scopeNamingSummary)</span> <abbr title="Policy has no assignments AND Policy is not used in a PolicySet"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
+    <div class="content">
+
+        <table id="$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Policy DisplayName
+                    </th>
+                    <th>
+                        Policy DefinitionId
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+"@
+        foreach ($customPolicyOrphaned in $customPoliciesOrphanedFinal | sort-object @{Expression={$_.DisplayName}}){
+$script:html += @"
+                <tr>
+                    <td>
+                        $($customPolicyOrphaned.DisplayName)
+                    </td>
+                    <td>
+                        $($customPolicyOrphaned.PolicyDefinitionId)
+                    </td>
+                </tr>
+"@ 
+        }
+$script:html += @"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+    }
+    else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($customPoliciesOrphaned | measure-object).count) Orphaned Custom Policies ($scopeNamingSummary)</span></p>
+"@
+    }
+}
+#SUMMARY Custom Policies Orphanded NOT TenantRoot
+else{
+    $customPoliciesInUse = ($policyBaseQuery | where-object {$_.PolicyType -eq "Custom" -and $_.PolicyVariant -eq "Policy"}).PolicyDefinitionIdGuid | Sort-Object -Unique
+    $customPoliciesOrphaned = @()
+    foreach ($customPolicyAll in ($htCacheDefinitions).policy.keys) {
+        if (($customPoliciesInUse | measure-object).count -eq 0) {
+            if (($htCacheDefinitions).policy.$customPolicyAll.Type -eq "Custom") {
+                $customPoliciesOrphaned += ($htCacheDefinitions).policy.$customPolicyAll.Id
+            }
+        }
+        else {
+            if (-not $customPoliciesInUse.contains("$customPolicyAll")) {    
+                if (($htCacheDefinitions).policy.$customPolicyAll.Type -eq "Custom") {
+                    $customPoliciesOrphaned += ($htCacheDefinitions).policy.$customPolicyAll.Id
+                }
+            }
+        }
+    }
+    #$customPoliciesOrphanedInScopeArrayHt = @{}
+    $customPoliciesOrphanedInScopeArray = @()
+    foreach ($customPolicyOrphaned in  $customPoliciesOrphaned){
+        if (($htCacheDefinitions).policy.$customPolicyOrphaned.PolicyDefinitionId.startswith("/providers/Microsoft.Management/managementGroups/","CurrentCultureIgnoreCase")) {
+            $policyScopedMgSub = ($htCacheDefinitions).policy.$customPolicyOrphaned.PolicyDefinitionId -replace "/providers/Microsoft.Management/managementGroups/", "" -replace '/.*'
+            if ($mgsAndSubs.MgId.contains("$policyScopedMgSub")) {
+                $customPoliciesOrphanedInScopeArray += ($htCacheDefinitions).policy.$customPolicyOrphaned
+            }
+        }
+        if (($htCacheDefinitions).policy.$customPolicyOrphaned.PolicyDefinitionId.startswith("/subscriptions/","CurrentCultureIgnoreCase")) {
+            $policyScopedMgSub = ($htCacheDefinitions).policy.$customPolicyOrphaned.PolicyDefinitionId -replace "/subscriptions/", "" -replace '/.*'
+            if ($mgsAndSubs.SubscriptionId.contains("$policyScopedMgSub")) {
+                $customPoliciesOrphanedInScopeArray += ($htCacheDefinitions).policy.$customPolicyOrphaned
+            }
+        }
+    }
+    $customPoliciesOrphanedFinal = @()
+    #$htPolicyUsedInPolicySet.Keys
+    foreach ($customPolicyOrphanedInScopeArray in $customPoliciesOrphanedInScopeArray){
+        if (-not ($htPolicyUsedInPolicySet).($customPolicyOrphanedInScopeArray.Id)){
+            $customPoliciesOrphanedFinal += $customPolicyOrphanedInScopeArray
+        }
+    }
+    if (($customPoliciesOrphanedFinal | measure-object).count -gt 0){
+        $tfCount = ($customPoliciesOrphanedFinal | measure-object).count
+        
+        $tableId = "SummaryTable_customPoliciesOrphaned"
+$script:html += @"
+    <button type="button" class="collapsible" id="summary_customPoliciesOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($customPoliciesOrphanedFinal | measure-object).count) Orphaned Custom Policies ($scopeNamingSummary)</span> <abbr title="Policy has no assignments AND Policy is not used in a PolicySet (Policies from superior scopes are not evaluated)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
+    <div class="content">
+
+        <table id="$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Policy DisplayName
+                    </th>
+                    <th>
+                        Policy DefinitionId
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+"@
+        foreach ($customPolicyOrphaned in $customPoliciesOrphanedFinal | sort-object @{Expression={$_.DisplayName}}){
+$script:html += @"
+                <tr>
+                    <td>
+                        $($customPolicyOrphaned.DisplayName)
+                    </td>
+                    <td>
+                        $($customPolicyOrphaned.PolicyDefinitionId)
+                    </td>
+                </tr>
+"@ 
+        }
+$script:html += @"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,      
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+    }
+    else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$($customPoliciesOrphanedFinal.count) Orphaned Custom Policies ($scopeNamingSummary)</span></p>
+"@
+    }
+}
+#endregion SUMMARYCustomPoliciesOrphandedTenantRoot
+
+#region SUMMARYtenanttotalcustompolicySets
 if ($getMgParentName -eq "Tenant Root"){
     if ($tenantCustompolicySetsCount -gt $LimitPOLICYPolicySetDefinitionsScopedTenant * ($LimitCriticalPercentage / 100)){
         $faimage = "<i class=`"fa fa-exclamation-triangle`" aria-hidden=`"true`"></i>"
@@ -2730,25 +4724,31 @@ if ($getMgParentName -eq "Tenant Root"){
     }
 
     if ($tenantCustompolicySetsCount -gt 0){
+        $tfCount = $tenantCustompolicySetsCount
+        
+        $tableId = "SummaryTable_customPolicySets"
 $script:html += @"
     <button type="button" class="collapsible" id="summary_customPolicySets">$faimage <span class="valignMiddle">$tenantCustompolicySetsCount Custom PolicySets ($scopeNamingSummary) (Limit: $tenantCustompolicySetsCount/$LimitPOLICYPolicySetDefinitionsScopedTenant)</span></button>
     <div class="content">
 
-        <table class="summaryTable">
-            <tr>
-                <th>
-                    PolicySet DisplayName
-                </th>
-                <th>
-                    PolicySet DefinitionId
-                </th>
-                <th>
-                    Unique Assignments
-                </th>
-                <th>
-                    PolicySet Policies
-                </th>
-            </tr>
+        <table id="$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        PolicySet DisplayName
+                    </th>
+                    <th>
+                        PolicySet DefinitionId
+                    </th>
+                    <th>
+                        Unique Assignments
+                    </th>
+                    <th>
+                        PolicySet Policies
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
 "@
         foreach ($customPolicySet in ($customPolicySetsArray | Sort-Object @{Expression={$_.DisplayName}})){
             $policySetUniqueAssignments = (($policyPolicySetBaseQuery | Where-Object { $_.PolicyDefinitionIdGuid -eq ($htCacheDefinitions).policySet.($customPolicySet.Id).Id }).PolicyAssignmentId | sort-object -Unique)
@@ -2766,14 +4766,14 @@ $script:html += @"
             $policySetPoliciesCount = ($policySetPoliciesArray | Measure-Object).count
 
 $script:html += @"
-            <tr>
-                <td>
-                    $(($htCacheDefinitions).policySet.($customPolicySet.Id).DisplayName)
-                </td>
-                <td>
-                    $(($htCacheDefinitions).policySet.($customPolicySet.Id).PolicyDefinitionId)
-                </td>
-                <td>
+                <tr>
+                    <td>
+                        $(($htCacheDefinitions).policySet.($customPolicySet.Id).DisplayName)
+                    </td>
+                    <td class="breakwordall">
+                        $(($htCacheDefinitions).policySet.($customPolicySet.Id).PolicyDefinitionId)
+                    </td>
+                    <td class="breakwordall">
 "@
             if ($policySetUniqueAssignmentsCount -gt 0){
                 $policySetUniqueAssignmentsList = "($($policySetUniqueAssignmentsArray -join "$CsvDelimiterOpposite "))"
@@ -2783,22 +4783,79 @@ $script:html += @"
             }
             else{
 $script:html += @"
-            $policySetUniqueAssignmentsCount
+                        $policySetUniqueAssignmentsCount
 "@
             }
 $script:html += @"
-                </td>
-                <td>
+                    </td>
+                    <td class="breakwordall">
 "@
 $script:html += @"
-            $policySetPoliciesCount ($(($policySetPoliciesArray | sort-Object) -join "$CsvDelimiterOpposite "))
-                </td>
-            </tr>
+                        $policySetPoliciesCount ($(($policySetPoliciesArray | sort-Object) -join "$CsvDelimiterOpposite "))
+                    </td>
+                </tr>
 "@ 
         }
 $script:html += @"
+            </tbody>
         </table>
     </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
 "@
     }
     else{
@@ -2843,25 +4900,31 @@ else{
     }
 
     if ($tenantCustompolicySetsCount -gt 0){
+        $tfCount = $tenantCustompolicySetsCount
+        
+        $tableId = "SummaryTable_customPolicySets"
 $script:html += @"
     <button type="button" class="collapsible" id="summary_customPolicySets">$faimage <span class="valignMiddle">$tenantCustomPolicySetsCount Custom PolicySets ($custompolicySetsFromSuperiorMGs from superior Management Groups) ($scopeNamingSummary) (Limit: $tenantCustompolicySetsCount/$LimitPOLICYPolicySetDefinitionsScopedTenant)</span></button>
     <div class="content">
 
-        <table class="summaryTable">
-            <tr>
-                <th>
-                    PolicySet DisplayName
-                </th>
-                <th>
-                    PolicySet DefinitionId
-                </th>
-                <th>
-                    Unique Assignments
-                </th>
-                <th>
-                    PolicySet Policies
-                </th>
-            </tr>
+        <table id="$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        PolicySet DisplayName
+                    </th>
+                    <th>
+                        PolicySet DefinitionId
+                    </th>
+                    <th>
+                        Unique Assignments
+                    </th>
+                    <th>
+                        PolicySet Policies
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
 "@
         foreach ($customPolicySet in ($customPolicySetsArray | Sort-Object @{Expression={$_.DisplayName}})){
             $policySetUniqueAssignments = (($policyPolicySetBaseQuery | Where-Object { $_.PolicyDefinitionIdGuid -eq ($htCacheDefinitions).policySet.($customPolicySet.Id).Id }).PolicyAssignmentId | sort-object -Unique)
@@ -2879,40 +4942,96 @@ $script:html += @"
             $policySetPoliciesCount = ($policySetPoliciesArray | Measure-Object).count
 
 $script:html += @"
-            <tr>
-                <td>
-                    $(($htCacheDefinitions).policySet.($customPolicySet.Id).DisplayName)
-                </td>
-                <td>
-                    $(($htCacheDefinitions).policySet.($customPolicySet.Id).PolicyDefinitionId)
-                </td>
-                <td>
+                <tr>
+                    <td>
+                        $(($htCacheDefinitions).policySet.($customPolicySet.Id).DisplayName)
+                    </td>
+                    <td class="breakwordall">
+                        $(($htCacheDefinitions).policySet.($customPolicySet.Id).PolicyDefinitionId)
+                    </td>
+                    <td class="breakwordall">
 "@
             if ($policySetUniqueAssignmentsCount -gt 0){
                 $policySetUniqueAssignmentsList = "($($policySetUniqueAssignmentsArray -join "$CsvDelimiterOpposite "))"
 $script:html += @"
-            $policySetUniqueAssignmentsCount $policySetUniqueAssignmentsList
+                        $policySetUniqueAssignmentsCount $policySetUniqueAssignmentsList
 "@
             }
             else{
 $script:html += @"
-            $policySetUniqueAssignmentsCount
+                        $policySetUniqueAssignmentsCount
 "@
             }
 $script:html += @"
-                </td>
-                <td>
+                    </td>
+                    <td class="breakwordall">
 "@
 $script:html += @"
-            $policySetPoliciesCount ($(($policySetPoliciesArray | sort-Object) -join "$CsvDelimiterOpposite "))
-                </td>
-                
-            </tr>
+                        $policySetPoliciesCount ($(($policySetPoliciesArray | sort-Object) -join "$CsvDelimiterOpposite "))
+                    </td>
+                </tr>
 "@ 
         }
 $script:html += @"
+            </tbody>
         </table>
     </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
 "@
     }
     else{
@@ -2921,213 +5040,9 @@ $script:html += @"
 "@
     }
 }
+#endregion SUMMARYtenanttotalcustompolicySets
 
-#SUMMARY tenant total custom roles
-$tenantCustomRolesCount = ($tenantCustomRoles | measure-object).count
-if ($tenantCustomRolesCount -gt $LimitRBACCustomRoleDefinitionsTenant * ($LimitCriticalPercentage / 100)){
-    $faimage = "<i class=`"fa fa-exclamation-triangle`" aria-hidden=`"true`"></i>"
-}
-else{
-    $faimage = "<i class=`"fa fa-check-circle blue`" aria-hidden=`"true`"></i>"
-}
-$tenantCustomRolesArray = @()
-foreach ($tenantCustomRole in $tenantCustomRoles){
-    $tenantCustomRolesArray += ($htCacheDefinitions).role.($tenantCustomRole)
-}
-
-if ($tenantCustomRolesCount -gt 0){
-$script:html += @"
-    <button type="button" class="collapsible" id="summary_customRoles">$faimage <span class="valignMiddle">$tenantCustomRolesCount Custom Roles ($scopeNamingSummary) (Limit: $tenantCustomRolesCount/$LimitRBACCustomRoleDefinitionsTenant)</span></button>
-    <div class="content">
-
-        <table class="summaryTable">
-            <tr>
-                <th>
-                    Role Name
-                </th>
-                <th>
-                    Role Id
-                </th>
-                <th>
-                    Assignable Scopes
-                </th>
-            </tr>
-"@
-    foreach ($tenantCustomRole in $tenantCustomRolesArray | sort-object @{Expression={$_.Name}}){
-$script:html += @"
-            <tr>
-                <td>
-                    $(($htCacheDefinitions).role.($tenantCustomRole.Id).Name)
-                </td>
-                <td>
-                    $(($htCacheDefinitions).role.($tenantCustomRole.Id).Id)
-                </td>
-                <td>
-                    $((($htCacheDefinitions).role.($tenantCustomRole.Id).AssignableScopes | Measure-Object).count) ($(($htCacheDefinitions).role.($tenantCustomRole.Id).AssignableScopes -join "$CsvDelimiterOpposite "))
-                </td>
-            </tr>
-"@ 
-    }
-$script:html += @"
-        </table>
-    </div>
-"@
-}
-else{
-$script:html += @"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$tenantCustomRolesCount Custom Roles ($scopeNamingSummary)</span></p>
-"@
-}
-
-#SUMMARY Custom Policies Orphanded TenantRoot
-if ($getMgParentName -eq "Tenant Root"){
-    $customPoliciesInUse = ($policyBaseQuery | where-object {$_.PolicyType -eq "Custom" -and $_.PolicyVariant -eq "Policy"}).PolicyDefinitionIdGuid | Sort-Object -Unique
-    $customPoliciesOrphaned = @()
-    foreach ($customPolicyAll in ($htCacheDefinitions).policy.keys) {
-        if (($customPoliciesInUse | measure-object).count -eq 0) {
-            if (($htCacheDefinitions).policy.$customPolicyAll.Type -eq "Custom") {
-                $customPoliciesOrphaned += ($htCacheDefinitions).policy.$customPolicyAll
-            }
-        }
-        else {
-            if ($customPoliciesInUse.contains("$customPolicyAll")) {
-            }
-            else {
-        
-                if (($htCacheDefinitions).policy.$customPolicyAll.Type -eq "Custom") {
-                    $customPoliciesOrphaned += ($htCacheDefinitions).policy.$customPolicyAll
-                }
-            }
-        }
-    }
-
-    $customPoliciesOrphanedFinal = @()
-    foreach ($customPolicyOrphaned in $customPoliciesOrphaned){
-        if (-not ($htPolicyUsedInPolicySet).$($customPolicyOrphaned.Id)){
-            $customPoliciesOrphanedFinal += ($htCacheDefinitions).policy.$($customPolicyOrphaned.id)
-        }
-    }
-
-    if (($customPoliciesOrphanedFinal | measure-object).count -gt 0){
-$script:html += @"
-    <button type="button" class="collapsible" id="summary_customPoliciesOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($customPoliciesOrphanedFinal | measure-object).count) Orphaned Custom Policies ($scopeNamingSummary)</span> <abbr title="Policy has no assignments AND Policy is not used in a PolicySet"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
-    <div class="content">
-
-        <table class="summaryTable">
-            <tr>
-                <th>
-                    Policy DisplayName
-                </th>
-                <th>
-                    Policy DefinitionId
-                </th>
-            </tr>
-"@
-        foreach ($customPolicyOrphaned in $customPoliciesOrphanedFinal | sort-object @{Expression={$_.DisplayName}}){
-$script:html += @"
-            <tr>
-                <td>
-                    $($customPolicyOrphaned.DisplayName)
-                </td>
-                <td>
-                    $($customPolicyOrphaned.PolicyDefinitionId)
-                </td>
-            </tr>
-"@ 
-        }
-$script:html += @"
-        </table>
-    </div>
-"@
-    }
-    else{
-$script:html += @"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($customPoliciesOrphaned | measure-object).count) Orphaned Custom Policies ($scopeNamingSummary)</span></p>
-"@
-    }
-}
-
-#SUMMARY Custom Policies Orphanded NOT TenantRoot
-else{
-    $customPoliciesInUse = ($policyBaseQuery | where-object {$_.PolicyType -eq "Custom" -and $_.PolicyVariant -eq "Policy"}).PolicyDefinitionIdGuid | Sort-Object -Unique
-    $customPoliciesOrphaned = @()
-    foreach ($customPolicyAll in ($htCacheDefinitions).policy.keys) {
-        if (($customPoliciesInUse | measure-object).count -eq 0) {
-            if (($htCacheDefinitions).policy.$customPolicyAll.Type -eq "Custom") {
-                $customPoliciesOrphaned += ($htCacheDefinitions).policy.$customPolicyAll.Id
-            }
-        }
-        else {
-            if (-not $customPoliciesInUse.contains("$customPolicyAll")) {    
-                if (($htCacheDefinitions).policy.$customPolicyAll.Type -eq "Custom") {
-                    $customPoliciesOrphaned += ($htCacheDefinitions).policy.$customPolicyAll.Id
-                }
-            }
-        }
-    }
-    #$customPoliciesOrphanedInScopeArrayHt = @{}
-    $customPoliciesOrphanedInScopeArray = @()
-    foreach ($customPolicyOrphaned in  $customPoliciesOrphaned){
-        if (($htCacheDefinitions).policy.$customPolicyOrphaned.PolicyDefinitionId.startswith("/providers/Microsoft.Management/managementGroups/","CurrentCultureIgnoreCase")) {
-            $policyScopedMgSub = ($htCacheDefinitions).policy.$customPolicyOrphaned.PolicyDefinitionId -replace "/providers/Microsoft.Management/managementGroups/", "" -replace '/.*'
-            if ($mgsAndSubs.MgId.contains("$policyScopedMgSub")) {
-                $customPoliciesOrphanedInScopeArray += ($htCacheDefinitions).policy.$customPolicyOrphaned
-            }
-        }
-        if (($htCacheDefinitions).policy.$customPolicyOrphaned.PolicyDefinitionId.startswith("/subscriptions/","CurrentCultureIgnoreCase")) {
-            $policyScopedMgSub = ($htCacheDefinitions).policy.$customPolicyOrphaned.PolicyDefinitionId -replace "/subscriptions/", "" -replace '/.*'
-            if ($mgsAndSubs.SubscriptionId.contains("$policyScopedMgSub")) {
-                $customPoliciesOrphanedInScopeArray += ($htCacheDefinitions).policy.$customPolicyOrphaned
-            }
-        }
-    }
-    $customPoliciesOrphanedFinal = @()
-    #$htPolicyUsedInPolicySet.Keys
-    foreach ($customPolicyOrphanedInScopeArray in $customPoliciesOrphanedInScopeArray){
-        if (-not ($htPolicyUsedInPolicySet).($customPolicyOrphanedInScopeArray.Id)){
-            $customPoliciesOrphanedFinal += $customPolicyOrphanedInScopeArray
-        }
-    }
-    if (($customPoliciesOrphanedFinal | measure-object).count -gt 0){
-$script:html += @"
-    <button type="button" class="collapsible" id="summary_customPoliciesOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($customPoliciesOrphanedFinal | measure-object).count) Orphaned Custom Policies ($scopeNamingSummary)</span> <abbr title="Policy has no assignments AND Policy is not used in a PolicySet (Policies from superior scopes are not evaluated)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
-    <div class="content">
-
-        <table class="summaryTable">
-            <tr>
-                <th>
-                    Policy DisplayName
-                </th>
-                <th>
-                    Policy DefinitionId
-                </th>
-            </tr>
-"@
-        foreach ($customPolicyOrphaned in $customPoliciesOrphanedFinal | sort-object @{Expression={$_.DisplayName}}){
-$script:html += @"
-            <tr>
-                <td>
-                    $($customPolicyOrphaned.DisplayName)
-                </td>
-                <td>
-                    $($customPolicyOrphaned.PolicyDefinitionId)
-                </td>
-            </tr>
-"@ 
-        }
-$script:html += @"
-        </table>
-    </div>
-"@
-    }
-    else{
-$script:html += @"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$($customPoliciesOrphanedFinal.count) Orphaned Custom Policies ($scopeNamingSummary)</span></p>
-"@
-    }
-}
-
-#SUMMARY Custom policySet Orphanded TenantRoot
+#region SUMMARYCustompolicySetOrphandedTenantRoot
 if ($getMgParentName -eq "Tenant Root"){
     $custompolicySetSetsInUse = ($policyBaseQuery | where-object {$_.policyType -eq "Custom" -and $_.policyVariant -eq "policySet"}).policyDefinitionIdGuid | Sort-Object -Unique
     $custompolicySetSetsOrphaned = @()
@@ -3147,35 +5062,96 @@ if ($getMgParentName -eq "Tenant Root"){
     }
 
     if (($custompolicySetSetsOrphaned | measure-object).count -gt 0){
+        $tfCount = ($custompolicySetSetsOrphaned | measure-object).count
+        
+        $tableId = "SummaryTable_customPolicySetsOrphaned"
 $script:html += @"
-    <button type="button" class="collapsible" id="summary_custompolicySetSetsOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($custompolicySetSetsOrphaned | measure-object).count) Orphaned Custom PolicySets ($scopeNamingSummary)</span></button>
+    <button type="button" class="collapsible" id="summary_custompolicySetsOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($custompolicySetSetsOrphaned | measure-object).count) Orphaned Custom PolicySets ($scopeNamingSummary)</span></button>
     <div class="content">
 
-        <table class="summaryTable">
-            <tr>
-                <th>
-                    PolicySet DisplayName
-                </th>
-                <th>
-                    PolicySet DefinitionId
-                </th>
-            </tr>
+        <table id="$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        PolicySet DisplayName
+                    </th>
+                    <th>
+                        PolicySet DefinitionId
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
 "@
         foreach ($custompolicySetOrphaned in $custompolicySetSetsOrphaned | sort-object @{Expression={$_.DisplayName}}){
 $script:html += @"
-            <tr>
-                <td>
-                    $($custompolicySetOrphaned.DisplayName)
-                </td>
-                <td>
-                    $($custompolicySetOrphaned.policyDefinitionId)
-                </td>
-            </tr>
+                <tr>
+                    <td>
+                        $($custompolicySetOrphaned.DisplayName)
+                    </td>
+                    <td>
+                        $($custompolicySetOrphaned.policyDefinitionId)
+                    </td>
+                </tr>
 "@ 
         }
 $script:html += @"
+            </tbody>
         </table>
     </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
 "@
     }
     else{
@@ -3218,35 +5194,96 @@ else{
         }
     }
     if (($customPoliciesOrphanedFinal | measure-object).count -gt 0){
+        $tfCount = ($customPoliciesOrphanedFinal | measure-object).count
+        
+        $tableId = "SummaryTable_customPolicySetsOrphaned"
 $script:html += @"
-    <button type="button" class="collapsible" id="summary_custompolicySetSetsOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($customPoliciesOrphanedFinal | measure-object).count) Orphaned Custom PolicySets ($scopeNamingSummary)</span></button>
+    <button type="button" class="collapsible" id="summary_custompolicySetsOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($customPoliciesOrphanedFinal | measure-object).count) Orphaned Custom PolicySets ($scopeNamingSummary)</span></button>
     <div class="content">
 
-        <table class="summaryTable">
-            <tr>
-                <th>
-                    PolicySet DisplayName
-                </th>
-                <th>
-                    PolicySet DefinitionId
-                </th>
-            </tr>
+        <table id="$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        PolicySet DisplayName
+                    </th>
+                    <th>
+                        PolicySet DefinitionId
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
 "@
         foreach ($custompolicySetOrphaned in $customPoliciesOrphanedFinal | sort-object @{Expression={$_.DisplayName}}){
 $script:html += @"
-            <tr>
-                <td>
-                    $($custompolicySetOrphaned.DisplayName)
-                </td>
-                <td>
-                    $($custompolicySetOrphaned.policyDefinitionId)
-                </td>
-            </tr>
+                <tr>
+                    <td>
+                        $($custompolicySetOrphaned.DisplayName)
+                    </td>
+                    <td>
+                        $($custompolicySetOrphaned.policyDefinitionId)
+                    </td>
+                </tr>
 "@ 
         }
 $script:html += @"
+            </tbody>
         </table>
     </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
 "@
     }
     else{
@@ -3255,8 +5292,797 @@ $script:html += @"
 "@
     }
 }
+#endregion SUMMARYCustompolicySetOrphandedTenantRoot
 
-#SUMMARY Orphaned Custom Roles
+#region SUMMARYPolicySetsDeprecatedPolicy
+$policySetsDeprecated=@()
+foreach ($polSetDef in $($htCacheDefinitions).policySet.keys){
+    foreach ($polsetPolDefId in $($htCacheDefinitions).policySet.($polSetDef).PolicySetPolicyIds) {
+        if ((($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).type -eq "BuiltIn" -and (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).deprecated -eq $true -or (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).displayname.startswith("[Deprecated]")) {
+                $object = New-Object -TypeName PSObject -Property @{'PolicySetDisplayName'= $($htCacheDefinitions).policySet.($polSetDef).DisplayName; 'PolicySetDefinitionId'= $($htCacheDefinitions).policySet.($polSetDef).PolicyDefinitionId; 'PolicyDisplayName' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).displayname; 'PolicyId' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).Id; 'DeprecatedProperty' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).deprecated }
+                $policySetsDeprecated += $object
+        }
+    }
+}
+
+if (($policySetsDeprecated | measure-object).count -gt 0) {
+    $tfCount = ($policySetsDeprecated | measure-object).count
+    
+    $tableId = "SummaryTable_policySetsDeprecated"
+$script:html += @"
+    <button type="button" class="collapsible" id="summary_policySetsDeprecated"><i class="fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($policySetsDeprecated | measure-object).count) Custom Policy Sets / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] or Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+    </button>
+    <div class="content">
+        <table id= "$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        PolicySet DisplayName
+                    </th>
+                    <th>
+                        PolicySet DefinitionId
+                    </th>
+                    <th>
+                        Policy DisplayName
+                    </th>
+                    <th>
+                        Policy DefinitionId
+                    </th>
+                    <th>
+                        Deprecated Property
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+"@
+    foreach ($policySetDeprecated in $policySetsDeprecated) {
+        if ($policySetDeprecated.DeprecatedProperty -eq $true){
+            $deprecatedProperty = "true"
+        }
+        else{
+            $deprecatedProperty = "false"
+        }
+$script:html += @"
+                <tr>
+                    <td>
+                        $($policySetDeprecated.PolicySetDisplayName)
+                    </td>
+                    <td>
+                        $($policySetDeprecated.PolicySetDefinitionId)
+                    </td>
+                    <td>
+                        $($policySetDeprecated.PolicyDisplayName)
+                    </td>
+                    <td>
+                        $($policySetDeprecated.PolicyId)
+                    </td>
+                    <td>
+                        $deprecatedProperty
+                    </td>
+                </tr>
+"@ 
+    }
+$script:html += @"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+}
+else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($policySetsDeprecated | measure-object).count) Policy Sets / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] or Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span></p>
+"@
+}
+#endregion SUMMARYPolicySetsDeprecatedPolicy
+
+#region SUMMARYPolicyAssignmentsDeprecatedPolicy
+$policyAssignmentsDeprecated =@()
+foreach ($policyAssignmentAll in $($htCacheAssignments).policy.keys) {
+    #policySet
+    if ($($htCacheDefinitions).policySet.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')) -and -not($($htCacheAssignments).policy.($policyAssignmentAll)).Properties.PolicyDefinitionId.StartsWith("/providers/Microsoft.Authorization/policySetDefinitions/")) {
+        foreach ($polsetPolDefId in $($htCacheDefinitions).policySet.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')).PolicySetPolicyIds) {
+            if ((($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).type -eq "BuiltIn" -and (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).deprecated -eq $true -or (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).displayname.startswith("[Deprecated]")) {
+                    $object = New-Object -TypeName PSObject -Property @{'PolicyAssignmentId' = $policyAssignmentAll; 'PolicyDisplayName' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).displayname; 'PolicyId' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).Id; 'PolicyType' = "PolicySet"; 'DeprecatedProperty' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).deprecated }
+                    $policyAssignmentsDeprecated += $object
+            }
+        }
+    }
+    #Policy
+    if ($($htCacheDefinitions).policy.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')) -and ($($htCacheDefinitions).policy.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')).type -eq "Builtin" -and ($($htCacheDefinitions).policy.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')).deprecated -eq $true) -or $($htCacheDefinitions).policy.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')).displayname.startswith("[Deprecated]"))) {
+        $object = New-Object -TypeName PSObject -Property @{'PolicyAssignmentId' = $policyAssignmentAll; 'PolicyDisplayName' = $($htCacheDefinitions).policy.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')).displayname; 'PolicyId' = $($htCacheDefinitions).policy.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')).Id; 'PolicyType' = "Policy"; 'DeprecatedProperty' = $($htCacheDefinitions).policy.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')).deprecated }
+        $policyAssignmentsDeprecated += $object
+    }
+}
+
+#$policyAssignmentsDeprecated
+if (($policyAssignmentsDeprecated | measure-object).count -gt 0) {
+    $tfCount = ($policyAssignmentsDeprecated | measure-object).count
+    
+    $tableId = "SummaryTable_policyAssignmnetsDeprecated"
+$script:html += @"
+    <button type="button" class="collapsible" id="summary_policyAssignmnetsDeprecated"><i class="fa fa-exclamation-triangle orange" aria-hidden="true"></i> <span class="valignMiddle">$(($policyAssignmentsDeprecated | measure-object).count) Policy Assignments / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] or Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+    </button>
+    <div class="content">
+        <table id= "$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Policy AssignmentId
+                    </th>
+                    <th>
+                        Policy Type
+                    </th>
+                    <th>
+                        Policy DisplayName
+                    </th>
+                    <th>
+                        Policy DefinitionId
+                    </th>
+                    <th>
+                        Deprecated Property
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+"@
+    foreach ($policyAssignmentDeprecated in $policyAssignmentsDeprecated) {
+        if ($policyAssignmentDeprecated.DeprecatedProperty -eq $true){
+            $deprecatedProperty = "true"
+        }
+        else{
+            $deprecatedProperty = "false"
+        }
+$script:html += @"
+                <tr>
+                    <td>
+                        $($policyAssignmentDeprecated.PolicyAssignmentId)
+                    </td>
+                    <td>
+                        $($policyAssignmentDeprecated.PolicyType)
+                    </td>
+                    <td>
+                        $($policyAssignmentDeprecated.PolicyDisplayName)
+                    </td>
+                    <td>
+                        $($policyAssignmentDeprecated.PolicyId)
+                    </td>
+                    <td>
+                        $deprecatedProperty
+                    </td>
+                </tr>
+"@ 
+    }
+$script:html += @"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_1: 'select',
+            col_types: [
+                'string',
+                'select',
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+}
+else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($policyAssignmentsDeprecated | measure-object).count) Policy Assignments / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] or Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span></p>
+"@
+}
+#endregion SUMMARYPolicyAssignmentsDeprecatedPolicy
+
+#region SUMMARYPolicyAssignmentsAll
+$policyAssignmentsAllArray =@() 
+foreach ($policyAssignmentAll in $policyBaseQuery){  
+    $notScopesArray = @()
+    $policyAssignmentNotScopes = ($htCacheAssignments).policy.($policyAssignmentAll.PolicyAssignmentId).properties.NotScopes
+    if (($policyAssignmentNotScopes | Measure-Object).count -gt 0){
+        $notScopesArray += foreach ($notscope in $policyAssignmentNotScopes){
+            $notscope
+        }
+    }
+    
+    if ($policyAssignmentAll.PolicyAssignmentId.StartsWith("/providers/Microsoft.Management/managementGroups/")){
+        if ("" -ne $policyAssignmentAll.SubscriptionId){
+            $scope = "inherited $($policyAssignmentAll.PolicyAssignmentScope -replace '.*/')"
+        }
+        else{
+            if (($policyAssignmentAll.PolicyAssignmentScope -replace '.*/') -eq $policyAssignmentAll.MgId){
+                $scope = "this Mg"
+            }
+            else{
+                $scope = "inherited $($policyAssignmentAll.PolicyAssignmentScope -replace '.*/')"
+            }
+        }
+    }
+    if ($policyAssignmentAll.PolicyAssignmentId.StartsWith("/subscriptions/")){
+        $scope = "this Sub"
+    }
+
+    if (($htCacheAssignments).policy.($policyAssignmentAll.PolicyAssignmentId).properties.parameters.effect.value){
+        $effect = ($htCacheAssignments).policy.($policyAssignmentAll.PolicyAssignmentId).properties.parameters.effect.value
+    }
+    else{
+        if ((($htCacheDefinitions).policy.(($htCacheAssignments).policy.($policyAssignmentAll.PolicyAssignmentId).properties.PolicyDefinitionId -replace '.*/')).effectDefaultValue -ne "n/a"){
+            $effect = (($htCacheDefinitions).policy.(($htCacheAssignments).policy.($policyAssignmentAll.PolicyAssignmentId).properties.PolicyDefinitionId -replace '.*/')).effectDefaultValue
+        }
+        if ((($htCacheDefinitions).policy.(($htCacheAssignments).policy.($policyAssignmentAll.PolicyAssignmentId).properties.PolicyDefinitionId -replace '.*/')).effectFixedValue -ne "n/a"){
+            $effect = (($htCacheDefinitions).policy.(($htCacheAssignments).policy.($policyAssignmentAll.PolicyAssignmentId).properties.PolicyDefinitionId -replace '.*/')).effectFixedValue
+        }
+    }
+
+    $object = New-Object -TypeName PSObject -Property @{'Level' = $policyAssignmentAll.Level; 'MgId'= $policyAssignmentAll.MgId; 'MgName'= $policyAssignmentAll.MgName; 'subscriptionId' = $policyAssignmentAll.SubscriptionId; 'subscriptionName' = $policyAssignmentAll.Subscription; 'PolicyAssignmentId' = $policyAssignmentAll.PolicyAssignmentId; 'PolicyAssignmentDisplayName' = $policyAssignmentAll.PolicyAssignmentDisplayName; 'Effect' = $effect; 'PolicyName' = $policyAssignmentAll.Policy; 'PolicyId' = $policyAssignmentAll.PolicyDefinitionIdGuid; 'PolicyVariant' = $policyAssignmentAll.PolicyVariant; 'PolicyType' = $policyAssignmentAll.PolicyType; 'PolicyCategory' = $policyAssignmentAll.PolicyCategory; 'Inheritance' = $scope; 'PolicyAssignmentNotScopes' = $notScopesArray }
+    $policyAssignmentsAllArray += $object
+}
+
+if (($policyAssignmentsAllArray | measure-object).count -gt 0) {
+    $tfCount = ($policyAssignmentsAllArray | measure-object).count
+    $policyAssignmentsUniqueCount = ($policyAssignmentsAllArray | Sort-Object -Property PolicyAssignmentId -Unique | measure-object).count
+    
+    $tableId = "SummaryTable_policyAssignmentsAll"
+$script:html += @"
+    <button type="button" class="collapsible" id="summary_policyAssignmentsAll"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($policyAssignmentsAllArray | measure-object).count) Policy Assignments ($policyAssignmentsUniqueCount unique)</span>
+    </button>
+    <div class="content">
+        <table id= "$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Mg/Sub
+                    </th>
+                    <th>
+                        Management Group Id
+                    </th>
+                    <th>
+                        Management Group Name
+                    </th>
+                    <th>
+                        Subscription Id
+                    </th>
+                    <th>
+                        Subscription Name
+                    </th>
+                    <th>
+                        Inheritance
+                    </th>
+                    <th>
+                        ScopeExcluded
+                    </th>
+                    <th>
+                        Assignment DisplayName
+                    </th>
+                    <th>
+                        Policy
+                    </th>
+                    <th>
+                        Policy/Set
+                    </th>
+                    <th>
+                        Type
+                    </th>
+                    <th>
+                        Category
+                    </th>
+                    <th>
+                        Effect
+                    </th>
+                    <th>
+                        Policies NonCmplnt
+                    </th>
+                    <th>
+                        Policies Compliant
+                    </th>
+                    <th>
+                        Resources NonCmplnt
+                    </th>
+                    <th>
+                        Resources Compliant
+                    </th>
+                    <th>
+                        Role/Assignment
+                    </th>
+                    <th>
+                        Assignment Id
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+"@
+    foreach ($policyAssignment in $policyAssignmentsAllArray | sort-object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId) {
+        $relatedRoleAssignmentsArray = @()
+        $relatedRoleAssignmentsArray += foreach ($roleassignment in ($htCacheAssignments).role.keys){
+            if ((($htCacheAssignments).role.($roleassignment).DisplayName -replace '.*/') -eq ($policyAssignment.PolicyAssignmentId -replace '.*/')){
+                if (($htCacheDefinitions).role.(($htCacheAssignments).role.($roleassignment).RoleDefinitionId).IsCustom -eq $false){
+                    Write-Output "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$(($htCacheAssignments).role.($roleassignment).RoleDefinitionId).html`" target=`"_blank`">$(($htCacheAssignments).role.($roleassignment).RoleDefinitionName)</a> ($(($htCacheAssignments).role.($roleassignment).RoleAssignmentId))"
+                }
+                else{
+                    Write-Output "<u>$(($htCacheAssignments).role.($roleassignment).RoleDefinitionName)</u> ($(($htCacheAssignments).role.($roleassignment).RoleAssignmentId))"
+                }
+            }
+        }
+        if (($relatedRoleAssignmentsArray | Measure-Object).count -gt 0){
+            $relatedRoleAssignments = $relatedRoleAssignmentsArray -join "$CsvDelimiterOpposite "
+        }
+        else{
+            $relatedRoleAssignments = "n/a"
+        }
+
+        if ("" -eq $policyAssignment.SubscriptionId){
+            $mgOrSub = "Mg"
+        }
+        else{
+            $mgOrSub = "Sub"
+        }
+
+        $excludedScope = "false"
+        if (($policyAssignment.PolicyAssignmentNotScopes | Measure-Object).count -gt 0){
+            foreach ($policyAssignmentNotScope in $policyAssignment.PolicyAssignmentNotScopes){
+
+                if ("" -ne $policyAssignment.subscriptionId){
+                    createMgPathSub -subid $policyAssignment.subscriptionId
+                    [array]::Reverse($script:submgPathArray)
+                    $subPath = $script:submgPathArray -join "/"
+                    
+                    if ($submgPathArray -contains "'$($policyAssignmentNotScope -replace "/subscriptions/" -replace "/providers/Microsoft.Management/managementGroups/")'"){
+                        $excludedScope = "true"
+                    }
+                }
+                else{
+                    createMgPath -mgid $policyAssignment.MgId
+                    [array]::Reverse($script:mgPathArray)
+                    $mgPath = $script:mgPathArray -join "/"
+                    
+                    if ($mgPathArray -contains "'$($policyAssignmentNotScope -replace "/providers/Microsoft.Management/managementGroups/")'"){
+                        $excludedScope = "true"
+                    }
+                }
+            }
+        }
+
+
+$script:html += @"
+                <tr>
+                    <td>
+                        $mgOrSub
+                    </td>
+                    <td>
+                        $($policyAssignment.MgId)
+                    </td>
+                    <td>
+                        $($policyAssignment.MgName)
+                    </td>
+                    <td>
+                        $($policyAssignment.SubscriptionId)
+                    </td>
+                    <td>
+                        $($policyAssignment.SubscriptionName)
+                    </td>
+                    <td>
+                        $($policyAssignment.Inheritance)
+                    </td>
+                    <td>
+                        $excludedScope
+                    </td>
+                    <td>
+                        $($policyAssignment.PolicyAssignmentDisplayName)
+                    </td>
+                    <td>
+                        $($policyAssignment.PolicyName)
+                    </td>
+                    <td>
+                        $($policyAssignment.PolicyVariant)
+                    </td>
+                    <td>
+                        $($policyAssignment.PolicyType)
+                    </td>
+                    <td>
+                        $($policyAssignment.PolicyCategory)
+                    </td>
+                    <td>
+"@
+                    if ($policyAssignment.PolicyVariant -eq "Policy"){
+$script:html += @"
+                        $($policyAssignment.Effect)
+"@
+                    }
+                    else{
+$script:html += @"
+                        n/a
+"@
+                    }
+$script:html += @"
+                    </td>
+                    <td>
+"@
+if ($($policyAssignment.PolicyAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/")){
+$script:html += @"
+                        $(($htCachePolicyCompliance).mg.($policyAssignment.MgId).($policyAssignment.policyAssignmentId).NonCompliantPolicies)
+"@
+}
+if ($($policyAssignment.PolicyAssignmentId).StartsWith("/subscriptions/")){
+$script:html += @"
+                        $(($htCachePolicyCompliance).sub.($policyAssignment.SubscriptionId).($policyAssignment.policyAssignmentId).NonCompliantPolicies)
+"@
+}
+$script:html += @"
+                    </td>
+                    <td>
+"@
+if ($($policyAssignment.PolicyAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/")){
+$script:html += @"
+                        $(($htCachePolicyCompliance).mg.($policyAssignment.MgId).($policyAssignment.policyAssignmentId).CompliantPolicies)
+"@
+}
+if ($($policyAssignment.PolicyAssignmentId).StartsWith("/subscriptions/")){
+$script:html += @"
+                        $(($htCachePolicyCompliance).sub.($policyAssignment.SubscriptionId).($policyAssignment.policyAssignmentId).CompliantPolicies)
+"@
+}
+$script:html += @"
+                    </td>
+                    <td>
+"@
+#noncomp
+if ($($policyAssignment.PolicyAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/")){
+$script:html += @"
+    $(($htCachePolicyCompliance).mg.($policyAssignment.MgId).($policyAssignment.policyAssignmentId).NonCompliantResources)
+"@
+}
+if ($($policyAssignment.PolicyAssignmentId).StartsWith("/subscriptions/")){
+$script:html += @"
+    $(($htCachePolicyCompliance).sub.($policyAssignment.SubscriptionId).($policyAssignment.policyAssignmentId).NonCompliantResources)
+"@
+}    
+$script:html += @"
+                    </td>
+                    <td>
+"@
+#compl
+if ($($policyAssignment.PolicyAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/")){
+$script:html += @"
+    $(($htCachePolicyCompliance).mg.($policyAssignment.MgId).($policyAssignment.policyAssignmentId).CompliantResources)
+"@
+}
+if ($($policyAssignment.PolicyAssignmentId).StartsWith("/subscriptions/")){
+$script:html += @"
+    $(($htCachePolicyCompliance).sub.($policyAssignment.SubscriptionId).($policyAssignment.policyAssignmentId).CompliantResources)
+"@
+}    
+$script:html += @"
+                    </td>
+                    <td class="breakwordall">
+                        $relatedRoleAssignments
+                    </td>
+                    <td class="breakwordall">
+                        $($policyAssignment.PolicyAssignmentId)
+                    </td>
+                </tr>
+"@
+    }
+$script:html += @"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_0: 'select',
+            col_6: 'select',
+            col_9: 'select',
+            col_10: 'select',
+            col_12: 'select',
+            col_types: [
+                'select',
+                'string',
+                'string',
+                'string',
+                'string',
+                'string',
+                'select',
+                'string',
+                'string',
+                'select',
+                'select',
+                'string',
+                'select',
+                'number',
+                'number',
+                'number',
+                'number',
+                'string',
+                'string'
+            ],
+            watermark: ['', '', '', 'try [nonempty]', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+}
+else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($policyAssignmentsAllArray | measure-object).count) Policy Assignments</span></p>
+"@
+}
+#endregion SUMMARYPolicyAssignmentsAll
+
+
+#region SUMMARYtenanttotalcustomroles
+$script:html += @"
+    <hr>
+"@
+$tenantCustomRolesCount = ($tenantCustomRoles | measure-object).count
+if ($tenantCustomRolesCount -gt $LimitRBACCustomRoleDefinitionsTenant * ($LimitCriticalPercentage / 100)){
+    $faimage = "<i class=`"fa fa-exclamation-triangle`" aria-hidden=`"true`"></i>"
+}
+else{
+    $faimage = "<i class=`"fa fa-check-circle blue`" aria-hidden=`"true`"></i>"
+}
+$tenantCustomRolesArray = @()
+foreach ($tenantCustomRole in $tenantCustomRoles){
+    $tenantCustomRolesArray += ($htCacheDefinitions).role.($tenantCustomRole)
+}
+
+if ($tenantCustomRolesCount -gt 0){
+    $tfCount = $tenantCustomRolesCount
+    
+    $tableId = "SummaryTable_customRoles"
+$script:html += @"
+    <button type="button" class="collapsible" id="summary_customRoles">$faimage <span class="valignMiddle">$tenantCustomRolesCount Custom Roles ($scopeNamingSummary) (Limit: $tenantCustomRolesCount/$LimitRBACCustomRoleDefinitionsTenant)</span></button>
+    <div class="content">
+
+        <table id="$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Role Name
+                    </th>
+                    <th>
+                        Role Id
+                    </th>
+                    <th>
+                        Assignable Scopes
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+"@
+    foreach ($tenantCustomRole in $tenantCustomRolesArray | sort-object @{Expression={$_.Name}}){
+$script:html += @"
+                <tr>
+                    <td>
+                        $(($htCacheDefinitions).role.($tenantCustomRole.Id).Name)
+                    </td>
+                    <td>
+                        $(($htCacheDefinitions).role.($tenantCustomRole.Id).Id)
+                    </td>
+                    <td>
+                        $((($htCacheDefinitions).role.($tenantCustomRole.Id).AssignableScopes | Measure-Object).count) ($(($htCacheDefinitions).role.($tenantCustomRole.Id).AssignableScopes -join "$CsvDelimiterOpposite "))
+                    </td>
+                </tr>
+"@ 
+    }
+$script:html += @"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+}
+else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$tenantCustomRolesCount Custom Roles ($scopeNamingSummary)</span></p>
+"@
+}
+#endregion SUMMARYtenanttotalcustomroles
+
+#region SUMMARYOrphanedCustomRoles
 if ($getMgParentName -eq "Tenant Root"){
     $customRolesInUse = ($rbacBaseQuery | where-object {$_.RoleIsCustom -eq "TRUE"}).RoleDefinitionId | Sort-Object -Unique
     
@@ -3271,41 +6097,103 @@ if ($getMgParentName -eq "Tenant Root"){
         }
     }
     if (($customRolesOrphaned | measure-object).count -gt 0){
+        $tfCount = ($customRolesOrphaned | measure-object).count
+        
+        $tableId = "SummaryTable_customRolesOrphaned"
 $script:html += @"
     <button type="button" class="collapsible" id="summary_customRolesOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($customRolesOrphaned | measure-object).count) Orphaned Custom Roles ($scopeNamingSummary) <abbr title="Role has no assignments"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
     </button>
     <div class="content">
-        <table class="summaryTable">
-            <tr>
-                <th>
-                    Role Name
-                </th>
-                <th>
-                    Role Id
-                </th>
-                <th>
-                    Assignable Scopes
-                </th>
-            </tr>
+        <table id="$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Role Name
+                    </th>
+                    <th>
+                        Role Id
+                    </th>
+                    <th>
+                        Assignable Scopes
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
 "@
         foreach ($customRoleOrphaned in $customRolesOrphaned | Sort-Object @{Expression={$_.Name}}){
 $script:html += @"
-            <tr>
-                <td>
-                    $($customRoleOrphaned.Name)
-                </td>
-                <td>
-                    $($customRoleOrphaned.Id)
-                </td>
-                <td>
-                $(($customRoleOrphaned.AssignableScopes | Measure-Object).count) ($($customRoleOrphaned.AssignableScopes -join "$CsvDelimiterOpposite "))                    
-                </td>
-            </tr>
+                <tr>
+                    <td>
+                        $($customRoleOrphaned.Name)
+                    </td>
+                    <td>
+                        $($customRoleOrphaned.Id)
+                    </td>
+                    <td>
+                    $(($customRoleOrphaned.AssignableScopes | Measure-Object).count) ($($customRoleOrphaned.AssignableScopes -join "$CsvDelimiterOpposite "))                    
+                    </td>
+                </tr>
 "@ 
         }
 $script:html += @"
+            </tbody>
         </table>
     </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
 "@
     }
     else{
@@ -3360,42 +6248,104 @@ else{
     }
 
     if (($customRolesInScopeArray | measure-object).count -gt 0){
+        $tfCount = ($customRolesInScopeArray | measure-object).count
+        
+        $tableId = "SummaryTable_customRolesOrphaned"
 $script:html += @"
     <button type="button" class="collapsible" id="summary_customRolesOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($customRolesInScopeArray | measure-object).count) Orphaned Custom Roles ($scopeNamingSummary) <abbr title="Role has no assignments (Roles where assignableScopes has mg from superior scopes are not evaluated)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
     </button>
     <div class="content">
-        <table class="summaryTable">
-            <tr>
-                <th>
-                    Name
-                </th>
-                <th>
-                    Id
-                </th>
-                <th>
-                    Assignable Scopes
-                </th>
-            </tr>
+        <table id="$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Name
+                    </th>
+                    <th>
+                        Id
+                    </th>
+                    <th>
+                        Assignable Scopes
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
 "@
         foreach ($inScopeCustomRole in $customRolesInScopeArray | Sort-Object @{Expression={$_.Name}}){
 
 $script:html += @"
-            <tr>
-                <td>
-                    $($inScopeCustomRole.Name)
-                </td>
-                <td>
-                    $($inScopeCustomRole.Id)
-                </td>
-                <td>
-                $(($inScopeCustomRole.AssignableScopes | Measure-Object).count) ($($inScopeCustomRole.AssignableScopes -join "$CsvDelimiterOpposite "))
-                </td>
-            </tr>
+                <tr>
+                    <td>
+                        $($inScopeCustomRole.Name)
+                    </td>
+                    <td>
+                        $($inScopeCustomRole.Id)
+                    </td>
+                    <td>
+                    $(($inScopeCustomRole.AssignableScopes | Measure-Object).count) ($($inScopeCustomRole.AssignableScopes -join "$CsvDelimiterOpposite "))
+                    </td>
+                </tr>
 "@ 
         }
 $script:html += @"
+            </tbody>
         </table>
     </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
 "@
     }
     else{
@@ -3404,55 +6354,119 @@ $script:html += @"
 "@
     }
 }
+#endregion SUMMARYOrphanedCustomRoles
 
-#SUMMARY RoleAssignments Orphaned
+#region SUMMARYOrphanedRoleAssignments
 $roleAssignmentsOrphanedAll = $rbacBaseQuery | Where-Object { $_.RoleAssignmentObjectType -eq "Unknown" } | Sort-Object -Property RoleAssignmentId
 $roleAssignmentsOrphanedUnique = $roleAssignmentsOrphanedAll | Sort-Object -Property RoleAssignmentId -Unique
 
 if (($roleAssignmentsOrphanedUnique | measure-object).count -gt 0) {
+    $tfCount = ($roleAssignmentsOrphanedUnique | measure-object).count
+    
+    $tableId = "SummaryTable_roleAssignmnetsOrphaned"
 $script:html += @"
-    <button type="button" class="collapsible" id="summary_roleAssignmnetsOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOrphanedUnique | measure-object).count) Orphaned Role Assignments ($scopeNamingSummary) <abbr title="Role was deleted although and assignment existed OR the target identity (Sser, Group, ServicePrincipal) was deleted"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+    <button type="button" class="collapsible" id="summary_roleAssignmnetsOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOrphanedUnique | measure-object).count) Orphaned Role Assignments ($scopeNamingSummary) <abbr title="Role was deleted although and assignment existed OR the target identity (User, Group, ServicePrincipal) was deleted"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
     </button>
     <div class="content">
-        <table class="summaryTable">
-            <tr>
-                <th>
-                    Role Assignment Id
-                </th>
-                <th>
-                    Role Name
-                </th>
-                <th>
-                    Role Id
-                </th>
-                <th>
-                    Impacted Mg/Sub
-                </th>
-            </tr>
+        <table id= "$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Role Assignment Id
+                    </th>
+                    <th>
+                        Role Name
+                    </th>
+                    <th>
+                        Role Id
+                    </th>
+                    <th>
+                        Impacted Mg/Sub
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
 "@
     foreach ($roleAssignmentOrphanedUnique in $roleAssignmentsOrphanedUnique) {
         $impactedMgs = ($roleAssignmentsOrphanedAll | Where-Object { "" -eq $_.SubscriptionId -and $_.RoleAssignmentId -eq $roleAssignmentOrphanedUnique.RoleAssignmentId } | Sort-Object -Property MgId)
         $impactedSubs = $roleAssignmentsOrphanedAll | Where-Object { "" -ne $_.SubscriptionId -and $_.RoleAssignmentId -eq $roleAssignmentOrphanedUnique.RoleAssignmentId } | Sort-Object -Property SubscriptionId
 $script:html += @"
-            <tr>
-                <td>
-                    $($roleAssignmentOrphanedUnique.RoleAssignmentId)
-                </td>
-                <td>
-                    $($roleAssignmentOrphanedUnique.RoleDefinitionName)
-                </td>
-                <td>
-                    $($roleAssignmentOrphanedUnique.RoleDefinitionId)
-                </td>
-                <td>
-                    Mg: $(($impactedMgs | measure-object).count); Sub: $(($impactedSubs | measure-object).count)
-                </td>
-            </tr>
+                <tr>
+                    <td>
+                        $($roleAssignmentOrphanedUnique.RoleAssignmentId)
+                    </td>
+                    <td>
+                        $($roleAssignmentOrphanedUnique.RoleDefinitionName)
+                    </td>
+                    <td>
+                        $($roleAssignmentOrphanedUnique.RoleDefinitionId)
+                    </td>
+                    <td>
+                        Mg: $(($impactedMgs | measure-object).count); Sub: $(($impactedSubs | measure-object).count)
+                    </td>
+                </tr>
 "@ 
     }
 $script:html += @"
+            </tbody>
         </table>
     </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
 "@
 }
 else{
@@ -3460,31 +6474,280 @@ $script:html += @"
     <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOrphanedUnique | measure-object).count) Orphaned Role Assignments ($scopeNamingSummary)</span></p>
 "@
 }
+#endregion SUMMARYOrphanedRoleAssignments
 
-#SUMMARY Security CustomRoles
+#region SUMMARYRoleAssignmentsAll
+$rbacAll = @()
+foreach ($rbac in $rbacBaseQuery){
+    $scope = $null
+    if ($rbac.RoleAssignmentId.StartsWith("/providers/Microsoft.Management/managementGroups/")){
+        if ("" -ne $rbac.SubscriptionId){
+            $scope = "inherited $($rbac.RoleAssignmentScope -replace '.*/')"
+        }
+        else{
+            if (($rbac.RoleAssignmentScope -replace '.*/') -eq $rbac.MgId){
+                $scope = "this Mg"
+            }
+            else{
+                $scope = "inherited $($rbac.RoleAssignmentScope -replace '.*/')"
+            }
+        }
+    }
+    if ($rbac.RoleAssignmentId.StartsWith("/subscriptions/")){
+        $scope = "this Sub"
+    }
+    if ($rbac.RoleAssignmentId.StartsWith("/providers/Microsoft.Authorization/roleAssignments/")){
+            $scope = "INHERITED ROOT"
+    }
+    $object = New-Object -TypeName PSObject -Property @{'Level' = $rbac.Level; 'RoleAssignmentId' = $rbac.RoleAssignmentId; 'MgId'= $rbac.MgId; 'MgName' = $rbac.MgName; 'SubscriptionId' = $rbac.SubscriptionId; 'SubscriptionName' = $rbac.Subscription; 'Scope' = $scope; 'Role' = $rbac.RoleDefinitionName; 'RoleIsCustom' = $rbac.RoleIsCustom; 'ObjectDisplayName' = $rbac.RoleAssignmentDisplayname; 'ObjectSignInName' = $rbac.RoleAssignmentSignInName; 'ObjectId' = $rbac.RoleAssignmentObjectId; 'ObjectType' = $rbac.RoleAssignmentObjectType }
+    $rbacAll += $object
+}
+if (($rbacAll | measure-object).count -gt 0) {
+    $uniqueRoleAssignmentsCount = ($rbacAll | sort-object -Property RoleAssignmentId -Unique | Measure-Object).count
+    $tfCount = ($rbacAll | measure-object).count
+    
+    $tableId = "SummaryTable_roleAssignmentsAll"
+$script:html += @"
+    <button type="button" class="collapsible" id="summary_roleAssignmentsAll"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($rbacAll | measure-object).count) Role Assignments ($uniqueRoleAssignmentsCount unique)</span>
+    </button>
+    <div class="content">
+        <table id= "$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Mg/Sub
+                    </th>
+                    <th>
+                        Management Group Id
+                    </th>
+                    <th>
+                        Management Group Name
+                    </th>
+                    <th>
+                        Subscription Id
+                    </th>
+                    <th>
+                        Subscription Name
+                    </th>
+                    <th>
+                        Scope
+                    </th>
+                    <th>
+                        Role
+                    </th>
+                    <th>
+                        Role Custom
+                    </th>
+                    <th>
+                        Object Displayname
+                    </th>
+                    <th>
+                        Object SignInName
+                    </th>
+                    <th>
+                        Object ObjectId
+                    </th>
+                    <th>
+                        Object Type
+                    </th>
+                    <th>
+                        RoleAssignmentId
+                    </th>
+                    <th>
+                        Related PolicyAssignment
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+"@
+    foreach ($roleAssignment in $rbacAll | sort-object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId) {
+        if ("" -eq $roleAssignment.SubscriptionId){
+            $mgOrSub = "Mg"
+        }
+        else{
+            $mgOrSub = "Sub"
+        }
+$script:html += @"
+                <tr>
+                    <td>
+                        $mgOrSub
+                    </td>
+                    <td>
+                        $($roleAssignment.MgId)
+                    </td>
+                    <td>
+                        $($roleAssignment.MgName)
+                    </td>
+                    <td>
+                        $($roleAssignment.SubscriptionId)
+                    </td>
+                    <td>
+                        $($roleAssignment.SubscriptionName)
+                    </td>
+                    <td>
+                        $($roleAssignment.Scope)
+                    </td>
+                    <td>
+                        $($roleAssignment.Role)
+                    </td>
+                    <td>
+                        $($roleAssignment.RoleIsCustom)
+                    </td>
+                    <td class="breakwordall">
+                        $($roleAssignment.ObjectDisplayName)
+                    </td>
+                    <td class="breakwordall">
+                        $($roleAssignment.ObjectSignInName)
+                    </td>
+                    <td class="breakwordall">
+                        $($roleAssignment.ObjectId)
+                    </td>
+                    <td>
+                        $($roleAssignment.ObjectType)
+                    </td>
+                    <td class="breakwordall">
+                        $($roleAssignment.RoleAssignmentId)
+                    </td>
+                    <td class="breakwordall">
+"@
+        $relatedPolicyAssignment = ($policyBaseQuery | where-Object { $_.PolicyAssignmentName -eq $roleAssignment.ObjectDisplayName }) | Get-Unique
+        if ($relatedPolicyAssignment){
+            if ($relatedPolicyAssignment.PolicyType -eq "BuiltIn"){
+                if ($relatedPolicyAssignment.PolicyVariant -eq "Policy"){
+                    $LinkOrNotLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$($relatedPolicyAssignment.policyDefinitionIdGuid).html`" target=`"_blank`">$($relatedPolicyAssignment.Policy)</a>"
+                }
+                if ($relatedPolicyAssignment.PolicyVariant -eq "PolicySet"){
+                    $LinkOrNotLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($relatedPolicyAssignment.policyDefinitionIdGuid).html`" target=`"_blank`">$($relatedPolicyAssignment.Policy)</a>"
+                }
+            }
+            else{
+                $LinkOrNotLinkToAzAdvertizer = $relatedPolicyAssignment.Policy
+            }
+$script:html += @"
+                            $($relatedPolicyAssignment.PolicyAssignmentId) ($LinkOrNotLinkToAzAdvertizer)
+"@
+        }
+        else{
+$script:html += @"
+                            none 
+"@
+        }
+$script:html += @"
+                    </td>
+                </tr>
+"@ 
+    }
+$script:html += @"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_0: 'select',
+            col_7: 'select',
+            col_types: [
+                'select',
+                'string',
+                'string',
+                'string',
+                'string',
+                'string',
+                'string',
+                'select',
+                'string',
+                'string',
+                'string',
+                'string',
+                'string',
+                'string'
+            ],
+            watermark: ['', '', '', 'try [nonempty]', '', '', 'try owner||reader', '', '', '', '', '', '', ''],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+}
+else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($rbacAll | measure-object).count) Role Assignments</span></p>
+"@
+}
+#endregion SUMMARYRoleAssignmentsAll
+
+#region SUMMARYSecurityCustomRoles
 $customRolesOwnerAll = $rbacBaseQuery | Where-Object { $_.RoleSecurityCustomRoleOwner -eq 1 } | Sort-Object -Property RoleDefinitionId
 $customRolesOwnerHtAll = ($htCacheDefinitions).role.keys | where-object { ($htCacheDefinitions).role.$_.Actions -eq '*' -and (($htCacheDefinitions).role.$_.NotActions).length -eq 0 -and ($htCacheDefinitions).role.$_.IsCustom -eq $True }
 if (($customRolesOwnerHtAll | measure-object).count -gt 0){
-
+    $tfCount = ($customRolesOwnerHtAll | measure-object).count
+    
+    $tableId = "SummaryTable_customroleCustomRoleOwner"
 $script:html += @"
     <button type="button" class="collapsible" id="summary_customroleCustomRoleOwner"><i class="fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($customRolesOwnerHtAll | measure-object).count) Custom Roles Owner permissions ($scopeNamingSummary) <abbr title="Custom subscription owner roles should not exist"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
     </button>
     <div class="content">
-        <table class="summaryTable">
-            <tr>
-                <th>
-                    Role Name
-                </th>
-                <th>
-                    Role Id
-                </th>
-                <th>
-                    Role Assignments
-                </th>
-                <th>
-                    Assignable Scopes
-                </th>
-            </tr>
+        <table id="$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Role Name
+                    </th>
+                    <th>
+                        Role Id
+                    </th>
+                    <th>
+                        Role Assignments
+                    </th>
+                    <th>
+                        Assignable Scopes
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
 "@
     foreach ($customRole in ($customRolesOwnerHtAll)) {
         $customRoleOwnersAllAssignmentsCount = ((($customRolesOwnerAll | Where-Object { $_.RoleDefinitionId -eq $customRole }).RoleAssignmentId | Sort-Object -Unique) | measure-object).count
@@ -3494,31 +6757,88 @@ $script:html += @"
             foreach ($customRoleRoleAssignmentId in $customRoleRoleAssignmentIds){
                 $customRoleRoleAssignmentsArray += $customRoleRoleAssignmentId
             }
-            $customRoleRoleAssignmentsOutput = "$customRoleOwnersAllAssignmentsCount ($($customRoleRoleAssignmentsArray -join "$CsvDelimiterOpposite "))"
+                $customRoleRoleAssignmentsOutput = "$customRoleOwnersAllAssignmentsCount ($($customRoleRoleAssignmentsArray -join "$CsvDelimiterOpposite "))"
         }
         else{
-            $customRoleRoleAssignmentsOutput = "$customRoleOwnersAllAssignmentsCount"
+                $customRoleRoleAssignmentsOutput = "$customRoleOwnersAllAssignmentsCount"
         }
 $script:html += @"
-            <tr>
-                <td>
-                    $(($htCacheDefinitions).role.($customRole).Name)
-                </td>
-                <td>
-                    $($customRole)
-                </td>
-                <td>
-                    $($customRoleRoleAssignmentsOutput)
-                </td>
-                <td>
-                    $((($htCacheDefinitions).role.($customRole).AssignableScopes | Measure-Object).count) ($(($htCacheDefinitions).role.($customRole).AssignableScopes -join "$CsvDelimiterOpposite "))
-                </td>
-            </tr>
+                <tr>
+                    <td>
+                        $(($htCacheDefinitions).role.($customRole).Name)
+                    </td>
+                    <td>
+                        $($customRole)
+                    </td>
+                    <td>
+                        $($customRoleRoleAssignmentsOutput)
+                    </td>
+                    <td>
+                        $((($htCacheDefinitions).role.($customRole).AssignableScopes | Measure-Object).count) ($(($htCacheDefinitions).role.($customRole).AssignableScopes -join "$CsvDelimiterOpposite "))
+                    </td>
+                </tr>
 "@ 
     }
 $script:html += @"
+            </tbody>
         </table>
     </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
 "@
 }
 else{
@@ -3526,61 +6846,126 @@ $script:html += @"
     <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($customRolesOwnerHtAll | measure-object).count) Custom Roles Owner permissions ($scopeNamingSummary)</span></p>
 "@
 }
+#endregion SUMMARYSecurityCustomRoles
 
-#SUMMARY Security OwnerAssignmentSP
+#region SUMMARYSecurityOwnerAssignmentSP
 $roleAssignmentsOwnerAssignmentSPAll = ($rbacBaseQuery | Where-Object { $_.RoleSecurityOwnerAssignmentSP -eq 1 } | Sort-Object -Property RoleAssignmentId)
 $roleAssignmentsOwnerAssignmentSP = $roleAssignmentsOwnerAssignmentSPAll | sort-object -Property RoleAssignmentId -Unique
 if (($roleAssignmentsOwnerAssignmentSP | measure-object).count -gt 0){
+    $tfCount = ($roleAssignmentsOwnerAssignmentSP | measure-object).count
+    
+    $tableId = "SummaryTable_roleAssignmentsOwnerAssignmentSP"
 $script:html += @"
     <button type="button" class="collapsible" id="summary_roleAssignmentsOwnerAssignmentSP"><i class="fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOwnerAssignmentSP | measure-object).count) Owner permission assignments to ServicePrincipal ($scopeNamingSummary) <abbr title="Owner permissions for Service Principals should be treated exceptional"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
     </button>
     <div class="content">
-        <table class="summaryTable">
-            <tr>
-                <th>
-                    Role Name
-                </th>
-                <th>
-                    Role Id
-                </th>
-                <th>
-                    Role Assignment
-                </th>
-                <th>
-                    ServicePrincipal (ObjId)
-                </th>
-                <th>
-                    Impacted Mg/Sub
-                </th>
-            </tr>
+        <table id= "$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Role Name
+                    </th>
+                    <th>
+                        Role Id
+                    </th>
+                    <th>
+                        Role Assignment
+                    </th>
+                    <th>
+                        ServicePrincipal (ObjId)
+                    </th>
+                    <th>
+                        Impacted Mg/Sub
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
 "@
     foreach ($roleAssignmentOwnerAssignmentSP in ($roleAssignmentsOwnerAssignmentSP)) {
         $impactedMgs = $roleAssignmentsOwnerAssignmentSPAll | Where-Object { "" -eq $_.SubscriptionId -and $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentSP.RoleAssignmentId }
         $impactedSubs = $roleAssignmentsOwnerAssignmentSPAll | Where-Object { "" -ne $_.SubscriptionId -and $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentSP.RoleAssignmentId }
         $servicePrincipal = ($roleAssignmentsOwnerAssignmentSP | Where-Object { $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentSP.RoleAssignmentId }) | Get-Unique
 $script:html += @"
-            <tr>
-                <td>
-                    $($roleAssignmentOwnerAssignmentSP.RoleDefinitionName)
-                </td>
-                <td>
-                    $($roleAssignmentOwnerAssignmentSP.RoleDefinitionId)
-                </td>
-                <td>
-                    $($roleAssignmentOwnerAssignmentSP.RoleAssignmentId)
-                </td>
-                <td>
-                    $($servicePrincipal.RoleAssignmentDisplayname) ($($servicePrincipal.RoleAssignmentObjectId))
-                </td>
-                <td>
-                    Mg: $(($impactedMgs | measure-object).count); Sub: $(($impactedSubs | measure-object).count)
-                </td>
-            </tr>
+                <tr>
+                    <td>
+                        $($roleAssignmentOwnerAssignmentSP.RoleDefinitionName)
+                    </td>
+                    <td>
+                        $($roleAssignmentOwnerAssignmentSP.RoleDefinitionId)
+                    </td>
+                    <td>
+                        $($roleAssignmentOwnerAssignmentSP.RoleAssignmentId)
+                    </td>
+                    <td>
+                        $($servicePrincipal.RoleAssignmentDisplayname) ($($servicePrincipal.RoleAssignmentObjectId))
+                    </td>
+                    <td>
+                        Mg: $(($impactedMgs | measure-object).count); Sub: $(($impactedSubs | measure-object).count)
+                    </td>
+                </tr>
 "@ 
     }
 $script:html += @"
+            </tbody>
         </table>
     </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
 "@
 }
 else{
@@ -3588,9 +6973,1382 @@ $script:html += @"
     <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOwnerAssignmentSP | measure-object).count) Owner permission assignments to ServicePrincipal ($scopeNamingSummary)</span></p>
 "@
 }
+#endregion SUMMARYSecurityOwnerAssignmentSP
 
-#SUMMARY Resources
+#region SUMMARYSecurityOwnerAssignmentNotGroup
+$roleAssignmentsOwnerAssignmentNotGroupAll = ($rbacBaseQuery | Where-Object { $_.RoleDefinitionName -eq "Owner" -and $_.RoleAssignmentObjectType -ne "Group" } | Sort-Object -Property RoleAssignmentId)
+$roleAssignmentsOwnerAssignmentNotGroup = $roleAssignmentsOwnerAssignmentNotGroupAll | sort-object -Property RoleAssignmentId -Unique
+if (($roleAssignmentsOwnerAssignmentNotGroup | measure-object).count -gt 0){
+    $tfCount = ($roleAssignmentsOwnerAssignmentNotGroup | measure-object).count
+    
+    $tableId = "SummaryTable_roleAssignmentsOwnerAssignmentNotGroup"
+$script:html += @"
+    <button type="button" class="collapsible" id="summary_roleAssignmentsOwnerAssignmentNotGroup"><i class="fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOwnerAssignmentNotGroup | measure-object).count) Owner permission assignments to notGroup ($scopeNamingSummary)</span>
+    </button>
+    <div class="content">
+        <table id= "$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Role Name
+                    </th>
+                    <th>
+                        Role Id
+                    </th>
+                    <th>
+                        Role Assignment
+                    </th>
+                    <th>
+                        Obj Type
+                    </th>
+                    <th>
+                        Obj DisplayName
+                    </th>
+                    <th>
+                        Obj SignInName
+                    </th>
+                    <th>
+                        Obj Id
+                    </th>
+                    <th>
+                        Impacted Mg/Sub
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+"@
+    foreach ($roleAssignmentOwnerAssignmentNotGroup in ($roleAssignmentsOwnerAssignmentNotGroup)) {
+        $impactedMgs = $roleAssignmentsOwnerAssignmentNotGroupAll | Where-Object { "" -eq $_.SubscriptionId -and $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentId }
+        $impactedSubs = $roleAssignmentsOwnerAssignmentNotGroupAll | Where-Object { "" -ne $_.SubscriptionId -and $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentId }
+        $servicePrincipal = ($roleAssignmentsOwnerAssignmentNotGroup | Where-Object { $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentId }) | Get-Unique
+$script:html += @"
+                <tr>
+                    <td>
+                        $($roleAssignmentOwnerAssignmentNotGroup.RoleDefinitionName)
+                    </td>
+                    <td>
+                        $($roleAssignmentOwnerAssignmentNotGroup.RoleDefinitionId)
+                    </td>
+                    <td class="breakwordall">
+                        $($roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentId)
+                    </td>
+                    <td>
+                        $($roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentObjectType)
+                    </td>
+                    <td>
+                        $($roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentDisplayname)
+                    </td>
+                    <td class="breakwordall">
+                        $($roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentSignInName)
+                    </td>
+                    <td class="breakwordall">
+                        $($roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentObjectId)
+                    </td>
+                    <td>
+                        Mg: $(($impactedMgs | measure-object).count); Sub: $(($impactedSubs | measure-object).count)
+                    </td>
+                </tr>
+"@ 
+    }
+$script:html += @"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string',
+                'string',
+                'string',
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+}
+else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOwnerAssignmentNotGroup | measure-object).count) Owner permission assignments to notGroup ($scopeNamingSummary)</span></p>
+"@
+}
+#endregion SUMMARYSecurityOwnerAssignmentNotGroup
+
+#region SUMMARYSecurityUserAccessAdministratorAssignmentNotGroup
+$roleAssignmentsUserAccessAdministratorAssignmentNotGroupAll = ($rbacBaseQuery | Where-Object { $_.RoleDefinitionName -eq "User Access Administrator" -and $_.RoleAssignmentObjectType -ne "Group" } | Sort-Object -Property RoleAssignmentId)
+$roleAssignmentsUserAccessAdministratorAssignmentNotGroup = $roleAssignmentsUserAccessAdministratorAssignmentNotGroupAll | sort-object -Property RoleAssignmentId -Unique
+if (($roleAssignmentsUserAccessAdministratorAssignmentNotGroup | measure-object).count -gt 0){
+    $tfCount = ($roleAssignmentsUserAccessAdministratorAssignmentNotGroup | measure-object).count
+    
+    $tableId = "SummaryTable_roleAssignmentsUserAccessAdministratorAssignmentNotGroup"
+$script:html += @"
+    <button type="button" class="collapsible" id="summary_roleAssignmentsUserAccessAdministratorAssignmentNotGroup"><i class="fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsUserAccessAdministratorAssignmentNotGroup | measure-object).count) UserAccessAdministrator permission assignments to notGroup ($scopeNamingSummary)</span>
+    </button>
+    <div class="content">
+        <table id= "$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Role Name
+                    </th>
+                    <th>
+                        Role Id
+                    </th>
+                    <th>
+                        Role Assignment
+                    </th>
+                    <th>
+                        Obj Type
+                    </th>
+                    <th>
+                        Obj DisplayName
+                    </th>
+                    <th>
+                        Obj SignInName
+                    </th>
+                    <th>
+                        Obj Id
+                    </th>
+                    <th>
+                        Impacted Mg/Sub
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+"@
+    foreach ($roleAssignmentUserAccessAdministratorAssignmentNotGroup in ($roleAssignmentsUserAccessAdministratorAssignmentNotGroup)) {
+        $impactedMgs = $roleAssignmentsUserAccessAdministratorAssignmentNotGroupAll | Where-Object { "" -eq $_.SubscriptionId -and $_.RoleAssignmentId -eq $roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentId }
+        $impactedSubs = $roleAssignmentsUserAccessAdministratorAssignmentNotGroupAll | Where-Object { "" -ne $_.SubscriptionId -and $_.RoleAssignmentId -eq $roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentId }
+        $servicePrincipal = ($roleAssignmentsUserAccessAdministratorAssignmentNotGroup | Where-Object { $_.RoleAssignmentId -eq $roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentId }) | Get-Unique
+$script:html += @"
+                <tr>
+                    <td>
+                        $($roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleDefinitionName)
+                    </td>
+                    <td>
+                        $($roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleDefinitionId)
+                    </td>
+                    <td class="breakwordall">
+                        $($roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentId)
+                    </td>
+                    <td>
+                        $($roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentObjectType)
+                    </td>
+                    <td>
+                        $($roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentDisplayname)
+                    </td>
+                    <td class="breakwordall">
+                        $($roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentSignInName)
+                    </td>
+                    <td class="breakwordall">
+                        $($roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentObjectId)
+                    </td>
+                    <td>
+                        Mg: $(($impactedMgs | measure-object).count); Sub: $(($impactedSubs | measure-object).count)
+                    </td>
+                </tr>
+"@ 
+    }
+$script:html += @"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string',
+                'string',
+                'string',
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+}
+else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsUserAccessAdministratorAssignmentNotGroup | measure-object).count) UserAccessAdministrator permission assignments to notGroup ($scopeNamingSummary)</span></p>
+"@
+}
+#endregion SUMMARYSecurityUserAccessAdministratorAssignmentNotGroup
+
+
+#region SUMMARYBlueprintDefinitions
+$script:html += @"
+    <hr>
+"@
+$blueprintDefinitions = ($blueprintBaseQuery | Where-Object { "" -eq $_.BlueprintAssignmentId })
+
+$blueprintDefinitionsCount = ($blueprintDefinitions | measure-object).count
+
+    if ($blueprintDefinitionsCount -gt 0){
+        
+
+        $tableId = "SUMMARY_BlueprintDefinitions"
+$script:html += @"
+        <button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintDefinitionsCount Blueprints</p></button>
+        <div class="content">
+            <table id="$tableId" class="summaryTable">
+                <thead>
+                    <tr>
+                        <th class="widthCustom">
+                            Blueprint Name
+                        </th>
+                        <th>
+                            Blueprint DisplayName
+                        </th>
+                        <th>
+                            Blueprint Description
+                        </th>
+                        <th>
+                            Blueprint Id
+                        </th>
+                    </tr>
+                </thead>
+                <tbody
+"@
+        foreach ($blueprintDefinition in $blueprintDefinitions){
+$script:html += @"
+                    <tr>
+                        <td>
+                            $($blueprintDefinition.BlueprintName)
+                        </td>
+                        <td>
+                            $($blueprintDefinition.BlueprintDisplayName)
+                        </td>
+                        <td>
+                            $($blueprintDefinition.BlueprintDescription)
+                        </td>
+                        <td>
+                            $($blueprintDefinition.BlueprintId)
+                        </td>
+                    </tr>
+"@        
+        }
+$script:html += @"
+                </tbody>
+            </table>
+        </div>
+        <script>
+            var tfConfig4$tableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+                btn_reset: true,
+                highlight_keywords: true,
+                alternate_rows: true,
+                auto_filter: {
+                    delay: 1100 //milliseconds
+                },
+                no_results_message: true,
+                col_types: [
+                    'string',
+                    'string',
+                    'string',
+                    'string'
+                ],
+                extensions: [{
+                    name: 'sort'
+                }]
+            };
+            var tf = new TableFilter('$tableId', tfConfig4$tableId);
+            tf.init();
+        </script>
+"@
+    }
+    else{
+$script:html += @"
+                    <p><i class="fa fa-ban" aria-hidden="true"></i> $blueprintDefinitionsCount Blueprints</p>
+"@
+    }
+#endregion SUMMARYBlueprintDefinitions
+
+#region SUMMARYBlueprintAssignments
+$blueprintAssignments = ($blueprintBaseQuery | Where-Object { "" -ne $_.BlueprintAssignmentId })
+$blueprintAssignmentsCount = ($blueprintAssignments | measure-object).count
+
+    if ($blueprintAssignmentsCount -gt 0){
+        $tableId = "SUMMARY_BlueprintAssignments"
+$script:html += @"
+        <button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintAssignmentsCount Blueprint Assignments</p></button>
+        <div class="content">
+            <table id="$tableId" class="summaryTable">
+                <thead>
+                    <tr>
+                        <th class="widthCustom">
+                            Blueprint Name
+                        </th>
+                        <th>
+                            Blueprint DisplayName
+                        </th>
+                        <th>
+                            Blueprint Description
+                        </th>
+                        <th>
+                            Blueprint Id
+                        </th>
+                        <th>
+                            Blueprint Version
+                        </th>
+                        <th>
+                            Blueprint AssignmentId
+                        </th>
+                    </tr>
+                </thead>
+                <tbody
+"@
+        foreach ($blueprintAssignment in $blueprintAssignments){
+$script:html += @"
+                    <tr>
+                        <td>
+                            $($blueprintAssignment.BlueprintName)
+                        </td>
+                        <td>
+                            $($blueprintAssignment.BlueprintDisplayName)
+                        </td>
+                        <td>
+                            $($blueprintAssignment.BlueprintDescription)
+                        </td>
+                        <td>
+                            $($blueprintAssignment.BlueprintId)
+                        </td>
+                        <td>
+                            $($blueprintAssignment.BlueprintAssignmentVersion)
+                        </td>
+                        <td>
+                            $($blueprintAssignment.BlueprintAssignmentId)
+                        </td>
+                    </tr>
+"@        
+        }
+$script:html += @"
+                </tbody>
+            </table>
+        </div>
+        <script>
+            var tfConfig4$tableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+                btn_reset: true,
+                highlight_keywords: true,
+                alternate_rows: true,
+                auto_filter: {
+                    delay: 1100 //milliseconds
+                },
+                no_results_message: true,
+                col_types: [
+                    'string',
+                    'string',
+                    'string',
+                    'string',
+                    'string',
+                    'string'
+                ],
+                extensions: [{
+                    name: 'sort'
+                }]
+            };
+            var tf = new TableFilter('$tableId', tfConfig4$tableId);
+            tf.init();
+        </script>
+"@
+    }
+    else{
+$script:html += @"
+                    <p><i class="fa fa-ban" aria-hidden="true"></i> $blueprintAssignmentsCount Blueprint Assignments</p>
+"@
+    }
+#endregion SUMMARYBlueprintAssignments
+
+#region SUMMARYBlueprintsOrphaned
+$blueprintDefinitionsOrphanedArray =@()
+$blueprintDefinitionsOrphanedArray = foreach ($blueprintDefinition in $blueprintDefinitions){
+    if (-not($blueprintAssignments.BlueprintId).contains($blueprintDefinition.BlueprintId)){
+        $blueprintDefinition
+    }
+}
+$blueprintDefinitionsOrphanedCount = ($blueprintDefinitionsOrphanedArray | Measure-Object).count
+
+if ($blueprintDefinitionsOrphanedCount -gt 0){
+    $tableId = "SUMMARY_BlueprintsOrphaned"
+$script:html += @"
+    <button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintDefinitionsOrphanedCount Orphaned Blueprints</p></button>
+    <div class="content">
+        <table id="$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th class="widthCustom">
+                        Blueprint Name
+                    </th>
+                    <th>
+                        Blueprint DisplayName
+                    </th>
+                    <th>
+                        Blueprint Description
+                    </th>
+                    <th>
+                        Blueprint Id
+                    </th>
+                </tr>
+            </thead>
+            <tbody
+"@
+    foreach ($blueprintDefinition in $blueprintDefinitionsOrphanedArray){
+$script:html += @"
+                <tr>
+                    <td>
+                        $($blueprintDefinition.BlueprintName)
+                    </td>
+                    <td>
+                        $($blueprintDefinition.BlueprintDisplayName)
+                    </td>
+                    <td>
+                        $($blueprintDefinition.BlueprintDescription)
+                    </td>
+                    <td>
+                        $($blueprintDefinition.BlueprintId)
+                    </td>
+                </tr>
+"@        
+    }
+$script:html += @"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+$spectrum = "10, $tfCount"
+if ($tfCount -gt 100){
+    $spectrum = "10, 30, 50, $tfCount"
+}
+if ($tfCount -gt 500){
+    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+}
+if ($tfCount -gt 1000){
+    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+}
+if ($tfCount -gt 2000){
+    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+}
+if ($tfCount -gt 3000){
+    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+}
+
+$script:html += @"
+        paging: {
+            results_per_page: ['Records: ', [$spectrum]]
+        },
+        state: {
+            types: ['local_storage'],
+            filters: true,
+            page_number: true,
+            page_length: true,
+            sort: true
+        },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+}
+else{
+$script:html += @"
+                <p><i class="fa fa-ban" aria-hidden="true"></i> $blueprintDefinitionsOrphanedCount Orphaned Blueprints</p>
+"@
+}
+#endregion SUMMARYBlueprintsOrphaned
+
+
+#region SUMMARYMGs
+$script:html += @"
+    <hr>
+"@
+$mgsDetails = (($mgAndSubBaseQuery | where-object {$_.mgId -ne ""}) | Select-Object Level, MgId -Unique)
+$mgDepth = ($mgsDetails.Level | Measure-Object -maximum).Maximum
+$script:html += @"
+    <p><i class="fa fa-check-circle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsDetails | measure-object).count) Management Groups ($mgDepth levels of depth)</span></p>
+"@
+#endregion SUMMARYMGs
+
+#region SUMMARYMgsapproachingLimitsPolicyAssignments
+$mgsApproachingLimitPolicyAssignments = (($policyBaseQuery | where-object { "" -eq $_.SubscriptionId -and $_.PolicyAndPolicySetAssigmentAtScopeCount -gt 0 -and  (($_.PolicyAndPolicySetAssigmentAtScopeCount -gt ($_.PolicyAssigmentLimit * ($LimitCriticalPercentage / 100)))) }) | Select-Object MgId, MgName, PolicyAssigmentAtScopeCount, PolicySetAssigmentAtScopeCount, PolicyAndPolicySetAssigmentAtScopeCount, PolicyAssigmentLimit -Unique)
+if (($mgsApproachingLimitPolicyAssignments | measure-object).count -gt 0){
+    $tfCount = ($mgsApproachingLimitPolicyAssignments | measure-object).count
+    $tableId = "SummaryTable_MgsapproachingLimitsPolicyAssignments"
+$script:html += @"
+<button type="button" class="collapsible" id="SUMMARY_MgsapproachingLimitsPolicyAssignments"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyAssignments | measure-object).count) Management Groups approaching Limit for PolicyAssignment</span></button>
+<div class="content">
+    <table id= "$tableId" class="summaryTable">
+        <thead>
+            <tr>
+                <th>
+                    ManagementGroup
+                </th>
+                <th>
+                    ManagementGroupId
+                </th>
+                <th>
+                    Limit
+                </th>
+            </tr>
+        </thead>
+        <tbody
+"@
+    foreach ($mgApproachingLimitPolicyAssignments in $mgsApproachingLimitPolicyAssignments){
+$script:html += @"
+            <tr>
+                <td>
+                    <span class="valignMiddle">$($mgApproachingLimitPolicyAssignments.MgName)</span>
+                </td>
+                <td>
+                    <span class="valignMiddle"><a class="internallink" href="#table_$($mgApproachingLimitPolicyAssignments.MgId)">$($mgApproachingLimitPolicyAssignments.MgId)</a></span>
+                </td>
+                <td>
+                <!--<meter min="0" max="$($mgApproachingLimitPolicyAssignments.PolicyAssigmentLimit)" low="$($mgApproachingLimitPolicyAssignments.PolicyAssigmentLimit * $LimitCriticalPercentage / 100)" high="0" value="$($mgApproachingLimitPolicyAssignments.PolicyAndPolicySetAssigmentAtScopeCount)"></meter> $($subscriptionApproachingLimitPolicyAssignments.PolicyAndPolicySetAssigmentAtScopeCount)/$($subscriptionApproachingLimitPolicyAssignments.PolicyAssigmentLimit)-->
+                    $($mgApproachingLimitPolicyAssignments.PolicyAndPolicySetAssigmentAtScopeCount)/$($mgApproachingLimitPolicyAssignments.PolicyAssigmentLimit) ($($mgApproachingLimitPolicyAssignments.PolicyAssigmentAtScopeCount) Policy Assignments, $($mgApproachingLimitPolicyAssignments.PolicySetAssigmentAtScopeCount) PolicySet Assignments)
+                </td>
+            </tr>
+"@
+    }
+$script:html += @"
+        </tbody>
+    </table>
+</div>
+<script>
+    var tfConfig4$tableId = {
+        base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+        btn_reset: true,
+        highlight_keywords: true,
+        alternate_rows: true,
+        auto_filter: {
+            delay: 1100 //milliseconds
+        },
+        no_results_message: true,
+        col_types: [
+            'string',
+            'string',
+            'string'
+        ],
+        extensions: [{
+            name: 'sort'
+        }]
+    };
+    var tf = new TableFilter('$tableId', tfConfig4$tableId);
+    tf.init();
+</script>
+"@
+}
+else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyAssignments | measure-object).count) Management Groups approaching Limit for PolicyAssignment</span></p>
+"@
+}
+#endregion SUMMARYMgsapproachingLimitsPolicyAssignments
+
+#region SUMMARYMgsapproachingLimitsPolicyScope
+$mgsApproachingLimitPolicyScope = (($policyBaseQuery | where-object { "" -eq $_.SubscriptionId -and $_.PolicyDefinitionsScopedCount -gt 0 -and (($_.PolicyDefinitionsScopedCount -gt ($_.PolicyDefinitionsScopedLimit * ($LimitCriticalPercentage / 100)))) }) | Select-Object MgId, MgName, PolicyDefinitionsScopedCount, PolicyDefinitionsScopedLimit -Unique)
+if (($mgsApproachingLimitPolicyScope | measure-object).count -gt 0){
+    $tfCount = ($mgsApproachingLimitPolicyScope | measure-object).count
+    
+    $tableId = "SummaryTable_MgsapproachingLimitsPolicyScope"
+$script:html += @"
+<button type="button" class="collapsible" id="SUMMARY_MgsapproachingLimitsPolicyScope"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyScope | measure-object).count) Management Groups approaching Limit for Policy Scope</span></button>
+<div class="content">
+    <table id="$tableId" class="summaryTable">
+        <thead>
+            <tr>
+                <th>
+                    Management Group
+                </th>
+                <th>
+                    Management Group Id
+                </th>
+                <th>
+                    Limit
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+"@
+    foreach ($mgApproachingLimitPolicyScope in $mgsApproachingLimitPolicyScope){
+$script:html += @"
+            <tr>
+                <td>
+                    <span class="valignMiddle">$($mgApproachingLimitPolicyScope.MgName)</span>
+                </td>
+                <td>
+                    <span class="valignMiddle"><a class="internallink" href="#table_$($mgApproachingLimitPolicyScope.MgId)">$($mgApproachingLimitPolicyScope.MgId)</a></span>
+                </td>
+                <td>
+                    $($mgApproachingLimitPolicyScope.PolicyDefinitionsScopedCount)/$($mgApproachingLimitPolicyScope.PolicyDefinitionsScopedLimit)
+                </td>
+            </tr>
+"@
+    }
+$script:html += @"
+        </tbody>
+    </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+}
+else{
+$script:html += @"
+<p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$($mgsApproachingLimitPolicyScope.count) Management Groups approaching Limit for Policy Scope</span></p>
+"@
+}
+#endregion SUMMARYMgsapproachingLimitsPolicyScope
+
+#region SUMMARYMgsapproachingLimitsPolicySetScope
+$mgsApproachingLimitPolicySetScope = (($policyBaseQuery | where-object { "" -eq $_.SubscriptionId -and $_.PolicySetDefinitionsScopedCount -gt 0 -and  (($_.PolicySetDefinitionsScopedCount -gt ($_.PolicySetDefinitionsScopedLimit * ($LimitCriticalPercentage / 100)))) }) | Select-Object MgId, MgName, PolicySetDefinitionsScopedCount, PolicySetDefinitionsScopedLimit -Unique)
+if ($mgsApproachingLimitPolicySetScope.count -gt 0){
+    $tfCount = ($mgsApproachingLimitPolicySetScope | measure-object).count
+    
+    $tableId = "SummaryTable_MgsapproachingLimitsPolicySetScope"
+$script:html += @"
+<button type="button" class="collapsible" id="SUMMARY_MgsapproachingLimitsPolicySetScope"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicySetScope | measure-object).count) Management Groups approaching Limit for PolicySet Scope</span></button>
+<div class="content">
+    <table id="$tableId" class="summaryTable">
+        <thead>
+            <tr>
+                <th>
+                    Management Group
+                </th>
+                <th>
+                    Management Group Id
+                </th>
+                <th>
+                    Limit
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+"@
+    foreach ($mgApproachingLimitPolicySetScope in $mgsApproachingLimitPolicySetScope){
+$script:html += @"
+            <tr>
+                <td>
+                    <span class="valignMiddle">$($mgApproachingLimitPolicySetScope.MgName)</span>
+                </td>
+                <td>
+                    <span class="valignMiddle"><a class="internallink" href="#table_$($mgApproachingLimitPolicySetScope.MgId)">$($mgApproachingLimitPolicySetScope.MgId)</a></span>
+                </td>
+                <td>
+                    $($mgApproachingLimitPolicySetScope.PolicySetDefinitionsScopedCount)/$($mgApproachingLimitPolicySetScope.PolicySetDefinitionsScopedLimit)
+                </td>
+            </tr>
+"@
+    }
+$script:html += @"
+        </tbody>
+    </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+}
+else{
+$script:html += @"
+<p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicySetScope | measure-object).count) Management Groups approaching Limit for PolicySet Scope</span></p>
+"@
+}
+#endregion SUMMARYMgsapproachingLimitsPolicySetScope
+
+#region SUMMARYMgsapproachingLimitsRoleAssignment
+$mgsApproachingRoleAssignmentLimit = $rbacBaseQuery | Where-Object { "" -eq $_.SubscriptionId -and $_.RoleAssignmentsCount -gt ($_.RoleAssignmentsLimit * $LimitCriticalPercentage / 100)} | Sort-Object -Property MgId -Unique | select-object -Property MgId, MgName, RoleAssignmentsCount, RoleAssignmentsLimit
+if (($mgsApproachingRoleAssignmentLimit | measure-object).count -gt 0){
+    $tfCount = ($mgsApproachingRoleAssignmentLimit | measure-object).count
+    $tableId = "SummaryTable_MgsapproachingLimitsRoleAssignment"
+$script:html += @"
+<button type="button" class="collapsible" id="SUMMARY_MgsapproachingLimitsRoleAssignment"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingRoleAssignmentLimit | measure-object).count) Management Groups approaching Limit for RoleAssignment</span></button>
+<div class="content">
+    <table id= "$tableId" class="summaryTable">
+        <thead>
+            <tr>
+                <th>
+                    Management Group
+                </th>
+                <th>
+                    Management Group Id
+                </th>
+                <th>
+                    Limit
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+"@
+    foreach ($mgApproachingRoleAssignmentLimit in $mgsApproachingRoleAssignmentLimit){
+$script:html += @"
+            <tr>
+                <td>
+                    <span class="valignMiddle">$($mgApproachingRoleAssignmentLimit.MgName)</span>
+                </td>
+                <td>
+                    <span class="valignMiddle"><a class="internallink" href="#table_$($mgApproachingRoleAssignmentLimit.MgId)">$($mgApproachingRoleAssignmentLimit.MgId)</a></span>
+                </td>
+                <td>
+                    $($mgApproachingRoleAssignmentLimit.RoleAssignmentsCount)/$($mgApproachingRoleAssignmentLimit.RoleAssignmentsLimit)
+                </td>
+            </tr>
+"@
+    }
+$script:html += @"
+        </tbody>
+    </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+}
+else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($mgApproachingRoleAssignmentLimit | measure-object).count) Management Groups approaching Limit for RoleAssignment</span></p>
+"@
+}
+#endregion SUMMARYMgsapproachingLimitsRoleAssignment
+
+
+#region SUMMARYSubs
+$script:html += @"
+    <hr>
+"@
+$summarySubscriptions = $subscriptionBaseQuery | Select-Object -Property Subscription, SubscriptionId, MgId, SubscriptionQuotaId, SubscriptionState -Unique | Sort-Object -Property Subscription
+if (($summarySubscriptions | measure-object).count -gt 0){
+    $tfCount = ($summarySubscriptions | measure-object).count
+    
+    $tableId = "SummaryTable_subs"
+$script:html += @"
+    <button type="button" class="collapsible" id="SUMMARY_Subs"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($summarySubscriptions | measure-object).count) Subscriptions</span></button>
+    <div class="content">
+        <table id="$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Subscription
+                    </th>
+                    <th>
+                        SubscriptionId
+                    </th>
+                    <th>
+                        State
+                    </th>
+                    <th>
+                        QuotaId
+                    </th>
+                    <th>
+                        Tags
+                    </th>
+                    <th>
+                        Path
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+"@
+    foreach ($summarySubscription in $summarySubscriptions){
+        createMgPathSub -subid $summarySubscription.subscriptionId
+        [array]::Reverse($script:submgPathArray)
+        $subPath = $script:submgPathArray -join "/"
+
+        $subscriptionTagsArray = @()
+        $subscriptionTagsArray += foreach ($tag in ($htSubscriptionTags).($summarySubscription.subscriptionId).keys) {
+            write-output "'$($tag)':'$(($htSubscriptionTags).$($summarySubscription.subscriptionId).$tag)'"
+        }
+
+$script:html += @"
+                <tr>
+                    <td>
+                        $($summarySubscription.subscription)
+                    </td>
+                    <td>
+                        <span class="valignMiddle"><a class="internallink" href="#table_$($summarySubscription.MgId)">$($summarySubscription.subscriptionId)</a></span>
+                    </td>
+                    <td>
+                        $($summarySubscription.SubscriptionState)
+                    </td>
+                    <td>
+                        $($summarySubscription.SubscriptionQuotaId)
+                    </td>
+                    <td>
+                        $(($subscriptionTagsArray | sort-object) -join "$CsvDelimiterOpposite ")
+                    </td>
+                    <td>
+                        <a href="#hierarchySub_$($summarySubscription.MgId)"><i class="fa fa-eye" aria-hidden="true"></i></a> $subPath
+                    </td>
+                </tr>
+"@
+    }
+$script:html += @"
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string',
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+
+"@
+    }
+    else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$subscount Subscriptions</span></p>
+"@
+}
+#endregion SUMMARYSubs
+
+#region SUMMARYOutOfScopeSubscriptions
+$outOfScopeSubscriptionsCount = ($htOutOfScopeSubscriptions.keys | Measure-Object).Count
+if ($outOfScopeSubscriptionsCount -gt 0){
+    $tfCount = $outOfScopeSubscriptionsCount
+    $tableId = "SummaryTable_outOfScopeSubscriptions"
+$script:html += @"
+    <button type="button" class="collapsible" id="summary_outOfScopeSubscriptions"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$outOfScopeSubscriptionsCount Subscriptions out-of-scope</span></button>
+    <div class="content">
+
+        <table id="$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Subscription Name
+                    </th>
+                    <th>
+                        Subscription Id
+                    </th>
+                    <th>
+                        out-of-scope reason
+                    </th>
+                    <th>
+                        ManagementGroup
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+"@
+    foreach ($outOfScopeSubscription in $htOutOfScopeSubscriptions.keys){
+        
+$script:html += @"
+                <tr>
+                    <td>
+                        $(($htOutOfScopeSubscriptions).($outOfScopeSubscription).SubscriptionName)
+                    </td>
+                    <td>
+                        $(($htOutOfScopeSubscriptions).($outOfScopeSubscription).SubscriptionId)
+                    </td>
+                    <td>
+                        $(($htOutOfScopeSubscriptions).($outOfScopeSubscription).outOfScopeReason)
+                    </td>
+                    <td>
+                        <a href="#hierarchy_$(($htOutOfScopeSubscriptions).($outOfScopeSubscription).ManagementGroupId)"><i class="fa fa-eye" aria-hidden="true"></i></a> $(($htOutOfScopeSubscriptions).($outOfScopeSubscription).ManagementGroupName) ($(($htOutOfScopeSubscriptions).($outOfScopeSubscription).ManagementGroupId))
+                    </td>
+                </tr>
+"@ 
+    }
+$script:html += @"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+            
+"@      
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+}
+else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$outOfScopeSubscriptionsCount Subscriptions out-of-scope</span></p>
+"@
+}
+#endregion SUMMARYOutOfScopeSubscriptions
+
+#region SUMMARYResources
 if (($resourcesAll | Measure-Object).count -gt 0){
+    $tfCount = ($resourcesAll | Measure-Object).count
     $resourcesAllSummarized = $resourcesAll | Select-Object -Property type, location, count_ | Group-Object type, location | ForEach-Object {
         New-Object PSObject -Property @{
             type = ($_.Name -split ",")[0]
@@ -3605,41 +8363,103 @@ if (($resourcesAll | Measure-Object).count -gt 0){
     $resourcesLocationCount = (($resourcesAllSummarized | sort-object -Property location -Unique) | measure-object).count
 
     if ($resourcesResourceTypeCount -gt 0){
+        $tfCount = ($resourcesResourceTypeCount | measure-object).count
+        
+        $tableId = "SummaryTable_resources"
 $script:html += @"
-<button type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$resourcesResourceTypeCount ResourceTypes ($resourcesTotal Resources) in $resourcesLocationCount Locations ($scopeNamingSummary)</span>
+<button type="button" class="collapsible" id="summary_resources"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$resourcesResourceTypeCount ResourceTypes ($resourcesTotal Resources) in $resourcesLocationCount Locations ($scopeNamingSummary)</span>
 </button>
 <div class="content">
-    <table class="summaryTable">
-        <tr>
-            <th>
-                ResourceType
-            </th>
-            <th>
-                Location
-            </th>
-            <th>
-                Count
-            </th>
-        </tr>
+    <table id="$tableId" class="summaryTable">
+        <thead>
+            <tr>
+                <th>
+                    ResourceType
+                </th>
+                <th>
+                    Location
+                </th>
+                <th>
+                    Resource Count
+                </th>
+            </tr>
+        </thead>
+        <tbody>
 "@
         foreach ($resourceAllSummarized in $resourcesAllSummarized){
 $script:html += @"
-        <tr>
-            <td>
-                $($resourceAllSummarized.type)
-            </td>
-            <td>
-                $($resourceAllSummarized.location)
-            </td>
-            <td>
-                $($resourceAllSummarized.count_)
-            </td>
-        </tr>
+            <tr>
+                <td>
+                    $($resourceAllSummarized.type)
+                </td>
+                <td>
+                    $($resourceAllSummarized.location)
+                </td>
+                <td>
+                    $($resourceAllSummarized.count_)
+                </td>
+            </tr>
 "@        
         }
 $script:html += @"
+        </tbody>
     </table>
 </div>
+<script>
+    var tfConfig4$tableId = {
+        base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+        btn_reset: true,
+        highlight_keywords: true,
+        alternate_rows: true,
+        auto_filter: {
+            delay: 1100 //milliseconds
+        },
+        no_results_message: true,
+        col_types: [
+            'string',
+            'string',
+            'number'
+        ],
+        extensions: [{
+            name: 'sort'
+        }]
+    };
+    var tf = new TableFilter('$tableId', tfConfig4$tableId);
+    tf.init();
+</script>
 "@
     }
     else{
@@ -3647,168 +8467,479 @@ $script:html += @"
         <p><i class="fa fa-ban" aria-hidden="true"></i> $resourcesResourceTypeCount ResourceTypes</p>
 "@
     }
-$script:html += @"
-        </td></tr>
-        <tr><td>
-"@
+
 }
 else{
 $script:html += @"
     <p><i class="fa fa-ban" aria-hidden="true"></i> 0 ResourceTypes</p>
 "@
 }
+#endregion SUMMARYResources
 
-#SUMMARY MGs
-$mgsDetails = (($mgAndSubBaseQuery | where-object {$_.mgId -ne ""}) | Select-Object Level, MgId -Unique)
-$mgDepth = ($mgsDetails.Level | Measure-Object -maximum).Maximum
+#region SUMMARYResourcesDiagnosticsCapable
+$resourceTypesDiagnosticsArraySorted = $resourceTypesDiagnosticsArray | Sort-Object -Property ResourceType, ResourceCount, Metrics, Logs, LogCategories
+$resourceTypesDiagnosticsArraySortedCount = ($resourceTypesDiagnosticsArraySorted | measure-object).count
+$resourceTypesDiagnosticsMetricsTrueCount = ($resourceTypesDiagnosticsArray | Where-Object { $_.Metrics -eq $True } | Measure-Object).count
+$resourceTypesDiagnosticsLogsTrueCount = ($resourceTypesDiagnosticsArray | Where-Object { $_.Logs -eq $True } | Measure-Object).count
+$resourceTypesDiagnosticsMetricsLogsTrueCount = ($resourceTypesDiagnosticsArray | Where-Object { $_.Metrics -eq $True -or $_.Logs -eq $True } | Measure-Object).count
+if ($resourceTypesDiagnosticsArraySortedCount -gt 0){
+    $tfCount = $resourceTypesDiagnosticsArraySortedCount
+    
+    $tableId = "SummaryTable_ResourcesDiagnosticsCapable"
 $script:html += @"
-    <p><i class="fa fa-check-circle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsDetails | measure-object).count) Management Groups ($mgDepth levels of depth)</span></p>
-"@
-
-#SUMMARY Mgs approaching Limits PolicyAssignments
-$mgsApproachingLimitPolicyAssignments = (($policyBaseQuery | where-object { "" -eq $_.SubscriptionId -and $_.PolicyAndPolicySetAssigmentAtScopeCount -gt 0 -and  (($_.PolicyAndPolicySetAssigmentAtScopeCount -gt ($_.PolicyAssigmentLimit * ($LimitCriticalPercentage / 100)))) }) | Select-Object MgId, MgName, PolicyAssigmentAtScopeCount, PolicySetAssigmentAtScopeCount, PolicyAndPolicySetAssigmentAtScopeCount, PolicyAssigmentLimit -Unique)
-if (($mgsApproachingLimitPolicyAssignments | measure-object).count -gt 0){
-$script:html += @"
-<button type="button" class="collapsible"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyAssignments | measure-object).count) Management Groups approaching Limit for PolicyAssignment</span></button>
+<button type="button" class="collapsible" id="SUMMARY_ResourcesDiagnosticsCapable"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$resourceTypesDiagnosticsMetricsLogsTrueCount/$resourceTypesDiagnosticsArraySortedCount ResourceTypes Diagnostics capable ($resourceTypesDiagnosticsMetricsTrueCount Metrics, $resourceTypesDiagnosticsLogsTrueCount Logs)</span></button>
 <div class="content">
-    <table class="summaryTable">
-        <tr>
-            <th>
-                ManagementGroup
-            </th>
-            <th>
-                ManagementGroupId
-            </th>
-            <th>
-                Limit
-            </th>
-        </tr>
+    <table id= "$tableId" class="summaryTable">
+        <thead>
+            <tr>
+                <th>
+                    ResourceType
+                </th>
+                <th>
+                    Resource Count
+                </th>
+                <th>
+                    Diagnostics capable
+                </th>
+                <th>
+                    Metrics
+                </th>
+                <th>
+                    Logs
+                </th>
+                <th>
+                    LogCategories
+                </th>
+            </tr>
+        </thead>
+        <tbody
 "@
-    foreach ($mgApproachingLimitPolicyAssignments in $mgsApproachingLimitPolicyAssignments){
+    foreach ($resourceType in $resourceTypesDiagnosticsArraySorted){
+        if ($resourceType.Metrics -eq $true -or $resourceType.Logs -eq $true){
+            $diagnosticsCapable = $true
+        }
+        else{
+            $diagnosticsCapable = $false
+        }
 $script:html += @"
-        <tr>
-            <td>
-                <span class="valignMiddle">$($mgApproachingLimitPolicyAssignments.MgName)</span>
-            </td>
-            <td>
-                <span class="valignMiddle"><a class="internallink" href="#table_$($mgApproachingLimitPolicyAssignments.MgId)">$($mgApproachingLimitPolicyAssignments.MgId)</a></span>
-            </td>
-            <td>
-            <!--<meter min="0" max="$($mgApproachingLimitPolicyAssignments.PolicyAssigmentLimit)" low="$($mgApproachingLimitPolicyAssignments.PolicyAssigmentLimit * $LimitCriticalPercentage / 100)" high="0" value="$($mgApproachingLimitPolicyAssignments.PolicyAndPolicySetAssigmentAtScopeCount)"></meter> $($subscriptionApproachingLimitPolicyAssignments.PolicyAndPolicySetAssigmentAtScopeCount)/$($subscriptionApproachingLimitPolicyAssignments.PolicyAssigmentLimit)-->
-                $($mgApproachingLimitPolicyAssignments.PolicyAndPolicySetAssigmentAtScopeCount)/$($mgApproachingLimitPolicyAssignments.PolicyAssigmentLimit) ($($mgApproachingLimitPolicyAssignments.PolicyAssigmentAtScopeCount) Policy Assignments, $($mgApproachingLimitPolicyAssignments.PolicySetAssigmentAtScopeCount) PolicySet Assignments)
-            </td>
-        </tr>
+            <tr>
+                <td>
+                    $($resourceType.ResourceType)
+                </td>
+                <td>
+                    $($resourceType.ResourceCount)
+                </td>
+                <td>
+                    $diagnosticsCapable
+                </td>
+                <td>
+                    $($resourceType.Metrics)
+                </td>
+                <td>
+                    $($resourceType.Logs)
+                </td>
+                <td>
+                    $($resourceType.LogCategories -join "$CsvDelimiterOpposite ")
+                </td>
+            </tr>
 "@
     }
 $script:html += @"
+        </tbody>
     </table>
-    </div>
+</div>
+<script>
+    var tfConfig4$tableId = {
+        base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+        btn_reset: true,
+        highlight_keywords: true,
+        alternate_rows: true,
+        auto_filter: {
+            delay: 1100 //milliseconds
+        },
+        no_results_message: true,
+        col_2: 'select',
+        col_types: [
+            'string',
+            'number',
+            'select',
+            'string',
+            'string',
+            'string'
+        ],
+        extensions: [{
+            name: 'sort'
+        }]
+    };
+    var tf = new TableFilter('$tableId', tfConfig4$tableId);
+    tf.init();
+</script>
 "@
 }
 else{
 $script:html += @"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyAssignments | measure-object).count) Management Groups approaching Limit for PolicyAssignment</span></p>
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($resourceTypesDiagnosticsMetricsLogsTrueCount | measure-object).count) Management Groups approaching Limit for PolicyAssignment</span></p>
 "@
 }
+#endregion SUMMARYResourcesDiagnosticsCapable
 
-#SUMMARY Mgs approaching Limits PolicyScope
-$mgsApproachingLimitPolicyScope = (($policyBaseQuery | where-object { "" -eq $_.SubscriptionId -and $_.PolicyDefinitionsScopedCount -gt 0 -and (($_.PolicyDefinitionsScopedCount -gt ($_.PolicyDefinitionsScopedLimit * ($LimitCriticalPercentage / 100)))) }) | Select-Object MgId, MgName, PolicyDefinitionsScopedCount, PolicyDefinitionsScopedLimit -Unique)
-if (($mgsApproachingLimitPolicyScope | measure-object).count -gt 0){
-$script:html += @"
-<button type="button" class="collapsible"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyScope | measure-object).count) Management Groups approaching Limit for Policy Scope</span></button>
-<div class="content">
-    <table class="summaryTable">
-        <tr>
-            <th>
-                Management Group
-            </th>
-            <th>
-                Management Group Id
-            </th>
-            <th>
-                Limit
-            </th>
-        </tr>
-"@
-    foreach ($mgApproachingLimitPolicyScope in $mgsApproachingLimitPolicyScope){
-$script:html += @"
-        <tr>
-            <td>
-                <span class="valignMiddle">$($mgApproachingLimitPolicyScope.MgName)</span>
-            </td>
-            <td>
-                <span class="valignMiddle"><a class="internallink" href="#table_$($mgApproachingLimitPolicyScope.MgId)">$($mgApproachingLimitPolicyScope.MgId)</a></span>
-            </td>
-            <td>
-                $($mgApproachingLimitPolicyScope.PolicyDefinitionsScopedCount)/$($mgApproachingLimitPolicyScope.PolicyDefinitionsScopedLimit)
-            </td>
-        </tr>
-"@
+
+#region SUMMARYSubResourceProviders
+if (($htResourceProvidersAll.Keys | Measure-Object).count -gt 0){
+    $grped = $arrayResourceProvidersAll | sort-object -property namespace, registrationState | group-object namespace
+    $htResProvSummary = @{ }
+    foreach ($grp in $grped){
+        $htResProvSummary.($grp.name) = @{ }
+        $regstates = ($grp.group | sort-object -property registrationState -unique | select-object registrationState).registrationstate
+        foreach ($regstate in $regstates){
+            $htResProvSummary.($grp.name).$regstate = ($grp.group | where-object { $_.registrationstate -eq $regstate} | measure-object).count
+        }
     }
-$script:html += @"
-    </table>
-    </div>
-"@
-}
-else{
-$script:html += @"
-<p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$($mgsApproachingLimitPolicyScope.count) Management Groups approaching Limit for Policy Scope</span></p>
-"@
-}
+    $providerSummary = @()
+    foreach ($provider in $htResProvSummary.keys){
+        if ($htResProvSummary.$provider.registered){
+            $registered = $htResProvSummary.$provider.registered
+        }
+        else{
+            $registered = "0"
+        }
 
-#SUMMARY Mgs approaching Limits PolicyScope
-$mgsApproachingLimitPolicySetScope = (($policyBaseQuery | where-object { "" -eq $_.SubscriptionId -and $_.PolicySetDefinitionsScopedCount -gt 0 -and  (($_.PolicySetDefinitionsScopedCount -gt ($_.PolicySetDefinitionsScopedLimit * ($LimitCriticalPercentage / 100)))) }) | Select-Object MgId, MgName, PolicySetDefinitionsScopedCount, PolicySetDefinitionsScopedLimit -Unique)
-if ($mgsApproachingLimitPolicySetScope.count -gt 0){
-$script:html += @"
-<button type="button" class="collapsible"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicySetScope | measure-object).count) Management Groups approaching Limit for PolicySets Scope</span></button>
-<div class="content">
-    <table class="summaryTable">
-        <tr>
-            <th>
-                Management Group
-            </th>
-            <th>
-                Management Group Id
-            </th>
-            <th>
-                Limit
-            </th>
-        </tr>
-"@
-    foreach ($mgApproachingLimitPolicySetScope in $mgsApproachingLimitPolicySetScope){
-$script:html += @"
-        <tr>
-            <td>
-                <span class="valignMiddle">$($mgApproachingLimitPolicySetScope.MgName)</span>
-            </td>
-            <td>
-                <span class="valignMiddle"><a class="internallink" href="#table_$($mgApproachingLimitPolicySetScope.MgId)">$($mgApproachingLimitPolicySetScope.MgId)</a></span>
-            </td>
-            <td>
-                $($mgApproachingLimitPolicySetScope.PolicySetDefinitionsScopedCount)/$($mgApproachingLimitPolicySetScope.PolicySetDefinitionsScopedLimit)
-            </td>
-        </tr>
-"@
+        if ($htResProvSummary.$provider.registering){
+            $registering = $htResProvSummary.$provider.registering
+        }
+        else{
+            $registering = "0"
+        }
+
+        if ($htResProvSummary.$provider.notregistered){
+            $notregistered = $htResProvSummary.$provider.notregistered
+        }
+        else{
+            $notregistered = "0"
+        }
+
+        if ($htResProvSummary.$provider.unregistering){
+            $unregistering = $htResProvSummary.$provider.unregistering
+        }
+        else{
+            $unregistering = "0"
+        }
+
+        $object = New-Object -TypeName PSObject -Property @{'Provider' = $provider; 'Registered'= $registered; 'NotRegistered'= $notregistered; 'Registering'= $registering; 'Unregistering'= $unregistering }
+        $providerSummary += $object
     }
-$script:html += @"
-    </table>
-    </div>
-"@
-}
-else{
-$script:html += @"
-<p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicySetScope | measure-object).count) Management Groups approaching Limit for PolicySets Scope</span></p>
-"@
-}
 
-#SUMMARY Subs
-$summarySubscriptions = $subscriptionBaseQuery | Select-Object -Property Subscription, SubscriptionId, MgId, SubscriptionQuotaId, SubscriptionState -Unique | Sort-Object -Property Subscription
-#$summarySubscriptions = $table | Select-Object -Property Subscription, SubscriptionId, MgId, SubscriptionQuotaId, SubscriptionState -Unique | where-object { "" -ne $_.SubscriptionId } | Sort-Object -Property Subscription
-if (($summarySubscriptions | measure-object).count -gt 0){
+    $uniqueNamespaces = $arrayResourceProvidersAll | Sort-Object -Property namespace -Unique
+    $uniqueNamespacesCount = ($uniqueNamespaces | Measure-Object).count
+    $uniqueNamespaceRegistrationState = $arrayResourceProvidersAll | Sort-Object -Property namespace, registrationState -Unique
+    $providersRegistered = $uniqueNamespaceRegistrationState | Where-Object { $_.registrationState -eq "registered" -or $_.registrationState -eq "registering"} | select-object -property namespace | Sort-Object namespace -Unique
+    $providersRegisteredCount = ($providersRegistered | Measure-Object).count
+
+    $providersNotRegisteredUniqueCount = 0 
+    foreach ($uniqueNamespace in $uniqueNamespaces){
+        if (-not $providersRegistered.namespace.contains($uniqueNamespace.namespace)){
+            $providersNotRegisteredUniqueCount++
+        }
+    }
+    $tfCount = $uniqueNamespacesCount
+    
+    $tableId = "SummaryTable_SubResourceProviders"
 $script:html += @"
-    <button type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($summarySubscriptions | measure-object).count) Subscriptions</span></button>
+    <button type="button" class="collapsible" id="SUMMARY_SubResourceProviders"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Total: $uniqueNamespacesCount Registered/Registering: $providersRegisteredCount NotRegistered/Unregistering: $providersNotRegisteredUniqueCount</span></button>
     <div class="content">
-        <table class="summaryTable">
+
+        <table id="$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Provider
+                    </th>
+                    <th>
+                        Registered
+                    </th>
+                    <th>
+                        Registering
+                    </th>
+                    <th>
+                        NotRegistered
+                    </th>
+                    <th>
+                        Unregistering
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+"@
+    foreach ($provider in ($providerSummary | Sort-Object -Property Provider)){
+$script:html += @"
+                <tr>
+                    <td>
+                        $($provider.Provider)
+                    </td>
+                    <td>
+                        $($provider.Registered)
+                    </td>
+                    <td>
+                        $($provider.Registering)
+                    </td>
+                    <td>
+                        $($provider.NotRegistered)
+                    </td>
+                    <td>
+                        $($provider.Unregistering)
+                    </td>
+                </tr>
+"@ 
+        
+    }
+$script:html += @"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+            
+"@      
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            }, 
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'number',
+                'number',
+                'number',
+                'number'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+}
+else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($htResourceProvidersAll.Keys | Measure-Object).count) Resource Providers</span></p>
+"@
+}
+#endregion SUMMARYSubResourceProviders
+
+#region SUMMARYSubResourceProvidersDetailed
+if (($htResourceProvidersAll.Keys | Measure-Object).count -gt 0){
+    $tfCount = ($arrayResourceProvidersAll | Measure-Object).Count
+    $tableId = "SummaryTable_SubResourceProvidersDetailed"
+$script:html += @"
+    <button type="button" class="collapsible" id="SUMMARY_SubResourceProvidersDetailed"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
+    <div class="content">
+
+        <table id="$tableId" class="summaryTable">
+            <thead>
+                <tr>
+                    <th>
+                        Mg Name
+                    </th>
+                    <th>
+                        Mg Id
+                    </th>
+                    <th>
+                        Subscription Name
+                    </th>
+                    <th>
+                        Subscription Id
+                    </th>
+                    <th>
+                        Provider
+                    </th>
+                    <th>
+                        State
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+"@
+    foreach ($subscriptionResProv in $htResourceProvidersAll.Keys){
+        $subscriptionResProvDetails = $mgAndSubBaseQuery | Where-Object { $_.SubscriptionId -eq $subscriptionResProv} | sort-object -Property SubscriptionId -Unique
+        foreach ($provider in ($htResourceProvidersAll).($subscriptionResProv).Providers){
+$script:html += @"
+                <tr>
+                    <td>
+                        $($subscriptionResProvDetails.MgId)
+                    </td>
+                    <td>
+                        $($subscriptionResProvDetails.MgName)
+                    </td>
+                    <td>
+                        $($subscriptionResProvDetails.Subscription)
+                    </td>
+                    <td>
+                        $($subscriptionResProv)
+                    </td>
+                    <td>
+                        $($provider.namespace)
+                    </td>
+                    <td>
+                        $($provider.registrationState)
+                    </td>
+                </tr>
+"@ 
+        }
+    }
+$script:html += @"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+            
+"@      
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            }, 
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_5: 'select',
+            col_types: [
+                'string',
+                'string',
+                'string',
+                'string',
+                'string',
+                'select'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+}
+else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($htResourceProvidersAll.Keys | Measure-Object).count) Resource Providers</span></p>
+"@
+}
+#endregion SUMMARYSubResourceProvidersDetailed
+
+#region SUMMARYSubsapproachingLimitsResourceGroups
+$subscriptionsApproachingLimitFromResourceGroupsAll = $resourceGroupsAll | where-object { $_.count_ -gt ($LimitResourceGroups * ($LimitCriticalPercentage / 100)) }
+if (($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count -gt 0){
+    $tfCount = ($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count
+    
+    $tableId = "SummaryTable_SubsapproachingLimitsResourceGroups"
+$script:html += @"
+<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsResourceGroups"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count) Subscriptions approaching Limit for ResourceGroups</span></button>
+<div class="content">
+    <table id= "$tableId" class="summaryTable">
+        <thead>
             <tr>
                 <th>
                     Subscription
@@ -3817,91 +8948,87 @@ $script:html += @"
                     SubscriptionId
                 </th>
                 <th>
-                    State
-                </th>
-                <th>
-                    QuotaId
-                </th>
-                <th>
-                    Path
+                    Limit
                 </th>
             </tr>
-"@
-    foreach ($summarySubscription in $summarySubscriptions){
-        createMgPathSub -subid $summarySubscription.subscriptionId
-        [array]::Reverse($script:submgPathArray)
-        $subPath = $script:submgPathArray -join "/"
-$script:html += @"
-            <tr>
-                <td>
-                    $($summarySubscription.subscription)
-                </td>
-                <td>
-                    <span class="valignMiddle"><a class="internallink" href="#table_$($summarySubscription.MgId)">$($summarySubscription.subscriptionId)</a></span>
-                </td>
-                <td>
-                    $($summarySubscription.SubscriptionState)
-                </td>
-                <td>
-                    $($summarySubscription.SubscriptionQuotaId)
-                </td>
-                <td>
-                    $subPath
-                </td>
-            </tr>
-"@
-    }
-$script:html += @"
-        </table>
-    </div>
-"@
-    }
-    else{
-$script:html += @"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$subscount Subscriptions</span></p>
-"@
-}
-
-#SUMMARY Subs approaching Limits ResourceGroups
-$subscriptionsApproachingLimitFromResourceGroupsAll = $resourceGroupsAll | where-object { $_.count_ -gt ($LimitResourceGroups * ($LimitCriticalPercentage / 100)) }
-if (($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count -gt 0){
-$script:html += @"
-<button type="button" class="collapsible"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count) Subscriptions approaching Limit for ResourceGroups</span></button>
-<div class="content">
-    <table class="summaryTable">
-        <tr>
-            <th>
-                Subscription
-            </th>
-            <th>
-                SubscriptionId
-            </th>
-            <th>
-                Limit
-            </th>
-        </tr>
+        </thead>
+        <tbody>
 "@
     foreach ($subscriptionApproachingLimitFromResourceGroupsAll in $subscriptionsApproachingLimitFromResourceGroupsAll){
         $subscriptionData = $mgAndSubBaseQuery | Where-Object { $_.SubscriptionId -eq $subscriptionApproachingLimitFromResourceGroupsAll.subscriptionId } | Get-Unique
-        #$subscriptionData
-    #}
 $script:html += @"
-        <tr>
-            <td>
-                <span class="valignMiddle">$($subscriptionData.subscription)</span>
-            </td>
-            <td>
-                <span class="valignMiddle"><a class="internallink" href="#table_$($subscriptionData.MgId)">$($subscriptionData.subscriptionId)</a></span>
-            </td>
-            <td>
-                $($subscriptionApproachingLimitFromResourceGroupsAll.count_)/$($LimitResourceGroups)
-            </td>
-        </tr>
+            <tr>
+                <td>
+                    <span class="valignMiddle">$($subscriptionData.subscription)</span>
+                </td>
+                <td>
+                    <span class="valignMiddle"><a class="internallink" href="#table_$($subscriptionData.MgId)">$($subscriptionData.subscriptionId)</a></span>
+                </td>
+                <td>
+                    $($subscriptionApproachingLimitFromResourceGroupsAll.count_)/$($LimitResourceGroups)
+                </td>
+            </tr>
 "@
     }
 $script:html += @"
+        </tbody>
     </table>
     </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
 "@
 }
 else{
@@ -3909,45 +9036,107 @@ $script:html += @"
     <p"><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count) Subscriptions approaching Limit for ResourceGroups</span></p>
 "@
 }
+#endregion SUMMARYSubsapproachingLimitsResourceGroups
 
-#SUMMARY Subs approaching Limits SubscriptionTags
+#region SUMMARYSubsapproachingLimitsSubscriptionTags
 $subscriptionsApproachingLimitTags = ($subscriptionBaseQuery | Select-Object -Property MgId, Subscription, SubscriptionId, SubscriptionTagsCount, SubscriptionTagsLimit -Unique | where-object { (($_.SubscriptionTagsCount -gt ($_.SubscriptionTagsLimit * ($LimitCriticalPercentage / 100)))) })
 if (($subscriptionsApproachingLimitTags | measure-object).count -gt 0){
+    $tfCount = ($subscriptionsApproachingLimitTags | measure-object).count
+    $tableId = "SummaryTable_SubsapproachingLimitsSubscriptionTags"
 $script:html += @"
-<button type="button" class="collapsible"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitTags | measure-object).count) Subscriptions approaching Limit for Tags</span></button>
+<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsSubscriptionTags"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitTags | measure-object).count) Subscriptions approaching Limit for Tags</span></button>
 <div class="content">
-    <table class="summaryTable">
-        <tr>
-            <th>
-                Subscription
-            </th>
-            <th>
-                SubscriptionId
-            </th>
-            <th>
-                Limit
-            </th>
-        </tr>
+    <table id="$tableId" class="summaryTable">
+        <thead>
+            <tr>
+                <th>
+                    Subscription
+                </th>
+                <th>
+                    SubscriptionId
+                </th>
+                <th>
+                    Limit
+                </th>
+            </tr>
+        </thead>
+        <tbody
 "@
     foreach ($subscriptionApproachingLimitTags in $subscriptionsApproachingLimitTags){
 $script:html += @"
-        <tr>
-            <td>
-                <span class="valignMiddle">$($subscriptionApproachingLimitTags.subscription)</span>
-            </td>
-            <td>
-                <span class="valignMiddle"><a class="internallink" href="#table_$($subscriptionApproachingLimitTags.MgId)">$($subscriptionApproachingLimitTags.subscriptionId)</a></span>
-            </td>
-            <td>
-            <!--<meter min="0" max="$($subscriptionApproachingLimitTags.SubscriptionTagsLimit)" low="$($subscriptionApproachingLimitTags.SubscriptionTagsLimit * $LimitCriticalPercentage / 100)" high="0" value="$($subscriptionApproachingLimitTags.SubscriptionTagsCount)"></meter>-->
-            $($subscriptionApproachingLimitTags.SubscriptionTagsCount)/$($subscriptionApproachingLimitTags.SubscriptionTagsLimit)
-            </td>
-        </tr>
+            <tr>
+                <td>
+                    <span class="valignMiddle">$($subscriptionApproachingLimitTags.subscription)</span>
+                </td>
+                <td>
+                    <span class="valignMiddle"><a class="internallink" href="#table_$($subscriptionApproachingLimitTags.MgId)">$($subscriptionApproachingLimitTags.subscriptionId)</a></span>
+                </td>
+                <td>
+                <!--<meter min="0" max="$($subscriptionApproachingLimitTags.SubscriptionTagsLimit)" low="$($subscriptionApproachingLimitTags.SubscriptionTagsLimit * $LimitCriticalPercentage / 100)" high="0" value="$($subscriptionApproachingLimitTags.SubscriptionTagsCount)"></meter>-->
+                $($subscriptionApproachingLimitTags.SubscriptionTagsCount)/$($subscriptionApproachingLimitTags.SubscriptionTagsLimit)
+                </td>
+            </tr>
 "@
     }
 $script:html += @"
+        </tbody>
     </table>
     </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
 "@
 }
 else{
@@ -3955,44 +9144,106 @@ $script:html += @"
     <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$($subscriptionsApproachingLimitTags.count) Subscriptions approaching Limit for Tags</span></p>
 "@
 }
+#endregion SUMMARYSubsapproachingLimitsSubscriptionTags
 
-#SUMMARY Subs approaching Limits PolicyAssignments
+#region SUMMARYSubsapproachingLimitsPolicyAssignments
 $subscriptionsApproachingLimitPolicyAssignments =(($policyBaseQuery | where-object { "" -ne $_.SubscriptionId -and $_.PolicyAndPolicySetAssigmentAtScopeCount -gt 0 -and  (($_.PolicyAndPolicySetAssigmentAtScopeCount -gt ($_.PolicyAssigmentLimit * ($LimitCriticalPercentage / 100)))) }) | Select-Object MgId, Subscription, SubscriptionId, PolicyAssigmentAtScopeCount, PolicySetAssigmentAtScopeCount, PolicyAndPolicySetAssigmentAtScopeCount, PolicyAssigmentLimit -Unique)
 if ($subscriptionsApproachingLimitPolicyAssignments.count -gt 0){
+    $tfCount = ($subscriptionsApproachingLimitPolicyAssignments | measure-object).count
+    $tableId = "SummaryTable_SubsapproachingLimitsPolicyAssignments"
 $script:html += @"
-<button type="button" class="collapsible"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyAssignments | measure-object).count) Subscriptions approaching Limit for PolicyAssignment</span></button>
+<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsPolicyAssignments"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyAssignments | measure-object).count) Subscriptions approaching Limit for PolicyAssignment</span></button>
 <div class="content">
-    <table class="summaryTable">
-        <tr>
-            <th>
-                Subscription
-            </th>
-            <th>
-                SubscriptionId
-            </th>
-            <th>
-                Limit
-            </th>
-        </tr>
+    <table id="$tableId" class="summaryTable">
+        <thead>
+            <tr>
+                <th>
+                    Subscription
+                </th>
+                <th>
+                    SubscriptionId
+                </th>
+                <th>
+                    Limit
+                </th>
+            </tr>
+        </thead>
+        <tbody>
 "@
     foreach ($subscriptionApproachingLimitPolicyAssignments in $subscriptionsApproachingLimitPolicyAssignments){
 $script:html += @"
-        <tr>
-            <td>
-                <span class="valignMiddle">$($subscriptionApproachingLimitPolicyAssignments.subscription)</span>
-            </td>
-            <td>
-                <span class="valignMiddle"><a class="internallink" href="#table_$($subscriptionApproachingLimitPolicyAssignments.MgId)">$($subscriptionApproachingLimitPolicyAssignments.subscriptionId)</a></span>
-            </td>
-            <td>
-                $($subscriptionApproachingLimitPolicyAssignments.PolicyAndPolicySetAssigmentAtScopeCount)/$($subscriptionApproachingLimitPolicyAssignments.PolicyAssigmentLimit) ($($subscriptionApproachingLimitPolicyAssignments.PolicyAssigmentAtScopeCount) Policy Assignments, $($subscriptionApproachingLimitPolicyAssignments.PolicySetAssigmentAtScopeCount) PolicySet Assignments)
-            </td>
-        </tr>
+            <tr>
+                <td>
+                    <span class="valignMiddle">$($subscriptionApproachingLimitPolicyAssignments.subscription)</span>
+                </td>
+                <td>
+                    <span class="valignMiddle"><a class="internallink" href="#table_$($subscriptionApproachingLimitPolicyAssignments.MgId)">$($subscriptionApproachingLimitPolicyAssignments.subscriptionId)</a></span>
+                </td>
+                <td>
+                    $($subscriptionApproachingLimitPolicyAssignments.PolicyAndPolicySetAssigmentAtScopeCount)/$($subscriptionApproachingLimitPolicyAssignments.PolicyAssigmentLimit) ($($subscriptionApproachingLimitPolicyAssignments.PolicyAssigmentAtScopeCount) Policy Assignments, $($subscriptionApproachingLimitPolicyAssignments.PolicySetAssigmentAtScopeCount) PolicySet Assignments)
+                </td>
+            </tr>
 "@
     }
 $script:html += @"
+        </tbody>
     </table>
     </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
 "@
 }
 else{
@@ -4000,44 +9251,106 @@ $script:html += @"
     <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyAssignments | measure-object).count) Subscriptions approaching Limit for PolicyAssignment</span></p>
 "@
 }
+#endregion SUMMARYSubsapproachingLimitsPolicyAssignments
 
-#SUMMARY Subs approaching Limits PolicyScope
+#region SUMMARYSubsapproachingLimitsPolicyScope
 $subscriptionsApproachingLimitPolicyScope = (($policyBaseQuery | where-object { "" -ne $_.SubscriptionId -and $_.PolicyDefinitionsScopedCount -gt 0 -and  (($_.PolicyDefinitionsScopedCount -gt ($_.PolicyDefinitionsScopedLimit * ($LimitCriticalPercentage / 100)))) }) | Select-Object MgId, Subscription, SubscriptionId, PolicyDefinitionsScopedCount, PolicyDefinitionsScopedLimit -Unique)
 if (($subscriptionsApproachingLimitPolicyScope | measure-object).count -gt 0){
+    $tfCount = ($subscriptionsApproachingLimitPolicyScope | measure-object).count
+    $tableId = "SummaryTable_SubsapproachingLimitsPolicyScope"
 $script:html += @"
-<button type="button" class="collapsible"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit for Policy Scope</span></button>
+<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsPolicyScope"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit for Policy Scope</span></button>
 <div class="content">
-    <table class="summaryTable">
-        <tr>
-            <th>
-                Subscription
-            </th>
-            <th>
-                SubscriptionId
-            </th>
-            <th>
-                Limit
-            </th>
-        </tr>
+    <table id="$tableId" class="summaryTable">
+        <thead>
+            <tr>
+                <th>
+                    Subscription
+                </th>
+                <th>
+                    SubscriptionId
+                </th>
+                <th>
+                    Limit
+                </th>
+            </tr>
+        </thead>
+        <tbody>
 "@
     foreach ($subscriptionApproachingLimitPolicyScope in $subscriptionsApproachingLimitPolicyScope){
 $script:html += @"
-        <tr>
-            <td>
-                <span class="valignMiddle">$($subscriptionApproachingLimitPolicyScope.subscription)</span>
-            </td>
-            <td>
-                <span class="valignMiddle"><a class="internallink" href="#table_$($subscriptionApproachingLimitPolicyScope.MgId)">$($subscriptionApproachingLimitPolicyScope.subscriptionId)</a></span>
-            </td>
-            <td>
-                $($subscriptionApproachingLimitPolicyScope.PolicyDefinitionsScopedCount)/$($subscriptionApproachingLimitPolicyScope.PolicyDefinitionsScopedLimit)
-            </td>
-        </tr>
+            <tr>
+                <td>
+                    <span class="valignMiddle">$($subscriptionApproachingLimitPolicyScope.subscription)</span>
+                </td>
+                <td>
+                    <span class="valignMiddle"><a class="internallink" href="#table_$($subscriptionApproachingLimitPolicyScope.MgId)">$($subscriptionApproachingLimitPolicyScope.subscriptionId)</a></span>
+                </td>
+                <td>
+                    $($subscriptionApproachingLimitPolicyScope.PolicyDefinitionsScopedCount)/$($subscriptionApproachingLimitPolicyScope.PolicyDefinitionsScopedLimit)
+                </td>
+            </tr>
 "@
     }
 $script:html += @"
+        </tbody>
     </table>
     </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
 "@
 }
 else{
@@ -4045,44 +9358,106 @@ $script:html += @"
     <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$($subscriptionsApproachingLimitPolicyScope.count) Subscriptions approaching Limit for Policy Scope</span></p>
 "@
 }
+#endregion SUMMARYSubsapproachingLimitsPolicyScope
 
-#SUMMARY Subs approaching Limits PolicySetScope
+#region SUMMARYSubsapproachingLimitsPolicySetScope
 $subscriptionsApproachingLimitPolicySetScope = (($policyBaseQuery | where-object { "" -ne $_.SubscriptionId -and $_.PolicySetDefinitionsScopedCount -gt 0 -and  (($_.PolicySetDefinitionsScopedCount -gt ($_.PolicySetDefinitionsScopedLimit * ($LimitCriticalPercentage / 100)))) }) | Select-Object MgId, Subscription, SubscriptionId, PolicySetDefinitionsScopedCount, PolicySetDefinitionsScopedLimit -Unique)
 if ($subscriptionsApproachingLimitPolicySetScope.count -gt 0){
+    $tfCount = ($subscriptionsApproachingLimitPolicySetScope | measure-object).count
+    $tableId = "SummaryTable_SubsapproachingLimitsPolicySetScope"
 $script:html += @"
-<button type="button" class="collapsible"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit for PolicySet Scope</span></button>
+<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsPolicySetScope"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit for PolicySet Scope</span></button>
 <div class="content">
-    <table class="summaryTable">
-        <tr>
-            <th>
-                Subscription
-            </th>
-            <th>
-                SubscriptionId
-            </th>
-            <th>
-                Limit
-            </th>
-        </tr>
+    <table id="$tableId" class="summaryTable">
+        <thead>
+            <tr>
+                <th>
+                    Subscription
+                </th>
+                <th>
+                    SubscriptionId
+                </th>
+                <th>
+                    Limit
+                </th>
+            </tr>
+        </thead>
+        <tbody>
 "@
     foreach ($subscriptionApproachingLimitPolicySetScope in $subscriptionsApproachingLimitPolicySetScope){
 $script:html += @"
-        <tr>
-            <td>
-                <span class="valignMiddle">$($subscriptionApproachingLimitPolicySetScope.subscription)</span>
-            </td>
-            <td>
-                <span class="valignMiddle"><a class="internallink" href="#table_$($subscriptionApproachingLimitPolicySetScope.MgId)">$($subscriptionApproachingLimitPolicySetScope.subscriptionId)</a></span>
-            </td>
-            <td>
-                $($subscriptionApproachingLimitPolicySetScope.PolicySetDefinitionsScopedCount)/$($subscriptionApproachingLimitPolicySetScope.PolicySetDefinitionsScopedLimit)
-            </td>
-        </tr>
+            <tr>
+                <td>
+                    <span class="valignMiddle">$($subscriptionApproachingLimitPolicySetScope.subscription)</span>
+                </td>
+                <td>
+                    <span class="valignMiddle"><a class="internallink" href="#table_$($subscriptionApproachingLimitPolicySetScope.MgId)">$($subscriptionApproachingLimitPolicySetScope.subscriptionId)</a></span>
+                </td>
+                <td>
+                    $($subscriptionApproachingLimitPolicySetScope.PolicySetDefinitionsScopedCount)/$($subscriptionApproachingLimitPolicySetScope.PolicySetDefinitionsScopedLimit)
+                </td>
+            </tr>
 "@
     }
 $script:html += @"
+        </tbody>
     </table>
     </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
 "@
 }
 else{
@@ -4090,9 +9465,115 @@ $script:html += @"
     <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit for PolicySet Scope</span></p>
 "@
 }
+#endregion SUMMARYSubsapproachingLimitsPolicySetScope
 
-$endSummary = get-date
-Write-Output "Build HTML Summary duration: $((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalMinutes) minutes"
+#region SUMMARYSubsapproachingLimitsRoleAssignment
+$subscriptionsApproachingRoleAssignmentLimit = $rbacBaseQuery | Where-Object { "" -ne $_.SubscriptionId -and $_.RoleAssignmentsCount -gt ($_.RoleAssignmentsLimit * $LimitCriticalPercentage / 100)} | Sort-Object -Property SubscriptionId -Unique | select-object -Property MgId, SubscriptionId, Subscription, RoleAssignmentsCount, RoleAssignmentsLimit
+if (($subscriptionsApproachingRoleAssignmentLimit | measure-object).count -gt 0){
+    $tfCount = ($subscriptionsApproachingRoleAssignmentLimit | measure-object).count
+    $tableId = "SummaryTable_SubsapproachingLimitsRoleAssignment"
+$script:html += @"
+<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsRoleAssignment"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingRoleAssignmentLimit | measure-object).count) Subscriptions approaching Limit for RoleAssignment</span></button>
+<div class="content">
+    <table id= "$tableId" class="summaryTable">
+        <thead>
+            <tr>
+                <th>
+                    Subscription
+                </th>
+                <th>
+                    SubscriptionId
+                </th>
+                <th>
+                    Limit
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+"@
+    foreach ($subscriptionApproachingRoleAssignmentLimit in $subscriptionsApproachingRoleAssignmentLimit){
+$script:html += @"
+            <tr>
+                <td>
+                    <span class="valignMiddle">$($subscriptionApproachingRoleAssignmentLimit.subscription)</span>
+                </td>
+                <td>
+                    <span class="valignMiddle"><a class="internallink" href="#table_$($subscriptionApproachingRoleAssignmentLimit.MgId)">$($subscriptionApproachingRoleAssignmentLimit.subscriptionId)</a></span>
+                </td>
+                <td>
+                    $($subscriptionApproachingRoleAssignmentLimit.RoleAssignmentsCount)/$($subscriptionApproachingRoleAssignmentLimit.RoleAssignmentsLimit)
+                </td>
+            </tr>
+"@
+    }
+$script:html += @"
+        </tbody>
+    </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+if ($tfCount -gt 10){
+    $spectrum = "10, $tfCount"
+    if ($tfCount -gt 100){
+        $spectrum = "10, 30, 50, $tfCount"
+    }
+    if ($tfCount -gt 500){
+        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+    }
+    if ($tfCount -gt 1000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+    }
+    if ($tfCount -gt 2000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+    }
+    if ($tfCount -gt 3000){
+        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+    }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: {
+                delay: 1100 //milliseconds
+            },
+            no_results_message: true,
+            col_types: [
+                'string',
+                'string',
+                'string'
+            ],
+            extensions: [{
+                name: 'sort'
+            }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+}
+else{
+$script:html += @"
+    <p"><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingRoleAssignmentLimit | measure-object).count) Subscriptions approaching Limit for RoleAssignment</span></p>
+"@
+}
+#endregion SUMMARYSubsapproachingLimitsRoleAssignment
+
 }
 #endregion Summary
 
@@ -4166,17 +9647,17 @@ $script:markdownTable += @"
 #region dataCollection
 
 #run
-Write-Output "Running AzGovViz for ManagementGroupId: '$ManagementGroupId'"
+Write-Host "Running AzGovViz for ManagementGroupId: '$ManagementGroupId'"
 $startAzGovViz = get-date
 
 #validation / check ManagementGroup Access
 $selectedManagementGroupId = Get-AzManagementGroup -GroupName $ManagementGroupId -ErrorAction SilentlyContinue
 if (-not $selectedManagementGroupId){
-    Write-Output "Access test failed: ManagementGroupId '$ManagementGroupId' is not accessible. Make sure you have required permissions (RBAC: Reader) / check typ0"
-    return
+    Write-Host "Access test failed: ManagementGroupId '$ManagementGroupId' is not accessible. Make sure you have required permissions (RBAC: Reader) / check typ0"
+    break
 }
 else{
-    Write-Output "Access test passed: ManagementGroupId '$($selectedManagementGroupId.Name)' is accessible" 
+    Write-Host "Access test passed: ManagementGroupId '$($selectedManagementGroupId.Name)' is accessible" 
 }
 
 if (($checkContext).Tenant.Id -ne $ManagementGroupId) {
@@ -4201,64 +9682,147 @@ else{
 }
 
 if (-not $AzureDevOpsWikiAsCode){
-    $uriTenantDetails = "https://management.azure.com/tenants?api-version=2020-01-01"
+    $uriTenantDetails = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)tenants?api-version=2020-01-01"
     $tenantDetailsResult = Invoke-RestMethod -Uri $uriTenantDetails -Method Get -Headers @{"Authorization" = "Bearer $accesstoken" }
     if (($tenantDetailsResult.value | measure-object).count -gt 0) {
         $tenantDetails = $tenantDetailsResult.value | where-object { $_.tenantId -eq ($checkContext).Tenant.Id }
         $tenantDisplayName = $tenantDetails.displayName
         $tenantDefaultDomain = $tenantDetails.defaultDomain
-        $tenantDisplayName
+        Write-Host "Tenant DisplayName: $tenantDisplayName"
     }
     else{
-        Write-Output "something unexpected"
+        Write-Host "something unexpected"
     }
 }
 
 if (-not $HierarchyTreeOnly) {
+
+    if ($SubscriptionQuotaIdWhitelist -ne "undefined" -and $SubscriptionQuotaIdWhitelist -ne ""){
+        $subscriptionQuotaIdWhitelistArray = [Array]($SubscriptionQuotaIdWhitelist).tostring().split("\")
+        if (($subscriptionQuotaIdWhitelistArray | Measure-Object).count -gt 0){
+            Write-Host "Subscription Whitelist enabled. AzGovViz will only process Subscriptions where QuotaId startswith one of the following strings:"
+            Write-Host "$($subscriptionQuotaIdWhitelistArray -join ", ")"
+            $subscriptionQuotaIdWhitelistMode = $true
+        }
+        else{
+            Write-Host "Error: invalid Parameter Value for 'SubscriptionQuotaIdWhitelist'"
+            break
+        }
+    }
+    else{
+        Write-Host "Subscription Whitelist disabled."
+        $subscriptionQuotaIdWhitelistMode = $false
+    }
+
     $startDefinitionsCaching = get-date
-    Write-Output "Definitions caching"
+    Write-Host "Caching data"
 
     #helper ht / collect results /save some time
     $htCacheDefinitions = @{ }
     ($htCacheDefinitions).policy = @{ }
     ($htCacheDefinitions).policySet = @{ }
     ($htCacheDefinitions).role = @{ }
+    ($htCacheDefinitions).blueprint = @{ }
+    $htCacheDefinitionsAsIs = @{ }
+    ($htCacheDefinitionsAsIs).policy = @{ }
     $htPolicyUsedInPolicySet = @{ }
     $htSubscriptionTags = @{ }
+    $htCacheAssignments = @{ }
+    ($htCacheAssignments).policy = @{ }
+    ($htCacheAssignments).role = @{ }
+    ($htCacheAssignments).blueprint = @{ }
+    $htCachePolicyCompliance = @{ }
+    ($htCachePolicyCompliance).mg = @{ }
+    ($htCachePolicyCompliance).sub = @{ }
+    $htOutOfScopeSubscriptions = @{ }
 
-    $currentContextSubscriptionQuotaId = (Search-AzGraph -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | where subscriptionId == '$($checkContext.Subscription.Id)' | project properties.subscriptionPolicies.quotaId").properties_subscriptionPolicies_quotaId
+    $currentContextSubscriptionQuotaId = (Search-AzGraph -Subscription $checkContext.Subscription.Id -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | project properties.subscriptionPolicies.quotaId" -ErrorAction Stop).properties_subscriptionPolicies_quotaId
     if (-not $currentContextSubscriptionQuotaId){
-        Write-Output "Bad Subscription context for Definition Caching (SubscriptionName: $($checkContext.Subscription.Name); SubscriptionId: $($checkContext.Subscription.Id); likely an AAD_ QuotaId"
-        $alternativeSubscriptionIdForDefinitionCaching = (Search-AzGraph -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | where properties.subscriptionPolicies.quotaId !startswith 'AAD_' | project properties.subscriptionPolicies.quotaId, subscriptionId" -first 1)
-        Write-Output "Using other Subscription for Definition Caching (SubscriptionId: $($alternativeSubscriptionIdForDefinitionCaching.subscriptionId); QuotaId: $($alternativeSubscriptionIdForDefinitionCaching.properties_subscriptionPolicies_quotaId))"
+        Write-Host "Bad Subscription context for Definition Caching (SubscriptionName: $($checkContext.Subscription.Name); SubscriptionId: $($checkContext.Subscription.Id); likely an AAD_ QuotaId"
+        $alternativeSubscriptionIdForDefinitionCaching = (Search-AzGraph -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | where properties.subscriptionPolicies.quotaId !startswith 'AAD_' | project properties.subscriptionPolicies.quotaId, subscriptionId" -first 1 -ErrorAction Stop)
+        Write-Host "Using other Subscription for Definition Caching (SubscriptionId: $($alternativeSubscriptionIdForDefinitionCaching.subscriptionId); QuotaId: $($alternativeSubscriptionIdForDefinitionCaching.properties_subscriptionPolicies_quotaId))"
         $subscriptionIdForDefinitionCaching = $alternativeSubscriptionIdForDefinitionCaching.subscriptionId
+        #switch subscription context
+        Select-AzSubscription -SubscriptionId $subscriptionIdForDefinitionCaching -ErrorAction Stop
     }
     else{
-        Write-Output "OK Subscription context (QuotaId not 'AAD_*') for Definition Caching (SubscriptionId: $($checkContext.Subscription.Id); QuotaId: $currentContextSubscriptionQuotaId)"
+        Write-Host "OK Subscription context (QuotaId not 'AAD_*') for Definition Caching (SubscriptionId: $($checkContext.Subscription.Id); QuotaId: $currentContextSubscriptionQuotaId)"
         $subscriptionIdForDefinitionCaching = $checkContext.Subscription.Id
     }
 
-    $builtinPolicyDefinitions = Get-AzPolicyDefinition -Builtin -SubscriptionId $SubscriptionIdForDefinitionCaching
+    $uriPolicyDefinitionAPI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+    $requestPolicyDefinitionAPI = Invoke-RestMethod -Uri $uriPolicyDefinitionAPI -Headers  @{"Authorization" = "Bearer $accesstoken" }
+    $builtinPolicyDefinitions = $requestPolicyDefinitionAPI.value | Where-Object { $_.properties.policyType -eq "builtin" }
+
     foreach ($builtinPolicyDefinition in $builtinPolicyDefinitions) {
         ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name) = @{ }
         ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).Id = $builtinPolicyDefinition.name
         ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).DisplayName = $builtinPolicyDefinition.Properties.displayname
         ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).Type = $builtinPolicyDefinition.Properties.policyType
         ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).Category = $builtinPolicyDefinition.Properties.metadata.category
-        ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).PolicyDefinitionId = $builtinPolicyDefinition.PolicyDefinitionId
+        ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).PolicyDefinitionId = $builtinPolicyDefinition.id
+        if ($builtinPolicyDefinition.Properties.metadata.deprecated -eq $true){
+            ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).Deprecated = $builtinPolicyDefinition.Properties.metadata.deprecated
+        }
+        else{
+            ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).Deprecated = $false
+        }
+        #effects
+        if ($builtinPolicyDefinition.properties.parameters.effect.defaultvalue) {
+            ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).effectDefaultValue = $builtinPolicyDefinition.properties.parameters.effect.defaultvalue
+            if ($builtinPolicyDefinition.properties.parameters.effect.allowedValues){
+                ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).effectAllowedValue = $builtinPolicyDefinition.properties.parameters.effect.allowedValues -join ","
+            }
+            else{
+                ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).effectAllowedValue = "n/a"
+            }
+            ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).effectFixedValue = "n/a"
+        }
+        else {
+            if ($builtinPolicyDefinition.properties.parameters.policyEffect.defaultValue) {
+                ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).effectDefaultValue = $builtinPolicyDefinition.properties.parameters.policyEffect.defaultvalue
+                if ($builtinPolicyDefinition.properties.parameters.policyEffect.allowedValues){
+                    ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).effectAllowedValue = $builtinPolicyDefinition.properties.parameters.policyEffect.allowedValues -join ","
+                }
+                else{
+                    ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).effectAllowedValue = "n/a"
+                }
+                ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).effectFixedValue = "n/a"
+            }
+            else {
+                ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).effectFixedValue = $builtinPolicyDefinition.Properties.policyRule.then.effect
+                ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).effectDefaultValue = "n/a"
+                ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).effectAllowedValue = "n/a"
+            }
+        }
+        ($htCacheDefinitions).policy.$($builtinPolicyDefinition.name).json = $builtinPolicyDefinition
+
+        #AsIs
+        ($htCacheDefinitionsAsIs).policy.$($builtinPolicyDefinition.name) = @{ }
+        ($htCacheDefinitionsAsIs).policy.$($builtinPolicyDefinition.name) = $builtinPolicyDefinition
     }
 
-    $builtinPolicySetDefinitions = Get-AzPolicySetDefinition -Builtin -SubscriptionId $SubscriptionIdForDefinitionCaching
+    $uriPolicySetDefinitionAPI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Authorization/policySetDefinitions?api-version=2019-09-01"
+    $requestPolicySetDefinitionAPI = Invoke-RestMethod -Uri $uriPolicySetDefinitionAPI -Headers  @{"Authorization" = "Bearer $accesstoken" }
+    $builtinPolicySetDefinitions = $requestPolicySetDefinitionAPI.value | Where-Object { $_.properties.policyType -eq "builtin" }
+    
     foreach ($builtinPolicySetDefinition in $builtinPolicySetDefinitions) {
         ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name) = @{ }
         ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).Id = $builtinPolicySetDefinition.name
         ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).DisplayName = $builtinPolicySetDefinition.Properties.displayname
         ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).Type = $builtinPolicySetDefinition.Properties.policyType
         ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).Category = $builtinPolicySetDefinition.Properties.metadata.category
-        ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).PolicyDefinitionId = $builtinPolicySetDefinition.PolicySetDefinitionId
+        ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).PolicyDefinitionId = $builtinPolicySetDefinition.id
+        if ($builtinPolicySetDefinition.Properties.metadata.deprecated -eq $true){
+            ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).Deprecated = $builtinPolicySetDefinition.Properties.metadata.deprecated
+        }
+        else{
+            ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).Deprecated = $false
+        }
+        ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).json = $builtinPolicySetDefinition
     }
 
-    $roleDefinitions = Get-AzRoleDefinition -Scope "/subscriptions/$SubscriptionIdForDefinitionCaching" | where-object { $_.IsCustom -eq $false }
+    $roleDefinitions = Get-AzRoleDefinition -Scope "/subscriptions/$SubscriptionIdForDefinitionCaching" -ErrorAction Stop | where-object { $_.IsCustom -eq $false }
     foreach ($roleDefinition in $roleDefinitions) {
         $($htCacheDefinitions).role.$($roleDefinition.Id) = @{ }
         $($htCacheDefinitions).role.$($roleDefinition.Id).Id = $($roleDefinition.Id)
@@ -4272,41 +9836,117 @@ if (-not $HierarchyTreeOnly) {
     }
 
     $endDefinitionsCaching = get-date
-    Write-Output "Definitions caching duration: $((NEW-TIMESPAN -Start $startDefinitionsCaching -End $endDefinitionsCaching).TotalSeconds) seconds"
+    Write-Host "Caching duration: $((NEW-TIMESPAN -Start $startDefinitionsCaching -End $endDefinitionsCaching).TotalSeconds) seconds"
 }
 
-Write-Output "Data Collection"
+Write-Host "Data Collection"
 $startDataCollection = get-date
+
 dataCollection -mgId $ManagementGroupId -hierarchyLevel $hierarchyLevel -mgParentId $getMgParentId -mgParentName $getMgParentName
+
+if (-not $HierarchyTreeOnly) {
+    Write-Host "Total Custom Policy Definitions: $(((($htCacheDefinitions).policy.keys | where-object { ($htCacheDefinitions).policy.$_.Type -eq "Custom" }) | Measure-Object).count)"
+    Write-Host "Total Custom PolicySet Definitions: $(((($htCacheDefinitions).policySet.keys | where-object { ($htCacheDefinitions).policySet.$_.Type -eq "Custom" }) | Measure-Object).count)"
+    Write-Host "Total Custom Roles: $(((($htCacheDefinitions).role.keys | where-object { ($htCacheDefinitions).role.$_.IsCustom -eq $True }) | Measure-Object).count)"
+    Write-Host "Total Blueprint Definitions: $(((($htCacheDefinitions).blueprint.keys) | Measure-Object).count)"
+    Write-Host "Total Policy Assignments: $(($($htCacheAssignments).policy.keys | Measure-Object).count)"
+    Write-Host "Total Role Assignments: $(($($htCacheAssignments).role.keys | Measure-Object).count)"
+    Write-Host "Total Blueprint Assignments: $(($($htCacheAssignments).blueprint.keys | Measure-Object).count)"
+}
+
 $endDataCollection = get-date
-Write-Output "Data Collection duration: $((NEW-TIMESPAN -Start $startDataCollection -End $endDataCollection).TotalMinutes) minutes"
+Write-Host "Data Collection duration: $((NEW-TIMESPAN -Start $startDataCollection -End $endDataCollection).TotalMinutes) minutes"
 
 if (-not $HierarchyTreeOnly){
-    Write-Output "Resource caching"
+    Write-Host "Resource caching"
     $startResourceCaching = get-date
-
     $subscriptionIds = ($table | Where-Object { "" -ne $_.SubscriptionId} | select-Object SubscriptionId | Sort-Object -Property SubscriptionId -Unique).SubscriptionId
     $queryResources = "resources | project id, subscriptionId, location, type | summarize count() by subscriptionId, location, type"
     $queryResourceGroups = "resourcecontainers | where type =~ 'microsoft.resources/subscriptions/resourcegroups' | project id, subscriptionId | summarize count() by subscriptionId"
     $resourcesAll = @()
-    $resourceGroupsAll = @()    
+    $resourceGroupsAll = @()
+    $htResourceProvidersAll = @{ }
+    $arrayResourceProvidersAll = @()
     foreach ($subscriptionId in $subscriptionIds){
-        $resourcesAll += Search-AzGraph -Subscription $subscriptionId -Query $queryResources
-        $resourceGroupsAll += Search-AzGraph -Subscription $subscriptionId -Query $queryResourceGroups
+        $resourcesAll += Search-AzGraph -Subscription $subscriptionId -Query $queryResources -ErrorAction Stop
+        $resourceGroupsAll += Search-AzGraph -Subscription $subscriptionId -Query $queryResourceGroups -ErrorAction Stop
+        ($htResourceProvidersAll).($subscriptionId) = @{ }
+        $url = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subscriptionId)/providers?api-version=2019-10-01"
+        $resProvResult = Invoke-RestMethod -Uri $url -Headers @{"Authorization" = "Bearer $accesstoken" }
+        ($htResourceProvidersAll).($subscriptionId).Providers = $resProvResult.value
+        $arrayResourceProvidersAll += $resProvResult.value
     }
 
+    $resourceTypesUnique = ($resourcesAll | select-object type -Unique).type
+    $resourceTypesSummarizedArray = @()
+    foreach ($resourceTypeUnique in $resourceTypesUnique){
+        $resourcesTypeCountTotal = 0
+        ($resourcesAll | Where-Object { $_.type -eq $resourceTypeUnique }).count_ | ForEach-Object { $resourcesTypeCountTotal += $_ }
+        $resourceTypesSummarizedObject = New-Object -TypeName PSObject -Property @{'ResourceType' = $resourceTypeUnique; 'ResourceCount' = $resourcesTypeCountTotal }
+        $resourceTypesSummarizedArray += $resourceTypesSummarizedObject
+    }
+
+    $resourceTypesDiagnosticsArray = @()
+    foreach ($resourcetype in $resourceTypesSummarizedArray.ResourceType) {
+        $resource = Search-AzGraph -Query "where type =~ '$resourcetype' | project id | top 1 by id"
+        $resourceCount = ($resourceTypesSummarizedArray | where-object { $_.Resourcetype -eq $resourcetype}).ResourceCount
+        
+        #taken from https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts
+        try {
+            $Invalid = $false
+            $LogCategories = @();
+            $metrics = $false #initialize metrics flag to $false
+            $logs = $false #initialize logs flag to $false
+
+            $URI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)$($resource.id)/providers/microsoft.insights/diagnosticSettingsCategories/?api-version=2017-05-01-preview"
+
+            Try {
+                $Status = Invoke-WebRequest -uri $URI -Headers @{"Authorization" = "Bearer $accesstoken" } -UseBasicParsing
+            }
+            catch {
+                # Uncomment below to see actual error.  Certain resources are not ResourceTypes that can support Logs and Metrics so the host error is being muted
+                $Invalid = $True
+                $Logs = $False
+                $Metrics = $False
+                $ResponseJSON = ''
+            }
+            if (!($Invalid)) {
+                $ResponseJSON = $Status.Content | ConvertFrom-Json -ErrorAction SilentlyContinue
+            }
+        
+            # If logs are supported or metrics on each resource, set value as $True
+            If ($ResponseJSON) {                
+                foreach ($R in $ResponseJSON.value) {
+                    if ($R.properties.categoryType -eq "Metrics") {
+                        $metrics = $true
+                    }
+                    if ($R.properties.categoryType -eq "Logs") {
+                        $Logs = $true
+                        $LogCategories += $r.name
+                    }
+                }
+            }
+        }
+        catch { }
+        finally {
+            $resourceTypesDiagnosticsObject = New-Object -TypeName PSObject -Property @{'ResourceType' = $resourcetype; 'Metrics' = $metrics; 'Logs' = $logs; 'LogCategories' = $LogCategories; 'ResourceCount' = [int]$resourceCount }
+            $resourceTypesDiagnosticsArray += $resourceTypesDiagnosticsObject
+        }
+    }
+    
     $endResourceCaching = get-date
-    Write-Output "Resource caching duration: $((NEW-TIMESPAN -Start $startResourceCaching -End $endResourceCaching).TotalSeconds) seconds"
+    Write-Host "Resource caching duration: $((NEW-TIMESPAN -Start $startResourceCaching -End $endResourceCaching).TotalSeconds) seconds"
+    
 }
 #endregion dataCollection
 
 #region createoutputs
 
-#region BuildCSV
-$table | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
-#endregion BuildCSV
-
 #region BuildHTML
+
+#testhelper
+#$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
+
 $startBuildHTML = get-date
 $html = $null
 
@@ -4314,21 +9954,21 @@ $html = $null
 $mgAndSubBaseQuery = ($table | Select-Object -Property level, mgid, mgname, mgParentName, mgParentId, subscriptionId, subscription)
 $parentMgNamex = ($mgAndSubBaseQuery | Where-Object { $_.MgParentId -eq $getMgParentId }).mgParentName | Get-Unique
 $parentMgIdx = ($mgAndSubBaseQuery | Where-Object { $_.MgParentId -eq $getMgParentId }).mgParentId | Get-Unique
-$ManagementGroupIdCaseSensitived = (($mgAndSubBaseQuery | Where-Object {$_.MgId -eq $ManagementGroupId}).mgId) | Get-Unique
+$ManagementGroupIdCaseSensitived = (($mgAndSubBaseQuery | Where-Object { $_.MgId -eq $ManagementGroupId }).mgId) | Get-Unique
 $optimizedTableForPathQuery = ($mgAndSubBaseQuery | Select-Object -Property level, mgid, mgparentid, subscriptionId) | sort-object -Property level, mgid, mgname, mgparentId, mgparentName, subscriptionId, subscription -Unique
 $subscriptionBaseQuery = $table | Where-Object { "" -ne $_.SubscriptionId }
 
-if (-not $HierarchyTreeOnly){
-    $policyBaseQuery = $table | Where-Object { "" -ne $_.Policy } | Sort-Object -Property PolicyType, Policy | Select-Object -Property Policy*, mgId, mgname, SubscriptionId, Subscription
+if (-not $HierarchyTreeOnly) {
+    $policyBaseQuery = $table | Where-Object { "" -ne $_.Policy } | Sort-Object -Property PolicyType, Policy | Select-Object -Property Level, Policy*, mgId, mgname, SubscriptionId, Subscription
     $policyPolicyBaseQuery = $policyBaseQuery | Where-Object { $_.PolicyVariant -eq "Policy" } | Select-Object -Property PolicyDefinitionIdGuid, PolicyAssignmentId
     $policyPolicySetBaseQuery = $policyBaseQuery | Where-Object { $_.PolicyVariant -eq "PolicySet" } | Select-Object -Property PolicyDefinitionIdGuid, PolicyAssignmentId
     $policyAssignmentIds = ($policyBaseQuery | sort-object -property PolicyAssignmentName, PolicyAssignmentId -Unique | Select-Object -Property PolicyAssignmentName, PolicyAssignmentId)
 
-    $rbacBaseQuery = $table | Where-Object { "" -ne $_.RoleDefinitionName } | Sort-Object -Property RoleIsCustom, RoleDefinitionName | Select-Object -Property Role*, mgId, SubscriptionId
+    $rbacBaseQuery = $table | Where-Object { "" -ne $_.RoleDefinitionName } | Sort-Object -Property RoleIsCustom, RoleDefinitionName | Select-Object -Property Level, Role*, mgId, MgName, SubscriptionId, Subscription
 
-    $blueprintBaseQuery = $table | Where-Object { "" -ne $_.BlueprintName}
+    $blueprintBaseQuery = $table | Where-Object { "" -ne $_.BlueprintName }
 
-    $mgsAndSubs = (($mgAndSubBaseQuery | where-object {$_.mgId -ne "" -and $_.Level -ne "0"}) | select-object MgId, SubscriptionId -unique)
+    $mgsAndSubs = (($mgAndSubBaseQuery | where-object { $_.mgId -ne "" -and $_.Level -ne "0" }) | select-object MgId, SubscriptionId -unique)
     $tenantCustomPolicies = ($htCacheDefinitions).policy.keys | where-object { ($htCacheDefinitions).policy.($_).Type -eq "Custom" }
     $tenantCustomPoliciesCount = ($tenantCustomPolicies | measure-object).count
     $tenantCustomPolicySets = ($htCacheDefinitions).policySet.keys | where-object { ($htCacheDefinitions).policySet.($_).Type -eq "Custom" }
@@ -4349,43 +9989,51 @@ $html += @"
     <script type="text/javascript">
         var link = document.createElement( "link" );
         rand = Math.floor(Math.random() * 99999);
-        link.href = "https://www.azadvertizer.net/azgovviz/css/azgovvizversion.css?rnd=" + rand;
+        link.href = "https://www.azadvertizer.net/azgovvizv3/css/azgovvizversion.css?rnd=" + rand;
         link.type = "text/css";
         link.rel = "stylesheet";
         link.media = "screen,print";
         document.getElementsByTagName( "head" )[0].appendChild( link );
     </script>
-    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovviz/css/azgovvizmain_002_002.css">
+    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv3/css/azgovvizmain_003_002.css">
     <script src="https://code.jquery.com/jquery-1.7.2.js" integrity="sha256-FxfqH96M63WENBok78hchTCDxmChGFlo+/lFIPcZPeI=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/ui/1.8.18/jquery-ui.js" integrity="sha256-lzf/CwLt49jbVoZoFcPZOc0LlMYPFBorVSwMsTs2zsA=" crossorigin="anonymous"></script>
-    <script type="text/javascript" src="https://www.azadvertizer.net/azgovviz/js/highlight.js"></script>
+    <script type="text/javascript" src="https://www.azadvertizer.net/azgovvizv3/js/highlight_v3.js"></script>
     <script src="https://use.fontawesome.com/0c0b5cbde8.js"></script>
+    <script src="https://www.azadvertizer.net/azgovvizv3/tablefilter/tablefilter.js"></script>
+    <script>
+        `$(window).load(function() {
+            // Animate loader off screen
+            `$(".se-pre-con").fadeOut("slow");;
+        });
+    </script>
 </head>
 <body>
+    <div class="se-pre-con"></div>
     <div class="tree">
         <div class="hierarchyTree" id="hierarchyTree">
 "@
 
-if ($getMgParentName -eq "Tenant Root"){
-$html += @"
+if ($getMgParentName -eq "Tenant Root") {
+    $html += @"
             <ul>
 "@
 }
-else{
-    if ($parentMgNamex -eq $parentMgIdx){
+else {
+    if ($parentMgNamex -eq $parentMgIdx) {
         $mgNameAndOrId = $parentMgNamex
     }
-    else{
+    else {
         $mgNameAndOrId = "$parentMgNamex<br><i>$parentMgIdx</i>"
     }
     
-    if (-not $AzureDevOpsWikiAsCode){
+    if (-not $AzureDevOpsWikiAsCode) {
         $tenantDetailsDisplay = "$tenantDisplayName<br>$tenantDefaultDomain<br>"
     }
-    else{
+    else {
         $tenantDetailsDisplay = ""
     }
-$html += @"
+    $html += @"
             <ul>
                 <li id ="first">
                     <a class="tenant"><div class="fitme" id="fitme">$($tenantDetailsDisplay)$(($checkContext).Tenant.Id)</div></a>
@@ -4395,10 +10043,15 @@ $html += @"
 "@
 }
 
+$startHierarchyTree = get-date
+
 hierarchyMgHTML -mgChild $ManagementGroupIdCaseSensitived
 
-if ($getMgParentName -eq "Tenant Root"){
-$html += @"
+$endHierarchyTree = get-date
+Write-Host "Build HTML Hierarchy Tree: $((NEW-TIMESPAN -Start $startHierarchyTree -End $endHierarchyTree).TotalMinutes) minutes"
+
+if ($getMgParentName -eq "Tenant Root") {
+    $html += @"
                     </ul>
                 </li>
             </ul>
@@ -4406,8 +10059,8 @@ $html += @"
     </div>
 "@
 }
-else{
-$html += @"
+else {
+    $html += @"
                             </ul>
                         </li>
                     </ul>
@@ -4418,25 +10071,36 @@ $html += @"
 "@
 }
 
-if (-not $HierarchyTreeOnly){
+if (-not $HierarchyTreeOnly) {
 
-$html += @"
+    $html += @"
     <div class="summprnt" id="summprnt">
     <div class="summary" id="summary">
 "@
 
+    $startSummary = get-date
+
     summary
 
-$html += @"
+    $endSummary = get-date
+    Write-Host "Build HTML Summary duration: $((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalMinutes) minutes"
+
+    $html += @"
     </div>
     </div>
     <div class="hierprnt" id="hierprnt">
     <div class="hierarchyTables" id="hierarchyTables">
 "@
+    #Write-Host "______________________________________"
+    Write-Host "Build HTML Hierarchy Table"
+    $startHierarchyTable = get-date
 
     tableMgHTML -mgChild $ManagementGroupIdCaseSensitived -mgChildOf $getMgParentId
 
-$html += @"
+    $endHierarchyTable = get-date
+    Write-Host "Build HTML Hierarchy Table duration: $((NEW-TIMESPAN -Start $startHierarchyTable -End $endHierarchyTable).TotalSeconds) seconds"
+
+    $html += @"
     </div>
     </div>
 "@
@@ -4449,24 +10113,27 @@ $html += @"
     <div class="VersionAlert"></div>
 "@
 
-if (-not $HierarchyTreeOnly){
-$html += @"
+if (-not $HierarchyTreeOnly) {
+    $html += @"
         Limit: $($LimitCriticalPercentage)% <button id="hierarchyTreeShowHide" onclick="toggleHierarchyTree()">Hide Hierarchy Tree</button> <button id="summaryShowHide" onclick="togglesummprnt()">Hide Summary</button> <button id="hierprntShowHide" onclick="togglehierprnt()">Hide Details</button>
 "@
 }
 
 $html += @"
     </div>
-    <script src="https://www.azadvertizer.net/azgovviz/js/toggle.js"></script>
-    <script src="https://www.azadvertizer.net/azgovviz/js/collapsetable.js"></script>
-    <script src="https://www.azadvertizer.net/azgovviz/js/fitty.min.js"></script>
-    <script src="https://www.azadvertizer.net/azgovviz/js/version.js"></script>
+    <script src="https://www.azadvertizer.net/azgovvizv3/js/toggle.js"></script>
+    <script src="https://www.azadvertizer.net/azgovvizv3/js/collapsetable.js"></script>
+    <script src="https://www.azadvertizer.net/azgovvizv3/js/fitty.min.js"></script>
+    <script src="https://www.azadvertizer.net/azgovvizv3/js/version.js"></script>
+    <script src="https://www.azadvertizer.net/azgovvizv3/js/autocorractOff.js"></script>
     <script>
         fitty('#fitme', {
-            minSize: 6,
+            minSize: 7,
             maxSize: 10
         });
     </script>
+
+
 </body>
 </html>
 "@  
@@ -4474,13 +10141,19 @@ $html += @"
 if ($AzureDevOpsWikiAsCode) { 
     $fileName = "AzGovViz_$($ManagementGroupIdCaseSensitived)"
 }
-else{
-    $fileName = "AzGovViz_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)"
+else {
+    if ($HierarchyTreeOnly) {
+        $fileName = "AzGovViz_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)_HierarchyOnly"
+    }
+    else {
+        $fileName = "AzGovViz_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)"
+    }
 }
+
 $html | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
 
 $endBuildHTML = get-date
-Write-Output "Build HTML duration: $((NEW-TIMESPAN -Start $startBuildHTML -End $endBuildHTML).TotalMinutes) minutes"
+Write-Host "Build HTML total duration: $((NEW-TIMESPAN -Start $startBuildHTML -End $endBuildHTML).TotalSeconds) seconds"
 #endregion BuildHTML
 
 #region BuildMD
@@ -4537,7 +10210,11 @@ $markdownTable
 $markdown | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).md" -Encoding utf8 -Force
 #endregion BuildMD
 
+#region BuildCSV
+$table | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+#endregion BuildCSV
+
 #endregion createoutputs
 
 $endAzGovViz = get-date
-Write-Output "AzGovViz duration: $((NEW-TIMESPAN -Start $startAzGovViz -End $endAzGovViz).TotalMinutes) minutes"
+Write-Host "AzGovViz duration: $((NEW-TIMESPAN -Start $startAzGovViz -End $endAzGovViz).TotalMinutes) minutes"
