@@ -492,7 +492,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
     $startMgLoop = get-date
     $hierarchyLevel++
     $getMg = Get-AzManagementGroup -groupname $mgId -Expand -Recurse -ErrorAction Stop
-    Write-Host "DataCollection: Processing L$hierarchyLevel MG '$($getMg.DisplayName)' ('$($getMg.Name)')"
+    Write-Host "CustomDataCollection: Processing L$hierarchyLevel MG '$($getMg.DisplayName)' ('$($getMg.Name)')"
 
     if (-not $HierarchyTreeOnly) {
 
@@ -755,7 +755,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
             }
             else {
                 #s.th unexpected
-                Write-Host "DataCollection: unexpected"
+                Write-Host "CustomDataCollection: unexpected"
                 return
             }
         }
@@ -873,7 +873,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
             -mgParentName $mgParentName
     }
     $endMgLoop = get-date
-    Write-Host "DataCollection: L$hierarchyLevel MG '$($getMg.DisplayName)' ('$($getMg.Name)') processing duration: $((NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalSeconds) seconds"
+    Write-Host "CustomDataCollection: L$hierarchyLevel MG '$($getMg.DisplayName)' ('$($getMg.Name)') processing duration: $((NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalSeconds) seconds"
 
     #SUBSCRIPTION
     if (($getMg.children | measure-object).count -gt 0) {
@@ -882,7 +882,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
             checkToken
             $startSubLoop = get-date
             $childMgSubId = $childMg.Id -replace '/subscriptions/', ''
-            Write-Host "DataCollection: Processing Subscription $($childMg.DisplayName) ('$childMgSubId')"
+            Write-Host "CustomDataCollection: Processing Subscription $($childMg.DisplayName) ('$childMgSubId')"
 
             if (-not $HierarchyTreeOnly) {
                 #SubscriptionDetails
@@ -898,7 +898,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
 
                     if (($subscriptionsGetResult.subscriptionPolicies.quotaId).startswith("AAD_","CurrentCultureIgnoreCase") -or $subscriptionsGetResult.state -ne "enabled") {
                         if (($subscriptionsGetResult.subscriptionPolicies.quotaId).startswith("AAD_","CurrentCultureIgnoreCase")) {
-                            Write-Host "DataCollection: Subscription Quota Id: $($subscriptionsGetResult.subscriptionPolicies.quotaId) is out of scope for AzGovViz"
+                            Write-Host "CustomDataCollection: Subscription Quota Id: $($subscriptionsGetResult.subscriptionPolicies.quotaId) is out of scope for AzGovViz"
                             $htOutOfScopeSubscriptions.($childMgSubId) = @{ }
                             $htOutOfScopeSubscriptions.($childMgSubId).subscriptionId = $childMgSubId
                             $htOutOfScopeSubscriptions.($childMgSubId).subscriptionName = $childMg.DisplayName
@@ -907,7 +907,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                             $htOutOfScopeSubscriptions.($childMgSubId).ManagementGroupName = $getMg.DisplayName
                         }
                         if ($subscriptionsGetResult.state -ne "enabled") {
-                            Write-Host "DataCollection: Subscription State: $($subscriptionsGetResult.state) is out of scope for AzGovViz"
+                            Write-Host "CustomDataCollection: Subscription State: $($subscriptionsGetResult.state) is out of scope for AzGovViz"
                             $htOutOfScopeSubscriptions.($childMgSubId) = @{ }
                             $htOutOfScopeSubscriptions.($childMgSubId).subscriptionId = $childMgSubId
                             $htOutOfScopeSubscriptions.($childMgSubId).subscriptionName = $childMg.DisplayName
@@ -930,7 +930,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                 $subscriptionIsInScopeforAzGovViz = $True
                             }
                             else{
-                                Write-Host "DataCollection: Subscription Quota Id: $($subscriptionsGetResult.subscriptionPolicies.quotaId) is out of scope for AzGovViz (not in Whitelist)"
+                                Write-Host "CustomDataCollection: Subscription Quota Id: $($subscriptionsGetResult.subscriptionPolicies.quotaId) is out of scope for AzGovViz (not in Whitelist)"
                                 $htOutOfScopeSubscriptions.($childMgSubId) = @{ }
                                 $htOutOfScopeSubscriptions.($childMgSubId).subscriptionId = $childMgSubId
                                 $htOutOfScopeSubscriptions.($childMgSubId).subscriptionName = $childMg.DisplayName
@@ -999,7 +999,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                             $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
                         }
                         if ($result -ne "letscheck"){
-                            Write-Host "DataCollection: Subscription Id: $childMgSubId Getting ASC Secure Score error: '$result' -> skipping ASC Secure Score for this subscription"
+                            Write-Host "CustomDataCollection: Subscription Id: $childMgSubId Getting ASC Secure Score error: '$result' -> skipping ASC Secure Score for this subscription"
                             $subscriptionASCSecureScore = "n/a"
                         }
                         else{
@@ -1450,7 +1450,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                     }
                 }
                 else{
-                    Write-Host "DataCollection: Subscription Error: '$result' -> skipping this subscription"
+                    Write-Host "CustomDataCollection: Subscription Error: '$result' -> skipping this subscription"
                     $htOutOfScopeSubscriptions.($childMgSubId) = @{ }
                     $htOutOfScopeSubscriptions.($childMgSubId).subscriptionId = $childMgSubId
                     $htOutOfScopeSubscriptions.($childMgSubId).subscriptionName = $childMg.DisplayName
@@ -1468,7 +1468,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                     -SubscriptionId $childMgSubId
             }
             $endSubLoop = get-date
-            Write-Host "DataCollection: Subscription processing duration: $((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds) seconds"
+            Write-Host "CustomDataCollection: Subscription processing duration: $((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds) seconds"
         }
         foreach ($childMg in $getMg.Children | Where-Object { $_.Type -eq "/providers/Microsoft.Management/managementGroups" }) {
             dataCollection -mgId $childMg.Name -hierarchyLevel $hierarchyLevel -mgParentId $getMg.Name -mgParentName $getMg.DisplayName
@@ -1530,7 +1530,7 @@ function hierarchyMgHTML($mgChild){
         $mgNameAndOrId = "$mgName<br><i>$mgId</i>"
     }
 $script:html += @"
-                    <li $liId $liclass><a $class href="#table_$mgId" id="hierarchy_$mgId"><p><img class="imgMgTree" src="https://www.azadvertizer.net/azgovviz/icon/Icon-general-11-Management-Groups.svg"></p><div class="fitme" id="fitme">$($tenantDisplayNameAndDefaultDomain)$($mgNameAndOrId)</div></a>
+                    <li $liId $liclass><a $class href="#table_$mgId" id="hierarchy_$mgId"><p><img class="imgMgTree" src="https://www.azadvertizer.net/azgovvizv3/icon/Icon-general-11-Management-Groups.svg"></p><div class="fitme" id="fitme">$($tenantDisplayNameAndDefaultDomain)$($mgNameAndOrId)</div></a>
 "@
     $childMgs = ($mgAndSubBaseQuery | Where-Object { $_.mgParentId -eq "$mgId" }).MgId | Sort-Object -Unique
     if (($childMgs | measure-object).count -gt 0){
@@ -1556,21 +1556,21 @@ $script:html += @"
 
 function hierarchySubForMgHTML($mgChild){
     $subscriptions = ($mgAndSubBaseQuery | Where-Object { "" -ne $_.Subscription -and $_.MgId -eq $mgChild }).SubscriptionId | Get-Unique
-    Write-Host "Build HTML Hierarchy Tree for MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
+    Write-Host "Building HTML Hierarchy Tree for MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
     if (($subscriptions | measure-object).count -gt 0){
 $script:html += @"
-                    <li><a href="#table_$mgChild"><p id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovviz/icon/Icon-general-2-Subscriptions.svg"> $(($subscriptions | measure-object).count)x</p></a></li>
+                    <li><a href="#table_$mgChild"><p id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv3/icon/Icon-general-2-Subscriptions.svg"> $(($subscriptions | measure-object).count)x</p></a></li>
 "@
     }
 }
 
 function hierarchySubForMgUlHTML($mgChild){
     $subscriptions = ($mgAndSubBaseQuery | Where-Object { "" -ne $_.Subscription -and $_.MgId -eq $mgChild }).SubscriptionId | Get-Unique
-    Write-Host "Build HTML Hierarchy Tree for MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
+    Write-Host "Building HTML Hierarchy Tree for MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
     if (($subscriptions | measure-object).count -gt 0){
 $script:html += @"
                 <ul>
-                    <li><a href="#table_$mgChild" id="hierarchySub_$mgChild"><p><img class="imgSubTree" src="https://www.azadvertizer.net/azgovviz/icon/Icon-general-2-Subscriptions.svg"> $($subscriptions.Count)x</p></a></li></ul>
+                    <li><a href="#table_$mgChild" id="hierarchySub_$mgChild"><p><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv3/icon/Icon-general-2-Subscriptions.svg"> $($subscriptions.Count)x</p></a></li></ul>
 "@
     }
 }
@@ -1582,13 +1582,13 @@ function tableMgHTML($mgChild, $mgChildOf){
     $mgId =$mgDetails.MgId
 
     switch ($mgLevel) {
-        "0" { $levelSpacing = "|&nbsp;" }
-        "1" { $levelSpacing = "|-&nbsp;" }
-        "2" { $levelSpacing = "|--&nbsp;" }
-        "3" { $levelSpacing = "|---&nbsp;" }
-        "4" { $levelSpacing = "|----&nbsp;" }
-        "5" { $levelSpacing = "|-----&nbsp;" }
-        "6" { $levelSpacing = "|------&nbsp;" }
+        "0" { $levelSpacing = "| &nbsp;" }
+        "1" { $levelSpacing = "| -&nbsp;" }
+        "2" { $levelSpacing = "| - -&nbsp;" }
+        "3" { $levelSpacing = "| - - -&nbsp;" }
+        "4" { $levelSpacing = "| - - - -&nbsp;" }
+        "5" { $levelSpacing = "|- - - - -&nbsp;" }
+        "6" { $levelSpacing = "|- - - - - -&nbsp;" }
     }
 
     createMgPath -mgid $mgChild
@@ -1597,11 +1597,11 @@ function tableMgHTML($mgChild, $mgChildOf){
     $mgLinkedSubsCount = ((($mgAndSubBaseQuery | Where-Object { $_.MgId -eq "$mgChild" -and "" -ne $_.SubscriptionId }).SubscriptionId | Get-Unique) | measure-object).count
     if ($mgLinkedSubsCount -gt 0) {
         $subImg = "Icon-general-2-Subscriptions"
-        $subInfo = "<img class=`"imgSub`" src=`"https://www.azadvertizer.net/azgovviz/icon/$subImg.svg`">$mgLinkedSubsCount"
+        $subInfo = "<img class=`"imgSub`" src=`"https://www.azadvertizer.net/azgovvizv3/icon/$subImg.svg`">$mgLinkedSubsCount"
     }
     else {
         $subImg = "Icon-general-2-Subscriptions_grey"
-        $subInfo = "<img class=`"imgSub`" src=`"https://www.azadvertizer.net/azgovviz/icon/$subImg.svg`">"
+        $subInfo = "<img class=`"imgSub`" src=`"https://www.azadvertizer.net/azgovvizv3/icon/$subImg.svg`">"
     }
 
     if ($mgName -eq $mgId){
@@ -1613,7 +1613,7 @@ function tableMgHTML($mgChild, $mgChildOf){
 
 $script:html += @"
     <button type="button" class="collapsible" id="table_$mgId">
-        $levelSpacing<img class="imgMg" src="https://www.azadvertizer.net/azgovviz/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle">$mgNameAndOrId $subInfo</span>
+        $levelSpacing<img class="imgMg" src="https://www.azadvertizer.net/azgovvizv3/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle">$mgNameAndOrId $subInfo</span>
     </button>
     <div class="content">
 
@@ -1653,7 +1653,7 @@ $script:html += @"
 
 function tableSubForMgHTML($mgChild){ 
     $subscriptions = ($mgAndSubBaseQuery | Where-Object { "" -ne $_.SubscriptionId -and $_.MgId -eq $mgChild } | Sort-Object -Property Subscription -Unique).SubscriptionId
-    Write-Host "Build HTML Hierarchy Table MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
+    Write-Host "Building HTML Hierarchy Table MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
     if (($subscriptions | measure-object).count -gt 0){
 $script:html += @"
     <tr>
@@ -1669,7 +1669,7 @@ $script:html += @"
             $subPath = $script:submgPathArray -join "/"
             if (($subscriptions | measure-object).count -gt 1){
 $script:html += @"
-                <button type="button" class="collapsible"> <img class="imgSub" src="https://www.azadvertizer.net/azgovviz/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle"><b>$subscription</b> ($subscriptionId)</span>
+                <button type="button" class="collapsible"> <img class="imgSub" src="https://www.azadvertizer.net/azgovvizv3/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle"><b>$subscription</b> ($subscriptionId)</span>
                 </button>
                 <div class="contentSub"><!--collapsiblePerSub-->
 "@
@@ -1677,7 +1677,7 @@ $script:html += @"
             #exactly 1
             else{
 $script:html += @"
-                <img class="imgSub" src="https://www.azadvertizer.net/azgovviz/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle"><b>$subscription</b> ($subscriptionId)</span></button>
+                <img class="imgSub" src="https://www.azadvertizer.net/azgovvizv3/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle"><b>$subscription</b> ($subscriptionId)</span></button>
 "@
             }
 
@@ -1732,7 +1732,7 @@ $script:html += @"
     else{
 $script:html += @"
     <tr>
-        <td>
+        <td class="detailstd">
             <p><i class="fa fa-ban" aria-hidden="true"></i> $(($subscriptions | measure-object).count) Subscriptions linked</p>
 "@  
     }
@@ -3804,7 +3804,7 @@ $script:html += @"
         }
         else{
             if ($roleAssigned.RoleSecurityCustomRoleOwner -eq 1){
-                $roletype = "<abbr title=`"Custom subscription owner roles should not exist`"><i class=`"fa fa-exclamation-triangle yellow`" aria-hidden=`"true`"></i></abbr> <a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/10ee2ea2-fb4d-45b8-a7e9-a2e770044cd9.html`" target=`"_blank`">Custom</a>"
+                $roletype = "<abbr title=`"Custom owner roles should not exist`"><i class=`"fa fa-exclamation-triangle yellow`" aria-hidden=`"true`"></i></abbr> <a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/10ee2ea2-fb4d-45b8-a7e9-a2e770044cd9.html`" target=`"_blank`">Custom</a>"
             }
             else{
                 $roleType = "Custom"
@@ -4002,7 +4002,7 @@ $script:html += @"
 #region Summary
 function summary() {
 #$startSummary = get-date
-Write-Host "Build HTML Summary"
+Write-Host "Building HTML Summary"
 
 if ($getMgParentName -eq "Tenant Root"){
     $scopeNamingSummary = "Tenant wide"
@@ -6727,7 +6727,7 @@ if (($customRolesOwnerHtAll | measure-object).count -gt 0){
     
     $tableId = "SummaryTable_customroleCustomRoleOwner"
 $script:html += @"
-    <button type="button" class="collapsible" id="summary_customroleCustomRoleOwner"><i class="fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($customRolesOwnerHtAll | measure-object).count) Custom Roles Owner permissions ($scopeNamingSummary) <abbr title="Custom subscription owner roles should not exist"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+    <button type="button" class="collapsible" id="summary_customroleCustomRoleOwner"><i class="fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($customRolesOwnerHtAll | measure-object).count) Custom Roles Owner permissions ($scopeNamingSummary) <abbr title="Custom owner roles should not exist"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
     </button>
     <div class="content">
         <table id="$tableId" class="summaryTable">
@@ -7524,9 +7524,19 @@ $script:html += @"
 
 #region SUMMARYBlueprintsOrphaned
 $blueprintDefinitionsOrphanedArray =@()
-$blueprintDefinitionsOrphanedArray = foreach ($blueprintDefinition in $blueprintDefinitions){
-    if (-not($blueprintAssignments.BlueprintId).contains($blueprintDefinition.BlueprintId)){
-        $blueprintDefinition
+if ($blueprintDefinitionsCount -gt 0){
+    if ($blueprintAssignmentsCount -gt 0){
+        $blueprintDefinitionsOrphanedArray = foreach ($blueprintDefinition in $blueprintDefinitions){
+            if (-not($blueprintAssignments.BlueprintId).contains($blueprintDefinition.BlueprintId)){
+                $blueprintDefinition
+            }
+        }
+    }
+    else{
+        $blueprintDefinitionsOrphanedArray = foreach ($blueprintDefinition in $blueprintDefinitions){
+            $blueprintDefinition
+        }
+
     }
 }
 $blueprintDefinitionsOrphanedCount = ($blueprintDefinitionsOrphanedArray | Measure-Object).count
@@ -7647,10 +7657,8 @@ $script:html += @"
 $script:html += @"
     <hr>
 "@
-$mgsDetails = (($mgAndSubBaseQuery | where-object {$_.mgId -ne ""}) | Select-Object Level, MgId -Unique)
-$mgDepth = ($mgsDetails.Level | Measure-Object -maximum).Maximum
 $script:html += @"
-    <p><i class="fa fa-check-circle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsDetails | measure-object).count) Management Groups ($mgDepth levels of depth)</span></p>
+    <p><i class="fa fa-check-circle" aria-hidden="true"></i> <span class="valignMiddle">$totalMgCount Management Groups ($mgDepth levels of depth)</span></p>
 "@
 #endregion SUMMARYMGs
 
@@ -9715,7 +9723,7 @@ if (-not $HierarchyTreeOnly) {
     }
 
     $startDefinitionsCaching = get-date
-    Write-Host "Caching data"
+    Write-Host "Caching built-in data"
 
     #helper ht / collect results /save some time
     $htCacheDefinitions = @{ }
@@ -9836,29 +9844,19 @@ if (-not $HierarchyTreeOnly) {
     }
 
     $endDefinitionsCaching = get-date
-    Write-Host "Caching duration: $((NEW-TIMESPAN -Start $startDefinitionsCaching -End $endDefinitionsCaching).TotalSeconds) seconds"
+    Write-Host "Caching built-in data duration: $((NEW-TIMESPAN -Start $startDefinitionsCaching -End $endDefinitionsCaching).TotalSeconds) seconds"
 }
 
-Write-Host "Data Collection"
+Write-Host "Collecting custom data"
 $startDataCollection = get-date
 
 dataCollection -mgId $ManagementGroupId -hierarchyLevel $hierarchyLevel -mgParentId $getMgParentId -mgParentName $getMgParentName
 
-if (-not $HierarchyTreeOnly) {
-    Write-Host "Total Custom Policy Definitions: $(((($htCacheDefinitions).policy.keys | where-object { ($htCacheDefinitions).policy.$_.Type -eq "Custom" }) | Measure-Object).count)"
-    Write-Host "Total Custom PolicySet Definitions: $(((($htCacheDefinitions).policySet.keys | where-object { ($htCacheDefinitions).policySet.$_.Type -eq "Custom" }) | Measure-Object).count)"
-    Write-Host "Total Custom Roles: $(((($htCacheDefinitions).role.keys | where-object { ($htCacheDefinitions).role.$_.IsCustom -eq $True }) | Measure-Object).count)"
-    Write-Host "Total Blueprint Definitions: $(((($htCacheDefinitions).blueprint.keys) | Measure-Object).count)"
-    Write-Host "Total Policy Assignments: $(($($htCacheAssignments).policy.keys | Measure-Object).count)"
-    Write-Host "Total Role Assignments: $(($($htCacheAssignments).role.keys | Measure-Object).count)"
-    Write-Host "Total Blueprint Assignments: $(($($htCacheAssignments).blueprint.keys | Measure-Object).count)"
-}
-
 $endDataCollection = get-date
-Write-Host "Data Collection duration: $((NEW-TIMESPAN -Start $startDataCollection -End $endDataCollection).TotalMinutes) minutes"
+Write-Host "Collecting custom data duration: $((NEW-TIMESPAN -Start $startDataCollection -End $endDataCollection).TotalMinutes) minutes"
 
 if (-not $HierarchyTreeOnly){
-    Write-Host "Resource caching"
+    Write-Host "Caching Resource data"
     $startResourceCaching = get-date
     $subscriptionIds = ($table | Where-Object { "" -ne $_.SubscriptionId} | select-Object SubscriptionId | Sort-Object -Property SubscriptionId -Unique).SubscriptionId
     $queryResources = "resources | project id, subscriptionId, location, type | summarize count() by subscriptionId, location, type"
@@ -9879,6 +9877,8 @@ if (-not $HierarchyTreeOnly){
 
     $resourceTypesUnique = ($resourcesAll | select-object type -Unique).type
     $resourceTypesSummarizedArray = @()
+    $resourcesTypeAllCountTotal = 0
+    ($resourcesAll).count_ | ForEach-Object { $resourcesTypeAllCountTotal += $_ }
     foreach ($resourceTypeUnique in $resourceTypesUnique){
         $resourcesTypeCountTotal = 0
         ($resourcesAll | Where-Object { $_.type -eq $resourceTypeUnique }).count_ | ForEach-Object { $resourcesTypeCountTotal += $_ }
@@ -9935,8 +9935,32 @@ if (-not $HierarchyTreeOnly){
     }
     
     $endResourceCaching = get-date
-    Write-Host "Resource caching duration: $((NEW-TIMESPAN -Start $startResourceCaching -End $endResourceCaching).TotalSeconds) seconds"
+    Write-Host "Caching Resource data duration: $((NEW-TIMESPAN -Start $startResourceCaching -End $endResourceCaching).TotalSeconds) seconds"
     
+    #summarizeDataCollectionResults
+    $mgsDetails = (($table | where-object { "" -ne $_.mgId}) | Select-Object Level, MgId -Unique)
+    $mgDepth = ($mgsDetails.Level | Measure-Object -maximum).Maximum
+    $totalMgCount = ($mgsDetails | Measure-Object).count
+    $totalSubCount = (($table | Where-Object { "" -ne $_.subscriptionId} | Select-Object -Property subscriptionId -Unique).SubscriptionId | Measure-Object).count
+    $totalPolicyDefinitionsCustomCount = ((($htCacheDefinitions).policy.keys | where-object { ($htCacheDefinitions).policy.$_.Type -eq "Custom" }) | Measure-Object).count
+    $totalPolicySetDefinitionsCustomCount = ((($htCacheDefinitions).policySet.keys | where-object { ($htCacheDefinitions).policySet.$_.Type -eq "Custom" }) | Measure-Object).count
+    $totalRoleDefinitionsCustomCount = ((($htCacheDefinitions).role.keys | where-object { ($htCacheDefinitions).role.$_.IsCustom -eq $True }) | Measure-Object).count
+    $totalBlueprintDefinitionsCount = ((($htCacheDefinitions).blueprint.keys) | Measure-Object).count
+    $totalPolicyAssignmentsCount = (($htCacheAssignments).policy.keys | Measure-Object).count
+    $totalRoleAssignmentsCount = (($htCacheAssignments).role.keys | Measure-Object).count
+    $totalBlueprintAssignmentsCount = (($htCacheAssignments).blueprint.keys | Measure-Object).count
+    $totalResourceTypesCount = ($resourceTypesDiagnosticsArray | Measure-Object).Count
+    Write-Host "Total Management Groups: $totalMgCount (depth $mgDepth)"
+    Write-Host "Total Subscriptions: $totalSubCount"
+    Write-Host "Total Custom Policy Definitions: $totalPolicyDefinitionsCustomCount"
+    Write-Host "Total Custom PolicySet Definitions: $totalPolicySetDefinitionsCustomCount"
+    Write-Host "Total Custom Roles: $totalRoleDefinitionsCustomCount"
+    Write-Host "Total Blueprint Definitions: $totalBlueprintDefinitionsCount"
+    Write-Host "Total Policy Assignments: $totalPolicyAssignmentsCount"
+    Write-Host "Total Role Assignments: $totalRoleAssignmentsCount"
+    Write-Host "Total Blueprint Assignments: $totalBlueprintAssignmentsCount"
+    Write-Host "Total Resources: $resourcesTypeAllCountTotal"
+    Write-Host "Total Resource Types: $totalResourceTypesCount"    
 }
 #endregion dataCollection
 
@@ -10038,7 +10062,7 @@ else {
                 <li id ="first">
                     <a class="tenant"><div class="fitme" id="fitme">$($tenantDetailsDisplay)$(($checkContext).Tenant.Id)</div></a>
                     <ul>
-                        <li><a class="mgnonradius parentmgnotaccessible"><img class="imgMgTree" src="https://www.azadvertizer.net/azgovviz/icon/Icon-general-11-Management-Groups.svg"><div class="fitme" id="fitme">$mgNameAndOrId</div></a>
+                        <li><a class="mgnonradius parentmgnotaccessible"><img class="imgMgTree" src="https://www.azadvertizer.net/azgovvizv3/icon/Icon-general-11-Management-Groups.svg"><div class="fitme" id="fitme">$mgNameAndOrId</div></a>
                         <ul>
 "@
 }
@@ -10048,7 +10072,7 @@ $startHierarchyTree = get-date
 hierarchyMgHTML -mgChild $ManagementGroupIdCaseSensitived
 
 $endHierarchyTree = get-date
-Write-Host "Build HTML Hierarchy Tree: $((NEW-TIMESPAN -Start $startHierarchyTree -End $endHierarchyTree).TotalMinutes) minutes"
+Write-Host "Building HTML Hierarchy Tree: $((NEW-TIMESPAN -Start $startHierarchyTree -End $endHierarchyTree).TotalMinutes) minutes"
 
 if ($getMgParentName -eq "Tenant Root") {
     $html += @"
@@ -10083,7 +10107,7 @@ if (-not $HierarchyTreeOnly) {
     summary
 
     $endSummary = get-date
-    Write-Host "Build HTML Summary duration: $((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalMinutes) minutes"
+    Write-Host "Building HTML Summary duration: $((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalMinutes) minutes"
 
     $html += @"
     </div>
@@ -10092,13 +10116,13 @@ if (-not $HierarchyTreeOnly) {
     <div class="hierarchyTables" id="hierarchyTables">
 "@
     #Write-Host "______________________________________"
-    Write-Host "Build HTML Hierarchy Table"
+    Write-Host "Building HTML Hierarchy Table"
     $startHierarchyTable = get-date
 
     tableMgHTML -mgChild $ManagementGroupIdCaseSensitived -mgChildOf $getMgParentId
 
     $endHierarchyTable = get-date
-    Write-Host "Build HTML Hierarchy Table duration: $((NEW-TIMESPAN -Start $startHierarchyTable -End $endHierarchyTable).TotalSeconds) seconds"
+    Write-Host "Building HTML Hierarchy Table duration: $((NEW-TIMESPAN -Start $startHierarchyTable -End $endHierarchyTable).TotalMinutes) minutes"
 
     $html += @"
     </div>
@@ -10124,7 +10148,7 @@ $html += @"
     <script src="https://www.azadvertizer.net/azgovvizv3/js/toggle.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv3/js/collapsetable.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv3/js/fitty.min.js"></script>
-    <script src="https://www.azadvertizer.net/azgovvizv3/js/version.js"></script>
+    <script src="https://www.azadvertizer.net/azgovvizv3/js/version_v3.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv3/js/autocorractOff.js"></script>
     <script>
         fitty('#fitme', {
@@ -10153,7 +10177,7 @@ else {
 $html | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
 
 $endBuildHTML = get-date
-Write-Host "Build HTML total duration: $((NEW-TIMESPAN -Start $startBuildHTML -End $endBuildHTML).TotalSeconds) seconds"
+Write-Host "Building HTML total duration: $((NEW-TIMESPAN -Start $startBuildHTML -End $endBuildHTML).TotalSeconds) seconds"
 #endregion BuildHTML
 
 #region BuildMD
@@ -10199,6 +10223,20 @@ $markdownhierarchySubs
  class $(($arraySubs | sort-object -unique) -join ",") subs;
  class $mermaidprnts mgrprnts;
 :::
+
+## Summary
+
+Total Management Groups: $totalMgCount (depth $mgDepth)\
+Total Subscriptions: $totalSubCount\
+Total Custom Policy Definitions: $totalPolicyDefinitionsCustomCount\
+Total Custom PolicySet Definitions: $totalPolicySetDefinitionsCustomCount\
+Total Custom Roles: $totalRoleDefinitionsCustomCount\
+Total Blueprint Definitions: $totalBlueprintDefinitionsCount\
+Total Policy Assignments: $totalPolicyAssignmentsCount\
+Total Role Assignments: $totalRoleAssignmentsCount\
+Total Blueprint Assignments: $totalBlueprintAssignmentsCount\
+Total Resources: $resourcesTypeAllCountTotal\
+Total Resource Types: $totalResourceTypesCount
 
 ## Hierarchy Table
 
