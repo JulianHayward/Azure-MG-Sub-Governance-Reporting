@@ -172,7 +172,7 @@ function refreshToken() {
     $script:accessToken = $newAccessToken.AccessToken
 }
 
-function checkToken() {
+function checkTokenLifetime() {
     $tokenExirationInMinutes = ($accessTokenExipresOn - (get-date)).Minutes
     if ($tokenExirationInMinutes -lt $tokenExirationMinimumInMinutes) {
         Write-Host "Access Token for REST AUTH has has less than $tokenExirationMinimumInMinutes minutes lifetime ($tokenExirationInMinutes minutes). Creating new token"
@@ -488,7 +488,7 @@ function addRowToTable() {
 
 #region Function_dataCollection
 function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
-    checkToken
+    checkTokenLifetime
     $startMgLoop = get-date
     $hierarchyLevel++
     $getMg = Get-AzManagementGroup -groupname $mgId -Expand -Recurse -ErrorAction Stop
@@ -617,13 +617,6 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                 $($htCacheDefinitions).policySet.$($mgPolicySetDefinition.name).PolicySetPolicyIds = $mgPolicySetDefinition.properties.policydefinitions.policyDefinitionId
                 ($htCacheDefinitions).policySet.$($mgPolicySetDefinition.name).json = $mgPolicySetDefinition
             }  
-
-            foreach ($policydefinitionMgPolicySetDefinition in $mgPolicySetDefinition.properties.policydefinitions){
-                if (-not($htPolicyUsedInPolicySet).$($policydefinitionMgPolicySetDefinition.policyDefinitionId -replace '.*/')) {
-                    $($htPolicyUsedInPolicySet).$($policydefinitionMgPolicySetDefinition.policyDefinitionId -replace '.*/') = @{ }
-                    $($htPolicyUsedInPolicySet).$($policydefinitionMgPolicySetDefinition.policyDefinitionId -replace '.*/').Id = ($policydefinitionMgPolicySetDefinition.policyDefinitionId -replace '.*/')
-                }
-            }
         }
 
         #MgPolicyAssignments
@@ -879,7 +872,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
     if (($getMg.children | measure-object).count -gt 0) {
         
         foreach ($childMg in $getMg.Children | Where-Object { $_.Type -eq "/subscriptions" }) {
-            checkToken
+            checkTokenLifetime
             $startSubLoop = get-date
             $childMgSubId = $childMg.Id -replace '/subscriptions/', ''
             Write-Host "CustomDataCollection: Processing Subscription $($childMg.DisplayName) ('$childMgSubId')"
@@ -1166,13 +1159,6 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                 $($htCacheDefinitions).policySet.$($subPolicySetDefinition.name).PolicySetPolicyIds = $subPolicySetDefinition.properties.policydefinitions.policyDefinitionId
                                 $($htCacheDefinitions).policySet.$($subPolicySetDefinition.name).json = $subPolicySetDefinition
                             }  
-
-                            foreach ($policydefinitionSubPolicySetDefinition in $subPolicySetDefinition.properties.policydefinitions){
-                                if (-not($htPolicyUsedInPolicySet).$($policydefinitionSubPolicySetDefinition.policyDefinitionId -replace '.*/')) {
-                                    $($htPolicyUsedInPolicySet).$($policydefinitionSubPolicySetDefinition.policyDefinitionId -replace '.*/') = @{ }
-                                    $($htPolicyUsedInPolicySet).$($policydefinitionSubPolicySetDefinition.policyDefinitionId -replace '.*/').Id = ($policydefinitionSubPolicySetDefinition.policyDefinitionId -replace '.*/')
-                                }
-                            }
                         }
 
                         #SubscriptionPolicyAssignments
@@ -2262,11 +2248,7 @@ $script:html += @"
 }
 
 #resourcesDiagnosticsCapable
-
-#$subscriptionId = "583470b9-4bbd-4ce3-b289-49a46e626f3a"
 if ($mgOrSub -eq "sub"){
-    #$resourcesSubscription = $resourcesAll | where-object { $_.subscriptionId -eq $subscriptionId } | select-Object -Property type, count_| Sort-Object -Property type
-
     $resourceTypesUnique = ($resourcesSubscription | select-object type -Unique).type
     $resourceTypesSummarizedArray = @()
     foreach ($resourceTypeUnique in $resourceTypesUnique){
@@ -4463,7 +4445,7 @@ if ($getMgParentName -eq "Tenant Root"){
 
     $customPoliciesOrphanedFinal = @()
     foreach ($customPolicyOrphaned in $customPoliciesOrphaned){
-        if (-not ($htPolicyUsedInPolicySet).$($customPolicyOrphaned.Id)){
+        if (-not ($htCachePoliciesUsedInPolicySets).$($customPolicyOrphaned.Id)){
             $customPoliciesOrphanedFinal += ($htCacheDefinitions).policy.$($customPolicyOrphaned.id)
         }
     }
@@ -4602,9 +4584,8 @@ else{
         }
     }
     $customPoliciesOrphanedFinal = @()
-    #$htPolicyUsedInPolicySet.Keys
     foreach ($customPolicyOrphanedInScopeArray in $customPoliciesOrphanedInScopeArray){
-        if (-not ($htPolicyUsedInPolicySet).($customPolicyOrphanedInScopeArray.Id)){
+        if (-not ($htCachePoliciesUsedInPolicySets).($customPolicyOrphanedInScopeArray.Id)){
             $customPoliciesOrphanedFinal += $customPolicyOrphanedInScopeArray
         }
     }
@@ -5296,7 +5277,7 @@ $script:html += @"
 
 #region SUMMARYPolicySetsDeprecatedPolicy
 $policySetsDeprecated=@()
-foreach ($polSetDef in $($htCacheDefinitions).policySet.keys){
+foreach ($polSetDef in $($htCacheDefinitions).policySet.keys | where-object { ($htCacheDefinitions).policySet.($_).type -eq "Custom" }){
     foreach ($polsetPolDefId in $($htCacheDefinitions).policySet.($polSetDef).PolicySetPolicyIds) {
         if ((($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).type -eq "BuiltIn" -and (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).deprecated -eq $true -or (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).displayname.startswith("[Deprecated]")) {
                 $object = New-Object -TypeName PSObject -Property @{'PolicySetDisplayName'= $($htCacheDefinitions).policySet.($polSetDef).DisplayName; 'PolicySetDefinitionId'= $($htCacheDefinitions).policySet.($polSetDef).PolicyDefinitionId; 'PolicyDisplayName' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).displayname; 'PolicyId' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).Id; 'DeprecatedProperty' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).deprecated }
@@ -5747,7 +5728,6 @@ $script:html += @"
                 }
             }
         }
-
 
 $script:html += @"
                 <tr>
@@ -8624,6 +8604,385 @@ $script:html += @"
 }
 #endregion SUMMARYResourcesDiagnosticsCapable
 
+#region SUMMARYDiagnosticsPolicyLifecycle
+if ($tenantCustomPoliciesCount -gt 0) {
+    $policiesThatDefineDiagnosticsCount = (($htCacheDefinitions).policy.keys | Where-Object {
+        ($htCacheDefinitions).policy.($_).Type -eq "custom" -and
+        ($htCacheDefinitions).policy.($_).json.properties.policyrule.then.details.type -eq "Microsoft.Insights/diagnosticSettings" -and
+        ($htCacheDefinitions).policy.($_).json.properties.policyrule.then.details.deployment.properties.template.resources.type -match "/providers/diagnosticSettings"
+    } | Measure-Object).count
+    if ($policiesThatDefineDiagnosticsCount -gt 0){
+        $diagnosticsPolicyAnalysis = @()
+        foreach ($policy in ($htCacheDefinitions).policy.keys | Where-Object {
+                ($htCacheDefinitions).policy.($_).Type -eq "custom" -and
+                ($htCacheDefinitions).policy.($_).json.properties.policyrule.then.details.type -eq "Microsoft.Insights/diagnosticSettings" -and
+                ($htCacheDefinitions).policy.($_).json.properties.policyrule.then.details.deployment.properties.template.resources.type -match "/providers/diagnosticSettings"
+            }) {
+            #($htCacheDefinitions).policy.($policy).Id
+            if (
+                (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | where-object { $_.type -match "/providers/diagnosticSettings" }).properties.workspaceId -or
+                (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | where-object { $_.type -match "/providers/diagnosticSettings" }).properties.eventHubAuthorizationRuleId -or
+                (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | where-object { $_.type -match "/providers/diagnosticSettings" }).properties.storageAccountId
+            ) {
+                if ( (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | where-object { $_.type -match "/providers/diagnosticSettings" }).properties.workspaceId) {
+                    $diagnosticsDestination = "LA"
+                }
+                if ( (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | where-object { $_.type -match "/providers/diagnosticSettings" }).properties.eventHubAuthorizationRuleId) {
+                    $diagnosticsDestination = "EH"
+                }
+                if ( (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | where-object { $_.type -match "/providers/diagnosticSettings" }).properties.storageAccountId) {
+                    $diagnosticsDestination = "SA"
+                }
+
+                #write-host $diagnosticsDestination
+                if ( (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | where-object { $_.type -match "/providers/diagnosticSettings" }).properties.logs ) {
+                    $diagnosticsLogCategoriesCoveredByPolicy = (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | where-object { $_.type -match "/providers/diagnosticSettings" }).properties.logs
+                    $resourceType = ( (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | where-object { $_.type -match "/providers/diagnosticSettings" }).type -replace "/providers/diagnosticSettings")
+                    $resourceTypeCountFromResourceTypesSummarizedArray = ($resourceTypesSummarizedArray | Where-Object { $_.ResourceType -eq $resourceType }).ResourceCount
+                    $supportedLogs = $resourceTypesDiagnosticsArray | where-object { $_.ResourceType -eq ( (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | where-object { $_.type -match "/providers/diagnosticSettings" }).type -replace "/providers/diagnosticSettings") }
+                    if (($supportedLogs | Measure-Object).count -gt 0) {
+                        $status = "AzGovViz detected the resourceType"
+                        $diagnosticsLogCategoriesSupported = $supportedLogs.LogCategories
+                        $logsSupported = "yes"
+                        $actionItems = @()
+                        foreach ($supportedLogCategory in $supportedLogs.LogCategories) {
+                            if (-not $diagnosticsLogCategoriesCoveredByPolicy.category.contains($supportedLogCategory)) {
+                                $actionItems += $supportedLogCategory
+                            }
+                        }
+                        if (($actionItems | Measure-Object).count -gt 0) {
+                            $diagnosticsLogCategoriesNotCoveredByPolicy = $actionItems
+                            $recommendation = "review the policy and add the missing categories as required"
+                        }
+                        else {
+                            $diagnosticsLogCategoriesNotCoveredByPolicy = "all OK"
+                            $recommendation = "no recommendation"
+                        }
+                    }
+                    else {
+                        $status = "AzGovViz did not detect the resourceType"
+                        $diagnosticsLogCategoriesSupported = "n/a"
+                        $diagnosticsLogCategoriesNotCoveredByPolicy = "n/a"
+                        $recommendation = "no recommendation as this resourceType seems not existing"
+                        $logsSupported = "unknown"
+                    }
+
+                    $policyHasPolicyAssignments = $policyBaseQuery | where-object { $_.PolicyDefinitionIdGuid -eq $policy } | sort-object -property PolicyDefinitionIdGuid, PolicyAssignmentId -unique
+                    $policyHasPolicyAssignmentCount = ($policyHasPolicyAssignments | Measure-Object).count
+                    if ($policyHasPolicyAssignmentCount -gt 0) {
+                        $policyAssignmentsArray = @()
+                        $policyAssignmentsArray += foreach ($policyAssignment in $policyHasPolicyAssignments) {
+                            "$($policyAssignment.PolicyAssignmentId) ($($policyAssignment.PolicyAssignmentDisplayName))"
+                        }
+                        $policyAssignmentsCollCount = ($policyAssignmentsArray | Measure-Object).count
+                        #$policyAssignments = "$policyAssignmentsCount [$($policyAssignmentsArray -join "$CsvDelimiterOpposite ")]"
+                        $policyAssignmentsColl = $policyAssignmentsCollCount
+                    }
+                    else {
+                        $policyAssignmentsColl = 0
+                    }
+
+                    #PolicyUsedinPolicySet
+                    $policySetAssignmentsColl = 0
+                    $policyUsedinPolicySets = "n/a"
+                    if (($htCachePoliciesUsedInPolicySets).(($htCacheDefinitions).policy.($policy).Id)) {
+                        $policyUsedinPolicySets = ($htCachePoliciesUsedInPolicySets).(($htCacheDefinitions).policy.($policy).Id).policySetId
+                        $policyUsedinPolicySetsCount = (($htCachePoliciesUsedInPolicySets).(($htCacheDefinitions).policy.($policy).Id).policySetId | Measure-Object).count
+
+                        if ($policyUsedinPolicySetsCount -gt 0) {
+                            $policyUsedinPolicySetsArray = @()
+                            $policySetAssignmentsArray = @()
+                            foreach ($policySetsWherePolicyIsUsed in $policyUsedinPolicySets) {
+                                $policyUsedinPolicySetsArray += "[$policySetsWherePolicyIsUsed ($(($htCacheDefinitions).policySet.($policySetsWherePolicyIsUsed).DisplayName))]"
+
+                                #PolicySetHasAssignments
+                                $policySetAssignments = ($htCacheAssignments).policy.keys | where-object { ($htCacheAssignments).policy.($_).properties.PolicyDefinitionId -eq ($htCacheDefinitions).policySet.($policySetsWherePolicyIsUsed).PolicyDefinitionId }
+                                $policySetAssignmentsCount = ($policySetAssignments | measure-object).count
+                                if ($policySetAssignmentsCount -gt 0) {
+                                    $policySetAssignmentsArray += foreach ($policySetAssignment in $policySetAssignments) {
+                                        "$(($htCacheAssignments).policy.($policySetAssignment).PolicyAssignmentId) ($(($htCacheAssignments).policy.($policySetAssignment).properties.DisplayName))"
+                                    }
+                                    $policySetAssignmentsCollCount = ($policySetAssignmentsArray | Measure-Object).Count
+                                    #$policySetAssignmentsColl = "$policySetAssignmentsCollCount [$($policySetAssignmentsArray -join "$CsvDelimiterOpposite ")]"
+                                    $policySetAssignmentsColl = $policySetAssignmentsCollCount
+                                }
+                            }
+                            $policyUsedinPolicySetsCount = ($policyUsedinPolicySetsArray | Measure-Object).count
+                            #$policyUsedinPolicySets = "$policyUsedinPolicySetsCount $($policyUsedinPolicySetsArray -join "$CsvDelimiterOpposite ")"
+                            $policyUsedinPolicySets = $policyUsedinPolicySetsCount
+                        }
+                        else {
+                            $policyUsedinPolicySets = "n/a"
+                        }     
+                    }
+
+                    if ($recommendation -eq "review the policy and add the missing categories as required"){
+                        if ($policyAssignmentsColl -gt 0 -or $policySetAssignmentsColl -gt 0){
+                            $priority = "1-High"
+                        }
+                        else{
+                            $priority = "3-MediumLow"
+                        }
+                    }
+                    else{
+                        $priority = "4-Low"
+                    }
+
+                    $roleDefinitionIdsArray = @()
+                    $roleDefinitionIdsArray += foreach ($roleDefinitionId in ($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.roleDefinitionIds){
+                        "$(($htCacheDefinitions).role.($roleDefinitionId -replace ".*/").Name) ($($roleDefinitionId -replace ".*/"))"
+                    }
+
+                    $object = New-Object -TypeName PSObject -Property @{
+                        'Priority'                    = $priority;
+                        'PolicyId'                    = ($htCacheDefinitions).policy.($policy).Id;
+                        'PolicyCategory'              = ($htCacheDefinitions).policy.($policy).Category;
+                        'PolicyName'                  = ($htCacheDefinitions).policy.($policy).DisplayName;
+                        'PolicyDeploysRoles'          = $roleDefinitionIdsArray -join "$CsvDelimiterOpposite ";
+                        'PolicyForResourceTypeExists' = $true;
+                        'ResourceType'                = $resourceType;
+                        'ResourceTypeCount'           = $resourceTypeCountFromResourceTypesSummarizedArray;
+                        'Status'                      = $status;
+                        'LogsSupported'               = $logsSupported;
+                        'LogCategoriesInPolicy'       = ($diagnosticsLogCategoriesCoveredByPolicy.category | Sort-Object) -join "$CsvDelimiterOpposite ";
+                        'LogCategoriesSupported'      = ($diagnosticsLogCategoriesSupported | Sort-Object) -join "$CsvDelimiterOpposite ";
+                        'LogCategoriesDelta'          = ($diagnosticsLogCategoriesNotCoveredByPolicy | Sort-Object) -join "$CsvDelimiterOpposite ";
+                        'Recommendation'              = $recommendation;
+                        'DiagnosticsTargetType'       = $diagnosticsDestination;
+                        'PolicyAssignments'           = $policyAssignmentsColl;
+                        'PolicyUsedInPolicySet'       = $policyUsedinPolicySets;
+                        'PolicySetAssignments'        = $policySetAssignmentsColl;
+
+                    }
+                    $diagnosticsPolicyAnalysis += $object
+                } 
+            }
+            else {
+                write-host "DiagnosticsLifeCycle: something unexpected - not EH, LA, SA"
+            }
+        }
+
+        #where no Policy exists
+        foreach ($resourceTypeDiagnosticsCapable in $resourceTypesDiagnosticsArray | Where-Object { $_.Logs -eq $true }) {
+            if (-not($diagnosticsPolicyAnalysis.ResourceType).ToLower().Contains( ($resourceTypeDiagnosticsCapable.ResourceType).ToLower() )) {
+                $supportedLogs = ($resourceTypesDiagnosticsArray | where-object { $_.ResourceType -eq $resourceTypeDiagnosticsCapable.ResourceType }).LogCategories
+                $logsSupported = "yes"
+                $resourceTypeCountFromResourceTypesSummarizedArray = ($resourceTypesSummarizedArray | Where-Object { $_.ResourceType -eq $resourceTypeDiagnosticsCapable.ResourceType }).ResourceCount
+                $recommendation = "Create and assign a diagnostics policy for this ResourceType"
+                $object = New-Object -TypeName PSObject -Property @{
+                    'Priority'                    = "2-Medium";
+                    'PolicyId'                    = "n/a";
+                    'PolicyCategory'              = "n/a";
+                    'PolicyName'                  = "n/a";
+                    'PolicyDeploysRoles'          = "n/a";
+                    'ResourceType'                = $resourceTypeDiagnosticsCapable.ResourceType;
+                    'ResourceTypeCount'           = $resourceTypeCountFromResourceTypesSummarizedArray;
+                    'Status'                      = "n/a";
+                    'LogsSupported'               = $logsSupported;
+                    'LogCategoriesInPolicy'       = "n/a";
+                    'LogCategoriesSupported'      = $supportedLogs -join "$CsvDelimiterOpposite ";
+                    'LogCategoriesDelta'          = "n/a";
+                    'Recommendation'              = $recommendation;
+                    'DiagnosticsTargetType'       = "n/a";
+                    'PolicyForResourceTypeExists' = $false;
+                    'PolicyAssignments'           = "n/a";
+                    'PolicyUsedInPolicySet'       = "n/a";
+                    'PolicySetAssignments'        = "n/a";
+                }
+                $diagnosticsPolicyAnalysis += $object
+            }
+        }
+        $diagnosticsPolicyAnalysisCount = ($diagnosticsPolicyAnalysis | Measure-Object).count
+    
+if ($diagnosticsPolicyAnalysisCount -gt 0){
+    $tfCount = $diagnosticsPolicyAnalysisCount
+    
+    $tableId = "SummaryTable_DiagnosticsLifecycle"
+$script:html += @"
+<button type="button" class="collapsible" id="Summary_DiagnosticsLifecycle"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Diagnostics Logs Findings</span></button>
+<div class="content">
+&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <b>Create Custom Policies for Azure ResourceTypes that support Diagnostics Logs and Metrics</b> <a class="externallink" href="https://github.com/JimGBritt/AzurePolicy/blob/master/AzureMonitor/Scripts/README.md#overview-of-create-azdiagpolicyps1" target="_blank">Create-AzDiagPolicy</a><br>
+&nbsp;<i class="fa fa-windows" aria-hidden="true"></i> <b>Microsoft Docs</b> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/platform/resource-logs-categories" target="_blank">Supported categories for Azure Resource Logs</a>
+<table id= "$tableId" class="summaryTable">
+        <thead>
+            <tr>
+                <th>
+                    Priority
+                </th>
+                <th>
+                    Recommendation
+                </th>
+                <th>
+                    ResourceType
+                </th>
+                <th>
+                    Resource Count
+                </th>
+                <th>
+                    Diagnostics capable
+                </th>
+                <th>
+                    Policy Id
+                </th>
+                <th>
+                    Policy Name
+                </th>
+                <th>
+                    Policy deploys RoleDefinitionIds
+                </th>              
+                <th>
+                    Target
+                </th>
+                <th>
+                    Log Categories not covered
+                </th>
+                <th>
+                    Policy Assignments
+                </th>
+                <th>
+                    Policy used in PolicySet
+                </th>
+                <th>
+                    PolicySet Assignments
+                </th>
+            </tr>
+        </thead>
+        <tbody
+"@
+    foreach ($diagnosticsFinding in $diagnosticsPolicyAnalysis | Sort-Object -property Priority, PolicyName){
+
+$script:html += @"
+            <tr>
+                <td>
+                    $($diagnosticsFinding.Priority)
+                </td>
+                <td>
+                    $($diagnosticsFinding.Recommendation)
+                </td>
+                <td>
+                    $($diagnosticsFinding.ResourceType)
+                </td>
+                <td>
+                    $($diagnosticsFinding.ResourceTypeCount)
+                </td>
+                <td>
+                    $($diagnosticsFinding.LogsSupported)
+                </td>
+                <td>
+                    $($diagnosticsFinding.PolicyId)
+                </td>
+                <td>
+                    $($diagnosticsFinding.PolicyName)
+                </td>
+                <td>
+                    $($diagnosticsFinding.PolicyDeploysRoles)
+                </td>
+                <td>
+                    $($diagnosticsFinding.DiagnosticsTargetType)
+                </td>
+                <td>
+                    $($diagnosticsFinding.LogCategoriesDelta)
+                </td>
+                <td>
+                    $($diagnosticsFinding.PolicyAssignments)
+                </td>
+                <td>
+                    $($diagnosticsFinding.PolicyUsedInPolicySet)
+                </td>
+                <td>
+                    $($diagnosticsFinding.PolicySetAssignments)
+                </td>
+            </tr>
+"@
+    }
+$script:html += @"
+        </tbody>
+    </table>
+</div>
+<script>
+    var tfConfig4$tableId = {
+        base_path: 'https://www.azadvertizer.net/azgovvizv3/tablefilter/', rows_counter: true,
+"@
+        if ($tfCount -gt 10){
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 100){
+                $spectrum = "10, 30, 50, $tfCount"
+            }
+            if ($tfCount -gt 500){
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000){
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000){
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000){
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+
+$script:html += @"
+            paging: {
+                results_per_page: ['Records: ', [$spectrum]]
+            },
+            state: {
+                types: ['local_storage'],
+                filters: true,
+                page_number: true,
+                page_length: true,
+                sort: true
+            },
+"@      
+}
+$script:html += @"
+        btn_reset: true,
+        highlight_keywords: true,
+        alternate_rows: true,
+        auto_filter: {
+            delay: 1100 //milliseconds
+        },
+        no_results_message: true,
+        col_types: [
+            'string',
+            'string',
+            'number',
+            'string',
+            'string',
+            'string',
+            'string',
+            'string',
+            'string',
+            'number',
+            'number',
+            'number'
+        ],
+        extensions: [{
+            name: 'sort'
+        }]
+    };
+    var tf = new TableFilter('$tableId', tfConfig4$tableId);
+    tf.init();
+</script>
+"@
+}
+else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Diagnostics findings</span></p>
+"@
+}
+}
+else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Diagnostics Logs findings</span></p>
+"@
+}
+}
+else{
+$script:html += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Diagnostics Logs findings</span></p>
+"@
+}
+#endregion SUMMARYDiagnosticsPolicyLifecycle
 
 #region SUMMARYSubResourceProviders
 if (($htResourceProvidersAll.Keys | Measure-Object).count -gt 0){
@@ -9733,7 +10092,7 @@ if (-not $HierarchyTreeOnly) {
     ($htCacheDefinitions).blueprint = @{ }
     $htCacheDefinitionsAsIs = @{ }
     ($htCacheDefinitionsAsIs).policy = @{ }
-    $htPolicyUsedInPolicySet = @{ }
+    $htCachePoliciesUsedInPolicySets = @{ }
     $htSubscriptionTags = @{ }
     $htCacheAssignments = @{ }
     ($htCacheAssignments).policy = @{ }
@@ -9744,10 +10103,10 @@ if (-not $HierarchyTreeOnly) {
     ($htCachePolicyCompliance).sub = @{ }
     $htOutOfScopeSubscriptions = @{ }
 
-    $currentContextSubscriptionQuotaId = (Search-AzGraph -Subscription $checkContext.Subscription.Id -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | project properties.subscriptionPolicies.quotaId" -ErrorAction Stop).properties_subscriptionPolicies_quotaId
+    $currentContextSubscriptionQuotaId = (Search-AzGraph -Subscription $checkContext.Subscription.Id -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | project properties.subscriptionPolicies.quotaId").properties_subscriptionPolicies_quotaId
     if (-not $currentContextSubscriptionQuotaId){
         Write-Host "Bad Subscription context for Definition Caching (SubscriptionName: $($checkContext.Subscription.Name); SubscriptionId: $($checkContext.Subscription.Id); likely an AAD_ QuotaId"
-        $alternativeSubscriptionIdForDefinitionCaching = (Search-AzGraph -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | where properties.subscriptionPolicies.quotaId !startswith 'AAD_' | project properties.subscriptionPolicies.quotaId, subscriptionId" -first 1 -ErrorAction Stop)
+        $alternativeSubscriptionIdForDefinitionCaching = (Search-AzGraph -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | where properties.subscriptionPolicies.quotaId !startswith 'AAD_' | project properties.subscriptionPolicies.quotaId, subscriptionId" -first 1)
         Write-Host "Using other Subscription for Definition Caching (SubscriptionId: $($alternativeSubscriptionIdForDefinitionCaching.subscriptionId); QuotaId: $($alternativeSubscriptionIdForDefinitionCaching.properties_subscriptionPolicies_quotaId))"
         $subscriptionIdForDefinitionCaching = $alternativeSubscriptionIdForDefinitionCaching.subscriptionId
         #switch subscription context
@@ -9821,6 +10180,7 @@ if (-not $HierarchyTreeOnly) {
         ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).Type = $builtinPolicySetDefinition.Properties.policyType
         ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).Category = $builtinPolicySetDefinition.Properties.metadata.category
         ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).PolicyDefinitionId = $builtinPolicySetDefinition.id
+        ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).PolicySetPolicyIds = $builtinPolicySetDefinition.properties.policydefinitions.policyDefinitionId
         if ($builtinPolicySetDefinition.Properties.metadata.deprecated -eq $true){
             ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.name).Deprecated = $builtinPolicySetDefinition.Properties.metadata.deprecated
         }
@@ -9856,6 +10216,7 @@ $endDataCollection = get-date
 Write-Host "Collecting custom data duration: $((NEW-TIMESPAN -Start $startDataCollection -End $endDataCollection).TotalMinutes) minutes"
 
 if (-not $HierarchyTreeOnly){
+    checkTokenLifetime
     Write-Host "Caching Resource data"
     $startResourceCaching = get-date
     $subscriptionIds = ($table | Where-Object { "" -ne $_.SubscriptionId} | select-Object SubscriptionId | Sort-Object -Property SubscriptionId -Unique).SubscriptionId
@@ -9866,8 +10227,8 @@ if (-not $HierarchyTreeOnly){
     $htResourceProvidersAll = @{ }
     $arrayResourceProvidersAll = @()
     foreach ($subscriptionId in $subscriptionIds){
-        $resourcesAll += Search-AzGraph -Subscription $subscriptionId -Query $queryResources -ErrorAction Stop
-        $resourceGroupsAll += Search-AzGraph -Subscription $subscriptionId -Query $queryResourceGroups -ErrorAction Stop
+        $resourcesAll += Search-AzGraph -Subscription $subscriptionId -Query $queryResources
+        $resourceGroupsAll += Search-AzGraph -Subscription $subscriptionId -Query $queryResourceGroups
         ($htResourceProvidersAll).($subscriptionId) = @{ }
         $url = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subscriptionId)/providers?api-version=2019-10-01"
         $resProvResult = Invoke-RestMethod -Uri $url -Headers @{"Authorization" = "Bearer $accesstoken" }
@@ -9888,23 +10249,32 @@ if (-not $HierarchyTreeOnly){
 
     $resourceTypesDiagnosticsArray = @()
     foreach ($resourcetype in $resourceTypesSummarizedArray.ResourceType) {
-        $resource = Search-AzGraph -Query "where type =~ '$resourcetype' | project id | top 1 by id"
+        $tryCounter = 0
+        do{
+            if ($tryCounter -gt 0){
+                Start-Sleep -Seconds 2
+            }
+            $tryCounter++
+            #write-Host "$resourcetype getting a resourceId: try #$tryCounter"
+            $resource = Search-AzGraph -Query "where type =~ '$resourcetype' | project id" -First 1
+        }
+        until(($resource | Measure-Object).count -gt 0)
+
         $resourceCount = ($resourceTypesSummarizedArray | where-object { $_.Resourcetype -eq $resourcetype}).ResourceCount
-        
+
         #taken from https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts
         try {
             $Invalid = $false
-            $LogCategories = @();
+            $LogCategories = @()
             $metrics = $false #initialize metrics flag to $false
             $logs = $false #initialize logs flag to $false
 
             $URI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)$($resource.id)/providers/microsoft.insights/diagnosticSettingsCategories/?api-version=2017-05-01-preview"
-
+            
             Try {
-                $Status = Invoke-WebRequest -uri $URI -Headers @{"Authorization" = "Bearer $accesstoken" } -UseBasicParsing
+                $Status = Invoke-WebRequest -uri $URI -Headers @{"Authorization" = "Bearer $accesstoken" }
             }
             catch {
-                # Uncomment below to see actual error.  Certain resources are not ResourceTypes that can support Logs and Metrics so the host error is being muted
                 $Invalid = $True
                 $Logs = $False
                 $Metrics = $False
@@ -9931,6 +10301,22 @@ if (-not $HierarchyTreeOnly){
         finally {
             $resourceTypesDiagnosticsObject = New-Object -TypeName PSObject -Property @{'ResourceType' = $resourcetype; 'Metrics' = $metrics; 'Logs' = $logs; 'LogCategories' = $LogCategories; 'ResourceCount' = [int]$resourceCount }
             $resourceTypesDiagnosticsArray += $resourceTypesDiagnosticsObject
+        }
+    }
+
+    foreach ($policySet in ($htCacheDefinitions).policySet.keys){
+        $PolicySetPolicyIds = ($htCacheDefinitions).policySet.($policySet).PolicySetPolicyIds
+        foreach ($PolicySetPolicyId in $PolicySetPolicyIds){
+            if (($htCachePoliciesUsedInPolicySets).($PolicySetPolicyId -replace ".*/")){
+                $policySetArray = ($htCachePoliciesUsedInPolicySets).($PolicySetPolicyId -replace ".*/").policySetId
+                $policySetArray += ($htCacheDefinitions).policySet.($policySet).PolicyDefinitionId -replace ".*/"
+                ($htCachePoliciesUsedInPolicySets).($PolicySetPolicyId -replace ".*/").PolicySetId = $policySetArray
+            }
+            else{
+                ($htCachePoliciesUsedInPolicySets).($PolicySetPolicyId -replace ".*/") = @{ }
+                ($htCachePoliciesUsedInPolicySets).($PolicySetPolicyId -replace ".*/").PolicyId = $PolicySetPolicyId -replace ".*/"
+                ($htCachePoliciesUsedInPolicySets).($PolicySetPolicyId -replace ".*/").PolicySetId = [array]($htCacheDefinitions).policySet.($policySet).PolicyDefinitionId -replace ".*/"
+            }
         }
     }
     
@@ -10177,7 +10563,7 @@ else {
 $html | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
 
 $endBuildHTML = get-date
-Write-Host "Building HTML total duration: $((NEW-TIMESPAN -Start $startBuildHTML -End $endBuildHTML).TotalSeconds) seconds"
+Write-Host "Building HTML total duration: $((NEW-TIMESPAN -Start $startBuildHTML -End $endBuildHTML).TotalMinutes) minutes"
 #endregion BuildHTML
 
 #region BuildMD
