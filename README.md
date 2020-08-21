@@ -1,10 +1,23 @@
 # AzGovViz - Azure Governance Visualizer
 
-Do you want to have visibility on your Tenant´s Management Group hierarchy - document it in csv, html and markdown? This script iterates your Tenant´s Management Group hierarchy down to Subscription level. It captures most relevant Azure governance capabilities and creates a visible hierarchy.
+Do you want to have visibility on your Tenant´s Management Group hierarchy - document it in csv, html and markdown?  
+AzGovViz is a PowerShell based script that iterates your Azure Tenants Management Group hierarchy down to Subscription level. It captures most relevant Azure governance capabilities such as Azure Policy, RBAC and Blueprints and more. From the collected data AzGovViz provides visibility on your Hierarchy Map, creates a Tenant Summary and builds granular Scope Insights on Management Groups and Subscriptions. The technical requirements as well as the required permissions are minimal.
 
 You can run the script either for your Tenant Root Group or any other Management Group that you have read access on.
 
-## AzGovViz Version 2
+## AzGovViz version 3
+
+The new version comes with a handful of enhancements:
+
+* HTML filterable tables
+* Resource Types Diagnostics capable
+* Resource Diagnostics Policy Findings
+* Resource Provider details
+* Policy Assignments filter excluded scopes
+* Use of deprecated built-in policies
+* Subscription QuotaId Whitelist
+
+## AzGovViz version 2
 
 The new version comes with a handful of enhancements:
 
@@ -19,18 +32,18 @@ The new version comes with a handful of enhancements:
 
 ### Demo
 
-<a href="https://www.azadvertizer.net/azgovviz/demo/AzGovViz_Contoso_Demo.html" target="_blank">AzGovViz Demo</a>
+<a href="https://www.azadvertizer.net/azgovvizv3/demo/AzGovViz_Demo_v3.html" target="_blank">AzGovViz v3 Demo</a>
 
 ### Screenshots
 
 detailed html file
 
-![alt text](img/AzGovViz_html.jpg "example output")
+![alt text](img/AzGovViz_html_v3.jpg "example output")
 *_IDs from screenshot are randomized_
 
 basic markdown in Azure DevOps Wiki
 
-![alt text](img/AzGovViz_md.jpg "example output")
+![alt text](img/AzGovViz_md_v3.jpg "example output")
 *_IDs from screenshot are randomized_
 
 ### Outputs
@@ -69,6 +82,7 @@ basic markdown in Azure DevOps Wiki
   * DoNotShowRoleAssignmentsUserData (scrub user information)
   * LimitCriticalPercentage (limit warning level, default is 80%)
   * HierarchyTreeOnly (output only the hierarchy tree for Management Groups including linked Subscriptions)
+  * SubscriptionQuotaIdWhitelist (process only subscriptions with defined QuotaId(s))
   * ~~UseAzureRM parameter~~ support for AzureRm modules has been deprecated
 * Passed tests: Powershell Core on Windows
 * Passed tests: Powershell 5.1.18362.752 on Windows
@@ -76,19 +90,19 @@ basic markdown in Azure DevOps Wiki
 
 #### Azure DevOps Pipeline
 
-The provided example Pipeline is configured to run based on a [shedule](https://docs.microsoft.com/en-us/azure/devops/pipelines/build/triggers?view=azure-devops&tabs=yaml#scheduled-triggers) (every 6 hours). It will push the AzGovViz markdown output file to the wikiRepo which will feed your Wiki.
+The provided example Pipeline is configured to run based on a [shedule](https://docs.microsoft.com/en-us/azure/devops/pipelines/build/triggers?view=azure-devops&tabs=yaml#scheduled-triggers) (every 6 hours). It will push the AzGovViz markdown output file to the 'wiki' folder in the 'Azure-MG-Sub-Governance-Reporting' Repository which will feed your Wiki.
 
 1. In Azure DevOps make sure to [enable](https://docs.microsoft.com/en-us/azure/devops/project/navigation/preview-features?view=azure-devops&tabs=new-account-enabled) the Multistage Pipelines feature <https://docs.microsoft.com/en-us/azure/devops/pipelines/get-started/multi-stage-pipelines-experience?view=azure-devops>
 2. Clone the AzGovViz Repo
-3. Create an additional Repo 'wikiRepo' (hosting AzGovViz outputs)
-4. Create Wiki by choosing [Publish Code as Wiki](https://docs.microsoft.com/en-us/azure/devops/project/wiki/publish-repo-to-wiki?view=azure-devops&tabs=browser), define the Repo 'wikiRepo' as source
-5. Create Pipeline, configure your pipeline selecting __Existing Azure Pipelines YAML file__, select the AzGovViz YAML from the AzGovViz (Azure-MG-Sub-Governance-Reporting) Repo
-6. Permissions: In order to allow the pipeline to push files to our wikiRepo the __Project Collection Build Service(%ORGNAME%)__ must be granted __Contribute__ and __Create Branch__ permissions
+3. Create Pipeline, configure your pipeline selecting __Existing Azure Pipelines YAML file__, select the AzGovViz YAML from the AzGovViz (Azure-MG-Sub-Governance-Reporting) Repo
+4. Permissions: In order to allow the pipeline to push files back to our 'wiki' folder in the 'Azure-MG-Sub-Governance-Reporting' Repository the __Build Service__ ('%ProjectName% Build Service (%OrgName%)') must be granted __Contribute__ and __Create Branch__ permissions
+5. Run the Pipeline
+6. Create Wiki by choosing [Publish Code as Wiki](https://docs.microsoft.com/en-us/azure/devops/project/wiki/publish-repo-to-wiki?view=azure-devops&tabs=browser), define the folder 'wiki' from the 'Azure-MG-Sub-Governance-Reporting' Repository as source
 
-> The __Project Collection Build Service(%ORGName%)__ seems only to become available after at least one pipeline has run - so just trigger the pipeline, expect an error and after the run grant the permissions as pointed out in __6.__  
+
 > Make sure your Service Connection has the required permissions (see __Required permissions in Azure__).
 
-#### Security
+### Security
 
 AzGovViz creates very detailed information about your Azure Governance setup. In your organizations best interest the outputs __should be protected from not authorized access!__
 
@@ -98,7 +112,7 @@ Subscriptions where QuotaId starts with with "AAD_" are being skipped, all other
 
 Limits are not acquired programmatically, they are hardcoded. The links used to check related Limits are commented in the param section of the script.
 
-## Contributions
+### Contributions
 
 Please feel free to contribute. Thanks to so many supporters - testing, giving feedback, making suggestions, presenting use-case, posting/blogging articles, refactoring code - THANK YOU!
 
