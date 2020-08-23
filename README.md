@@ -32,7 +32,7 @@ The new version comes with a handful of enhancements:
 
 ### Demo
 
-<a href="https://www.azadvertizer.net/azgovvizv3/demo/AzGovViz_Demo_v3.html" target="_blank">AzGovViz v3 Demo</a>
+<a href="https://www.azadvertizer.net/azgovvizv3/demo/AzGovViz_Demo_v3_1.html" target="_blank">AzGovViz v3 Demo</a>
 
 ### Screenshots
 
