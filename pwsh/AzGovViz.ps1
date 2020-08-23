@@ -492,7 +492,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
     $startMgLoop = get-date
     $hierarchyLevel++
     $getMg = Get-AzManagementGroup -groupname $mgId -Expand -Recurse -ErrorAction Stop
-    Write-Host "CustomDataCollection: Processing L$hierarchyLevel MG '$($getMg.DisplayName)' ('$($getMg.Name)')"
+    Write-Host " CustomDataCollection: Processing L$hierarchyLevel MG '$($getMg.DisplayName)' ('$($getMg.Name)')"
 
     if (-not $HierarchyTreeOnly) {
 
@@ -748,7 +748,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
             }
             else {
                 #s.th unexpected
-                Write-Host "CustomDataCollection: unexpected"
+                Write-Host " CustomDataCollection: unexpected"
                 return
             }
         }
@@ -866,7 +866,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
             -mgParentName $mgParentName
     }
     $endMgLoop = get-date
-    Write-Host "CustomDataCollection: L$hierarchyLevel MG '$($getMg.DisplayName)' ('$($getMg.Name)') processing duration: $((NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalSeconds) seconds"
+    Write-Host " CustomDataCollection: L$hierarchyLevel MG '$($getMg.DisplayName)' ('$($getMg.Name)') processing duration: $((NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalSeconds) seconds"
 
     #SUBSCRIPTION
     if (($getMg.children | measure-object).count -gt 0) {
@@ -875,7 +875,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
             checkTokenLifetime
             $startSubLoop = get-date
             $childMgSubId = $childMg.Id -replace '/subscriptions/', ''
-            Write-Host "CustomDataCollection: Processing Subscription $($childMg.DisplayName) ('$childMgSubId')"
+            Write-Host " CustomDataCollection: Processing Subscription $($childMg.DisplayName) ('$childMgSubId')"
 
             if (-not $HierarchyTreeOnly) {
                 #SubscriptionDetails
@@ -891,7 +891,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
 
                     if (($subscriptionsGetResult.subscriptionPolicies.quotaId).startswith("AAD_","CurrentCultureIgnoreCase") -or $subscriptionsGetResult.state -ne "enabled") {
                         if (($subscriptionsGetResult.subscriptionPolicies.quotaId).startswith("AAD_","CurrentCultureIgnoreCase")) {
-                            Write-Host "CustomDataCollection: Subscription Quota Id: $($subscriptionsGetResult.subscriptionPolicies.quotaId) is out of scope for AzGovViz"
+                            Write-Host " CustomDataCollection: Subscription Quota Id: $($subscriptionsGetResult.subscriptionPolicies.quotaId) is out of scope for AzGovViz"
                             $htOutOfScopeSubscriptions.($childMgSubId) = @{ }
                             $htOutOfScopeSubscriptions.($childMgSubId).subscriptionId = $childMgSubId
                             $htOutOfScopeSubscriptions.($childMgSubId).subscriptionName = $childMg.DisplayName
@@ -900,7 +900,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                             $htOutOfScopeSubscriptions.($childMgSubId).ManagementGroupName = $getMg.DisplayName
                         }
                         if ($subscriptionsGetResult.state -ne "enabled") {
-                            Write-Host "CustomDataCollection: Subscription State: $($subscriptionsGetResult.state) is out of scope for AzGovViz"
+                            Write-Host " CustomDataCollection: Subscription State: $($subscriptionsGetResult.state) is out of scope for AzGovViz"
                             $htOutOfScopeSubscriptions.($childMgSubId) = @{ }
                             $htOutOfScopeSubscriptions.($childMgSubId).subscriptionId = $childMgSubId
                             $htOutOfScopeSubscriptions.($childMgSubId).subscriptionName = $childMg.DisplayName
@@ -923,7 +923,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                 $subscriptionIsInScopeforAzGovViz = $True
                             }
                             else{
-                                Write-Host "CustomDataCollection: Subscription Quota Id: $($subscriptionsGetResult.subscriptionPolicies.quotaId) is out of scope for AzGovViz (not in Whitelist)"
+                                Write-Host " CustomDataCollection: Subscription Quota Id: $($subscriptionsGetResult.subscriptionPolicies.quotaId) is out of scope for AzGovViz (not in Whitelist)"
                                 $htOutOfScopeSubscriptions.($childMgSubId) = @{ }
                                 $htOutOfScopeSubscriptions.($childMgSubId).subscriptionId = $childMgSubId
                                 $htOutOfScopeSubscriptions.($childMgSubId).subscriptionName = $childMg.DisplayName
@@ -992,7 +992,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                             $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
                         }
                         if ($result -ne "letscheck"){
-                            Write-Host "CustomDataCollection: Subscription Id: $childMgSubId Getting ASC Secure Score error: '$result' -> skipping ASC Secure Score for this subscription"
+                            Write-Host " CustomDataCollection: Subscription Id: $childMgSubId Getting ASC Secure Score error: '$result' -> skipping ASC Secure Score for this subscription"
                             $subscriptionASCSecureScore = "n/a"
                         }
                         else{
@@ -1436,7 +1436,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                     }
                 }
                 else{
-                    Write-Host "CustomDataCollection: Subscription Error: '$result' -> skipping this subscription"
+                    Write-Host " CustomDataCollection: Subscription Error: '$result' -> skipping this subscription"
                     $htOutOfScopeSubscriptions.($childMgSubId) = @{ }
                     $htOutOfScopeSubscriptions.($childMgSubId).subscriptionId = $childMgSubId
                     $htOutOfScopeSubscriptions.($childMgSubId).subscriptionName = $childMg.DisplayName
@@ -1454,7 +1454,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                     -SubscriptionId $childMgSubId
             }
             $endSubLoop = get-date
-            Write-Host "CustomDataCollection: Subscription processing duration: $((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds) seconds"
+            Write-Host " CustomDataCollection: Subscription processing duration: $((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds) seconds"
         }
         foreach ($childMg in $getMg.Children | Where-Object { $_.Type -eq "/providers/Microsoft.Management/managementGroups" }) {
             dataCollection -mgId $childMg.Name -hierarchyLevel $hierarchyLevel -mgParentId $getMg.Name -mgParentName $getMg.DisplayName
@@ -1542,7 +1542,7 @@ $script:html += @"
 
 function hierarchySubForMgHTML($mgChild){
     $subscriptions = ($mgAndSubBaseQuery | Where-Object { "" -ne $_.Subscription -and $_.MgId -eq $mgChild }).SubscriptionId | Get-Unique
-    Write-Host "Building HTML Hierarchy Tree for MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
+    Write-Host "  Building HTML Hierarchy Tree for MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
     if (($subscriptions | measure-object).count -gt 0){
 $script:html += @"
                     <li><a href="#table_$mgChild"><p id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv3/icon/Icon-general-2-Subscriptions.svg"> $(($subscriptions | measure-object).count)x</p></a></li>
@@ -1552,7 +1552,7 @@ $script:html += @"
 
 function hierarchySubForMgUlHTML($mgChild){
     $subscriptions = ($mgAndSubBaseQuery | Where-Object { "" -ne $_.Subscription -and $_.MgId -eq $mgChild }).SubscriptionId | Get-Unique
-    Write-Host "Building HTML Hierarchy Tree for MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
+    Write-Host "  Building HTML Hierarchy Tree for MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
     if (($subscriptions | measure-object).count -gt 0){
 $script:html += @"
                 <ul>
@@ -1639,7 +1639,7 @@ $script:html += @"
 
 function tableSubForMgHTML($mgChild){ 
     $subscriptions = ($mgAndSubBaseQuery | Where-Object { "" -ne $_.SubscriptionId -and $_.MgId -eq $mgChild } | Sort-Object -Property Subscription -Unique).SubscriptionId
-    Write-Host "Building HTML Hierarchy Table MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
+    Write-Host "  Building HTML Hierarchy Table MG '$mgChild', $(($subscriptions | measure-object).count) Subscriptions"
     if (($subscriptions | measure-object).count -gt 0){
 $script:html += @"
     <tr>
@@ -3984,7 +3984,7 @@ $script:html += @"
 #region Summary
 function summary() {
 #$startSummary = get-date
-Write-Host "Building HTML Summary"
+Write-Host " Building HTML Summary"
 
 if ($getMgParentName -eq "Tenant Root"){
     $scopeNamingSummary = "Tenant wide"
@@ -5275,13 +5275,20 @@ $script:html += @"
 }
 #endregion SUMMARYCustompolicySetOrphandedTenantRoot
 
+
 #region SUMMARYPolicySetsDeprecatedPolicy
 $policySetsDeprecated=@()
-foreach ($polSetDef in $($htCacheDefinitions).policySet.keys | where-object { ($htCacheDefinitions).policySet.($_).type -eq "Custom" }){
-    foreach ($polsetPolDefId in $($htCacheDefinitions).policySet.($polSetDef).PolicySetPolicyIds) {
-        if ((($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).type -eq "BuiltIn" -and (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).deprecated -eq $true -or (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).displayname.startswith("[Deprecated]")) {
-                $object = New-Object -TypeName PSObject -Property @{'PolicySetDisplayName'= $($htCacheDefinitions).policySet.($polSetDef).DisplayName; 'PolicySetDefinitionId'= $($htCacheDefinitions).policySet.($polSetDef).PolicyDefinitionId; 'PolicyDisplayName' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).displayname; 'PolicyId' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).Id; 'DeprecatedProperty' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).deprecated }
-                $policySetsDeprecated += $object
+$customPolicySets = $($htCacheDefinitions).policySet.keys | where-object { ($htCacheDefinitions).policySet.($_).type -eq "Custom" } 
+$customPolicySetsCount = ($customPolicySets | Measure-Object).count
+if ($customPolicySetsCount -gt 0){
+    foreach ($polSetDef in $($htCacheDefinitions).policySet.keys | where-object { ($htCacheDefinitions).policySet.($_).type -eq "Custom" }){
+        foreach ($polsetPolDefId in $($htCacheDefinitions).policySet.($polSetDef).PolicySetPolicyIds) {
+            if ((($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).type -eq "BuiltIn") {
+                if ((($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).deprecated -eq $true -or (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).displayname.startswith("[Deprecated]")) {
+                    $object = New-Object -TypeName PSObject -Property @{'PolicySetDisplayName'= $($htCacheDefinitions).policySet.($polSetDef).DisplayName; 'PolicySetDefinitionId'= $($htCacheDefinitions).policySet.($polSetDef).PolicyDefinitionId; 'PolicyDisplayName' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).displayname; 'PolicyId' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).Id; 'DeprecatedProperty' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).deprecated }
+                    $policySetsDeprecated += $object
+                }
+            }
         }
     }
 }
@@ -5413,21 +5420,25 @@ $script:html += @"
 }
 #endregion SUMMARYPolicySetsDeprecatedPolicy
 
+
+
 #region SUMMARYPolicyAssignmentsDeprecatedPolicy
 $policyAssignmentsDeprecated =@()
 foreach ($policyAssignmentAll in $($htCacheAssignments).policy.keys) {
     #policySet
     if ($($htCacheDefinitions).policySet.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')) -and -not($($htCacheAssignments).policy.($policyAssignmentAll)).Properties.PolicyDefinitionId.StartsWith("/providers/Microsoft.Authorization/policySetDefinitions/")) {
         foreach ($polsetPolDefId in $($htCacheDefinitions).policySet.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')).PolicySetPolicyIds) {
-            if ((($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).type -eq "BuiltIn" -and (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).deprecated -eq $true -or (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).displayname.startswith("[Deprecated]")) {
-                    $object = New-Object -TypeName PSObject -Property @{'PolicyAssignmentId' = $policyAssignmentAll; 'PolicyDisplayName' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).displayname; 'PolicyId' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).Id; 'PolicyType' = "PolicySet"; 'DeprecatedProperty' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).deprecated }
+            if ((($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).type -eq "BuiltIn") {
+                if ((($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).deprecated -eq $true -or (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).displayname.startswith("[Deprecated]")) {
+                    $object = New-Object -TypeName PSObject -Property @{'PolicyAssignmentDisplayName' = ($htCacheAssignments).policy.($policyAssignmentAll).properties.DisplayName; 'PolicyAssignmentId' = $policyAssignmentAll; 'PolicyDisplayName' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).displayname; 'PolicyId' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).Id; 'PolicyType' = "PolicySet"; 'DeprecatedProperty' = (($htCacheDefinitions).policy.(($polsetPolDefId -replace '.*/'))).deprecated }
                     $policyAssignmentsDeprecated += $object
+                }
             }
         }
     }
     #Policy
     if ($($htCacheDefinitions).policy.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')) -and ($($htCacheDefinitions).policy.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')).type -eq "Builtin" -and ($($htCacheDefinitions).policy.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')).deprecated -eq $true) -or $($htCacheDefinitions).policy.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')).displayname.startswith("[Deprecated]"))) {
-        $object = New-Object -TypeName PSObject -Property @{'PolicyAssignmentId' = $policyAssignmentAll; 'PolicyDisplayName' = $($htCacheDefinitions).policy.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')).displayname; 'PolicyId' = $($htCacheDefinitions).policy.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')).Id; 'PolicyType' = "Policy"; 'DeprecatedProperty' = $($htCacheDefinitions).policy.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')).deprecated }
+        $object = New-Object -TypeName PSObject -Property @{'PolicyAssignmentDisplayName' = ($htCacheAssignments).policy.($policyAssignmentAll).properties.DisplayName; 'PolicyAssignmentId' = $policyAssignmentAll; 'PolicyDisplayName' = $($htCacheDefinitions).policy.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')).displayname; 'PolicyId' = $($htCacheDefinitions).policy.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')).Id; 'PolicyType' = "Policy"; 'DeprecatedProperty' = $($htCacheDefinitions).policy.(($($htCacheAssignments).policy.($policyAssignmentAll).Properties.PolicyDefinitionId -replace '.*/')).deprecated }
         $policyAssignmentsDeprecated += $object
     }
 }
@@ -5444,6 +5455,9 @@ $script:html += @"
         <table id= "$tableId" class="summaryTable">
             <thead>
                 <tr>
+                    <th>
+                        Policy Assignment DisplayName
+                    </th>
                     <th>
                         Policy AssignmentId
                     </th>
@@ -5472,6 +5486,9 @@ $script:html += @"
         }
 $script:html += @"
                 <tr>
+                    <td>
+                        $($policyAssignmentDeprecated.PolicyAssignmentDisplayName)
+                    </td>
                     <td>
                         $($policyAssignmentDeprecated.PolicyAssignmentId)
                     </td>
@@ -5561,7 +5578,13 @@ $script:html += @"
 }
 #endregion SUMMARYPolicyAssignmentsDeprecatedPolicy
 
+
 #region SUMMARYPolicyAssignmentsAll
+
+#
+#($policyBaseQuery | sort-object -property policyassignmentId -unique).count
+#
+
 $policyAssignmentsAllArray =@() 
 foreach ($policyAssignmentAll in $policyBaseQuery){  
     $notScopesArray = @()
@@ -5639,10 +5662,10 @@ $script:html += @"
                         ScopeExcluded
                     </th>
                     <th>
-                        Assignment DisplayName
+                        Policy/Set DisplayName
                     </th>
                     <th>
-                        Policy
+                        Policy/Set Id
                     </th>
                     <th>
                         Policy/Set
@@ -5670,6 +5693,9 @@ $script:html += @"
                     </th>
                     <th>
                         Role/Assignment
+                    </th>
+                    <th>
+                        Assignment DisplayName
                     </th>
                     <th>
                         Assignment Id
@@ -5720,7 +5746,7 @@ $script:html += @"
                 else{
                     createMgPath -mgid $policyAssignment.MgId
                     [array]::Reverse($script:mgPathArray)
-                    $mgPath = $script:mgPathArray -join "/"
+                    #$mgPath = $script:mgPathArray -join "/"
                     
                     if ($mgPathArray -contains "'$($policyAssignmentNotScope -replace "/providers/Microsoft.Management/managementGroups/")'"){
                         $excludedScope = "true"
@@ -5753,10 +5779,10 @@ $script:html += @"
                         $excludedScope
                     </td>
                     <td>
-                        $($policyAssignment.PolicyAssignmentDisplayName)
+                        $($policyAssignment.PolicyName)
                     </td>
                     <td>
-                        $($policyAssignment.PolicyName)
+                        $($policyAssignment.PolicyId)
                     </td>
                     <td>
                         $($policyAssignment.PolicyVariant)
@@ -5842,6 +5868,9 @@ $script:html += @"
                     <td class="breakwordall">
                         $relatedRoleAssignments
                     </td>
+                    <td>
+                        $($policyAssignment.PolicyAssignmentDisplayName)
+                    </td>
                     <td class="breakwordall">
                         $($policyAssignment.PolicyAssignmentId)
                     </td>
@@ -5918,6 +5947,7 @@ $script:html += @"
                 'number',
                 'number',
                 'number',
+                'string',
                 'string',
                 'string'
             ],
@@ -8801,8 +8831,7 @@ if ($diagnosticsPolicyAnalysisCount -gt 0){
 $script:html += @"
 <button type="button" class="collapsible" id="Summary_DiagnosticsLifecycle"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Diagnostics Logs Findings</span></button>
 <div class="content">
-&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <b>Create Custom Policies for Azure ResourceTypes that support Diagnostics Logs and Metrics</b> <a class="externallink" href="https://github.com/JimGBritt/AzurePolicy/blob/master/AzureMonitor/Scripts/README.md#overview-of-create-azdiagpolicyps1" target="_blank">Create-AzDiagPolicy</a><br>
-&nbsp;<i class="fa fa-windows" aria-hidden="true"></i> <b>Microsoft Docs</b> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/platform/resource-logs-categories" target="_blank">Supported categories for Azure Resource Logs</a>
+&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <b>Create Custom Policies for Azure ResourceTypes that support Diagnostics Logs and Metrics</b> <a class="externallink" href="https://github.com/JimGBritt/AzurePolicy/blob/master/AzureMonitor/Scripts/README.md#overview-of-create-azdiagpolicyps1" target="_blank">Create-AzDiagPolicy</a>
 <table id= "$tableId" class="summaryTable">
         <thead>
             <tr>
@@ -8834,7 +8863,7 @@ $script:html += @"
                     Target
                 </th>
                 <th>
-                    Log Categories not covered
+                    Log Categories not covered by Policy
                 </th>
                 <th>
                     Policy Assignments
@@ -8849,7 +8878,7 @@ $script:html += @"
         </thead>
         <tbody
 "@
-    foreach ($diagnosticsFinding in $diagnosticsPolicyAnalysis | Sort-Object -property Priority, PolicyName){
+    foreach ($diagnosticsFinding in $diagnosticsPolicyAnalysis | Sort-Object -property Priority, Recommendation, ResourceType, PolicyName){
 
 $script:html += @"
             <tr>
@@ -8860,7 +8889,7 @@ $script:html += @"
                     $($diagnosticsFinding.Recommendation)
                 </td>
                 <td>
-                    $($diagnosticsFinding.ResourceType)
+                    <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/platform/resource-logs-categories#$(($diagnosticsFinding.ResourceType -replace '\.','' -replace '/','').ToLower())" target="_blank">$($diagnosticsFinding.ResourceType)</a>
                 </td>
                 <td>
                     $($diagnosticsFinding.ResourceTypeCount)
@@ -8943,6 +8972,7 @@ $script:html += @"
         },
         no_results_message: true,
         col_types: [
+            'string',
             'string',
             'string',
             'number',
@@ -10103,10 +10133,10 @@ if (-not $HierarchyTreeOnly) {
     ($htCachePolicyCompliance).sub = @{ }
     $htOutOfScopeSubscriptions = @{ }
 
-    $currentContextSubscriptionQuotaId = $(Search-AzGraph -Subscription $checkContext.Subscription.Id -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | project properties.subscriptionPolicies.quotaId").properties_subscriptionPolicies_quotaId
+    $currentContextSubscriptionQuotaId = (Search-AzGraph -Subscription $checkContext.Subscription.Id -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | project properties.subscriptionPolicies.quotaId").properties_subscriptionPolicies_quotaId
     if (-not $currentContextSubscriptionQuotaId){
         Write-Host "Bad Subscription context for Definition Caching (SubscriptionName: $($checkContext.Subscription.Name); SubscriptionId: $($checkContext.Subscription.Id); likely an AAD_ QuotaId"
-        $alternativeSubscriptionIdForDefinitionCaching = $(Search-AzGraph -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | where properties.subscriptionPolicies.quotaId !startswith 'AAD_' | project properties.subscriptionPolicies.quotaId, subscriptionId" -first 1)
+        $alternativeSubscriptionIdForDefinitionCaching = (Search-AzGraph -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | where properties.subscriptionPolicies.quotaId !startswith 'AAD_' | project properties.subscriptionPolicies.quotaId, subscriptionId" -first 1)
         Write-Host "Using other Subscription for Definition Caching (SubscriptionId: $($alternativeSubscriptionIdForDefinitionCaching.subscriptionId); QuotaId: $($alternativeSubscriptionIdForDefinitionCaching.properties_subscriptionPolicies_quotaId))"
         $subscriptionIdForDefinitionCaching = $alternativeSubscriptionIdForDefinitionCaching.subscriptionId
         #switch subscription context
@@ -10204,7 +10234,7 @@ if (-not $HierarchyTreeOnly) {
     }
 
     $endDefinitionsCaching = get-date
-    Write-Host "Caching built-in data duration: $((NEW-TIMESPAN -Start $startDefinitionsCaching -End $endDefinitionsCaching).TotalSeconds) seconds"
+    Write-Host "Caching built-in data duration: $((NEW-TIMESPAN -Start $startDefinitionsCaching -End $endDefinitionsCaching).TotalMinutes) minutes"
 }
 
 Write-Host "Collecting custom data"
@@ -10220,21 +10250,88 @@ if (-not $HierarchyTreeOnly){
     Write-Host "Caching Resource data"
     $startResourceCaching = get-date
     $subscriptionIds = ($table | Where-Object { "" -ne $_.SubscriptionId} | select-Object SubscriptionId | Sort-Object -Property SubscriptionId -Unique).SubscriptionId
+    <# plan was to use ARG.. seems not reliable enough this time.. keep here for future use
     $queryResources = "resources | project id, subscriptionId, location, type | summarize count() by subscriptionId, location, type"
     $queryResourceGroups = "resourcecontainers | where type =~ 'microsoft.resources/subscriptions/resourcegroups' | project id, subscriptionId | summarize count() by subscriptionId"
+    #>
     $resourcesAll = @()
     $resourceGroupsAll = @()
     $htResourceProvidersAll = @{ }
     $arrayResourceProvidersAll = @()
+    Write-Host " Getting RescourceTypes and ResourceGroups"
+    $startResourceTypesResourceGroups = get-date
     foreach ($subscriptionId in $subscriptionIds){
-        $resourcesAll += Search-AzGraph -Subscription $subscriptionId -Query $queryResources
-        $resourceGroupsAll += Search-AzGraph -Subscription $subscriptionId -Query $queryResourceGroups
+        Write-Host "  -> $subscriptionId"
+
+        <# plan was to use ARG.. seems not reliable enough this time.. keep here for future use
+        $resourcesRetryCount = 0
+        $resourcesRetrySeconds = 2
+        $resourcesMoreThanZero = $false
+        do {
+            $resourcesRetryCount++
+            $gettingResourcesAll = Search-AzGraph -Subscription $subscriptionId -Query $queryResources -First 5000
+            if (($gettingResourcesAll | Measure-Object).count -eq 0){
+                Write-Host "really??! $(($gettingResourcesAll | Measure-Object).count) Resources, let´s check again (try: #$($resourcesRetryCount))"
+                start-sleep -seconds $resourcesRetrySeconds
+                $resourcesRetrySeconds++
+            }
+            else{
+                Write-Host "$(($gettingResourcesAll | Measure-Object).count) Resources detected (try: #$($resourcesRetryCount))"
+                $resourcesMoreThanZero = $true
+            }
+        }
+        until($resourcesRetryCount -eq 10 -or $resourcesMoreThanZero -eq $true)
+        $resourcesAll += $gettingResourcesAll
+        #$resourcesAll += Search-AzGraph -Subscription $subscriptionId -Query $queryResources -First 5000
+        #>
+
+        $urlResourcesPerSubscription = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subscriptionId)/resources?api-version=2020-06-01"
+        $resourcesSubscriptionResult = Invoke-RestMethod -Uri $urlResourcesPerSubscription -Headers @{"Authorization" = "Bearer $accesstoken" }
+        foreach ($resourceTypeLocation in ($resourcesSubscriptionResult.value | Group-Object -Property type, location)){
+            $resourcesAllSubscriptionObject = New-Object -TypeName PSObject -Property @{'subscriptionId' = $subscriptionId; 'type' = $resourceTypeLocation.values[0]; 'location' = $resourceTypeLocation.values[1]; 'count_' = $resourceTypeLocation.Count }
+            $resourcesAll += $resourcesAllSubscriptionObject
+        }
+
+        <# plan was to use ARG.. seems not reliable enough this time.. keep here for future use
+        $resourceGroupsRetryCount = 0
+        $resourceGroupsRetrySeconds = 2
+        $resourceGroupsMoreThanZero = $false
+        do {
+            $resourceGroupsRetryCount++
+            $gettingresourceGroupsAll = Search-AzGraph -Subscription $subscriptionId -Query $queryResourceGroups
+            if (($gettingresourceGroupsAll | Measure-Object).count -eq 0){
+                Write-Host "really??! None ResourceGroups, let´s check again (try: #$($resourceGroupsRetryCount))"
+                start-sleep -seconds $resourceGroupsRetrySeconds
+                $resourceGroupsRetrySeconds++
+            }
+            else{
+                Write-Host "$($gettingresourceGroupsAll.count_) ResourceGroups detected (try: #$($resourceGroupsRetryCount))"
+                $resourceGroupsMoreThanZero = $true
+            }
+        }
+        until($resourceGroupsRetryCount -eq 10 -or $resourceGroupsMoreThanZero -eq $true)
+        $resourceGroupsAll += $gettingresourceGroupsAll
+        #$resourceGroupsAll += Search-AzGraph -Subscription $subscriptionId -Query $queryResourceGroups
+        #>
+
+        #https://management.azure.com/subscriptions/{subscriptionId}/resourcegroups?api-version=2020-06-01
+        $urlResourceGroupsPerSubscription = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subscriptionId)/resourcegroups?api-version=2020-06-01"
+        $resourceGroupsSubscriptionResult = Invoke-RestMethod -Uri $urlResourceGroupsPerSubscription -Headers @{"Authorization" = "Bearer $accesstoken" }
+        $resourceGroupsAllSubscriptionObject = New-Object -TypeName PSObject -Property @{'subscriptionId' = $subscriptionId; 'count_' = ($resourceGroupsSubscriptionResult.value | Measure-Object).count}
+        $resourceGroupsAll += $resourceGroupsAllSubscriptionObject
+
+
         ($htResourceProvidersAll).($subscriptionId) = @{ }
         $url = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subscriptionId)/providers?api-version=2019-10-01"
         $resProvResult = Invoke-RestMethod -Uri $url -Headers @{"Authorization" = "Bearer $accesstoken" }
         ($htResourceProvidersAll).($subscriptionId).Providers = $resProvResult.value
         $arrayResourceProvidersAll += $resProvResult.value
     }
+    $endResourceTypesResourceGroups = get-date
+    Write-Host " Getting RescourceTypes and ResourceGroups duration: $((NEW-TIMESPAN -Start $startResourceTypesResourceGroups -End $endResourceTypesResourceGroups).TotalMinutes) minutes"
+
+    #$resourcesAll | fl
+    #$resourceGroupsAll | fl
 
     $resourceTypesUnique = ($resourcesAll | select-object type -Unique).type
     $resourceTypesSummarizedArray = @()
@@ -10247,19 +10344,33 @@ if (-not $HierarchyTreeOnly){
         $resourceTypesSummarizedArray += $resourceTypesSummarizedObject
     }
 
+
+    $counter = [PSCustomObject] @{ Value = 0 }
+    $batchSize = 1000
+    $subscriptionsBatch = $subscriptionIds | Group-Object -Property { [math]::Floor($counter.Value++ / $batchSize) }
+
     $resourceTypesDiagnosticsArray = @()
+    Write-Host " Checking Rescource Types Diagnostics capability"
+    $startResourceDiagnosticsCheck = get-date
     foreach ($resourcetype in $resourceTypesSummarizedArray.ResourceType) {
+        Write-Host "  -> $resourcetype"
         $tryCounter = 0
         do{
             if ($tryCounter -gt 0){
-                Start-Sleep -Seconds 2
+                Start-Sleep -Seconds 1
             }
             $tryCounter++
             #write-Host "$resourcetype getting a resourceId: try #$tryCounter"
-            $resource = Search-AzGraph -Query "where type =~ '$resourcetype' | project id" -First 1
+            $dedicatedResourceArray = @()
+            $dedicatedResourceArray += foreach ($batch in $subscriptionsBatch) {
+                #write-host "ding.."
+                Search-AzGraph -Query "resources | where type =~ '$resourcetype' | project id" -Subscription $batch.Group -First 1
+            }
         }
-        until(($resource | Measure-Object).count -gt 0)
+        until(($dedicatedResourceArray | Measure-Object).count -gt 0)
 
+        $resource = $dedicatedResourceArray[0]
+        #Write-Host "checking for $($resource.id)"
         $resourceCount = ($resourceTypesSummarizedArray | where-object { $_.Resourcetype -eq $resourcetype}).ResourceCount
 
         #taken from https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts
@@ -10303,6 +10414,8 @@ if (-not $HierarchyTreeOnly){
             $resourceTypesDiagnosticsArray += $resourceTypesDiagnosticsObject
         }
     }
+    $endResourceDiagnosticsCheck = get-date
+    Write-Host " Checking Rescource Types Diagnostics capability duration: $((NEW-TIMESPAN -Start $startResourceDiagnosticsCheck -End $endResourceDiagnosticsCheck).TotalMinutes) minutes"
 
     foreach ($policySet in ($htCacheDefinitions).policySet.keys){
         $PolicySetPolicyIds = ($htCacheDefinitions).policySet.($policySet).PolicySetPolicyIds
@@ -10321,9 +10434,10 @@ if (-not $HierarchyTreeOnly){
     }
     
     $endResourceCaching = get-date
-    Write-Host "Caching Resource data duration: $((NEW-TIMESPAN -Start $startResourceCaching -End $endResourceCaching).TotalSeconds) seconds"
+    Write-Host "Caching Resource data duration: $((NEW-TIMESPAN -Start $startResourceCaching -End $endResourceCaching).TotalMinutes) minutes"
     
     #summarizeDataCollectionResults
+    Write-Host "Summary data collection"
     $mgsDetails = (($table | where-object { "" -ne $_.mgId}) | Select-Object Level, MgId -Unique)
     $mgDepth = ($mgsDetails.Level | Measure-Object -maximum).Maximum
     $totalMgCount = ($mgsDetails | Measure-Object).count
@@ -10336,17 +10450,17 @@ if (-not $HierarchyTreeOnly){
     $totalRoleAssignmentsCount = (($htCacheAssignments).role.keys | Measure-Object).count
     $totalBlueprintAssignmentsCount = (($htCacheAssignments).blueprint.keys | Measure-Object).count
     $totalResourceTypesCount = ($resourceTypesDiagnosticsArray | Measure-Object).Count
-    Write-Host "Total Management Groups: $totalMgCount (depth $mgDepth)"
-    Write-Host "Total Subscriptions: $totalSubCount"
-    Write-Host "Total Custom Policy Definitions: $totalPolicyDefinitionsCustomCount"
-    Write-Host "Total Custom PolicySet Definitions: $totalPolicySetDefinitionsCustomCount"
-    Write-Host "Total Custom Roles: $totalRoleDefinitionsCustomCount"
-    Write-Host "Total Blueprint Definitions: $totalBlueprintDefinitionsCount"
-    Write-Host "Total Policy Assignments: $totalPolicyAssignmentsCount"
-    Write-Host "Total Role Assignments: $totalRoleAssignmentsCount"
-    Write-Host "Total Blueprint Assignments: $totalBlueprintAssignmentsCount"
-    Write-Host "Total Resources: $resourcesTypeAllCountTotal"
-    Write-Host "Total Resource Types: $totalResourceTypesCount"    
+    Write-Host " Total Management Groups: $totalMgCount (depth $mgDepth)"
+    Write-Host " Total Subscriptions: $totalSubCount"
+    Write-Host " Total Custom Policy Definitions: $totalPolicyDefinitionsCustomCount"
+    Write-Host " Total Custom PolicySet Definitions: $totalPolicySetDefinitionsCustomCount"
+    Write-Host " Total Custom Roles: $totalRoleDefinitionsCustomCount"
+    Write-Host " Total Blueprint Definitions: $totalBlueprintDefinitionsCount"
+    Write-Host " Total Policy Assignments: $totalPolicyAssignmentsCount"
+    Write-Host " Total Role Assignments: $totalRoleAssignmentsCount"
+    Write-Host " Total Blueprint Assignments: $totalBlueprintAssignmentsCount"
+    Write-Host " Total Resources: $resourcesTypeAllCountTotal"
+    Write-Host " Total Resource Types: $totalResourceTypesCount"    
 }
 #endregion dataCollection
 
@@ -10355,9 +10469,10 @@ if (-not $HierarchyTreeOnly){
 #region BuildHTML
 
 #testhelper
-#$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
+$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 
 $startBuildHTML = get-date
+Write-Host "Building HTML"
 $html = $null
 
 #preQueries
@@ -10369,7 +10484,7 @@ $optimizedTableForPathQuery = ($mgAndSubBaseQuery | Select-Object -Property leve
 $subscriptionBaseQuery = $table | Where-Object { "" -ne $_.SubscriptionId }
 
 if (-not $HierarchyTreeOnly) {
-    $policyBaseQuery = $table | Where-Object { "" -ne $_.Policy } | Sort-Object -Property PolicyType, Policy | Select-Object -Property Level, Policy*, mgId, mgname, SubscriptionId, Subscription
+    $policyBaseQuery = $table | Where-Object { "" -ne $_.PolicyVariant } | Sort-Object -Property PolicyType, Policy | Select-Object -Property Level, Policy*, mgId, mgname, SubscriptionId, Subscription
     $policyPolicyBaseQuery = $policyBaseQuery | Where-Object { $_.PolicyVariant -eq "Policy" } | Select-Object -Property PolicyDefinitionIdGuid, PolicyAssignmentId
     $policyPolicySetBaseQuery = $policyBaseQuery | Where-Object { $_.PolicyVariant -eq "PolicySet" } | Select-Object -Property PolicyDefinitionIdGuid, PolicyAssignmentId
     $policyAssignmentIds = ($policyBaseQuery | sort-object -property PolicyAssignmentName, PolicyAssignmentId -Unique | Select-Object -Property PolicyAssignmentName, PolicyAssignmentId)
@@ -10454,11 +10569,12 @@ else {
 }
 
 $startHierarchyTree = get-date
+Write-Host " Building HTML Hierarchy Tree"
 
 hierarchyMgHTML -mgChild $ManagementGroupIdCaseSensitived
 
 $endHierarchyTree = get-date
-Write-Host "Building HTML Hierarchy Tree: $((NEW-TIMESPAN -Start $startHierarchyTree -End $endHierarchyTree).TotalMinutes) minutes"
+Write-Host " Building HTML Hierarchy Tree duration: $((NEW-TIMESPAN -Start $startHierarchyTree -End $endHierarchyTree).TotalMinutes) minutes"
 
 if ($getMgParentName -eq "Tenant Root") {
     $html += @"
@@ -10493,7 +10609,7 @@ if (-not $HierarchyTreeOnly) {
     summary
 
     $endSummary = get-date
-    Write-Host "Building HTML Summary duration: $((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalMinutes) minutes"
+    Write-Host " Building HTML Summary duration: $((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalMinutes) minutes"
 
     $html += @"
     </div>
@@ -10502,13 +10618,13 @@ if (-not $HierarchyTreeOnly) {
     <div class="hierarchyTables" id="hierarchyTables">
 "@
     #Write-Host "______________________________________"
-    Write-Host "Building HTML Hierarchy Table"
+    Write-Host " Building HTML Hierarchy Table"
     $startHierarchyTable = get-date
 
     tableMgHTML -mgChild $ManagementGroupIdCaseSensitived -mgChildOf $getMgParentId
 
     $endHierarchyTable = get-date
-    Write-Host "Building HTML Hierarchy Table duration: $((NEW-TIMESPAN -Start $startHierarchyTable -End $endHierarchyTable).TotalMinutes) minutes"
+    Write-Host " Building HTML Hierarchy Table duration: $((NEW-TIMESPAN -Start $startHierarchyTable -End $endHierarchyTable).TotalMinutes) minutes"
 
     $html += @"
     </div>
