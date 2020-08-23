@@ -10469,7 +10469,7 @@ if (-not $HierarchyTreeOnly){
 #region BuildHTML
 
 #testhelper
-$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
+#$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 
 $startBuildHTML = get-date
 Write-Host "Building HTML"
