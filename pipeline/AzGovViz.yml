@@ -23,42 +23,43 @@ schedules:
     include:
     - master
 
-pool:
-  vmImage: 'ubuntu-latest'
+jobs:
+- job: MyJob  
+  timeoutInMinutes: 0 # how long to run the job before automatically cancelling
 
-steps:
+  pool:
+    vmImage: 'ubuntu-latest'
 
-- powershell: |
-   write-host "#################################"
-   write-host "Ensure AzGovViz prerequisites"
-   write-host "#################################"
-   write-host "wiki dir check"
-   if(!(test-path $(System.DefaultWorkingDirectory)/$(WikiDir))){New-Item -ItemType Directory -Force -Path $(System.DefaultWorkingDirectory)/$(WikiDir)}
-   write-host "install Azure Powershell Module 'Az.ResourceGraph'"
-   Install-Module -Name Az.ResourceGraph -Force
-  displayName: 'Ensure AzGovViz prerequisites'
-  env:
-    workingdirectory: $(Agent.BuildDirectory)
-
-- task: AzurePowerShell@4
-  inputs:
-    azureSubscription: '$(ServiceConnection)'
-    ScriptPath: '$(System.DefaultWorkingDirectory)/$(ScriptDir)/$(Script)'
-    ScriptArguments: '-ManagementGroupId $(ManagementGroupId) -OutputPath $(WikiDir) -CsvDelimiter "$(CsvDelimiter)" -AzureDevOpsWikiAsCode -SubscriptionQuotaIdWhitelist $(SubscriptionQuotaIdWhitelist)'
-    preferredAzurePowerShellVersion: 3.1.0
-  displayName: 'Run AzGovViz'
-
-- powershell: |
-   write-host "#################################"
-   write-host "Push AzGovViz output to repository"
-   write-host "#################################"
-   $executionDateTimeInternationalReadable = get-date -format "dd-MMM-yyyy HH:mm:ss"
-   $currentTimeZone = (Get-TimeZone).Id
-   git config --global user.email "AzGovVizPipeline@azdo.com"
-   $PipelineInfo = "Pipeline: '$(Build.DefinitionName)' 'rev $(Build.BuildNumber)' (Project: $([uri]::EscapeDataString("$(System.TeamProject)")); Repository: $(Build.Repository.Name); Branch: $(Build.SourceBranchName) Commit: $(Build.SourceVersion))"
-   git config --global user.name "$PipelineInfo"
-   git config pull.rebase false
-   git add --all
-   git commit -m "wiki $executionDateTimeInternationalReadable ($currentTimeZone)"
-   git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" push origin HEAD:master
-  displayName: 'Push AzGovViz output to repository'
+  steps:
+  - powershell: |
+      write-host "#################################"
+      write-host "Ensure AzGovViz prerequisites"
+      write-host "#################################"
+      write-host "wiki dir check"
+      if(!(test-path $(System.DefaultWorkingDirectory)/$(WikiDir))){New-Item -ItemType Directory -Force -Path $(System.DefaultWorkingDirectory)/$(WikiDir)}
+      write-host "install Azure Powershell Module 'Az.ResourceGraph'"
+      Install-Module -Name Az.ResourceGraph -Force
+    displayName: 'Ensure AzGovViz prerequisites'
+    env:
+      workingdirectory: $(Agent.BuildDirectory)
+  - task: AzurePowerShell@4
+    inputs:
+      azureSubscription: '$(ServiceConnection)'
+      ScriptPath: '$(System.DefaultWorkingDirectory)/$(ScriptDir)/$(Script)'
+      ScriptArguments: '-ManagementGroupId $(ManagementGroupId) -OutputPath $(WikiDir) -CsvDelimiter "$(CsvDelimiter)" -AzureDevOpsWikiAsCode -SubscriptionQuotaIdWhitelist $(SubscriptionQuotaIdWhitelist)'
+      preferredAzurePowerShellVersion: 3.1.0
+    displayName: 'Run AzGovViz'
+  - powershell: |
+      write-host "#################################"
+      write-host "Push AzGovViz output to repository"
+      write-host "#################################"
+      $executionDateTimeInternationalReadable = get-date -format "dd-MMM-yyyy HH:mm:ss"
+      $currentTimeZone = (Get-TimeZone).Id
+      git config --global user.email "AzGovVizPipeline@azdo.com"
+      $PipelineInfo = "Pipeline: '$(Build.DefinitionName)' 'rev $(Build.BuildNumber)' (Project: $([uri]::EscapeDataString("$(System.TeamProject)")); Repository: $(Build.Repository.Name); Branch: $(Build.SourceBranchName) Commit: $(Build.SourceVersion))"
+      git config --global user.name "$PipelineInfo"
+      git config pull.rebase false
+      git add --all
+      git commit -m "wiki $executionDateTimeInternationalReadable ($currentTimeZone)"
+      git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" push origin HEAD:master
+      displayName: 'Push AzGovViz output to repository'
