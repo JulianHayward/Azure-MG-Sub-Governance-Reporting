@@ -10133,7 +10133,7 @@ if (-not $HierarchyTreeOnly) {
     ($htCachePolicyCompliance).sub = @{ }
     $htOutOfScopeSubscriptions = @{ }
 
-    $currentContextSubscriptionQuotaId = (Search-AzGraph -Subscription $checkContext.Subscription.Id -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | project properties.subscriptionPolicies.quotaId").properties_subscriptionPolicies_quotaId
+    $currentContextSubscriptionQuotaId = (Search-AzGraph -ErrorAction SilentlyContinue -Subscription $checkContext.Subscription.Id -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | project properties.subscriptionPolicies.quotaId").properties_subscriptionPolicies_quotaId
     if (-not $currentContextSubscriptionQuotaId){
         Write-Host "Bad Subscription context for Definition Caching (SubscriptionName: $($checkContext.Subscription.Name); SubscriptionId: $($checkContext.Subscription.Id); likely an AAD_ QuotaId"
         $alternativeSubscriptionIdForDefinitionCaching = (Search-AzGraph -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | where properties.subscriptionPolicies.quotaId !startswith 'AAD_' | project properties.subscriptionPolicies.quotaId, subscriptionId" -first 1)
@@ -10250,10 +10250,10 @@ if (-not $HierarchyTreeOnly){
     Write-Host "Caching Resource data"
     $startResourceCaching = get-date
     $subscriptionIds = ($table | Where-Object { "" -ne $_.SubscriptionId} | select-Object SubscriptionId | Sort-Object -Property SubscriptionId -Unique).SubscriptionId
-    <# plan was to use ARG.. seems not reliable enough this time.. keep here for future use
+    #ARG queries
     $queryResources = "resources | project id, subscriptionId, location, type | summarize count() by subscriptionId, location, type"
     $queryResourceGroups = "resourcecontainers | where type =~ 'microsoft.resources/subscriptions/resourcegroups' | project id, subscriptionId | summarize count() by subscriptionId"
-    #>
+    #
     $resourcesAll = @()
     $resourceGroupsAll = @()
     $htResourceProvidersAll = @{ }
@@ -10261,9 +10261,10 @@ if (-not $HierarchyTreeOnly){
     Write-Host " Getting RescourceTypes and ResourceGroups"
     $startResourceTypesResourceGroups = get-date
     foreach ($subscriptionId in $subscriptionIds){
+        checkTokenLifetime
         Write-Host "  -> $subscriptionId"
 
-        <# plan was to use ARG.. seems not reliable enough this time.. keep here for future use
+        # ARG
         $resourcesRetryCount = 0
         $resourcesRetrySeconds = 2
         $resourcesMoreThanZero = $false
@@ -10280,19 +10281,21 @@ if (-not $HierarchyTreeOnly){
                 $resourcesMoreThanZero = $true
             }
         }
-        until($resourcesRetryCount -eq 10 -or $resourcesMoreThanZero -eq $true)
+        until($resourcesRetryCount -eq 2 -or $resourcesMoreThanZero -eq $true)
         $resourcesAll += $gettingResourcesAll
         #$resourcesAll += Search-AzGraph -Subscription $subscriptionId -Query $queryResources -First 5000
-        #>
+        #
 
+        <#alternative to ARG
         $urlResourcesPerSubscription = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subscriptionId)/resources?api-version=2020-06-01"
         $resourcesSubscriptionResult = Invoke-RestMethod -Uri $urlResourcesPerSubscription -Headers @{"Authorization" = "Bearer $accesstoken" }
         foreach ($resourceTypeLocation in ($resourcesSubscriptionResult.value | Group-Object -Property type, location)){
             $resourcesAllSubscriptionObject = New-Object -TypeName PSObject -Property @{'subscriptionId' = $subscriptionId; 'type' = $resourceTypeLocation.values[0]; 'location' = $resourceTypeLocation.values[1]; 'count_' = $resourceTypeLocation.Count }
             $resourcesAll += $resourcesAllSubscriptionObject
         }
+        #>
 
-        <# plan was to use ARG.. seems not reliable enough this time.. keep here for future use
+        # ARG
         $resourceGroupsRetryCount = 0
         $resourceGroupsRetrySeconds = 2
         $resourceGroupsMoreThanZero = $false
@@ -10309,16 +10312,18 @@ if (-not $HierarchyTreeOnly){
                 $resourceGroupsMoreThanZero = $true
             }
         }
-        until($resourceGroupsRetryCount -eq 10 -or $resourceGroupsMoreThanZero -eq $true)
+        until($resourceGroupsRetryCount -eq 2 -or $resourceGroupsMoreThanZero -eq $true)
         $resourceGroupsAll += $gettingresourceGroupsAll
         #$resourceGroupsAll += Search-AzGraph -Subscription $subscriptionId -Query $queryResourceGroups
-        #>
+        
 
+        <#alternative to ARG
         #https://management.azure.com/subscriptions/{subscriptionId}/resourcegroups?api-version=2020-06-01
         $urlResourceGroupsPerSubscription = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subscriptionId)/resourcegroups?api-version=2020-06-01"
         $resourceGroupsSubscriptionResult = Invoke-RestMethod -Uri $urlResourceGroupsPerSubscription -Headers @{"Authorization" = "Bearer $accesstoken" }
         $resourceGroupsAllSubscriptionObject = New-Object -TypeName PSObject -Property @{'subscriptionId' = $subscriptionId; 'count_' = ($resourceGroupsSubscriptionResult.value | Measure-Object).count}
         $resourceGroupsAll += $resourceGroupsAllSubscriptionObject
+        #>
 
 
         ($htResourceProvidersAll).($subscriptionId) = @{ }
@@ -10330,8 +10335,6 @@ if (-not $HierarchyTreeOnly){
     $endResourceTypesResourceGroups = get-date
     Write-Host " Getting RescourceTypes and ResourceGroups duration: $((NEW-TIMESPAN -Start $startResourceTypesResourceGroups -End $endResourceTypesResourceGroups).TotalMinutes) minutes"
 
-    #$resourcesAll | fl
-    #$resourceGroupsAll | fl
 
     $resourceTypesUnique = ($resourcesAll | select-object type -Unique).type
     $resourceTypesSummarizedArray = @()
@@ -10372,6 +10375,7 @@ if (-not $HierarchyTreeOnly){
         $resource = $dedicatedResourceArray[0]
         #Write-Host "checking for $($resource.id)"
         $resourceCount = ($resourceTypesSummarizedArray | where-object { $_.Resourcetype -eq $resourcetype}).ResourceCount
+
 
         #taken from https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts
         try {
