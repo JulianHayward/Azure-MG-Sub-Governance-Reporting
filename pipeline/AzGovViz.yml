@@ -62,4 +62,4 @@ jobs:
       git add --all
       git commit -m "wiki $executionDateTimeInternationalReadable ($currentTimeZone)"
       git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" push origin HEAD:master
-     displayName: 'Push AzGovViz output to repository'
+    displayName: 'Push AzGovViz output to repository'
