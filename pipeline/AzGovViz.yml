@@ -1,7 +1,15 @@
 # AzGovViz
-# First things first: edit line 10 and line 11 
+# First things first: edit line 18 and line 19 
 # https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 # Also check https://www.azadvertizer.net to keep up with the pace on Azure Governance capabilities such as Azure Policies, Policy Initiatives, Policy Aliases and RBAC Roles
+# 
+# Parameters reference (line 57)
+# LimitCriticalPercentage | default is '80' | example: -LimitCriticalPercentage 90 
+# SubscriptionQuotaIdWhitelist | default is 'undefined'; separator is '\' | example: -SubscriptionQuotaIdWhitelist MSDN_\EnterpriseAgreement_
+# HierarchyTreeOnly | switch | example: -HierarchyTreeOnly
+# DoNotShowRoleAssignmentsUserData | switch | example: -DoNotShowRoleAssignmentsUserData
+# CsvDelimiter | example: -CsvDelimiter ","
+
 trigger: none
 
 pr: none
