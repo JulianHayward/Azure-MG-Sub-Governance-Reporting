@@ -10,13 +10,13 @@ You can run the script either for your Tenant Root Group or any other Management
 The new version comes with a handful of enhancements:
 
 * HTML filterable tables
-* Resource Diagnostics capability check
+* Resource Types Diagnostics capability check
 * ResourceDiagnostics Policy Lifecycle recommendations (experimental)
+* Resource Diagnostics Policy Findings
 * Resource Provider details
 * Policy Assignments filter excluded scopes
 * Use of deprecated built-in policies
 * Subscription QuotaId Whitelist
-* Resource summary at Management group scope
 
 ## AzGovViz version 2
 
@@ -33,7 +33,7 @@ The new version comes with a handful of enhancements:
 
 ### Demo
 
-<a href="https://www.azadvertizer.net/azgovviz/demo/AzGovViz_Contoso_Demo.html" target="_blank">AzGovViz Demo</a>
+<a href="https://www.azadvertizer.net/azgovvizv3/demo/AzGovViz_Demo_v3_1.html" target="_blank">AzGovViz v3 Demo</a>
 
 ### Screenshots
 
@@ -91,12 +91,12 @@ basic markdown in Azure DevOps Wiki
 
 #### Azure DevOps Pipeline
 
-The provided example Pipeline is configured to run based on a [shedule](https://docs.microsoft.com/en-us/azure/devops/pipelines/build/triggers?view=azure-devops&tabs=yaml#scheduled-triggers) (every 6 hours). It will push the AzGovViz markdown output file to the wikiRepo which will feed your Wiki.
+The provided example Pipeline is configured to run based on a [shedule](https://docs.microsoft.com/en-us/azure/devops/pipelines/build/triggers?view=azure-devops&tabs=yaml#scheduled-triggers) (every 6 hours). It will push the AzGovViz markdown output file to the 'wiki' folder in the 'Azure-MG-Sub-Governance-Reporting' Repository which will feed your Wiki.
 
 1. In Azure DevOps make sure to [enable](https://docs.microsoft.com/en-us/azure/devops/project/navigation/preview-features?view=azure-devops&tabs=new-account-enabled) the Multistage Pipelines feature <https://docs.microsoft.com/en-us/azure/devops/pipelines/get-started/multi-stage-pipelines-experience?view=azure-devops>
 2. Clone the AzGovViz Repo
 3. Create Pipeline, configure your pipeline selecting __Existing Azure Pipelines YAML file__, select the AzGovViz YAML from the AzGovViz (Azure-MG-Sub-Governance-Reporting) Repo
-4. Permissions: In order to allow the pipeline to push files to our wikiRepo the __Build Service__ ('%ProjectName% Build Service (%OrgName%)') must be granted __Contribute__ and __Create Branch__ permissions
+4. Permissions: In order to allow the pipeline to push files back to our 'wiki' folder in the 'Azure-MG-Sub-Governance-Reporting' Repository the __Build Service__ ('%ProjectName% Build Service (%OrgName%)') must be granted __Contribute__ and __Create Branch__ permissions
 5. Run the Pipeline
 6. Create Wiki by choosing [Publish Code as Wiki](https://docs.microsoft.com/en-us/azure/devops/project/wiki/publish-repo-to-wiki?view=azure-devops&tabs=browser), define the folder 'wiki' from the 'Azure-MG-Sub-Governance-Reporting' Repository as source
 
@@ -117,9 +117,7 @@ Limits are not acquired programmatically, they are hardcoded. The links used to 
 
 Please feel free to contribute. Thanks to so many supporters - testing, giving feedback, making suggestions, presenting use-case, posting/blogging articles, refactoring code - THANK YOU!
 
-Special thanks to Tim Wanierke, Brooks Vaughn, Friedrich Weinmann (Microsoft)!
-
-Another special thanks to Jim Britt (Microsoft) as some of the PS functions from [CREATE-AZDIAGPOLICY](https://github.com/JimGBritt/AzurePolicy/blob/master/AzureMonitor/Scripts/README.md#overview-of-create-azdiagpolicyps1) have been reused/modified in AzGovViz.
+Special thanks to Tim Wanierke, Brooks Vaughn, Friedrich Weinmann
 
 ## AzAdvertizer
 
