@@ -790,7 +790,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         -Policy $htCacheDefinitions.$definitiontype.$($Id).DisplayName `
                         -PolicyType $htCacheDefinitions.$definitiontype.$($Id).Type `
                         -PolicyCategory $htCacheDefinitions.$definitiontype.$($Id).Category `
-                        -PolicyDefinitionIdGuid $htCacheDefinitions.$definitiontype.$($Id).Id `
+                        -PolicyDefinitionIdGuid ((($htCacheDefinitions).($definitiontype).($Id).Id) -replace ".*/") `
                         -PolicyDefinitionIdFull $htCacheDefinitions.$definitiontype.$($Id).PolicyDefinitionId `
                         -PolicyDefintionScope $policyDefintionScope `
                         -PolicyDefinitionsScopedLimit $LimitPOLICYPolicyDefinitionsScopedManagementGroup `
@@ -846,7 +846,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         -Policy $htCacheDefinitions.$definitiontype.$($Id).DisplayName `
                         -PolicyType $htCacheDefinitions.$definitiontype.$($Id).Type `
                         -PolicyCategory $htCacheDefinitions.$definitiontype.$($Id).Category `
-                        -PolicyDefinitionIdGuid $htCacheDefinitions.$definitiontype.$($Id).Id `
+                        -PolicyDefinitionIdGuid ((($htCacheDefinitions).($definitiontype).($Id).Id) -replace ".*/") `
                         -PolicyDefinitionIdFull $htCacheDefinitions.$definitiontype.$($Id).PolicyDefinitionId `
                         -PolicyDefintionScope $policyDefintionScope `
                         -PolicyDefinitionsScopedLimit $LimitPOLICYPolicyDefinitionsScopedManagementGroup `
@@ -1533,7 +1533,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                         -Policy $htCacheDefinitions.$definitiontype.$($Id).DisplayName `
                                         -PolicyType $htCacheDefinitions.$definitiontype.$($Id).Type `
                                         -PolicyCategory $htCacheDefinitions.$definitiontype.$($Id).Category `
-                                        -PolicyDefinitionIdGuid $htCacheDefinitions.$definitiontype.$($Id).Id `
+                                        -PolicyDefinitionIdGuid ((($htCacheDefinitions).($definitiontype).($Id).Id) -replace ".*/") `
                                         -PolicyDefinitionIdFull $htCacheDefinitions.$definitiontype.$($Id).PolicyDefinitionId `
                                         -PolicyDefintionScope $policyDefintionScope `
                                         -PolicyDefinitionsScopedLimit $LimitPOLICYPolicyDefinitionsScopedSubscription `
@@ -1602,7 +1602,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                         -Policy $htCacheDefinitions.$definitiontype.$($Id).DisplayName `
                                         -PolicyType $htCacheDefinitions.$definitiontype.$($Id).Type `
                                         -PolicyCategory $htCacheDefinitions.$definitiontype.$($Id).Category `
-                                        -PolicyDefinitionIdGuid $htCacheDefinitions.$definitiontype.$($Id).Id `
+                                        -PolicyDefinitionIdGuid ((($htCacheDefinitions).($definitiontype).($Id).Id) -replace ".*/") `
                                         -PolicyDefinitionIdFull $htCacheDefinitions.$definitiontype.$($Id).PolicyDefinitionId `
                                         -PolicyDefintionScope $policyDefintionScope `
                                         -PolicyDefinitionsScopedLimit $LimitPOLICYPolicyDefinitionsScopedSubscription `
@@ -3650,7 +3650,7 @@ $script:customPoliciesDetailed = @()
 $script:customPoliciesDetailed += foreach ($customPolicy in ($customPoliciesArray | Sort-Object @{Expression={$_.DisplayName}}, @{Expression={$_.PolicyDefinitionId}})){
     
     #uniqueAssignments
-    $policyUniqueAssignments = (($policyPolicyBaseQuery | Where-Object { $_.PolicyDefinitionIdGuid -eq ($htCacheDefinitions).policy.($customPolicy.Id).Id }).PolicyAssignmentId | sort-object -Unique)
+    $policyUniqueAssignments = (($policyPolicyBaseQuery | Where-Object { $_.PolicyDefinitionIdFull -eq ($htCacheDefinitions).policy.($customPolicy.Id).Id }).PolicyAssignmentId | sort-object -Unique)
     $policyUniqueAssignmentsArray = @()
     $policyUniqueAssignmentsArray += foreach ($policyUniqueAssignment in $policyUniqueAssignments){
         $policyUniqueAssignment
@@ -4179,7 +4179,7 @@ $customPolicySetsArray += foreach ($tenantCustomPolicySet in $tenantCustomPolicy
 $script:customPolicySetsDetailed = @()
 $script:customPolicySetsDetailed += foreach ($customPolicySet in ($customPolicySetsArray | Sort-Object)){
     
-    $policySetUniqueAssignments = (($policyPolicySetBaseQuery | Where-Object { $_.PolicyDefinitionIdGuid -eq ($htCacheDefinitions).policySet.($customPolicySet.Id).Id }).PolicyAssignmentId | sort-object -Unique)
+    $policySetUniqueAssignments = (($policyPolicySetBaseQuery | Where-Object { $_.PolicyDefinitionIdFull -eq ($htCacheDefinitions).policySet.($customPolicySet.Id).Id }).PolicyAssignmentId | sort-object -Unique)
     $policySetUniqueAssignmentsArray = @()
     $policySetUniqueAssignmentsArray += foreach ($policySetUniqueAssignment in $policySetUniqueAssignments){
         $policySetUniqueAssignment
@@ -4427,7 +4427,7 @@ $htmlTenantSummary += @"
 #region SUMMARYCustompolicySetOrphandedTenantRoot
 Write-Host "  processing Summary Custom PolicySets orphaned"
 if ($getMgParentName -eq "Tenant Root"){
-    $custompolicySetSetsInUse = ($policyBaseQuery | where-object {$_.policyType -eq "Custom" -and $_.policyVariant -eq "policySet"}).policyDefinitionIdGuid | Sort-Object -Unique
+    $custompolicySetSetsInUse = ($policyBaseQuery | where-object {$_.policyType -eq "Custom" -and $_.policyVariant -eq "policySet"}).PolicyDefinitionIdFull | Sort-Object -Unique
     $custompolicySetSetsOrphaned = @()
     $custompolicySetSetsOrphaned += foreach ($custompolicySetAll in $tenantCustomPolicySets) {
         if (($custompolicySetSetsInUse | measure-object).count -eq 0) {
@@ -4522,7 +4522,7 @@ $htmlTenantSummary += @"
 }
 #SUMMARY Custom policySetSets Orphanded NOT TenantRoot
 else{
-    $custompolicySetSetsInUse = ($policyBaseQuery | where-object {$_.policyType -eq "Custom" -and $_.policyVariant -eq "policySet"}).policyDefinitionIdGuid | Sort-Object -Unique
+    $custompolicySetSetsInUse = ($policyBaseQuery | where-object {$_.policyType -eq "Custom" -and $_.policyVariant -eq "policySet"}).PolicyDefinitionIdFull | Sort-Object -Unique
     $custompolicySetSetsOrphaned = @()
     $custompolicySetSetsOrphaned += foreach ($custompolicySetAll in $tenantCustomPolicySets) {
         if (($custompolicySetSetsInUse | measure-object).count -eq 0) {
@@ -5003,15 +5003,15 @@ foreach ($policyAssignmentAll in $policyBaseQuery){
         $mgOrSub = "Sub"
     }
 
-    if ($($policyAssignmentAll.PolicyAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/","CurrentCultureIgnoreCase")){
+    #compliance
+    if ("" -eq $policyAssignmentAll.subscriptionId){
         $compliance = ($htCachePolicyCompliance).mg.($policyAssignmentAll.MgId).($policyAssignmentAll.policyAssignmentId)
         $NonCompliantPolicies = $compliance.NonCompliantPolicies
         $CompliantPolicies = $compliance.CompliantPolicies
         $NonCompliantResources = $compliance.NonCompliantResources
         $CompliantResources = $compliance.CompliantResources
     }
-
-    if ($($policyAssignmentAll.PolicyAssignmentId).StartsWith("/subscriptions/","CurrentCultureIgnoreCase")){
+    else{
         $compliance = ($htCachePolicyCompliance).sub.($policyAssignmentAll.SubscriptionId).($policyAssignmentAll.policyAssignmentId)
         $NonCompliantPolicies = $compliance.NonCompliantPolicies
         $CompliantPolicies = $compliance.CompliantPolicies
@@ -9004,8 +9004,8 @@ $subscriptionBaseQuery = $table | Where-Object { "" -ne $_.SubscriptionId }
 if (-not $HierarchyMapOnly) {
     write-host " Build preQueries"
     $policyBaseQuery = $table | Where-Object { "" -ne $_.PolicyVariant } | Sort-Object -Property PolicyType, Policy | Select-Object -Property Level, Policy*, mgId, mgname, SubscriptionId, Subscription
-    $policyPolicyBaseQuery = $policyBaseQuery | Where-Object { $_.PolicyVariant -eq "Policy" } | Select-Object -Property PolicyDefinitionIdGuid, PolicyAssignmentId
-    $policyPolicySetBaseQuery = $policyBaseQuery | Where-Object { $_.PolicyVariant -eq "PolicySet" } | Select-Object -Property PolicyDefinitionIdGuid, PolicyAssignmentId
+    $policyPolicyBaseQuery = $policyBaseQuery | Where-Object { $_.PolicyVariant -eq "Policy" } | Select-Object -Property PolicyDefinitionIdGuid, PolicyDefinitionIdFull, PolicyAssignmentId
+    $policyPolicySetBaseQuery = $policyBaseQuery | Where-Object { $_.PolicyVariant -eq "PolicySet" } | Select-Object -Property PolicyDefinitionIdGuid, PolicyDefinitionIdFull, PolicyAssignmentId
     $rbacBaseQuery = $table | Where-Object { "" -ne $_.RoleDefinitionName } | Sort-Object -Property RoleIsCustom, RoleDefinitionName | Select-Object -Property Level, Role*, mgId, MgName, SubscriptionId, Subscription
     $blueprintBaseQuery = $table | Where-Object { "" -ne $_.BlueprintName }
     $mgsAndSubs = (($mgAndSubBaseQuery | where-object { $_.mgId -ne "" -and $_.Level -ne "0" }) | select-object MgId, SubscriptionId -unique)
