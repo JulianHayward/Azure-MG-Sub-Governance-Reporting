@@ -8,8 +8,6 @@ You can run the script either for your Tenant Root Group or any other Management
 <table>
 <td>
 
-__Connecting the dots__
-
 "_Azure Governance can be a complex thing_.."
 
 Challenges:
@@ -37,7 +35,7 @@ AzGovViz is intended to help you to get a holistics overview on your technical A
 </td>
 <td>
 
-AzGovViz now listed as Tool for the Govern discipline in the Microsoft Cloud Adoption Framework!
+__AzGovViz now listed as Tool for the Govern discipline in the Microsoft Cloud Adoption Framework!__
 https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-templates#govern
 
 </td>
