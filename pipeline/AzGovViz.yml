@@ -1,14 +1,16 @@
 # AzGovViz
-# First things first: edit line 18 and line 19 
+# First things first: edit line 20 and line 21 
 # https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 # Also check https://www.azadvertizer.net to keep up with the pace on Azure Governance capabilities such as Azure Policies, Policy Initiatives, Policy Aliases and RBAC Roles
 # 
-# Parameters reference (line 57)
-# LimitCriticalPercentage | default is '80' | example: -LimitCriticalPercentage 90 
-# SubscriptionQuotaIdWhitelist | default is 'undefined'; separator is '\' | example: -SubscriptionQuotaIdWhitelist MSDN_\EnterpriseAgreement_
-# HierarchyTreeOnly | switch | example: -HierarchyTreeOnly
-# DoNotShowRoleAssignmentsUserData | switch | example: -DoNotShowRoleAssignmentsUserData
-# CsvDelimiter | example: -CsvDelimiter ","
+# Parameters reference (use in line 59)
+# LimitCriticalPercentage | default is '80' | example: -LimitCriticalPercentage 90  | WhatDoesItDo? marks capabilities that approch limits e.g. limit 100, usage 80 will mark with warning
+# SubscriptionQuotaIdWhitelist | default is 'undefined'; separator is '\' | example: -SubscriptionQuotaIdWhitelist MSDN_\EnterpriseAgreement_ | WhatDoesItDo? processes only subscriptions that startWith the given QuotaIds
+# HierarchyMapOnly | switch | example: -HierarchyMapOnly | WhatDoesItDo? only creates the Hierarchy Tree
+# DoNotShowRoleAssignmentsUserData | switch | example: -DoNotShowRoleAssignmentsUserData | WhatDoesItDo? scrub user information
+# NoASCSecureScore | switch | example: -NoASCSecureScore | WhatDoesItDo? disables ASC Secure Score request for subscriptions (ASC Score API currently in preview)
+# NoResourceProvidersDetailed | switch | example: -NoResourceProvidersDetailed | WhatDoesItDo? disables 'ResourceProvider Detailed' output for TenantSummary (compute intensive)
+# CsvDelimiter | example: -CsvDelimiter "," | WhatDoesItDo? the world is split into two kind of delimiters - comma and semicolon - choose yours
 
 trigger: none
 
@@ -24,8 +26,8 @@ variables:
   Script: AzGovViz.ps1
 
 schedules:
-- cron: "0 0,6,12,18 * * *"
-  displayName: every 6h
+- cron: "0 0,12 * * *"
+  displayName: every 12h
   always: true
   branches:
     include:
@@ -33,7 +35,7 @@ schedules:
 
 jobs:
 - job: AzGovViz  
-  timeoutInMinutes: 0 # how long to run the job before automatically cancelling
+  timeoutInMinutes: 0
 
   pool:
     vmImage: 'ubuntu-latest'
