@@ -46,7 +46,7 @@ https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-
 ### AzGovViz version 4
 
 * Resource information for Management Groups (Resources in all child Subscriptions) in the __ScopeInsights__ section
-* Excluded Subscriptions information (whitelisted, diabled, AAD_ QuotaId)
+* Excluded Subscriptions information (whitelisted, disabled, AAD_ QuotaId)
 * Bugfixes, Bugfixes, Bugfixes
 * Cosmetics and User Experience enhancement
 * Performance optimization
