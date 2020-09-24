@@ -85,8 +85,11 @@ https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-
 
 html file
 
+__HierarchieMap__  
 ![alt text](img/HierarchieMap.png "HierarchieMap")  
+__TenantSummary__
 ![alt text](img/TenantSummary.png "TenantSummary")  
+__ScopeInsights__
 ![alt text](img/ScopeInsights.png "ScopeInsights")  
 *_IDs from screenshot are randomized_
 
