@@ -2802,7 +2802,7 @@ $htmlScopeInsightsPolicyAssignments += @"
 <td>$($policyAssignment.Inheritance)</td>
 <td>$($policyAssignment.ExcludedScope)</td>
 <td class="breakwordall">$($policyAssignment.PolicyName)</td>
-<td>$($policyAssignment.PolicyId)</td>
+<td class="breakwordall">$($policyAssignment.PolicyId)</td>
 <td>$($policyAssignment.PolicyType)</td>
 <td>$($policyAssignment.PolicyCategory)</td>
 <td>$($policyAssignment.Effect)</td>
@@ -2936,7 +2936,7 @@ $htmlScopeInsightsPolicySetAssignments += @"
 <td>$($policyAssignment.Inheritance)</td>
 <td>$($policyAssignment.ExcludedScope)</td>
 <td class="breakwordall">$($policyAssignment.PolicyName)</td>
-<td>$($policyAssignment.PolicyId)</td>
+<td class="breakwordall">$($policyAssignment.PolicyId)</td>
 <td>$($policyAssignment.PolicyType)</td>
 <td>$($policyAssignment.PolicyCategory)</td>
 <td>$($policyAssignment.NonCompliantPolicies)</td>
@@ -3522,7 +3522,7 @@ $htmlScopeInsights += @"
 <tr>
 <th>Scope</th>
 <th>Role</th>
-<th>Role Custom</th>
+<th>Role Type</th>
 <th>Object Displayname</th>
 <th>Object SignInName</th>
 <th>Object ObjectId</th>
@@ -5702,7 +5702,7 @@ $htmlTenantSummary += @"
 <th>Subscription Name</th>
 <th>Scope</th>
 <th>Role</th>
-<th>Role Custom</th>
+<th>Role Type</th>
 <th>Object Displayname</th>
 <th>Object SignInName</th>
 <th>Object ObjectId</th>
