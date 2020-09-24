@@ -85,8 +85,8 @@ https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-
 
 html file
 
-__HierarchieMap__  
-![alt text](img/HierarchieMap.png "HierarchieMap")  
+__HierarchyMap__  
+![alt text](img/HierarchyMap.png "HierarchyMap")  
 __TenantSummary__
 ![alt text](img/TenantSummary.png "TenantSummary")  
 __ScopeInsights__
