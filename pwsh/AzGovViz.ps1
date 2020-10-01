@@ -103,16 +103,16 @@ Param
     #[string]$LimitRBACRoleAssignmentsSubscription = 2000 #will be retrieved programatically
 
     #https://docs.microsoft.com/en-us/azure/governance/policy/overview#maximum-count-of-azure-policy-objects
-    [int]$LimitPOLICYPolicyAssignmentsManagementGroup = 100,
-    [int]$LimitPOLICYPolicyAssignmentsSubscription = 100,
+    [int]$LimitPOLICYPolicyAssignmentsManagementGroup = 200,
+    [int]$LimitPOLICYPolicyAssignmentsSubscription = 200,
     #[int]$LimitPOLICYPolicyDefinitionsScopedTenant = 1000,
     [int]$LimitPOLICYPolicyDefinitionsScopedManagementGroup = 500,
     [int]$LimitPOLICYPolicyDefinitionsScopedSubscription = 500,
-    [int]$LimitPOLICYPolicySetAssignmentsManagementGroup = 100,
-    [int]$LimitPOLICYPolicySetAssignmentsSubscription = 100,
+    [int]$LimitPOLICYPolicySetAssignmentsManagementGroup = 200,
+    [int]$LimitPOLICYPolicySetAssignmentsSubscription = 200,
     [int]$LimitPOLICYPolicySetDefinitionsScopedTenant = 2500,
-    [int]$LimitPOLICYPolicySetDefinitionsScopedManagementGroup = 100,
-    [int]$LimitPOLICYPolicySetDefinitionsScopedSubscription = 100,
+    [int]$LimitPOLICYPolicySetDefinitionsScopedManagementGroup = 200,
+    [int]$LimitPOLICYPolicySetDefinitionsScopedSubscription = 200,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#subscription-limits
     [int]$LimitResourceGroups = 980,
@@ -6502,7 +6502,7 @@ if (($mgsApproachingLimitPolicyAssignments | measure-object).count -gt 0){
     $tfCount = ($mgsApproachingLimitPolicyAssignments | measure-object).count
     $tableId = "SummaryTable_MgsapproachingLimitsPolicyAssignments"
 $htmlTenantSummary += @"
-<button type="button" class="collapsible" id="SUMMARY_MgsapproachingLimitsPolicyAssignments"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyAssignments | measure-object).count) Management Groups approaching Limit for PolicyAssignment</span></button>
+<button type="button" class="collapsible" id="SUMMARY_MgsapproachingLimitsPolicyAssignments"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyAssignments | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicyAssignmentsManagementGroup) for PolicyAssignment</span></button>
 <div class="content">
 <table id= "$tableId" class="summaryTable">
 <thead>
@@ -6570,7 +6570,7 @@ extensions: [{ name: 'sort' }]
 }
 else{
 $htmlTenantSummary += @"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyAssignments | measure-object).count) Management Groups approaching Limit for PolicyAssignment</span></p>
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyAssignments | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicyAssignmentsManagementGroup) for PolicyAssignment</span></p>
 "@
 }
 #endregion SUMMARYMgsapproachingLimitsPolicyAssignments
@@ -6582,7 +6582,7 @@ if (($mgsApproachingLimitPolicyScope | measure-object).count -gt 0){
     $tfCount = ($mgsApproachingLimitPolicyScope | measure-object).count
     $tableId = "SummaryTable_MgsapproachingLimitsPolicyScope"
 $htmlTenantSummary += @"
-<button type="button" class="collapsible" id="SUMMARY_MgsapproachingLimitsPolicyScope"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyScope | measure-object).count) Management Groups approaching Limit for Policy Scope</span></button>
+<button type="button" class="collapsible" id="SUMMARY_MgsapproachingLimitsPolicyScope"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyScope | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicyDefinitionsScopedManagementGroup) for Policy Scope</span></button>
 <div class="content">
 <table id="$tableId" class="summaryTable">
 <thead>
@@ -6650,7 +6650,7 @@ extensions: [{ name: 'sort' }]
 }
 else{
 $htmlTenantSummary += @"
-<p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$($mgsApproachingLimitPolicyScope.count) Management Groups approaching Limit for Policy Scope</span></p>
+<p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$($mgsApproachingLimitPolicyScope.count) Management Groups approaching Limit ($LimitPOLICYPolicyDefinitionsScopedManagementGroup) for Policy Scope</span></p>
 "@
 }
 #endregion SUMMARYMgsapproachingLimitsPolicyScope
@@ -6662,7 +6662,7 @@ if ($mgsApproachingLimitPolicySetScope.count -gt 0){
     $tfCount = ($mgsApproachingLimitPolicySetScope | measure-object).count 
     $tableId = "SummaryTable_MgsapproachingLimitsPolicySetScope"
 $htmlTenantSummary += @"
-<button type="button" class="collapsible" id="SUMMARY_MgsapproachingLimitsPolicySetScope"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicySetScope | measure-object).count) Management Groups approaching Limit for PolicySet Scope</span></button>
+<button type="button" class="collapsible" id="SUMMARY_MgsapproachingLimitsPolicySetScope"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicySetScope | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedManagementGroup) for PolicySet Scope</span></button>
 <div class="content">
 <table id="$tableId" class="summaryTable">
 <thead>
@@ -6730,7 +6730,7 @@ extensions: [{ name: 'sort' }]
 }
 else{
 $htmlTenantSummary += @"
-<p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicySetScope | measure-object).count) Management Groups approaching Limit for PolicySet Scope</span></p>
+<p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicySetScope | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedManagementGroup) for PolicySet Scope</span></p>
 "@
 }
 #endregion SUMMARYMgsapproachingLimitsPolicySetScope
@@ -6742,7 +6742,7 @@ if (($mgsApproachingRoleAssignmentLimit | measure-object).count -gt 0){
     $tfCount = ($mgsApproachingRoleAssignmentLimit | measure-object).count
     $tableId = "SummaryTable_MgsapproachingLimitsRoleAssignment"
 $htmlTenantSummary += @"
-<button type="button" class="collapsible" id="SUMMARY_MgsapproachingLimitsRoleAssignment"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingRoleAssignmentLimit | measure-object).count) Management Groups approaching Limit for RoleAssignment</span></button>
+<button type="button" class="collapsible" id="SUMMARY_MgsapproachingLimitsRoleAssignment"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingRoleAssignmentLimit | measure-object).count) Management Groups approaching Limit ($LimitRBACRoleAssignmentsManagementGroup) for RoleAssignment</span></button>
 <div class="content">
 <table id= "$tableId" class="summaryTable">
 <thead>
@@ -6810,7 +6810,7 @@ extensions: [{ name: 'sort' }]
 }
 else{
 $htmlTenantSummary += @"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($mgApproachingRoleAssignmentLimit | measure-object).count) Management Groups approaching Limit for RoleAssignment</span></p>
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($mgApproachingRoleAssignmentLimit | measure-object).count) Management Groups approaching Limit ($LimitRBACRoleAssignmentsManagementGroup) for RoleAssignment</span></p>
 "@
 }
 #endregion SUMMARYMgsapproachingLimitsRoleAssignment
@@ -7204,8 +7204,9 @@ extensions: [{ name: 'sort' }]
 "@
 }
 else{
+
 $htmlTenantSummary += @"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($resourceTypesDiagnosticsMetricsLogsTrueCount | measure-object).count) Management Groups approaching Limit for PolicyAssignment</span></p>
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($resourceTypesDiagnosticsMetricsLogsTrueCount | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicyAssignmentsManagementGroup) for PolicyAssignment</span></p>
 "@
 }
 #endregion SUMMARYResourcesDiagnosticsCapable
@@ -7819,7 +7820,7 @@ if (($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count
     $tfCount = ($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count
     $tableId = "SummaryTable_SubsapproachingLimitsResourceGroups"
 $htmlTenantSummary += @"
-<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsResourceGroups"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count) Subscriptions approaching Limit for ResourceGroups</span></button>
+<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsResourceGroups"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count) Subscriptions approaching Limit ($LimitResourceGroups) for ResourceGroups</span></button>
 <div class="content">
 <table id= "$tableId" class="summaryTable">
 <thead>
@@ -7888,7 +7889,7 @@ extensions: [{ name: 'sort' }]
 }
 else{
 $htmlTenantSummary += @"
-    <p"><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count) Subscriptions approaching Limit for ResourceGroups</span></p>
+    <p"><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count) Subscriptions approaching Limit ($LimitResourceGroups) for ResourceGroups</span></p>
 "@
 }
 #endregion SUMMARYSubsapproachingLimitsResourceGroups
@@ -7900,7 +7901,7 @@ if (($subscriptionsApproachingLimitTags | measure-object).count -gt 0){
     $tfCount = ($subscriptionsApproachingLimitTags | measure-object).count
     $tableId = "SummaryTable_SubsapproachingLimitsSubscriptionTags"
 $htmlTenantSummary += @"
-<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsSubscriptionTags"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitTags | measure-object).count) Subscriptions approaching Limit for Tags</span></button>
+<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsSubscriptionTags"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitTags | measure-object).count) Subscriptions approaching Limit ($LimitTagsSubscription) for Tags</span></button>
 <div class="content">
 <table id="$tableId" class="summaryTable">
 <thead>
@@ -7968,7 +7969,7 @@ extensions: [{ name: 'sort' }]
 }
 else{
 $htmlTenantSummary += @"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$($subscriptionsApproachingLimitTags.count) Subscriptions approaching Limit for Tags</span></p>
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$($subscriptionsApproachingLimitTags.count) Subscriptions approaching Limit ($LimitTagsSubscription) for Tags</span></p>
 "@
 }
 #endregion SUMMARYSubsapproachingLimitsSubscriptionTags
@@ -7980,7 +7981,7 @@ if ($subscriptionsApproachingLimitPolicyAssignments.count -gt 0){
     $tfCount = ($subscriptionsApproachingLimitPolicyAssignments | measure-object).count
     $tableId = "SummaryTable_SubsapproachingLimitsPolicyAssignments"
 $htmlTenantSummary += @"
-<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsPolicyAssignments"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyAssignments | measure-object).count) Subscriptions approaching Limit for PolicyAssignment</span></button>
+<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsPolicyAssignments"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyAssignments | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicyAssignmentsSubscription) for PolicyAssignment</span></button>
 <div class="content">
 <table id="$tableId" class="summaryTable">
 <thead>
@@ -8048,7 +8049,7 @@ extensions: [{ name: 'sort' }]
 }
 else{
 $htmlTenantSummary += @"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyAssignments | measure-object).count) Subscriptions approaching Limit for PolicyAssignment</span></p>
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyAssignments | measure-object).count) Subscriptions ($LimitPOLICYPolicyAssignmentsSubscription) for PolicyAssignment</span></p>
 "@
 }
 #endregion SUMMARYSubsapproachingLimitsPolicyAssignments
@@ -8060,7 +8061,7 @@ if (($subscriptionsApproachingLimitPolicyScope | measure-object).count -gt 0){
     $tfCount = ($subscriptionsApproachingLimitPolicyScope | measure-object).count
     $tableId = "SummaryTable_SubsapproachingLimitsPolicyScope"
 $htmlTenantSummary += @"
-<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsPolicyScope"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit for Policy Scope</span></button>
+<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsPolicyScope"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicyDefinitionsScopedSubscription) for Policy Scope</span></button>
 <div class="content">
 <table id="$tableId" class="summaryTable">
 <thead>
@@ -8128,7 +8129,7 @@ extensions: [{ name: 'sort' }]
 }
 else{
 $htmlTenantSummary += @"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$($subscriptionsApproachingLimitPolicyScope.count) Subscriptions approaching Limit for Policy Scope</span></p>
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$($subscriptionsApproachingLimitPolicyScope.count) Subscriptions approaching Limit ($LimitPOLICYPolicyDefinitionsScopedSubscription) for Policy Scope</span></p>
 "@
 }
 #endregion SUMMARYSubsapproachingLimitsPolicyScope
@@ -8140,7 +8141,7 @@ if ($subscriptionsApproachingLimitPolicySetScope.count -gt 0){
     $tfCount = ($subscriptionsApproachingLimitPolicySetScope | measure-object).count
     $tableId = "SummaryTable_SubsapproachingLimitsPolicySetScope"
 $htmlTenantSummary += @"
-<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsPolicySetScope"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit for PolicySet Scope</span></button>
+<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsPolicySetScope"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedSubscription) for PolicySet Scope</span></button>
 <div class="content">
 <table id="$tableId" class="summaryTable">
 <thead>
@@ -8208,7 +8209,7 @@ extensions: [{ name: 'sort' }]
 }
 else{
 $htmlTenantSummary += @"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit for PolicySet Scope</span></p>
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedSubscription) for PolicySet Scope</span></p>
 "@
 }
 #endregion SUMMARYSubsapproachingLimitsPolicySetScope
@@ -8220,7 +8221,7 @@ if (($subscriptionsApproachingRoleAssignmentLimit | measure-object).count -gt 0)
     $tfCount = ($subscriptionsApproachingRoleAssignmentLimit | measure-object).count
     $tableId = "SummaryTable_SubsapproachingLimitsRoleAssignment"
 $htmlTenantSummary += @"
-<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsRoleAssignment"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingRoleAssignmentLimit | measure-object).count) Subscriptions approaching Limit for RoleAssignment</span></button>
+<button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsRoleAssignment"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingRoleAssignmentLimit | measure-object).count) Subscriptions approaching Limit ($LimitRBACRoleAssignmentsSubscription) for RoleAssignment</span></button>
 <div class="content">
 <table id= "$tableId" class="summaryTable">
 <thead>
@@ -8288,7 +8289,7 @@ extensions: [{ name: 'sort' }]
 }
 else{
     $htmlTenantSummary += @"
-    <p"><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingRoleAssignmentLimit | measure-object).count) Subscriptions approaching Limit for RoleAssignment</span></p>
+    <p"><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingRoleAssignmentLimit | measure-object).count) Subscriptions approaching Limit ($LimitRBACRoleAssignmentsSubscription) for RoleAssignment</span></p>
 "@
 }
 #endregion SUMMARYSubsapproachingLimitsRoleAssignment

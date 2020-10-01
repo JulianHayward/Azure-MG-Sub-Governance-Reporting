@@ -180,7 +180,9 @@ Please feel free to contribute. Thanks to so many supporters - testing, giving f
 
 Thanks Stefan Stranger for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale. Make sure you read Stefan´s Blog Article: <a href="https://stefanstranger.github.io/2020/08/28/EnterpriseScalePolicyDrivenGovernance/" target="_blank">Enterprise-Scale - Policy Driven Governance</a> 
 
-Special thanks to Tim Wanierke, Brooks Vaughn and Friedrich Weinmann (Microsoft)
+Special thanks to Tim Wanierke, Brooks Vaughn and Friedrich Weinmann (Microsoft).
+
+Kudos to the <a href="https://www.tablefilter.com/" target="_blank">TableFilter</a> Project Team!
 
 ## AzAdvertizer
 
