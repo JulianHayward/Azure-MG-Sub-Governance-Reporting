@@ -8687,7 +8687,7 @@ if (-not $HierarchyMapOnly){
     $resourceGroupsAll = @()
     $htResourceProvidersAll = @{ }
     $arrayResourceProvidersAll = @()
-    Write-Host " Getting RescourceTypes and ResourceGroups and RescourceProviders"
+    Write-Host " Getting ResourceTypes and ResourceGroups and ResourceProviders"
     $startResourceProviders = get-date
     
     foreach ($subscriptionId in $subscriptionIds){
@@ -8765,7 +8765,7 @@ if (-not $HierarchyMapOnly){
             if ($result -ne "letscheck"){
                 $result
                 if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                    Write-Host "  Getting RescourceProviders: try #$tryCounter; returned: '$result' - try again"
+                    Write-Host "  Getting ResourceProviders: try #$tryCounter; returned: '$result' - try again"
                     $result = "tryAgain"
                     Start-Sleep -Milliseconds 250
                 }
@@ -8777,10 +8777,10 @@ if (-not $HierarchyMapOnly){
         $arrayResourceProvidersAll += $resProvResult.value
     }
     $endResourceProviders = get-date
-    Write-Host " Getting Getting RescourceTypes and ResourceGroups and RescourceProviders duration: $((NEW-TIMESPAN -Start $startResourceProviders -End $endResourceProviders).TotalMinutes) minutes"
+    Write-Host " Getting Getting ResourceTypes and ResourceGroups and ResourceProviders duration: $((NEW-TIMESPAN -Start $startResourceProviders -End $endResourceProviders).TotalMinutes) minutes"
     
     <#
-    Write-Host " Getting RescourceTypes and ResourceGroups"
+    Write-Host " Getting ResourceTypes and ResourceGroups"
     $startResourceTypesResourceGroups = get-date
     foreach ($batch in $subscriptionsBatch) {
         $resourcesAll += Search-AzGraph -Subscription $batch.Group -Query $queryResources -First 5000
@@ -8840,9 +8840,9 @@ if (-not $HierarchyMapOnly){
     #>
 
     #$endResourceTypesResourceGroups = get-date
-    #Write-Host " Getting RescourceTypes and ResourceGroups duration: $((NEW-TIMESPAN -Start $startResourceTypesResourceGroups -End $endResourceTypesResourceGroups).TotalMinutes) minutes"
+    #Write-Host " Getting ResourceTypes and ResourceGroups duration: $((NEW-TIMESPAN -Start $startResourceTypesResourceGroups -End $endResourceTypesResourceGroups).TotalMinutes) minutes"
 
-    Write-Host " Checking Rescource Types Diagnostics capability"
+    Write-Host " Checking Resource Types Diagnostics capability"
     $startResourceDiagnosticsCheck = get-date
 
     $resourceTypesUnique = ($resourcesAll | select-object type).type.tolower() | sort-object -Unique  
@@ -8898,7 +8898,7 @@ if (-not $HierarchyMapOnly){
                 if ($result -ne "letscheck"){
                     #$result
                     if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                        Write-Host " Checking Rescource Types Diagnostics capability for $($resourcetype): try #$tryCounter; returned: '$result' - try again"
+                        Write-Host " Checking Resource Types Diagnostics capability for $($resourcetype): try #$tryCounter; returned: '$result' - try again"
                         $result = "tryAgain"
                         Start-Sleep -Milliseconds 250
                     }
@@ -8929,7 +8929,7 @@ if (-not $HierarchyMapOnly){
         }
     }
     $endResourceDiagnosticsCheck = get-date
-    Write-Host " Checking Rescource Types Diagnostics capability duration: $((NEW-TIMESPAN -Start $startResourceDiagnosticsCheck -End $endResourceDiagnosticsCheck).TotalMinutes) minutes"
+    Write-Host " Checking Resource Types Diagnostics capability duration: $((NEW-TIMESPAN -Start $startResourceDiagnosticsCheck -End $endResourceDiagnosticsCheck).TotalMinutes) minutes"
     
     Write-Host "Create helper ht Policies used in PolicySets"
     foreach ($policySet in ($htCacheDefinitions).policySet.keys){
