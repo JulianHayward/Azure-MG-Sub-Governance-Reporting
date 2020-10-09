@@ -2163,8 +2163,9 @@ if (-not $NoResourceProvidersDetailed){
 if (($htResourceProvidersAll.Keys | Measure-Object).count -gt 0){
     $tfCount = ($arrayResourceProvidersAll | Measure-Object).Count
     $tableId = "DetailsTable_ResourceProvider_$($subscriptionId -replace '-','_')"
+    $randomFunctionName = -join ((65..90) + (97..122) | Get-Random -Count 66 | ForEach-Object {[char]$_})
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
 <div class="content">
 <table id="$tableId" class="$cssClass">
 <thead>
@@ -2190,7 +2191,9 @@ $htmlScopeInsights += @"
         </table>
     </div>
     <script>
-        var tfConfig4$tableId = {
+        function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId=1;
+   var tfConfig4$tableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,          
 "@      
 if ($tfCount -gt 10){
@@ -2224,7 +2227,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$tableId', tfConfig4$tableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@
 }
@@ -2265,8 +2268,9 @@ if ($mgOrSub -eq "sub"){
     if ($tagsSubscriptionCount -gt 0){
         $tfCount = $tagsSubscriptionCount
         $tableId = "DetailsTable_Tags_$($subscriptionId -replace '-','_')"
+        $randomFunctionName = -join ((65..90) + (97..122) | Get-Random -Count 66 | ForEach-Object {[char]$_})
 $htmlScopeInsights += @"
-<button type="button" class="collapsible">
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible">
 <p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $tagsSubscriptionCount Subscription Tags | Limit: ($tagsSubscriptionCount/$LimitTagsSubscription)</p></button>
 <div class="content">
 <table id="$tableId" class="$cssClass">
@@ -2292,7 +2296,9 @@ $htmlScopeInsights += @"
             </tbody>
         </table>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -2325,7 +2331,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
     </div>
 "@
@@ -2361,8 +2367,9 @@ if ($mgOrSub -eq "mg"){
     if ($resourcesAllChildSubscriptionLocationCount -gt 0){
         $tfCount = ($resourcesAllChildSubscriptionsArray | measure-object).count
         $tableId = "DetailsTable_Resources_$($mgChild -replace '-','_')"
+        $randomFunctionName = -join ((65..90) + (97..122) | Get-Random -Count 66 | ForEach-Object {[char]$_})
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $resourcesAllChildSubscriptionResourceTypeCount ResourceTypes ($resourcesAllChildSubscriptionTotal Resources) in $resourcesAllChildSubscriptionLocationCount Locations (all Subscriptions below this scope)</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $resourcesAllChildSubscriptionResourceTypeCount ResourceTypes ($resourcesAllChildSubscriptionTotal Resources) in $resourcesAllChildSubscriptionLocationCount Locations (all Subscriptions below this scope)</p></button>
 <div class="content">
 <table id="$tableId" class="$cssClass">
 <thead>
@@ -2390,7 +2397,9 @@ $htmlScopeInsights += @"
             </tbody>
         </table>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -2424,7 +2433,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
     </div>
 "@
@@ -2444,8 +2453,9 @@ if ($mgOrSub -eq "sub"){
     if ($resourcesSubscriptionResourceTypeCount -gt 0){
         $tfCount = ($resourcesSubscription | Measure-Object).Count
         $tableId = "DetailsTable_Resources_$($subscriptionId -replace '-','_')"
+        $randomFunctionName = -join ((65..90) + (97..122) | Get-Random -Count 66 | ForEach-Object {[char]$_})
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $resourcesSubscriptionResourceTypeCount ResourceTypes ($resourcesSubscriptionTotal Resources) in $resourcesSubscriptionLocationCount Locations</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $resourcesSubscriptionResourceTypeCount ResourceTypes ($resourcesSubscriptionTotal Resources) in $resourcesSubscriptionLocationCount Locations</p></button>
 <div class="content">
 <table id="$tableId" class="$cssClass">
 <thead>
@@ -2472,7 +2482,9 @@ $htmlScopeInsights += @"
             </tbody>
         </table>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -2506,7 +2518,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
     </div>
 "@
@@ -2547,8 +2559,9 @@ if ($mgOrSub -eq "mg"){
     if ($resourcesAllChildSubscriptionResourceTypeCount -gt 0){
         $tfCount = $resourcesAllChildSubscriptionResourceTypeCount
         $tableId = "DetailsTable_resourcesDiagnosticsCapable_$($mgchild -replace '-','_')"
+        $randomFunctionName = -join ((65..90) + (97..122) | Get-Random -Count 66 | ForEach-Object {[char]$_})
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesAllChildSubscriptionResourceTypeCount ResourceTypes Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs) (all Subscriptions below this scope)</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesAllChildSubscriptionResourceTypeCount ResourceTypes Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs) (all Subscriptions below this scope)</p></button>
 <div class="content">
 <table id="$tableId" class="$cssClass">
 <thead>
@@ -2581,7 +2594,9 @@ $htmlScopeInsights += @"
             </tbody>
         </table>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -2621,7 +2636,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
     </div>
 "@
@@ -2660,8 +2675,9 @@ if ($mgOrSub -eq "sub"){
     if ($resourcesSubscriptionResourceTypeCount -gt 0){
         $tfCount = $resourcesSubscriptionResourceTypeCount
         $tableId = "DetailsTable_resourcesDiagnosticsCapable_$($subscriptionId -replace '-','_')"
+        $randomFunctionName = -join ((65..90) + (97..122) | Get-Random -Count 66 | ForEach-Object {[char]$_})
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesSubscriptionResourceTypeCount ResourceTypes Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs)</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesSubscriptionResourceTypeCount ResourceTypes Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs)</p></button>
 <div class="content">
 <table id="$tableId" class="$cssClass">
 <thead>
@@ -2694,7 +2710,9 @@ $htmlScopeInsights += @"
             </tbody>
         </table>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -2734,7 +2752,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
     </div>
 "@
@@ -2771,8 +2789,9 @@ $policiesInherited = (($policiesAssigned | where-object { $_.Inheritance -notmat
 if (($policiesAssigned | measure-object).count -gt 0) {
     $tfCount = ($policiesAssigned | measure-object).count
     $tableId = "DetailsTable_PolicyAssignments_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
+    $randomFunctionName = -join ((65..90) + (97..122) | Get-Random -Count 66 | ForEach-Object {[char]$_})
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $policiesCount Policy Assignments ($policiesAssignedAtScope at scope, $policiesInherited inherited) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom)</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $policiesCount Policy Assignments ($policiesAssignedAtScope at scope, $policiesInherited inherited) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom)</p></button>
 <div class="content">
 <table id="$tableId" class="$cssClass">
 <thead>
@@ -2822,7 +2841,9 @@ $htmlScopeInsights += @"
         </table>
     </div>
     <script>
-        var tfConfig4$tableId = {
+        function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -2871,7 +2892,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$tableId', tfConfig4$tableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@
 }
@@ -2906,8 +2927,9 @@ $policySetsInherited = (($policySetsAssigned | where-object { $_.Inheritance -no
 if (($policySetsAssigned | measure-object).count -gt 0) {
     $tfCount = ($policiesAssigned | measure-object).count
     $tableId = "DetailsTable_PolicySetAssignments_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
+    $randomFunctionName = -join ((65..90) + (97..122) | Get-Random -Count 66 | ForEach-Object {[char]$_})
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $policySetsCount PolicySet Assignments ($policySetsAssignedAtScope at scope, $policySetsInherited inherited) (Builtin: $policySetsCountBuiltin | Custom: $policySetsCountCustom)</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $policySetsCount PolicySet Assignments ($policySetsAssignedAtScope at scope, $policySetsInherited inherited) (Builtin: $policySetsCountBuiltin | Custom: $policySetsCountCustom)</p></button>
 <div class="content">
 <table id="$tableId" class="$cssClass">
 <thead>
@@ -2955,7 +2977,9 @@ $htmlScopeInsights += @"
         </table>
     </div>
     <script>
-        var tfConfig4$tableId = {
+        function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -3002,7 +3026,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$tableId', tfConfig4$tableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@
 }
@@ -3072,6 +3096,7 @@ if ($mgOrSub -eq "sub"){
 if ($scopePoliciesCount -gt 0){
     $tfCount = $scopePoliciesCount
     $tableId = "DetailsTable_ScopedPolicies_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
+    $randomFunctionName = -join ((65..90) + (97..122) | Get-Random -Count 66 | ForEach-Object {[char]$_})
     if ($mgOrSub -eq "mg"){
         $LimitPOLICYPolicyScoped = $LimitPOLICYPolicyDefinitionsScopedManagementGroup
         if ($scopePoliciesCount -gt (($LimitPOLICYPolicyScoped * $LimitCriticalPercentage) / 100)){
@@ -3092,7 +3117,7 @@ if ($scopePoliciesCount -gt 0){
     }
 
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p>$faIcon $scopePoliciesCount Custom Policies scoped | Limit: ($scopePoliciesCount/$LimitPOLICYPolicyScoped)</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p>$faIcon $scopePoliciesCount Custom Policies scoped | Limit: ($scopePoliciesCount/$LimitPOLICYPolicyScoped)</p></button>
 <div class="content">
 <table id="$tableId" class="$cssClass">
 <thead>
@@ -3126,7 +3151,9 @@ $htmlScopeInsights += @"
             </table>
         </div>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -3163,7 +3190,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
 "@
 }
@@ -3194,6 +3221,7 @@ if ($mgOrSub -eq "sub"){
 if ($scopePolicySetsCount -gt 0){
     $tfCount = $scopePolicySetsCount
     $tableId = "DetailsTable_ScopedPolicySets_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
+    $randomFunctionName = -join ((65..90) + (97..122) | Get-Random -Count 66 | ForEach-Object {[char]$_})
     if ($mgOrSub -eq "mg"){
         $LimitPOLICYPolicySetScoped = $LimitPOLICYPolicySetDefinitionsScopedManagementGroup
         if ($scopePolicySetsCount -gt (($LimitPOLICYPolicySetScoped * $LimitCriticalPercentage) / 100)){
@@ -3213,7 +3241,7 @@ if ($scopePolicySetsCount -gt 0){
         }
     }
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p>$faIcon $scopePolicySetsCount Custom PolicySets scoped | Limit: ($scopePolicySetsCount/$LimitPOLICYPolicySetScoped)</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p>$faIcon $scopePolicySetsCount Custom PolicySets scoped | Limit: ($scopePolicySetsCount/$LimitPOLICYPolicySetScoped)</p></button>
 <div class="content">
 <table id="$tableId" class="$cssClass">
 <thead>
@@ -3243,7 +3271,9 @@ $htmlScopeInsights += @"
             </table>
         </div>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -3277,7 +3307,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
 "@
 }
@@ -3304,8 +3334,9 @@ if ($mgOrSub -eq "sub"){
             $tableIdentifier = $subscriptionId
         }
         $tableId = "DetailsTable_BlueprintAssignment_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
+        $randomFunctionName = -join ((65..90) + (97..122) | Get-Random -Count 66 | ForEach-Object {[char]$_})
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintsAssignedCount Blueprints assigned</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintsAssignedCount Blueprints assigned</p></button>
 <div class="content">
 <table id="$tableId" class="$cssClass">
 <thead>
@@ -3339,7 +3370,9 @@ $htmlScopeInsights += @"
             </table>
         </div>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -3376,7 +3409,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
 "@
     }
@@ -3403,8 +3436,9 @@ if ($blueprintsScopedCount -gt 0){
         $tableIdentifier = $subscriptionId
     }
     $tableId = "DetailsTable_BlueprintScoped_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
+    $randomFunctionName = -join ((65..90) + (97..122) | Get-Random -Count 66 | ForEach-Object {[char]$_})
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintsScopedCount Blueprints scoped</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintsScopedCount Blueprints scoped</p></button>
 <div class="content">
 <table id="$tableId" class="$cssClass">
 <thead>
@@ -3434,7 +3468,9 @@ $htmlScopeInsights += @"
             </table>
         </div>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -3469,7 +3505,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
 "@
 }
@@ -3514,8 +3550,9 @@ $roleSecurityFindingOwnerAssignmentSP = ($rolesAssigned | Where-Object { $_.Role
 if (($rolesAssigned | measure-object).count -gt 0) {
     $tfCount = ($rolesAssigned | measure-object).count
     $tableId = "DetailsTable_RoleAssignments_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
+    $randomFunctionName = -join ((65..90) + (97..122) | Get-Random -Count 66 | ForEach-Object {[char]$_})
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p>$faIcon $rolesAssignedCount Role Assignments ($rolesAssignedInheritedCount inherited) (User: $rolesAssignedUser | Group: $rolesAssignedGroup | ServicePrincipal: $rolesAssignedServicePrincipal | Orphaned: $rolesAssignedUnknown) ($($roleSecurityFindingCustomRoleOwnerImg)CustomRoleOwner: $roleSecurityFindingCustomRoleOwner, $($RoleSecurityFindingOwnerAssignmentSPImg)OwnerAssignmentSP: $roleSecurityFindingOwnerAssignmentSP) (Policy related: $roleAssignmentsRelatedToPolicyCount) | Limit: ($rolesAssignedAtScopeCount/$LimitRoleAssignmentsScope)</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p>$faIcon $rolesAssignedCount Role Assignments ($rolesAssignedInheritedCount inherited) (User: $rolesAssignedUser | Group: $rolesAssignedGroup | ServicePrincipal: $rolesAssignedServicePrincipal | Orphaned: $rolesAssignedUnknown) ($($roleSecurityFindingCustomRoleOwnerImg)CustomRoleOwner: $roleSecurityFindingCustomRoleOwner, $($RoleSecurityFindingOwnerAssignmentSPImg)OwnerAssignmentSP: $roleSecurityFindingOwnerAssignmentSP) (Policy related: $roleAssignmentsRelatedToPolicyCount) | Limit: ($rolesAssignedAtScopeCount/$LimitRoleAssignmentsScope)</p></button>
 <div class="content">
 <table id="$tableId" class="$cssClass">
 <thead>
@@ -3555,7 +3592,9 @@ $htmlScopeInsights += @"
         </table>
     </div>
     <script>
-        var tfConfig4$tableId = {
+        function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -3597,7 +3636,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$tableId', tfConfig4$tableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@
 }
