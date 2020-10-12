@@ -321,6 +321,7 @@ $table.columns.add((New-Object system.Data.DataColumn SubscriptionTags, ([string
 $table.columns.add((New-Object system.Data.DataColumn SubscriptionTagsLimit, ([int])))
 $table.columns.add((New-Object system.Data.DataColumn SubscriptionTagsCount, ([int])))
 $table.columns.add((New-Object system.Data.DataColumn Policy, ([string])))
+$table.columns.add((New-Object system.Data.DataColumn PolicyDescription, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyVariant, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyType, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyCategory, ([string])))
@@ -336,6 +337,7 @@ $table.columns.add((New-Object system.Data.DataColumn PolicyAssignmentNotScope, 
 $table.columns.add((New-Object system.Data.DataColumn PolicyAssignmentId, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyAssignmentName, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyAssignmentDisplayName, ([string])))
+$table.columns.add((New-Object system.Data.DataColumn PolicyAssignmentDescription, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyAssignmentIdentity, ([string])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyAssigmentLimit, ([int])))
 $table.columns.add((New-Object system.Data.DataColumn PolicyAssigmentCount, ([int])))
@@ -388,6 +390,7 @@ function addRowToTable() {
         $SubscriptionTagsLimit = 0, 
         $SubscriptionTagsCount = 0, 
         $Policy, 
+        $PolicyDescription,
         $PolicyType, 
         $PolicyCategory, 
         $PolicyDefinitionIdGuid, 
@@ -402,6 +405,7 @@ function addRowToTable() {
         $PolicyAssignmentId, 
         $PolicyAssignmentName, 
         $PolicyAssignmentDisplayName, 
+        $PolicyAssignmentDescription,
         $PolicyAssignmentIdentity, 
         $PolicyVariant, 
         $PolicyAssigmentLimit = 0, 
@@ -452,6 +456,7 @@ function addRowToTable() {
     $row.SubscriptionTagsLimit = $SubscriptionTagsLimit
     $row.SubscriptionTagsCount = $SubscriptionTagsCount
     $row.Policy = $Policy
+    $row.PolicyDescription = $PolicyDescription
     $row.PolicyType = $PolicyType
     $row.PolicyCategory = $PolicyCategory
     $row.PolicyDefinitionIdGuid = $PolicyDefinitionIdGuid
@@ -466,6 +471,7 @@ function addRowToTable() {
     $row.PolicyAssignmentId = $PolicyAssignmentId
     $row.PolicyAssignmentName = $PolicyAssignmentName
     $row.PolicyAssignmentDisplayName = $PolicyAssignmentDisplayName
+    $row.PolicyAssignmentDescription = $PolicyAssignmentDescription
     $row.PolicyAssignmentIdentity = $PolicyAssignmentIdentity
     $row.PolicyVariant = $PolicyVariant 
     $row.PolicyAssigmentLimit = $PolicyAssigmentLimit
@@ -636,12 +642,19 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
         until($result -ne "tryAgain")
         
         $mgPolicyDefinitions = $requestPolicyDefinitionAPI.value | Where-Object { $_.properties.policyType -eq "custom" }
-        $PolicyDefinitionsScopedCount = (($mgPolicyDefinitions | Where-Object { ($_.Id).startswith("/providers/Microsoft.Management/managementGroups/$($getMg.Name)/","CurrentCultureIgnoreCase") }) | measure-object).count
+        $PolicyDefinitionsScopedCount = (($mgPolicyDefinitions | Where-Object { ($_.Id) -like "/providers/Microsoft.Management/managementGroups/$($getMg.Name)/*" }) | measure-object).count
         foreach ($mgPolicyDefinition in $mgPolicyDefinitions) {
             if (-not $($htCacheDefinitions).policy.($mgPolicyDefinition.id)) {
+                if (($mgPolicyDefinition.Properties.description).length -eq 0){
+                    $policyDefinitionDescription = "no description given"
+                }
+                else{
+                    $policyDefinitionDescription = $mgPolicyDefinition.Properties.description
+                }
                 $($htCacheDefinitions).policy.$($mgPolicyDefinition.id) = @{ }
                 $($htCacheDefinitions).policy.$($mgPolicyDefinition.id).Id = $($mgPolicyDefinition.id)
                 $($htCacheDefinitions).policy.$($mgPolicyDefinition.id).DisplayName = $($mgPolicyDefinition.Properties.displayname)
+                $($htCacheDefinitions).policy.$($mgPolicyDefinition.id).Description = $($policyDefinitionDescription)
                 $($htCacheDefinitions).policy.$($mgPolicyDefinition.id).Type = $($mgPolicyDefinition.Properties.policyType)
                 $($htCacheDefinitions).policy.$($mgPolicyDefinition.id).Category = $($mgPolicyDefinition.Properties.metadata.Category)
                 $($htCacheDefinitions).policy.$($mgPolicyDefinition.id).PolicyDefinitionId = $($mgPolicyDefinition.id)
@@ -706,12 +719,19 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
         until($result -ne "tryAgain")
         
         $mgPolicySetDefinitions = $requestPolicySetDefinitionAPI.value | Where-Object { $_.properties.policyType -eq "custom" }
-        $PolicySetDefinitionsScopedCount = (($mgPolicySetDefinitions | Where-Object { ($_.Id).startswith("/providers/Microsoft.Management/managementGroups/$($getMg.Name)/","CurrentCultureIgnoreCase") }) | measure-object).count
+        $PolicySetDefinitionsScopedCount = (($mgPolicySetDefinitions | Where-Object { ($_.Id) -like "/providers/Microsoft.Management/managementGroups/$($getMg.Name)/*" }) | measure-object).count
         foreach ($mgPolicySetDefinition in $mgPolicySetDefinitions) {
             if (-not $($htCacheDefinitions).policySet.($mgPolicySetDefinition.id)) {
+                if (($mgPolicySetDefinition.Properties.description).length -eq 0){
+                    $policySetDefinitionDescription = "no description given"
+                }
+                else{
+                    $policySetDefinitionDescription = $mgPolicySetDefinition.Properties.description
+                }
                 $($htCacheDefinitions).policySet.$($mgPolicySetDefinition.id) = @{ }
                 $($htCacheDefinitions).policySet.$($mgPolicySetDefinition.id).Id = $($mgPolicySetDefinition.id)
                 $($htCacheDefinitions).policySet.$($mgPolicySetDefinition.id).DisplayName = $($mgPolicySetDefinition.Properties.displayname)
+                $($htCacheDefinitions).policySet.$($mgPolicySetDefinition.id).Description = $($policySetDefinitionDescription)
                 $($htCacheDefinitions).policySet.$($mgPolicySetDefinition.id).Type = $($mgPolicySetDefinition.Properties.policyType)
                 $($htCacheDefinitions).policySet.$($mgPolicySetDefinition.id).Category = $($mgPolicySetDefinition.Properties.metadata.Category)
                 $($htCacheDefinitions).policySet.$($mgPolicySetDefinition.id).PolicyDefinitionId = $($mgPolicySetDefinition.id)
@@ -766,6 +786,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                     $PolicyAssignmentId = $L0mgmtGroupPolicyAssignment.Id
                     $PolicyAssignmentName = $L0mgmtGroupPolicyAssignment.Name
                     $PolicyAssignmentDisplayName = $L0mgmtGroupPolicyAssignment.Properties.DisplayName
+                    if (($L0mgmtGroupPolicyAssignment.Properties.Description).length -eq 0){
+                        $PolicyAssignmentDescription = "no description given"
+                    }
+                    else{
+                        $PolicyAssignmentDescription = $L0mgmtGroupPolicyAssignment.Properties.Description
+                    }
 
                     if ($L0mgmtGroupPolicyAssignment.Identity) {
                         $PolicyAssignmentIdentity = $L0mgmtGroupPolicyAssignment.Identity.principalId
@@ -788,6 +814,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         -mgParentId $mgParentId `
                         -mgParentName $mgParentName `
                         -Policy $htCacheDefinitions.$definitiontype.$($Id).DisplayName `
+                        -PolicyDescription $htCacheDefinitions.$definitiontype.$($Id).Description `
                         -PolicyType $htCacheDefinitions.$definitiontype.$($Id).Type `
                         -PolicyCategory $htCacheDefinitions.$definitiontype.$($Id).Category `
                         -PolicyDefinitionIdGuid ((($htCacheDefinitions).($definitiontype).($Id).Id) -replace ".*/") `
@@ -802,6 +829,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         -PolicyAssignmentId $PolicyAssignmentId `
                         -PolicyAssignmentName $PolicyAssignmentName `
                         -PolicyAssignmentDisplayName $PolicyAssignmentDisplayName `
+                        -PolicyAssignmentDescription $PolicyAssignmentDescription `
                         -PolicyAssignmentIdentity $PolicyAssignmentIdentity `
                         -PolicyVariant $PolicyVariant `
                         -PolicyAssigmentLimit $LimitPOLICYPolicyAssignmentsManagementGroup `
@@ -822,6 +850,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                     $PolicyAssignmentId = $L0mgmtGroupPolicyAssignment.Id
                     $PolicyAssignmentName = $L0mgmtGroupPolicyAssignment.Name
                     $PolicyAssignmentDisplayName = $L0mgmtGroupPolicyAssignment.Properties.DisplayName
+                    if (($L0mgmtGroupPolicyAssignment.Properties.Description).length -eq 0){
+                        $PolicyAssignmentDescription = "no description given"
+                    }
+                    else{
+                        $PolicyAssignmentDescription = $L0mgmtGroupPolicyAssignment.Properties.Description
+                    }
 
                     if ($L0mgmtGroupPolicyAssignment.Identity) {
                         $PolicyAssignmentIdentity = $L0mgmtGroupPolicyAssignment.Identity.principalId
@@ -844,6 +878,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         -mgParentId $mgParentId `
                         -mgParentName $mgParentName `
                         -Policy $htCacheDefinitions.$definitiontype.$($Id).DisplayName `
+                        -PolicyDescription $htCacheDefinitions.$definitiontype.$($Id).Description `
                         -PolicyType $htCacheDefinitions.$definitiontype.$($Id).Type `
                         -PolicyCategory $htCacheDefinitions.$definitiontype.$($Id).Category `
                         -PolicyDefinitionIdGuid ((($htCacheDefinitions).($definitiontype).($Id).Id) -replace ".*/") `
@@ -858,6 +893,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         -PolicyAssignmentId $PolicyAssignmentId `
                         -PolicyAssignmentName $PolicyAssignmentName `
                         -PolicyAssignmentDisplayName $PolicyAssignmentDisplayName `
+                        -PolicyAssignmentDescription $PolicyAssignmentDescription `
                         -PolicyAssignmentIdentity $PolicyAssignmentIdentity `
                         -PolicyVariant $PolicyVariant `
                         -PolicyAssigmentLimit $LimitPOLICYPolicyAssignmentsManagementGroup `
@@ -1271,11 +1307,11 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                     $($htCacheAssignments).blueprint.$($subscriptionBlueprintAssignment.Id) = $subscriptionBlueprintAssignment
                                 }  
 
-                                if (($subscriptionBlueprintAssignment.properties.blueprintId).StartsWith("/subscriptions/","CurrentCultureIgnoreCase")) {
+                                if (($subscriptionBlueprintAssignment.properties.blueprintId) -like "/subscriptions/*") {
                                     $blueprintScope = $subscriptionBlueprintAssignment.properties.blueprintId -replace "/providers/Microsoft.Blueprint/blueprints/.*", ""
                                     $blueprintName = $subscriptionBlueprintAssignment.properties.blueprintId -replace ".*/blueprints/", "" -replace "/versions/.*", ""
                                 }
-                                if (($subscriptionBlueprintAssignment.properties.blueprintId).StartsWith("/providers/Microsoft.Management/managementGroups/","CurrentCultureIgnoreCase")) {
+                                if (($subscriptionBlueprintAssignment.properties.blueprintId) -like "/providers/Microsoft.Management/managementGroups/*") {
                                     $blueprintScope = $subscriptionBlueprintAssignment.properties.blueprintId -replace "/providers/Microsoft.Blueprint/blueprints/.*", ""
                                     $blueprintName = $subscriptionBlueprintAssignment.properties.blueprintId -replace ".*/blueprints/", "" -replace "/versions/.*", ""
                                 }
@@ -1359,12 +1395,19 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         until($result -ne "tryAgain")
                         
                         $subPolicyDefinitions = $requestPolicyDefinitionAPI.value | Where-Object { $_.properties.policyType -eq "custom" }
-                        $PolicyDefinitionsScopedCount = (($subPolicyDefinitions | Where-Object { ($_.Id).startswith("/subscriptions/$childMgSubId/","CurrentCultureIgnoreCase") }) | measure-object).count
+                        $PolicyDefinitionsScopedCount = (($subPolicyDefinitions | Where-Object { ($_.Id) -like "/subscriptions/$childMgSubId/*" }) | measure-object).count
                         foreach ($subPolicyDefinition in $subPolicyDefinitions) {
                             if (-not $($htCacheDefinitions).policy.($subPolicyDefinition.id)) {
+                                if (($subPolicyDefinition.Properties.description).length -eq 0){
+                                    $policyDefinitionDescription = "no description given"
+                                }
+                                else{
+                                    $policyDefinitionDescription = $subPolicyDefinition.Properties.description
+                                }
                                 $($htCacheDefinitions).policy.$($subPolicyDefinition.id) = @{ }
                                 $($htCacheDefinitions).policy.$($subPolicyDefinition.id).Id = $($subPolicyDefinition.id)
                                 $($htCacheDefinitions).policy.$($subPolicyDefinition.id).DisplayName = $($subPolicyDefinition.Properties.displayname)
+                                $($htCacheDefinitions).policy.$($subPolicyDefinition.id).Description = $($policyDefinitionDescription)
                                 $($htCacheDefinitions).policy.$($subPolicyDefinition.id).Type = $($subPolicyDefinition.Properties.policyType)
                                 $($htCacheDefinitions).policy.$($subPolicyDefinition.id).Category = $($subPolicyDefinition.Properties.metadata.category)
                                 $($htCacheDefinitions).policy.$($subPolicyDefinition.id).PolicyDefinitionId = $($subPolicyDefinition.id)
@@ -1429,12 +1472,19 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         until($result -ne "tryAgain")
                        
                         $subPolicySetDefinitions = $requestPolicySetDefinitionAPI.value | Where-Object { $_.properties.policyType -eq "custom" }
-                        $PolicySetDefinitionsScopedCount = (($subPolicySetDefinitions | Where-Object { ($_.Id).startswith("/subscriptions/$childMgSubId/","CurrentCultureIgnoreCase") }) | measure-object).count
+                        $PolicySetDefinitionsScopedCount = (($subPolicySetDefinitions | Where-Object { ($_.Id) -like "/subscriptions/$childMgSubId/*" }) | measure-object).count
                         foreach ($subPolicySetDefinition in $subPolicySetDefinitions) {
                             if (-not $($htCacheDefinitions).policySet.($subPolicySetDefinition.id)) {
+                                if (($subPolicySetDefinition.Properties.description).length -eq 0){
+                                    $policySetDefinitionDescription = "no description given"
+                                }
+                                else{
+                                    $policySetDefinitionDescription = $subPolicySetDefinition.Properties.description
+                                }
                                 $($htCacheDefinitions).policySet.$($subPolicySetDefinition.id) = @{ }
                                 $($htCacheDefinitions).policySet.$($subPolicySetDefinition.id).Id = $($subPolicySetDefinition.id)
                                 $($htCacheDefinitions).policySet.$($subPolicySetDefinition.id).DisplayName = $($subPolicySetDefinition.Properties.displayname)
+                                $($htCacheDefinitions).policySet.$($subPolicySetDefinition.id).Description = $($policySetDefinitionDescription)
                                 $($htCacheDefinitions).policySet.$($subPolicySetDefinition.id).Type = $($subPolicySetDefinition.Properties.policyType)
                                 $($htCacheDefinitions).policySet.$($subPolicySetDefinition.id).Category = $($subPolicySetDefinition.Properties.metadata.category)
                                 $($htCacheDefinitions).policySet.$($subPolicySetDefinition.id).PolicyDefinitionId = $($subPolicySetDefinition.id)
@@ -1496,6 +1546,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                     $PolicyAssignmentId = $L1mgmtGroupSubPolicyAssignment.id
                                     $PolicyAssignmentName = $L1mgmtGroupSubPolicyAssignment.Name
                                     $PolicyAssignmentDisplayName = $L1mgmtGroupSubPolicyAssignment.Properties.DisplayName
+                                    if (($L1mgmtGroupSubPolicyAssignment.Properties.Description).length -eq 0){
+                                        $PolicyAssignmentDescription = "no description given"
+                                    }
+                                    else{
+                                        $PolicyAssignmentDescription = $L1mgmtGroupSubPolicyAssignment.Properties.Description
+                                    }
 
                                     if ($L1mgmtGroupSubPolicyAssignment.Identity) {
                                         $PolicyAssignmentIdentity = $L1mgmtGroupSubPolicyAssignment.Identity.principalId
@@ -1505,10 +1561,10 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                     }
 
                                     if ($htCacheDefinitions.$definitiontype.$($Id).Type -eq "Custom") {
-                                        if (($htCacheDefinitions.$definitiontype.$($Id).PolicyDefinitionId).StartsWith("/subscriptions","CurrentCultureIgnoreCase")) {
+                                        if (($htCacheDefinitions.$definitiontype.$($Id).PolicyDefinitionId) -like "/subscriptions/*") {
                                             $policyDefintionScope = ($htCacheDefinitions.$definitiontype.$($Id).PolicyDefinitionId -split "\/")[0..2] -join "/"
                                         }
-                                        if (($htCacheDefinitions.$definitiontype.$($Id).PolicyDefinitionId).StartsWith("/providers","CurrentCultureIgnoreCase")) {
+                                        if (($htCacheDefinitions.$definitiontype.$($Id).PolicyDefinitionId) -like "/providers/Microsoft.Management/managementGroups/*") {
                                             $policyDefintionScope = ($htCacheDefinitions.$definitiontype.$($Id).PolicyDefinitionId -split "\/")[0..4] -join "/"
                                         }
                                     }
@@ -1531,6 +1587,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                         -SubscriptionTagsLimit $LimitTagsSubscription `
                                         -SubscriptionTagsCount $SubscriptionTagsCount `
                                         -Policy $htCacheDefinitions.$definitiontype.$($Id).DisplayName `
+                                        -PolicyDescription $htCacheDefinitions.$definitiontype.$($Id).Description `
                                         -PolicyType $htCacheDefinitions.$definitiontype.$($Id).Type `
                                         -PolicyCategory $htCacheDefinitions.$definitiontype.$($Id).Category `
                                         -PolicyDefinitionIdGuid ((($htCacheDefinitions).($definitiontype).($Id).Id) -replace ".*/") `
@@ -1545,6 +1602,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                         -PolicyAssignmentId $PolicyAssignmentId `
                                         -PolicyAssignmentName $PolicyAssignmentName `
                                         -PolicyAssignmentDisplayName $PolicyAssignmentDisplayName `
+                                        -PolicyAssignmentDescription $PolicyAssignmentDescription `
                                         -PolicyAssignmentIdentity $PolicyAssignmentIdentity `
                                         -PolicyVariant $PolicyVariant `
                                         -PolicyAssigmentLimit $LimitPOLICYPolicyAssignmentsSubscription `
@@ -1565,6 +1623,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                     $PolicyAssignmentId = $L1mgmtGroupSubPolicyAssignment.id
                                     $PolicyAssignmentName = $L1mgmtGroupSubPolicyAssignment.Name
                                     $PolicyAssignmentDisplayName = $L1mgmtGroupSubPolicyAssignment.Properties.DisplayName
+                                    if (($L1mgmtGroupSubPolicyAssignment.Properties.Description).length -eq 0){
+                                        $PolicyAssignmentDescription = "no description given"
+                                    }
+                                    else{
+                                        $PolicyAssignmentDescription = $L1mgmtGroupSubPolicyAssignment.Properties.Description
+                                    }
 
                                     if ($L1mgmtGroupSubPolicyAssignment.Identity) {
                                         $PolicyAssignmentIdentity = $L1mgmtGroupSubPolicyAssignment.Identity.principalId
@@ -1574,10 +1638,10 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                     }
 
                                     if ($htCacheDefinitions.$definitiontype.$($Id).Type -eq "Custom") {
-                                        if (($htCacheDefinitions.$definitiontype.$($Id).PolicyDefinitionId).StartsWith("/subscriptions","CurrentCultureIgnoreCase")) {
+                                        if (($htCacheDefinitions.$definitiontype.$($Id).PolicyDefinitionId) -like "/subscriptions/*") {
                                             $policyDefintionScope = ($htCacheDefinitions.$definitiontype.$($Id).PolicyDefinitionId -split "\/")[0..2] -join "/"
                                         }
-                                        if (($htCacheDefinitions.$definitiontype.$($Id).PolicyDefinitionId).StartsWith("/providers","CurrentCultureIgnoreCase")) {
+                                        if (($htCacheDefinitions.$definitiontype.$($Id).PolicyDefinitionId) -like "/providers/Microsoft.Management/managementGroups/*") {
                                             $policyDefintionScope = ($htCacheDefinitions.$definitiontype.$($Id).PolicyDefinitionId -split "\/")[0..4] -join "/"
                                         }
                                     }
@@ -1600,6 +1664,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                         -SubscriptionTagsLimit $LimitTagsSubscription `
                                         -SubscriptionTagsCount $SubscriptionTagsCount `
                                         -Policy $htCacheDefinitions.$definitiontype.$($Id).DisplayName `
+                                        -PolicyDescription $htCacheDefinitions.$definitiontype.$($Id).Description `
                                         -PolicyType $htCacheDefinitions.$definitiontype.$($Id).Type `
                                         -PolicyCategory $htCacheDefinitions.$definitiontype.$($Id).Category `
                                         -PolicyDefinitionIdGuid ((($htCacheDefinitions).($definitiontype).($Id).Id) -replace ".*/") `
@@ -1614,6 +1679,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                         -PolicyAssignmentId $PolicyAssignmentId `
                                         -PolicyAssignmentName $PolicyAssignmentName `
                                         -PolicyAssignmentDisplayName $PolicyAssignmentDisplayName `
+                                        -PolicyAssignmentDescription $PolicyAssignmentDescription `
                                         -PolicyAssignmentIdentity $PolicyAssignmentIdentity `
                                         -PolicyVariant $PolicyVariant `
                                         -PolicyAssigmentLimit $LimitPOLICYPolicyAssignmentsSubscription `
@@ -2163,9 +2229,12 @@ if (-not $NoResourceProvidersDetailed){
 if (($htResourceProvidersAll.Keys | Measure-Object).count -gt 0){
     $tfCount = ($arrayResourceProvidersAll | Measure-Object).Count
     $tableId = "DetailsTable_ResourceProvider_$($subscriptionId -replace '-','_')"
+    $randomFunctionName = "func_$tableId"
+    #$randomFunctionName = "func_$tableId"
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
@@ -2190,7 +2259,9 @@ $htmlScopeInsights += @"
         </table>
     </div>
     <script>
-        var tfConfig4$tableId = {
+        function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId=1;
+   var tfConfig4$tableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,          
 "@      
 if ($tfCount -gt 10){
@@ -2224,7 +2295,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$tableId', tfConfig4$tableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@
 }
@@ -2265,10 +2336,12 @@ if ($mgOrSub -eq "sub"){
     if ($tagsSubscriptionCount -gt 0){
         $tfCount = $tagsSubscriptionCount
         $tableId = "DetailsTable_Tags_$($subscriptionId -replace '-','_')"
+        $randomFunctionName = "func_$tableId"
 $htmlScopeInsights += @"
-<button type="button" class="collapsible">
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible">
 <p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $tagsSubscriptionCount Subscription Tags | Limit: ($tagsSubscriptionCount/$LimitTagsSubscription)</p></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
@@ -2292,7 +2365,9 @@ $htmlScopeInsights += @"
             </tbody>
         </table>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -2325,7 +2400,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
     </div>
 "@
@@ -2361,9 +2436,11 @@ if ($mgOrSub -eq "mg"){
     if ($resourcesAllChildSubscriptionLocationCount -gt 0){
         $tfCount = ($resourcesAllChildSubscriptionsArray | measure-object).count
         $tableId = "DetailsTable_Resources_$($mgChild -replace '-','_')"
+        $randomFunctionName = "func_$tableId"
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $resourcesAllChildSubscriptionResourceTypeCount ResourceTypes ($resourcesAllChildSubscriptionTotal Resources) in $resourcesAllChildSubscriptionLocationCount Locations (all Subscriptions below this scope)</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $resourcesAllChildSubscriptionResourceTypeCount ResourceTypes ($resourcesAllChildSubscriptionTotal Resources) in $resourcesAllChildSubscriptionLocationCount Locations (all Subscriptions below this scope)</p></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
@@ -2390,7 +2467,9 @@ $htmlScopeInsights += @"
             </tbody>
         </table>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -2424,7 +2503,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
     </div>
 "@
@@ -2444,9 +2523,11 @@ if ($mgOrSub -eq "sub"){
     if ($resourcesSubscriptionResourceTypeCount -gt 0){
         $tfCount = ($resourcesSubscription | Measure-Object).Count
         $tableId = "DetailsTable_Resources_$($subscriptionId -replace '-','_')"
+        $randomFunctionName = "func_$tableId"
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $resourcesSubscriptionResourceTypeCount ResourceTypes ($resourcesSubscriptionTotal Resources) in $resourcesSubscriptionLocationCount Locations</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $resourcesSubscriptionResourceTypeCount ResourceTypes ($resourcesSubscriptionTotal Resources) in $resourcesSubscriptionLocationCount Locations</p></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
@@ -2472,7 +2553,9 @@ $htmlScopeInsights += @"
             </tbody>
         </table>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -2506,7 +2589,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
     </div>
 "@
@@ -2547,9 +2630,11 @@ if ($mgOrSub -eq "mg"){
     if ($resourcesAllChildSubscriptionResourceTypeCount -gt 0){
         $tfCount = $resourcesAllChildSubscriptionResourceTypeCount
         $tableId = "DetailsTable_resourcesDiagnosticsCapable_$($mgchild -replace '-','_')"
+        $randomFunctionName = "func_$tableId"
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesAllChildSubscriptionResourceTypeCount ResourceTypes Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs) (all Subscriptions below this scope)</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesAllChildSubscriptionResourceTypeCount ResourceTypes Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs) (all Subscriptions below this scope)</p></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
@@ -2581,7 +2666,9 @@ $htmlScopeInsights += @"
             </tbody>
         </table>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -2621,7 +2708,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
     </div>
 "@
@@ -2660,9 +2747,11 @@ if ($mgOrSub -eq "sub"){
     if ($resourcesSubscriptionResourceTypeCount -gt 0){
         $tfCount = $resourcesSubscriptionResourceTypeCount
         $tableId = "DetailsTable_resourcesDiagnosticsCapable_$($subscriptionId -replace '-','_')"
+        $randomFunctionName = "func_$tableId"
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesSubscriptionResourceTypeCount ResourceTypes Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs)</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesSubscriptionResourceTypeCount ResourceTypes Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs)</p></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
@@ -2694,7 +2783,9 @@ $htmlScopeInsights += @"
             </tbody>
         </table>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -2734,7 +2825,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
     </div>
 "@
@@ -2765,15 +2856,17 @@ if ($mgOrSub -eq "sub"){
 $policiesCount = ($policiesAssigned | measure-object).count
 $policiesCountBuiltin = (($policiesAssigned | where-object { $_.PolicyType -eq "BuiltIn" }) | measure-object).count
 $policiesCountCustom = (($policiesAssigned | where-object { $_.PolicyType -eq "Custom" }) | measure-object).count
-$policiesAssignedAtScope = (($policiesAssigned | where-object { $_.Inheritance -match "this*" }) | measure-object).count
-$policiesInherited = (($policiesAssigned | where-object { $_.Inheritance -notmatch "this*" }) | measure-object).count
+$policiesAssignedAtScope = (($policiesAssigned | where-object { $_.Inheritance -like "this*" }) | measure-object).count
+$policiesInherited = (($policiesAssigned | where-object { $_.Inheritance -notlike "this*" }) | measure-object).count
 
 if (($policiesAssigned | measure-object).count -gt 0) {
     $tfCount = ($policiesAssigned | measure-object).count
     $tableId = "DetailsTable_PolicyAssignments_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
+    $randomFunctionName = "func_$tableId"
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $policiesCount Policy Assignments ($policiesAssignedAtScope at scope, $policiesInherited inherited) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom)</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $policiesCount Policy Assignments ($policiesAssignedAtScope at scope, $policiesInherited inherited) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom)</p></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
@@ -2822,7 +2915,9 @@ $htmlScopeInsights += @"
         </table>
     </div>
     <script>
-        var tfConfig4$tableId = {
+        function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -2871,7 +2966,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$tableId', tfConfig4$tableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@
 }
@@ -2900,15 +2995,17 @@ if ($mgOrSub -eq "sub"){
 $policySetsCount = ($policySetsAssigned | measure-object).count
 $policySetsCountBuiltin = (($policySetsAssigned | where-object { $_.PolicyType -eq "BuiltIn" }) | measure-object).count
 $policySetsCountCustom = (($policySetsAssigned | where-object { $_.PolicyType -eq "Custom" }) | measure-object).count
-$policySetsAssignedAtScope = (($policySetsAssigned | where-object { $_.Inheritance -match "this*" }) | measure-object).count
-$policySetsInherited = (($policySetsAssigned | where-object { $_.Inheritance -notmatch "this*" }) | measure-object).count
+$policySetsAssignedAtScope = (($policySetsAssigned | where-object { $_.Inheritance -like "this*" }) | measure-object).count
+$policySetsInherited = (($policySetsAssigned | where-object { $_.Inheritance -notlike "this*" }) | measure-object).count
 
 if (($policySetsAssigned | measure-object).count -gt 0) {
     $tfCount = ($policiesAssigned | measure-object).count
     $tableId = "DetailsTable_PolicySetAssignments_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
+    $randomFunctionName = "func_$tableId"
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $policySetsCount PolicySet Assignments ($policySetsAssignedAtScope at scope, $policySetsInherited inherited) (Builtin: $policySetsCountBuiltin | Custom: $policySetsCountCustom)</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $policySetsCount PolicySet Assignments ($policySetsAssignedAtScope at scope, $policySetsInherited inherited) (Builtin: $policySetsCountBuiltin | Custom: $policySetsCountCustom)</p></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
@@ -2955,7 +3052,9 @@ $htmlScopeInsights += @"
         </table>
     </div>
     <script>
-        var tfConfig4$tableId = {
+        function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -3002,7 +3101,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$tableId', tfConfig4$tableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@
 }
@@ -3060,18 +3159,19 @@ $htmlScopeInsights += @"
 #region ScopeInsightsScopedPolicies
 if ($mgOrSub -eq "mg"){
     $tableIdentifier = $mgChild
-    $scopePolicies = ($script:customPoliciesDetailed | where-object { $_.PolicyDefinitionId  -match "/providers/Microsoft.Management/managementGroups/$mgChild/" })
+    $scopePolicies = ($script:customPoliciesDetailed | where-object { $_.PolicyDefinitionId  -like "*/providers/Microsoft.Management/managementGroups/$mgChild/*" })
     $scopePoliciesCount = ($scopePolicies | Measure-Object).count
 }
 if ($mgOrSub -eq "sub"){
     $tableIdentifier = $subscriptionId
-    $scopePolicies = ($script:customPoliciesDetailed | where-object { $_.PolicyDefinitionId  -match "/subscriptions/$subscriptionId/" })
+    $scopePolicies = ($script:customPoliciesDetailed | where-object { $_.PolicyDefinitionId  -like "*/subscriptions/$subscriptionId/*" })
     $scopePoliciesCount = ($scopePolicies | Measure-Object).count
 }
 
 if ($scopePoliciesCount -gt 0){
     $tfCount = $scopePoliciesCount
     $tableId = "DetailsTable_ScopedPolicies_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
+    $randomFunctionName = "func_$tableId"
     if ($mgOrSub -eq "mg"){
         $LimitPOLICYPolicyScoped = $LimitPOLICYPolicyDefinitionsScopedManagementGroup
         if ($scopePoliciesCount -gt (($LimitPOLICYPolicyScoped * $LimitCriticalPercentage) / 100)){
@@ -3092,8 +3192,9 @@ if ($scopePoliciesCount -gt 0){
     }
 
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p>$faIcon $scopePoliciesCount Custom Policies scoped | Limit: ($scopePoliciesCount/$LimitPOLICYPolicyScoped)</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p>$faIcon $scopePoliciesCount Custom Policies scoped | Limit: ($scopePoliciesCount/$LimitPOLICYPolicyScoped)</p></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
@@ -3126,7 +3227,9 @@ $htmlScopeInsights += @"
             </table>
         </div>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -3163,7 +3266,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
 "@
 }
@@ -3182,18 +3285,19 @@ $htmlScopeInsights += @"
 #region ScopeInsightsScopedPolicySets
 if ($mgOrSub -eq "mg"){
     $tableIdentifier = $mgChild
-    $scopePolicySets = ($script:customPolicySetsDetailed | where-object { $_.PolicySetDefinitionId  -match "/providers/Microsoft.Management/managementGroups/$mgChild/" })
+    $scopePolicySets = ($script:customPolicySetsDetailed | where-object { $_.PolicySetDefinitionId  -like "*/providers/Microsoft.Management/managementGroups/$mgChild/*" })
     $scopePolicySetsCount = ($scopePolicySets | Measure-Object).count
 }
 if ($mgOrSub -eq "sub"){
     $tableIdentifier = $subscriptionId
-    $scopePolicySets = ($script:customPolicySetsDetailed | where-object { $_.PolicySetDefinitionId  -match "/subscriptions/$subscriptionId/" })
+    $scopePolicySets = ($script:customPolicySetsDetailed | where-object { $_.PolicySetDefinitionId  -like "*/subscriptions/$subscriptionId/*" })
     $scopePolicySetsCount = ($scopePolicySets | Measure-Object).count
 }
 
 if ($scopePolicySetsCount -gt 0){
     $tfCount = $scopePolicySetsCount
     $tableId = "DetailsTable_ScopedPolicySets_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
+    $randomFunctionName = "func_$tableId"
     if ($mgOrSub -eq "mg"){
         $LimitPOLICYPolicySetScoped = $LimitPOLICYPolicySetDefinitionsScopedManagementGroup
         if ($scopePolicySetsCount -gt (($LimitPOLICYPolicySetScoped * $LimitCriticalPercentage) / 100)){
@@ -3213,8 +3317,9 @@ if ($scopePolicySetsCount -gt 0){
         }
     }
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p>$faIcon $scopePolicySetsCount Custom PolicySets scoped | Limit: ($scopePolicySetsCount/$LimitPOLICYPolicySetScoped)</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p>$faIcon $scopePolicySetsCount Custom PolicySets scoped | Limit: ($scopePolicySetsCount/$LimitPOLICYPolicySetScoped)</p></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
@@ -3243,7 +3348,9 @@ $htmlScopeInsights += @"
             </table>
         </div>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -3277,7 +3384,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
 "@
 }
@@ -3304,9 +3411,11 @@ if ($mgOrSub -eq "sub"){
             $tableIdentifier = $subscriptionId
         }
         $tableId = "DetailsTable_BlueprintAssignment_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
+        $randomFunctionName = "func_$tableId"
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintsAssignedCount Blueprints assigned</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintsAssignedCount Blueprints assigned</p></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
@@ -3339,7 +3448,9 @@ $htmlScopeInsights += @"
             </table>
         </div>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -3376,7 +3487,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
 "@
     }
@@ -3403,9 +3514,11 @@ if ($blueprintsScopedCount -gt 0){
         $tableIdentifier = $subscriptionId
     }
     $tableId = "DetailsTable_BlueprintScoped_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
+    $randomFunctionName = "func_$tableId"
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintsScopedCount Blueprints scoped</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintsScopedCount Blueprints scoped</p></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
@@ -3434,7 +3547,9 @@ $htmlScopeInsights += @"
             </table>
         </div>
         <script>
-            var tfConfig4$tableId = {
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -3469,7 +3584,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
-            tf.init();
+            tf.init();}}
         </script>
 "@
 }
@@ -3514,9 +3629,11 @@ $roleSecurityFindingOwnerAssignmentSP = ($rolesAssigned | Where-Object { $_.Role
 if (($rolesAssigned | measure-object).count -gt 0) {
     $tfCount = ($rolesAssigned | measure-object).count
     $tableId = "DetailsTable_RoleAssignments_$($tableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
+    $randomFunctionName = "func_$tableId"
 $htmlScopeInsights += @"
-<button type="button" class="collapsible"><p>$faIcon $rolesAssignedCount Role Assignments ($rolesAssignedInheritedCount inherited) (User: $rolesAssignedUser | Group: $rolesAssignedGroup | ServicePrincipal: $rolesAssignedServicePrincipal | Orphaned: $rolesAssignedUnknown) ($($roleSecurityFindingCustomRoleOwnerImg)CustomRoleOwner: $roleSecurityFindingCustomRoleOwner, $($RoleSecurityFindingOwnerAssignmentSPImg)OwnerAssignmentSP: $roleSecurityFindingOwnerAssignmentSP) (Policy related: $roleAssignmentsRelatedToPolicyCount) | Limit: ($rolesAssignedAtScopeCount/$LimitRoleAssignmentsScope)</p></button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p>$faIcon $rolesAssignedCount Role Assignments ($rolesAssignedInheritedCount inherited) (User: $rolesAssignedUser | Group: $rolesAssignedGroup | ServicePrincipal: $rolesAssignedServicePrincipal | Orphaned: $rolesAssignedUnknown) ($($roleSecurityFindingCustomRoleOwnerImg)CustomRoleOwner: $roleSecurityFindingCustomRoleOwner, $($RoleSecurityFindingOwnerAssignmentSPImg)OwnerAssignmentSP: $roleSecurityFindingOwnerAssignmentSP) (Policy related: $roleAssignmentsRelatedToPolicyCount) | Limit: ($rolesAssignedAtScopeCount/$LimitRoleAssignmentsScope)</p></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
@@ -3555,7 +3672,9 @@ $htmlScopeInsights += @"
         </table>
     </div>
     <script>
-        var tfConfig4$tableId = {
+        function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@
 if ($tfCount -gt 10){
@@ -3597,7 +3716,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$tableId', tfConfig4$tableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@
 }
@@ -3668,11 +3787,13 @@ $script:customPoliciesDetailed += foreach ($customPolicy in ($customPoliciesArra
 
     #usedInPolicySet
     $usedInPolicySetArray = @()
-    $customPolicySets = $tenantCustomPolicySets | where-object { ($htCacheDefinitions).policySet.$_.Type -eq "Custom" }
-    $usedInPolicySetArray += foreach ($customPolicySet in $customPolicySets){
-        $hlpCustomPolicySet = ($htCacheDefinitions).policySet.($customPolicySet)
-        if (($hlpCustomPolicySet.PolicySetPolicyIds).contains($customPolicy.PolicyDefinitionId)){
-            ($hlpCustomPolicySet.Id)                          
+    #$customPolicySets = $tenantCustomPolicySets | where-object { ($htCacheDefinitions).policySet.$_.Type -eq "Custom" }
+    $usedInPolicySetArray += foreach ($customPolicySet in $tenantCustomPolicySets){
+        if (($htCacheDefinitions).policySet.$customPolicySet.Type -eq "Custom"){
+            $hlpCustomPolicySet = ($htCacheDefinitions).policySet.($customPolicySet)
+            if (($hlpCustomPolicySet.PolicySetPolicyIds).contains($customPolicy.PolicyDefinitionId)){
+                ($hlpCustomPolicySet.Id)                          
+            }
         }
     }
     $usedInPolicySetList = @()
@@ -3735,6 +3856,7 @@ if ($tenantCustomPoliciesCount -gt 0){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_customPolicies"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tenantCustomPoliciesCount Custom Policies ($scopeNamingSummary)</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -3823,14 +3945,14 @@ else{
         $customPoliciesInScopeArray = [System.Collections.ArrayList]@()
         foreach ($customPolicy in ($customPoliciesArray | Sort-Object @{Expression={$_.DisplayName}}, @{Expression={$_.PolicyDefinitionId}})) {
             $currentpolicy = ($htCacheDefinitions).policy.($customPolicy.PolicyDefinitionId)
-            if (($currentpolicy.PolicyDefinitionId).startswith("/providers/Microsoft.Management/managementGroups/","CurrentCultureIgnoreCase")) {
+            if (($currentpolicy.PolicyDefinitionId) -like "/providers/Microsoft.Management/managementGroups/*") {
                 $policyScopedMgSub = $currentpolicy.PolicyDefinitionId -replace "/providers/Microsoft.Management/managementGroups/", "" -replace '/.*'
                 if ($mgsAndSubs.MgId.contains("$policyScopedMgSub")) {
                     $null = $customPoliciesInScopeArray.Add($currentpolicy)
                 }
             }
 
-            if (($currentpolicy.PolicyDefinitionId).startswith("/subscriptions/","CurrentCultureIgnoreCase")) {
+            if (($currentpolicy.PolicyDefinitionId) -like "/subscriptions/*") {
                 $policyScopedMgSub = $currentpolicy.PolicyDefinitionId -replace "/subscriptions/", "" -replace '/.*'
                 if ($mgsAndSubs.SubscriptionId.contains("$policyScopedMgSub")) {
                     $null = $customPoliciesInScopeArray.Add($currentpolicy)
@@ -3853,6 +3975,7 @@ if ($tenantCustomPoliciesCount -gt 0){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_customPolicies"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tenantCustomPoliciesCount Custom Policies $scopeNamingSummary ($customPoliciesFromSuperiorMGs from superior scopes)</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -3979,6 +4102,7 @@ if ($getMgParentName -eq "Tenant Root"){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_customPoliciesOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arrayCustomPoliciesOrphanedFinalIncludingResourceGroups | measure-object).count) Orphaned Custom Policies ($scopeNamingSummary)</span> <abbr title="Policy is not used in a PolicySet AND Policy has no Assignments (including ResourceGroups)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -4067,13 +4191,13 @@ else{
     $customPoliciesOrphanedInScopeArray = @()
     $customPoliciesOrphanedInScopeArray += foreach ($customPolicyOrphaned in  $customPoliciesOrphaned){
         $hlpOrphanedInScope = ($htCacheDefinitions).policy.$customPolicyOrphaned
-        if (($hlpOrphanedInScope.PolicyDefinitionId).startswith("/providers/Microsoft.Management/managementGroups/","CurrentCultureIgnoreCase")) {
+        if (($hlpOrphanedInScope.PolicyDefinitionId) -like "/providers/Microsoft.Management/managementGroups/*") {
             $policyScopedMgSub = $hlpOrphanedInScope.PolicyDefinitionId -replace "/providers/Microsoft.Management/managementGroups/", "" -replace '/.*'
             if ($mgsAndSubs.MgId.contains("$policyScopedMgSub")) {
                 $hlpOrphanedInScope
             }
         }
-        if (($hlpOrphanedInScope.PolicyDefinitionId).startswith("/subscriptions/","CurrentCultureIgnoreCase")) {
+        if (($hlpOrphanedInScope.PolicyDefinitionId) -like "/subscriptions/*") {
             $policyScopedMgSub = $hlpOrphanedInScope.PolicyDefinitionId -replace "/subscriptions/", "" -replace '/.*'
             if ($mgsAndSubs.SubscriptionId.contains("$policyScopedMgSub")) {
                 $hlpOrphanedInScope
@@ -4101,6 +4225,7 @@ else{
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_customPoliciesOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arrayCustomPoliciesOrphanedFinalIncludingResourceGroups | measure-object).count) Orphaned Custom Policies ($scopeNamingSummary)</span> <abbr title="Policy is not used in a PolicySet AND Policy has no Assignments (including ResourceGroups) (Policies from superior scopes are not evaluated)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -4238,6 +4363,7 @@ if ($getMgParentName -eq "Tenant Root"){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_customPolicySets">$faimage <span class="valignMiddle">$tenantCustompolicySetsCount Custom PolicySets ($scopeNamingSummary) (Limit: $tenantCustompolicySetsCount/$LimitPOLICYPolicySetDefinitionsScopedTenant)</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -4324,13 +4450,13 @@ else{
         $custompolicySetsInScopeArray = @()
         $custompolicySetsInScopeArray += foreach ($custompolicySet in $tenantCustomPolicySets) {
             $currentpolicyset = ($htCacheDefinitions).policySet.$custompolicySet
-            if (($currentpolicyset.policyDefinitionId).startswith("/providers/Microsoft.Management/managementGroups/","CurrentCultureIgnoreCase")) {
+            if (($currentpolicyset.policyDefinitionId) -like "/providers/Microsoft.Management/managementGroups/*") {
                 $policySetScopedMgSub = $currentpolicyset.policyDefinitionId -replace "/providers/Microsoft.Management/managementGroups/", "" -replace '/.*'
                 if ($mgsAndSubs.MgId.contains("$policySetScopedMgSub")) {
                     $currentpolicyset
                 }
             }
-            if (($currentpolicyset.policyDefinitionId).startswith("/subscriptions/","CurrentCultureIgnoreCase")) {
+            if (($currentpolicyset.policyDefinitionId) -like "/subscriptions/*") {
                 $policySetScopedMgSub = $currentpolicyset.policyDefinitionId -replace "/subscriptions/", "" -replace '/.*'
                 if ($mgsAndSubs.SubscriptionId.contains("$policySetScopedMgSub")) {
                     $currentpolicyset
@@ -4349,6 +4475,7 @@ else{
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_customPolicySets">$faimage <span class="valignMiddle">$tenantCustomPolicySetsCount Custom PolicySets $scopeNamingSummary ($custompolicySetsFromSuperiorMGs from superior scopes) (Limit: $tenantCustompolicySetsCount/$LimitPOLICYPolicySetDefinitionsScopedTenant)</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -4453,6 +4580,7 @@ if ($getMgParentName -eq "Tenant Root"){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_custompolicySetsOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arraycustompolicySetSetsOrphanedFinalIncludingResourceGroups | measure-object).count) Orphaned Custom PolicySets ($scopeNamingSummary)</span> <abbr title="PolicySet has no Assignments (including ResourceGroups)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -4536,13 +4664,13 @@ else{
     }
     $arrayCustomPolicySetsOrphanedFinal = @()
     $arrayCustomPolicySetsOrphanedFinal += foreach ($custompolicySetOrphaned in  $custompolicySetSetsOrphaned){
-        if ((($htCacheDefinitions).policySet.$custompolicySetOrphaned.policyDefinitionId).startswith("/providers/Microsoft.Management/managementGroups/","CurrentCultureIgnoreCase")) {
+        if ((($htCacheDefinitions).policySet.$custompolicySetOrphaned.policyDefinitionId) -like "/providers/Microsoft.Management/managementGroups/*") {
             $policySetScopedMgSub = ($htCacheDefinitions).policySet.$custompolicySetOrphaned.policyDefinitionId -replace "/providers/Microsoft.Management/managementGroups/", "" -replace '/.*'
             if ($mgsAndSubs.MgId.contains("$policySetScopedMgSub")) {
                 ($htCacheDefinitions).policySet.$custompolicySetOrphaned
             }
         }
-        if ((($htCacheDefinitions).policySet.$custompolicySetOrphaned.policyDefinitionId).startswith("/subscriptions/","CurrentCultureIgnoreCase")) {
+        if ((($htCacheDefinitions).policySet.$custompolicySetOrphaned.policyDefinitionId) -like "/subscriptions/*") {
             $policySetScopedMgSub = ($htCacheDefinitions).policySet.$custompolicySetOrphaned.policyDefinitionId -replace "/subscriptions/", "" -replace '/.*'
             if ($mgsAndSubs.SubscriptionId.contains("$policySetScopedMgSub")) {
                 ($htCacheDefinitions).policySet.$custompolicySetOrphaned
@@ -4563,6 +4691,7 @@ else{
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_custompolicySetsOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arraycustompolicySetsOrphanedFinalIncludingResourceGroups | measure-object).count) Orphaned Custom PolicySets ($scopeNamingSummary)</span> <abbr title="PolicySet has no Assignments (including ResourceGroups) (PolicySets from superior scopes are not evaluated)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -4643,7 +4772,7 @@ if ($customPolicySetsCount -gt 0){
         foreach ($polsetPolDefId in $($htCacheDefinitions).policySet.($polSetDef).PolicySetPolicyIds) {
             $hlpDeprecatedPolicySet = (($htCacheDefinitions).policy.$polsetPolDefId)
             if ($hlpDeprecatedPolicySet.type -eq "BuiltIn") {
-                if ($hlpDeprecatedPolicySet.deprecated -eq $true -or ($hlpDeprecatedPolicySet.displayname).startswith("[Deprecated]","CurrentCultureIgnoreCase")) {
+                if ($hlpDeprecatedPolicySet.deprecated -eq $true -or ($hlpDeprecatedPolicySet.displayname).StartsWith("[Deprecated]","CurrentCultureIgnoreCase")) {
                     [PSCustomObject]@{'PolicySetDisplayName'= $($htCacheDefinitions).policySet.($polSetDef).DisplayName; 'PolicySetDefinitionId'= $($htCacheDefinitions).policySet.($polSetDef).PolicyDefinitionId; 'PolicyDisplayName' = $hlpDeprecatedPolicySet.displayname; 'PolicyId' = $hlpDeprecatedPolicySet.Id; 'DeprecatedProperty' = $hlpDeprecatedPolicySet.deprecated }
                 }
             }
@@ -4658,6 +4787,7 @@ $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_policySetsDeprecated"><i class="fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($policySetsDeprecated | measure-object).count) Custom PolicySets / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] or Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id= "$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -4752,20 +4882,20 @@ $policyAssignmentsDeprecated += foreach ($policyAssignmentAll in $($htCacheAssig
         foreach ($polsetPolDefId in $($htCacheDefinitions).policySet.(($hlpAssignmentDeprecatedPolicy.PolicyDefinitionId)).PolicySetPolicyIds) {
             $hlpDeprecatedAssignment = (($htCacheDefinitions).policy.(($polsetPolDefId)))
             if ($hlpDeprecatedAssignment.type -eq "BuiltIn") {
-                if ($hlpDeprecatedAssignment.deprecated -eq $true -or ($hlpDeprecatedAssignment.displayname).startswith("[Deprecated]","CurrentCultureIgnoreCase")) {
+                if ($hlpDeprecatedAssignment.deprecated -eq $true -or ($hlpDeprecatedAssignment.displayname).StartsWith("[Deprecated]","CurrentCultureIgnoreCase")) {
                     [PSCustomObject]@{'PolicyAssignmentDisplayName' = $hlpAssignmentDeprecatedPolicy.DisplayName; 'PolicyAssignmentId' = $policyAssignmentAll; 'PolicyDisplayName' = $hlpDeprecatedAssignment.displayname; 'PolicyId' = $hlpDeprecatedAssignment.Id; 'PolicySetDisplayName' = ($htCacheDefinitions).policySet.(($hlpAssignmentDeprecatedPolicy.PolicyDefinitionId)).displayname; 'PolicySetId' = ($htCacheDefinitions).policySet.(($hlpAssignmentDeprecatedPolicy.PolicyDefinitionId)).policydefinitionId; 'PolicyType' = "PolicySet"; 'DeprecatedProperty' = $hlpDeprecatedAssignment.deprecated }
-                    
                 }
             }
         }
     }
     #Policy
     $hlpDeprecatedAssignmentPol = ($htCacheDefinitions).policy.(($hlpAssignmentDeprecatedPolicy.PolicyDefinitionId))
-    if ($hlpDeprecatedAssignmentPol -and ($hlpDeprecatedAssignmentPol.type -eq "Builtin" -and ($hlpDeprecatedAssignmentPol.deprecated -eq $true) -or ($hlpDeprecatedAssignmentPol.displayname).startswith("[Deprecated]","CurrentCultureIgnoreCase"))) {
-        [PSCustomObject]@{'PolicyAssignmentDisplayName' = $hlpAssignmentDeprecatedPolicy.DisplayName; 'PolicyAssignmentId' = $policyAssignmentAll; 'PolicyDisplayName' = $hlpDeprecatedAssignmentPol.displayname; 'PolicyId' = $hlpDeprecatedAssignmentPol.Id; 'PolicyType' = "Policy"; 'DeprecatedProperty' = $hlpDeprecatedAssignmentPol.deprecated; 'PolicySetDisplayName' = "n/a"; 'PolicySetId' = "n/a"; }
+    if ($hlpDeprecatedAssignmentPol){
+        if ($hlpDeprecatedAssignmentPol.type -eq "Builtin" -and $hlpDeprecatedAssignmentPol.deprecated -eq $true -or ($hlpDeprecatedAssignmentPol.displayname).StartsWith("[Deprecated]","CurrentCultureIgnoreCase")) {
+            [PSCustomObject]@{'PolicyAssignmentDisplayName' = $hlpAssignmentDeprecatedPolicy.DisplayName; 'PolicyAssignmentId' = $policyAssignmentAll; 'PolicyDisplayName' = $hlpDeprecatedAssignmentPol.displayname; 'PolicyId' = $hlpDeprecatedAssignmentPol.Id; 'PolicyType' = "Policy"; 'DeprecatedProperty' = $hlpDeprecatedAssignmentPol.deprecated; 'PolicySetDisplayName' = "n/a"; 'PolicySetId' = "n/a"; }
+        }
     }
 }
-
 
 if (($policyAssignmentsDeprecated | measure-object).count -gt 0) {
     $tfCount = ($policyAssignmentsDeprecated | measure-object).count
@@ -4774,6 +4904,7 @@ $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_policyAssignmnetsDeprecated"><i class="fa fa-exclamation-triangle orange" aria-hidden="true"></i> <span class="valignMiddle">$(($policyAssignmentsDeprecated | measure-object).count) Policy Assignments / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] or Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id= "$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -4889,7 +5020,7 @@ $policyAssignmentIdsUnique = $policyBaseQuery | sort-object -Property PolicyAssi
 foreach ($policyAssignmentIdUnique in $policyAssignmentIdsUnique) {
 
     $assignment = ($htCacheAssignments).policy.($policyAssignmentIdUnique.PolicyAssignmentId)
-    if ($assignment.properties.policyDefinitionId -match "/Microsoft.Authorization/policyDefinitions/"){
+    if ($assignment.properties.policyDefinitionId -like "*/Microsoft.Authorization/policyDefinitions/*"){
         $test0 = $assignment.properties.parameters.effect.value
         if ($test0){
             $effect = $test0
@@ -4910,18 +5041,27 @@ foreach ($policyAssignmentIdUnique in $policyAssignmentIdsUnique) {
         $htPolicyAssignmentEffect.($policyAssignmentIdUnique.PolicyAssignmentId).effect = $effect
     }
 
+    #
     $relatedRoleAssignmentsArray = @()
-    $relatedRoleAssignments = $RoleAssignmentsArray | where-object { $_.DisplayName -eq ($policyAssignmentIdUnique.PolicyAssignmentId -replace '.*/') }
-    if (($relatedRoleAssignments | Measure-Object).count -gt 0) {
-        $relatedRoleAssignmentsArray += foreach ($relatedRoleAssignment in $relatedRoleAssignments) {
-            if (($htCacheDefinitions).role.($relatedRoleAssignment.RoleDefinitionId).IsCustom -eq $false) {
-                Write-Output "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($relatedRoleAssignment.RoleDefinitionId).html`" target=`"_blank`">$($relatedRoleAssignment.RoleDefinitionName)</a> ($($relatedRoleAssignment.RoleAssignmentId))"
-            }
-            else {
-                Write-Output "<u>$($relatedRoleAssignment.RoleDefinitionName)</u> ($($relatedRoleAssignment.RoleAssignmentId))"
+    #$relatedRoleAssignments = $RoleAssignmentsArray | where-object { $_.DisplayName -eq ($policyAssignmentIdUnique.PolicyAssignmentId -replace '.*/') }
+    #if (($relatedRoleAssignments | Measure-Object).count -gt 0) {
+        $relatedRoleAssignmentsArray += foreach ($relatedRoleAssignment in $RoleAssignmentsArray) {
+            if ($relatedRoleAssignment.DisplayName -eq ($policyAssignmentIdUnique.PolicyAssignmentId -replace '.*/')){
+                if (($htCacheDefinitions).role.($relatedRoleAssignment.RoleDefinitionId).IsCustom -eq $false) {
+                    Write-Output "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($relatedRoleAssignment.RoleDefinitionId).html`" target=`"_blank`">$($relatedRoleAssignment.RoleDefinitionName)</a> ($($relatedRoleAssignment.RoleAssignmentId))"
+                }
+                else {
+                    Write-Output "<u>$($relatedRoleAssignment.RoleDefinitionName)</u> ($($relatedRoleAssignment.RoleAssignmentId))"
+                }
             }
         }
-    }
+    #}
+    #>
+
+    #
+  
+    #
+
     $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentIdUnique.PolicyAssignmentId) = @{ }
     if (($relatedRoleAssignmentsArray | Measure-Object).count -gt 0) {
         $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentIdUnique.PolicyAssignmentId).relatedRoleAssignments = ($relatedRoleAssignmentsArray | sort-object) -join "$CsvDelimiterOpposite "
@@ -4951,7 +5091,6 @@ foreach ($policyAssignmentAll in $policyBaseQuery){
     if ($cnter % 500  -eq 0){
         $etappeSummaryPolicyAssignmentsAll = get-date
         write-host "   $cnter of $allPolicyAssignments PolicyAssignments processed: $((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAll -End $etappeSummaryPolicyAssignmentsAll).TotalSeconds) seconds"
-        
     }
    
     $assignment = ($htCacheAssignments).policy.($policyAssignmentAll.PolicyAssignmentId)
@@ -4972,7 +5111,8 @@ foreach ($policyAssignmentAll in $policyBaseQuery){
         }
     }
 
-    if (($policyAssignmentAll.PolicyAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/","CurrentCultureIgnoreCase")){
+    #if (($policyAssignmentAll.PolicyAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/","CurrentCultureIgnoreCase")){
+    if ($policyAssignmentAll.PolicyAssignmentId -like "/providers/Microsoft.Management/managementGroups/*"){
         if ("" -ne $policyAssignmentAll.SubscriptionId){
             $scope = "inherited $($policyAssignmentAll.PolicyAssignmentScope -replace '.*/')"
         }
@@ -4985,7 +5125,8 @@ foreach ($policyAssignmentAll in $policyBaseQuery){
             }
         }
     }
-    if (($policyAssignmentAll.PolicyAssignmentId).StartsWith("/subscriptions/","CurrentCultureIgnoreCase")){
+    #if (($policyAssignmentAll.PolicyAssignmentId).StartsWith("/subscriptions/","CurrentCultureIgnoreCase")){
+    if ($policyAssignmentAll.PolicyAssignmentId -like "/subscriptions/*"){
         $scope = "this Sub"
     }
 
@@ -5032,7 +5173,7 @@ foreach ($policyAssignmentAll in $policyBaseQuery){
         $CompliantResources = 0
     }
 
-    $null = $script:policyAssignmentsAllArray.Add([PSCustomObject]@{ 'Level' = $policyAssignmentAll.Level; 'MgId'= $policyAssignmentAll.MgId; 'MgName'= $policyAssignmentAll.MgName; 'subscriptionId' = $policyAssignmentAll.SubscriptionId; 'subscriptionName' = $policyAssignmentAll.Subscription; 'PolicyAssignmentId' = $policyAssignmentAll.PolicyAssignmentId; 'PolicyAssignmentDisplayName' = $policyAssignmentAll.PolicyAssignmentDisplayName; 'Effect' = $effect; 'PolicyName' = $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentAll.PolicyAssignmentId).policyWithWithoutLinkToAzAdvertizer; 'PolicyId' = $policyAssignmentAll.PolicyDefinitionIdFull; 'PolicyVariant' = $policyAssignmentAll.PolicyVariant; 'PolicyType' = $policyAssignmentAll.PolicyType; 'PolicyCategory' = $policyAssignmentAll.PolicyCategory; 'Inheritance' = $scope; 'ExcludedScope' = $excludedScope; 'RelatedRoleAssignments' = $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentAll.PolicyAssignmentId).relatedRoleAssignments; 'MgOrSub' = $mgOrSub; 'NonCompliantPolicies' = [int]$NonCompliantPolicies; 'CompliantPolicies' = $CompliantPolicies; 'NonCompliantResources' = $NonCompliantResources; 'CompliantResources' = $CompliantResources })
+    $null = $script:policyAssignmentsAllArray.Add([PSCustomObject]@{ 'Level' = $policyAssignmentAll.Level; 'MgId'= $policyAssignmentAll.MgId; 'MgName'= $policyAssignmentAll.MgName; 'subscriptionId' = $policyAssignmentAll.SubscriptionId; 'subscriptionName' = $policyAssignmentAll.Subscription; 'PolicyAssignmentId' = $policyAssignmentAll.PolicyAssignmentId; 'PolicyAssignmentDisplayName' = $policyAssignmentAll.PolicyAssignmentDisplayName; 'PolicyAssignmentDescription' = $policyAssignmentAll.PolicyAssignmentDescription; 'Effect' = $effect; 'PolicyName' = $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentAll.PolicyAssignmentId).policyWithWithoutLinkToAzAdvertizer; 'PolicyDescription' = $policyAssignmentAll.PolicyDescription; 'PolicyId' = $policyAssignmentAll.PolicyDefinitionIdFull; 'PolicyVariant' = $policyAssignmentAll.PolicyVariant; 'PolicyType' = $policyAssignmentAll.PolicyType; 'PolicyCategory' = $policyAssignmentAll.PolicyCategory; 'Inheritance' = $scope; 'ExcludedScope' = $excludedScope; 'RelatedRoleAssignments' = $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentAll.PolicyAssignmentId).relatedRoleAssignments; 'MgOrSub' = $mgOrSub; 'NonCompliantPolicies' = [int]$NonCompliantPolicies; 'CompliantPolicies' = $CompliantPolicies; 'NonCompliantResources' = $NonCompliantResources; 'CompliantResources' = $CompliantResources })
 }
 $endtest2 = get-date
 Write-Host " processing duration: $((NEW-TIMESPAN -Start $starttest2 -End $endtest2).TotalSeconds) seconds"
@@ -5045,6 +5186,7 @@ $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_policyAssignmentsAll"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($script:policyAssignmentsAllArray | measure-object).count) Policy Assignments ($policyAssignmentsUniqueCount unique)</span>
 </button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id= "$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -5056,6 +5198,7 @@ $htmlTenantSummary += @"
 <th>Inheritance</th>
 <th>ScopeExcluded</th>
 <th>Policy/Set DisplayName</th>
+<th>Policy/Set Description</th>
 <th>Policy/SetId</th>
 <th>Policy/Set</th>
 <th>Type</th>
@@ -5067,6 +5210,7 @@ $htmlTenantSummary += @"
 <th>Resources Compliant</th>
 <th>Role/Assignment</th>
 <th>Assignment DisplayName</th>
+<th>Assignment Description</th>
 <th>AssignmentId</th>
 </tr>
 </thead>
@@ -5084,6 +5228,7 @@ $htmlSummaryPolicyAssignmentsAll += @"
 <td>$($policyAssignment.Inheritance)</td>
 <td>$($policyAssignment.ExcludedScope)</td>
 <td>$($policyAssignment.PolicyName)</td>
+<td>$($policyAssignment.PolicyDescription)</td>
 <td class="breakwordall">$($policyAssignment.PolicyId)</td>
 <td>$($policyAssignment.PolicyVariant)</td>
 <td>$($policyAssignment.PolicyType)</td>
@@ -5095,6 +5240,7 @@ $htmlSummaryPolicyAssignmentsAll += @"
 <td>$($policyAssignment.CompliantResources)</td>
 <td class="breakwordall">$($policyAssignment.RelatedRoleAssignments)</td>
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentDisplayName)</td>
+<td class="breakwordall">$($policyAssignment.PolicyAssignmentDescription)</td>
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentId)</td>
 </tr>
 "@
@@ -5138,9 +5284,9 @@ $htmlTenantSummary += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_0: 'select',
             col_6: 'select',
-            col_9: 'select',
             col_10: 'select',
-            col_12: 'select',
+            col_11: 'select',
+            col_13: 'select',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -5155,16 +5301,25 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+                'caseinsensitivestring',
                 'number',
                 'number',
                 'number',
                 'number',
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring'
             ],
-            watermark: ['', '', '', 'try [nonempty]', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-extensions: [{ name: 'sort' }]
+            watermark: ['', '', '', 'try [nonempty]', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+extensions: [
+    {
+        name: 'colsVisibility',
+        at_start: [8, 20],
+        text: 'Columns: ',
+        enable_tick_all: true
+    },    
+    { name: 'sort' }]
         };
         var tf = new TableFilter('$tableId', tfConfig4$tableId);
         tf.init();
@@ -5205,6 +5360,7 @@ if ($tenantCustomRolesCount -gt 0){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_customRoles">$faimage <span class="valignMiddle">$tenantCustomRolesCount Custom Roles ($scopeNamingSummary) (Limit: $tenantCustomRolesCount/$LimitRBACCustomRoleDefinitionsTenant)</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -5311,6 +5467,7 @@ $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_customRolesOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arrayCustomRolesOrphanedFinalIncludingResourceGroups | measure-object).count) Orphaned Custom Roles ($scopeNamingSummary) <abbr title="Role has no Assignments (including ResourceGroups and Resources)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -5392,10 +5549,10 @@ else{
             $customRoleInScope = $false
             $customRoleIsOut = $false
             foreach ($customRoleAssignableScope in $customRoleAssignableScopes){
-                if (($customRoleAssignableScope).startswith("/providers/Microsoft.Management/managementGroups/","CurrentCultureIgnoreCase")){
+                if (($customRoleAssignableScope) -like "/providers/Microsoft.Management/managementGroups/*"){
                     $roleAssignableScopeMgSub = $customRoleAssignableScope -replace "/providers/Microsoft.Management/managementGroups/", ""
                     foreach ($customRoleAssignableScope in $customRoleAssignableScopes) {
-                        if (($customRoleAssignableScope).startswith("/providers/Microsoft.Management/managementGroups/","CurrentCultureIgnoreCase")){
+                        if (($customRoleAssignableScope) -like "/providers/Microsoft.Management/managementGroups/*"){
                             $roleAssignableScopeMgSub = $customRoleAssignableScope -replace "/providers/Microsoft.Management/managementGroups/", ""
                             if (-not $mgs.MgId.contains("$roleAssignableScopeMgSub")){
                                 $customRoleIsOut = $true
@@ -5410,7 +5567,7 @@ else{
                 }
                 if (-not $customRoleIsOut -eq $true){
                     if (($subs | measure-object).count -gt 0){
-                        if (($customRoleAssignableScope).startswith("/subscriptions/","CurrentCultureIgnoreCase")){
+                        if (($customRoleAssignableScope) -like "/subscriptions/*"){
                             $roleAssignableScopeMgSub = $customRoleAssignableScope -replace "/subscriptions/", "" -replace "/.*", ""
                             if ($subs.SubscriptionId.contains("$roleAssignableScopeMgSub")){
                                 $customRoleInScope = $true
@@ -5439,6 +5596,7 @@ $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_customRolesOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arrayCustomRolesOrphanedFinalIncludingResourceGroups | measure-object).count) Orphaned Custom Roles ($scopeNamingSummary) <abbr title="Role has no Assignments (including ResourceGroups and Resources). Roles where assignableScopes has mg from superior scopes are not evaluated"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -5523,6 +5681,7 @@ $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_roleAssignmnetsOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOrphanedUnique | measure-object).count) Orphaned Role Assignments ($scopeNamingSummary) <abbr title="Role was deleted although and assignment existed OR the target identity (User, Group, ServicePrincipal) was deleted"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id= "$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -5606,24 +5765,26 @@ $roleAssignmentIdsUnique = $rbacBaseQuery | sort-object -Property RoleAssignment
 
 $htRoleAssignmentRelatedPolicyAssignments = @{ }
 foreach ($roleAssignmentIdUnique in $roleAssignmentIdsUnique){
-    $relatedPolicyAssignment = $policyAssignmentIdsUnique | where-Object { $_.PolicyAssignmentName -eq $roleAssignmentIdUnique.RoleAssignmentDisplayname }
+    #$relatedPolicyAssignment = $policyAssignmentIdsUnique | where-Object { $_.PolicyAssignmentName -eq $roleAssignmentIdUnique.RoleAssignmentDisplayname }
     $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId) = @{ }
-    if ($relatedPolicyAssignment) {
-        if ($relatedPolicyAssignment.PolicyType -eq "BuiltIn") {
-            if ($relatedPolicyAssignment.PolicyVariant -eq "Policy") {
-                $LinkOrNotLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$($relatedPolicyAssignment.policyDefinitionIdGuid).html`" target=`"_blank`">$($relatedPolicyAssignment.Policy)</a>"
+    foreach ($policyAssignmentIdUnique in $policyAssignmentIdsUnique){
+        if ($policyAssignmentIdUnique.PolicyAssignmentName -eq $roleAssignmentIdUnique.RoleAssignmentDisplayname) {
+            if ($policyAssignmentIdUnique.PolicyType -eq "BuiltIn") {
+                if ($policyAssignmentIdUnique.PolicyVariant -eq "Policy") {
+                    $LinkOrNotLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$($policyAssignmentIdUnique.policyDefinitionIdGuid).html`" target=`"_blank`">$($policyAssignmentIdUnique.Policy)</a>"
+                }
+                if ($policyAssignmentIdUnique.PolicyVariant -eq "PolicySet") {
+                    $LinkOrNotLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($policyAssignmentIdUnique.policyDefinitionIdGuid).html`" target=`"_blank`">$($policyAssignmentIdUnique.Policy)</a>"
+                }
             }
-            if ($relatedPolicyAssignment.PolicyVariant -eq "PolicySet") {
-                $LinkOrNotLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($relatedPolicyAssignment.policyDefinitionIdGuid).html`" target=`"_blank`">$($relatedPolicyAssignment.Policy)</a>"
+            else {
+                $LinkOrNotLinkToAzAdvertizer = $policyAssignmentIdUnique.Policy
             }
+            $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignment = "$($policyAssignmentIdUnique.PolicyAssignmentId) ($LinkOrNotLinkToAzAdvertizer)"
         }
         else {
-            $LinkOrNotLinkToAzAdvertizer = $relatedPolicyAssignment.Policy
+            $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignment = "none" 
         }
-        $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignment = "$($relatedPolicyAssignment.PolicyAssignmentId) ($LinkOrNotLinkToAzAdvertizer)"
-    }
-    else {
-        $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignment = "none" 
     }
 
     if ($roleAssignmentIdUnique.RoleIsCustom -eq "FALSE"){
@@ -5653,7 +5814,8 @@ foreach ($rbac in $rbacBaseQuery){
         write-host "   $cnter of $roleAssignmentsallCount RoleAssignments processed; $((NEW-TIMESPAN -Start $startRoleAssignmentsAll -End $etappeRoleAssignmentsAll).TotalSeconds) seconds"
     }
     $scope = $null
-    if (($rbac.RoleAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/","CurrentCultureIgnoreCase")){
+    #if (($rbac.RoleAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/","CurrentCultureIgnoreCase")){
+    if ($rbac.RoleAssignmentId -like "/providers/Microsoft.Management/managementGroups/*"){
         if ("" -ne $rbac.SubscriptionId){
             $scope = "inherited $($rbac.RoleAssignmentScope -replace '.*/')"
         }
@@ -5666,10 +5828,12 @@ foreach ($rbac in $rbacBaseQuery){
             }
         }
     }
-    if (($rbac.RoleAssignmentId).StartsWith("/subscriptions/","CurrentCultureIgnoreCase")){
+    #if (($rbac.RoleAssignmentId).StartsWith("/subscriptions/","CurrentCultureIgnoreCase")){
+    if ($rbac.RoleAssignmentId -like "/subscriptions/*"){
         $scope = "this Sub"
     }
-    if (($rbac.RoleAssignmentId).StartsWith("/providers/Microsoft.Authorization/roleAssignments/","CurrentCultureIgnoreCase")){
+    #if (($rbac.RoleAssignmentId).StartsWith("/providers/Microsoft.Authorization/roleAssignments/","CurrentCultureIgnoreCase")){
+    if ($rbac.RoleAssignmentId -like "/providers/Microsoft.Authorization/roleAssignments/*"){
             $scope = "inherited ROOT"
     }
 
@@ -5692,6 +5856,7 @@ $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_roleAssignmentsAll"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($script:rbacAll | measure-object).count) Role Assignments ($uniqueRoleAssignmentsCount unique)</span>
 </button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id= "$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -5825,6 +5990,7 @@ $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_customroleCustomRoleOwner"><i class="fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($customRolesOwnerHtAll | measure-object).count) Custom Roles Owner permissions ($scopeNamingSummary) <abbr title="Custom owner roles should not exist"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -5923,6 +6089,7 @@ $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_roleAssignmentsOwnerAssignmentSP"><i class="fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOwnerAssignmentSP | measure-object).count) Owner permission assignments to ServicePrincipal ($scopeNamingSummary) <abbr title="Owner permissions for Service Principals should be treated exceptional"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id= "$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -6014,6 +6181,7 @@ $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_roleAssignmentsOwnerAssignmentNotGroup"><i class="fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOwnerAssignmentNotGroup | measure-object).count) Owner permission assignments to notGroup ($scopeNamingSummary)</span>
 </button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id= "$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -6116,6 +6284,7 @@ $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_roleAssignmentsUserAccessAdministratorAssignmentNotGroup"><i class="fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsUserAccessAdministratorAssignmentNotGroup | measure-object).count) UserAccessAdministrator permission assignments to notGroup ($scopeNamingSummary)</span>
 </button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id= "$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -6220,6 +6389,7 @@ $blueprintDefinitionsCount = ($blueprintDefinitions | measure-object).count
 $htmlTenantSummary += @"
 <button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintDefinitionsCount Blueprints</p></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -6304,6 +6474,7 @@ $blueprintAssignmentsCount = ($blueprintAssignments | measure-object).count
 $htmlTenantSummary += @"
 <button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintAssignmentsCount Blueprint Assignments</p></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -6409,6 +6580,7 @@ if ($blueprintDefinitionsOrphanedCount -gt 0){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintDefinitionsOrphanedCount Orphaned Blueprints</p></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -6504,6 +6676,7 @@ if (($mgsApproachingLimitPolicyAssignments | measure-object).count -gt 0){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="SUMMARY_MgsapproachingLimitsPolicyAssignments"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyAssignments | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicyAssignmentsManagementGroup) for PolicyAssignment</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id= "$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -6584,6 +6757,7 @@ if (($mgsApproachingLimitPolicyScope | measure-object).count -gt 0){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="SUMMARY_MgsapproachingLimitsPolicyScope"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyScope | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicyDefinitionsScopedManagementGroup) for Policy Scope</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -6664,6 +6838,7 @@ if ($mgsApproachingLimitPolicySetScope.count -gt 0){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="SUMMARY_MgsapproachingLimitsPolicySetScope"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicySetScope | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedManagementGroup) for PolicySet Scope</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -6744,6 +6919,7 @@ if (($mgsApproachingRoleAssignmentLimit | measure-object).count -gt 0){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="SUMMARY_MgsapproachingLimitsRoleAssignment"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingRoleAssignmentLimit | measure-object).count) Management Groups approaching Limit ($LimitRBACRoleAssignmentsManagementGroup) for RoleAssignment</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id= "$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -6829,6 +7005,7 @@ if (($summarySubscriptions | measure-object).count -gt 0){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="SUMMARY_Subs"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle">$(($summarySubscriptions | measure-object).count) Subscriptions</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -6928,6 +7105,7 @@ if ($outOfScopeSubscriptionsCount -gt 0){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_outOfScopeSubscriptions"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions_excluded_r.svg"> <span class="valignMiddle">$outOfScopeSubscriptionsCount Subscriptions out-of-scope</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -7028,6 +7206,7 @@ $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_resources"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$resourcesResourceTypeCount ResourceTypes ($resourcesTotal Resources) in $resourcesLocationCount Locations ($scopeNamingSummary)</span>
 </button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -7119,8 +7298,9 @@ if ($resourceTypesDiagnosticsArraySortedCount -gt 0){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="SUMMARY_ResourcesDiagnosticsCapable"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$resourceTypesDiagnosticsMetricsLogsTrueCount/$resourceTypesDiagnosticsArraySortedCount ResourceTypes Diagnostics capable ($resourceTypesDiagnosticsMetricsTrueCount Metrics, $resourceTypesDiagnosticsLogsTrueCount Logs)</span></button>
 <div class="content">
-&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <b>Create Custom Policies for Azure ResourceTypes that support Diagnostics Logs and Metrics</b> <a class="externallink" href="https://github.com/JimGBritt/AzurePolicy/blob/master/AzureMonitor/Scripts/README.md#overview-of-create-azdiagpolicyps1" target="_blank">Create-AzDiagPolicy</a><br>
-&nbsp;<i class="fa fa-windows" aria-hidden="true" style="color:#00a2ed;"></i> <b>Supported categories for Azure Resource Logs</b> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/platform/resource-logs-categories" target="_blank">Microsoft Docs</a>
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <b>Create Custom Policies for Azure ResourceTypes that support Diagnostics Logs and Metrics</b> <a class="externallink" href="https://github.com/JimGBritt/AzurePolicy/blob/master/AzureMonitor/Scripts/README.md#overview-of-create-azdiagpolicyps1" target="_blank">Create-AzDiagPolicy</a><br>
+&nbsp;&nbsp;<i class="fa fa-windows" aria-hidden="true" style="color:#00a2ed;"></i> <b>Supported categories for Azure Resource Logs</b> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/platform/resource-logs-categories" target="_blank">Microsoft Docs</a>
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id= "$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -7629,6 +7809,7 @@ if ($resourceProvidersAllCount  -gt 0){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="SUMMARY_SubResourceProviders"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Total: $uniqueNamespacesCount Registered/Registering: $providersRegisteredCount NotRegistered/Unregistering: $providersNotRegisteredUniqueCount</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -7718,6 +7899,7 @@ if ($resourceProvidersAllCount -gt 0){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="SUMMARY_SubResourceProvidersDetailed"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -7822,6 +8004,7 @@ if (($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsResourceGroups"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count) Subscriptions approaching Limit ($LimitResourceGroups) for ResourceGroups</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id= "$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -7903,6 +8086,7 @@ if (($subscriptionsApproachingLimitTags | measure-object).count -gt 0){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsSubscriptionTags"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitTags | measure-object).count) Subscriptions approaching Limit ($LimitTagsSubscription) for Tags</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -7983,6 +8167,7 @@ if ($subscriptionsApproachingLimitPolicyAssignments.count -gt 0){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsPolicyAssignments"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyAssignments | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicyAssignmentsSubscription) for PolicyAssignment</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -8063,6 +8248,7 @@ if (($subscriptionsApproachingLimitPolicyScope | measure-object).count -gt 0){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsPolicyScope"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicyDefinitionsScopedSubscription) for Policy Scope</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -8143,6 +8329,7 @@ if ($subscriptionsApproachingLimitPolicySetScope.count -gt 0){
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsPolicySetScope"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedSubscription) for PolicySet Scope</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -8223,6 +8410,7 @@ if (($subscriptionsApproachingRoleAssignmentLimit | measure-object).count -gt 0)
 $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="SUMMARY_SubsapproachingLimitsRoleAssignment"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingRoleAssignmentLimit | measure-object).count) Subscriptions approaching Limit ($LimitRBACRoleAssignmentsSubscription) for RoleAssignment</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id= "$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -8561,6 +8749,7 @@ if (-not $HierarchyMapOnly) {
         ($htCacheDefinitions).policy.$($builtinPolicyDefinition.id) = @{ }
         ($htCacheDefinitions).policy.$($builtinPolicyDefinition.id).Id = $builtinPolicyDefinition.id
         ($htCacheDefinitions).policy.$($builtinPolicyDefinition.id).DisplayName = $builtinPolicyDefinition.Properties.displayname
+        ($htCacheDefinitions).policy.$($builtinPolicyDefinition.id).Description = $builtinPolicyDefinition.Properties.description
         ($htCacheDefinitions).policy.$($builtinPolicyDefinition.id).Type = $builtinPolicyDefinition.Properties.policyType
         ($htCacheDefinitions).policy.$($builtinPolicyDefinition.id).Category = $builtinPolicyDefinition.Properties.metadata.category
         ($htCacheDefinitions).policy.$($builtinPolicyDefinition.id).PolicyDefinitionId = $builtinPolicyDefinition.id
@@ -8634,6 +8823,7 @@ if (-not $HierarchyMapOnly) {
         ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.id) = @{ }
         ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.id).Id = $builtinPolicySetDefinition.id
         ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.id).DisplayName = $builtinPolicySetDefinition.Properties.displayname
+        ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.id).Description = $builtinPolicySetDefinition.Properties.description
         ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.id).Type = $builtinPolicySetDefinition.Properties.policyType
         ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.id).Category = $builtinPolicySetDefinition.Properties.metadata.category
         ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.id).PolicyDefinitionId = $builtinPolicySetDefinition.id
@@ -8985,7 +9175,7 @@ if (-not $HierarchyMapOnly){
 #region BuildHTML
 
 #testhelper
-#$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
+#13$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 
 $startBuildHTML = get-date
 Write-Host "Building HTML"
@@ -9069,7 +9259,7 @@ $html += @"
         link.media = "screen,print";
         document.getElementsByTagName( "head" )[0].appendChild( link );
     </script>
-    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_002.css">
+    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_008.css">
     <script src="https://code.jquery.com/jquery-1.7.2.js" integrity="sha256-FxfqH96M63WENBok78hchTCDxmChGFlo+/lFIPcZPeI=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/ui/1.8.18/jquery-ui.js" integrity="sha256-lzf/CwLt49jbVoZoFcPZOc0LlMYPFBorVSwMsTs2zsA=" crossorigin="anonymous"></script>
     <script type="text/javascript" src="https://www.azadvertizer.net/azgovvizv4/js/highlight_v004_001.js"></script>
@@ -9081,6 +9271,73 @@ $html += @"
             `$(".se-pre-con").fadeOut("slow");;
         });
     </script>
+
+    <script>
+    // Quick and simple export target #table_id into a csv
+    function download_table_as_csv_semicolon(table_id) {
+        // Select rows from table_id
+        var rows = document.querySelectorAll('table#' + table_id + ' tr');
+        // Construct csv
+        var csv = [];
+        for (var i = 1; i < rows.length; i++) {
+            var row = [], cols = rows[i].querySelectorAll('td, th');
+            for (var j = 0; j < cols.length; j++) {
+                // Clean innertext to remove multiple spaces and jumpline (break csv)
+                var data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, '').replace(/(\s\s)/gm, ' ')
+                // Escape double-quote with double-double-quote (see https://stackoverflow.com/questions/17808511/properly-escape-a-double-quote-in-csv)
+                data = data.replace(/"/g, '""');
+                // Push escaped string
+                row.push('"' + data + '"');
+            }
+            csv.push(row.join(';'));
+        }
+        var csv_string = csv.join('\n');
+        // Download it
+        var filename = 'export_' + table_id + '_' + new Date().toLocaleDateString() + '.csv';
+        var link = document.createElement('a');
+        link.style.display = 'none';
+        link.setAttribute('target', '_blank');
+        link.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv_string));
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    </script>
+
+    <script>
+    // Quick and simple export target #table_id into a csv
+    function download_table_as_csv_comma(table_id) {
+        // Select rows from table_id
+        var rows = document.querySelectorAll('table#' + table_id + ' tr');
+        // Construct csv
+        var csv = [];
+        for (var i = 1; i < rows.length; i++) {
+            var row = [], cols = rows[i].querySelectorAll('td, th');
+            for (var j = 0; j < cols.length; j++) {
+                // Clean innertext to remove multiple spaces and jumpline (break csv)
+                var data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, '').replace(/(\s\s)/gm, ' ')
+                // Escape double-quote with double-double-quote (see https://stackoverflow.com/questions/17808511/properly-escape-a-double-quote-in-csv)
+                data = data.replace(/"/g, '""');
+                // Push escaped string
+                row.push('"' + data + '"');
+            }
+            csv.push(row.join(','));
+        }
+        var csv_string = csv.join('\n');
+        // Download it
+        var filename = 'export_' + table_id + '_' + new Date().toLocaleDateString() + '.csv';
+        var link = document.createElement('a');
+        link.style.display = 'none';
+        link.setAttribute('target', '_blank');
+        link.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv_string));
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    </script>
+
 </head>
 <body>
     <div class="se-pre-con"></div>
