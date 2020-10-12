@@ -45,6 +45,14 @@ https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-
 
 ### AzGovViz version 4
 
+Updates 2020-Oct-12
+* Adding option to download html tables to csv  
+![Download CSV](img/downloadcsv450.png)
+* preloading of <a href="https://www.tablefilter.com/" target="_blank">TableFilter</a> removed for __ScopeInsights__ (on poor hardware loading the html file took quite long)
+* Added column un-select option for some html tables
+* Performance optimization
+
+Release v4
 * Resource information for Management Groups (Resources in all child Subscriptions) in the __ScopeInsights__ section
 * Excluded Subscriptions information (whitelisted, disabled, AAD_ QuotaId)
 * Bugfixes, Bugfixes, Bugfixes
