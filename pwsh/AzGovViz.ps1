@@ -5437,6 +5437,7 @@ $htmlTenantSummary += @"
 #endregion SUMMARYtenanttotalcustomroles
 
 #region SUMMARYOrphanedCustomRoles
+
 Write-Host "  processing Summary Custom Roles orphaned"
 if ($getMgParentName -eq "Tenant Root"){
     $customRolesInUse = ($rbacBaseQuery | where-object {$_.RoleIsCustom -eq "TRUE"}).RoleDefinitionId | Sort-Object -Unique
@@ -5765,26 +5766,24 @@ $roleAssignmentIdsUnique = $rbacBaseQuery | sort-object -Property RoleAssignment
 
 $htRoleAssignmentRelatedPolicyAssignments = @{ }
 foreach ($roleAssignmentIdUnique in $roleAssignmentIdsUnique){
-    #$relatedPolicyAssignment = $policyAssignmentIdsUnique | where-Object { $_.PolicyAssignmentName -eq $roleAssignmentIdUnique.RoleAssignmentDisplayname }
+    $relatedPolicyAssignment = $policyAssignmentIdsUnique | where-Object { $_.PolicyAssignmentName -eq $roleAssignmentIdUnique.RoleAssignmentDisplayname }
     $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId) = @{ }
-    foreach ($policyAssignmentIdUnique in $policyAssignmentIdsUnique){
-        if ($policyAssignmentIdUnique.PolicyAssignmentName -eq $roleAssignmentIdUnique.RoleAssignmentDisplayname) {
-            if ($policyAssignmentIdUnique.PolicyType -eq "BuiltIn") {
-                if ($policyAssignmentIdUnique.PolicyVariant -eq "Policy") {
-                    $LinkOrNotLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$($policyAssignmentIdUnique.policyDefinitionIdGuid).html`" target=`"_blank`">$($policyAssignmentIdUnique.Policy)</a>"
-                }
-                if ($policyAssignmentIdUnique.PolicyVariant -eq "PolicySet") {
-                    $LinkOrNotLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($policyAssignmentIdUnique.policyDefinitionIdGuid).html`" target=`"_blank`">$($policyAssignmentIdUnique.Policy)</a>"
-                }
+    if ($relatedPolicyAssignment) {
+        if ($relatedPolicyAssignment.PolicyType -eq "BuiltIn") {
+            if ($relatedPolicyAssignment.PolicyVariant -eq "Policy") {
+                $LinkOrNotLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$($relatedPolicyAssignment.policyDefinitionIdGuid).html`" target=`"_blank`">$($relatedPolicyAssignment.Policy)</a>"
             }
-            else {
-                $LinkOrNotLinkToAzAdvertizer = $policyAssignmentIdUnique.Policy
+            if ($relatedPolicyAssignment.PolicyVariant -eq "PolicySet") {
+                $LinkOrNotLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($relatedPolicyAssignment.policyDefinitionIdGuid).html`" target=`"_blank`">$($relatedPolicyAssignment.Policy)</a>"
             }
-            $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignment = "$($policyAssignmentIdUnique.PolicyAssignmentId) ($LinkOrNotLinkToAzAdvertizer)"
         }
         else {
-            $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignment = "none" 
+            $LinkOrNotLinkToAzAdvertizer = $relatedPolicyAssignment.Policy
         }
+        $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignment = "$($relatedPolicyAssignment.PolicyAssignmentId) ($LinkOrNotLinkToAzAdvertizer)"
+    }
+    else {
+        $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignment = "none" 
     }
 
     if ($roleAssignmentIdUnique.RoleIsCustom -eq "FALSE"){
@@ -5814,7 +5813,7 @@ foreach ($rbac in $rbacBaseQuery){
         write-host "   $cnter of $roleAssignmentsallCount RoleAssignments processed; $((NEW-TIMESPAN -Start $startRoleAssignmentsAll -End $etappeRoleAssignmentsAll).TotalSeconds) seconds"
     }
     $scope = $null
-    #if (($rbac.RoleAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/","CurrentCultureIgnoreCase")){
+
     if ($rbac.RoleAssignmentId -like "/providers/Microsoft.Management/managementGroups/*"){
         if ("" -ne $rbac.SubscriptionId){
             $scope = "inherited $($rbac.RoleAssignmentScope -replace '.*/')"
@@ -5828,11 +5827,11 @@ foreach ($rbac in $rbacBaseQuery){
             }
         }
     }
-    #if (($rbac.RoleAssignmentId).StartsWith("/subscriptions/","CurrentCultureIgnoreCase")){
+
     if ($rbac.RoleAssignmentId -like "/subscriptions/*"){
         $scope = "this Sub"
     }
-    #if (($rbac.RoleAssignmentId).StartsWith("/providers/Microsoft.Authorization/roleAssignments/","CurrentCultureIgnoreCase")){
+
     if ($rbac.RoleAssignmentId -like "/providers/Microsoft.Authorization/roleAssignments/*"){
             $scope = "inherited ROOT"
     }
