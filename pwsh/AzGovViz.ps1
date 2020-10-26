@@ -3200,6 +3200,7 @@ $htmlScopeInsights += @"
 <tr>
 <th class="widthCustom">Policy DisplayName</th>
 <th>PolicyId</th>
+<th>Category</th>
 <th>Policy effect</th>
 <th>Role Definitions</th>
 <th>Unique Assignments</th>
@@ -3214,6 +3215,7 @@ $htmlScopeInsightsScopedPolicies += @"
 <tr>
 <td>$($customPolicy.PolicyDisplayName)</td>
 <td class="breakwordall">$($customPolicy.PolicyDefinitionId)</td>
+<td>$($customPolicy.PolicyCategory)</td>
 <td>$($customPolicy.PolicyEffect)</td>
 <td>$($customPolicy.RoleDefinitions)</td>
 <td class="breakwordall">$($customPolicy.UniqueAssignments)</td>
@@ -3256,6 +3258,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
 $htmlScopeInsights += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
                 col_types: [
+                    'caseinsensitivestring',
                     'caseinsensitivestring',
                     'caseinsensitivestring',
                     'caseinsensitivestring',
@@ -3325,6 +3328,7 @@ $htmlScopeInsights += @"
 <tr>
 <th class="widthCustom">PolicySet DisplayName</th>
 <th>PolicySetId</th>
+<th>Category</th>
 <th>Unique Assignments</th>
 <th>Policies Used</th>
 </tr>
@@ -3337,6 +3341,7 @@ $htmlScopeInsightsScopedPolicySets += @"
 <tr>
 <td>$($custompolicySet.PolicySetDisplayName)</td>
 <td>$($custompolicySet.PolicySetDefinitionId)</td>
+<td>$($custompolicySet.PolicySetCategory)</td>
 <td>$($custompolicySet.UniqueAssignments)</td>
 <td>$($custompolicySet.PoliciesUsed)</td>
 </tr>
@@ -3377,6 +3382,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
 $htmlScopeInsights += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
                 col_types: [
+                    'caseinsensitivestring',
                     'caseinsensitivestring',
                     'caseinsensitivestring',
                     'caseinsensitivestring'
@@ -3837,6 +3843,7 @@ $script:customPoliciesDetailed += foreach ($customPolicy in ($customPoliciesArra
         'PolicyDisplayName' = $temp0000000.DisplayName; 
         'PolicyDefinitionId'= $temp0000000.PolicyDefinitionId; 
         'PolicyEffect'= $effect; 
+        'PolicyCategory'= $temp0000000.Category; 
         'RoleDefinitions' = $policyRoleDefinitions; 
         'UniqueAssignments' = $uniqueAssignments; 
         'UsedInPolicySets' = $usedInPolicySet
@@ -3862,7 +3869,8 @@ $htmlTenantSummary += @"
 <tr>
 <th>Policy DisplayName</th>
 <th>PolicyId</th>
-<th>Policy Effect</th>
+<th>Category</th>
+<th>Effect</th>
 <th>Role Definitions</th>
 <th>Unique Assignments</th>
 <th>Used in PolicySets</th>
@@ -3876,6 +3884,7 @@ $htmlSUMMARYcustompolicies += @"
 <tr>
 <td>$($customPolicy.PolicyDisplayName)</td>
 <td class="breakwordall">$($customPolicy.PolicyDefinitionId)</td>
+<td>$($customPolicy.PolicyCategory)</td>
 <td>$($customPolicy.PolicyEffect)</td>
 <td>$($customPolicy.RoleDefinitions)</td>
 <td class="breakwordall">$($customPolicy.UniqueAssignments)</td>
@@ -3918,6 +3927,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
 $htmlTenantSummary += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -3981,6 +3991,7 @@ $htmlTenantSummary += @"
 <tr>
 <th>Policy DisplayName</th>
 <th>PolicyId</th>
+<th>Category</th>
 <th>Policy Effect</th>
 <th>Role Definitions</th>
 <th>Unique Assignments</th>
@@ -3995,6 +4006,7 @@ $htmlSUMMARYcustompolicies += @"
 <tr>
 <td>$($customPolicy.PolicyDisplayName)</td>
 <td class="breakwordall">$($customPolicy.PolicyDefinitionId)</td>
+<td>$($customPolicy.PolicyCategory)</td>
 <td>$($customPolicy.PolicyEffect)</td>
 <td>$($customPolicy.RoleDefinitions)</td>
 <td class="breakwordall">$($customPolicy.UniqueAssignments)</td>
@@ -4035,6 +4047,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
 $htmlTenantSummary += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -4344,6 +4357,7 @@ $script:customPolicySetsDetailed += foreach ($customPolicySet in ($customPolicyS
     [PSCustomObject]@{ 
         'PolicySetDisplayName' = $customPolicySet.DisplayName; 
         'PolicySetDefinitionId'= $customPolicySet.PolicyDefinitionId; 
+        'PolicySetCategory'= $customPolicySet.Category; 
         'UniqueAssignments' = $policySetUniqueAssignment; 
         'PoliciesUsed' = $policiesUsed
     }
@@ -4369,6 +4383,7 @@ $htmlTenantSummary += @"
 <tr>
 <th>PolicySet DisplayName</th>
 <th>PolicySetId</th>
+<th>Category</th>
 <th>Unique Assignments</th>
 <th>Policies used in PolicySet</th>
 </tr>
@@ -4381,6 +4396,7 @@ $htmlSUMMARYtenanttotalcustompolicySets += @"
 <tr>
 <td>$($customPolicySet.PolicySetDisplayName)</td>
 <td class="breakwordall">$($customPolicySet.PolicySetDefinitionId)</td>
+<td class="breakwordall">$($customPolicySet.PolicySetCategory)</td>
 <td class="breakwordall">$($customPolicySet.UniqueAssignments)</td>
 <td class="breakwordall">$($customPolicySet.PoliciesUsed)</td>
 </tr>
@@ -4419,6 +4435,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
 $htmlTenantSummary += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -4481,6 +4498,7 @@ $htmlTenantSummary += @"
 <tr>
 <th>PolicySet DisplayName</th>
 <th>PolicySetId</th>
+<th>Category</th>
 <th>Unique Assignments</th>
 <th>Policies used in PolicySet</th>
 </tr>
@@ -4493,6 +4511,7 @@ $htmlSUMMARYtenanttotalcustompolicySets += @"
 <tr>
 <td>$($customPolicySet.PolicySetDisplayName)</td>
 <td class="breakwordall">$($customPolicySet.PolicySetDefinitionId)</td>
+<td class="breakwordall">$($customPolicySet.PolicySetCategory)</td>
 <td class="breakwordall">$($customPolicySet.UniqueAssignments)</td>
 <td class="breakwordall">$($customPolicySet.PoliciesUsed)</td>
 </tr>
@@ -4531,6 +4550,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
 $htmlTenantSummary += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -5437,6 +5457,7 @@ $htmlTenantSummary += @"
 #endregion SUMMARYtenanttotalcustomroles
 
 #region SUMMARYOrphanedCustomRoles
+
 Write-Host "  processing Summary Custom Roles orphaned"
 if ($getMgParentName -eq "Tenant Root"){
     $customRolesInUse = ($rbacBaseQuery | where-object {$_.RoleIsCustom -eq "TRUE"}).RoleDefinitionId | Sort-Object -Unique
@@ -5765,26 +5786,24 @@ $roleAssignmentIdsUnique = $rbacBaseQuery | sort-object -Property RoleAssignment
 
 $htRoleAssignmentRelatedPolicyAssignments = @{ }
 foreach ($roleAssignmentIdUnique in $roleAssignmentIdsUnique){
-    #$relatedPolicyAssignment = $policyAssignmentIdsUnique | where-Object { $_.PolicyAssignmentName -eq $roleAssignmentIdUnique.RoleAssignmentDisplayname }
+    $relatedPolicyAssignment = $policyAssignmentIdsUnique | where-Object { $_.PolicyAssignmentName -eq $roleAssignmentIdUnique.RoleAssignmentDisplayname }
     $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId) = @{ }
-    foreach ($policyAssignmentIdUnique in $policyAssignmentIdsUnique){
-        if ($policyAssignmentIdUnique.PolicyAssignmentName -eq $roleAssignmentIdUnique.RoleAssignmentDisplayname) {
-            if ($policyAssignmentIdUnique.PolicyType -eq "BuiltIn") {
-                if ($policyAssignmentIdUnique.PolicyVariant -eq "Policy") {
-                    $LinkOrNotLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$($policyAssignmentIdUnique.policyDefinitionIdGuid).html`" target=`"_blank`">$($policyAssignmentIdUnique.Policy)</a>"
-                }
-                if ($policyAssignmentIdUnique.PolicyVariant -eq "PolicySet") {
-                    $LinkOrNotLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($policyAssignmentIdUnique.policyDefinitionIdGuid).html`" target=`"_blank`">$($policyAssignmentIdUnique.Policy)</a>"
-                }
+    if ($relatedPolicyAssignment) {
+        if ($relatedPolicyAssignment.PolicyType -eq "BuiltIn") {
+            if ($relatedPolicyAssignment.PolicyVariant -eq "Policy") {
+                $LinkOrNotLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$($relatedPolicyAssignment.policyDefinitionIdGuid).html`" target=`"_blank`">$($relatedPolicyAssignment.Policy)</a>"
             }
-            else {
-                $LinkOrNotLinkToAzAdvertizer = $policyAssignmentIdUnique.Policy
+            if ($relatedPolicyAssignment.PolicyVariant -eq "PolicySet") {
+                $LinkOrNotLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($relatedPolicyAssignment.policyDefinitionIdGuid).html`" target=`"_blank`">$($relatedPolicyAssignment.Policy)</a>"
             }
-            $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignment = "$($policyAssignmentIdUnique.PolicyAssignmentId) ($LinkOrNotLinkToAzAdvertizer)"
         }
         else {
-            $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignment = "none" 
+            $LinkOrNotLinkToAzAdvertizer = $relatedPolicyAssignment.Policy
         }
+        $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignment = "$($relatedPolicyAssignment.PolicyAssignmentId) ($LinkOrNotLinkToAzAdvertizer)"
+    }
+    else {
+        $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignment = "none" 
     }
 
     if ($roleAssignmentIdUnique.RoleIsCustom -eq "FALSE"){
@@ -5814,7 +5833,7 @@ foreach ($rbac in $rbacBaseQuery){
         write-host "   $cnter of $roleAssignmentsallCount RoleAssignments processed; $((NEW-TIMESPAN -Start $startRoleAssignmentsAll -End $etappeRoleAssignmentsAll).TotalSeconds) seconds"
     }
     $scope = $null
-    #if (($rbac.RoleAssignmentId).StartsWith("/providers/Microsoft.Management/managementGroups/","CurrentCultureIgnoreCase")){
+
     if ($rbac.RoleAssignmentId -like "/providers/Microsoft.Management/managementGroups/*"){
         if ("" -ne $rbac.SubscriptionId){
             $scope = "inherited $($rbac.RoleAssignmentScope -replace '.*/')"
@@ -5828,11 +5847,11 @@ foreach ($rbac in $rbacBaseQuery){
             }
         }
     }
-    #if (($rbac.RoleAssignmentId).StartsWith("/subscriptions/","CurrentCultureIgnoreCase")){
+
     if ($rbac.RoleAssignmentId -like "/subscriptions/*"){
         $scope = "this Sub"
     }
-    #if (($rbac.RoleAssignmentId).StartsWith("/providers/Microsoft.Authorization/roleAssignments/","CurrentCultureIgnoreCase")){
+
     if ($rbac.RoleAssignmentId -like "/providers/Microsoft.Authorization/roleAssignments/*"){
             $scope = "inherited ROOT"
     }
@@ -9175,7 +9194,7 @@ if (-not $HierarchyMapOnly){
 #region BuildHTML
 
 #testhelper
-#13$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
+#$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 
 $startBuildHTML = get-date
 Write-Host "Building HTML"
