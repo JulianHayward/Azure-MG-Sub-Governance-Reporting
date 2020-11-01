@@ -1,4 +1,4 @@
-# AzGovViz
+# AzGovViz v4_minor_20201101_0
 # First things first: edit line 20 and line 21 
 # https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 # Also check https://www.azadvertizer.net to keep up with the pace on Azure Governance capabilities such as Azure Policies, Policy Initiatives, Policy Aliases and RBAC Roles
@@ -17,7 +17,7 @@ trigger: none
 pr: none
 
 variables:
-  ServiceConnection: <YourServiceConnection>
+  ServiceConnection: <YourServiceConnection> #permissions set? https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#required-permissions-in-azure 
   ManagementGroupId: <YourManagementGroupId>
   SubscriptionQuotaIdWhitelist: undefined
   WikiDir: wiki
