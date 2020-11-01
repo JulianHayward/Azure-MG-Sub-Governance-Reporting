@@ -1,4 +1,4 @@
-<#  
+<#v4_minor_20201101_0
 .SYNOPSIS  
     This script creates the following files to help better understand and audit your governance setup
     csv file
@@ -67,7 +67,7 @@
     Define if the script runs in AzureDevOps. This will not print any timestamps into the markdown output so that only true deviation will force a push to the wiki repository (default prints timestamps to the markdown output)
     PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -AzureDevOpsWikiAsCode
     
-    Define when limits should be highlited as warning (default is 80 percent)
+    Define when limits should be highlighted as warning (default is 80 percent)
     PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -LimitCriticalPercentage 90
 
     Define the QuotaId whitelist by providing strings separated by a backslash
@@ -137,22 +137,45 @@ if ($CsvDelimiter -eq ",") {
     $CsvDelimiterOpposite = ";"
 }
 
-#check for required cmdlets
-#Az.Context
+#check for required Az modules
 $testCommands = @('Get-AzContext', 'Get-AzPolicyDefinition', 'Search-AzGraph')
+Write-Host "Checking required Az modules"
 foreach ($testCommand in $testCommands){
     if (-not (Get-Command $testCommand -ErrorAction Ignore)) {
-        Write-Host "cmdlet $testCommand not available - make sure the modules Az.Accounts, Az.Resources and Az.ResourceGraph are installed"
-        break
+        if ($AzureDevOpsWikiAsCode){
+            Write-Error "AzModule test failed: cmdlet $testCommand not available - make sure the modules Az.Accounts, Az.Resources and Az.ResourceGraph are installed"
+            exit 1
+        }
+        else{
+            Write-Host " AzModule test failed: cmdlet $testCommand not available - make sure the modules Az.Accounts, Az.Resources and Az.ResourceGraph are installed"
+            break
+        }
     }
     else {
-        Write-Host "passed: Az ps module supporting cmdlet $testCommand installed"
+        Write-Host " AzModule test passed: Az ps module supporting cmdlet $testCommand installed"
     }
 }
 
-#check if connected, verify Access Token lifetime
+#check Context, verify Access Token lifetime
 $tokenExirationMinimumInMinutes = 5
 $checkContext = Get-AzContext -ErrorAction Stop
+Write-Host "Checking Az Context"
+if (-not $checkContext) {
+    Write-Host " Context test failed: No context found. Please connect to Azure (run: Connect-AzAccount) and re-run AzGovViz"
+    break
+}
+else {
+    if (-not $checkContext.Subscription){
+        $checkContext
+        Write-Host " Context test failed: Context is not set to any Subscription. Set your context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run AzGovViz"
+        break
+    }
+    else{
+        Write-Host " Context test passed: Context OK"
+    }
+}
+
+
 $checkAzEnvironments = Get-AzEnvironment -ErrorAction Stop
 
 #FutureUse
@@ -199,41 +222,36 @@ function checkTokenLifetime() {
     }
 }
 
-if ($checkContext) {
-    if ($AzureDevOpsWikiAsCode) {
-        $accessTokenExipresOn = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) }).ExpiresOn
-    }
-    else {
-        $accessTokenExipresOn = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.TenantId -eq $checkContext.Tenant.Id) -and ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) -and ($_.DisplayableId -eq $checkContext.account.id) }).ExpiresOn
-    }
+if ($AzureDevOpsWikiAsCode) {
+    $accessTokenExipresOn = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) }).ExpiresOn
+}
+else {
+    $accessTokenExipresOn = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.TenantId -eq $checkContext.Tenant.Id) -and ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) -and ($_.DisplayableId -eq $checkContext.account.id) }).ExpiresOn
+}
 
-    if ($accessTokenExipresOn -lt $(Get-Date)) {
-        Write-Host "Access Token for REST AUTH has has expired"
+if ($accessTokenExipresOn -lt $(Get-Date)) {
+    Write-Host "Access Token for REST AUTH has has expired"
+    refreshToken
+    Write-Host "New Token expires: $($($script:accessTokenExipresOn).LocalDateTime) ($(($script:accessTokenExipresOn - (get-date)).Minutes) minutes)"
+}
+else {
+    $tokenExirationInMinutes = ($accessTokenExipresOn - (get-date)).Minutes
+    if ($tokenExirationInMinutes -lt $tokenExirationMinimumInMinutes) {
+        Write-Host "Access Token for REST AUTH has has less than $tokenExirationMinimumInMinutes minutes lifetime ($tokenExirationInMinutes minutes)"
         refreshToken
         Write-Host "New Token expires: $($($script:accessTokenExipresOn).LocalDateTime) ($(($script:accessTokenExipresOn - (get-date)).Minutes) minutes)"
     }
     else {
-        $tokenExirationInMinutes = ($accessTokenExipresOn - (get-date)).Minutes
-        if ($tokenExirationInMinutes -lt $tokenExirationMinimumInMinutes) {
-            Write-Host "Access Token for REST AUTH has has less than $tokenExirationMinimumInMinutes minutes lifetime ($tokenExirationInMinutes minutes)"
-            refreshToken
-            Write-Host "New Token expires: $($($script:accessTokenExipresOn).LocalDateTime) ($(($script:accessTokenExipresOn - (get-date)).Minutes) minutes)"
+        if ($AzureDevOpsWikiAsCode) {
+            $accessToken = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) }).AccessToken
         }
         else {
-            if ($AzureDevOpsWikiAsCode) {
-                $accessToken = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) }).AccessToken
-            }
-            else {
-                $accessToken = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.TenantId -eq $checkContext.Tenant.Id) -and ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) -and ($_.DisplayableId -eq $checkContext.account.id) }).AccessToken
-            }
-            Write-Host "Found Access Token for REST AUTH (expires in $tokenExirationInMinutes minutes; defined minimum lifetime: $tokenExirationMinimumInMinutes minutes).."
+            $accessToken = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.TenantId -eq $checkContext.Tenant.Id) -and ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) -and ($_.DisplayableId -eq $checkContext.account.id) }).AccessToken
         }
+        Write-Host "Found Access Token for REST AUTH (expires in $tokenExirationInMinutes minutes; defined minimum lifetime: $tokenExirationMinimumInMinutes minutes).."
     }
 }
-else {
-    Write-Host "No context found. Please connect to Azure (run: Connect-AzAccount) and re-run script"
-    return
-}
+
 
 #helper file/dir
 if (-not [IO.Path]::IsPathRooted($outputPath)) {
@@ -262,7 +280,7 @@ if (-not $ManagementGroupId) {
         return
     }
     function selectMg() {
-        Write-Host "Please select a Management Group from the list below"
+        Write-Host "Please select a Management Group from the list below:"
         $MgtGroupArray | Select-Object "#", Name, DisplayName, Id | Format-Table
 
         Write-Host "If you don't see your ManagementGroupID try using the parameter -ManagementGroupID" -ForegroundColor Yellow
@@ -3707,6 +3725,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
 $htmlScopeInsights += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_2: 'select',
+            col_6: 'multiple',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -3757,9 +3776,10 @@ else{
     $scopeNamingSummary = "ManagementGroup '$ManagementGroupIdCaseSensitived' and descendants wide"
 }
 
-#tenantSummaryPolicy
+#region tenantSummaryPolicy
 $htmlTenantSummary += @"
-    <hr class="hr-text" data-content="Policy" />
+<button type="button" class="collapsible" id="tenantSummaryPolicy"><hr class="hr-text" data-content="Policy" /></button>
+<div class="content">
 "@
 
 #region SUMMARYcustompolicies
@@ -5355,9 +5375,15 @@ $endSummaryPolicyAssignmentsAll = get-date
 Write-Host "   SummaryPolicyAssignmentsAll duration: $((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAll -End $endSummaryPolicyAssignmentsAll).TotalMinutes) minutes"
 #endregion SUMMARYPolicyAssignmentsAll
 
-#tenantSummaryRBAC
 $htmlTenantSummary += @"
-    <hr class="hr-text" data-content="RBAC" />
+    </div>
+"@
+#endregion tenantSummaryPolicy
+
+#regiontenantSummaryRBAC
+$htmlTenantSummary += @"
+<button type="button" class="collapsible" id="tenantSummaryPolicy"><hr class="hr-text" data-content="RBAC" /></button>
+<div class="content">
 "@
 
 #region SUMMARYtenanttotalcustomroles
@@ -5965,6 +5991,7 @@ $htmlTenantSummary += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_0: 'select',
             col_7: 'select',
+            col_11: 'multiple',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -6268,6 +6295,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
 }
 $htmlTenantSummary += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_3: 'multiple',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -6370,6 +6398,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
 }
 $htmlTenantSummary += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_3: 'multiple',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -6394,9 +6423,15 @@ $htmlTenantSummary += @"
 }
 #endregion SUMMARYSecurityUserAccessAdministratorAssignmentNotGroup
 
+$htmlTenantSummary += @"
+    </div>
+"@
+#regiontenantSummaryRBAC
+
 #tenantSummaryBlueprints
 $htmlTenantSummary += @"
-    <hr class="hr-text" data-content="Blueprints" />
+<button type="button" class="collapsible" id="tenantSummaryPolicy"><hr class="hr-text" data-content="Blueprints" /></button>
+<div class="content">
 "@
 
 #region SUMMARYBlueprintDefinitions
@@ -6674,9 +6709,14 @@ $htmlTenantSummary += @"
 }
 #endregion SUMMARYBlueprintsOrphaned
 
+$htmlTenantSummary += @"
+    </div>
+"@
+
 #tenantSummaryManagementGroups
 $htmlTenantSummary += @"
-    <hr class="hr-text" data-content="Management Groups & Limits" />
+<button type="button" class="collapsible" id="tenantSummaryPolicy"><hr class="hr-text" data-content="Management Groups & Limits" /></button>
+<div class="content">
 "@
 
 #region SUMMARYMGs
@@ -7010,9 +7050,14 @@ $htmlTenantSummary += @"
 }
 #endregion SUMMARYMgsapproachingLimitsRoleAssignment
 
+$htmlTenantSummary += @"
+    </div>
+"@
+
 #tenantSummarySubscriptions
 $htmlTenantSummary += @"
-    <hr class="hr-text" data-content="Subscriptions, Resources & Limits" />
+<button type="button" class="collapsible" id="tenantSummaryPolicy"><hr class="hr-text" data-content="Subscriptions, Resources & Limits" /></button>
+<div class="content">
 "@
 
 #region SUMMARYSubs
@@ -8501,6 +8546,10 @@ else{
 }
 #endregion SUMMARYSubsapproachingLimitsRoleAssignment
 
+$htmlTenantSummary += @"
+    </div>
+"@
+
 $script:html += $htmlTenantSummary
 $htmlTenantSummary = $null
 $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
@@ -8586,14 +8635,47 @@ Write-Host "Running AzGovViz for ManagementGroupId: '$ManagementGroupId'"
 $startAzGovViz = get-date
 
 #validation / check ManagementGroup Access
-$selectedManagementGroupId = Get-AzManagementGroup -GroupName $ManagementGroupId -ErrorAction SilentlyContinue
-if (-not $selectedManagementGroupId){
-    Write-Host "Access test failed: ManagementGroupId '$ManagementGroupId' is not accessible. Make sure you have required permissions (RBAC: Reader) / check typ0"
-    break
+Write-Host "Checking AzDO ServiceConnection permissions on ManagementGroup"
+$testMGReadAccessResult = "letscheck"
+try{
+    $selectedManagementGroupId = Get-AzManagementGroup -GroupName $ManagementGroupId -ErrorAction Stop
+}
+catch{
+    $testMGReadAccessResult = $_.Exception.Message
+}
+if ($testMGReadAccessResult -ne "letscheck"){
+    if ($AzureDevOpsWikiAsCode){
+        Write-Error "Permissions test failed: Your AzDO ServiceConnection seems to lack ManagementGroup Read permissions. Please check the documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#required-permissions-in-azure Error: $testMGReadAccessResult"
+        exit 1
+    }
+    else{
+        Write-Host " Permissions test failed: Your AzDO ServiceConnection seems to lack ManagementGroup Read permissions. Please check the documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#required-permissions-in-azure Error: $testMGReadAccessResult"
+        break
+    }
 }
 else{
-    Write-Host "Access test passed: ManagementGroupId '$($selectedManagementGroupId.Name)' is accessible" 
+    Write-Host " Permissions test passed: ManagementGroup permissions OK"
 }
+
+#validation / check 'Azure Active Directory API' Access
+if ($AzureDevOpsWikiAsCode){
+    Write-Host "Checking AzDO ServiceConnection permissions on 'Azure Active Directory API'"
+    $testSCSPAPIReadAccessResult = "letscheck"
+    try{
+        $testSCSPAPIReadAccess = Get-AzRoleAssignment -scope "/providers/Microsoft.Management/managementGroups/$($selectedManagementGroupId.Name)" -ErrorAction Stop
+    }
+    catch{
+        $testSCSPAPIReadAccessResult = $_.Exception.Message
+    }
+    if ($testSCSPAPIReadAccessResult -ne "letscheck"){
+        Write-Error "Permissions test failed: Your AzDO ServiceConnection seems to lack 'Azure Active Directory API' Read permissions. Please check the documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#required-permissions-in-azure Error: $testSCSPAPIReadAccessResult"
+        exit 1
+    }
+    else{
+        Write-Host " Permissions test passed: 'Azure Active Directory API' permissions OK"
+    }
+}
+
 
 if (($checkContext).Tenant.Id -ne $ManagementGroupId) {
     $mgSubPathTopMg = $selectedManagementGroupId.ParentName
@@ -9278,7 +9360,7 @@ $html += @"
         link.media = "screen,print";
         document.getElementsByTagName( "head" )[0].appendChild( link );
     </script>
-    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_008.css">
+    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_013.css">
     <script src="https://code.jquery.com/jquery-1.7.2.js" integrity="sha256-FxfqH96M63WENBok78hchTCDxmChGFlo+/lFIPcZPeI=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/ui/1.8.18/jquery-ui.js" integrity="sha256-lzf/CwLt49jbVoZoFcPZOc0LlMYPFBorVSwMsTs2zsA=" crossorigin="anonymous"></script>
     <script type="text/javascript" src="https://www.azadvertizer.net/azgovvizv4/js/highlight_v004_001.js"></script>
@@ -9362,6 +9444,7 @@ $html += @"
     <div class="se-pre-con"></div>
     <div class="tree">
         <div class="hierarchyTree" id="hierarchyTree">
+            <p class="pbordered pborderedspecial">HierarchyMap</p>
 "@
 
 if ($getMgParentName -eq "Tenant Root") {
@@ -9426,7 +9509,7 @@ if (-not $HierarchyMapOnly) {
 
 $html += @"
     <div class="summprnt" id="summprnt">
-    <div class="summary" id="summary">
+    <div class="summary" id="summary"><p class="pbordered">TenantSummary</p>
 "@
 
 $html | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
@@ -9443,7 +9526,7 @@ $html += @"
     </div>
     </div>
     <div class="hierprnt" id="hierprnt">
-    <div class="hierarchyTables" id="hierarchyTables">
+    <div class="hierarchyTables" id="hierarchyTables"><p class="pbordered">ScopeInsights</p>
 "@
 $html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
 $html = $null
@@ -9476,6 +9559,7 @@ $html += @"
 }
 
 $html += @"
+    <hr>
     </div>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_001.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
