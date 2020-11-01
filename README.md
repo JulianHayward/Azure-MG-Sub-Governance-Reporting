@@ -35,8 +35,11 @@ AzGovViz is intended to help you to get a holistic overview on your technical Az
 </td>
 <td>
 
-__AzGovViz now listed as Tool for the Govern discipline in the Microsoft Cloud Adoption Framework!__  
+Listed as tool for the Govern discipline in the Microsoft Cloud Adoption Framework!  
 https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-templates#govern
+
+Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template. 
+
 
 </td>
 </table>
@@ -44,6 +47,10 @@ https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-
 ## AzGovViz version history
 
 ### AzGovViz version 4
+Updates 2020-Nov-01
+* Error handling optimization
+* Enhanced read-permission validation
+* Toggle capabilities in __TenantSummary__ (avoiding information overload)
 
 Updates 2020-Oct-12
 * Adding option to download html tables to csv  
