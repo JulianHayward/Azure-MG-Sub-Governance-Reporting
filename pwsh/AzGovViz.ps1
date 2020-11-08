@@ -1,4 +1,4 @@
-<#v4_minor_20201101_0
+<#v4_minor_20201108_0
 .SYNOPSIS  
     This script creates the following files to help better understand and audit your governance setup
     csv file
@@ -119,6 +119,10 @@ Param
     [int]$LimitTagsSubscription = 50
 )
 
+#shutuppoluters
+$ProgressPreference = 'SilentlyContinue'
+Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
+
 function Add-IndexNumberToArray (
     [Parameter(Mandatory = $True)]
     [array]$array
@@ -129,6 +133,55 @@ function Add-IndexNumberToArray (
     $array
 }
 
+function createBearerToken() {
+    $checkContext = Get-AzContext -ErrorAction Stop
+    Write-Host "+Processing new bearer token request"
+    $azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile;
+    $profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile);
+    $newBearerAccessToken = ($profileClient.AcquireAccessToken($checkContext.Subscription.TenantId))
+    $script:BearerAccessToken = $newBearerAccessToken.AccessToken
+}
+
+function AzAPICall($uri, $method, $currentTask) {
+    $tryCounter = 0
+    do {
+        $tryCounter++
+        try{
+            $AzAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -Headers @{"Authorization" = "Bearer $BearerAccessToken" } -UseBasicParsing
+        }
+        catch{
+            $result = ($_.ErrorDetails.Message | ConvertFrom-Json)
+        }
+        if ($AzAPIRequest.StatusCode -ne 200) {
+            if ($result.error.code -eq "GatewayTimeout" -or $result.error.code -eq "BadGatewayConnection" -or $result.error.code -eq "InvalidGatewayHost" -or $result.error.code -eq "ExpiredAuthenticationToken") {
+                if ($result.error.code -eq "GatewayTimeout" -or $result.error.code -eq "BadGatewayConnection" -or $result.error.code -eq "InvalidGatewayHost") {
+                    Write-Host " $currentTask - try #$tryCounter; returned: '$($result.error.code) | $($result.error.message)' - try again"
+                    Start-Sleep -Milliseconds 250
+                }
+                if ($result.error.code -eq "ExpiredAuthenticationToken") {
+                    Write-Host " $currentTask - try #$tryCounter; returned: '$($result.error.code) | $($result.error.message)' - requesting new bearer token"
+                    createBearerToken
+                }
+            }
+            else {
+                Write-Host " $currentTask - try #$tryCounter; returned: '$($result.code) $($result.error.code) | $($result.message) $($result.error.message)' - investigate that error!"
+                if ($AzureDevOpsWikiAsCode){
+                    exit 1
+                }
+                else{
+                    break script
+                }
+            }
+            
+        }
+        else {
+            #Write-Host "$currentTask - APICall success" #debug
+        }
+    }
+    until($AzAPIRequest.StatusCode -eq 200)
+    return $AzAPIRequest
+}
+
 #delimiter oppsite
 if ($CsvDelimiter -eq ";") {
     $CsvDelimiterOpposite = ","
@@ -137,45 +190,72 @@ if ($CsvDelimiter -eq ",") {
     $CsvDelimiterOpposite = ";"
 }
 
-#check for required Az modules
+#start
+$startTime = get-date -format "dd-MMM-yyyy HH:mm:ss"
+Write-Host "Start AzGovViz $startTime"
+
+#test required Az modules cmdlets
 $testCommands = @('Get-AzContext', 'Get-AzPolicyDefinition', 'Search-AzGraph')
-Write-Host "Checking required Az modules"
+$azModules = @('Az.Accounts', 'Az.Resources', 'Az.ResourceGraph')
+
+Write-Host "Testing required Az modules cmdlets"
 foreach ($testCommand in $testCommands){
     if (-not (Get-Command $testCommand -ErrorAction Ignore)) {
         if ($AzureDevOpsWikiAsCode){
-            Write-Error "AzModule test failed: cmdlet $testCommand not available - make sure the modules Az.Accounts, Az.Resources and Az.ResourceGraph are installed"
+            Write-Error "AzModule test failed: cmdlet $testCommand not available - make sure the modules $($azModules -join ", ") are installed"
             exit 1
         }
         else{
-            Write-Host " AzModule test failed: cmdlet $testCommand not available - make sure the modules Az.Accounts, Az.Resources and Az.ResourceGraph are installed"
-            break
+            Write-Host " AzModule test failed: cmdlet $testCommand not available - make sure the modules $($azModules -join ", ") are installed" -ForegroundColor Red
+            break script
         }
     }
     else {
-        Write-Host " AzModule test passed: Az ps module supporting cmdlet $testCommand installed"
+        Write-Host " AzModule test passed: Az ps module supporting cmdlet $testCommand installed" -ForegroundColor Green
     }
 }
 
-#check Context, verify Access Token lifetime
-$tokenExirationMinimumInMinutes = 5
+Write-Host "Collecting Az modules versions"
+foreach ($azModule in $azModules){
+    $azModuleVersion = (Get-InstalledModule -name "$azModule" -ErrorAction Ignore).Version
+    if ($azModuleVersion){
+        Write-Host " Az Module $azModule Version: $azModuleVersion"
+    }
+    else{
+        Write-Host " Az Module $azModule Version: could not be assessed"
+    }
+}
+
+#check Context
 $checkContext = Get-AzContext -ErrorAction Stop
 Write-Host "Checking Az Context"
 if (-not $checkContext) {
-    Write-Host " Context test failed: No context found. Please connect to Azure (run: Connect-AzAccount) and re-run AzGovViz"
-    break
+    Write-Host " Context test failed: No context found. Please connect to Azure (run: Connect-AzAccount) and re-run AzGovViz" -ForegroundColor Red
+    if ($AzureDevOpsWikiAsCode){
+        exit 1
+    }
+    else{
+        break script
+    }
 }
 else {
     if (-not $checkContext.Subscription){
         $checkContext
-        Write-Host " Context test failed: Context is not set to any Subscription. Set your context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run AzGovViz"
-        break
+        Write-Host " Context test failed: Context is not set to any Subscription. Set your context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run AzGovViz" -ForegroundColor Red
+        if ($AzureDevOpsWikiAsCode){
+            exit 1
+        }
+        else{
+            break script
+        }
     }
     else{
-        Write-Host " Context test passed: Context OK"
+        Write-Host " Context test passed: Context OK" -ForegroundColor Green
     }
 }
 
 
+#environment check
 $checkAzEnvironments = Get-AzEnvironment -ErrorAction Stop
 
 #FutureUse
@@ -195,63 +275,8 @@ foreach ($checkAzEnvironment in $checkAzEnvironments){
     ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).ActiveDirectoryAuthority = $checkAzEnvironment.ActiveDirectoryAuthority
 }
 
-function refreshToken() {
-    $checkContext = Get-AzContext -ErrorAction Stop
-    Write-Host "Creating new Token"
-    $azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile;
-    $profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile);
-    $newAccessToken = ($profileClient.AcquireAccessToken($checkContext.Subscription.TenantId))
-    if ($AzureDevOpsWikiAsCode) {
-        $script:accessTokenExipresOn = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) }).ExpiresOn
-    }
-    else {
-        $script:accessTokenExipresOn = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.TenantId -eq $checkContext.Tenant.Id) -and ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) -and ($_.DisplayableId -eq $checkContext.account.id) }).ExpiresOn
-    }
-    $script:accessToken = $newAccessToken.AccessToken
-}
-
-function checkTokenLifetime() {
-    $tokenExirationInMinutes = ($accessTokenExipresOn - (get-date)).Minutes
-    if ($tokenExirationInMinutes -lt $tokenExirationMinimumInMinutes) {
-        Write-Host "Access Token for REST AUTH has has less than $tokenExirationMinimumInMinutes minutes lifetime ($tokenExirationInMinutes minutes). Creating new token"
-        refreshToken
-        Write-Host "New Token expires: $($($script:accessTokenExipresOn).LocalDateTime) ($(($script:accessTokenExipresOn - (get-date)).Minutes) minutes)"
-    }
-    else {
-        #Write-Host "Access Token for REST AUTH remaining lifetime ($tokenExirationInMinutes minutes) above minimum lifetime ($tokenExirationMinimumInMinutes minutes)"
-    }
-}
-
-if ($AzureDevOpsWikiAsCode) {
-    $accessTokenExipresOn = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) }).ExpiresOn
-}
-else {
-    $accessTokenExipresOn = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.TenantId -eq $checkContext.Tenant.Id) -and ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) -and ($_.DisplayableId -eq $checkContext.account.id) }).ExpiresOn
-}
-
-if ($accessTokenExipresOn -lt $(Get-Date)) {
-    Write-Host "Access Token for REST AUTH has has expired"
-    refreshToken
-    Write-Host "New Token expires: $($($script:accessTokenExipresOn).LocalDateTime) ($(($script:accessTokenExipresOn - (get-date)).Minutes) minutes)"
-}
-else {
-    $tokenExirationInMinutes = ($accessTokenExipresOn - (get-date)).Minutes
-    if ($tokenExirationInMinutes -lt $tokenExirationMinimumInMinutes) {
-        Write-Host "Access Token for REST AUTH has has less than $tokenExirationMinimumInMinutes minutes lifetime ($tokenExirationInMinutes minutes)"
-        refreshToken
-        Write-Host "New Token expires: $($($script:accessTokenExipresOn).LocalDateTime) ($(($script:accessTokenExipresOn - (get-date)).Minutes) minutes)"
-    }
-    else {
-        if ($AzureDevOpsWikiAsCode) {
-            $accessToken = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) }).AccessToken
-        }
-        else {
-            $accessToken = ($checkContext.TokenCache.ReadItems() | Where-Object { ($_.TenantId -eq $checkContext.Tenant.Id) -and ($_.Resource -eq ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ServiceManagementUrl) -and ($_.DisplayableId -eq $checkContext.account.id) }).AccessToken
-        }
-        Write-Host "Found Access Token for REST AUTH (expires in $tokenExirationInMinutes minutes; defined minimum lifetime: $tokenExirationMinimumInMinutes minutes).."
-    }
-}
-
+#create bearer token
+createBearerToken
 
 #helper file/dir
 if (-not [IO.Path]::IsPathRooted($outputPath)) {
@@ -260,10 +285,8 @@ if (-not [IO.Path]::IsPathRooted($outputPath)) {
 $outputPath = Join-Path -Path $outputPath -ChildPath '.'
 $outputPath = [IO.Path]::GetFullPath($outputPath)
 if (-not (test-path $outputPath)) {
-    
-    Write-Host "path $outputPath does not exist -create it!"
-    #mkdir $outputPath
-    return
+    Write-Host "path $outputPath does not exist -create it!" -ForegroundColor Red
+    break script
 }
 else {
     Write-Host "Output/Files will be created in path $outputPath"
@@ -276,13 +299,12 @@ $fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 if (-not $ManagementGroupId) {
     [array]$MgtGroupArray = Add-IndexNumberToArray (Get-AzManagementGroup -ErrorAction Stop)
     if (-not $MgtGroupArray) {
-        Write-Host "Seems you do not have access to any Management Group. Please make sure you have the required RBAC role [Reader] assigned on at least one Management Group"
-        return
+        Write-Host "Seems you do not have access to any Management Group. Please make sure you have the required RBAC role [Reader] assigned on at least one Management Group" -ForegroundColor Red
+        break script
     }
     function selectMg() {
         Write-Host "Please select a Management Group from the list below:"
         $MgtGroupArray | Select-Object "#", Name, DisplayName, Id | Format-Table
-
         Write-Host "If you don't see your ManagementGroupID try using the parameter -ManagementGroupID" -ForegroundColor Yellow
         if ($msg){
             Write-Host $msg -ForegroundColor Red
@@ -305,7 +327,6 @@ if (-not $ManagementGroupId) {
         }
     }
     selectMg
-    
 
     if ($($MgtGroupArray[$SelectedMG - 1].Name)) {
         $ManagementGroupID = $($MgtGroupArray[$SelectedMG - 1].Name)
@@ -530,7 +551,7 @@ function addRowToTable() {
 #region Function_dataCollection
 $script:dataCollectionSubscriptionsCounter = 0
 function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
-    checkTokenLifetime
+    #checkBearerTokenLifetime
     $startMgLoop = get-date
     $hierarchyLevel++
     $getMg = Get-AzManagementGroup -groupname $mgId -Expand -Recurse -ErrorAction Stop
@@ -539,31 +560,13 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
     if (-not $HierarchyMapOnly) {
 
         #MGPolicyCompliance
+        $currentTask = "DataCollection Policy Compliance MG '$($getMg.DisplayName)' ('$($getMg.Name)')"
         ($htCachePolicyCompliance).mg.($getMg.Name) = @{ }
-        $uriMgPolicyCompliance = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)/providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
+        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)/providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
+        #$path = "/providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
+        $method = "POST"
 
-        $tryCounter = 0
-        do {
-            $result = "letscheck"
-            $tryCounter++
-            try {
-                $mgPolicyComplianceResult = Invoke-RestMethod -Uri $uriMgPolicyCompliance -Method POST -Headers @{"Authorization" = "Bearer $accesstoken" }
-            }
-            catch {
-                $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-            }
-            if ($result -ne "letscheck"){
-                $result
-                if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                    Write-Host " CustomDataCollection: L$hierarchyLevel MG '$($getMg.DisplayName)' ('$($getMg.Name)') Getting Policy Compliance: try #$tryCounter; returned: '$result' - try again"
-                    $result = "tryAgain"
-                    Start-Sleep -Milliseconds 250
-                }
-            }
-        }
-        until($result -ne "tryAgain")
-
-        foreach ($policyAssignment in $mgPolicyComplianceResult.value.policyassignments | sort-object -Property policyAssignmentId){
+        foreach ($policyAssignment in (((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json).value).policyassignments | sort-object -Property policyAssignmentId){
             ($htCachePolicyCompliance).mg.($getMg.Name).($policyAssignment.policyAssignmentId) = @{ }
             foreach ($policyComplianceState in $policyAssignment.results.policydetails){
                 if ($policyComplianceState.ComplianceState -eq "compliant"){
@@ -585,29 +588,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
         }
 
         #MGBlueprints
-        $uriMgBlueprintDefinitionScoped = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)/providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
-        
-        $tryCounter = 0
-        do {
-            $result = "letscheck"
-            $tryCounter++
-            try {
-                $mgBlueprintDefinitionResult = Invoke-RestMethod -Uri $uriMgBlueprintDefinitionScoped -Method Get -Headers @{"Authorization" = "Bearer $accesstoken" }
-            }
-            catch {
-                $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-            }
-            if ($result -ne "letscheck"){
-                $result
-                if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                    Write-Host " CustomDataCollection: L$hierarchyLevel MG '$($getMg.DisplayName)' ('$($getMg.Name)') Getting scoped Blueprint Definitions: try #$tryCounter; returned: '$result' - try again"
-                    $result = "tryAgain"
-                    Start-Sleep -Milliseconds 250
-                }
-            }
-        }
-        until($result -ne "tryAgain")
-        
+        $currentTask = "DataCollection Blueprint definitions MG '$($getMg.DisplayName)' ('$($getMg.Name)')"
+        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)/providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
+        #$path = "/providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
+        $method = "GET"
+
+        $mgBlueprintDefinitionResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
         if (($mgBlueprintDefinitionResult.value | measure-object).count -gt 0) {
             foreach ($blueprint in $mgBlueprintDefinitionResult.value) {
 
@@ -636,29 +622,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
         }
 
         #MGCustomPolicies
-        $uriPolicyDefinitionAPI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($getMg.Name)/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
-        
-        $tryCounter = 0
-        do {
-            $result = "letscheck"
-            $tryCounter++
-            try {
-                $requestPolicyDefinitionAPI = Invoke-RestMethod -Uri $uriPolicyDefinitionAPI -Headers  @{"Authorization" = "Bearer $accesstoken" }
-            }
-            catch {
-                $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-            }
-            if ($result -ne "letscheck"){
-                $result
-                if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                    Write-Host " CustomDataCollection: L$hierarchyLevel MG '$($getMg.DisplayName)' ('$($getMg.Name)') Getting Policy Definitions: try #$tryCounter; returned: '$result' - try again"
-                    $result = "tryAgain"
-                    Start-Sleep -Milliseconds 250
-                }
-            }
-        }
-        until($result -ne "tryAgain")
-        
+        $currentTask = "DataCollection Custom Policy definitions MG '$($getMg.DisplayName)' ('$($getMg.Name)')"
+        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($getMg.Name)/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+        #$path = "/providers/Microsoft.Management/managementgroups/$($getMg.Name)/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+        $method = "GET"
+
+        $requestPolicyDefinitionAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
         $mgPolicyDefinitions = $requestPolicyDefinitionAPI.value | Where-Object { $_.properties.policyType -eq "custom" }
         $PolicyDefinitionsScopedCount = (($mgPolicyDefinitions | Where-Object { ($_.Id) -like "/providers/Microsoft.Management/managementGroups/$($getMg.Name)/*" }) | measure-object).count
         foreach ($mgPolicyDefinition in $mgPolicyDefinitions) {
@@ -713,29 +682,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
         }
 
         #MGPolicySets
-        $uriPolicySetDefinitionAPI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($getMg.Name)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2019-09-01"
+        $currentTask = "DataCollection Custom PolicySet definitions MG '$($getMg.DisplayName)' ('$($getMg.Name)')"
+        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($getMg.Name)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2019-09-01"
+        #$path = "/providers/Microsoft.Management/managementgroups/$($getMg.Name)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2019-09-01"
+        $method = "GET"
         
-        $tryCounter = 0
-        do {
-            $result = "letscheck"
-            $tryCounter++
-            try {
-                $requestPolicySetDefinitionAPI = Invoke-RestMethod -Uri $uriPolicySetDefinitionAPI -Headers  @{"Authorization" = "Bearer $accesstoken" }
-            }
-            catch {
-                $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-            }
-            if ($result -ne "letscheck"){
-                $result
-                if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                    Write-Host " CustomDataCollection: L$hierarchyLevel MG '$($getMg.DisplayName)' ('$($getMg.Name)') Getting PolicySet Definitions: try #$tryCounter; returned: '$result' - try again"
-                    $result = "tryAgain"
-                    Start-Sleep -Milliseconds 250
-                }
-            }
-        }
-        until($result -ne "tryAgain")
-        
+        $requestPolicySetDefinitionAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
         $mgPolicySetDefinitions = $requestPolicySetDefinitionAPI.value | Where-Object { $_.properties.policyType -eq "custom" }
         $PolicySetDefinitionsScopedCount = (($mgPolicySetDefinitions | Where-Object { ($_.Id) -like "/providers/Microsoft.Management/managementGroups/$($getMg.Name)/*" }) | measure-object).count
         foreach ($mgPolicySetDefinition in $mgPolicySetDefinitions) {
@@ -759,29 +711,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
         }
 
         #MgPolicyAssignments
-        $uriPolicyAssignmentAPI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($getMg.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atscope()&api-version=2019-09-01"
-        
-        $tryCounter = 0
-        do {
-            $result = "letscheck"
-            $tryCounter++
-            try {
-                $L0mgmtGroupPolicyAssignments = Invoke-RestMethod -Uri $uriPolicyAssignmentAPI -Headers  @{"Authorization" = "Bearer $accesstoken" }
-            }
-            catch {
-                $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-            }
-            if ($result -ne "letscheck"){
-                $result
-                if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                    Write-Host " CustomDataCollection: $($getMg.Name) Getting Policy Assignments: try #$tryCounter; returned: '$result' - try again"
-                    $result = "tryAgain"
-                    Start-Sleep -Milliseconds 250
-                }
-            }
-        }
-        until($result -ne "tryAgain")
-
+        $currentTask = "DataCollection Policy assignments MG '$($getMg.DisplayName)' ('$($getMg.Name)')"
+        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($getMg.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atscope()&api-version=2019-09-01"
+        #$path = "/providers/Microsoft.Management/managementgroups/$($getMg.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atscope()&api-version=2019-09-01"
+        $method = "GET"
+       
+        $L0mgmtGroupPolicyAssignments = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
         $L0mgmtGroupPolicyAssignmentsPolicyCount = (($L0mgmtGroupPolicyAssignments.value | where-object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" }) | measure-object).count
         $L0mgmtGroupPolicyAssignmentsPolicySetCount = (($L0mgmtGroupPolicyAssignments.value | where-object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" }) | measure-object).count
         $L0mgmtGroupPolicyAssignmentsPolicyAtScopeCount = (($L0mgmtGroupPolicyAssignments.value | where-object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.Id -match "/providers/Microsoft.Management/managementGroups/$($getMg.Name)" }) | measure-object).count
@@ -931,29 +866,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
         }
 
         #MGCustomRolesRoles
-        $uriRoleDefinitionAPI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.Authorization/roleDefinitions?api-version=2015-07-01&`$filter=type%20eq%20'CustomRole'"
-
-        $tryCounter = 0
-        do {
-            $result = "letscheck"
-            $tryCounter++
-            try {
-                $mgCustomRoleDefinitions = Invoke-RestMethod -Uri $uriRoleDefinitionAPI -Headers  @{"Authorization" = "Bearer $accesstoken" }
-            }
-            catch {
-                $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-            }
-            if ($result -ne "letscheck"){
-                $result
-                if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                    Write-Host " CustomDataCollection: $($getMg.Name) Getting Custom Roles: try #$tryCounter; returned: '$result' - try again"
-                    $result = "tryAgain"
-                    Start-Sleep -Milliseconds 250
-                }
-            }
-        }
-        until($result -ne "tryAgain")
+        $currentTask = "DataCollection Custom Role definitions MG '$($getMg.DisplayName)' ('$($getMg.Name)')"
+        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.Authorization/roleDefinitions?api-version=2015-07-01&`$filter=type%20eq%20'CustomRole'"
+        #$path = "/providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.Authorization/roleDefinitions?api-version=2015-07-01&`$filter=type%20eq%20'CustomRole'"
+        $method = "GET"
         
+        $mgCustomRoleDefinitions = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
         foreach ($mgCustomRoleDefinition in $mgCustomRoleDefinitions.value) {
             if (-not $($htCacheDefinitions).role[$mgCustomRoleDefinition.name]) {
                 $($htCacheDefinitions).role.$($mgCustomRoleDefinition.name) = @{ }
@@ -1073,7 +991,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
     if (($getMg.children | measure-object).count -gt 0) {
         
         foreach ($childMg in $getMg.Children | Where-Object { $_.Type -eq "/subscriptions" }) {
-            checkTokenLifetime
+            #checkBearerTokenLifetime
             $startSubLoop = get-date
             $childMgSubId = $childMg.Id -replace '/subscriptions/', ''
             $script:dataCollectionSubscriptionsCounter++
@@ -1082,15 +1000,47 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
             if (-not $HierarchyMapOnly) {
                 #SubscriptionDetails
                 #https://docs.microsoft.com/en-us/rest/api/resources/subscriptions/list
-                $uriSubscriptionsGet = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)?api-version=2020-01-01"
-                $result = "letscheck"
-                try {
-                    $subscriptionsGetResult = Invoke-RestMethod -Uri $uriSubscriptionsGet -Method Get -Headers @{"Authorization" = "Bearer $accesstoken" }
-                } catch {
-                    $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
+                $currentTask = "DataCollection Subscription validation SUB '$($childMg.DisplayName)' ('$childMgSubId')"
+                $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)?api-version=2020-01-01"
+                #$path = "/subscriptions/$($childMgSubId)?api-version=2020-01-01"
+                $method = "GET"
+
+                $tryCounter = 0
+                $retry = "unset"
+                do{
+                    $tryCounter++
+                    #$result = "letscheck"
+                    try {
+                        $subscriptionsGetResult = Invoke-WebRequest -Uri $uri -Method $method -Headers @{"Authorization" = "Bearer $BearerAccessToken" } -UseBasicParsing
+                    } catch {
+                        $result = ($_.ErrorDetails.Message | ConvertFrom-Json)
+                    }
+                    if ($subscriptionsGetResult.StatusCode -ne 200){
+                        if ($result.error.code -eq "GatewayTimeout" -or $result.error.code -eq "BadGatewayConnection" -or $result.error.code -eq "InvalidGatewayHost" -or $result.error.code -eq "ExpiredAuthenticationToken") {
+                            $retry = "yes"
+                            if ($result.error.code -eq "GatewayTimeout" -or $result.error.code -eq "BadGatewayConnection" -or $result.error.code -eq "InvalidGatewayHost") {
+                                Write-Host " $currentTask - try #$tryCounter; returned: 'code: $($result.error.code) | message: $($result.error.message)' - try again"
+                                Start-Sleep -Milliseconds 250
+                            }
+                            if ($result.error.code -eq "ExpiredAuthenticationToken") {
+                                Write-Host " $currentTask - try #$tryCounter; returned: 'code: $($result.error.code) | message: $($result.error.message)' - requesting new bearer token"
+                                createBearerToken
+                            }
+                        }
+                        else{
+                            $retry = "no"
+                            Write-Host " $($currentTask): Subscription Error: 'code: $($result.code) $($result.error.code)' | 'message: $($result.message) $($result.error.message)' -> skipping this subscription"
+                            $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{ 'subscriptionId' = $childMgSubId; 'subscriptionName'= $childMg.DisplayName; 'outOfScopeReason'= "$($result.code) $($result.error.code) - $($result.message) $($result.error.message)"; 'ManagementGroupId' = $getMg.Name; 'ManagementGroupName' = $getMg.DisplayName })
+                        }
+                    }
                 }
-                if ($result -eq "letscheck"){              
-                    
+                until($subscriptionsGetResult.StatusCode -eq 200 -or $retry -eq "no")
+                
+                if ($subscriptionsGetResult.StatusCode -eq 200 -or $retry -eq "no"){
+
+                <#}
+                else{#>              
+                    $subscriptionsGetResult = ($subscriptionsGetResult.Content | ConvertFrom-Json)
                     if (($subscriptionsGetResult.subscriptionPolicies.quotaId).startswith("AAD_","CurrentCultureIgnoreCase") -or $subscriptionsGetResult.state -ne "enabled") {
                         if (($subscriptionsGetResult.subscriptionPolicies.quotaId).startswith("AAD_","CurrentCultureIgnoreCase")) {
                             Write-Host " CustomDataCollection: Subscription Quota Id: $($subscriptionsGetResult.subscriptionPolicies.quotaId) is out of scope for AzGovViz"
@@ -1147,29 +1097,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         $subscriptionState = $subscriptionsGetResult.state
 
                         #SubscriptionPolicyCompliance
-                        $uriSubPolicyCompliance = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
-
-                        $tryCounter = 0
-                        do {
-                            $result = "letscheck"
-                            $tryCounter++
-                            try {
-                                $subPolicyComplianceResult = Invoke-RestMethod -Uri $uriSubPolicyCompliance -Method POST -Headers @{"Authorization" = "Bearer $accesstoken" }
-                            }
-                            catch {
-                                $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-                            }
-                            if ($result -ne "letscheck"){
-                                $result
-                                if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                                    Write-Host " CustomDataCollection: Subscription Id: $childMgSubId Getting Policy Compliance: try #$tryCounter; returned: '$result' - try again"
-                                    $result = "tryAgain"
-                                    Start-Sleep -Milliseconds 250
-                                }
-                            }
-                        }
-                        until($result -ne "tryAgain")
-
+                        $currentTask = "DataCollection Policy Compliance SUB '$($childMg.DisplayName)' ('$childMgSubId')"
+                        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
+                        #$path = "/subscriptions/$childMgSubId/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
+                        $method = "POST"
+                        
+                        $subPolicyComplianceResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
                         ($htCachePolicyCompliance).sub.$childMgSubId = @{ }
                         foreach ($policyAssignment in $subPolicyComplianceResult.value.policyassignments | sort-object -Property policyAssignmentId){
                             ($htCachePolicyCompliance).sub.($childMgSubId).($policyAssignment.policyAssignmentId) = @{ }
@@ -1194,40 +1127,17 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
 
                         #SubscriptionASCSecureScore
                         if (-not $NoASCSecureScore){
-                            $uriSubASCSecureScore = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Security/securescores?api-version=2020-01-01-preview"
-                            
-                            $tryCounter = 0
-                            do {
-                                $result = "letscheck"
-                                $tryCounter++
-                                try {
-                                    $subASCSecureScoreResult = Invoke-RestMethod -Uri $uriSubASCSecureScore -Method Get -Headers @{"Authorization" = "Bearer $accesstoken" }
-                                }
-                                catch {
-                                    $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-                                }
-                                if ($result -ne "letscheck"){
-                                    $result
-                                    if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                                        Write-Host " CustomDataCollection: Subscription Id: $childMgSubId Getting ASC Secure Score: try #$tryCounter; returned: '$result' - try again"
-                                        $result = "tryAgain"
-                                        Start-Sleep -Milliseconds 250
-                                    }
-                                }
-                            }
-                            until($result -ne "tryAgain")
+                            $currentTask = "DataCollection ASC Secure Score SUB '$($childMg.DisplayName)' ('$childMgSubId')"
+                            $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Security/securescores?api-version=2020-01-01-preview"
+                            #$path = "/subscriptions/$childMgSubId/providers/Microsoft.Security/securescores?api-version=2020-01-01-preview"
+                            $method = "GET"
 
-                            if ($result -ne "letscheck"){
-                                Write-Host " CustomDataCollection: Subscription Id: $childMgSubId Getting ASC Secure Score error: '$result' -> skipping ASC Secure Score for this subscription"
-                                $subscriptionASCSecureScore = "n/a"
+                            $subASCSecureScoreResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
+                            if (($subASCSecureScoreResult.value | measure-object).count -gt 0) {
+                                $subscriptionASCSecureScore = "$($subASCSecureScoreResult.value.properties.score.current) of $($subASCSecureScoreResult.value.properties.score.max) points" 
                             }
-                            else{
-                                if (($subASCSecureScoreResult.value | measure-object).count -gt 0) {
-                                    $subscriptionASCSecureScore = "$($subASCSecureScoreResult.value.properties.score.current) of $($subASCSecureScoreResult.value.properties.score.max) points" 
-                                }
-                                else {
-                                    $subscriptionASCSecureScore = "n/a"
-                                }
+                            else {
+                                $subscriptionASCSecureScore = "n/a"
                             }
                         }
                         else{
@@ -1235,29 +1145,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         }
 
                         #SubscriptionBlueprint
-                        $uriSubBlueprintDefinitionScoped = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)/subscriptions/$childMgSubId/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
+                        $currentTask = "DataCollection Blueprint definitions SUB '$($childMg.DisplayName)' ('$childMgSubId')"
+                        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)/subscriptions/$childMgSubId/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
+                        #$path = "/subscriptions/$childMgSubId/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
+                        $method = "GET"
 
-                        $tryCounter = 0
-                        do {
-                            $result = "letscheck"
-                            $tryCounter++
-                            try {
-                                $subBlueprintDefinitionResult = Invoke-RestMethod -Uri $uriSubBlueprintDefinitionScoped -Method Get -Headers @{"Authorization" = "Bearer $accesstoken" }
-                            }
-                            catch {
-                                $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-                            }
-                            if ($result -ne "letscheck"){
-                                $result
-                                if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                                    Write-Host " CustomDataCollection: Subscription Id: $childMgSubId Getting scoped Blueprint Definitions: try #$tryCounter; returned: '$result' - try again"
-                                    $result = "tryAgain"
-                                    Start-Sleep -Milliseconds 250
-                                }
-                            }
-                        }
-                        until($result -ne "tryAgain")
-
+                        $subBlueprintDefinitionResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
                         if (($subBlueprintDefinitionResult.value | measure-object).count -gt 0) {
                             foreach ($blueprint in $subBlueprintDefinitionResult.value) {
 
@@ -1294,29 +1187,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         }
 
                         #SubscriptionBlueprintAssignment
-                        $urisubscriptionBlueprintAssignments = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Blueprint/blueprintAssignments?api-version=2018-11-01-preview"
+                        $currentTask = "DataCollection Blueprint assignments SUB '$($childMg.DisplayName)' ('$childMgSubId')"
+                        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Blueprint/blueprintAssignments?api-version=2018-11-01-preview"
+                        #$path = "/subscriptions/$childMgSubId/providers/Microsoft.Blueprint/blueprintAssignments?api-version=2018-11-01-preview"
+                        $method = "GET"
                         
-                        $tryCounter = 0
-                        do {
-                            $result = "letscheck"
-                            $tryCounter++
-                            try {
-                                $subscriptionBlueprintAssignmentsResult = Invoke-RestMethod -Uri $urisubscriptionBlueprintAssignments -Method Get -Headers @{"Authorization" = "Bearer $accesstoken" }
-                            }
-                            catch {
-                                $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-                            }
-                            if ($result -ne "letscheck"){
-                                $result
-                                if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                                    Write-Host " CustomDataCollection: Subscription Id: $childMgSubId Getting Blueprint Assignments: try #$tryCounter; returned: '$result' - try again"
-                                    $result = "tryAgain"
-                                    Start-Sleep -Milliseconds 250
-                                }
-                            }
-                        }
-                        until($result -ne "tryAgain")
-
+                        $subscriptionBlueprintAssignmentsResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
                         if (($subscriptionBlueprintAssignmentsResult.value | measure-object).count -gt 0) {
                             foreach ($subscriptionBlueprintAssignment in $subscriptionBlueprintAssignmentsResult.value) {
 
@@ -1334,29 +1210,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                     $blueprintName = $subscriptionBlueprintAssignment.properties.blueprintId -replace ".*/blueprints/", "" -replace "/versions/.*", ""
                                 }
                                 
-                                $uriSubscriptionBlueprintDefinition = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)$($blueprintScope)/providers/Microsoft.Blueprint/blueprints/$($blueprintName)?api-version=2018-11-01-preview"
-
-                                $tryCounter = 0
-                                do {
-                                    $result = "letscheck"
-                                    $tryCounter++
-                                    try {
-                                        $subscriptionBlueprintDefinitionResult = Invoke-RestMethod -Uri $uriSubscriptionBlueprintDefinition -Method Get -Headers @{"Authorization" = "Bearer $accesstoken" }
-                                    }
-                                    catch {
-                                        $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-                                    }
-                                    if ($result -ne "letscheck"){
-                                        $result
-                                        if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                                            Write-Host " CustomDataCollection: Subscription Id: $childMgSubId Getting Blueprint Definitions: try #$tryCounter; returned: '$result' - try again"
-                                            $result = "tryAgain"
-                                            Start-Sleep -Milliseconds 250
-                                        }
-                                    }
-                                }
-                                until($result -ne "tryAgain")
-
+                                $currentTask = "DataCollection Blueprint definitions related to Blueprint assignments SUB '$($childMg.DisplayName)' ('$childMgSubId')"
+                                $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)$($blueprintScope)/providers/Microsoft.Blueprint/blueprints/$($blueprintName)?api-version=2018-11-01-preview"
+                                #$path = "$($blueprintScope)/providers/Microsoft.Blueprint/blueprints/$($blueprintName)?api-version=2018-11-01-preview"
+                                $method = "GET"
+                                
+                                $subscriptionBlueprintDefinitionResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
                                 $blueprintName = $subscriptionBlueprintDefinitionResult.name
                                 $blueprintId = $subscriptionBlueprintDefinitionResult.id
                                 $blueprintAssignmentVersion = $subscriptionBlueprintAssignment.properties.blueprintId -replace ".*/"
@@ -1389,29 +1248,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         }
 
                         #SubscriptionPolicies
-                        $uriPolicyDefinitionAPI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+                        $currentTask = "DataCollection Policy definitions SUB '$($childMg.DisplayName)' ('$childMgSubId')"
+                        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+                        #$path = "/subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+                        $method = "GET"
                         
-                        $tryCounter = 0
-                        do {
-                            $result = "letscheck"
-                            $tryCounter++
-                            try {
-                                $requestPolicyDefinitionAPI = Invoke-RestMethod -Uri $uriPolicyDefinitionAPI -Headers  @{"Authorization" = "Bearer $accesstoken" }
-                            }
-                            catch {
-                                $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-                            }
-                            if ($result -ne "letscheck"){
-                                $result
-                                if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                                    Write-Host " CustomDataCollection: $childMgSubId Getting Policy Definitions: try #$tryCounter; returned: '$result' - try again"
-                                    $result = "tryAgain"
-                                    Start-Sleep -Milliseconds 250
-                                }
-                            }
-                        }
-                        until($result -ne "tryAgain")
-                        
+                        $requestPolicyDefinitionAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
                         $subPolicyDefinitions = $requestPolicyDefinitionAPI.value | Where-Object { $_.properties.policyType -eq "custom" }
                         $PolicyDefinitionsScopedCount = (($subPolicyDefinitions | Where-Object { ($_.Id) -like "/subscriptions/$childMgSubId/*" }) | measure-object).count
                         foreach ($subPolicyDefinition in $subPolicyDefinitions) {
@@ -1466,29 +1308,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         }
 
                         #SubscriptionPolicySets
-                        $uriPolicySetDefinitionAPI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2019-09-01"
-                        
-                        $tryCounter = 0
-                        do {
-                            $result = "letscheck"
-                            $tryCounter++
-                            try {
-                                $requestPolicySetDefinitionAPI = Invoke-RestMethod -Uri $uriPolicySetDefinitionAPI -Headers  @{"Authorization" = "Bearer $accesstoken" }
-                            }
-                            catch {
-                                $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-                            }
-                            if ($result -ne "letscheck"){
-                                $result
-                                if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                                    Write-Host " CustomDataCollection: $childMgSubId Getting PolicySet Definitions: try #$tryCounter; returned: '$result' - try again"
-                                    $result = "tryAgain"
-                                    Start-Sleep -Milliseconds 250
-                                }
-                            }
-                        }
-                        until($result -ne "tryAgain")
-                       
+                        $currentTask = "DataCollection PolicySet definitions SUB '$($childMg.DisplayName)' ('$childMgSubId')"
+                        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2019-09-01"
+                        #$path = "/subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2019-09-01"
+                        $method = "GET"
+                    
+                        $requestPolicySetDefinitionAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
                         $subPolicySetDefinitions = $requestPolicySetDefinitionAPI.value | Where-Object { $_.properties.policyType -eq "custom" }
                         $PolicySetDefinitionsScopedCount = (($subPolicySetDefinitions | Where-Object { ($_.Id) -like "/subscriptions/$childMgSubId/*" }) | measure-object).count
                         foreach ($subPolicySetDefinition in $subPolicySetDefinitions) {
@@ -1512,29 +1337,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         }
 
                         #SubscriptionPolicyAssignments
-                        $uriPolicyAssignmentAPI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyAssignments?api-version=2019-09-01"
+                        $currentTask = "DataCollection Policy assignments SUB '$($childMg.DisplayName)' ('$childMgSubId')"
+                        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyAssignments?api-version=2019-09-01"
+                        #$path = "/subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyAssignments?api-version=2019-09-01"
+                        $method = "GET"
                         
-                        $tryCounter = 0
-                        do {
-                            $result = "letscheck"
-                            $tryCounter++
-                            try {
-                                $L1mgmtGroupSubPolicyAssignments = Invoke-RestMethod -Uri $uriPolicyAssignmentAPI -Headers  @{"Authorization" = "Bearer $accesstoken" }
-                            }
-                            catch {
-                                $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-                            }
-                            if ($result -ne "letscheck"){
-                                $result
-                                if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                                    Write-Host " CustomDataCollection: $childMgSubId Getting Policy Assignments: try #$tryCounter; returned: '$result' - try again"
-                                    $result = "tryAgain"
-                                    Start-Sleep -Milliseconds 250
-                                }
-                            }
-                        }
-                        until($result -ne "tryAgain")
-
+                        $L1mgmtGroupSubPolicyAssignments = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
                         $L1mgmtGroupSubPolicyAssignmentsPolicyCount = (($L1mgmtGroupSubPolicyAssignments.value | where-object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.id -notmatch "$($childMg.Id)/resourceGroups" }) | measure-object).count
                         $L1mgmtGroupSubPolicyAssignmentsPolicySetCount = (($L1mgmtGroupSubPolicyAssignments.value | where-object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.id -notmatch "$($childMg.Id)/resourceGroups" }) | measure-object).count
                         $L1mgmtGroupSubPolicyAssignmentsPolicyAtScopeCount = (($L1mgmtGroupSubPolicyAssignments.value | where-object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.Id -match $childMg.Id -and $_.id -notmatch "$($childMg.Id)/resourceGroups" }) | measure-object).count
@@ -1712,29 +1520,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         }
 
                         #SubscriptionRoles
-                        $uriRoleDefinitionAPI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Authorization/roleDefinitions?api-version=2015-07-01&`$filter=type%20eq%20'CustomRole'"
-                
-                        $tryCounter = 0
-                        do {
-                            $result = "letscheck"
-                            $tryCounter++
-                            try {
-                                $subCustomRoleDefinitions = Invoke-RestMethod -Uri $uriRoleDefinitionAPI -Headers  @{"Authorization" = "Bearer $accesstoken" }
-                            }
-                            catch {
-                                $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-                            }
-                            if ($result -ne "letscheck"){
-                                $result
-                                if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                                    Write-Host " CustomDataCollection: $childMgSubId Getting Custom Roles: try #$tryCounter; returned: '$result' - try again"
-                                    $result = "tryAgain"
-                                    Start-Sleep -Milliseconds 250
-                                }
-                            }
-                        }
-                        until($result -ne "tryAgain")
+                        $currentTask = "DataCollection Custom Role definitions SUB '$($childMg.DisplayName)' ('$childMgSubId')"
+                        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Authorization/roleDefinitions?api-version=2015-07-01&`$filter=type%20eq%20'CustomRole'"
+                        #$path = "/subscriptions/$childMgSubId/providers/Microsoft.Authorization/roleDefinitions?api-version=2015-07-01&`$filter=type%20eq%20'CustomRole'"
+                        $method = "GET"
                         
+                        $subCustomRoleDefinitions = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
                         foreach ($subCustomRoleDefinition in $subCustomRoleDefinitions.value) {
                             if (-not $($htCacheDefinitions).role[$subCustomRoleDefinition.name]) {
                                 $($htCacheDefinitions).role.$($subCustomRoleDefinition.name) = @{ }
@@ -1750,29 +1541,12 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         }
 
                         #SubscriptionRoleAssignments
-                        $uriRoleAssignmentsUsageMetrics = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics?api-version=2019-08-01-preview"
+                        $currentTask = "DataCollection Role assignments usage metrics SUB '$($childMg.DisplayName)' ('$childMgSubId')"
+                        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics?api-version=2019-08-01-preview"
+                        #$path = "/subscriptions/$childMgSubId/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics?api-version=2019-08-01-preview"
+                        $method = "GET"
                         
-                        $tryCounter = 0
-                        do {
-                            $result = "letscheck"
-                            $tryCounter++
-                            try {
-                                $roleAssignmentsUsage = Invoke-RestMethod -Uri $uriRoleAssignmentsUsageMetrics -Method Get -Headers @{"Authorization" = "Bearer $accesstoken" }
-                            }
-                            catch {
-                                $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-                            }
-                            if ($result -ne "letscheck"){
-                                $result
-                                if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                                    Write-Host " CustomDataCollection: $childMgSubId Getting Role Assignments Usage Metrics: try #$tryCounter; returned: '$result' - try again"
-                                    $result = "tryAgain"
-                                    Start-Sleep -Milliseconds 250
-                                }
-                            }
-                        }
-                        until($result -ne "tryAgain")
-                        
+                        $roleAssignmentsUsage = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
                         $L1mgmtGroupSubRoleAssignments = Get-AzRoleAssignment -Scope "$($childMg.Id)" -ErrorAction Stop #exclude rg roleassignments
                         $script:arrayCacheRoleAssignmentsResourceGroups += foreach ($L1mgmtGroupSubRoleAssignmentOnRg in $L1mgmtGroupSubRoleAssignments | where-object { $_.RoleAssignmentId -match "$($childMg.Id)/resourcegroups/" }) {
                             $L1mgmtGroupSubRoleAssignmentOnRg
@@ -1876,10 +1650,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         }
                     }
                 }
-                else{
-                    Write-Host " CustomDataCollection: Subscription Error: '$result' -> skipping this subscription"
-                    $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{ 'subscriptionId' = $childMgSubId; 'subscriptionName'= $childMg.DisplayName; 'outOfScopeReason'= $result; 'ManagementGroupId' = $getMg.Name; 'ManagementGroupName' = $getMg.DisplayName })
-                }
+
             }
             else {
                 addRowToTable `
@@ -3859,14 +3630,27 @@ $script:customPoliciesDetailed += foreach ($customPolicy in ($customPoliciesArra
     else{
         $policyRoleDefinitions = "n/a"
     }
+
+    #scope
+    if (($temp0000000.Id).startswith("/subscriptions/", "CurrentCultureIgnoreCase")){
+        $scope = "Sub"
+        $scopeId =  $temp0000000.Id -replace "/subscriptions/", "" -replace '/.*'
+    }
+    if (($temp0000000.Id).startswith("/providers/Microsoft.Management/managementGroups/", "CurrentCultureIgnoreCase")){
+        $scope = "Mg"
+        $scopeId = $temp0000000.Id -replace "/providers/Microsoft.Management/managementGroups/", "" -replace '/.*'
+    }
+
     [PSCustomObject]@{ 
-        'PolicyDisplayName' = $temp0000000.DisplayName; 
-        'PolicyDefinitionId'= $temp0000000.PolicyDefinitionId; 
-        'PolicyEffect'= $effect; 
-        'PolicyCategory'= $temp0000000.Category; 
-        'RoleDefinitions' = $policyRoleDefinitions; 
-        'UniqueAssignments' = $uniqueAssignments; 
-        'UsedInPolicySets' = $usedInPolicySet
+        Scope = $scope
+        ScopeId = $scopeId
+        PolicyDisplayName = $temp0000000.DisplayName 
+        PolicyDefinitionId = $temp0000000.PolicyDefinitionId 
+        PolicyEffect = $effect
+        PolicyCategory = $temp0000000.Category
+        RoleDefinitions = $policyRoleDefinitions 
+        UniqueAssignments = $uniqueAssignments 
+        UsedInPolicySets = $usedInPolicySet
     }
 }
 
@@ -3887,6 +3671,8 @@ $htmlTenantSummary += @"
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
+<th>Scope</th>
+<th>Scope Id</th>
 <th>Policy DisplayName</th>
 <th>PolicyId</th>
 <th>Category</th>
@@ -3902,6 +3688,8 @@ $htmlTenantSummary += @"
     foreach ($customPolicy in ($script:customPoliciesDetailed | Sort-Object @{Expression={$_.PolicyDisplayName}}, @{Expression={$_.PolicyDefinitionId}})){
 $htmlSUMMARYcustompolicies += @"
 <tr>
+<td>$($customPolicy.Scope)</td>
+<td>$($customPolicy.ScopeId)</td>
 <td>$($customPolicy.PolicyDisplayName)</td>
 <td class="breakwordall">$($customPolicy.PolicyDefinitionId)</td>
 <td>$($customPolicy.PolicyCategory)</td>
@@ -3946,7 +3734,10 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
 }
 $htmlTenantSummary += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_0: 'select',
             col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -4009,6 +3800,8 @@ $htmlTenantSummary += @"
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
+<th>Scope</th>
+<th>Scope Id</th>
 <th>Policy DisplayName</th>
 <th>PolicyId</th>
 <th>Category</th>
@@ -4024,6 +3817,8 @@ $htmlTenantSummary += @"
     foreach ($customPolicy in ($script:customPoliciesDetailed | Sort-Object @{Expression={$_.PolicyDisplayName}}, @{Expression={$_.PolicyDefinitionId}})){
 $htmlSUMMARYcustompolicies += @"
 <tr>
+<td>$($customPolicy.Scope)</td>
+<td>$($customPolicy.ScopeId)</td>
 <td>$($customPolicy.PolicyDisplayName)</td>
 <td class="breakwordall">$($customPolicy.PolicyDefinitionId)</td>
 <td>$($customPolicy.PolicyCategory)</td>
@@ -4066,7 +3861,10 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
 }
 $htmlTenantSummary += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_0: 'select',
             col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -4337,7 +4135,8 @@ $customPolicySetsArray += foreach ($tenantCustomPolicySet in $tenantCustomPolicy
 $script:customPolicySetsDetailed = @()
 $script:customPolicySetsDetailed += foreach ($customPolicySet in ($customPolicySetsArray | Sort-Object)){
     
-    $policySetUniqueAssignments = (($policyPolicySetBaseQuery | Where-Object { $_.PolicyDefinitionIdFull -eq ($htCacheDefinitions).policySet.($customPolicySet.Id).Id }).PolicyAssignmentId | sort-object -Unique)
+    $temp00000000 = ($htCacheDefinitions).policySet.($customPolicySet.Id)
+    $policySetUniqueAssignments = (($policyPolicySetBaseQuery | Where-Object { $_.PolicyDefinitionIdFull -eq $temp00000000.Id }).PolicyAssignmentId | sort-object -Unique)
     $policySetUniqueAssignmentsArray = @()
     $policySetUniqueAssignmentsArray += foreach ($policySetUniqueAssignment in $policySetUniqueAssignments){
         $policySetUniqueAssignment
@@ -4354,7 +4153,7 @@ $script:customPolicySetsDetailed += foreach ($customPolicySet in ($customPolicyS
     #<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/10ee2ea2-fb4d-45b8-a7e9-a2e770044cd9.html`" target=`"_blank`">
 
     $policySetPoliciesArray = @()
-    $policySetPoliciesArray += foreach ($policyPolicySet in ($htCacheDefinitions).policySet.($customPolicySet.Id).PolicySetPolicyIds){
+    $policySetPoliciesArray += foreach ($policyPolicySet in $temp00000000.PolicySetPolicyIds){
         #$policyPolicySetId = $policyPolicySet
         $hlpPolicyDef = ($htCacheDefinitions).policy.($policyPolicySet)
         #https://www.azadvertizer.net/azpolicyadvertizer//providers/Microsoft.Authorization/policyDefinitions/e1e5fd5d-3e4c-4ce1-8661-7d1873ae6b15.html
@@ -4374,12 +4173,24 @@ $script:customPolicySetsDetailed += foreach ($customPolicySet in ($customPolicyS
         $policiesUsed = "0 really?"
     }
 
+    #scope
+    if (($temp00000000.Id).startswith("/subscriptions/", "CurrentCultureIgnoreCase")){
+        $scope = "Sub"
+        $scopeId =  $temp00000000.Id -replace "/subscriptions/", "" -replace '/.*'
+    }
+    if (($temp00000000.Id).startswith("/providers/Microsoft.Management/managementGroups/", "CurrentCultureIgnoreCase")){
+        $scope = "Mg"
+        $scopeId = $temp00000000.Id -replace "/providers/Microsoft.Management/managementGroups/", "" -replace '/.*'
+    }
+
     [PSCustomObject]@{ 
-        'PolicySetDisplayName' = $customPolicySet.DisplayName; 
-        'PolicySetDefinitionId'= $customPolicySet.PolicyDefinitionId; 
-        'PolicySetCategory'= $customPolicySet.Category; 
-        'UniqueAssignments' = $policySetUniqueAssignment; 
-        'PoliciesUsed' = $policiesUsed
+        Scope = $scope
+        ScopeId = $scopeId
+        PolicySetDisplayName = $customPolicySet.DisplayName
+        PolicySetDefinitionId = $customPolicySet.PolicyDefinitionId 
+        PolicySetCategory = $customPolicySet.Category
+        UniqueAssignments = $policySetUniqueAssignment 
+        PoliciesUsed = $policiesUsed
     }
 }
 
@@ -4401,6 +4212,8 @@ $htmlTenantSummary += @"
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
+<th>Scope</th>
+<th>ScopeId</th>
 <th>PolicySet DisplayName</th>
 <th>PolicySetId</th>
 <th>Category</th>
@@ -4414,6 +4227,8 @@ $htmlTenantSummary += @"
         foreach ($customPolicySet in $script:customPolicySetsDetailed | Sort-Object @{Expression={$_.PolicySetDisplayName}}, @{Expression={$_.PolicySetDefinitionId}}){
 $htmlSUMMARYtenanttotalcustompolicySets += @"
 <tr>
+<td>$($customPolicySet.Scope)</td>
+<td>$($customPolicySet.ScopeId)</td>
 <td>$($customPolicySet.PolicySetDisplayName)</td>
 <td class="breakwordall">$($customPolicySet.PolicySetDefinitionId)</td>
 <td class="breakwordall">$($customPolicySet.PolicySetCategory)</td>
@@ -4454,7 +4269,10 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
 }
 $htmlTenantSummary += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_0: 'select',
             col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -4516,6 +4334,8 @@ $htmlTenantSummary += @"
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
+<th>Scope</th>
+<th>Scope Id</th>
 <th>PolicySet DisplayName</th>
 <th>PolicySetId</th>
 <th>Category</th>
@@ -4529,6 +4349,8 @@ $htmlTenantSummary += @"
         foreach ($customPolicySet in $script:customPolicySetsDetailed){
 $htmlSUMMARYtenanttotalcustompolicySets += @"
 <tr>
+<td class="breakwordall">$($customPolicySet.Scope)</td>
+<td class="breakwordall">$($customPolicySet.ScopeId)</td>
 <td>$($customPolicySet.PolicySetDisplayName)</td>
 <td class="breakwordall">$($customPolicySet.PolicySetDefinitionId)</td>
 <td class="breakwordall">$($customPolicySet.PolicySetCategory)</td>
@@ -4569,7 +4391,10 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
 }
 $htmlTenantSummary += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_0: 'select',
             col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -8635,7 +8460,7 @@ Write-Host "Running AzGovViz for ManagementGroupId: '$ManagementGroupId'"
 $startAzGovViz = get-date
 
 #validation / check ManagementGroup Access
-Write-Host "Checking AzDO ServiceConnection permissions on ManagementGroup"
+Write-Host "Checking permissions on ManagementGroup '$ManagementGroupId'"
 $testMGReadAccessResult = "letscheck"
 try{
     $selectedManagementGroupId = Get-AzManagementGroup -GroupName $ManagementGroupId -ErrorAction Stop
@@ -8645,12 +8470,13 @@ catch{
 }
 if ($testMGReadAccessResult -ne "letscheck"){
     if ($AzureDevOpsWikiAsCode){
-        Write-Error "Permissions test failed: Your AzDO ServiceConnection seems to lack ManagementGroup Read permissions. Please check the documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#required-permissions-in-azure Error: $testMGReadAccessResult"
+        Write-Error "Permissions test failed: Your AzDO ServiceConnection seems to lack ManagementGroup Read permissions or the ManagementGroupId '$ManagementGroupId' does not exist. Please check the documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#required-permissions-in-azure | Error: $testMGReadAccessResult"
         exit 1
     }
     else{
-        Write-Host " Permissions test failed: Your AzDO ServiceConnection seems to lack ManagementGroup Read permissions. Please check the documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#required-permissions-in-azure Error: $testMGReadAccessResult"
-        break
+        Write-Host " Error: $testMGReadAccessResult" -ForegroundColor Red
+        Write-Host " Permissions test failed: Your Account '$($checkContext.Account.Id)' seems to lack ManagementGroup Read permissions (RBAC Role: Reader) or the ManagementGroupId '$ManagementGroupId' does not exist. Please check the documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#required-permissions-in-azure"
+        break script
     }
 }
 else{
@@ -8699,29 +8525,12 @@ else{
 }
 
 if (-not $AzureDevOpsWikiAsCode){
-    $uriTenantDetails = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)tenants?api-version=2020-01-01"
-    
-    $tryCounter = 0
-    do {
-        $result = "letscheck"
-        $tryCounter++
-        try {
-            $tenantDetailsResult = Invoke-RestMethod -Uri $uriTenantDetails -Method Get -Headers @{"Authorization" = "Bearer $accesstoken" }
-        }
-        catch {
-            $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-        }
-        if ($result -ne "letscheck"){
-            $result
-            if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                Write-Host "Getting Tenant Details: try #$tryCounter; returned: '$result' - try again"
-                $result = "tryAgain"
-                Start-Sleep -Milliseconds 250
-            }
-        }
-    }
-    until($result -ne "tryAgain")
+    $currentTask = "Get Tenant details"
+    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)tenants?api-version=2020-01-01"
+    #$path = "/tenants?api-version=2020-01-01"
+    $method = "GET"
 
+    $tenantDetailsResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
     if (($tenantDetailsResult.value | measure-object).count -gt 0) {
         $tenantDetails = $tenantDetailsResult.value | where-object { $_.tenantId -eq ($checkContext).Tenant.Id }
         $tenantDisplayName = $tenantDetails.displayName
@@ -8735,55 +8544,60 @@ if (-not $AzureDevOpsWikiAsCode){
 
 if (-not $HierarchyMapOnly) {
     Write-Host "Run Info:"
-    Write-Host " Creating HierarchyMap, TenantSummary and ScopeInsights - use parameter -HierarchyMapOnly to only create the HierarchyMap"
+    Write-Host " Creating HierarchyMap, TenantSummary and ScopeInsights - use parameter -HierarchyMapOnly to only create the HierarchyMap" -ForegroundColor Yellow
 
     if ($SubscriptionQuotaIdWhitelist -ne "undefined" -and $SubscriptionQuotaIdWhitelist -ne ""){
         $subscriptionQuotaIdWhitelistArray = [Array]($SubscriptionQuotaIdWhitelist).tostring().split("\")
         if (($subscriptionQuotaIdWhitelistArray | Measure-Object).count -gt 0){
-            Write-Host " Subscription Whitelist enabled. AzGovViz will only process Subscriptions where QuotaId startswith one of the following strings:"
+            Write-Host " Subscription Whitelist enabled. AzGovViz will only process Subscriptions where QuotaId startswith one of the following strings:" -ForegroundColor Green
             Write-Host "$($subscriptionQuotaIdWhitelistArray -join ", ")"
             $subscriptionQuotaIdWhitelistMode = $true
         }
         else{
-            Write-Host " Subscription Whitelist enabled. Error: invalid Parameter Value for 'SubscriptionQuotaIdWhitelist'"
-            break
+            Write-Host " Subscription Whitelist enabled. Error: invalid Parameter Value for 'SubscriptionQuotaIdWhitelist'" -ForegroundColor Red
+            if ($AzureDevOpsWikiAsCode){
+                exit 1
+            }
+            else{
+                break script
+            }
         }
     }
     else{
-        Write-Host " Subscription Whitelist disabled - use parameter -SubscriptionQuotaIdWhitelist to whitelist QuotaIds"
+        Write-Host " Subscription Whitelist disabled - use parameter -SubscriptionQuotaIdWhitelist to whitelist QuotaIds" -ForegroundColor Yellow
         $subscriptionQuotaIdWhitelistMode = $false
     }
 
     if ($NoASCSecureScore){
-        Write-Host " ASC Secure Score for Subscriptions disabled"
+        Write-Host " ASC Secure Score for Subscriptions disabled" -ForegroundColor Green
     }
     else{
-        Write-Host " ASC Secure Score for Subscriptions enabled - use parameter -NoASCSecureScore to disable"
+        Write-Host " ASC Secure Score for Subscriptions enabled - use parameter -NoASCSecureScore to disable" -ForegroundColor Yellow
     }
 
     if ($NoResourceProvidersDetailed){
-        Write-Host " ResourceProvider Detailed for TenantSummary disabled"
+        Write-Host " ResourceProvider Detailed for TenantSummary disabled" -ForegroundColor Green
     }
     else{
-        Write-Host " ResourceProvider Detailed for TenantSummary enabled - use parameter -NoResourceProvidersDetailed to disable"
+        Write-Host " ResourceProvider Detailed for TenantSummary enabled - use parameter -NoResourceProvidersDetailed to disable" -ForegroundColor Yellow
     }
 
     if ($DoNotShowRoleAssignmentsUserData){
-        Write-Host " Scrub Identity information for identityType='User' enabled"
+        Write-Host " Scrub Identity information for identityType='User' enabled" -ForegroundColor Green
     }
     else{
-        Write-Host " Scrub Identity information for identityType='User' disabled - use parameter -DoNotShowRoleAssignmentsUserData to scrub information such as displayName and signInName (email) for identityType='User'"
+        Write-Host " Scrub Identity information for identityType='User' disabled - use parameter -DoNotShowRoleAssignmentsUserData to scrub information such as displayName and signInName (email) for identityType='User'" -ForegroundColor Yellow
     }
 
     if ($LimitCriticalPercentage -eq 80){
-        Write-Host " ARM Limits warning set to 80% (default) - use parameter -LimitCriticalPercentage to set warning level accordingly"
+        Write-Host " ARM Limits warning set to 80% (default) - use parameter -LimitCriticalPercentage to set warning level accordingly" -ForegroundColor Yellow
     }
     else{
-        Write-Host " ARM Limits warning set to $($LimitCriticalPercentage)% (custom)"
+        Write-Host " ARM Limits warning set to $($LimitCriticalPercentage)% (custom)" -ForegroundColor Green
     }
 
     $startDefinitionsCaching = get-date
-    Write-Host "Caching built-in data"
+    Write-Host "Caching built-in Policy and RBAC Role definitions"
 
     #helper ht / collect results /save some time
     $htCacheDefinitions = @{ }
@@ -8810,42 +8624,25 @@ if (-not $HierarchyMapOnly) {
 
     $currentContextSubscriptionQuotaId = (Search-AzGraph -ErrorAction SilentlyContinue -Subscription $checkContext.Subscription.Id -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | project properties.subscriptionPolicies.quotaId").properties_subscriptionPolicies_quotaId
     if (-not $currentContextSubscriptionQuotaId){
-        Write-Host "Bad Subscription context for Definition Caching (SubscriptionName: $($checkContext.Subscription.Name); SubscriptionId: $($checkContext.Subscription.Id); likely an AAD_ QuotaId"
+        Write-Host " Bad Subscription context for Definition Caching (SubscriptionName: $($checkContext.Subscription.Name); SubscriptionId: $($checkContext.Subscription.Id); likely an AAD_ QuotaId" -ForegroundColor Yellow
         $alternativeSubscriptionIdForDefinitionCaching = (Search-AzGraph -Query "resourcecontainers | where type == 'microsoft.resources/subscriptions' | where properties.subscriptionPolicies.quotaId !startswith 'AAD_' | project properties.subscriptionPolicies.quotaId, subscriptionId" -first 1)
-        Write-Host "Using other Subscription for Definition Caching (SubscriptionId: $($alternativeSubscriptionIdForDefinitionCaching.subscriptionId); QuotaId: $($alternativeSubscriptionIdForDefinitionCaching.properties_subscriptionPolicies_quotaId))"
+        Write-Host " Using other Subscription for Definition Caching (SubscriptionId: $($alternativeSubscriptionIdForDefinitionCaching.subscriptionId); QuotaId: $($alternativeSubscriptionIdForDefinitionCaching.properties_subscriptionPolicies_quotaId))" -ForegroundColor Yellow
         $subscriptionIdForDefinitionCaching = $alternativeSubscriptionIdForDefinitionCaching.subscriptionId
         Select-AzSubscription -SubscriptionId $subscriptionIdForDefinitionCaching -ErrorAction Stop
     }
     else{
-        Write-Host "OK Subscription context (QuotaId not 'AAD_*') for Definition Caching (SubscriptionId: $($checkContext.Subscription.Id); QuotaId: $currentContextSubscriptionQuotaId)"
+        Write-Host " OK Subscription context (QuotaId not 'AAD_*') for Definition Caching (SubscriptionId: $($checkContext.Subscription.Id); QuotaId: $currentContextSubscriptionQuotaId)"
         $subscriptionIdForDefinitionCaching = $checkContext.Subscription.Id
     }
 
-    $uriPolicyDefinitionAPI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+    $currentTask = "Caching built-in Policy definitions"
+    Write-Host " $currentTask"
+    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+    #$path = "/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+    $method = "GET"
 
-    $tryCounter = 0
-    do {
-        $result = "letscheck"
-        $tryCounter++
-        try {
-            $requestPolicyDefinitionAPI = Invoke-RestMethod -Uri $uriPolicyDefinitionAPI -Headers  @{"Authorization" = "Bearer $accesstoken" }
-        }
-        catch {
-            $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-        }
-        if ($result -ne "letscheck"){
-            $result
-            if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                Write-Host "Getting BuiltIn Policy Definitions: try #$tryCounter; returned: '$result' - try again"
-                $result = "tryAgain"
-                Start-Sleep -Milliseconds 250
-            }
-        }
-    }
-    until($result -ne "tryAgain")
-
+    $requestPolicyDefinitionAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
     $builtinPolicyDefinitions = $requestPolicyDefinitionAPI.value | Where-Object { $_.properties.policyType -eq "builtin" }
-
     foreach ($builtinPolicyDefinition in $builtinPolicyDefinitions) {
         ($htCacheDefinitions).policy.$($builtinPolicyDefinition.id) = @{ }
         ($htCacheDefinitions).policy.$($builtinPolicyDefinition.id).Id = $builtinPolicyDefinition.id
@@ -8895,31 +8692,14 @@ if (-not $HierarchyMapOnly) {
         ($htCacheDefinitionsAsIs).policy.$($builtinPolicyDefinition.id) = $builtinPolicyDefinition
     }
 
-    $uriPolicySetDefinitionAPI = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Authorization/policySetDefinitions?api-version=2019-09-01"
+    $currentTask = "Caching built-in PolicySet definitions"
+    Write-Host " $currentTask"
+    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Authorization/policySetDefinitions?api-version=2019-09-01"
+    #$path = "/providers/Microsoft.Authorization/policySetDefinitions?api-version=2019-09-01"
+    $method = "GET"
 
-    $tryCounter = 0
-    do {
-        $result = "letscheck"
-        $tryCounter++
-        try {
-            $requestPolicySetDefinitionAPI = Invoke-RestMethod -Uri $uriPolicySetDefinitionAPI -Headers  @{"Authorization" = "Bearer $accesstoken" }
-        }
-        catch {
-            $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-        }
-        if ($result -ne "letscheck"){
-            $result
-            if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                Write-Host "Getting BuiltIn PolicySet Definitions: try #$tryCounter; returned: '$result' - try again"
-                $result = "tryAgain"
-                Start-Sleep -Milliseconds 250
-            }
-        }
-    }
-    until($result -ne "tryAgain")
-
+    $requestPolicySetDefinitionAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
     $builtinPolicySetDefinitions = $requestPolicySetDefinitionAPI.value | Where-Object { $_.properties.policyType -eq "builtin" }
-    
     foreach ($builtinPolicySetDefinition in $builtinPolicySetDefinitions) {
         ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.id) = @{ }
         ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.id).Id = $builtinPolicySetDefinition.id
@@ -8938,6 +8718,7 @@ if (-not $HierarchyMapOnly) {
         ($htCacheDefinitions).policySet.$($builtinPolicySetDefinition.id).json = $builtinPolicySetDefinition
     }
 
+    Write-Host " Caching built-in Role definitions"
     $roleDefinitions = Get-AzRoleDefinition -Scope "/subscriptions/$SubscriptionIdForDefinitionCaching" -ErrorAction Stop | where-object { $_.IsCustom -eq $false }
     foreach ($roleDefinition in $roleDefinitions) {
         $($htCacheDefinitions).role.$($roleDefinition.Id) = @{ }
@@ -8952,7 +8733,11 @@ if (-not $HierarchyMapOnly) {
     }
 
     $endDefinitionsCaching = get-date
-    Write-Host "Caching built-in data duration: $((NEW-TIMESPAN -Start $startDefinitionsCaching -End $endDefinitionsCaching).TotalMinutes) minutes"
+    Write-Host "Caching built-in definitions duration: $((NEW-TIMESPAN -Start $startDefinitionsCaching -End $endDefinitionsCaching).TotalSeconds) seconds"
+}
+else{
+    Write-Host "Run Info:"
+    Write-Host " Creating HierarchyMap only" -ForegroundColor Green
 }
 
 Write-Host "Collecting custom data"
@@ -8964,7 +8749,7 @@ $endDataCollection = get-date
 Write-Host "Collecting custom data duration: $((NEW-TIMESPAN -Start $startDataCollection -End $endDataCollection).TotalMinutes) minutes"
 
 if (-not $HierarchyMapOnly){
-    checkTokenLifetime
+    #checkBearerTokenLifetime
     Write-Host "Caching Resource data"
     $startResourceCaching = get-date
     $subscriptionIds = ($table | Where-Object { "" -ne $_.SubscriptionId} | select-Object SubscriptionId | Sort-Object -Property SubscriptionId -Unique).SubscriptionId
@@ -8982,88 +8767,37 @@ if (-not $HierarchyMapOnly){
     $startResourceProviders = get-date
     
     foreach ($subscriptionId in $subscriptionIds){
-        checkTokenLifetime
+        #checkBearerTokenLifetime
 
         #alternative to ARG
-        $uriResourcesPerSubscription = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subscriptionId)/resources?api-version=2020-06-01"
-        
-        $tryCounter = 0
-        do {
-            $result = "letscheck"
-            $tryCounter++
-            try {
-                $resourcesSubscriptionResult = Invoke-RestMethod -Uri $uriResourcesPerSubscription -Headers @{"Authorization" = "Bearer $accesstoken" }
-            }
-            catch {
-                $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-            }
-            if ($result -ne "letscheck"){
-                $result
-                if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                    Write-Host "  Getting ResourceTypes: try #$tryCounter; returned: '$result' - try again"
-                    $result = "tryAgain"
-                    Start-Sleep -Milliseconds 250
-                }
-            }
-        }
-        until($result -ne "tryAgain")
-        
+        $currentTask = "Getting ResourceTypes"
+        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subscriptionId)/resources?api-version=2020-06-01"
+        #$path = "/subscriptions/$($subscriptionId)/resources?api-version=2020-06-01"
+        $method = "GET"
+
+        $resourcesSubscriptionResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
         $resourcesAll += foreach ($resourceTypeLocation in ($resourcesSubscriptionResult.value | Group-Object -Property type, location)){
             [PSCustomObject]@{'subscriptionId' = $subscriptionId; 'type' = ($resourceTypeLocation.values[0]).ToLower(); 'location' = ($resourceTypeLocation.values[1]).ToLower(); 'count_' = $resourceTypeLocation.Count }
         }
 
         #alternative to ARG
         #https://management.azure.com/subscriptions/{subscriptionId}/resourcegroups?api-version=2020-06-01
-        $uriResourceGroupsPerSubscription = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subscriptionId)/resourcegroups?api-version=2020-06-01"
+        $currentTask = "Getting ResourceGroups"
+        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subscriptionId)/resourcegroups?api-version=2020-06-01"
+        #$path = "/subscriptions/$($subscriptionId)/resourcegroups?api-version=2020-06-01"
+        $method = "GET"
         
-        $tryCounter = 0
-        do {
-            $result = "letscheck"
-            $tryCounter++
-            try {
-                $resourceGroupsSubscriptionResult = Invoke-RestMethod -Uri $uriResourceGroupsPerSubscription -Headers @{"Authorization" = "Bearer $accesstoken" }
-            }
-            catch {
-                $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-            }
-            if ($result -ne "letscheck"){
-                $result
-                if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                    Write-Host "  Getting ResourceGroups: try #$tryCounter; returned: '$result' - try again"
-                    $result = "tryAgain"
-                    Start-Sleep -Milliseconds 250
-                }
-            }
-        }
-        until($result -ne "tryAgain")
-        
+        $resourceGroupsSubscriptionResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
         $resourceGroupsAllSubscriptionObject = [PSCustomObject]@{'subscriptionId' = $subscriptionId; 'count_' = ($resourceGroupsSubscriptionResult.value | Measure-Object).count}
         $resourceGroupsAll += $resourceGroupsAllSubscriptionObject
 
         ($htResourceProvidersAll).($subscriptionId) = @{ }
-        $uriResourceProviderSubscription = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subscriptionId)/providers?api-version=2019-10-01"
+        Write-Host "  $currentTask"
+        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subscriptionId)/providers?api-version=2019-10-01"
+        #$path = "/subscriptions/$($subscriptionId)/providers?api-version=2019-10-01"
+        $method = "GET"
 
-        $tryCounter = 0
-        do {
-            $result = "letscheck"
-            $tryCounter++
-            try {
-                $resProvResult = Invoke-RestMethod -Uri $uriResourceProviderSubscription -Headers @{"Authorization" = "Bearer $accesstoken" }
-            }
-            catch {
-                $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
-            }
-            if ($result -ne "letscheck"){
-                $result
-                if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                    Write-Host "  Getting ResourceProviders: try #$tryCounter; returned: '$result' - try again"
-                    $result = "tryAgain"
-                    Start-Sleep -Milliseconds 250
-                }
-            }
-        }
-        until($result -ne "tryAgain")
-
+        $resProvResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask).content | ConvertFrom-Json)
         ($htResourceProvidersAll).($subscriptionId).Providers = $resProvResult.value
         $arrayResourceProvidersAll += $resProvResult.value
     }
@@ -9135,70 +8869,92 @@ if (-not $HierarchyMapOnly){
 
     Write-Host " Checking Resource Types Diagnostics capability"
     $startResourceDiagnosticsCheck = get-date
+    if (($resourcesAll | Measure-Object).count -gt 0) {
 
-    $resourceTypesUnique = ($resourcesAll | select-object type).type.tolower() | sort-object -Unique  
-    $resourceTypesSummarizedArray = @()
-    $resourcesTypeAllCountTotal = 0
-    ($resourcesAll).count_ | ForEach-Object { $resourcesTypeAllCountTotal += $_ }
-    $resourceTypesSummarizedArray += foreach ($resourceTypeUnique in $resourceTypesUnique){
-        $resourcesTypeCountTotal = 0
-        ($resourcesAll | Where-Object { $_.type -eq $resourceTypeUnique }).count_ | ForEach-Object { $resourcesTypeCountTotal += $_ }
-        [PSCustomObject]@{'ResourceType' = $resourceTypeUnique; 'ResourceCount' = $resourcesTypeCountTotal }
-    }
-
-    $resourceTypesDiagnosticsArray = @()
-    foreach ($resourcetype in $resourceTypesSummarizedArray.ResourceType) {
-        checkTokenLifetime
-        $tryCounter = 0
-        do{
-            if ($tryCounter -gt 0){
-                Start-Sleep -Milliseconds 250
-            }
-            $tryCounter++
-            $dedicatedResourceArray = @()
-            $dedicatedResourceArray += foreach ($batch in $subscriptionsBatch) {
-                Search-AzGraph -Query "resources | where type =~ '$resourcetype' | project id" -Subscription $batch.Group -First 1
-            }
+        $resourceTypesUnique = ($resourcesAll | select-object type).type.tolower() | sort-object -Unique  
+        $resourceTypesSummarizedArray = @()
+        $resourcesTypeAllCountTotal = 0
+        ($resourcesAll).count_ | ForEach-Object { $resourcesTypeAllCountTotal += $_ }
+        $resourceTypesSummarizedArray += foreach ($resourceTypeUnique in $resourceTypesUnique) {
+            $resourcesTypeCountTotal = 0
+            ($resourcesAll | Where-Object { $_.type -eq $resourceTypeUnique }).count_ | ForEach-Object { $resourcesTypeCountTotal += $_ }
+            [PSCustomObject]@{'ResourceType' = $resourceTypeUnique; 'ResourceCount' = $resourcesTypeCountTotal }
         }
-        until(($dedicatedResourceArray | Measure-Object).count -gt 0)
 
-        $resource = $dedicatedResourceArray[0]
-        $resourceCount = ($resourceTypesSummarizedArray | where-object { $_.Resourcetype -eq $resourcetype}).ResourceCount
+        $resourceTypesDiagnosticsArray = @()
+        $currentTask = "Checking if ResourceType is capable for Resource Diagnostics"
+        foreach ($resourcetype in $resourceTypesSummarizedArray.ResourceType) {
+            #checkBearerTokenLifetime
+            $tryCounter = 0
+            do {
+                if ($tryCounter -gt 0) {
+                    Start-Sleep -Milliseconds 250
+                }
+                $tryCounter++
+                $dedicatedResourceArray = @()
+                $dedicatedResourceArray += foreach ($batch in $subscriptionsBatch) {
+                    Search-AzGraph -Query "resources | where type =~ '$resourcetype' | project id, type" -Subscription $batch.Group -First 1
+                }
+            }
+            until(($dedicatedResourceArray | Measure-Object).count -gt 0)
 
-        #thx @Jim Britt https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts Create-AzDiagPolicy.ps1
-        try {
-            $Invalid = $false
+            $resource = $dedicatedResourceArray[0]
+            $resourceCount = ($resourceTypesSummarizedArray | where-object { $_.Resourcetype -eq $resourcetype }).ResourceCount
+
+            #thx @Jim Britt (Microsoft) https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts Create-AzDiagPolicy.ps1
             $LogCategories = @()
             $metrics = $false #initialize metrics flag to $false
             $logs = $false #initialize logs flag to $false
 
-            $uriDiagnosticsSettingsCategories = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)$($resource.id)/providers/microsoft.insights/diagnosticSettingsCategories/?api-version=2017-05-01-preview"
+            $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)$($resource.id)/providers/microsoft.insights/diagnosticSettingsCategories/?api-version=2017-05-01-preview"
+            #$resource.id
+            #$resource.type
+            #$path = "$($resource.id)/providers/microsoft.insights/diagnosticSettingsCategories/?api-version=2017-05-01-preview"
+            $method = "GET"
+            $tryCounter = 0
             do {
-                $result = "letscheck"
+                $Logs = $False
+                $Metrics = $False
+                $ResponseJSON = ''
                 $tryCounter++
-                Try {
-                    $Status = Invoke-WebRequest -uri $uriDiagnosticsSettingsCategories -Headers @{"Authorization" = "Bearer $accesstoken" }
+                try {
+                    $AzAPIRequest = $null
+                    $AzAPIRequest = Invoke-WebRequest -uri $uri -Method $method -Headers @{"Authorization" = "Bearer $BearerAccessToken" } -UseBasicParsing
                 }
                 catch {
-                    $Invalid = $True
-                    $Logs = $False
-                    $Metrics = $False
-                    $ResponseJSON = ''
-                    $result = ($_.ErrorDetails.Message | ConvertFrom-Json).error.code
+                    $catchResult = ($_.ErrorDetails.Message | ConvertFrom-Json)
                 }
-                if ($result -ne "letscheck"){
-                    #$result
-                    if ($result -eq "GatewayTimeout" -or $result -eq "BadGatewayConnection" -or $result -eq "InvalidGatewayHost") {
-                        Write-Host " Checking Resource Types Diagnostics capability for $($resourcetype): try #$tryCounter; returned: '$result' - try again"
-                        $result = "tryAgain"
-                        Start-Sleep -Milliseconds 250
+                if ($AzAPIRequest.StatusCode -ne 200) {
+                    if ($catchResult.error.code -eq "GatewayTimeout" -or $catchResult.error.code -eq "BadGatewayConnection" -or $catchResult.error.code -eq "InvalidGatewayHost" -or $catchResult.code -like "*NotSupported*" -or $catchResult.error.code -eq "ExpiredAuthenticationToken") {
+                        if ($catchResult.error.code -eq "GatewayTimeout" -or $catchResult.error.code -eq "BadGatewayConnection" -or $catchResult.error.code -eq "InvalidGatewayHost") {
+                            Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code) | $($catchResult.error.message)' - try again"
+                            Start-Sleep -Milliseconds 250
+                        }
+                        if ($catchResult.code -like "*NotSupported*") {
+                            Write-Host "  $($catchResult.code) | $($catchResult.message)"
+                        }
+                        if ($catchResult.error.code -eq "ExpiredAuthenticationToken") {
+                            Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code) | $($catchResult.error.message)' - requesting new bearer token"
+                            createBearerToken
+                        }
+                    }
+                    else {
+                        Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.code) $($catchResult.error.code) | $($catchResult.message) $($catchResult.error.message)' - investigate that error!"
+                        if ($AzureDevOpsWikiAsCode) {
+                            exit 1
+                        }
+                        else {
+                            break script
+                        }
                     }
                 }
-                if (!($Invalid)) {
-                    $ResponseJSON = $Status.Content | ConvertFrom-Json -ErrorAction SilentlyContinue
+                else {
+                    #Write-Host "$currentTask - APICall success" #debug
+                    Write-Host "  ResourceTypeSupported | The resource type '$($resource.type)' supports diagnostic settings."
+                    $ResponseJSON = $AzAPIRequest.Content | ConvertFrom-Json
                 }
             }
-            until($result -ne "tryAgain")
+            until($AzAPIRequest.StatusCode -eq 200 -or $catchResult.code -like "*NotSupported*")
         
             # If logs are supported or metrics on each resource, set value as $True
             If ($ResponseJSON) {                
@@ -9212,17 +8968,21 @@ if (-not $HierarchyMapOnly){
                     }
                 }
             }
-        }
-        catch { }
-        finally {
             $resourceTypesDiagnosticsObject = [PSCustomObject]@{'ResourceType' = $resourcetype; 'Metrics' = $metrics; 'Logs' = $logs; 'LogCategories' = $LogCategories; 'ResourceCount' = [int]$resourceCount }
             $resourceTypesDiagnosticsArray += $resourceTypesDiagnosticsObject
         }
     }
+    else {
+        Write-Host "  No Resources at all"
+    }
     $endResourceDiagnosticsCheck = get-date
     Write-Host " Checking Resource Types Diagnostics capability duration: $((NEW-TIMESPAN -Start $startResourceDiagnosticsCheck -End $endResourceDiagnosticsCheck).TotalMinutes) minutes"
     
-    Write-Host "Create helper ht Policies used in PolicySets"
+    $endResourceCaching = get-date
+    Write-Host "Caching Resource data duration: $((NEW-TIMESPAN -Start $startResourceCaching -End $endResourceCaching).TotalMinutes) minutes"
+
+    Write-Host "Create helper hash table"
+    $startHelperHt = get-date
     foreach ($policySet in ($htCacheDefinitions).policySet.keys){
         $PolicySetPolicyIds = ($htCacheDefinitions).policySet.($policySet).PolicySetPolicyIds
         $arrayPoliciesUsedInPolicySets += foreach ($PolicySetPolicyId in $PolicySetPolicyIds){
@@ -9231,9 +8991,8 @@ if (-not $HierarchyMapOnly){
             }
         }
     }
-    
-    $endResourceCaching = get-date
-    Write-Host "Caching Resource data duration: $((NEW-TIMESPAN -Start $startResourceCaching -End $endResourceCaching).TotalMinutes) minutes"
+    $endHelperHt = get-date
+    Write-Host "Create helper hash table duration: $((NEW-TIMESPAN -Start $startHelperHt -End $endHelperHt).TotalSeconds) seconds"
     
     #summarizeDataCollectionResults
     Write-Host "Summary data collection"
@@ -9672,3 +9431,7 @@ Write-Host "Building CSV total duration: $((NEW-TIMESPAN -Start $startBuildCSV -
 
 $endAzGovViz = get-date
 Write-Host "AzGovViz duration: $((NEW-TIMESPAN -Start $startAzGovViz -End $endAzGovViz).TotalMinutes) minutes"
+
+#end
+$endTime = get-date -format "dd-MMM-yyyy HH:mm:ss"
+Write-Host "End AzGovViz $endTime"
