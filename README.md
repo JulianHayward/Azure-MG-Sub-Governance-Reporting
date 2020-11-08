@@ -48,7 +48,7 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ### AzGovViz version 4
 Updates 2020-Nov-08
-* Re-model Bearer token handling (Az PowerShell Module Az.Accounts > 1.9.5 no longer provide access to the tokenCache [GitHub issue](https://github.com/Azure/azure-powershell/issues/13337))
+* Re-model Bearer token handling (Az PowerShell Module Az.Accounts > 1.9.5 no longer provides access to the tokenCache [GitHub issue](https://github.com/Azure/azure-powershell/issues/13337))
 * Adding Scope information for Custom Policy and Custom PolicySet sections in __TenantSummary__
 * Cosmetics and User Experience enhancement
 * New [__demo__](#demo)
