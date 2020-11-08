@@ -8,7 +8,7 @@ You can run the script either for your Tenant Root Group or any other Management
 <table>
 <td>
 
-"_Azure Governance can be a complex thing_.."
+"_Governance can be a complex thing_.."
 
 Challenges:
 
@@ -47,6 +47,12 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 ## AzGovViz version history
 
 ### AzGovViz version 4
+Updates 2020-Nov-08
+* Re-model Bearer token handling (Az PowerShell Module Az.Accounts > 1.9.5 no longer provide access to the tokenCache [GitHub issue](https://github.com/Azure/azure-powershell/issues/13337))
+* Adding Scope information for Custom Policy and Custom PolicySet sections in __TenantSummary__
+* Cosmetics and User Experience enhancement
+* New [__demo__](#demo)
+
 Updates 2020-Nov-01
 * Error handling optimization
 * Enhanced read-permission validation
@@ -94,7 +100,7 @@ Release v4
 
 ### Demo
 
-<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_EnterpriseScale_Demo.html" target="_blank">AzGovViz Demo</a> EnterpriseScale implementation
+<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_EnterpriseScale_Demo_FOM.html" target="_blank">AzGovViz Demo</a> EnterpriseScale implementation (v4 2020-11-08)
 
 ### Screenshots
 
@@ -110,7 +116,7 @@ __ScopeInsights__
 
 markdown in Azure DevOps Wiki as Code
 
-![alt text](img/AzDO_md.png "Azure DevOps Wiki as Code") 
+![alt text](img/AzDO_md_v4.png "Azure DevOps Wiki as Code") 
 *_IDs from screenshot are randomized_
 
 ### Outputs
@@ -193,7 +199,9 @@ ARM Limits are not acquired programmatically, they are hardcoded. The links used
 
 Please feel free to contribute. Thanks to so many supporters - testing, giving feedback, making suggestions, presenting use-case, posting/blogging articles, refactoring code - THANK YOU!
 
-Thanks Stefan Stranger for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale. Make sure you read Stefan´s Blog Article: <a href="https://stefanstranger.github.io/2020/08/28/EnterpriseScalePolicyDrivenGovernance/" target="_blank">Enterprise-Scale - Policy Driven Governance</a> 
+Thanks Stefan Stranger (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale. Make sure you read Stefan´s Blog Article: <a href="https://stefanstranger.github.io/2020/08/28/EnterpriseScalePolicyDrivenGovernance/" target="_blank">Enterprise-Scale - Policy Driven Governance</a> 
+
+Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale (see latest [__demo__](#demo)).
 
 Special thanks to Tim Wanierke, Brooks Vaughn and Friedrich Weinmann (Microsoft).
 
@@ -201,4 +209,4 @@ Kudos to the <a href="https://www.tablefilter.com/" target="_blank">TableFilter<
 
 ## AzAdvertizer
 
-Also check <https://www.azadvertizer.net> to keep up with the pace on Azure Governance capabilities such as Azure Policies, Policy Initiatives, Policy Aliases, RBAC Roles and Resource Providers including operations.
+Also check <https://www.azadvertizer.net> - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
