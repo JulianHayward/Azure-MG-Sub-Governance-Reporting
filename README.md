@@ -47,6 +47,12 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 ## AzGovViz version history
 
 ### AzGovViz version 4
+Updates 2020-Nov-19
+* New parameter `-Experimental` (see [__Parameters__](#powerShell))
+* Performance optimization
+* Error handling optimization / API
+* Azure DevOps pipeline worker changed from 'ubuntu-latest' to 'ubuntu-18.04' (see [Azure Pipelines - Sprint 177 Update](https://docs.microsoft.com/en-us/azure/devops/release-notes/2020/pipelines/sprint-177-update#ubuntu-latest-pipelines-will-soon-use-ubuntu-2004), [Ubuntu-latest workflows will use Ubuntu-20.04 #1816](https://github.com/actions/virtual-environments/issues/1816))
+
 Updates 2020-Nov-08
 * Re-model Bearer token handling (Az PowerShell Module Az.Accounts > 1.9.5 no longer provides access to the tokenCache [GitHub issue](https://github.com/Azure/azure-powershell/issues/13337))
 * Adding Scope information for Custom Policy and Custom PolicySet sections in __TenantSummary__
@@ -163,6 +169,7 @@ Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
   * `-SubscriptionQuotaIdWhitelist` process only subscriptions with defined QuotaId(s)
   * `-NoResourceProvidersDetailed` disables output for ResourceProvider states for all Subscriptions in the __TenantSummary__ section, in large Tenants this can become time consuming
   * `-NoASCSecureScore` disables ASC Secure Score request for Subscriptions. The used API is in preview you may want to disable this
+  * `-Experimental` executes experimental features. Latest experimental feature: 'ResourceDiagnostics Policy Lifecycle recommendations' - e.g. it checks on all existing custom policies that deploy resource diagnostics settings if all available log categories are defined in the policy (may they be enabled or disabled)
   * ~~`-UseAzureRM`~~ support for AzureRm modules has been deprecated
 * Passed tests: Powershell Core on Windows
 * Passed tests: Powershell 5.1.18362.752 on Windows
@@ -186,7 +193,7 @@ The provided example Pipeline is configured to run based on a [schedule](https:/
 
 ### Security
 
-AzGovViz creates very detailed information about your Azure Governance setup. In your organizations best interest the __outputs should be protected from not authorized access!__
+AzGovViz creates very detailed information about your Azure Governance setup. In your organization's best interest the __outputs should be protected from not authorized access!__
 
 ### Facts
 

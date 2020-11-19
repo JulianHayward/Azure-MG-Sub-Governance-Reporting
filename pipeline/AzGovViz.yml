@@ -1,9 +1,9 @@
-# AzGovViz v4_minor_20201101_0
-# First things first: edit line 20 and line 21 
+# AzGovViz v4_minor_20201119_0
+# First things first: edit line 21 and line 22 
 # https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
-# Also check https://www.azadvertizer.net to keep up with the pace on Azure Governance capabilities such as Azure Policies, Policy Initiatives, Policy Aliases and RBAC Roles
+# Also check https://www.azadvertizer.net - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
 # 
-# Parameters reference (use in line 59)
+# Parameters reference (use in line 60)
 # LimitCriticalPercentage | default is '80' | example: -LimitCriticalPercentage 90  | WhatDoesItDo? marks capabilities that approch limits e.g. limit 100, usage 80 will mark with warning
 # SubscriptionQuotaIdWhitelist | default is 'undefined'; separator is '\' | example: -SubscriptionQuotaIdWhitelist MSDN_\EnterpriseAgreement_ | WhatDoesItDo? processes only subscriptions that startWith the given QuotaIds
 # HierarchyMapOnly | switch | example: -HierarchyMapOnly | WhatDoesItDo? only creates the Hierarchy Tree
@@ -11,6 +11,7 @@
 # NoASCSecureScore | switch | example: -NoASCSecureScore | WhatDoesItDo? disables ASC Secure Score request for subscriptions (ASC Score API currently in preview)
 # NoResourceProvidersDetailed | switch | example: -NoResourceProvidersDetailed | WhatDoesItDo? disables 'ResourceProvider Detailed' output for TenantSummary (compute intensive)
 # CsvDelimiter | example: -CsvDelimiter "," | WhatDoesItDo? the world is split into two kind of delimiters - comma and semicolon - choose yours
+# Experimental | example: -Experimental | WhatDoesItDo? executes experimental features such as 'ResourceDiagnostics Policy Lifecycle recommendations'
 
 trigger: none
 
@@ -38,7 +39,7 @@ jobs:
   timeoutInMinutes: 0
 
   pool:
-    vmImage: 'ubuntu-latest'
+    vmImage: 'ubuntu-18.04'
 
   steps:
   - powershell: |
