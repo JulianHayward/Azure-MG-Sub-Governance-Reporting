@@ -47,6 +47,12 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 ## AzGovViz version history
 
 ### AzGovViz version 4
+
+Updates 2020-Nov-25
+* Highlight default Management Group
+* Add AzAPICall debugging parameter `-DebugAzAPICall`
+* Fix for using parameter `-HierarchyMapOnly`
+
 Updates 2020-Nov-19
 * New parameter `-Experimental` (see [__Parameters__](#powerShell))
 * Performance optimization

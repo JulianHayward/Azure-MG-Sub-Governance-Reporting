@@ -1,4 +1,4 @@
-<#v4_minor_20201119_0
+<#v4_minor_20201125_0
 .SYNOPSIS  
     This script creates the following files to help better understand and audit your governance setup
     csv file
@@ -104,6 +104,7 @@ Param
     [int]$LimitCriticalPercentage = 80,
     [string]$SubscriptionQuotaIdWhitelist = "undefined",
     [switch]$Experimental,
+    [switch]$DebugAzAPICall,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]$LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -127,6 +128,12 @@ Param
     [int]$LimitResourceGroups = 980,
     [int]$LimitTagsSubscription = 50
 )
+if ($DebugAzAPICall -eq $false){
+    write-host "no AzAPICall debug"
+}
+else{
+    write-host "AzAPICall debug"
+}
 
 #shutuppoluters
 $ProgressPreference = 'SilentlyContinue'
@@ -213,7 +220,8 @@ function createBearerToken() {
     }
     if ($catchResult -ne "letscheck") {
         Write-Host "-ERROR processing new bearer token request: $catchResult" -ForegroundColor Red
-        Write-Host "Likely your Azure credentials have not been set up or have expired, please run Connect-AzAccount to set up your Azure credentials."
+        Write-Host "Likely your Azure credentials have not been set up or have expired, please run 'Connect-AzAccount' to set up your Azure credentials."
+        Write-Host "It could also well be that there are multiple context in cache, please run 'Clear-AzContext' and then run 'Connect-AzAccount'."
         break script
     }
     $dateTimeTokenCreated = (get-date -format "MM/dd/yyyy HH:mm:ss")
@@ -233,9 +241,11 @@ function AzAPICall($uri, $method, $currentTask, $listenOn) {
     $retryAuthorizationFailed = 5
     $retryAuthorizationFailedCounter = 0
     $apiCallResultsCollection = @()
+    
     do {
         $unexpectedError = $false
         $tryCounter++
+        if ($Script:debugAzAPICall -eq $true) { Write-Host "  DEBUGTASK: attempt#$($tryCounter) processing: $($currenttask)" }
         try {
             $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -Headers @{"Authorization" = "Bearer $bearerAccessToken" } -UseBasicParsing
         }
@@ -252,7 +262,9 @@ function AzAPICall($uri, $method, $currentTask, $listenOn) {
             }
         }
         if($unexpectedError -eq $false){
+            if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: unexpectedError: false" }
             if ($azAPIRequest.StatusCode -ne 200) {
+                if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: apiStatusCode: $($azAPIRequest.StatusCode)" }
                 if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*") {
                     if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - try again"
@@ -296,31 +308,33 @@ function AzAPICall($uri, $method, $currentTask, $listenOn) {
                 
             }
             else {
-                if ($debug -eq "true") { Write-Host "processing $currenttask" }
+                if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: apiStatusCode: $($azAPIRequest.StatusCode)" }
                 $azAPIRequestConvertedFromJson = ($azAPIRequest.Content | ConvertFrom-Json)
-                if ($listenOn -eq "Content") {             
+                if ($listenOn -eq "Content") {       
+                    if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=content ($((($azAPIRequestConvertedFromJson) | Measure-Object).count))" }      
                     $apiCallResultsCollection += $azAPIRequestConvertedFromJson
                 }
                 else {       
                     if (($azAPIRequestConvertedFromJson).value) {
-                        if ($debug -eq "true") { Write-Host "value exists" }
+                        if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=default(value) value exists ($((($azAPIRequestConvertedFromJson).value | Measure-Object).count))" }
                         $apiCallResultsCollection += ($azAPIRequestConvertedFromJson).value
                     }
                     else {
-                        if ($debug -eq "true") { Write-Host "value not exists" }
+                        if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=default(value) value not exists; return empty array" }
                     }
                 }
                 
                 if ($azAPIRequestConvertedFromJson."@odata.nextLink") {
-                    if ($debug -eq "true") { Write-Host "NextLink: $($azAPIRequestConvertedFromJson."@odata.nextLink")" }
+                    if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: NextLink: $($azAPIRequestConvertedFromJson."@odata.nextLink")" }
                     $uri = $azAPIRequestConvertedFromJson."@odata.nextLink"
                 }
                 else {
-                    if ($debug -eq "true") { Write-Host "NextLink: none)" }
+                    if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: NextLink: none" }
                 }
             }
         }
         else{
+            if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: unexpectedError: notFalse" }
             if ($tryCounterUnexpectedError -lt 6){
                 Write-Host " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (trying 5 times)"
                 Write-Host $catchResult
@@ -853,7 +867,8 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
         #MGPolicyCompliance
         $currentTask = "Policy Compliance '$($getMg.properties.displayName)' ('$($getMg.Name)')"
         ($htCachePolicyCompliance).mg.($getMg.Name) = @{ }
-        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)/providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
+        #$uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)/providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
+        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
         #$path = "/providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
         $method = "POST"
 
@@ -1409,7 +1424,8 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
 
                     #SubscriptionBlueprint
                     $currentTask = "Blueprint definitions '$($childMgSubDisplayName)' ('$childMgSubId')"
-                    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)/subscriptions/$childMgSubId/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
+                    #$uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)/subscriptions/$childMgSubId/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
+                    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
                     #$path = "/subscriptions/$childMgSubId/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
                     $method = "GET"
 
@@ -1972,13 +1988,24 @@ function hierarchyMgHTML($mgChild) {
     $mgId = $mgDetails.MgId
 
     if ($mgId -eq ($checkContext).Tenant.Id) {
-        $class = "class=`"tenantRootGroup mgnonradius`""
+        if ($mgId -eq $defaultManagementGroupId){
+            $class = "class=`"tenantRootGroup mgnonradius defaultMG`""
+        }
+        else{
+            $class = "class=`"tenantRootGroup mgnonradius`""
+        }
+        
         $liclass = "class=`"first`""
         $liId = "id=`"first`""
         $tenantDisplayNameAndDefaultDomain = $tenantDetailsDisplay
     }
     else {
-        $class = "class=`"mgnonradius`""   
+        if ($mgId -eq $defaultManagementGroupId){
+            $class = "class=`"mgnonradius defaultMG`""
+        }
+        else{
+            $class = "class=`"mgnonradius`""
+        }
         $liclass = ""   
         $liId = ""
         $tenantDisplayNameAndDefaultDomain = ""
@@ -2072,6 +2099,13 @@ function tableMgHTML($mgChild, $mgChildOf) {
     $mgLevel = $mgDetails.Level
     $mgId = $mgDetails.MgId
 
+    if ($mgId -eq $defaultManagementGroupId){
+        $classDefaultMG = "defaultMG"
+    }
+    else{
+        $classDefaultMG = ""
+    }
+
     switch ($mgLevel) {
         "0" { $levelSpacing = "| &nbsp;" }
         "1" { $levelSpacing = "| -&nbsp;" }
@@ -2107,10 +2141,17 @@ function tableMgHTML($mgChild, $mgChildOf) {
     }
 
     $script:html += @"
-<button type="button" class="collapsible" id="table_$mgId">$levelSpacing<img class="imgMg" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle">$mgNameAndOrId $subInfo</span></button>
+<button type="button" class="collapsible" id="table_$mgId">$levelSpacing<img class="imgMg $($classDefaultMG)" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle">$mgNameAndOrId $subInfo</span></button>
 <div class="content">
 <table class="bottomrow">
 <tr><td class="detailstd"><p><a href="#hierarchy_$mgId"><i class="fa fa-eye" aria-hidden="true"></i> <i>Highlight Management Group in hierarchy tree</i></a></p></td></tr>
+"@
+    if ($mgId -eq $defaultManagementGroupId){
+        $script:html += @"
+        <tr><td class="detailstd"><p><i class="fa fa-circle" aria-hidden="true" style="color:#FFCBC7"></i> <b>Default</b> Management Group <a class="externallink" href="https://docs.microsoft.com/en-us/azure/governance/management-groups/how-to/protect-resource-hierarchy#setting---default-management-group" target="_blank">Microsoft Docs</a></p></td></tr>
+"@
+    }
+    $script:html += @"
 <tr><td class="detailstd"><p>Management Group Name: <b>$mgName</b></p></td></tr>
 <tr><td class="detailstd"><p>Management Group Id: <b>$mgId</b></p></td></tr>
 <tr><td class="detailstd"><p>Management Group Path: $mgPath</p></td></tr>
@@ -3981,7 +4022,7 @@ extensions: [{ name: 'sort' }]
 
     $script:html += $htmlScopeInsights
 
-    if ($script:scopescnter % 10 -eq 0) {
+    if ($script:scopescnter % 30 -eq 0) {
         $script:scopescnter = 0
         Write-Host "   append file duration: " (Measure-Command { $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force }).TotalSeconds "seconds"
         $script:html = $null 
@@ -7046,6 +7087,13 @@ extensions: [{ name: 'sort' }]
 "@
     #endregion SUMMARYMGs
 
+    #region SUMMARYMGdefault
+    Write-Host "  processing default Management Group"
+    $htmlTenantSummary += @"
+    <p><img class="imgMgTree defaultMG" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle">Default Management Group Id: $defaultManagementGroupId <a class="externallink" href="https://docs.microsoft.com/en-us/azure/governance/management-groups/how-to/protect-resource-hierarchy#setting---default-management-group" target="_blank">Microsoft Docs</a></span></p>
+"@
+    #endregion SUMMARYMGdefault
+
     #region SUMMARYMgsapproachingLimitsPolicyAssignments
     Write-Host "  processing TenantSummary ManagementGroups Limit PolicyAssignments"
     $mgsApproachingLimitPolicyAssignments = (($policyBaseQueryManagementGroups | Where-Object { "" -eq $_.SubscriptionId -and $_.PolicyAndPolicySetAssigmentAtScopeCount -gt 0 -and (($_.PolicyAndPolicySetAssigmentAtScopeCount -gt ($_.PolicyAssigmentLimit * ($LimitCriticalPercentage / 100)))) }) | Select-Object MgId, MgName, PolicyAssigmentAtScopeCount, PolicySetAssigmentAtScopeCount, PolicyAndPolicySetAssigmentAtScopeCount, PolicyAssigmentLimit -Unique)
@@ -8093,6 +8141,7 @@ extensions: [{ name: 'sort' }]
                     }
                     $htmlTenantSummary += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+        col_0: 'select',
         col_types: [
             'caseinsensitivestring',
             'caseinsensitivestring',
@@ -9057,6 +9106,7 @@ else {
 }
 
 if (-not $AzureDevOpsWikiAsCode) {
+    Write-Host "Get Tenant details"
     $currentTask = "Get Tenant details"
     $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)tenants?api-version=2020-01-01"
     #$path = "/tenants?api-version=2020-01-01"
@@ -9067,11 +9117,29 @@ if (-not $AzureDevOpsWikiAsCode) {
         $tenantDetails = $tenantDetailsResult | Where-Object { $_.tenantId -eq ($checkContext).Tenant.Id }
         $tenantDisplayName = $tenantDetails.displayName
         $tenantDefaultDomain = $tenantDetails.defaultDomain
-        Write-Host "Tenant DisplayName: $tenantDisplayName"
+        Write-Host " Tenant DisplayName: $tenantDisplayName"
     }
     else {
-        Write-Host "something unexpected"
+        Write-Host " something unexpected"
     }
+}
+
+Write-Host "Get Default Management Group"
+$currentTask = "Get Default Management Group"
+$uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$(($checkContext).Tenant.Id)/settings?api-version=2020-02-01"
+#$path = "providers/Microsoft.Management/managementGroups/($checkContext).Tenant.Id/settings?api-version=2020-02-01"
+$method = "GET"
+
+#default Management Group
+#https://docs.microsoft.com/en-us/azure/governance/management-groups/how-to/protect-resource-hierarchy#setting---default-management-group
+$defaultMG = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+if (($defaultMG | Measure-Object).count -gt 0) {
+    write-host " default MG: $($defaultMG.properties.defaultManagementGroup)"
+    $defaultManagementGroupId = $defaultMG.properties.defaultManagementGroup
+}
+else {
+    write-host " default MG: $(($checkContext).Tenant.Id) (Tenant Root)"
+    $defaultManagementGroupId = ($checkContext).Tenant.Id
 }
 
 if (-not $HierarchyMapOnly) {
@@ -9219,7 +9287,8 @@ if (-not $HierarchyMapOnly) {
                 $htAllSubscriptionsFromAPI.($subscription.subscriptionId).tags = ""
             }
             else {
-                $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)/subscriptions/$($subscription.subscriptionId)/providers/Microsoft.Resources/tags/default?api-version=2020-06-01"
+                #$uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)/subscriptions/$($subscription.subscriptionId)/providers/Microsoft.Resources/tags/default?api-version=2020-06-01"
+                $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subscription.subscriptionId)/providers/Microsoft.Resources/tags/default?api-version=2020-06-01"
                 #$path = "/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
                 $method = "GET"
 
@@ -9375,6 +9444,19 @@ if (-not $HierarchyMapOnly) {
 else {
     Write-Host "Run Info:"
     Write-Host " Creating HierarchyMap only" -ForegroundColor Green
+
+    $currentTask = "Getting Entities"
+    Write-Host " $currentTask"
+    #https://management.azure.com/providers/Microsoft.Management/getEntities?api-version=2020-02-01
+    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/getEntities?api-version=2020-02-01"
+    #$path = "/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+    $method = "POST"
+
+    $arrayEntitiesFromAPI = [System.Collections.ArrayList]@()
+    $requestEntitiesAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+    $arrayEntitiesFromAPI = foreach ($entity in $requestEntitiesAPI) {
+        $entity
+    }
 }
 
 Write-Host "Collecting custom data"
@@ -9749,7 +9831,7 @@ $html += @"
         link.media = "screen,print";
         document.getElementsByTagName( "head" )[0].appendChild( link );
     </script>
-    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_013.css">
+    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_017.css">
     <script src="https://code.jquery.com/jquery-1.7.2.js" integrity="sha256-FxfqH96M63WENBok78hchTCDxmChGFlo+/lFIPcZPeI=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/ui/1.8.18/jquery-ui.js" integrity="sha256-lzf/CwLt49jbVoZoFcPZOc0LlMYPFBorVSwMsTs2zsA=" crossorigin="anonymous"></script>
     <script type="text/javascript" src="https://www.azadvertizer.net/azgovvizv4/js/highlight_v004_001.js"></script>
@@ -9855,12 +9937,18 @@ else {
     else {
         $tenantDetailsDisplay = ""
     }
+    if ($parentMgIdx -eq $defaultManagementGroupId){
+        $classdefaultMG = "defaultMG"
+    }
+    else{
+        $classdefaultMG = ""
+    }
     $html += @"
             <ul>
                 <li id ="first">
                     <a class="tenant"><div class="fitme" id="fitme">$($tenantDetailsDisplay)$(($checkContext).Tenant.Id)</div></a>
                     <ul>
-                        <li><a class="mgnonradius parentmgnotaccessible"><img class="imgMgTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"><div class="fitme" id="fitme">$mgNameAndOrId</div></a>
+                        <li><a class="mgnonradius parentmgnotaccessible $($classdefaultMG)"><img class="imgMgTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"><div class="fitme" id="fitme">$mgNameAndOrId</div></a>
                         <ul>
 "@
 }
