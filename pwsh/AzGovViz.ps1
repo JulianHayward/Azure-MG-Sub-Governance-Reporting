@@ -1,4 +1,4 @@
-<#v4_minor_20201125_0
+<#v4_minor_20201130_3
 .SYNOPSIS  
     This script creates the following files to help better understand and audit your governance setup
     csv file
@@ -35,7 +35,7 @@
 
 .PARAMETER AzureDevOpsWikiAsCode
     use this parameter when running AzGovViz in Azure DevOps (AzDO) pipeline
-    default is to break script at error, whilst in AzDO we will exit 1
+    default is to break script at error, whilst in AzDO we will Write-Error "Error"
     default is to add timestamp to the outputs filename, in AzDO the outputs filenames will not have a filestamp added as we have a GIT history (the files will only be pushed to Wiki Repo in case the files differ)
 
 .PARAMETER LimitCriticalPercentage
@@ -46,6 +46,10 @@
 
 .PARAMETER Experimental
     use this parameter to execute experimental features
+
+.PARAMETER DisablePolicyComplianceStates
+    use this parameter if policy compliance states shall not be queried
+    DisablePolicyComplianceStates
 
 .EXAMPLE
     Define the ManagementGroup ID
@@ -78,15 +82,18 @@
     Define the QuotaId whitelist by providing strings separated by a backslash
     PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionQuotaIdWhitelist MSDN_\EnterpriseAgreement_
 
-    Define if expermintal deatures shall be executed
+    Define if expermintal features shall be executed
     PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -Experimental
+
+    Define if policy compliance states shall be queried
+    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -DisablePolicyComplianceStates
 
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
 .LINK
     https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
-
+    Please note that while being developed by a Microsoft employee, AzAdvertizer is not a Microsoft service or product. AzAdvertizer is a personal driven project, there are none implicit or explicit obligations related to this project, it is provided 'as is' with no warranties and confer no rights.
 #>
 
 [CmdletBinding()]
@@ -105,6 +112,7 @@ Param
     [string]$SubscriptionQuotaIdWhitelist = "undefined",
     [switch]$Experimental,
     [switch]$DebugAzAPICall,
+    [switch]$DisablePolicyComplianceStates,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]$LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -265,16 +273,30 @@ function AzAPICall($uri, $method, $currentTask, $listenOn) {
             if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: unexpectedError: false" }
             if ($azAPIRequest.StatusCode -ne 200) {
                 if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: apiStatusCode: $($azAPIRequest.StatusCode)" }
-                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*") {
-                    if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*") {
-                        Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - try again"
+                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*" -or $catchResult.error.code -like "*ResponseTooLarge*") {
+                    if ($catchResult.error.code -like "*ResponseTooLarge*"){
+                        Write-Host "###### LIMIT #################################"
+                        Write-Host "Hitting LIMIT getting Policy Compliance States!"
+                        Write-Host "ErrorCode: $($catchResult.error.code)"
+                        Write-Host "ErrorMessage: $($catchResult.error.message)"
+                        Write-Host "There is nothing we can do about this right now. Please run AzGovViz with the following parameter: '-DisablePolicyComplianceStates'." -ForegroundColor Yellow
+                        Write-Host "Impact using parameter '-DisablePolicyComplianceStates': only policy compliance states will not be available in the various AzGovViz outputs - all other output remains." -ForegroundColor Yellow
+                        if ($AzureDevOpsWikiAsCode) {
+                            Write-Error "Error"
+                        }
+                        else {
+                            break script
+                        }
+                    }
+                    if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*") {
+                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again"
                         Start-Sleep -Milliseconds 250
                     }
                     if ($catchResult.error.code -like "*AuthorizationFailed*") {
                         if ($retryAuthorizationFailedCounter -gt $retryAuthorizationFailed) {
                             Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - $retryAuthorizationFailed retries failed - investigate that error!"
                             if ($AzureDevOpsWikiAsCode) {
-                                exit 1
+                                Write-Error "Error"
                             }
                             else {
                                 break script
@@ -299,7 +321,7 @@ function AzAPICall($uri, $method, $currentTask, $listenOn) {
                 else {
                     Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) investigate that error!"
                     if ($AzureDevOpsWikiAsCode) {
-                        exit 1
+                        Write-Error "Error"
                     }
                     else {
                         break script
@@ -342,7 +364,7 @@ function AzAPICall($uri, $method, $currentTask, $listenOn) {
             }
             else{
                 if ($AzureDevOpsWikiAsCode) {
-                    exit 1
+                    Write-Error "Error"
                 }
                 else {
                     break script
@@ -382,9 +404,9 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType) {
         }
         if($unexpectedError -eq $false){
             if ($azAPIRequest.StatusCode -ne 200) {
-                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.code -like "*NotSupported*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*") {
-                    if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*") {
-                        Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - try again"
+                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.code -like "*NotSupported*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*") {
+                    if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*") {
+                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again"
                         Start-Sleep -Milliseconds 250
                     }
                     if ($catchResult.code -like "*NotSupported*") {
@@ -394,7 +416,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType) {
                         if ($retryAuthorizationFailedCounter -gt $retryAuthorizationFailed) {
                             Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - $retryAuthorizationFailed retries failed - investigate that error!"
                             if ($AzureDevOpsWikiAsCode) {
-                                exit 1
+                                Write-Error "Error"
                             }
                             else {
                                 break script
@@ -419,7 +441,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType) {
                 else {
                     Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - investigate that error!"
                     if ($AzureDevOpsWikiAsCode) {
-                        exit 1
+                        Write-Error "Error"
                     }
                     else {
                         break script
@@ -439,7 +461,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType) {
             }
             else{
                 if ($AzureDevOpsWikiAsCode) {
-                    exit 1
+                    Write-Error "Error"
                 }
                 else {
                     break script
@@ -467,7 +489,7 @@ foreach ($testCommand in $testCommands) {
     if (-not (Get-Command $testCommand -ErrorAction Ignore)) {
         if ($AzureDevOpsWikiAsCode) {
             Write-Error "AzModule test failed: cmdlet $testCommand not available - make sure the modules $($azModules -join ", ") are installed"
-            exit 1
+            Write-Error "Error"
         }
         else {
             Write-Host " AzModule test failed: cmdlet $testCommand not available - make sure the modules $($azModules -join ", ") are installed" -ForegroundColor Red
@@ -498,7 +520,7 @@ Write-Host "Checking Az Context"
 if (-not $checkContext) {
     Write-Host " Context test failed: No context found. Please connect to Azure (run: Connect-AzAccount) and re-run AzGovViz" -ForegroundColor Red
     if ($AzureDevOpsWikiAsCode) {
-        exit 1
+        Write-Error "Error"
     }
     else {
         break script
@@ -511,7 +533,7 @@ else {
         $checkContext
         Write-Host " Context test failed: Context is not set to any Subscription. Set your context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run AzGovViz" -ForegroundColor Red
         if ($AzureDevOpsWikiAsCode) {
-            exit 1
+            Write-Error "Error"
         }
         else {
             break script
@@ -864,32 +886,35 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
         Write-Host "policyStates $(($result | Measure-Object).count)"
         #>
 
-        #MGPolicyCompliance
-        $currentTask = "Policy Compliance '$($getMg.properties.displayName)' ('$($getMg.Name)')"
-        ($htCachePolicyCompliance).mg.($getMg.Name) = @{ }
-        #$uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)/providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
-        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
-        #$path = "/providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
-        $method = "POST"
 
-        foreach ($policyAssignment in (((AzAPICall -uri $uri -method $method -currenttask $currentTask))).policyassignments | sort-object -Property policyAssignmentId) {
-            #$policyAssignment
-            ($htCachePolicyCompliance).mg.($getMg.Name).($policyAssignment.policyAssignmentId) = @{ }
-            foreach ($policyComplianceState in $policyAssignment.results.policydetails) {
-                if ($policyComplianceState.ComplianceState -eq "compliant") {
-                    ($htCachePolicyCompliance).mg.($getMg.Name).($policyAssignment.policyAssignmentId).CompliantPolicies = $policyComplianceState.count
-                }
-                if ($policyComplianceState.ComplianceState -eq "noncompliant") {
-                    ($htCachePolicyCompliance).mg.($getMg.Name).($policyAssignment.policyAssignmentId).NonCompliantPolicies = $policyComplianceState.count
-                }
-            }
+        if (-not $DisablePolicyComplianceStates){
+            #MGPolicyCompliance
+            $currentTask = "Policy Compliance '$($getMg.properties.displayName)' ('$($getMg.Name)')"
+            ($htCachePolicyCompliance).mg.($getMg.Name) = @{ }
+            #$uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)/providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
+            $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
+            #$path = "/providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
+            $method = "POST"
 
-            foreach ($resourceComplianceState in $policyAssignment.results.resourcedetails) {
-                if ($resourceComplianceState.ComplianceState -eq "compliant") {
-                    ($htCachePolicyCompliance).mg.($getMg.Name).($policyAssignment.policyAssignmentId).CompliantResources = $resourceComplianceState.count
+            foreach ($policyAssignment in (((AzAPICall -uri $uri -method $method -currenttask $currentTask))).policyassignments | sort-object -Property policyAssignmentId) {
+                #$policyAssignment
+                ($htCachePolicyCompliance).mg.($getMg.Name).($policyAssignment.policyAssignmentId) = @{ }
+                foreach ($policyComplianceState in $policyAssignment.results.policydetails) {
+                    if ($policyComplianceState.ComplianceState -eq "compliant") {
+                        ($htCachePolicyCompliance).mg.($getMg.Name).($policyAssignment.policyAssignmentId).CompliantPolicies = $policyComplianceState.count
+                    }
+                    if ($policyComplianceState.ComplianceState -eq "noncompliant") {
+                        ($htCachePolicyCompliance).mg.($getMg.Name).($policyAssignment.policyAssignmentId).NonCompliantPolicies = $policyComplianceState.count
+                    }
                 }
-                if ($resourceComplianceState.ComplianceState -eq "nonCompliant") {
-                    ($htCachePolicyCompliance).mg.($getMg.Name).($policyAssignment.policyAssignmentId).NonCompliantResources = $resourceComplianceState.count
+
+                foreach ($resourceComplianceState in $policyAssignment.results.resourcedetails) {
+                    if ($resourceComplianceState.ComplianceState -eq "compliant") {
+                        ($htCachePolicyCompliance).mg.($getMg.Name).($policyAssignment.policyAssignmentId).CompliantResources = $resourceComplianceState.count
+                    }
+                    if ($resourceComplianceState.ComplianceState -eq "nonCompliant") {
+                        ($htCachePolicyCompliance).mg.($getMg.Name).($policyAssignment.policyAssignmentId).NonCompliantResources = $resourceComplianceState.count
+                    }
                 }
             }
         }
@@ -1374,31 +1399,33 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                     $subscriptionQuotaId = $currentSubscription.subscriptionPolicies.quotaId
                     $subscriptionState = $currentSubscription.state
 
-                    #SubscriptionPolicyCompliance
-                    $currentTask = "Policy Compliance '$($childMgSubDisplayName)' ('$childMgSubId')"
-                    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
-                    #$path = "/subscriptions/$childMgSubId/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
-                    $method = "POST"
-                    
-                    $subPolicyComplianceResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
-                    ($htCachePolicyCompliance).sub.$childMgSubId = @{ }
-                    foreach ($policyAssignment in $subPolicyComplianceResult.policyassignments | sort-object -Property policyAssignmentId) {
-                        ($htCachePolicyCompliance).sub.($childMgSubId).($policyAssignment.policyAssignmentId) = @{ }
-                        foreach ($policyComplianceState in $policyAssignment.results.policydetails) {
-                            if ($policyComplianceState.ComplianceState -eq "compliant") {
-                                ($htCachePolicyCompliance).sub.($childMgSubId).($policyAssignment.policyAssignmentId).CompliantPolicies = $policyComplianceState.count
+                    if (-not $DisablePolicyComplianceStates){
+                        #SubscriptionPolicyCompliance
+                        $currentTask = "Policy Compliance '$($childMgSubDisplayName)' ('$childMgSubId')"
+                        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
+                        #$path = "/subscriptions/$childMgSubId/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
+                        $method = "POST"
+                        
+                        $subPolicyComplianceResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+                        ($htCachePolicyCompliance).sub.$childMgSubId = @{ }
+                        foreach ($policyAssignment in $subPolicyComplianceResult.policyassignments | sort-object -Property policyAssignmentId) {
+                            ($htCachePolicyCompliance).sub.($childMgSubId).($policyAssignment.policyAssignmentId) = @{ }
+                            foreach ($policyComplianceState in $policyAssignment.results.policydetails) {
+                                if ($policyComplianceState.ComplianceState -eq "compliant") {
+                                    ($htCachePolicyCompliance).sub.($childMgSubId).($policyAssignment.policyAssignmentId).CompliantPolicies = $policyComplianceState.count
+                                }
+                                if ($policyComplianceState.ComplianceState -eq "noncompliant") {
+                                    ($htCachePolicyCompliance).sub.($childMgSubId).($policyAssignment.policyAssignmentId).NonCompliantPolicies = $policyComplianceState.count
+                                }
                             }
-                            if ($policyComplianceState.ComplianceState -eq "noncompliant") {
-                                ($htCachePolicyCompliance).sub.($childMgSubId).($policyAssignment.policyAssignmentId).NonCompliantPolicies = $policyComplianceState.count
-                            }
-                        }
-            
-                        foreach ($resourceComplianceState in $policyAssignment.results.resourcedetails) {
-                            if ($resourceComplianceState.ComplianceState -eq "compliant") {
-                                ($htCachePolicyCompliance).sub.($childMgSubId).($policyAssignment.policyAssignmentId).CompliantResources = $resourceComplianceState.count
-                            }
-                            if ($resourceComplianceState.ComplianceState -eq "nonCompliant") {
-                                ($htCachePolicyCompliance).sub.($childMgSubId).($policyAssignment.policyAssignmentId).NonCompliantResources = $resourceComplianceState.count
+                
+                            foreach ($resourceComplianceState in $policyAssignment.results.resourcedetails) {
+                                if ($resourceComplianceState.ComplianceState -eq "compliant") {
+                                    ($htCachePolicyCompliance).sub.($childMgSubId).($policyAssignment.policyAssignmentId).CompliantResources = $resourceComplianceState.count
+                                }
+                                if ($resourceComplianceState.ComplianceState -eq "nonCompliant") {
+                                    ($htCachePolicyCompliance).sub.($childMgSubId).($policyAssignment.policyAssignmentId).NonCompliantResources = $resourceComplianceState.count
+                                }
                             }
                         }
                     }
@@ -3052,10 +3079,19 @@ extensions: [{ name: 'sort' }]
 <th>Type</th>
 <th>Category</th>
 <th>Effect</th>
+"@
+
+if (-not $DisablePolicyComplianceStates){
+
+    $htmlScopeInsights += @"
 <th>Policies NonCmplnt</th>
 <th>Policies Compliant</th>
 <th>Resources NonCmplnt</th>
 <th>Resources Compliant</th>
+"@
+}
+
+$htmlScopeInsights += @"
 <th>Role/Assignment</th>
 <th>Assignment DisplayName</th>
 <th>AssignmentId</th>
@@ -3074,10 +3110,20 @@ extensions: [{ name: 'sort' }]
 <td>$($policyAssignment.PolicyType)</td>
 <td>$($policyAssignment.PolicyCategory)</td>
 <td>$($policyAssignment.Effect)</td>
+
+"@
+
+if (-not $DisablePolicyComplianceStates){
+
+    $htmlScopeInsightsPolicyAssignments += @"
 <td>$($policyAssignment.NonCompliantPolicies)</td>
 <td>$($policyAssignment.CompliantPolicies)</td>
 <td>$($policyAssignment.NonCompliantResources)</td>
 <td>$($policyAssignment.CompliantResources)</td>
+"@
+}
+
+$htmlScopeInsightsPolicyAssignments += @"
 <td class="breakwordall">$($policyAssignment.RelatedRoleAssignments)</td>
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentDisplayName)</td>
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentId)</td>
@@ -3129,10 +3175,19 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+"@
+
+            if (-not $DisablePolicyComplianceStates){
+            
+                $htmlScopeInsights += @"
+
                 'number',
                 'number',
                 'number',
                 'number',
+"@
+                }
+            $htmlScopeInsights += @"
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring'
@@ -3232,10 +3287,20 @@ extensions: [{ name: 'sort' }]
 <th>PolicySetId</th>
 <th>Type</th>
 <th>Category</th>
+"@
+
+        if (-not $DisablePolicyComplianceStates){
+        
+            $htmlScopeInsights += @"
+
 <th>Policies NonCmplnt</th>
 <th>Policies Compliant</th>
 <th>Resources NonCmplnt</th>
 <th>Resources Compliant</th>
+"@
+        }
+
+$htmlScopeInsights += @"        
 <th>Role/Assignment</th>
 <th>Assignment DisplayName</th>
 <th>AssignmentId</th>
@@ -3253,10 +3318,19 @@ extensions: [{ name: 'sort' }]
 <td class="breakwordall">$($policyAssignment.PolicyId)</td>
 <td>$($policyAssignment.PolicyType)</td>
 <td>$($policyAssignment.PolicyCategory)</td>
+"@
+
+            if (-not $DisablePolicyComplianceStates){
+        
+                $htmlScopeInsightsPolicySetAssignments += @"
 <td>$($policyAssignment.NonCompliantPolicies)</td>
 <td>$($policyAssignment.CompliantPolicies)</td>
 <td>$($policyAssignment.NonCompliantResources)</td>
 <td>$($policyAssignment.CompliantResources)</td>
+"@
+        }
+
+            $htmlScopeInsightsPolicySetAssignments += @"
 <td class="breakwordall">$($policyAssignment.RelatedRoleAssignments)</td>
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentDisplayName)</td>
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentId)</td>
@@ -3306,10 +3380,17 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+"@
+
+            if (-not $DisablePolicyComplianceStates){
+                $htmlScopeInsights += @"
                 'number',
                 'number',
                 'number',
                 'number',
+"@
+            }
+        $htmlScopeInsights += @"
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring'
@@ -4377,7 +4458,7 @@ extensions: [{ name: 'sort' }]
         }
     }
     $endCustPolLoop = get-date
-    Write-Host "   Custom Policy processing duration: $((NEW-TIMESPAN -Start $startCustPolLoop -End $endCustPolLoop).TotalSeconds) seconds"
+    Write-Host "   Custom Policy processing duration: $((NEW-TIMESPAN -Start $startCustPolLoop -End $endCustPolLoop).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startCustPolLoop -End $endCustPolLoop).TotalSeconds) seconds)"
     #endregion SUMMARYcustompolicies
 
     #region SUMMARYCustomPoliciesOrphandedTenantRoot
@@ -5503,59 +5584,84 @@ extensions: [{ name: 'sort' }]
             $mgOrSub = "Sub"
         }
 
-        #compliance
-        if ("" -eq $policyAssignmentAll.subscriptionId) {
-            $compliance = ($htCachePolicyCompliance).mg.($policyAssignmentAll.MgId).($policyAssignmentAll.policyAssignmentId)
-            $NonCompliantPolicies = $compliance.NonCompliantPolicies
-            $CompliantPolicies = $compliance.CompliantPolicies
-            $NonCompliantResources = $compliance.NonCompliantResources
-            $CompliantResources = $compliance.CompliantResources
-        }
-        else {
-            $compliance = ($htCachePolicyCompliance).sub.($policyAssignmentAll.SubscriptionId).($policyAssignmentAll.policyAssignmentId)
-            $NonCompliantPolicies = $compliance.NonCompliantPolicies
-            $CompliantPolicies = $compliance.CompliantPolicies
-            $NonCompliantResources = $compliance.NonCompliantResources
-            $CompliantResources = $compliance.CompliantResources
-        }
+        if (-not $DisablePolicyComplianceStates){
+            #compliance
+            if ("" -eq $policyAssignmentAll.subscriptionId) {
+                $compliance = ($htCachePolicyCompliance).mg.($policyAssignmentAll.MgId).($policyAssignmentAll.policyAssignmentId)
+                $NonCompliantPolicies = $compliance.NonCompliantPolicies
+                $CompliantPolicies = $compliance.CompliantPolicies
+                $NonCompliantResources = $compliance.NonCompliantResources
+                $CompliantResources = $compliance.CompliantResources
+            }
+            else {
+                $compliance = ($htCachePolicyCompliance).sub.($policyAssignmentAll.SubscriptionId).($policyAssignmentAll.policyAssignmentId)
+                $NonCompliantPolicies = $compliance.NonCompliantPolicies
+                $CompliantPolicies = $compliance.CompliantPolicies
+                $NonCompliantResources = $compliance.NonCompliantResources
+                $CompliantResources = $compliance.CompliantResources
+            }
 
-        if (!$NonCompliantPolicies) {
-            $NonCompliantPolicies = 0
-        }
-        if (!$CompliantPolicies) {
-            $CompliantPolicies = 0
-        }
-        if (!$NonCompliantResources) {
-            $NonCompliantResources = 0
-        }
-        if (!$CompliantResources) {
-            $CompliantResources = 0
-        }
+            if (!$NonCompliantPolicies) {
+                $NonCompliantPolicies = 0
+            }
+            if (!$CompliantPolicies) {
+                $CompliantPolicies = 0
+            }
+            if (!$NonCompliantResources) {
+                $NonCompliantResources = 0
+            }
+            if (!$CompliantResources) {
+                $CompliantResources = 0
+            }
 
-        [PSCustomObject]@{ 
-            Level                       = $policyAssignmentAll.Level
-            MgId                        = $policyAssignmentAll.MgId
-            MgName                      = $policyAssignmentAll.MgName
-            subscriptionId              = $policyAssignmentAll.SubscriptionId
-            subscriptionName            = $policyAssignmentAll.Subscription
-            PolicyAssignmentId          = $policyAssignmentAll.PolicyAssignmentId
-            PolicyAssignmentDisplayName = $policyAssignmentAll.PolicyAssignmentDisplayName
-            PolicyAssignmentDescription = $policyAssignmentAll.PolicyAssignmentDescription
-            Effect                      = $effect
-            PolicyName                  = $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentAll.PolicyAssignmentId).policyWithWithoutLinkToAzAdvertizer
-            PolicyDescription           = $policyAssignmentAll.PolicyDescription
-            PolicyId                    = $policyAssignmentAll.PolicyDefinitionIdFull
-            PolicyVariant               = $policyAssignmentAll.PolicyVariant
-            PolicyType                  = $policyAssignmentAll.PolicyType
-            PolicyCategory              = $policyAssignmentAll.PolicyCategory
-            Inheritance                 = $scope
-            ExcludedScope               = $excludedScope
-            RelatedRoleAssignments      = $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentAll.PolicyAssignmentId).relatedRoleAssignments
-            MgOrSub                     = $mgOrSub
-            NonCompliantPolicies        = [int]$NonCompliantPolicies
-            CompliantPolicies           = $CompliantPolicies
-            NonCompliantResources       = $NonCompliantResources
-            CompliantResources          = $CompliantResources 
+            [PSCustomObject]@{ 
+                Level                       = $policyAssignmentAll.Level
+                MgId                        = $policyAssignmentAll.MgId
+                MgName                      = $policyAssignmentAll.MgName
+                subscriptionId              = $policyAssignmentAll.SubscriptionId
+                subscriptionName            = $policyAssignmentAll.Subscription
+                PolicyAssignmentId          = $policyAssignmentAll.PolicyAssignmentId
+                PolicyAssignmentDisplayName = $policyAssignmentAll.PolicyAssignmentDisplayName
+                PolicyAssignmentDescription = $policyAssignmentAll.PolicyAssignmentDescription
+                Effect                      = $effect
+                PolicyName                  = $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentAll.PolicyAssignmentId).policyWithWithoutLinkToAzAdvertizer
+                PolicyDescription           = $policyAssignmentAll.PolicyDescription
+                PolicyId                    = $policyAssignmentAll.PolicyDefinitionIdFull
+                PolicyVariant               = $policyAssignmentAll.PolicyVariant
+                PolicyType                  = $policyAssignmentAll.PolicyType
+                PolicyCategory              = $policyAssignmentAll.PolicyCategory
+                Inheritance                 = $scope
+                ExcludedScope               = $excludedScope
+                RelatedRoleAssignments      = $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentAll.PolicyAssignmentId).relatedRoleAssignments
+                MgOrSub                     = $mgOrSub
+                NonCompliantPolicies        = [int]$NonCompliantPolicies
+                CompliantPolicies           = $CompliantPolicies
+                NonCompliantResources       = $NonCompliantResources
+                CompliantResources          = $CompliantResources 
+            }
+        }
+        else{
+            [PSCustomObject]@{ 
+                Level                       = $policyAssignmentAll.Level
+                MgId                        = $policyAssignmentAll.MgId
+                MgName                      = $policyAssignmentAll.MgName
+                subscriptionId              = $policyAssignmentAll.SubscriptionId
+                subscriptionName            = $policyAssignmentAll.Subscription
+                PolicyAssignmentId          = $policyAssignmentAll.PolicyAssignmentId
+                PolicyAssignmentDisplayName = $policyAssignmentAll.PolicyAssignmentDisplayName
+                PolicyAssignmentDescription = $policyAssignmentAll.PolicyAssignmentDescription
+                Effect                      = $effect
+                PolicyName                  = $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentAll.PolicyAssignmentId).policyWithWithoutLinkToAzAdvertizer
+                PolicyDescription           = $policyAssignmentAll.PolicyDescription
+                PolicyId                    = $policyAssignmentAll.PolicyDefinitionIdFull
+                PolicyVariant               = $policyAssignmentAll.PolicyVariant
+                PolicyType                  = $policyAssignmentAll.PolicyType
+                PolicyCategory              = $policyAssignmentAll.PolicyCategory
+                Inheritance                 = $scope
+                ExcludedScope               = $excludedScope
+                RelatedRoleAssignments      = $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentAll.PolicyAssignmentId).relatedRoleAssignments
+                MgOrSub                     = $mgOrSub
+            }
         }
     }
     $endtest2 = get-date
@@ -5587,10 +5693,18 @@ extensions: [{ name: 'sort' }]
 <th>Type</th>
 <th>Category</th>
 <th>Effect</th>
+"@
+
+if (-not $DisablePolicyComplianceStates){
+    $htmlTenantSummary += @"
 <th>Policies NonCmplnt</th>
 <th>Policies Compliant</th>
 <th>Resources NonCmplnt</th>
 <th>Resources Compliant</th>
+"@
+}
+
+$htmlTenantSummary += @"
 <th>Role/Assignment</th>
 <th>Assignment DisplayName</th>
 <th>Assignment Description</th>
@@ -5617,10 +5731,18 @@ extensions: [{ name: 'sort' }]
 <td>$($policyAssignment.PolicyType)</td>
 <td>$($policyAssignment.PolicyCategory)</td>
 <td>$($policyAssignment.Effect)</td>
+"@
+
+if (-not $DisablePolicyComplianceStates){
+    $htmlSummaryPolicyAssignmentsAll += @"
 <td>$($policyAssignment.NonCompliantPolicies)</td>
 <td>$($policyAssignment.CompliantPolicies)</td>
 <td>$($policyAssignment.NonCompliantResources)</td>
 <td>$($policyAssignment.CompliantResources)</td>
+"@
+}
+
+$htmlSummaryPolicyAssignmentsAll += @"
 <td class="breakwordall">$($policyAssignment.RelatedRoleAssignments)</td>
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentDisplayName)</td>
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentDescription)</td>
@@ -5685,20 +5807,56 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
-                'number',
-                'number',
-                'number',
-                'number',
+"@
+
+if (-not $DisablePolicyComplianceStates){
+    $htmlTenantSummary += @"
+'number',
+'number',
+'number',
+'number',
+"@
+}
+
+$htmlTenantSummary += @"
+
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring'
             ],
+
+"@
+
+if (-not $DisablePolicyComplianceStates){
+    $htmlTenantSummary += @"
+            watermark: ['', '', '', 'try [nonempty]', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+"@
+}
+else{
+    $htmlTenantSummary += @"
             watermark: ['', '', '', 'try [nonempty]', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+"@ 
+}
+
+$htmlTenantSummary += @"
 extensions: [
     {
         name: 'colsVisibility',
+"@
+
+        if (-not $DisablePolicyComplianceStates){
+            $htmlTenantSummary += @"
         at_start: [8, 20],
+"@
+        }
+        else{
+            $htmlTenantSummary += @"
+            at_start: [8, 16],
+"@        
+        }
+
+$htmlTenantSummary += @"
         text: 'Columns: ',
         enable_tick_all: true
     },    
@@ -6286,13 +6444,17 @@ extensions: [{ name: 'sort' }]
         $cnter = 0
         $roleAssignmentsAllCount = ($script:rbacAll | Measure-Object).count
         $startWriteRoleAssignmentsAll = get-date
-        $htmlSummaryRoleAssignmentsAll = $null
+        $htmlSummaryRoleAssignmentsAll = ""
+        $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+        $htmlTenantSummary = ""
         foreach ($roleAssignment in $script:rbacAll | sort-object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId) {
             $cnter++
+            <#
             if ($cnter % 500 -eq 0) {
                 $etappeWriteRoleAssignmentsAll = get-date
                 Write-Host "   $cnter of $roleAssignmentsAllCount RoleAssignments processed; $((NEW-TIMESPAN -Start $startWriteRoleAssignmentsAll -End $etappeWriteRoleAssignmentsAll).TotalSeconds) seconds"
             }
+            #>
             $htmlSummaryRoleAssignmentsAll += @"
 <tr>
 <td>$($roleAssignment.MgOrSub)</td>
@@ -6311,11 +6473,24 @@ extensions: [{ name: 'sort' }]
 <td class="breakwordall">$($roleAssignment.rbacRelatedPolicyAssignment)</td>
 </tr>
 "@
+
+#
+            if ($cnter % 500 -eq 0) {
+                $etappeWriteRoleAssignmentsAll = get-date
+                Write-Host "   $cnter of $roleAssignmentsAllCount RoleAssignments processed; $((NEW-TIMESPAN -Start $startWriteRoleAssignmentsAll -End $etappeWriteRoleAssignmentsAll).TotalSeconds) seconds"
+            
+                $htmlTenantSummary += $htmlSummaryRoleAssignmentsAll
+                $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+                $htmlSummaryRoleAssignmentsAll = ""
+                $htmlTenantSummary = ""
+            }
+#
+
         }
         $start = get-date
         $htmlTenantSummary += $htmlSummaryRoleAssignmentsAll
         $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-        $htmlTenantSummary = $null
+        $htmlTenantSummary = ""
         $end = get-date
         Write-Host "   append file duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
         $htmlTenantSummary += @"
@@ -7837,10 +8012,20 @@ extensions: [{ name: 'sort' }]
 
             $policiesThatDefineDiagnosticsCount = ($policiesThatDefineDiagnostics | Measure-Object).count
             if ($policiesThatDefineDiagnosticsCount -gt 0) {
+
+                Write-Host "   Will process the following policies:"
+                foreach ($policy in $policiesThatDefineDiagnostics) {
+                    Write-Host "    $((($htCacheDefinitions).policy.($policy)).DisplayName) '$policy'"
+                    #($htCacheDefinitions).policy.($policy)
+                    #($htCacheDefinitions).policy.($policy).json | convertto-json -Depth 99
+                }
+                Write-Host "    ________________________"
+
                 $diagnosticsPolicyAnalysis = @()
-                $diagnosticsPolicyAnalysis = foreach ($policy in $policiesThatDefineDiagnostics) {
+                $diagnosticsPolicyAnalysis = [System.Collections.ArrayList]@()
+                #$diagnosticsPolicyAnalysis = foreach ($policy in $policiesThatDefineDiagnostics) {
+                foreach ($policy in $policiesThatDefineDiagnostics) {
                     Write-Host "   processing Policy '$(($htCacheDefinitions).policy.($policy).Id)'"
-                    #($htCacheDefinitions).policy.($policy).Id
                     if (
                         (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match "/providers/diagnosticSettings" }).properties.workspaceId -or
                         (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match "/providers/diagnosticSettings" }).properties.eventHubAuthorizationRuleId -or
@@ -7856,135 +8041,235 @@ extensions: [{ name: 'sort' }]
                             $diagnosticsDestination = "SA"
                         }
 
-                        #Write-Host $diagnosticsDestination
                         if ( (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match "/providers/diagnosticSettings" }).properties.logs ) {
-                            $diagnosticsLogCategoriesCoveredByPolicy = (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match "/providers/diagnosticSettings" }).properties.logs
+
                             $resourceType = ( (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match "/providers/diagnosticSettings" }).type -replace "/providers/diagnosticSettings")
+
                             $resourceTypeCountFromResourceTypesSummarizedArray = ($resourceTypesSummarizedArray | Where-Object { $_.ResourceType -eq $resourceType }).ResourceCount
+                            if ($resourceTypeCountFromResourceTypesSummarizedArray){
+                                $resourceCount = $resourceTypeCountFromResourceTypesSummarizedArray
+                            }
+                            else{
+                                $resourceCount = "0"
+                            }
                             $supportedLogs = $resourceTypesDiagnosticsArray | Where-Object { $_.ResourceType -eq ( (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match "/providers/diagnosticSettings" }).type -replace "/providers/diagnosticSettings") }
-                            if (($supportedLogs | Measure-Object).count -gt 0) {
-                                $status = "AzGovViz detected the resourceType"
-                                $diagnosticsLogCategoriesSupported = $supportedLogs.LogCategories
+                            
+                            $diagnosticsLogCategoriesSupported = $supportedLogs.LogCategories
+                            if (($supportedLogs | Measure-Object).count -gt 0){
                                 $logsSupported = "yes"
-                                $actionItems = @()
-                                $actionItems += foreach ($supportedLogCategory in $supportedLogs.LogCategories) {
-                                    if (-not $diagnosticsLogCategoriesCoveredByPolicy.category.contains($supportedLogCategory)) {
-                                        $supportedLogCategory
-                                    }
-                                }
-                                if (($actionItems | Measure-Object).count -gt 0) {
-                                    $diagnosticsLogCategoriesNotCoveredByPolicy = $actionItems
-                                    $recommendation = "review the policy and add the missing categories as required"
-                                }
-                                else {
-                                    $diagnosticsLogCategoriesNotCoveredByPolicy = "all OK"
-                                    $recommendation = "no recommendation"
-                                }
                             }
-                            else {
-                                $status = "AzGovViz did not detect the resourceType"
-                                $diagnosticsLogCategoriesSupported = "n/a"
-                                $diagnosticsLogCategoriesNotCoveredByPolicy = "n/a"
-                                $recommendation = "no recommendation as this resourceType seems not existing"
-                                $logsSupported = "unknown"
+                            else{
+                                $logsSupported = "no"
                             }
 
-                            $policyHasPolicyAssignments = $policyBaseQuery | Where-Object { $_.PolicyDefinitionIdGuid -eq $policy } | sort-object -property PolicyDefinitionIdGuid, PolicyAssignmentId -unique
-                            $policyHasPolicyAssignmentCount = ($policyHasPolicyAssignments | Measure-Object).count
-                            if ($policyHasPolicyAssignmentCount -gt 0) {
-                                $policyAssignmentsArray = @()
-                                $policyAssignmentsArray += foreach ($policyAssignment in $policyHasPolicyAssignments) {
-                                    "$($policyAssignment.PolicyAssignmentId) ($($policyAssignment.PolicyAssignmentDisplayName))"
-                                }
-                                $policyAssignmentsCollCount = ($policyAssignmentsArray | Measure-Object).count
-                                #$policyAssignments = "$policyAssignmentsCount [$($policyAssignmentsArray -join "$CsvDelimiterOpposite ")]"
-                                $policyAssignmentsColl = $policyAssignmentsCollCount
-                            }
-                            else {
-                                $policyAssignmentsColl = 0
-                            }
-
-                            #PolicyUsedinPolicySet
-                            $policySetAssignmentsColl = 0
-                            $policyUsedinPolicySets = "n/a"
-                            if (($htCachePoliciesUsedInPolicySets).(($htCacheDefinitions).policy.($policy).Id)) {
-                                $policyUsedinPolicySets = ($htCachePoliciesUsedInPolicySets).(($htCacheDefinitions).policy.($policy).Id).policySetId
-                                $policyUsedinPolicySetsCount = (($htCachePoliciesUsedInPolicySets).(($htCacheDefinitions).policy.($policy).Id).policySetId | Measure-Object).count
-
-                                if ($policyUsedinPolicySetsCount -gt 0) {
-                                    $policyUsedinPolicySetsArray = @()
-                                    $policySetAssignmentsArray = @()
-                                    $policyUsedinPolicySetsArray += foreach ($policySetsWherePolicyIsUsed in $policyUsedinPolicySets) {
-                                        "[$policySetsWherePolicyIsUsed ($(($htCacheDefinitions).policySet.($policySetsWherePolicyIsUsed).DisplayName))]"
-
-                                        #PolicySetHasAssignments
-                                        $policySetAssignments = ($htCacheAssignments).policy.keys | Where-Object { ($htCacheAssignments).policy.($_).properties.PolicyDefinitionId -eq ($htCacheDefinitions).policySet.($policySetsWherePolicyIsUsed).PolicyDefinitionId }
-                                        $policySetAssignmentsCount = ($policySetAssignments | measure-object).count
-                                        if ($policySetAssignmentsCount -gt 0) {
-                                            $policySetAssignmentsArray += foreach ($policySetAssignment in $policySetAssignments) {
-                                                "$(($htCacheAssignments).policy.($policySetAssignment).PolicyAssignmentId) ($(($htCacheAssignments).policy.($policySetAssignment).properties.DisplayName))"
-                                            }
-                                            $policySetAssignmentsCollCount = ($policySetAssignmentsArray | Measure-Object).Count
-                                            #$policySetAssignmentsColl = "$policySetAssignmentsCollCount [$($policySetAssignmentsArray -join "$CsvDelimiterOpposite ")]"
-                                            $policySetAssignmentsColl = $policySetAssignmentsCollCount
-                                        }
-                                    }
-                                    $policyUsedinPolicySetsCount = ($policyUsedinPolicySetsArray | Measure-Object).count
-                                    #$policyUsedinPolicySets = "$policyUsedinPolicySetsCount $($policyUsedinPolicySetsArray -join "$CsvDelimiterOpposite ")"
-                                    $policyUsedinPolicySets = $policyUsedinPolicySetsCount
-                                }
-                                else {
-                                    $policyUsedinPolicySets = "n/a"
-                                }     
-                            }
-
-                            if ($recommendation -eq "review the policy and add the missing categories as required") {
-                                if ($policyAssignmentsColl -gt 0 -or $policySetAssignmentsColl -gt 0) {
-                                    $priority = "1-High"
-                                }
-                                else {
-                                    $priority = "3-MediumLow"
-                                }
-                            }
-                            else {
-                                $priority = "4-Low"
-                            }
+                            #($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.roleDefinitionIds
+                            #Write-Host "roledefs: $(((($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.roleDefinitionIds) | measure-object).count)"
 
                             $roleDefinitionIdsArray = @()
                             $roleDefinitionIdsArray += foreach ($roleDefinitionId in ($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.roleDefinitionIds) {
-                                if (($htCacheDefinitions).role.($roleDefinitionId -replace ".*/")){
+                                if (($htCacheDefinitions).role.($roleDefinitionId -replace ".*/")) {
                                     "$(($htCacheDefinitions).role.($roleDefinitionId -replace ".*/").Name) ($($roleDefinitionId -replace ".*/"))"
                                 }
-                                else{
+                                else {
                                     Write-Host "  DiagnosticsLifeCycle: unknown RoleDefinition '$roleDefinitionId'"
                                     "unknown RoleDefinition: '$roleDefinitionId'"
                                 }
                             }
 
-                            [PSCustomObject]@{
-                                Priority                    = $priority
-                                PolicyId                    = ($htCacheDefinitions).policy.($policy).Id
-                                PolicyCategory              = ($htCacheDefinitions).policy.($policy).Category
-                                PolicyName                  = ($htCacheDefinitions).policy.($policy).DisplayName
-                                PolicyDeploysRoles          = $roleDefinitionIdsArray -join "$CsvDelimiterOpposite "
-                                PolicyForResourceTypeExists = $true
-                                ResourceType                = $resourceType
-                                ResourceTypeCount           = $resourceTypeCountFromResourceTypesSummarizedArray
-                                Status                      = $status
-                                LogsSupported               = $logsSupported
-                                LogCategoriesInPolicy       = ($diagnosticsLogCategoriesCoveredByPolicy.category | Sort-Object) -join "$CsvDelimiterOpposite "
-                                LogCategoriesSupported      = ($diagnosticsLogCategoriesSupported | Sort-Object) -join "$CsvDelimiterOpposite "
-                                LogCategoriesDelta          = ($diagnosticsLogCategoriesNotCoveredByPolicy | Sort-Object) -join "$CsvDelimiterOpposite "
-                                Recommendation              = $recommendation
-                                DiagnosticsTargetType       = $diagnosticsDestination
-                                PolicyAssignments           = $policyAssignmentsColl
-                                PolicyUsedInPolicySet       = $policyUsedinPolicySets
-                                PolicySetAssignments        = $policySetAssignmentsColl
+                            $diagnosticsLogCategoriesCoveredByPolicy = (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match "/providers/diagnosticSettings" }).properties.logs
+                            #write-host "$(($diagnosticsLogCategoriesCoveredByPolicy.category | Measure-Object).count)"
+                            if (($diagnosticsLogCategoriesCoveredByPolicy.category | Measure-Object).count -gt 0) {
+                                #write-host "$(($diagnosticsLogCategoriesCoveredByPolicy.category | Measure-Object).count) $($diagnosticsLogCategoriesCoveredByPolicy.category)"
 
+                                if (($supportedLogs | Measure-Object).count -gt 0) {
+                                    <#
+                                    Write-Host "#2-2"
+                                    Write-host "debug: supportedLogs count: $(($supportedLogs | Measure-Object).count)"
+                                    foreach ($supportedLog in $supportedLogs) {
+                                        write-host "debug: supportedLog: $supportedLog"
+                                    }
+                                    #>
+
+                                    $actionItems = @()
+                                    $actionItems += foreach ($supportedLogCategory in $supportedLogs.LogCategories) {
+                                        #write-host "debug: supportedLogCategory: $supportedLogCategory"
+                                        if (-not $diagnosticsLogCategoriesCoveredByPolicy.category.contains($supportedLogCategory)) {
+                                            $supportedLogCategory
+                                        }
+                                    }
+                                    if (($actionItems | Measure-Object).count -gt 0) {
+                                        $diagnosticsLogCategoriesNotCoveredByPolicy = $actionItems
+                                        $recommendation = "review the policy and add the missing categories as required"
+                                    }
+                                    else {
+                                        $diagnosticsLogCategoriesNotCoveredByPolicy = "all OK"
+                                        $recommendation = "no recommendation"
+                                    }
+                                }
+                                else {
+                                    $status = "AzGovViz did not detect the resourceType"
+                                    $diagnosticsLogCategoriesSupported = "n/a"
+                                    $diagnosticsLogCategoriesNotCoveredByPolicy = "n/a"
+                                    $recommendation = "no recommendation as this resourceType seems not existing"
+                                    $logsSupported = "unknown"
+                                }
+
+                                #write-host "policy: $policy"
+                                #write-host "policy Displayname: $((($htCacheDefinitions).policy.($policy)).DisplayName)"
+                                #$policyHasPolicyAssignmentCount = 0
+                                $policyHasPolicyAssignments = $policyBaseQuery | Where-Object { $_.PolicyDefinitionIdFull -eq $policy } | sort-object -property PolicyDefinitionIdFull, PolicyAssignmentId -unique
+
+                                $policyHasPolicyAssignmentCount = ($policyHasPolicyAssignments | Measure-Object).count
+                                #
+                                #write-host "policy assignments: $policyHasPolicyAssignmentCount"
+                                if ($policyHasPolicyAssignmentCount -gt 0) {
+                                    $policyAssignmentsArray = @()
+                                    $policyAssignmentsArray += foreach ($policyAssignment in $policyHasPolicyAssignments) {
+                                        "$($policyAssignment.PolicyAssignmentId) ($($policyAssignment.PolicyAssignmentDisplayName))"
+                                    }
+                                    $policyAssignmentsCollCount = ($policyAssignmentsArray | Measure-Object).count
+                                    #$policyAssignments = "$policyAssignmentsCount [$($policyAssignmentsArray -join "$CsvDelimiterOpposite ")]"
+                                    $policyAssignmentsColl = $policyAssignmentsCollCount
+                                }
+                                else {
+                                    $policyAssignmentsColl = 0
+                                }
+
+                                #PolicyUsedinPolicySet
+                                $policySetAssignmentsColl = 0
+                                $policyUsedinPolicySets = "n/a"
+                                
+                                #($htCachePoliciesUsedInPolicySets)."/providers/Microsoft.Management/managementGroups/11a5557c-f80f-4925-9d04-c05ecd061ffa/providers/Microsoft.Authorization/policyDefinitions/1ffb5f5e-eca1-4937-9a17-e6aa86bf28cb"
+                                #$arrayPoliciesUsedInPolicySets
+
+                                #$policy ="/providers/Microsoft.Management/managementGroups/11a5557c-f80f-4925-9d04-c05ecd061ffa/providers/Microsoft.Authorization/policyDefinitions/1ffb5f5e-eca1-4937-9a17-e6aa86bf28cb"
+                                $usedInPolicySetArray = [System.Collections.ArrayList]@()
+                                $usedInPolicySetArray = foreach ($customPolicySet in $tenantCustomPolicySets) {
+                                    if (($htCacheDefinitions).policySet.$customPolicySet.Type -eq "Custom") {
+                                        $hlpCustomPolicySet = ($htCacheDefinitions).policySet.($customPolicySet)
+                                        if (($hlpCustomPolicySet.PolicySetPolicyIds).contains($policy)) {
+                                            ($hlpCustomPolicySet.Id)
+                                            
+                                            #PolicySetHasAssignments
+                                            $policySetAssignments = ($htCacheAssignments).policy.keys | Where-Object { ($htCacheAssignments).policy.($_).properties.PolicyDefinitionId -eq ($hlpCustomPolicySet.Id) }
+                                            $policySetAssignmentsCount = ($policySetAssignments | measure-object).count
+                                            if ($policySetAssignmentsCount -gt 0) {
+                                                $policySetAssignmentsArray += foreach ($policySetAssignment in $policySetAssignments) {
+                                                    "$(($htCacheAssignments).policy.($policySetAssignment).Id) ($(($htCacheAssignments).policy.($policySetAssignment).properties.DisplayName))"
+                                                }
+                                                $policySetAssignmentsCollCount = ($policySetAssignmentsArray | Measure-Object).Count
+                                                $policySetAssignmentsColl = "$policySetAssignmentsCollCount [$($policySetAssignmentsArray -join "$CsvDelimiterOpposite ")]"
+                                                #$policySetAssignmentsColl = $policySetAssignmentsCollCount
+                                            }
+
+                                        }
+                                        #($htCacheAssignments).policy."/subscriptions/b2ac7057-8edf-4617-a1f7-5ed6b44ef2c8/providers/Microsoft.Authorization/policyAssignments/efff18c773fd416a95b42e76" | fl
+                                        #"/providers/Microsoft.Management/managementGroups/0/providers/Microsoft.Authorization/policyDefinitions/bbe377bc-682c-4aaf-b036-ee2688827351"
+                                    }
+                                }
+                                #$policyUsedinPolicySets = "$policyUsedinPolicySetsCount $($policyUsedinPolicySetsArray -join "$CsvDelimiterOpposite ")"
+                                if (($usedInPolicySetArray | Measure-Object).count -gt 0){
+                                    $policyUsedinPolicySets = "$(($usedInPolicySetArray | Measure-Object).count) [$($usedInPolicySetArray -join "$CsvDelimiterOpposite ")]"
+                                }
+                                else{
+                                    $policyUsedinPolicySets = "$(($usedInPolicySetArray | Measure-Object).count)"
+                                }
+                                
+                                <#
+                                if (($htCachePoliciesUsedInPolicySets).(($htCacheDefinitions).policy.($policy).Id)) {
+                                    $policyUsedinPolicySets = ($htCachePoliciesUsedInPolicySets).(($htCacheDefinitions).policy.($policy).Id).policySetId
+                                    $policyUsedinPolicySetsCount = (($htCachePoliciesUsedInPolicySets).(($htCacheDefinitions).policy.($policy).Id).policySetId | Measure-Object).count
+                                    #
+                                    write-host "used in policysets: $policyUsedinPolicySetsCount"
+                                    if ($policyUsedinPolicySetsCount -gt 0) {
+                                        $policyUsedinPolicySetsArray = @()
+                                        $policySetAssignmentsArray = @()
+                                        $policyUsedinPolicySetsArray += foreach ($policySetsWherePolicyIsUsed in $policyUsedinPolicySets) {
+                                            "[$policySetsWherePolicyIsUsed ($(($htCacheDefinitions).policySet.($policySetsWherePolicyIsUsed).DisplayName))]"
+
+                                            #PolicySetHasAssignments
+                                            $policySetAssignments = ($htCacheAssignments).policy.keys | Where-Object { ($htCacheAssignments).policy.($_).properties.PolicyDefinitionId -eq ($htCacheDefinitions).policySet.($policySetsWherePolicyIsUsed).PolicyDefinitionId }
+                                            $policySetAssignmentsCount = ($policySetAssignments | measure-object).count
+                                            if ($policySetAssignmentsCount -gt 0) {
+                                                $policySetAssignmentsArray += foreach ($policySetAssignment in $policySetAssignments) {
+                                                    "$(($htCacheAssignments).policy.($policySetAssignment).PolicyAssignmentId) ($(($htCacheAssignments).policy.($policySetAssignment).properties.DisplayName))"
+                                                }
+                                                $policySetAssignmentsCollCount = ($policySetAssignmentsArray | Measure-Object).Count
+                                                #$policySetAssignmentsColl = "$policySetAssignmentsCollCount [$($policySetAssignmentsArray -join "$CsvDelimiterOpposite ")]"
+                                                $policySetAssignmentsColl = $policySetAssignmentsCollCount
+                                            }
+                                        }
+                                        $policyUsedinPolicySetsCount = ($policyUsedinPolicySetsArray | Measure-Object).count
+                                        #$policyUsedinPolicySets = "$policyUsedinPolicySetsCount $($policyUsedinPolicySetsArray -join "$CsvDelimiterOpposite ")"
+                                        $policyUsedinPolicySets = $policyUsedinPolicySetsCount
+                                    }
+                                    else {
+                                        $policyUsedinPolicySets = "n/a"
+                                    }     
+                                }
+                                #>
+
+                                if ($recommendation -eq "review the policy and add the missing categories as required") {
+                                    if ($policyAssignmentsColl -gt 0 -or $policySetAssignmentsColl -gt 0) {
+                                        $priority = "1-High"
+                                    }
+                                    else {
+                                        $priority = "3-MediumLow"
+                                    }
+                                }
+                                else {
+                                    $priority = "4-Low"
+                                }
+
+                                $null = $diagnosticsPolicyAnalysis.Add([PSCustomObject]@{
+                                    Priority                    = $priority
+                                    PolicyId                    = ($htCacheDefinitions).policy.($policy).Id
+                                    PolicyCategory              = ($htCacheDefinitions).policy.($policy).Category
+                                    PolicyName                  = ($htCacheDefinitions).policy.($policy).DisplayName
+                                    PolicyDeploysRoles          = $roleDefinitionIdsArray -join "$CsvDelimiterOpposite "
+                                    PolicyForResourceTypeExists = $true
+                                    ResourceType                = $resourceType
+                                    ResourceTypeCount           = $resourceCount
+                                    Status                      = $status
+                                    LogsSupported               = $logsSupported
+                                    LogCategoriesInPolicy       = ($diagnosticsLogCategoriesCoveredByPolicy.category | Sort-Object) -join "$CsvDelimiterOpposite "
+                                    LogCategoriesSupported      = ($diagnosticsLogCategoriesSupported | Sort-Object) -join "$CsvDelimiterOpposite "
+                                    LogCategoriesDelta          = ($diagnosticsLogCategoriesNotCoveredByPolicy | Sort-Object) -join "$CsvDelimiterOpposite "
+                                    Recommendation              = $recommendation
+                                    DiagnosticsTargetType       = $diagnosticsDestination
+                                    PolicyAssignments           = $policyAssignmentsColl
+                                    PolicyUsedInPolicySet       = $policyUsedinPolicySets
+                                    PolicySetAssignments        = $policySetAssignmentsColl
+                                })
+                                #$diagnosticsPolicyAnalysis += $object
                             }
-                            #$diagnosticsPolicyAnalysis += $object
+                            else {
+                                $status = "no categories defined"
+                                $priority = "5-Low"
+                                $recommendation = "Review the policy - the definition has key for categories, but there are none categories defined"
+                                $null = $diagnosticsPolicyAnalysis.Add([PSCustomObject]@{
+                                    Priority                    = $priority
+                                    PolicyId                    = ($htCacheDefinitions).policy.($policy).Id
+                                    PolicyCategory              = ($htCacheDefinitions).policy.($policy).Category
+                                    PolicyName                  = ($htCacheDefinitions).policy.($policy).DisplayName
+                                    PolicyDeploysRoles          = $roleDefinitionIdsArray -join "$CsvDelimiterOpposite "
+                                    PolicyForResourceTypeExists = $true
+                                    ResourceType                = $resourceType
+                                    ResourceTypeCount           = $resourceCount
+                                    Status                      = $status
+                                    LogsSupported               = $logsSupported
+                                    LogCategoriesInPolicy       = "none"
+                                    LogCategoriesSupported      = ($diagnosticsLogCategoriesSupported | Sort-Object) -join "$CsvDelimiterOpposite "
+                                    LogCategoriesDelta          = ($diagnosticsLogCategoriesSupported | Sort-Object) -join "$CsvDelimiterOpposite "
+                                    Recommendation              = $recommendation
+                                    DiagnosticsTargetType       = $diagnosticsDestination
+                                    PolicyAssignments           = $policyAssignmentsColl
+                                    PolicyUsedInPolicySet       = $policyUsedinPolicySets
+                                    PolicySetAssignments        = $policySetAssignmentsColl
+                                })
+                            }
                         } 
-                        else{
+                        else {
                             Write-Host "  DiagnosticsLifeCycle: something unexpected - no Logs defined"
                         }
                     }
@@ -7992,22 +8277,28 @@ extensions: [{ name: 'sort' }]
                         Write-Host "   DiagnosticsLifeCycle: something unexpected - not EH, LA, SA"
                     }
                 }
-
                 #where no Policy exists
-                $diagnosticsPolicyAnalysis += foreach ($resourceTypeDiagnosticsCapable in $resourceTypesDiagnosticsArray | Where-Object { $_.Logs -eq $true }) {
+                #$diagnosticsPolicyAnalysis += foreach ($resourceTypeDiagnosticsCapable in $resourceTypesDiagnosticsArray | Where-Object { $_.Logs -eq $true }) {
+                foreach ($resourceTypeDiagnosticsCapable in $resourceTypesDiagnosticsArray | Where-Object { $_.Logs -eq $true }) {
                     if (-not($diagnosticsPolicyAnalysis.ResourceType).ToLower().Contains( ($resourceTypeDiagnosticsCapable.ResourceType).ToLower() )) {
                         $supportedLogs = ($resourceTypesDiagnosticsArray | Where-Object { $_.ResourceType -eq $resourceTypeDiagnosticsCapable.ResourceType }).LogCategories
                         $logsSupported = "yes"
                         $resourceTypeCountFromResourceTypesSummarizedArray = ($resourceTypesSummarizedArray | Where-Object { $_.ResourceType -eq $resourceTypeDiagnosticsCapable.ResourceType }).ResourceCount
+                        if ($resourceTypeCountFromResourceTypesSummarizedArray){
+                            $resourceCount = $resourceTypeCountFromResourceTypesSummarizedArray
+                        }
+                        else{
+                            $resourceCount = "0"
+                        }
                         $recommendation = "Create and assign a diagnostics policy for this ResourceType"
-                        [PSCustomObject]@{
+                        $null = $diagnosticsPolicyAnalysis.Add([PSCustomObject]@{
                             Priority                    = "2-Medium"
                             PolicyId                    = "n/a"
                             PolicyCategory              = "n/a"
                             PolicyName                  = "n/a"
                             PolicyDeploysRoles          = "n/a"
                             ResourceType                = $resourceTypeDiagnosticsCapable.ResourceType
-                            ResourceTypeCount           = $resourceTypeCountFromResourceTypesSummarizedArray
+                            ResourceTypeCount           = $resourceCount
                             Status                      = "n/a"
                             LogsSupported               = $logsSupported
                             LogCategoriesInPolicy       = "n/a"
@@ -8019,18 +8310,18 @@ extensions: [{ name: 'sort' }]
                             PolicyAssignments           = "n/a"
                             PolicyUsedInPolicySet       = "n/a"
                             PolicySetAssignments        = "n/a"
-                        }
+                        })
                         #$diagnosticsPolicyAnalysis += $object
                     }
                 }
                 $diagnosticsPolicyAnalysisCount = ($diagnosticsPolicyAnalysis | Measure-Object).count
-    
+
                 if ($diagnosticsPolicyAnalysisCount -gt 0) {
                     $tfCount = $diagnosticsPolicyAnalysisCount
     
                     $tableId = "SummaryTable_DiagnosticsLifecycle"
                     $htmlTenantSummary += @"
-<button type="button" class="collapsible" id="Summary_DiagnosticsLifecycle"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">ResourceDiagnostics Policy Lifecycle recommendations</span></button>
+<button type="button" class="collapsible" id="Summary_DiagnosticsLifecycle"><i class="fa fa-check" aria-hidden="true" style="color: #67C409"></i> <span class="valignMiddle">ResourceDiagnostics Policy Lifecycle recommendations</span></button>
 <div class="content">
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <b>Create Custom Policies for Azure ResourceTypes that support Diagnostics Logs and Metrics</b> <a class="externallink" href="https://github.com/JimGBritt/AzurePolicy/blob/master/AzureMonitor/Scripts/README.md#overview-of-create-azdiagpolicyps1" target="_blank">Create-AzDiagPolicy</a><br>
 &nbsp;&nbsp;<i class="fa fa-windows" aria-hidden="true" style="color:#00a2ed;"></i> <b>Supported categories for Azure Resource Logs</b> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/platform/resource-logs-categories" target="_blank">Microsoft Docs</a>
@@ -8044,7 +8335,7 @@ extensions: [{ name: 'sort' }]
 <th>Diagnostics capable</th>
 <th>Policy Id</th>
 <th>Policy DisplayName</th>
-<th>RoleDefinitionIds</th>              
+<th>Role Definitions</th>              
 <th>Target</th>
 <th>Log Categories not covered by Policy</th>
 <th>Policy Assignments</th>
@@ -8054,6 +8345,7 @@ extensions: [{ name: 'sort' }]
 </thead>
 <tbody>
 "@
+
                     foreach ($diagnosticsFinding in $diagnosticsPolicyAnalysis | Sort-Object -property Priority, Recommendation, ResourceType, PolicyName) {
 
                         $htmlTenantSummary += @"
@@ -8073,13 +8365,13 @@ extensions: [{ name: 'sort' }]
                 <td>
                     $($diagnosticsFinding.LogsSupported)
                 </td>
-                <td>
+                <td class="breakwordall">
                     $($diagnosticsFinding.PolicyId)
                 </td>
-                <td>
+                <td class="breakwordall">
                     $($diagnosticsFinding.PolicyName)
                 </td>
-                <td>
+                <td class="breakwordall">
                     $($diagnosticsFinding.PolicyDeploysRoles)
                 </td>
                 <td>
@@ -8091,10 +8383,10 @@ extensions: [{ name: 'sort' }]
                 <td>
                     $($diagnosticsFinding.PolicyAssignments)
                 </td>
-                <td>
+                <td class="breakwordall">
                     $($diagnosticsFinding.PolicyUsedInPolicySet)
                 </td>
-                <td>
+                <td class="breakwordall">
                     $($diagnosticsFinding.PolicySetAssignments)
                 </td>
             </tr>
@@ -9053,7 +9345,7 @@ catch {
 if ($testMGReadAccessResult -ne "letscheck") {
     if ($AzureDevOpsWikiAsCode) {
         Write-Error "Permissions test failed: Your AzDO ServiceConnection seems to lack ManagementGroup Read permissions or the ManagementGroupId '$ManagementGroupId' does not exist. Please check the documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#required-permissions-in-azure | Error: $testMGReadAccessResult"
-        exit 1
+        Write-Error "Error"
     }
     else {
         Write-Host " Error: $testMGReadAccessResult" -ForegroundColor Red
@@ -9077,7 +9369,7 @@ if ($AzureDevOpsWikiAsCode) {
     }
     if ($testSCSPAPIReadAccessResult -ne "letscheck") {
         Write-Error "Permissions test failed: Your AzDO ServiceConnection seems to lack 'Azure Active Directory API' Read permissions. Please check the documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#required-permissions-in-azure Error: $testSCSPAPIReadAccessResult"
-        exit 1
+        Write-Error "Error"
     }
     else {
         Write-Host " Permissions test passed: 'Azure Active Directory API' permissions OK"
@@ -9156,7 +9448,7 @@ if (-not $HierarchyMapOnly) {
         else {
             Write-Host " Subscription Whitelist enabled. Error: invalid Parameter Value for 'SubscriptionQuotaIdWhitelist'" -ForegroundColor Red
             if ($AzureDevOpsWikiAsCode) {
-                exit 1
+                Write-Error "Error"
             }
             else {
                 break script
@@ -9196,6 +9488,13 @@ if (-not $HierarchyMapOnly) {
         Write-Host " ARM Limits warning set to $($LimitCriticalPercentage)% (custom)" -ForegroundColor Green
     }
 
+    if (-not $DisablePolicyComplianceStates){
+        Write-Host " Policy States enabled" -ForegroundColor Green
+    }
+    else{
+        Write-Host " Policy States disabled" -ForegroundColor Yellow
+    }
+
     if ($Experimental) {
         Write-Host " Experimental features enabled" -ForegroundColor Green
     }
@@ -9224,9 +9523,11 @@ if (-not $HierarchyMapOnly) {
     $script:arrayCacheRoleAssignmentsResourceGroups = [System.Collections.ArrayList]@()
     ($htCacheAssignments).role = @{ }
     ($htCacheAssignments).blueprint = @{ }
-    $htCachePolicyCompliance = @{ }
-    ($htCachePolicyCompliance).mg = @{ }
-    ($htCachePolicyCompliance).sub = @{ }
+    if (-not $DisablePolicyComplianceStates){
+        $htCachePolicyCompliance = @{ }
+        ($htCachePolicyCompliance).mg = @{ }
+        ($htCachePolicyCompliance).sub = @{ }
+    }
     $script:outOfScopeSubscriptions = [System.Collections.ArrayList]@()
     $htAllSubscriptionsFromAPI = @{ }
     $arrayEntitiesFromAPI = [System.Collections.ArrayList]@()
@@ -9491,10 +9792,13 @@ if (-not $HierarchyMapOnly) {
     $resourceGroupsAll = [System.Collections.ArrayList]@()
     $htResourceProvidersAll = @{ }
     $arrayResourceProvidersAll = [System.Collections.ArrayList]@()
-    Write-Host " Getting ResourceTypes, ResourceGroups and ResourceProviders"
+    Write-Host " Getting ResourceTypes, ResourceGroups and ResourceProviders for subscriptions"
     $startResourceProviders = get-date
     
+    $lastSubsCnter = 0
+    $subsCnter = 0
     foreach ($subscriptionId in $subscriptionIds) {
+        $subsCnter++
         #alternative to ARG
         $currentTask = "Getting ResourceTypes for SubscriptionId: '$($subscriptionId)'"
         $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subscriptionId)/resources?api-version=2020-06-01"
@@ -9534,7 +9838,14 @@ if (-not $HierarchyMapOnly) {
         $resProvResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
         ($htResourceProvidersAll).($subscriptionId).Providers = $resProvResult
         $arrayResourceProvidersAll += $resProvResult
+
+        if ($subsCnter % 25 -eq 0) {
+            $lastSubsCnter = $subsCnter + $lastSubsCnter
+            Write-Host "  $('{0:d4}' -f $lastSubsCnter) subscriptions processed"
+            $subsCnter = 0
+        }
     }
+    Write-Host "  total: $($subsCnter + $lastSubsCnter) subscriptions processed"
     $endResourceProviders = get-date
     Write-Host " Getting ResourceTypes, ResourceGroups and ResourceProviders duration: $((NEW-TIMESPAN -Start $startResourceProviders -End $endResourceProviders).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startResourceProviders -End $endResourceProviders).TotalSeconds) seconds)"
     
@@ -9739,9 +10050,9 @@ if (-not $HierarchyMapOnly) {
 #region createoutputs
 
 #region BuildHTML
-
+#$Experimental = $true
 #testhelper
-$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
+#$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 
 $startBuildHTML = get-date
 Write-Host "Building HTML"

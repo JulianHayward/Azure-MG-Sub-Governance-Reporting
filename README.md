@@ -48,6 +48,10 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ### AzGovViz version 4
 
+Updates 2020-Nov-30
+* New parameter `-DisablePolicyComplianceStates` (see [__Parameters__](#powerShell))
+* Error handling optimization / API
+
 Updates 2020-Nov-25
 * Highlight default Management Group
 * Add AzAPICall debugging parameter `-DebugAzAPICall`
@@ -176,6 +180,7 @@ Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
   * `-NoResourceProvidersDetailed` disables output for ResourceProvider states for all Subscriptions in the __TenantSummary__ section, in large Tenants this can become time consuming
   * `-NoASCSecureScore` disables ASC Secure Score request for Subscriptions. The used API is in preview you may want to disable this
   * `-Experimental` executes experimental features. Latest experimental feature: 'ResourceDiagnostics Policy Lifecycle recommendations' - e.g. it checks on all existing custom policies that deploy resource diagnostics settings if all available log categories are defined in the policy (may they be enabled or disabled)
+  * `-DisablePolicyComplianceStates` will not query policy compliance states. You may want to use this parameter to accellerate script execution or when receiving error 'ResponseTooLarge'. 
   * ~~`-UseAzureRM`~~ support for AzureRm modules has been deprecated
 * Passed tests: Powershell Core on Windows
 * Passed tests: Powershell 5.1.18362.752 on Windows
@@ -223,3 +228,7 @@ Kudos to the <a href="https://www.tablefilter.com/" target="_blank">TableFilter<
 ## AzAdvertizer
 
 Also check <https://www.azadvertizer.net> - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
+
+## Final Note
+
+Please note that while being developed by a Microsoft employee, AzGovViz is not a Microsoft service or product. AzGovViz is a personal/community driven project, there are none implicit or explicit obligations related to this project, it is provided 'as is' with no warranties and confer no rights.
