@@ -50,7 +50,7 @@ jobs:
       write-host "wiki dir check"
       if(!(test-path $(System.DefaultWorkingDirectory)/$(WikiDir))){New-Item -ItemType Directory -Force -Path $(System.DefaultWorkingDirectory)/$(WikiDir)}
       write-host "install Azure Powershell Module 'Az.ResourceGraph'"
-      Install-Module -Name Az.ResourceGraph -Force
+      Install-Module -Name Az.ResourceGraph -RequiredVersion 0.7.7 -Force
     displayName: 'Ensure AzGovViz prerequisites'
     env:
       workingdirectory: $(Agent.BuildDirectory)
