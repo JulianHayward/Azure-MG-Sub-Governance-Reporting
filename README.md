@@ -48,6 +48,12 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ### AzGovViz version 4
 
+Updates 2020-Dec-15
+* Pipeline `azurePowerShellVersion: latestVersion` / ensures compatibility with latest [Az.ResourceGraph 0.8.0 Release](https://github.com/Azure/azure-powershell/releases/tag/Az.ResourceGraph-v0.8.0)
+* Error handling optimization / API
+* Fix 'deprecated Policy assignments'
+* Fix 'orphaned Custom Role definitions'
+
 Updates 2020-Nov-30
 * New parameter `-DisablePolicyComplianceStates` (see [__Parameters__](#powerShell))
 * Error handling optimization / API
@@ -65,7 +71,7 @@ Updates 2020-Nov-19
 
 Updates 2020-Nov-08
 * Re-model Bearer token handling (Az PowerShell Module Az.Accounts > 1.9.5 no longer provides access to the tokenCache [GitHub issue](https://github.com/Azure/azure-powershell/issues/13337))
-* Adding Scope information for Custom Policy and Custom PolicySet sections in __TenantSummary__
+* Adding Scope information for Custom Policy definitions and Custom PolicySet definitions sections in __TenantSummary__
 * Cosmetics and User Experience enhancement
 * New [__demo__](#demo)
 
@@ -97,8 +103,8 @@ Release v4
 * ResourceDiagnostics Policy Lifecycle recommendations (experimental)
 * Resource Diagnostics Policy Findings
 * Resource Provider details
-* Policy Assignments filter excluded scopes
-* Use of deprecated built-in policies
+* Policy assignments filter excluded scopes
+* Use of deprecated uilt-in Policy definitions
 * Subscription QuotaId Whitelist
 
 ### AzGovViz version 2
@@ -107,7 +113,7 @@ Release v4
 * __TenantSummary__ / selected Management Group scope
 * Reflect Tenant, ManagementGroup and Subscription Limits for Azure Governance capabilities
 * Some security related best practice highlighting
-* More details: Management Groups, Subscriptions, Policies, Policy Sets (Initiatives), Orphaned Policies, RBAC and Policy related RBAC (DINE MI), Orphaned Roles, Orphaned RoleAssignments, Blueprints, Subscription State, Subscription QuotaId, Subscription Tags, Azure Scurity Center Secure Score, ResourceGroups count, Resource types and count by region, Limits, Security findings
+* More details: Management Groups, Subscriptions, Policy definitions, PolicySet definitions (Initiatives), orphaned Policy definitions, RBAC and Policy related RBAC (DINE MI), orphaned Role definitions, orphaned Role assignments, Blueprints, Subscription State, Subscription QuotaId, Subscription Tags, Azure Scurity Center Secure Score, ResourceGroups count, Resource types and count by region, Limits, Security findings
 * Resources / leveraging Azure Resource Graph
 * Parameter based output (hierarchy only, 'srubbed' user information and more..)
 * HTML version check
@@ -179,7 +185,7 @@ Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
   * `-SubscriptionQuotaIdWhitelist` process only subscriptions with defined QuotaId(s)
   * `-NoResourceProvidersDetailed` disables output for ResourceProvider states for all Subscriptions in the __TenantSummary__ section, in large Tenants this can become time consuming
   * `-NoASCSecureScore` disables ASC Secure Score request for Subscriptions. The used API is in preview you may want to disable this
-  * `-Experimental` executes experimental features. Latest experimental feature: 'ResourceDiagnostics Policy Lifecycle recommendations' - e.g. it checks on all existing custom policies that deploy resource diagnostics settings if all available log categories are defined in the policy (may they be enabled or disabled)
+  * `-Experimental` executes experimental features. Latest experimental feature: 'ResourceDiagnostics Policy Lifecycle recommendations' - e.g. it checks on all existing Custom Policy definitions that deploy resource diagnostics settings if all available log categories are defined in the policy (may they be enabled or disabled)
   * `-DisablePolicyComplianceStates` will not query policy compliance states. You may want to use this parameter to accellerate script execution or when receiving error 'ResponseTooLarge'. 
   * ~~`-UseAzureRM`~~ support for AzureRm modules has been deprecated
 * Passed tests: Powershell Core on Windows
@@ -227,7 +233,7 @@ Kudos to the <a href="https://www.tablefilter.com/" target="_blank">TableFilter<
 
 ## AzAdvertizer
 
-Also check <https://www.azadvertizer.net> - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
+Also check <https://www.azadvertizer.net> - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's Policy definitions, initiatives (Set definitions), aliases and Azure RBAC's Role definitions and resource provider operations.
 
 ## Final Note
 

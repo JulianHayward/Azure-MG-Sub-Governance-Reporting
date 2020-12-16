@@ -1,4 +1,4 @@
-<#v4_minor_20201130_3
+<#v4_major_20201215_0
 .SYNOPSIS  
     This script creates the following files to help better understand and audit your governance setup
     csv file
@@ -273,7 +273,7 @@ function AzAPICall($uri, $method, $currentTask, $listenOn) {
             if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: unexpectedError: false" }
             if ($azAPIRequest.StatusCode -ne 200) {
                 if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: apiStatusCode: $($azAPIRequest.StatusCode)" }
-                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*" -or $catchResult.error.code -like "*ResponseTooLarge*") {
+                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*" -or $catchResult.error.code -like "*ResponseTooLarge*") {
                     if ($catchResult.error.code -like "*ResponseTooLarge*"){
                         Write-Host "###### LIMIT #################################"
                         Write-Host "Hitting LIMIT getting Policy Compliance States!"
@@ -288,7 +288,7 @@ function AzAPICall($uri, $method, $currentTask, $listenOn) {
                             break script
                         }
                     }
-                    if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*") {
+                    if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*RequestTimeout*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again"
                         Start-Sleep -Milliseconds 250
                     }
@@ -404,8 +404,8 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType) {
         }
         if($unexpectedError -eq $false){
             if ($azAPIRequest.StatusCode -ne 200) {
-                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.code -like "*NotSupported*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*") {
-                    if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*") {
+                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.code -like "*NotSupported*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*") {
+                    if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*RequestTimeout*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again"
                         Start-Sleep -Milliseconds 250
                     }
@@ -5334,16 +5334,18 @@ extensions: [{ name: 'sort' }]
         #Policy
         $hlpDeprecatedAssignmentPol = ($htCacheDefinitions).policy.(($hlpAssignmentDeprecatedPolicy.PolicyDefinitionId))
         if ($hlpDeprecatedAssignmentPol) {
-            if ($hlpDeprecatedAssignmentPol.type -eq "Builtin" -and $hlpDeprecatedAssignmentPol.deprecated -eq $true -or ($hlpDeprecatedAssignmentPol.displayname).StartsWith("[Deprecated]", "CurrentCultureIgnoreCase")) {
-                [PSCustomObject]@{
-                    PolicyAssignmentDisplayName = $hlpAssignmentDeprecatedPolicy.DisplayName
-                    PolicyAssignmentId          = $policyAssignmentAll
-                    PolicyDisplayName           = $hlpDeprecatedAssignmentPol.displayname
-                    PolicyId                    = $hlpDeprecatedAssignmentPol.Id
-                    PolicyType                  = "Policy"
-                    DeprecatedProperty          = $hlpDeprecatedAssignmentPol.deprecated
-                    PolicySetDisplayName        = "n/a"
-                    PolicySetId                 = "n/a"
+            if ($hlpDeprecatedAssignmentPol.type -eq "BuiltIn") {
+                if ($hlpDeprecatedAssignmentPol.deprecated -eq $true -or ($hlpDeprecatedAssignmentPol.displayname).StartsWith("[Deprecated]", "CurrentCultureIgnoreCase")) {
+                    [PSCustomObject]@{
+                        PolicyAssignmentDisplayName = $hlpAssignmentDeprecatedPolicy.DisplayName
+                        PolicyAssignmentId          = $policyAssignmentAll
+                        PolicyDisplayName           = $hlpDeprecatedAssignmentPol.displayname
+                        PolicyId                    = $hlpDeprecatedAssignmentPol.Id
+                        PolicyType                  = "Policy"
+                        DeprecatedProperty          = $hlpDeprecatedAssignmentPol.deprecated
+                        PolicySetDisplayName        = "n/a"
+                        PolicySetId                 = "n/a"
+                    }
                 }
             }
         }
@@ -5986,24 +5988,43 @@ extensions: [{ name: 'sort' }]
     #region SUMMARYOrphanedCustomRoles
     Write-Host "  processing TenantSummary Custom Roles orphaned"
     if ($getMgParentName -eq "Tenant Root") {
-        $customRolesInUse = ($rbacBaseQuery | Where-Object { $_.RoleIsCustom -eq "TRUE" }).RoleDefinitionId | Sort-Object -Unique
-    
-        $customRolesOrphaned = [System.Collections.ArrayList]@()
+        
+        $arrayCustomRolesOrphanedFinalIncludingResourceGroups = [System.Collections.ArrayList]@()
+        
         if (($tenantCustomRoles | Measure-Object).count -gt 0) {
-            $customRolesOrphaned = foreach ($customRoleAll in $tenantCustomRoles) {
-                if (-not $customRolesInUse.contains("$customRoleAll")) {    
-                    $hlpCustomRole = ($htCacheDefinitions).role.$customRoleAll
-                    if ($hlpCustomRole.IsCustom -eq $True) {
-                        $hlpCustomRole
+            $customRolesInUse = ($rbacBaseQuery | Where-Object { $_.RoleIsCustom -eq "TRUE" }).RoleDefinitionId | Sort-Object -Unique
+        
+            $customRolesOrphaned = [System.Collections.ArrayList]@()
+            #if (($tenantCustomRoles | Measure-Object).count -gt 0) {
+                
+                if ($customRolesInUse -gt 0){
+                    $customRolesOrphaned = foreach ($customRoleAll in $tenantCustomRoles) {
+                        if (-not $customRolesInUse.contains("$customRoleAll")) {    
+                            $hlpCustomRole = ($htCacheDefinitions).role.$customRoleAll
+                            if ($hlpCustomRole.IsCustom -eq $True) {
+                                $hlpCustomRole
+                            }
+                        }
                     }
                 }
-            }
-        }
+                else{
+                    $customRolesOrphaned = foreach ($customRoleAll in $tenantCustomRoles) {
+                        #if (-not $customRolesInUse.contains("$customRoleAll")) {    
+                            $hlpCustomRole = ($htCacheDefinitions).role.$customRoleAll
+                            if ($hlpCustomRole.IsCustom -eq $True) {
+                                $hlpCustomRole
+                            }
+                        #}
+                    }
 
-        $arrayCustomRolesOrphanedFinalIncludingResourceGroups = [System.Collections.ArrayList]@()
-        $arrayCustomRolesOrphanedFinalIncludingResourceGroups = foreach ($customRoleOrphaned in $customRolesOrphaned) {
-            if ($script:arrayCacheRoleAssignmentsResourceGroups.RoleDefinitionId -notcontains $customRoleOrphaned.Id ) {
-                $customRoleOrphaned
+                }
+            #}
+
+            #$arrayCustomRolesOrphanedFinalIncludingResourceGroups = [System.Collections.ArrayList]@()
+            $arrayCustomRolesOrphanedFinalIncludingResourceGroups = foreach ($customRoleOrphaned in $customRolesOrphaned) {
+                if ($script:arrayCacheRoleAssignmentsResourceGroups.RoleDefinitionId -notcontains $customRoleOrphaned.Id ) {
+                    $customRoleOrphaned
+                }
             }
         }
 

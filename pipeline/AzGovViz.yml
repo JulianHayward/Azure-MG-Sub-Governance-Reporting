@@ -1,4 +1,4 @@
-# AzGovViz v4_fix_20201214_0
+# AzGovViz v4_major_20201215_0
 # First things first: edit line 22 and line 23 
 # https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 # Also check https://www.azadvertizer.net - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
@@ -50,7 +50,7 @@ jobs:
       write-host "wiki dir check"
       if(!(test-path $(System.DefaultWorkingDirectory)/$(WikiDir))){New-Item -ItemType Directory -Force -Path $(System.DefaultWorkingDirectory)/$(WikiDir)}
       write-host "install Azure Powershell Module 'Az.ResourceGraph'"
-      Install-Module -Name Az.ResourceGraph -RequiredVersion 0.7.7 -Force
+      Install-Module -Name Az.ResourceGraph -Force
     displayName: 'Ensure AzGovViz prerequisites'
     env:
       workingdirectory: $(Agent.BuildDirectory)
@@ -59,7 +59,7 @@ jobs:
       azureSubscription: '$(ServiceConnection)'
       ScriptPath: '$(System.DefaultWorkingDirectory)/$(ScriptDir)/$(Script)'
       ScriptArguments: '-ManagementGroupId $(ManagementGroupId) -OutputPath $(WikiDir) -CsvDelimiter "$(CsvDelimiter)" -AzureDevOpsWikiAsCode -SubscriptionQuotaIdWhitelist $(SubscriptionQuotaIdWhitelist)'
-      preferredAzurePowerShellVersion: 3.1.0
+      azurePowerShellVersion: latestVersion
     displayName: 'Run AzGovViz'
   - powershell: |
       write-host "#################################"
