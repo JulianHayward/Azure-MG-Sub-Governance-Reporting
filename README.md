@@ -48,6 +48,9 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ### AzGovViz version 4
 
+Updates 2020-Dec-17
+* Now supporting > 5000 entities (Subscriptions/Management Groups) :) thanks Brooks Vaughn
+
 Updates 2020-Dec-15
 * Pipeline `azurePowerShellVersion: latestVersion` / ensures compatibility with latest [Az.ResourceGraph 0.8.0 Release](https://github.com/Azure/azure-powershell/releases/tag/Az.ResourceGraph-v0.8.0)
 * Error handling optimization / API
