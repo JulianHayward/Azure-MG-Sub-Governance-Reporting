@@ -1,4 +1,4 @@
-<#v4_major_20201215_0
+<#v4_fix_20201217_0
 .SYNOPSIS  
     This script creates the following files to help better understand and audit your governance setup
     csv file
@@ -345,12 +345,17 @@ function AzAPICall($uri, $method, $currentTask, $listenOn) {
                         if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=default(value) value not exists; return empty array" }
                     }
                 }
-                
-                if ($azAPIRequestConvertedFromJson."@odata.nextLink") {
-                    if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: NextLink: $($azAPIRequestConvertedFromJson."@odata.nextLink")" }
+
+                $isMore = $false
+                If ($azAPIRequestConvertedFromJson.nextLink) {
+                    $isMore = $true
+                    $uri = $azAPIRequestConvertedFromJson.nextLink
+                    if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: nextLink: $Uri" }
+                } ElseIf ($azAPIRequestConvertedFromJson."@oData.nextLink") {
+                    $isMore = $true
                     $uri = $azAPIRequestConvertedFromJson."@odata.nextLink"
-                }
-                else {
+                    if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: @oData.nextLink: $Uri" }
+                } Else {
                     if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: NextLink: none" }
                 }
             }
@@ -372,7 +377,7 @@ function AzAPICall($uri, $method, $currentTask, $listenOn) {
             }
         }
     }
-    until($azAPIRequest.StatusCode -eq 200 -and -not $azAPIRequestConvertedFromJson."@odata.nextLink")
+    until($azAPIRequest.StatusCode -eq 200 -and -not $isMore)
     return $apiCallResultsCollection
 }
 #endregion azapicall
