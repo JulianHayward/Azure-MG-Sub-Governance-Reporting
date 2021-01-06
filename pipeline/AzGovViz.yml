@@ -1,9 +1,9 @@
-# AzGovViz v4_major_20201215_0
-# First things first: edit line 22 and line 23 
+# AzGovViz v4_major_20210106_0
+# First things first: edit line 28 and line 29 
 # https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 # Also check https://www.azadvertizer.net - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
 # 
-# Parameters reference (use in line 61)
+# Parameters reference (use in line 67)
 # LimitCriticalPercentage | default is '80' | example: -LimitCriticalPercentage 90  | WhatDoesItDo? marks capabilities that approch limits e.g. limit 100, usage 80 will mark with warning
 # SubscriptionQuotaIdWhitelist | default is 'undefined'; separator is '\' | example: -SubscriptionQuotaIdWhitelist MSDN_\EnterpriseAgreement_ | WhatDoesItDo? processes only subscriptions that startWith the given QuotaIds
 # HierarchyMapOnly | switch | example: -HierarchyMapOnly | WhatDoesItDo? only creates the Hierarchy Tree
@@ -11,8 +11,14 @@
 # NoASCSecureScore | switch | example: -NoASCSecureScore | WhatDoesItDo? disables ASC Secure Score request for subscriptions (ASC Score API currently in preview)
 # NoResourceProvidersDetailed | switch | example: -NoResourceProvidersDetailed | WhatDoesItDo? disables 'ResourceProvider Detailed' output for TenantSummary (compute intensive)
 # CsvDelimiter | example: -CsvDelimiter "," | WhatDoesItDo? the world is split into two kind of delimiters - comma and semicolon - choose yours
-# Experimental | example: -Experimental | WhatDoesItDo? executes experimental features such as 'ResourceDiagnostics Policy Lifecycle recommendations'
-# DisablePolicyComplianceStates | example: -DisablePolicyComplianceStates | WhatDoesItDo? will not query policy compliance states
+# NoPolicyComplianceStates | example: -NoPolicyComplianceStates | WhatDoesItDo? will not query policy compliance states
+# NoResourceDiagnosticsPolicyLifecycle | example: -NoResourceDiagnosticsPolicyLifecycle | WhatDoesItDo? will not create Resource Diagnostics Policy Lifecycle recommendations
+# NoAADGroupsResolveMembers | example: -NoAADGroupsResolveMembers | WhatDoesItDo? will not resolve Azure Active Directory Group memberships for Role assignments where identity type is 'Group'
+# NoServicePrincipalResolve | example: -NoServicePrincipalResolve | WhatDoesItDo? disables resolving ServicePrincipals
+# ServicePrincipalExpiryWarningDays | example: -ServicePrincipalExpiryWarningDays 21 | WhatDoesItDo? define warning period for Service Principal secret and certificate expiry; default is 14 days
+# NoAzureConsumption | example: -NoAzureConsumption | WhatDoesItDo? Azure Consumption data will not be collected/reported
+# AzureConsumptionPeriod | example: -AzureConsumptionPeriod 21 | WhatDoesItDo? define for which time period Azure Consumption data should be gathered; default is 30 days
+# NoAzureConsumptionReportExportToCSV | example: -NoAzureConsumptionReportExportToCSV | WhatDoesItDo? Azure Consumption data will not be exported (CSV)
 
 trigger: none
 
@@ -73,5 +79,5 @@ jobs:
       git config pull.rebase false
       git add --all
       git commit -m "wiki $executionDateTimeInternationalReadable ($currentTimeZone)"
-      git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" push origin HEAD:master
+      git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" push origin HEAD:$(Build.SourceBranchName)
     displayName: 'Push AzGovViz output to repository'

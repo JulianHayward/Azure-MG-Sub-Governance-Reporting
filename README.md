@@ -1,6 +1,6 @@
 # AzGovViz - Azure Governance Visualizer
 
-Do you want to get granular insights on your technical Azure Governance implementation? - document it in csv, html and markdown?  
+Do you want to get granular insights on your technical Azure Governance implementation? - document it in CSV, HTML and MD (Markdown)?  
 AzGovViz is a PowerShell based script that iterates your Azure Tenant´s Management Group hierarchy down to Subscription level. It captures most relevant Azure governance capabilities such as Azure Policy, RBAC and Blueprints and a lot more. From the collected data AzGovViz provides visibility on your __HierarchyMap__, creates a __TenantSummary__ and builds granular __ScopeInsights__ on Management Groups and Subscriptions. The technical requirements as well as the required permissions are minimal.
 
 You can run the script either for your Tenant Root Group or any other Management Group that you have read access on.
@@ -48,6 +48,18 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ### AzGovViz version 4
 
+Updates 2020-Dec-30
+* Feature: Resolve __Azure Active Directory Group memberships__ for Role assignment with identity type 'Group' leveraging Microsoft Graph. With this capability AzGovViz can ultimately provide holistic insights on permissions granted for Management Groups and Subscriptions (honors parameter `-DoNotShowRoleAssignmentsUserData`). Use parameter `-NoAADGroupsResolveMembers` to disable the feature.  
+![AADGroupMembers](img/aad850.png)
+* Feature: New __TenantSummary__ section '__Azure Active Directory__' -> Check all Azure Active Directory Service Principals (type=Application that have a Role assignment) for Secret/Certificate expiry. Mark all Service Principals (type=ManagedIdentity) that are related to a Policy assignments. Use parameter `-NoServicePrincipalResolve` to disable this feature.
+* Feature: __Cost Management / Consumption Reporting__ for Subscriptions including aggregation at Management Group level. Use parameter `-NoAzureConsumption` to disable this feature.
+* Removed parameter `-Experimental`. 'Resource Diagnostics Policy Lifecycle' enabled by default. Use `-NoResourceDiagnosticsPolicyLifecycle` to disable the feature.
+* Renamed parameter `-DisablePolicyComplianceStates` to `-NoPolicyComplianceStates` for better consistency
+* Optimize 'Get Resource Types capability for Resource Diagnostics' query - thanks Brooks Vaughn
+* Update Pipeline to honor [master/main change](https://devblogs.microsoft.com/devops/azure-repos-default-branch-name)
+* Add info to HTML file on parameters used
+* Performance optimization
+
 Updates 2020-Dec-17
 * Now supporting > 5000 entities (Subscriptions/Management Groups) :) thanks Brooks Vaughn
 
@@ -58,7 +70,7 @@ Updates 2020-Dec-15
 * Fix 'orphaned Custom Role definitions'
 
 Updates 2020-Nov-30
-* New parameter `-DisablePolicyComplianceStates` (see [__Parameters__](#powerShell))
+* New parameter ~~`-DisablePolicyComplianceStates`~~ `-NoPolicyComplianceStates` (see [__Parameters__](#powerShell))
 * Error handling optimization / API
 
 Updates 2020-Nov-25
@@ -84,10 +96,10 @@ Updates 2020-Nov-01
 * Toggle capabilities in __TenantSummary__ (avoiding information overload)
 
 Updates 2020-Oct-12
-* Adding option to download html tables to csv  
+* Adding option to download HTML tables to csv  
 ![Download CSV](img/downloadcsv450.png)
-* preloading of <a href="https://www.tablefilter.com/" target="_blank">TableFilter</a> removed for __ScopeInsights__ (on poor hardware loading the html file took quite long)
-* Added column un-select option for some html tables
+* preloading of <a href="https://www.tablefilter.com/" target="_blank">TableFilter</a> removed for __ScopeInsights__ (on poor hardware loading the HTML file took quite long)
+* Added column un-select option for some HTML tables
 * Performance optimization
 
 Release v4
@@ -129,7 +141,7 @@ Release v4
 
 ### Screenshots
 
-html file
+HTML file
 
 __HierarchyMap__  
 ![alt text](img/HierarchyMap.png "HierarchyMap")  
@@ -148,9 +160,9 @@ markdown in Azure DevOps Wiki as Code
 
 * CSV file
 * HTML file
-  * the html file uses Java Script and CSS files which are hosted on various CDNs (Content Delivery Network). For details review the BuildHTML region in the AzGovViz.ps1 script file.
+  * the HTML file uses Java Script and CSS files which are hosted on various CDNs (Content Delivery Network). For details review the BuildHTML region in the AzGovViz.ps1 script file.
   * Browsers tested: Edge, new Edge and Chrome
-* MD (markdown) file
+* MD (Markdown) file
   * for use with Azure DevOps Wiki leveraging the [Mermaid](https://docs.microsoft.com/en-us/azure/devops/release-notes/2019/sprint-158-update#mermaid-diagram-support-in-wiki) plugin
 
 > Note: there is some fixing ongoing at the mermaid project to optimize the graphical experience:  
@@ -182,15 +194,22 @@ Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
   * `-CsvDelimiter` the world is split into two kind of delimiters - comma and semicolon - choose yours
   * `-OutputPath`
   * `-AzureDevOpsWikiAsCode`
-  * `-DoNotShowRoleAssignmentsUserData` scrub user information
+  * `-DoNotShowRoleAssignmentsUserData` scrub personally identifiable information (PII)
   * `-LimitCriticalPercentage` limit warning level, default is 80%
   * ~~`-HierarchyTreeOnly`~~ `-HierarchyMapOnly` output only the __HierarchyMap__ for Management Groups including linked Subscriptions
   * `-SubscriptionQuotaIdWhitelist` process only subscriptions with defined QuotaId(s)
   * `-NoResourceProvidersDetailed` disables output for ResourceProvider states for all Subscriptions in the __TenantSummary__ section, in large Tenants this can become time consuming
   * `-NoASCSecureScore` disables ASC Secure Score request for Subscriptions. The used API is in preview you may want to disable this
-  * `-Experimental` executes experimental features. Latest experimental feature: 'ResourceDiagnostics Policy Lifecycle recommendations' - e.g. it checks on all existing Custom Policy definitions that deploy resource diagnostics settings if all available log categories are defined in the policy (may they be enabled or disabled)
-  * `-DisablePolicyComplianceStates` will not query policy compliance states. You may want to use this parameter to accellerate script execution or when receiving error 'ResponseTooLarge'. 
+  * ~~`-DisablePolicyComplianceStates`~~ `-NoPolicyComplianceStates` will not query policy compliance states. You may want to use this parameter to accellerate script execution or when receiving error 'ResponseTooLarge'. 
+  * `-NoResourceDiagnosticsPolicyLifecycle` disables Resource Diagnostics Policy Lifecycle recommendations
+  * `-NoAADGroupsResolveMembers` disables resolving Azure Active Directory Group memberships
+  * `-NoServicePrincipalResolve` disables resolving ServicePrincipals
+  * `-ServicePrincipalExpiryWarningDays` define warning period for Service Principal secret and certificate expiry; default is 14 days
+  * `-NoAzureConsumption` Azure Consumption data should not be collected/reported
+  * `-AzureConsumptionPeriod` define for which time period Azure Consumption data should be gathered; default is 30 days
+  * `-NoAzureConsumptionReportExportToCSV` Azure Consumption data should not be exported (CSV)
   * ~~`-UseAzureRM`~~ support for AzureRm modules has been deprecated
+  * ~~`-Experimental`~~ executes experimental features. Latest experimental feature: 'ResourceDiagnostics Policy Lifecycle recommendations' - e.g. it checks on all existing Custom Policy definitions that deploy resource diagnostics settings if all available log categories are defined in the policy (may they be enabled or disabled)
 * Passed tests: Powershell Core on Windows
 * Passed tests: Powershell 5.1.18362.752 on Windows
 * Passed tests: Powershell Core on Linux Ubuntu 18.04 LTS
