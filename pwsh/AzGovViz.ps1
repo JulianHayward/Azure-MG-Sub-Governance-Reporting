@@ -1,4 +1,4 @@
-<#v4_major_20210106_0
+<#v4_minor_20210108_1
 .SYNOPSIS  
     This script creates the following files to help better understand and audit your governance setup
     csv file
@@ -63,7 +63,7 @@
     use this parameter if Azure Consumption data should not be reported
 
 .PARAMETER AzureConsumptionPeriod
-    use this parameter to define for which time period Azure Consumption data should be gathered; default is 30 days
+    use this parameter to define for which time period Azure Consumption data should be gathered; default is 1 day
 
 .PARAMETER NoAzureConsumptionReportExportToCSV
     use this parameter if Azure Consumption data should not be exported (CSV)
@@ -118,8 +118,8 @@
     Define if Azure Consumption data should not be reported
     PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -NoAzureConsumption
 
-    Define for which time period (days) Azure Consumption data should be gathered; e.g. 21 days; default is 30 days
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -AzureConsumptionPeriod 21
+    Define for which time period (days) Azure Consumption data should be gathered; e.g. 14 days; default is 1 day
+    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -AzureConsumptionPeriod 14
 
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
@@ -150,7 +150,7 @@ Param
     [switch]$NoServicePrincipalResolve,
     [int]$ServicePrincipalExpiryWarningDays = 14,
     [switch]$NoAzureConsumption,
-    [int]$AzureConsumptionPeriod = 30,
+    [int]$AzureConsumptionPeriod = 1,
     [switch]$NoAzureConsumptionReportExportToCSV,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
@@ -673,6 +673,7 @@ foreach ($checkAzEnvironment in $checkAzEnvironments) {
 
 #create bearer token
 createBearerToken -targetEndPoint "ManagementAPI"
+#graphToken only required for certain scenarios
 if (-not $NoAADGroupsResolveMembers -or -not $NoServicePrincipalResolve) {
     createBearerToken -targetEndPoint "GraphAPI"
 }
@@ -1434,6 +1435,11 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
     }
     $endMgLoop = get-date
     Write-Host " CustomDataCollection: L$hierarchyLevel MG '$($getMg.properties.displayName)' ('$($getMg.Name)') processing duration: $((NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalSeconds) seconds"
+    $null = $script:CustomDataCollectionDuration.Add([PSCustomObject]@{ 
+        Type      = "MG"
+        Id        = $getMg.Name
+        DurationSec = (NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalSeconds
+    })
 
     #SUBSCRIPTION
     
@@ -1509,40 +1515,137 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                 }
 
                 if ($True -eq $subscriptionIsInScopeforAzGovViz) {
-               
                     $subscriptionQuotaId = $currentSubscription.subscriptionPolicies.quotaId
                     $subscriptionState = $currentSubscription.state
 
                     if (-not $NoAzureConsumption) {
-                        
                         $currenttask = "AzureConsumption $childMgSubId $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
                         $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Consumption/usageDetails?api-version=2019-10-01&`$expand=properties/meterDetails&`$filter=properties/usageStart ge '$($azureConsumptionStartDate)' and properties/usageEnd le '$($azureConsumptionEndDate)'"
                         $method = "GET"
                         $subscriptionConsumptionData = AzAPICall -uri $uri -method $method -currenttask $currentTask -specialHandling "true"
-
+                        $utcTimeDataRetrieved = $([System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId((Get-Date), [System.TimeZoneInfo]::Local.Id, 'UTC')).ToString("yyyy-MM-dd HH:mm:ss")
+                        
                         if (($subscriptionConsumptionData | Measure-Object).Count -gt 0){
-                            $utcTimeDataRetrieved = $([System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId((Get-Date), [System.TimeZoneInfo]::Local.Id, 'UTC')).ToString("yyyy-MM-dd HH:mm:ss")
+                            $arrayAzureConsumptionDetailedThisSubscription = [System.Collections.ArrayList]@()
 
-                            $subscriptionConsumptionCurrency = $subscriptionConsumptionData.properties.billingCurrency | sort-object -Unique
-                            $groupSubscriptionConsumptionData = $subscriptionConsumptionData.properties | where-object { $_.cost -gt 0 } | group-object -property consumedService
+                            foreach ($consumptionLine in $subscriptionConsumptionData) {
+                                $resourceId = "n/a"
+                                if ($null -ne $consumptionLine.properties.resourceId) {
+                                    $resourceId = $consumptionLine.properties.resourceId.ToLower()
+                                }
+                                $resourceName = "n/a"
+                                if ($null -ne $consumptionLine.properties.resourceName) {
+                                    $resourceName = $consumptionLine.properties.resourceName.ToLower()
+                                }
+                                $resourceGroupName = "n/a"
+                                if ($null -ne $consumptionLine.properties.resourceGroup) {
+                                    $resourceGroupName = $consumptionLine.properties.resourceGroup.ToLower()
+                                }
+                                $consumedService = "n/a"
+                                if ($null -ne $consumptionLine.properties.consumedService) {
+                                    $consumedService = $consumptionLine.properties.consumedService.ToLower()
+                                }
+                                
+                                #thisSub
+                                $null = $arrayAzureConsumptionDetailedThisSubscription.Add([PSCustomObject]@{ 
+                                    UTCTimeDataRetrieved = $utcTimeDataRetrieved
+                                    SubscriptionId       = $consumptionLine.properties.subscriptionId
+                                    SubscriptionName     = $childMgSubDisplayName
+                                    SubscriptionMgPath   = $consumptionSubscriptionMgPath -join "$CsvDelimiterOpposite "
+                                    ResourceGroupName    = $resourceGroupName
+                                    ResourceName         = $resourceName
+                                    ResourceId           = $resourceId
+                                    UsageDate            = $consumptionLine.properties.date
+                                    Tags                 = $consumptionLine.tags
+                                    BillingCurrency      = $consumptionLine.properties.billingCurrency
+                                    ChargeType           = $consumptionLine.properties.chargeType
+                                    ConsumedService      = $consumedService
+                                    Cost                 = [decimal]$consumptionLine.properties.cost
+                                    EffectivePrice       = $consumptionLine.properties.effectivePrice
+                                    Frequency            = $consumptionLine.properties.frequency
+                                    MeterCategory        = $consumptionLine.properties.meterDetails.meterCategory
+                                    MeterId              = $consumptionLine.properties.meterId
+                                    MeterName            = $consumptionLine.properties.meterDetails.meterName
+                                    MeterSubCategory     = $consumptionLine.properties.meterDetails.meterSubCategory
+                                    ServiceFamily        = $consumptionLine.properties.meterDetails.serviceFamily
+                                    PartNumber           = $consumptionLine.properties.partNumber
+                                    Product              = $consumptionLine.properties.product
+                                    Quantity             = $consumptionLine.properties.quantity
+                                    UnitOfMeasure        = $consumptionLine.properties.meterDetails.unitOfMeasure
+                                    UnitPrice            = $consumptionLine.properties.unitPrice
+                                    Location             = $consumptionLine.properties.resourceLocation
+                                    ReservationId        = $consumptionLine.properties.reservationId
+                                    ReservationName      = $consumptionLine.properties.reservationName
+                                    UsageId              = $consumptionLine.id
+                                    UsageName            = $consumptionLine.name
+                                })
+                                
+                                #allSubs
+                                $null = $arrayAzureConsumptionDetailedAllSubscriptions.Add([PSCustomObject]@{ 
+                                        UTCTimeDataRetrieved = $utcTimeDataRetrieved
+                                        SubscriptionId       = $consumptionLine.properties.subscriptionId
+                                        SubscriptionName     = $childMgSubDisplayName
+                                        SubscriptionMgPath   = $consumptionSubscriptionMgPath -join "$CsvDelimiterOpposite "
+                                        ResourceGroupName    = $resourceGroupName
+                                        ResourceName         = $resourceName
+                                        ResourceId           = $resourceId
+                                        UsageDate            = $consumptionLine.properties.date
+                                        Tags                 = $consumptionLine.tags
+                                        BillingCurrency      = $consumptionLine.properties.billingCurrency
+                                        ChargeType           = $consumptionLine.properties.chargeType
+                                        ConsumedService      = $consumedService
+                                        Cost                 = [decimal]$consumptionLine.properties.cost
+                                        EffectivePrice       = $consumptionLine.properties.effectivePrice
+                                        Frequency            = $consumptionLine.properties.frequency
+                                        MeterCategory        = $consumptionLine.properties.meterDetails.meterCategory
+                                        MeterId              = $consumptionLine.properties.meterId
+                                        MeterName            = $consumptionLine.properties.meterDetails.meterName
+                                        MeterSubCategory     = $consumptionLine.properties.meterDetails.meterSubCategory
+                                        ServiceFamily        = $consumptionLine.properties.meterDetails.serviceFamily
+                                        PartNumber           = $consumptionLine.properties.partNumber
+                                        Product              = $consumptionLine.properties.product
+                                        Quantity             = $consumptionLine.properties.quantity
+                                        UnitOfMeasure        = $consumptionLine.properties.meterDetails.unitOfMeasure
+                                        UnitPrice            = $consumptionLine.properties.unitPrice
+                                        Location             = $consumptionLine.properties.resourceLocation
+                                        ReservationId        = $consumptionLine.properties.reservationId
+                                        ReservationName      = $consumptionLine.properties.reservationName
+                                        UsageId              = $consumptionLine.id
+                                        UsageName            = $consumptionLine.name
+                                    })
+                            }
+
+                            $subscriptionConsumptionCurrency = $arrayAzureConsumptionDetailedThisSubscription.billingCurrency | sort-object -Unique
+                            $groupSubscriptionConsumptionData = $arrayAzureConsumptionDetailedThisSubscription | where-object { $_.cost -gt 0 } | group-object -property ConsumedService, ChargeType, MeterCategory
                             $groupSubscriptionConsumptionDataCount = ($groupSubscriptionConsumptionData | Measure-Object).Count
                             if ($groupSubscriptionConsumptionDataCount -gt 0) {
                                 $htAzureConsumption.($childMgSubId) = @{ }
+                                $arraySubscriptionAzureConsumption = [System.Collections.ArrayList]@()
                                 $consumptionSubscriptionMgPath = ($arrayEntitiesFromAPI | Where-Object { $_.id -eq "/subscriptions/$($childMgSubId)" }).Properties.parentNameChain
                                 $htAzureConsumption.($childMgSubId).mgPath = $consumptionSubscriptionMgPath
-                                $arraySubscriptionAzureConsumption = [System.Collections.ArrayList]@()
+
                                 foreach ($consumptionLine in $groupSubscriptionConsumptionData) {
+                                    $consumedService = ($consumptionLine.Name).split(", ")[0]
+                                    $consumedServiceChargeType = ($consumptionLine.Name).split(", ")[1]
+                                    $consumedServiceCategory = ($consumptionLine.Name).split(", ")[2]
+                                    $consumedServiceInstanceCount = ($consumptionLine.group | group-object -property resourceid | measure-object).count
+                                    $consumedServiceCost = ($consumptionLine.group.cost | Measure-Object -Sum).Sum
+
                                     $null = $arraySubscriptionAzureConsumption.Add([PSCustomObject]@{ 
-                                            ConsumedService                 = $consumptionLine.Name
-                                            ConsumedServiceInstanceCount    = ($consumptionLine.group | group-object -property resourceid | measure-object).count
-                                            ConsumedServiceCost             = ($consumptionLine.group.cost | Measure-Object -Sum).Sum
+                                            ConsumedService                 = $consumedService
+                                            ConsumedServiceChargeType       = $consumedServiceChargeType
+                                            ConsumedServiceCategory         = $consumedServiceCategory
+                                            ConsumedServiceInstanceCount    = $consumedServiceInstanceCount
+                                            ConsumedServiceCost             = [decimal]$consumedServiceCost
                                         })
                                     #write-host ($consumptionLine.group | group-object -property resourceid | measure-object).count "x $($consumptionLine.Name) created cost:" ($consumptionLine.group.cost | Measure-Object -Sum).Sum
 
                                     $null = $arrayAzureConsumptionSummarizedByResourceType.Add([PSCustomObject]@{ 
-                                            ConsumedService                 = $consumptionLine.Name
-                                            ConsumedServiceInstanceCount    = ($consumptionLine.group | group-object -property resourceid | measure-object).count
-                                            ConsumedServiceCost             = ($consumptionLine.group.cost | Measure-Object -Sum).Sum
+                                            ConsumedService                 = $consumedService
+                                            ConsumedServiceChargeType       = $consumedServiceChargeType
+                                            ConsumedServiceCategory         = $consumedServiceCategory
+                                            ConsumedServiceInstanceCount    = $consumedServiceInstanceCount
+                                            ConsumedServiceCost             = [decimal]$consumedServiceCost
                                             SubscriptionId                  = $childMgSubId
                                             SubscriptionName                = $childMgSubDisplayName
                                             SubscriptionMgPath              = $consumptionSubscriptionMgPath
@@ -1550,69 +1653,8 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                         })
                                 }
                                 $htAzureConsumption.($childMgSubId).ConsumptionData = $arraySubscriptionAzureConsumption
-                                $htAzureConsumption.($childMgSubId).ConsumptionTotal = ($subscriptionConsumptionData.properties.cost | measure-object -Sum).Sum
+                                $htAzureConsumption.($childMgSubId).ConsumptionTotal = [decimal]($arraySubscriptionAzureConsumption.ConsumedServiceCost | measure-object -Sum).Sum
                                 $htAzureConsumption.($childMgSubId).Currency = $subscriptionConsumptionCurrency
-                            }
-                            if (-not $NoAzureConsumptionReportExportToCSV) {
-                                if ($groupSubscriptionConsumptionDataCount -gt 0) {
-                                    foreach ($consumptionLine in $subscriptionConsumptionData) {
-
-                                        $resourceId = $null
-                                        if ($null -ne $consumptionLine.properties.resourceId) {
-                                            $resourceId = $consumptionLine.properties.resourceId.ToLower()
-                                        }
-
-                                        $resourceName = $null
-                                        if ($null -ne $consumptionLine.properties.resourceName) {
-                                            $resourceName = $consumptionLine.properties.resourceName.ToLower()
-                                        }
-
-                                        $resourceGroupName = $null
-                                        if ($null -ne $consumptionLine.properties.resourceGroup) {
-                                            $resourceGroupName = $consumptionLine.properties.resourceGroup.ToLower()
-                                        }
-
-                                        $consumedService = $null
-                                        if ($null -ne $consumptionLine.properties.consumedService) {
-                                            $consumedService = $consumptionLine.properties.consumedService.ToLower()
-                                        }
-                                        
-                                        $null = $arrayAzureConsumptionDetailed.Add([PSCustomObject]@{ 
-                                                UTCTimeDataRetrieved = $utcTimeDataRetrieved
-                                                Cloud                = $cloudEnvironment
-                                                SubscriptionId       = $consumptionLine.properties.subscriptionId
-                                                SubscriptionName     = $childMgSubDisplayName
-                                                SubscriptionMgPath   = $consumptionSubscriptionMgPath -join "$CsvDelimiterOpposite "
-                                                ResourceGroupName    = $resourceGroupName
-                                                ResourceName         = $resourceName
-                                                ResourceId           = $resourceId
-                                                UsageDate            = $consumptionLine.properties.date
-                                                Tags                 = $consumptionLine.tags
-                                                BillingCurrency      = $consumptionLine.properties.billingCurrency
-                                                ChargeType           = $consumptionLine.properties.chargeType
-                                                ConsumedService      = $consumedService
-                                                Cost                 = $consumptionLine.properties.cost
-                                                EffectivePrice       = $consumptionLine.properties.effectivePrice
-                                                Frequency            = $consumptionLine.properties.frequency
-                                                MeterCategory        = $consumptionLine.properties.meterDetails.meterCategory
-                                                MeterId              = $consumptionLine.properties.meterId
-                                                MeterName            = $consumptionLine.properties.meterDetails.meterName
-                                                MeterSubCategory     = $consumptionLine.properties.meterDetails.meterSubCategory
-                                                ServiceFamily        = $consumptionLine.properties.meterDetails.serviceFamily
-                                                PartNumber           = $consumptionLine.properties.partNumber
-                                                Product              = $consumptionLine.properties.product
-                                                Quantity             = $consumptionLine.properties.quantity
-                                                UnitOfMeasure        = $consumptionLine.properties.meterDetails.unitOfMeasure
-                                                UnitPrice            = $consumptionLine.properties.unitPrice
-                                                Location             = $consumptionLine.properties.resourceLocation
-                                                ReservationId        = $consumptionLine.properties.reservationId
-                                                ReservationName      = $consumptionLine.properties.reservationName
-                                                UsageId              = $consumptionLine.id
-                                                UsageName            = $consumptionLine.name
-                                            })
-                                    }  
-                                    #$arrayAzureConsumptionDetailed.BillingCurrency | sort-object -Unique
-                                }
                             }
                         }
                     }
@@ -2227,6 +2269,11 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
             }
             $endSubLoop = get-date
             Write-Host " CustomDataCollection: Subscription processing duration: $((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds) seconds"
+            $null = $script:CustomDataCollectionDuration.Add([PSCustomObject]@{ 
+                Type      = "SUB"
+                Id        = $childMgSubId
+                DurationSec = (NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds
+            })
         }
         $childrenManagementGroups = $arrayEntitiesFromAPI | Where-Object { $_.type -eq "Microsoft.Management/managementGroups" -and $_.properties.parent.id -eq "/providers/Microsoft.Management/managementGroups/$($getMg.Name)" }
         foreach ($childMg in $childrenManagementGroups) {
@@ -2629,8 +2676,14 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId) {
 
             if ($htAzureConsumption.($subscriptionId)) {
                 $currency = $htAzureConsumption.($subscriptionId).Currency
-                $totalCost = "$([math]::Round($htAzureConsumption.($subscriptionId).ConsumptionTotal,4)) $($htAzureConsumption.($subscriptionId).Currency)"
-                $groupedArrayAzureConsumptionSummarizedByResourceType = $htAzureConsumption.($subscriptionId).Consumptiondata | group-object -property ConsumedService
+                if ([math]::Round($htAzureConsumption.($subscriptionId).ConsumptionTotal,4) -eq 0){
+                    $cost = $htAzureConsumption.($subscriptionId).ConsumptionTotal
+                }
+                else{
+                    $cost = [math]::Round($htAzureConsumption.($subscriptionId).ConsumptionTotal,4)
+                }
+                $totalCost = "$($cost) $($htAzureConsumption.($subscriptionId).Currency)"
+                $groupedArrayAzureConsumptionSummarizedByResourceType = $htAzureConsumption.($subscriptionId).Consumptiondata | group-object -property ConsumedService, ConsumedServiceCategory
                 $groupedArrayAzureConsumptionSummarizedByResourceTypeCount = ($groupedArrayAzureConsumptionSummarizedByResourceType | Measure-Object).count
         
                 $tfCount = $groupedArrayAzureConsumptionSummarizedByResourceTypeCount
@@ -2643,7 +2696,9 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId) {
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
+<th>ChargeType</th>
 <th>ResourceType</th>
+<th>Category</th>
 <th>ResourceCount</th>
 <th>Cost ($($AzureConsumptionPeriod)d)</th>
 <th>Currency</th>
@@ -2653,11 +2708,19 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId) {
 "@
                 $htmlScopeInsightsConsumptionSub = $null
                 $htmlScopeInsightsConsumptionSub = foreach ($consumptionData in $htAzureConsumption.($subscriptionId).Consumptiondata) {
+                    if ([math]::Round(($consumptionData.ConsumedServiceCost),4) -eq 0){
+                        $cost = ($consumptionData.ConsumedServiceCost)
+                    }
+                    else{
+                        $cost = [math]::Round(($consumptionData.ConsumedServiceCost),4)
+                    }
                     @"
 <tr>
+<td>$($consumptionData.ConsumedServiceChargeType)</td>
 <td>$($consumptionData.ConsumedService)</td>
+<td>$($consumptionData.ConsumedServiceCategory)</td>
 <td>$($consumptionData.ConsumedServiceInstanceCount)</td>
-<td>$([math]::Round(($consumptionData.ConsumedServiceCost),4))</td>
+<td>$($cost)</td>
 <td>$currency</td>
 </tr>
 "@ 
@@ -2696,9 +2759,12 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
                 }
                 $htmlScopeInsights += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-    col_1: 'select',
     col_types: [
         'caseinsensitivestring',
+        'caseinsensitivestring',
+        'caseinsensitivestring',
+        'number',
+        'number',
         'caseinsensitivestring'
     ],
 extensions: [{ name: 'sort' }]
@@ -2943,13 +3009,19 @@ extensions: [{ name: 'sort' }]
                     $arrayTotalCostSummary = @()
                     foreach ($currency in $groupedByCurrency){
                         $totalCostTenant = ($currency.group.ConsumedServiceCost | Measure-Object -Sum).Sum
-                        $totalCostTenantRounded = [math]::Round($totalCostTenant, 4)
+                        #$totalCostTenantRounded = [math]::Round($totalCostTenant, 4)
+                        if ([math]::Round($totalCostTenant, 4) -eq 0){
+                            $totalCostTenantRounded = $totalCostTenant
+                        }
+                        else{
+                            $totalCostTenantRounded = [math]::Round($totalCostTenant, 4)
+                        }
                         $totalCostTenantSubscriptionsCount = ($currency.group.SubscriptionId | Sort-Object -Unique | Measure-Object).Count
                         $totalCostTenantResourceTypesCount = ($currency.group.ConsumedService | Sort-Object -Unique | Measure-Object).Count
                         $totalCostTenantCurrency = $currency.Name
                         $arrayTotalCostSummary += "$($totalCostTenantRounded) $($totalCostTenantCurrency) generated by $($totalCostTenantResourceTypesCount) ResourceTypes in $($totalCostTenantSubscriptionsCount) Subscriptions"
                     }
-                    $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency = $arrayAzureConsumptionSummarizedByResourceType | group-object -property ConsumedService, SubscriptionConsumptionCurrency
+                    $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency = $arrayAzureConsumptionSummarizedByResourceTypeWhereMgIsInParentchain | group-object -property ConsumedService, SubscriptionConsumptionCurrency, ConsumedServiceChargeType, ConsumedServiceCategory
                     $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrencyCount = ($groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency | Measure-Object).count
 
                     $tfCount = $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrencyCount
@@ -2962,7 +3034,9 @@ extensions: [{ name: 'sort' }]
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
+<th>ChargeType</th>
 <th>ResourceType</th>
+<th>Category</th>
 <th>ResourceCount</th>
 <th>Cost ($($AzureConsumptionPeriod)d)</th>
 <th>Currency</th>
@@ -2973,11 +3047,19 @@ extensions: [{ name: 'sort' }]
 "@
                     $htmlScopeInsightsConsumptionMg = $null
                     $htmlScopeInsightsConsumptionMg = foreach ($consumedService in $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency) {
+                        if ([math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4) -eq 0){
+                            $cost = $consumedService.group.ConsumedServiceCost
+                        }
+                        else{
+                            $cost = [math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4)
+                        }
                         @"
 <tr>
+<td>$((($ConsumedService.Name).split(", "))[2])</td>
 <td>$((($ConsumedService.Name).split(", "))[0])</td>
+<td>$((($ConsumedService.Name).split(", "))[3])</td>
 <td>$(($consumedService.group.ConsumedServiceInstanceCount | Measure-Object -Sum).Sum)</td>
-<td>$([math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4))</td>
+<td>$($cost)</td>
 <td>$((($ConsumedService.Name).split(", "))[1])</td>
 <td>$((($consumedService.group.SubscriptionId | sort-object -Unique) | Measure-Object).count)</td>
 </tr>
@@ -3017,8 +3099,9 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
                     }
                     $htmlScopeInsights += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-    col_1: 'select',
     col_types: [
+        'caseinsensitivestring',
+        'caseinsensitivestring',
         'caseinsensitivestring',
         'number',
         'number',
@@ -6998,11 +7081,11 @@ extensions: [{ name: 'sort' }]
                             ObjectDisplayName             = $rbac.RoleAssignmentDisplayname
                             ObjectSignInName              = $rbac.RoleAssignmentSignInName
                             ObjectId                      = $rbac.RoleAssignmentObjectId
-                            ObjectType                    = $identityType
+                            ObjectType                    = $rbac.RoleAssignmentObjectType
                             GrpMemberDisplayName          = $grpMemberDisplayName
                             GrpMemberSignInName           = $grpMemberSignInName
                             GrpMemberId                   = $grpMemberId
-                            GrpMemberType                 = $grpMemberType
+                            GrpMemberType                 = $identityType
                             MgOrSub                       = $mgOrSub
                             RbacRelatedPolicyAssignment   = $htRoleAssignmentRelatedPolicyAssignments.($rbac.RoleAssignmentId).relatedPolicyAssignment
                             RoleSecurityCustomRoleOwner   = $rbac.RoleSecurityCustomRoleOwner
@@ -8370,13 +8453,19 @@ extensions: [{ name: 'sort' }]
 <th>QuotaId</th>
 <th>Tags</th>
 <th>ASC Score</th>
+"@
+        if (-not $NoAzureConsumption) {
+            $htmlTenantSummary += @"
 <th>Cost ($($AzureConsumptionPeriod)d)</th>
+<th>Currency</th>
+"@
+        }
+        $htmlTenantSummary += @"
 <th>Path</th>
 </tr>
 </thead>
 <tbody>
 "@
-
         $htmlSUMMARYSubs = $null
         $htmlSUMMARYSubs = foreach ($summarySubscription in $summarySubscriptions) {
             $subPath = $htAllSubsMgPath.($summarySubscription.subscriptionId).path -join "/"
@@ -8384,9 +8473,17 @@ extensions: [{ name: 'sort' }]
             $subscriptionTagsArray = foreach ($tag in ($htSubscriptionTags).($summarySubscription.subscriptionId).keys) {
                 "'$($tag)':'$(($htSubscriptionTags).$($summarySubscription.subscriptionId).$tag)'"
             }    
+
             if (-not $NoAzureConsumption) {
+                $subCurrency = $htAzureConsumption.($summarySubscription.subscriptionId).Currency
                 if ($htAzureConsumption.($summarySubscription.subscriptionId)) {
-                    $totalCost = "$([math]::Round($htAzureConsumption.($summarySubscription.subscriptionId).ConsumptionTotal,4)) $($htAzureConsumption.($summarySubscription.subscriptionId).Currency)"
+                    #$totalCost = "$([math]::Round($htAzureConsumption.($summarySubscription.subscriptionId).ConsumptionTotal,4))"
+                    if ([math]::Round($htAzureConsumption.($summarySubscription.subscriptionId).ConsumptionTotal,4) -eq 0){
+                        $totalCost = $htAzureConsumption.($summarySubscription.subscriptionId).ConsumptionTotal
+                    }
+                    else{
+                        $totalCost = [math]::Round($htAzureConsumption.($summarySubscription.subscriptionId).ConsumptionTotal,4)
+                    }
                 }
                 else {
                     $totalCost = "0"
@@ -8395,7 +8492,6 @@ extensions: [{ name: 'sort' }]
             else {
                 $totalCost = "n/a"
             }
-        
             @"
 <tr>
 <td>$($summarySubscription.subscription)</td>
@@ -8403,7 +8499,14 @@ extensions: [{ name: 'sort' }]
 <td>$($summarySubscription.SubscriptionQuotaId)</td>
 <td>$(($subscriptionTagsArray | sort-object) -join "$CsvDelimiterOpposite ")</td>
 <td>$($summarySubscription.SubscriptionASCSecureScore)</td>
+"@
+            if (-not $NoAzureConsumption) {
+                @"
 <td>$totalCost</td>
+<td>$subCurrency</td>
+"@
+            }
+            @"
 <td><a href="#hierarchySub_$($summarySubscription.MgId)"><i class="fa fa-eye" aria-hidden="true"></i></a> $subPath</td>
 </tr>
 "@
@@ -8413,7 +8516,6 @@ extensions: [{ name: 'sort' }]
             </tbody>
         </table>
     </div>
-
     <script>
         var tfConfig4$tableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
@@ -8446,7 +8548,14 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+"@
+        if (-not $NoAzureConsumption) {
+            $htmlTenantSummary += @"
                 'number',
+                'caseinsensitivestring',
+"@
+        }
+        $htmlTenantSummary += @"
                 'caseinsensitivestring'
             ],
 extensions: [{ name: 'sort' }]
@@ -10339,13 +10448,19 @@ tf.init();
             $arrayTotalCostSummary = @()
             foreach ($currency in $groupedByCurrency){
                 $totalCostTenant = ($currency.group.ConsumedServiceCost | Measure-Object -Sum).Sum
-                $totalCostTenantRounded = [math]::Round($totalCostTenant, 4)
+                #$totalCostTenantRounded = [math]::Round($totalCostTenant, 4)
+                if ([math]::Round($totalCostTenant,4) -eq 0){
+                    $totalCostTenantRounded = $totalCostTenant
+                }
+                else{
+                    $totalCostTenantRounded = [math]::Round($totalCostTenant,4)
+                }
                 $totalCostTenantSubscriptionsCount = ($currency.group.SubscriptionId | Sort-Object -Unique | Measure-Object).Count
                 $totalCostTenantResourceTypesCount = ($currency.group.ConsumedService | Sort-Object -Unique | Measure-Object).Count
                 $totalCostTenantCurrency = $currency.Name
                 $arrayTotalCostSummary += "$($totalCostTenantRounded) $($totalCostTenantCurrency) generated by $($totalCostTenantResourceTypesCount) ResourceTypes in $($totalCostTenantSubscriptionsCount) Subscriptions"
             }
-            $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency = $arrayAzureConsumptionSummarizedByResourceType | group-object -property ConsumedService, SubscriptionConsumptionCurrency
+            $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency = $arrayAzureConsumptionSummarizedByResourceType | group-object -property ConsumedService, SubscriptionConsumptionCurrency, ConsumedServiceChargeType, ConsumedServiceCategory
             $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrencyCount = ($groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency | Measure-Object).count
             $tfCount = $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrencyCount
             $tableId = "SummaryTable_Consumption"
@@ -10356,7 +10471,9 @@ tf.init();
 <table id="$tableId" class="summaryTable">
 <thead>
 <tr>
+<th>ChargeType</th>
 <th>ResourceType</th>
+<th>Category</th>
 <th>ResourceCount</th>
 <th>Cost ($($AzureConsumptionPeriod)d)</th>
 <th>Currency</th>
@@ -10367,11 +10484,19 @@ tf.init();
 "@
             $htmlSUMMARYConsumption = $null
             $htmlSUMMARYConsumption = foreach ($ConsumedService in $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency) {
+                if ([math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4) -eq 0){
+                    $cost = $consumedService.group.ConsumedServiceCost
+                }
+                else{
+                    $cost = [math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4)
+                }
                 @"
 <tr>
+<td>$((($ConsumedService.Name).split(", "))[2])</td>
 <td>$((($ConsumedService.Name).split(", "))[0])</td>
+<td>$((($ConsumedService.Name).split(", "))[3])</td>
 <td>$(($consumedService.group.ConsumedServiceInstanceCount | Measure-Object -Sum).Sum)</td>
-<td>$([math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4))</td>
+<td>$($cost)</td>
 <td>$((($ConsumedService.Name).split(", "))[1])</td>
 <td>$((($consumedService.group.SubscriptionId | sort-object -Unique) | Measure-Object).count)</td>
 </tr>
@@ -10410,6 +10535,8 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
             $htmlTenantSummary += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
 col_types: [
+    'caseinsensitivestring',
+    'caseinsensitivestring',
     'caseinsensitivestring',
     'number',
     'number',
@@ -10643,11 +10770,11 @@ $method = "GET"
 #https://docs.microsoft.com/en-us/azure/governance/management-groups/how-to/protect-resource-hierarchy#setting---default-management-group
 $defaultMG = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
 if (($defaultMG | Measure-Object).count -gt 0) {
-    write-host " default MG: $($defaultMG.properties.defaultManagementGroup)"
+    write-host " default ManagementGroup Id: $($defaultMG.properties.defaultManagementGroup)"
     $defaultManagementGroupId = $defaultMG.properties.defaultManagementGroup
 }
 else {
-    write-host " default MG: $(($checkContext).Tenant.Id) (Tenant Root)"
+    write-host " default ManagementGroup: $(($checkContext).Tenant.Id) (Tenant Root)"
     $defaultManagementGroupId = ($checkContext).Tenant.Id
 }
 
@@ -10781,13 +10908,14 @@ if (-not $HierarchyMapOnly) {
             }
         }
         else {
-            $azureConsumptionStartDate = ((get-date).AddDays(-($($AzureConsumptionPeriod + 1)))).ToString("yyyy-MM-dd")
+            $azureConsumptionStartDate = ((get-date).AddDays(-($($AzureConsumptionPeriod)))).ToString("yyyy-MM-dd")
             $azureConsumptionEndDate = ((get-date).AddDays(-1)).ToString("yyyy-MM-dd")
-            if ($AzureConsumptionPeriod -eq 30) {
-                Write-Host " Azure Consumption reporting enabled: $AzureConsumptionPeriod days (default) ($azureConsumptionStartDate - $azureConsumptionEndDate)  - use parameter: '-NoAzureConsumption' to disable; use parameter: '-AzureConsumptionPeriod' to define the period (days)" -ForegroundColor Yellow
+
+            if ($AzureConsumptionPeriod -eq 1) {
+                Write-Host " Azure Consumption reporting enabled: $AzureConsumptionPeriod days (default) ($azureConsumptionStartDate - $azureConsumptionEndDate) - use parameter: '-NoAzureConsumption' to disable; use parameter: '-AzureConsumptionPeriod' to define the period (days)" -ForegroundColor Yellow
             }
             else {
-                Write-Host " Azure Consumption reporting enabled: $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)  - use parameter: '-NoAzureConsumption' to disable" -ForegroundColor Green
+                Write-Host " Azure Consumption reporting enabled: $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate) - use parameter: '-NoAzureConsumption' to disable" -ForegroundColor Green
             }
             
             if (-not $NoAzureConsumptionReportExportToCSV) {
@@ -10836,12 +10964,11 @@ if (-not $HierarchyMapOnly) {
     $script:outOfScopeSubscriptions = [System.Collections.ArrayList]@()
     $htAllSubscriptionsFromAPI = @{ }
     if (-not $NoAzureConsumption) {
+        $arrayAzureConsumptionDetailedAllSubscriptions = [System.Collections.ArrayList]@()
         $htAzureConsumption = @{ } 
         $arrayAzureConsumptionSummarizedByResourceType = [System.Collections.ArrayList]@()
-        if (-not $NoAzureConsumptionReportExportToCSV) {
-            $arrayAzureConsumptionDetailed = [System.Collections.ArrayList]@()
-        }
-    }    
+    }
+    $script:CustomDataCollectionDuration = [System.Collections.ArrayList]@()    
 
     #current context sub not AAD*
     do {
@@ -10874,7 +11001,7 @@ if (-not $HierarchyMapOnly) {
         Select-AzSubscription -SubscriptionId $subscriptionIdForDefinitionCaching -ErrorAction Stop
     }
     else {
-        Write-Host " OK Subscription context (QuotaId not 'AAD_*') for Definition Caching (SubscriptionId: $($checkContext.Subscription.Id); QuotaId: $currentContextSubscriptionQuotaId)"
+        Write-Host " Subscription context valid (QuotaId not 'AAD_*') for Definition Caching (SubscriptionId: $($checkContext.Subscription.Id); QuotaId: $currentContextSubscriptionQuotaId)"
         $subscriptionIdForDefinitionCaching = $checkContext.Subscription.Id
     }
 
@@ -11025,6 +11152,14 @@ dataCollection -mgId $ManagementGroupId -hierarchyLevel $hierarchyLevel -mgParen
 $endDataCollection = get-date
 Write-Host "Collecting custom data duration: $((NEW-TIMESPAN -Start $startDataCollection -End $endDataCollection).TotalMinutes) minutes"
 
+$durationDataMG = ($script:CustomDataCollectionDuration | Where-Object { $_.Type -eq "MG"})
+$durationDataSUB = ($script:CustomDataCollectionDuration | Where-Object { $_.Type -eq "SUB"})
+$durationMGAverageMaxMin = ($durationDataMG.DurationSec | Measure-Object -Average -Maximum -Minimum)
+$durationSUBAverageMaxMin = ($durationDataSUB.DurationSec | Measure-Object -Average -Maximum -Minimum)
+Write-Host "Collecting custom data ManagementGroup Avg/Max/Min duration in seconds: Average: $([math]::Round($durationMGAverageMaxMin.Average,4)); Maximum: $([math]::Round($durationMGAverageMaxMin.Maximum,4)); Minimum: $([math]::Round($durationMGAverageMaxMin.Minimum,4))"
+Write-Host "Collecting custom data Subscription Avg/Max/Min duration in seconds: Average: $([math]::Round($durationSUBAverageMaxMin.Average,4)); Maximum: $([math]::Round($durationSUBAverageMaxMin.Maximum,4)); Minimum: $([math]::Round($durationSUBAverageMaxMin.Minimum,4))"
+
+
 $optimizedTableForPathQuery = ($table | Select-Object -Property level, mg*, subscription*) | sort-object -Property level, mgid, subscriptionId -Unique
 $optimizedTableForPathQueryMgAndSub = ($optimizedTableForPathQuery  | Where-Object { "" -ne $_.SubscriptionId } | Select-Object -Property level, mg*, subscription*) | sort-object -Property level, mgid, mgname, mgparentId, mgparentName, subscriptionId, subscription -Unique
 $optimizedTableForPathQueryMg = ($optimizedTableForPathQuery | Select-Object -Property level, mgid, mgName, mgparentid, mgparentName) | sort-object -Property level, mgid, mgname, mgparentId, mgparentName -Unique
@@ -11135,7 +11270,9 @@ if (-not $HierarchyMapOnly) {
         }
 
         if (-not $NoAADGroupsResolveMembers) {
-            if ($arrayGroupRoleAssignmentsOnServicePrincipals -gt 0) {
+            if (($arrayGroupRoleAssignmentsOnServicePrincipals | Measure-Object).Count -gt 0) {
+                $servicePrincipalsWithInheritedAssignmentFromGroupCount = (($arrayGroupRoleAssignmentsOnServicePrincipals | sort-Object -Unique) | Measure-Object).count
+                Write-Host " $($servicePrincipalsWithInheritedAssignmentFromGroupCount) ServicePrincipals with Role Assignment inherited though AAD Group membership"
                 foreach ($aadGroupMembersServicePrincipal in $arrayGroupRoleAssignmentsOnServicePrincipals) {
                     if ($arrayAllServicePrincipalsWithRoleAssignment -notcontains $aadGroupMembersServicePrincipal) {
                         $arrayAllServicePrincipalsWithRoleAssignment += $aadGroupMembersServicePrincipal
@@ -11146,9 +11283,9 @@ if (-not $HierarchyMapOnly) {
         $arrayAllServicePrincipalsWithRoleAssignmentCount = ($arrayAllServicePrincipalsWithRoleAssignment | Measure-Object).count
 
         if ($arrayAllServicePrincipalsWithRoleAssignmentCount -gt 0) {
-            Write-Host " processing $($arrayAllServicePrincipalsWithRoleAssignmentCount) ServicePrincipals"
+            Write-Host " processing $($arrayAllServicePrincipalsWithRoleAssignmentCount) unique ServicePrincipals"
             $htServicePrincipalsDetails = @{ }
-            $currentDateUTC = Get-Date -AsUTC
+            $currentDateUTC = (Get-Date).ToUniversalTime()
             foreach ($servicePrincipalWithRoleAssignment in $arrayAllServicePrincipalsWithRoleAssignment) {
                 if (-not $htServicePrincipalsDetails.($ServicePrincipalWithRoleAssignment)) {
                     #Write-Host "processing $($servicePrincipalWithRoleAssignment)"
@@ -11179,7 +11316,7 @@ if (-not $HierarchyMapOnly) {
                                 $appPasswordCredentialsExpiryOKCount = 0
                                 $appPasswordCredentialsExpiryOKMoreThan2YearsCount = 0
                                 foreach ($appPasswordCredential in $getApplication.passwordCredentials) {
-                                    $passwordExpiryTotalDays = (NEW-TIMESPAN –Start $currentDateUTC –End $appPasswordCredential.endDateTime.DateTime).TotalDays
+                                    $passwordExpiryTotalDays = (NEW-TIMESPAN -Start $currentDateUTC -End $appPasswordCredential.endDateTime).TotalDays
                                     if ($passwordExpiryTotalDays -lt 0) {
                                         #Write-Host "pw expired! ($passwordExpiryTotalDays)"
                                         $appPasswordCredentialsExpiredCount++
@@ -11214,8 +11351,7 @@ if (-not $HierarchyMapOnly) {
                                 $appKeyCredentialsExpiryOKCount = 0
                                 $appKeyCredentialsExpiryOKMoreThan2YearsCount = 0
                                 foreach ($appKeyCredential in $getApplication.keyCredentials) {
-                                    $keyCredentialExpiryTotalDays = (NEW-TIMESPAN –Start $currentDateUTC –End $appKeyCredential.endDateTime.DateTime).TotalDays
-                                    
+                                    $keyCredentialExpiryTotalDays = (NEW-TIMESPAN -Start $currentDateUTC -End $appKeyCredential.endDateTime).TotalDays
                                     if ($keyCredentialExpiryTotalDays -lt 0) {
                                         #Write-Host "keycred expired! ($keyCredentialExpiryTotalDays)"
                                         $appKeyCredentialsExpiredCount++
@@ -11329,7 +11465,7 @@ if (-not $HierarchyMapOnly) {
             $subsCnter = 0
         }
     }
-    Write-Host "  total: $($subsCnter + $lastSubsCnter) subscriptions processed"
+    Write-Host "  $($subsCnter + $lastSubsCnter) subscriptions processed total"
     $endResourceProviders = get-date
     Write-Host " Getting ResourceTypes, ResourceGroups and ResourceProviders duration: $((NEW-TIMESPAN -Start $startResourceProviders -End $endResourceProviders).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startResourceProviders -End $endResourceProviders).TotalSeconds) seconds)"
     
@@ -11402,7 +11538,7 @@ if (-not $HierarchyMapOnly) {
 
         $resourceTypesUnique = ($resourcesAll | select-object type).type.tolower() | sort-object -Unique  
         $resourceTypesUniqueCount = ($resourceTypesUnique | Measure-Object).count
-        Write-Host "  Unique Resource Types to process: $($resourceTypesUniqueCount)"
+        Write-Host "  $($resourceTypesUniqueCount) unique Resource Types to process"
         $resourceTypesSummarizedArray = [System.Collections.ArrayList]@()
         $resourcesTypeAllCountTotal = 0
         ($resourcesAll).count_ | ForEach-Object { $resourcesTypeAllCountTotal += $_ }
@@ -11544,7 +11680,7 @@ if (-not $HierarchyMapOnly) {
 
 #region BuildHTML
 #testhelper
-$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
+#$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 
 $startBuildHTML = get-date
 Write-Host "Building HTML"
@@ -11986,7 +12122,7 @@ if (-not $NoAzureConsumption) {
     if (-not $NoAzureConsumptionReportExportToCSV) {
         Write-Host "Exporting Consumption CSV"
         $startBuildConsumptionCSV = get-date
-        $arrayAzureConsumptionDetailed | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        $arrayAzureConsumptionDetailedAllSubscriptions | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
         $endBuildConsumptionCSV = get-date
         Write-Host "Exporting Consumption CSV total duration: $((NEW-TIMESPAN -Start $startBuildConsumptionCSV -End $endBuildConsumptionCSV).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startBuildCSV -End $endBuildCSV).TotalSeconds) seconds)"
     }

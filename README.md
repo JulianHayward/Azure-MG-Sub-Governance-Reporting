@@ -48,12 +48,17 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ### AzGovViz version 4
 
+Updates 2021-Jan-08
+* Feature: __Cost Management / Consumption Reporting__ - Changed AzureConsumptionPeriod default to 1 day  
+![Consumption](img/consumption.png)
+* Bugfixes
+
 Updates 2021-Jan-06 - Happy New Year
 * Feature: Resolve __Azure Active Directory Group memberships__ for Role assignment with identity type 'Group' leveraging Microsoft Graph. With this capability AzGovViz can ultimately provide holistic insights on permissions granted for Management Groups and Subscriptions (honors parameter `-DoNotShowRoleAssignmentsUserData`). Use parameter `-NoAADGroupsResolveMembers` to disable the feature  
 ![AADGroupMembers](img/aad850.png)
 * Feature: New __TenantSummary__ section '__Azure Active Directory__' -> Check all Azure Active Directory Service Principals (type=Application that have a Role assignment) for Secret/Certificate expiry. Mark all Service Principals (type=ManagedIdentity) that are related to a Policy assignments. Use parameter `-NoServicePrincipalResolve` to disable this feature
 * Feature: __Cost Management / Consumption Reporting__ for Subscriptions including aggregation at Management Group level. Use parameter `-NoAzureConsumption` to disable this feature.  
-__Note__: Per default the consumption query will request consumption data for the last full 30 days, use the parameter `-AzureConsumptionPeriod` to define a favored time period  e.g. `-AzureConsumptionPeriod 7` (for 7 days) 
+__Note__: Per default the consumption query will request consumption data for the last full 1 day (if you run it today, will capture the cost for yesterday), use the parameter `-AzureConsumptionPeriod` to define a favored time period  e.g. `-AzureConsumptionPeriod 7` (for 7 days) 
 * Removed parameter `-Experimental`. 'Resource Diagnostics Policy Lifecycle' enabled by default. Use `-NoResourceDiagnosticsPolicyLifecycle` to disable the feature.
 * Renamed parameter `-DisablePolicyComplianceStates` to `-NoPolicyComplianceStates` for better consistency
 * Optimize 'Get Resource Types capability for Resource Diagnostics' query - thanks Brooks Vaughn
@@ -207,7 +212,7 @@ Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
   * `-NoServicePrincipalResolve` disables resolving ServicePrincipals
   * `-ServicePrincipalExpiryWarningDays` define warning period for Service Principal secret and certificate expiry; default is 14 days
   * `-NoAzureConsumption` Azure Consumption data should not be collected/reported
-  * `-AzureConsumptionPeriod` define for which time period Azure Consumption data should be gathered; default is 30 days
+  * `-AzureConsumptionPeriod` define for which time period Azure Consumption data should be gathered; default is 1 day
   * `-NoAzureConsumptionReportExportToCSV` Azure Consumption data should not be exported (CSV)
   * ~~`-UseAzureRM`~~ support for AzureRm modules has been deprecated
   * ~~`-Experimental`~~ executes experimental features. Latest experimental feature: 'ResourceDiagnostics Policy Lifecycle recommendations' - e.g. it checks on all existing Custom Policy definitions that deploy resource diagnostics settings if all available log categories are defined in the policy (may they be enabled or disabled)

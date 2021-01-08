@@ -1,4 +1,4 @@
-# AzGovViz v4_major_20210106_0
+# AzGovViz v4_minor_20210108_1
 # First things first: edit line 28 and line 29 
 # https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 # Also check https://www.azadvertizer.net - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
@@ -17,7 +17,7 @@
 # NoServicePrincipalResolve | example: -NoServicePrincipalResolve | WhatDoesItDo? disables resolving ServicePrincipals
 # ServicePrincipalExpiryWarningDays | example: -ServicePrincipalExpiryWarningDays 21 | WhatDoesItDo? define warning period for Service Principal secret and certificate expiry; default is 14 days
 # NoAzureConsumption | example: -NoAzureConsumption | WhatDoesItDo? Azure Consumption data will not be collected/reported
-# AzureConsumptionPeriod | example: -AzureConsumptionPeriod 21 | WhatDoesItDo? define for which time period Azure Consumption data should be gathered; default is 30 days
+# AzureConsumptionPeriod | example: -AzureConsumptionPeriod 7 | WhatDoesItDo? define for which time period Azure Consumption data should be gathered; default is 1 day
 # NoAzureConsumptionReportExportToCSV | example: -NoAzureConsumptionReportExportToCSV | WhatDoesItDo? Azure Consumption data will not be exported (CSV)
 
 trigger: none
