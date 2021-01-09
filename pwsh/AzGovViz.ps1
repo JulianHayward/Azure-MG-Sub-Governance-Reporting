@@ -1,4 +1,4 @@
-<#v4_minor_20210108_1
+<#v4_fix_20210109_0
 .SYNOPSIS  
     This script creates the following files to help better understand and audit your governance setup
     csv file
@@ -302,13 +302,15 @@ function createBearerToken($targetEndPoint) {
 
 #API
 #region azapicall
-function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $specialHandling) {
+function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumption, $getApp) {
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
     $retryAuthorizationFailed = 5
     $retryAuthorizationFailedCounter = 0
     $apiCallResultsCollection = @()
-    
+    $initialUri = $uri
+    $restartDueToDuplicateNextlinkCounter = 0
+
     do {
         if ($arrayAzureManagementEndPointUrls | Where-Object { $uri -match $_ }) {
             $targetEndpoint = "ManagementAPI"
@@ -330,13 +332,11 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $specialHandli
             else {
                 $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -Headers @{"Content-Type" = "application/json"; "Authorization" = "Bearer $bearerToUse" } -UseBasicParsing
             }
-            
         }
         catch {
             try {
                 $catchResultPlain = $_.ErrorDetails.Message
                 $catchResult = ($catchResultPlain | ConvertFrom-Json)
-                #$catchResult = ($_.ErrorDetails.Message | ConvertFrom-Json)
             }
             catch {
                 $catchResult = $catchResultPlain
@@ -349,7 +349,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $specialHandli
             if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: unexpectedError: false" }
             if ($azAPIRequest.StatusCode -ne 200) {
                 if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: apiStatusCode: $($azAPIRequest.StatusCode)" }
-                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*" -or $catchResult.error.code -like "*ResponseTooLarge*" -or $catchResult.error.code -like "*InvalidAuthenticationToken*") {
+                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*" -or $catchResult.error.code -like "*ResponseTooLarge*" -or $catchResult.error.code -like "*InvalidAuthenticationToken*" -or ($getConsumption -and $catchResult.error.code -eq 404) -or ($getApp -and $catchResult.error.code -like "*Request_ResourceNotFound*")) {
                     if ($catchResult.error.code -like "*ResponseTooLarge*") {
                         Write-Host "###### LIMIT #################################"
                         Write-Host "Hitting LIMIT getting Policy Compliance States!"
@@ -370,7 +370,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $specialHandli
                     }
                     if ($catchResult.error.code -like "*AuthorizationFailed*") {
                         if ($retryAuthorizationFailedCounter -gt $retryAuthorizationFailed) {
-                            Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - $retryAuthorizationFailed retries failed - investigate that error!"
+                            Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - $retryAuthorizationFailed retries failed - investigate that error!/exit"
                             if ($AzureDevOpsWikiAsCode) {
                                 Write-Error "Error"
                             }
@@ -393,13 +393,17 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $specialHandli
                         Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
                         createBearerToken -targetEndPoint $targetEndpoint
                     }
-                }
-                elseif ($specialHandling -eq "true" -and $catchResult.error.code -eq 404){
-                    Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Subscriptions was created only recently - skipping"
-                    return $apiCallResultsCollection
+                    if ($getConsumption -and $catchResult.error.code -eq 404){
+                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Subscriptions was created only recently - skipping"
+                        return $apiCallResultsCollection
+                    }
+                    if ($getApp -and $catchResult.error.code -like "*Request_ResourceNotFound*"){
+                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain ServicePrincipal status - skipping for now :)"
+                        return "Request_ResourceNotFound"
+                    }
                 }
                 else {
-                    Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) investigate that error!"
+                    Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) investigate that error!/exit"
                     if ($AzureDevOpsWikiAsCode) {
                         Write-Error "Error"
                     }
@@ -407,7 +411,6 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $specialHandli
                         break script
                     }
                 }
-                
             }
             else {
                 if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: apiStatusCode: $($azAPIRequest.StatusCode)" }
@@ -427,17 +430,68 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $specialHandli
                 }
 
                 $isMore = $false
-                If ($azAPIRequestConvertedFromJson.nextLink) {
+                if ($azAPIRequestConvertedFromJson.nextLink) {
                     $isMore = $true
-                    $uri = $azAPIRequestConvertedFromJson.nextLink
+                    if ($uri -eq $azAPIRequestConvertedFromJson.nextLink){
+                        if ($restartDueToDuplicateNextlinkCounter -gt 3){
+                            Write-Host " $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
+                            if ($AzureDevOpsWikiAsCode) {
+                                Write-Error "Error"
+                            }
+                            else {
+                                break script
+                            }
+                        }
+                        else{
+                            $restartDueToDuplicateNextlinkCounter++
+                            Write-Host "nextLinkLog: uri is equal to nextLinkUri"
+                            Write-Host "nextLinkLog: uri: $uri"
+                            Write-Host "nextLinkLog: nextLinkUri: $($azAPIRequestConvertedFromJson.nextLink)"
+                            Write-Host "nextLinkLog: re-starting (#$($restartDueToDuplicateNextlinkCounter)) '$currentTask'"
+                            $apiCallResultsCollection = @()
+                            $uri = $initialUri
+                            Start-Sleep -Seconds 1
+                            createBearerToken -targetEndPoint $targetEndpoint
+                            Start-Sleep -Seconds 1
+                        }
+                    }
+                    else{
+                        $uri = $azAPIRequestConvertedFromJson.nextLink
+                    }
                     if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: nextLink: $Uri" }
                 }
-                ElseIf ($azAPIRequestConvertedFromJson."@oData.nextLink") {
+                elseIf ($azAPIRequestConvertedFromJson."@oData.nextLink") {
                     $isMore = $true
-                    $uri = $azAPIRequestConvertedFromJson."@odata.nextLink"
+                    if ($uri -eq $azAPIRequestConvertedFromJson."@odata.nextLink"){
+                        if ($restartDueToDuplicateNextlinkCounter -gt 3){
+                            Write-Host " $currentTask restartDueToDuplicate@odataNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
+                            if ($AzureDevOpsWikiAsCode) {
+                                Write-Error "Error"
+                            }
+                            else {
+                                break script
+                            }
+                        }
+                        else{
+                            $restartDueToDuplicateNextlinkCounter++
+                            Write-Host "nextLinkLog: uri is equal to @odata.nextLinkUri"
+                            Write-Host "nextLinkLog: uri is equal to @odata.nextLinkUri"
+                            Write-Host "nextLinkLog: uri: $uri"
+                            Write-Host "nextLinkLog: @odata.nextLinkUri: $($azAPIRequestConvertedFromJson."@odata.nextLink")"
+                            Write-Host "nextLinkLog: re-starting (#$($restartDueToDuplicateNextlinkCounter)) '$currentTask'"
+                            $apiCallResultsCollection = @()
+                            $uri = $initialUri
+                            Start-Sleep -Seconds 1
+                            createBearerToken -targetEndPoint $targetEndpoint
+                            Start-Sleep -Seconds 1
+                        }
+                    }
+                    else{
+                        $uri = $azAPIRequestConvertedFromJson."@odata.nextLink"
+                    }
                     if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: @oData.nextLink: $Uri" }
                 }
-                Else {
+                else {
                     if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: NextLink: none" }
                 }
             }
@@ -450,6 +504,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $specialHandli
                 Start-Sleep -Seconds 2
             }
             else {
+                Write-Host " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (tried 5 times)/exit"
                 if ($AzureDevOpsWikiAsCode) {
                     Write-Error "Error"
                 }
@@ -571,8 +626,6 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType) {
     until($azAPIRequest.StatusCode -eq 200 -or $catchResult.code -like "*NotSupported*")
 }
 #endregion azapicalldiag
-
-
 
 #start
 $startTime = get-date -format "dd-MMM-yyyy HH:mm:ss"
@@ -1519,10 +1572,10 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                     $subscriptionState = $currentSubscription.state
 
                     if (-not $NoAzureConsumption) {
-                        $currenttask = "AzureConsumption $childMgSubId $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
+                        $currenttask = "GetConsumption $childMgSubId $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
                         $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Consumption/usageDetails?api-version=2019-10-01&`$expand=properties/meterDetails&`$filter=properties/usageStart ge '$($azureConsumptionStartDate)' and properties/usageEnd le '$($azureConsumptionEndDate)'"
                         $method = "GET"
-                        $subscriptionConsumptionData = AzAPICall -uri $uri -method $method -currenttask $currentTask -specialHandling "true"
+                        $subscriptionConsumptionData = AzAPICall -uri $uri -method $method -currenttask $currentTask -getConsumption $true
                         $utcTimeDataRetrieved = $([System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId((Get-Date), [System.TimeZoneInfo]::Local.Id, 'UTC')).ToString("yyyy-MM-dd HH:mm:ss")
                         
                         if (($subscriptionConsumptionData | Measure-Object).Count -gt 0){
@@ -2709,10 +2762,10 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId) {
                 $htmlScopeInsightsConsumptionSub = $null
                 $htmlScopeInsightsConsumptionSub = foreach ($consumptionData in $htAzureConsumption.($subscriptionId).Consumptiondata) {
                     if ([math]::Round(($consumptionData.ConsumedServiceCost),4) -eq 0){
-                        $cost = ($consumptionData.ConsumedServiceCost)
+                        $cost = [decimal]($consumptionData.ConsumedServiceCost)
                     }
                     else{
-                        $cost = [math]::Round(($consumptionData.ConsumedServiceCost),4)
+                        $cost = [decimal]([math]::Round(($consumptionData.ConsumedServiceCost),4))
                     }
                     @"
 <tr>
@@ -2995,10 +3048,9 @@ extensions: [{ name: 'sort' }]
 <tr><td class="detailstd"><p>$(($mgAllChildSubscriptions | Measure-Object).count) Subscriptions below this scope</p></td></tr>
 <tr><td class="detailstd">
 "@
-        #
+
         #region ScopeInsightsConsumptionMg
         if (-not $NoAzureConsumption) {
-            
             if (($arrayAzureConsumptionSummarizedByResourceType | Measure-Object).Count -gt 0) {
                 $arrayAzureConsumptionSummarizedByResourceTypeWhereMgIsInParentchain = $arrayAzureConsumptionSummarizedByResourceType | Where-Object { $_.SubscriptionMgPath -contains $mgChild }
                 $arrayAzureConsumptionSummarizedByResourceTypeWhereMgIsInParentchainCount = ($arrayAzureConsumptionSummarizedByResourceTypeWhereMgIsInParentchain | Measure-Object).Count
@@ -3009,7 +3061,6 @@ extensions: [{ name: 'sort' }]
                     $arrayTotalCostSummary = @()
                     foreach ($currency in $groupedByCurrency){
                         $totalCostTenant = ($currency.group.ConsumedServiceCost | Measure-Object -Sum).Sum
-                        #$totalCostTenantRounded = [math]::Round($totalCostTenant, 4)
                         if ([math]::Round($totalCostTenant, 4) -eq 0){
                             $totalCostTenantRounded = $totalCostTenant
                         }
@@ -3023,7 +3074,7 @@ extensions: [{ name: 'sort' }]
                     }
                     $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency = $arrayAzureConsumptionSummarizedByResourceTypeWhereMgIsInParentchain | group-object -property ConsumedService, SubscriptionConsumptionCurrency, ConsumedServiceChargeType, ConsumedServiceCategory
                     $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrencyCount = ($groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency | Measure-Object).count
-
+                
                     $tfCount = $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrencyCount
                     $tableId = "DetailsTable_Consumption_$($mgChild -replace '-','_')"
                     $randomFunctionName = "func_$tableId"
@@ -3048,10 +3099,10 @@ extensions: [{ name: 'sort' }]
                     $htmlScopeInsightsConsumptionMg = $null
                     $htmlScopeInsightsConsumptionMg = foreach ($consumedService in $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency) {
                         if ([math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4) -eq 0){
-                            $cost = $consumedService.group.ConsumedServiceCost
+                            $cost = [decimal]($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum
                         }
                         else{
-                            $cost = [math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4)
+                            $cost = [decimal]([math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4))
                         }
                         @"
 <tr>
@@ -3138,7 +3189,7 @@ tf.init();}}
 "@
         }
         #endregion ScopeInsightsConsumptionMg
-        #>
+
     }
     #endregion ScopeInsightsManagementGroups
 
@@ -3165,7 +3216,6 @@ tf.init();}}
 "@
             $htmlScopeInsightsResources = $null
             $htmlScopeInsightsResources = foreach ($resourceAllChildSubscriptionResourceTypePerLocation in $resourcesAllChildSubscriptionsArray | sort-object @{Expression = { $_.ResourceType } }, @{Expression = { $_.location } }) {
-                    
                 @"
 <tr>
 <td>$($resourceAllChildSubscriptionResourceTypePerLocation.ResourceType)</td>
@@ -8479,10 +8529,10 @@ extensions: [{ name: 'sort' }]
                 if ($htAzureConsumption.($summarySubscription.subscriptionId)) {
                     #$totalCost = "$([math]::Round($htAzureConsumption.($summarySubscription.subscriptionId).ConsumptionTotal,4))"
                     if ([math]::Round($htAzureConsumption.($summarySubscription.subscriptionId).ConsumptionTotal,4) -eq 0){
-                        $totalCost = $htAzureConsumption.($summarySubscription.subscriptionId).ConsumptionTotal
+                        $totalCost = [decimal]$htAzureConsumption.($summarySubscription.subscriptionId).ConsumptionTotal
                     }
                     else{
-                        $totalCost = [math]::Round($htAzureConsumption.($summarySubscription.subscriptionId).ConsumptionTotal,4)
+                        $totalCost = [decimal]([math]::Round($htAzureConsumption.($summarySubscription.subscriptionId).ConsumptionTotal,4))
                     }
                 }
                 else {
@@ -8548,6 +8598,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+                'number',
 "@
         if (-not $NoAzureConsumption) {
             $htmlTenantSummary += @"
@@ -10431,7 +10482,6 @@ tf.init();
 "@
     #endregion tenantSummaryAAD
 
-    #
     #region tenantSummary Consumption
     $htmlTenantSummary += @"
     <button type="button" class="collapsible" id="tenantSummaryAAD"><hr class="hr-text" data-content="Consumption" /></button>
@@ -10485,10 +10535,10 @@ tf.init();
             $htmlSUMMARYConsumption = $null
             $htmlSUMMARYConsumption = foreach ($ConsumedService in $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency) {
                 if ([math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4) -eq 0){
-                    $cost = $consumedService.group.ConsumedServiceCost
+                    $cost = [decimal]($consumedService.group.ConsumedServiceCost | Measure-Object -Sum)
                 }
                 else{
-                    $cost = [math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4)
+                    $cost = [decimal]([math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4))
                 }
                 @"
 <tr>
@@ -11156,9 +11206,8 @@ $durationDataMG = ($script:CustomDataCollectionDuration | Where-Object { $_.Type
 $durationDataSUB = ($script:CustomDataCollectionDuration | Where-Object { $_.Type -eq "SUB"})
 $durationMGAverageMaxMin = ($durationDataMG.DurationSec | Measure-Object -Average -Maximum -Minimum)
 $durationSUBAverageMaxMin = ($durationDataSUB.DurationSec | Measure-Object -Average -Maximum -Minimum)
-Write-Host "Collecting custom data ManagementGroup Avg/Max/Min duration in seconds: Average: $([math]::Round($durationMGAverageMaxMin.Average,4)); Maximum: $([math]::Round($durationMGAverageMaxMin.Maximum,4)); Minimum: $([math]::Round($durationMGAverageMaxMin.Minimum,4))"
-Write-Host "Collecting custom data Subscription Avg/Max/Min duration in seconds: Average: $([math]::Round($durationSUBAverageMaxMin.Average,4)); Maximum: $([math]::Round($durationSUBAverageMaxMin.Maximum,4)); Minimum: $([math]::Round($durationSUBAverageMaxMin.Minimum,4))"
-
+Write-Host "Collecting custom data for $($arrayEntitiesFromAPIManagementGroupsCount) ManagementGroups Avg/Max/Min duration in seconds: Average: $([math]::Round($durationMGAverageMaxMin.Average,4)); Maximum: $([math]::Round($durationMGAverageMaxMin.Maximum,4)); Minimum: $([math]::Round($durationMGAverageMaxMin.Minimum,4))"
+Write-Host "Collecting custom data for $($arrayEntitiesFromAPISubscriptionsCount) Subscriptions Avg/Max/Min duration in seconds: Average: $([math]::Round($durationSUBAverageMaxMin.Average,4)); Maximum: $([math]::Round($durationSUBAverageMaxMin.Maximum,4)); Minimum: $([math]::Round($durationSUBAverageMaxMin.Minimum,4))"
 
 $optimizedTableForPathQuery = ($table | Select-Object -Property level, mg*, subscription*) | sort-object -Property level, mgid, subscriptionId -Unique
 $optimizedTableForPathQueryMgAndSub = ($optimizedTableForPathQuery  | Where-Object { "" -ne $_.SubscriptionId } | Select-Object -Property level, mg*, subscription*) | sort-object -Property level, mgid, mgname, mgparentId, mgparentName, subscriptionId, subscription -Unique
@@ -11166,7 +11215,7 @@ $optimizedTableForPathQueryMg = ($optimizedTableForPathQuery | Select-Object -Pr
 $optimizedTableForPathQuerySub = ($optimizedTableForPathQuery | Where-Object { "" -ne $_.SubscriptionId } | Select-Object -Property subscription*) | sort-object -Property subscriptionId -Unique
 
 if (-not $HierarchyMapOnly) {
-    #Groups
+    #AADGroups
     if (-not $NoAADGroupsResolveMembers) {
         $htAADGroupsDetails = @{ }
         $arrayGroupRoleAssignmentsOnServicePrincipals = @()
@@ -11240,7 +11289,7 @@ if (-not $HierarchyMapOnly) {
         Write-Host "Resolving AAD Groups duration: $((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
     }
 
-    #SP
+    #AADSP
     if (-not $NoServicePrincipalResolve) {
         Write-Host "Getting ServicePrincipals"
         $startAADGetServicePrincipals = get-date
@@ -11283,6 +11332,7 @@ if (-not $HierarchyMapOnly) {
         $arrayAllServicePrincipalsWithRoleAssignmentCount = ($arrayAllServicePrincipalsWithRoleAssignment | Measure-Object).count
 
         if ($arrayAllServicePrincipalsWithRoleAssignmentCount -gt 0) {
+            $arrayApplicationRequestResourceNotFound = [System.Collections.ArrayList]@()
             Write-Host " processing $($arrayAllServicePrincipalsWithRoleAssignmentCount) unique ServicePrincipals"
             $htServicePrincipalsDetails = @{ }
             $currentDateUTC = (Get-Date).ToUniversalTime()
@@ -11302,79 +11352,91 @@ if (-not $HierarchyMapOnly) {
                         #Write-Host "--> APPLICATION"
                         #Write-Host "processing $($getServicePrincipal.displayName)"
                         if ($getServicePrincipal.appOwnerOrganizationId -eq $checkContext.Subscription.TenantId) {
-                            #Write-Host "+++++ matching appOwnerOrg: $($getServicePrincipal.appOwnerOrganizationId)"
+                            #Write-Host "matching appOwnerOrg: $($getServicePrincipal.appOwnerOrganizationId)"
                             #Write-Host "getting app for sp appid '$($getServicePrincipal.appId)'"
                             $uri = "https://graph.microsoft.com/v1.0/applications?`$filter=appId eq '$($getServicePrincipal.appId)'"
                             $method = "GET"
-                            $getApplication = AzAPICall -uri $uri -method $method -currenttask "getApp $($getServicePrincipal.appId)" #-listenOn "Content"
-                            $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appGraphDetails = $getApplication
-                            $appPasswordCredentialsCount = ($getApplication.passwordCredentials | Measure-Object).count
-                            if ($appPasswordCredentialsCount -gt 0) {
-                                $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appPasswordCredentialsCount = $appPasswordCredentialsCount
-                                $appPasswordCredentialsExpiredCount = 0
-                                $appPasswordCredentialsGracePeriodExpiryCount = 0
-                                $appPasswordCredentialsExpiryOKCount = 0
-                                $appPasswordCredentialsExpiryOKMoreThan2YearsCount = 0
-                                foreach ($appPasswordCredential in $getApplication.passwordCredentials) {
-                                    $passwordExpiryTotalDays = (NEW-TIMESPAN -Start $currentDateUTC -End $appPasswordCredential.endDateTime).TotalDays
-                                    if ($passwordExpiryTotalDays -lt 0) {
-                                        #Write-Host "pw expired! ($passwordExpiryTotalDays)"
-                                        $appPasswordCredentialsExpiredCount++
-                                    }
-                                    elseif ($passwordExpiryTotalDays -lt $ServicePrincipalExpiryWarningDays) {
-                                        #Write-Host "pw will expire! in less than $ServicePrincipalExpiryWarningDays days ($passwordExpiryTotalDays)"
-                                        $appPasswordCredentialsGracePeriodExpiryCount++
-                                    }
-                                    else {
-                                        if ($passwordExpiryTotalDays -gt 730) {
-                                            #Write-Host "info: PW expires in $($passwordExpiryTotalDays) days"
-                                            $appPasswordCredentialsExpiryOKMoreThan2YearsCount++
-                                        }
-                                        else {
-                                            #Write-Host "info: PW expires in $($passwordExpiryTotalDays) days"
-                                            $appPasswordCredentialsExpiryOKCount++
-                                        }
-
-                                    }
-                                }
-                                $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appPasswordCredentialsExpiredCount = $appPasswordCredentialsExpiredCount
-                                $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appPasswordCredentialsGracePeriodExpiryCount = $appPasswordCredentialsGracePeriodExpiryCount
-                                $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appPasswordCredentialsExpiryOKCount = $appPasswordCredentialsExpiryOKCount
-                                $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appPasswordCredentialsExpiryOKMoreThan2YearsCount = $appPasswordCredentialsExpiryOKMoreThan2YearsCount
+                            $getApplication = AzAPICall -uri $uri -method $method -currenttask "getApp $($getServicePrincipal.appId)" -getApp $true
+                            
+                            if ($getApplication -eq "Request_ResourceNotFound"){
+                                $null = $arrayApplicationRequestResourceNotFound.Add([PSCustomObject]@{ 
+                                    appId = $getServicePrincipal.appId
+                                })
                             }
+                            else{
+                                if (($getApplication | Measure-Object).Count -eq 0){
+                                    Write-Host "$($getServicePrincipal.appId) no data returned / seems non existent?"
+                                }
+                                else{
+                                    $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appGraphDetails = $getApplication
+                                    $appPasswordCredentialsCount = ($getApplication.passwordCredentials | Measure-Object).count
+                                    if ($appPasswordCredentialsCount -gt 0) {
+                                        $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appPasswordCredentialsCount = $appPasswordCredentialsCount
+                                        $appPasswordCredentialsExpiredCount = 0
+                                        $appPasswordCredentialsGracePeriodExpiryCount = 0
+                                        $appPasswordCredentialsExpiryOKCount = 0
+                                        $appPasswordCredentialsExpiryOKMoreThan2YearsCount = 0
+                                        foreach ($appPasswordCredential in $getApplication.passwordCredentials) {
+                                            $passwordExpiryTotalDays = (NEW-TIMESPAN -Start $currentDateUTC -End $appPasswordCredential.endDateTime).TotalDays
+                                            if ($passwordExpiryTotalDays -lt 0) {
+                                                #Write-Host "pw expired! ($passwordExpiryTotalDays)"
+                                                $appPasswordCredentialsExpiredCount++
+                                            }
+                                            elseif ($passwordExpiryTotalDays -lt $ServicePrincipalExpiryWarningDays) {
+                                                #Write-Host "pw will expire! in less than $ServicePrincipalExpiryWarningDays days ($passwordExpiryTotalDays)"
+                                                $appPasswordCredentialsGracePeriodExpiryCount++
+                                            }
+                                            else {
+                                                if ($passwordExpiryTotalDays -gt 730) {
+                                                    #Write-Host "info: PW expires in $($passwordExpiryTotalDays) days"
+                                                    $appPasswordCredentialsExpiryOKMoreThan2YearsCount++
+                                                }
+                                                else {
+                                                    #Write-Host "info: PW expires in $($passwordExpiryTotalDays) days"
+                                                    $appPasswordCredentialsExpiryOKCount++
+                                                }
+                                            }
+                                        }
+                                        $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appPasswordCredentialsExpiredCount = $appPasswordCredentialsExpiredCount
+                                        $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appPasswordCredentialsGracePeriodExpiryCount = $appPasswordCredentialsGracePeriodExpiryCount
+                                        $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appPasswordCredentialsExpiryOKCount = $appPasswordCredentialsExpiryOKCount
+                                        $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appPasswordCredentialsExpiryOKMoreThan2YearsCount = $appPasswordCredentialsExpiryOKMoreThan2YearsCount
+                                    }
 
-                            $appKeyCredentialsCount = ($getApplication.keyCredentials | Measure-Object).count
-                            if ($appKeyCredentialsCount -gt 0) {
-                                $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appKeyCredentialsCount = $appKeyCredentialsCount
-                                $appKeyCredentialsExpiredCount = 0
-                                $appKeyCredentialsGracePeriodExpiryCount = 0
-                                $appKeyCredentialsExpiryOKCount = 0
-                                $appKeyCredentialsExpiryOKMoreThan2YearsCount = 0
-                                foreach ($appKeyCredential in $getApplication.keyCredentials) {
-                                    $keyCredentialExpiryTotalDays = (NEW-TIMESPAN -Start $currentDateUTC -End $appKeyCredential.endDateTime).TotalDays
-                                    if ($keyCredentialExpiryTotalDays -lt 0) {
-                                        #Write-Host "keycred expired! ($keyCredentialExpiryTotalDays)"
-                                        $appKeyCredentialsExpiredCount++
-                                    }
-                                    elseif ($keyCredentialExpiryTotalDays -lt $ServicePrincipalExpiryWarningDays) {
-                                        #Write-Host "keycred will expire! in less than $ServicePrincipalExpiryWarningDays days ($keyCredentialExpiryTotalDays)"
-                                        $appKeyCredentialsGracePeriodExpiryCount++
-                                    }
-                                    else {
-                                        if ($keyCredentialExpiryTotalDays -gt 730) {
-                                            #Write-Host "info: keycred expires in $($keyCredentialExpiryTotalDays) days"
-                                            $appKeyCredentialsExpiryOKMoreThan2YearsCount++
+                                    $appKeyCredentialsCount = ($getApplication.keyCredentials | Measure-Object).count
+                                    if ($appKeyCredentialsCount -gt 0) {
+                                        $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appKeyCredentialsCount = $appKeyCredentialsCount
+                                        $appKeyCredentialsExpiredCount = 0
+                                        $appKeyCredentialsGracePeriodExpiryCount = 0
+                                        $appKeyCredentialsExpiryOKCount = 0
+                                        $appKeyCredentialsExpiryOKMoreThan2YearsCount = 0
+                                        foreach ($appKeyCredential in $getApplication.keyCredentials) {
+                                            $keyCredentialExpiryTotalDays = (NEW-TIMESPAN -Start $currentDateUTC -End $appKeyCredential.endDateTime).TotalDays
+                                            if ($keyCredentialExpiryTotalDays -lt 0) {
+                                                #Write-Host "keycred expired! ($keyCredentialExpiryTotalDays)"
+                                                $appKeyCredentialsExpiredCount++
+                                            }
+                                            elseif ($keyCredentialExpiryTotalDays -lt $ServicePrincipalExpiryWarningDays) {
+                                                #Write-Host "keycred will expire! in less than $ServicePrincipalExpiryWarningDays days ($keyCredentialExpiryTotalDays)"
+                                                $appKeyCredentialsGracePeriodExpiryCount++
+                                            }
+                                            else {
+                                                if ($keyCredentialExpiryTotalDays -gt 730) {
+                                                    #Write-Host "info: keycred expires in $($keyCredentialExpiryTotalDays) days"
+                                                    $appKeyCredentialsExpiryOKMoreThan2YearsCount++
+                                                }
+                                                else {
+                                                    #Write-Host "info: keycred expires in $($keyCredentialExpiryTotalDays) days"
+                                                    $appKeyCredentialsExpiryOKCount++
+                                                }
+                                            }
                                         }
-                                        else {
-                                            #Write-Host "info: keycred expires in $($keyCredentialExpiryTotalDays) days"
-                                            $appKeyCredentialsExpiryOKCount++
-                                        }
+                                        $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appKeyCredentialsExpiredCount = $appKeyCredentialsExpiredCount
+                                        $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appKeyCredentialsGracePeriodExpiryCount = $appKeyCredentialsGracePeriodExpiryCount
+                                        $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appKeyCredentialsExpiryOKCount = $appKeyCredentialsExpiryOKCount
+                                        $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appKeyCredentialsExpiryOKMoreThan2YearsCount = $appKeyCredentialsExpiryOKMoreThan2YearsCount
                                     }
                                 }
-                                $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appKeyCredentialsExpiredCount = $appKeyCredentialsExpiredCount
-                                $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appKeyCredentialsGracePeriodExpiryCount = $appKeyCredentialsGracePeriodExpiryCount
-                                $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appKeyCredentialsExpiryOKCount = $appKeyCredentialsExpiryOKCount
-                                $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appKeyCredentialsExpiryOKMoreThan2YearsCount = $appKeyCredentialsExpiryOKMoreThan2YearsCount
                             }
                         }
                         else {
@@ -11383,9 +11445,12 @@ if (-not $HierarchyMapOnly) {
                     }
                     else {
                         #Write-Host "--> $($getServicePrincipal.servicePrincipalType)"
-
                     }
                 }
+            }
+            $applicationRequestResourceNotFoundCount = ($arrayApplicationRequestResourceNotFound | Measure-Object).Count
+            if ($applicationRequestResourceNotFoundCount -gt 0){
+                Write-Host "$applicationRequestResourceNotFoundCount ServicePrincipals could not be checked for Secret/certificate expiry"
             }
         }
         else {
@@ -11465,7 +11530,7 @@ if (-not $HierarchyMapOnly) {
             $subsCnter = 0
         }
     }
-    Write-Host "  $($subsCnter + $lastSubsCnter) subscriptions processed total"
+    Write-Host "  $($subsCnter + $lastSubsCnter) Subscriptions processed total"
     $endResourceProviders = get-date
     Write-Host " Getting ResourceTypes, ResourceGroups and ResourceProviders duration: $((NEW-TIMESPAN -Start $startResourceProviders -End $endResourceProviders).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startResourceProviders -End $endResourceProviders).TotalSeconds) seconds)"
     
