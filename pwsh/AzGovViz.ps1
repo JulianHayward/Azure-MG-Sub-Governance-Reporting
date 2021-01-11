@@ -10535,7 +10535,7 @@ tf.init();
             $htmlSUMMARYConsumption = $null
             $htmlSUMMARYConsumption = foreach ($ConsumedService in $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency) {
                 if ([math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4) -eq 0){
-                    $cost = [decimal]($consumedService.group.ConsumedServiceCost | Measure-Object -Sum)
+                    $cost = [decimal]($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum
                 }
                 else{
                     $cost = [decimal]([math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4))
