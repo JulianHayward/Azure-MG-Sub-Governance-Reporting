@@ -6,6 +6,13 @@ go to [AzGovViz Repository](https://github.com/julianhayward/azure-mg-sub-govern
 
 ### AzGovViz version 4
 
+Updates 2021-Jan-18
+* Feature: __Policy Exemptions__
+* Feature: __ResourceLocks__
+* Feature: __Tag Name Usage__
+* Feature: __Cost Management / Consumption Reporting__ - use another API
+* Bugfixes
+
 Updates 2021-Jan-08
 * Feature: __Cost Management / Consumption Reporting__ - Changed AzureConsumptionPeriod default to 1 day  
 ![Consumption](img/consumption.png)
