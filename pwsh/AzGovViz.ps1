@@ -1,4 +1,4 @@
-<#v4_fix_20210109_0
+<#v4_feature_20210118_2
 .SYNOPSIS  
     This script creates the following files to help better understand and audit your governance setup
     csv file
@@ -135,6 +135,7 @@ Param
     #[Parameter(Mandatory = $True)][string]$ManagementGroupId,
     [string]$ManagementGroupId,
     [string]$CsvDelimiter = ";",
+    [switch]$CsvExportUseQuotesAsNeeded,
     [string]$OutputPath,
     [switch]$DoNotShowRoleAssignmentsUserData,
     [switch]$HierarchyMapOnly,
@@ -307,7 +308,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
     $tryCounterUnexpectedError = 0
     $retryAuthorizationFailed = 5
     $retryAuthorizationFailedCounter = 0
-    $apiCallResultsCollection = @()
+    $apiCallResultsCollection = [System.Collections.ArrayList]@()
     $initialUri = $uri
     $restartDueToDuplicateNextlinkCounter = 0
 
@@ -326,7 +327,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
         if ($Script:debugAzAPICall -eq $true) { Write-Host "  DEBUGTASK: attempt#$($tryCounter) processing: $($currenttask)" }
         try {
             if ($body) {
-                write-host "has BODY"
+                #write-host "has BODY"
                 $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -body $body -Headers @{"Content-Type" = "application/json"; "Authorization" = "Bearer $bearerToUse" } -ContentType "application/json" -UseBasicParsing
             }
             else {
@@ -349,7 +350,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
             if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: unexpectedError: false" }
             if ($azAPIRequest.StatusCode -ne 200) {
                 if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: apiStatusCode: $($azAPIRequest.StatusCode)" }
-                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*" -or $catchResult.error.code -like "*ResponseTooLarge*" -or $catchResult.error.code -like "*InvalidAuthenticationToken*" -or ($getConsumption -and $catchResult.error.code -eq 404) -or ($getApp -and $catchResult.error.code -like "*Request_ResourceNotFound*")) {
+                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*" -or $catchResult.error.code -like "*ResponseTooLarge*" -or $catchResult.error.code -like "*InvalidAuthenticationToken*" -or ($getConsumption -and $catchResult.error.code -eq 404) -or ($getApp -and $catchResult.error.code -like "*Request_ResourceNotFound*") -or ($getApp -and $catchResult.error.code -like "*Authorization_RequestDenied*") -or $catchResult.error.message -like "*The offer MS-AZR-0110P is not supported*") {
                     if ($catchResult.error.code -like "*ResponseTooLarge*") {
                         Write-Host "###### LIMIT #################################"
                         Write-Host "Hitting LIMIT getting Policy Compliance States!"
@@ -363,6 +364,10 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         else {
                             break script
                         }
+                    }
+                    if ($catchResult.error.message -like "*The offer MS-AZR-0110P is not supported*") {
+                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - seems we´re hitting a malicious endpoint .. try again in $tryCounter second(s)"
+                        Start-Sleep -Seconds $tryCounter
                     }
                     if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*RequestTimeout*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again"
@@ -393,14 +398,37 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
                         createBearerToken -targetEndPoint $targetEndpoint
                     }
-                    if ($getConsumption -and $catchResult.error.code -eq 404){
+                    if ($getConsumption -and $catchResult.error.code -eq 404) {
                         Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Subscriptions was created only recently - skipping"
                         return $apiCallResultsCollection
                     }
-                    if ($getApp -and $catchResult.error.code -like "*Request_ResourceNotFound*"){
+                    if ($getApp -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain ServicePrincipal status - skipping for now :)"
                         return "Request_ResourceNotFound"
                     }
+                    if ($getApp -and $catchResult.error.code -like "*Authorization_RequestDenied*") {
+                        if ($userType -eq "Guest"){
+                            Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - You are a 'Guest' User in the tenant therefore not enough permissions. You have two options: [1. request membership to AAD Role 'Directory readers'.] [2. Use parameter '-NoServicePrincipalResolve'.]"
+                            if ($AzureDevOpsWikiAsCode) {
+                                Write-Error "Error"
+                            }
+                            else {
+                                break script
+                            }
+                        }
+                        else{
+                            Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) investigate that error!/exit"
+                            if ($AzureDevOpsWikiAsCode) {
+                                Write-Error "Error"
+                            }
+                            else {
+                                break script
+                            }
+                        }
+                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain ServicePrincipal status - skipping for now :)"
+                        return "Request_ResourceNotFound"
+                    }
+                    
                 }
                 else {
                     Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) investigate that error!/exit"
@@ -419,6 +447,23 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=content ($((($azAPIRequestConvertedFromJson) | Measure-Object).count))" }      
                     $apiCallResultsCollection += $azAPIRequestConvertedFromJson
                 }
+                elseif ($listenOn -eq "ContentProperties") {
+                    if (($azAPIRequestConvertedFromJson.properties.rows | Measure-Object).Count -gt 0) {
+                        foreach ($consumptionline in $azAPIRequestConvertedFromJson.properties.rows) {
+                            $null = $apiCallResultsCollection.Add([PSCustomObject]@{ 
+                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[0])" = $consumptionline[0]
+                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[1])" = $consumptionline[1]
+                                    SubscriptionMgPath                                             = $htSubscriptionsMgPath.($consumptionline[1]).ParentNameChain
+                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[2])" = $consumptionline[2]
+                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[3])" = $consumptionline[3]
+                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[4])" = $consumptionline[4]
+                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[5])" = $consumptionline[5]
+                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[6])" = $consumptionline[6]
+                                })
+                        }
+                    }
+                    #$apiCallResultsCollection += ($azAPIRequestConvertedFromJson).properties.rows
+                }
                 else {       
                     if (($azAPIRequestConvertedFromJson).value) {
                         if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=default(value) value exists ($((($azAPIRequestConvertedFromJson).value | Measure-Object).count))" }
@@ -432,8 +477,8 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                 $isMore = $false
                 if ($azAPIRequestConvertedFromJson.nextLink) {
                     $isMore = $true
-                    if ($uri -eq $azAPIRequestConvertedFromJson.nextLink){
-                        if ($restartDueToDuplicateNextlinkCounter -gt 3){
+                    if ($uri -eq $azAPIRequestConvertedFromJson.nextLink) {
+                        if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                             Write-Host " $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
                             if ($AzureDevOpsWikiAsCode) {
                                 Write-Error "Error"
@@ -442,7 +487,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                                 break script
                             }
                         }
-                        else{
+                        else {
                             $restartDueToDuplicateNextlinkCounter++
                             Write-Host "nextLinkLog: uri is equal to nextLinkUri"
                             Write-Host "nextLinkLog: uri: $uri"
@@ -455,15 +500,15 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             Start-Sleep -Seconds 1
                         }
                     }
-                    else{
+                    else {
                         $uri = $azAPIRequestConvertedFromJson.nextLink
                     }
                     if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: nextLink: $Uri" }
                 }
                 elseIf ($azAPIRequestConvertedFromJson."@oData.nextLink") {
                     $isMore = $true
-                    if ($uri -eq $azAPIRequestConvertedFromJson."@odata.nextLink"){
-                        if ($restartDueToDuplicateNextlinkCounter -gt 3){
+                    if ($uri -eq $azAPIRequestConvertedFromJson."@odata.nextLink") {
+                        if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                             Write-Host " $currentTask restartDueToDuplicate@odataNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
                             if ($AzureDevOpsWikiAsCode) {
                                 Write-Error "Error"
@@ -472,7 +517,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                                 break script
                             }
                         }
-                        else{
+                        else {
                             $restartDueToDuplicateNextlinkCounter++
                             Write-Host "nextLinkLog: uri is equal to @odata.nextLinkUri"
                             Write-Host "nextLinkLog: uri is equal to @odata.nextLinkUri"
@@ -486,10 +531,40 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             Start-Sleep -Seconds 1
                         }
                     }
-                    else{
+                    else {
                         $uri = $azAPIRequestConvertedFromJson."@odata.nextLink"
                     }
                     if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: @oData.nextLink: $Uri" }
+                }
+                elseif ($azAPIRequestConvertedFromJson.properties.nextLink){              
+                    $isMore = $true
+                    if ($uri -eq $azAPIRequestConvertedFromJson.properties.nextLink) {
+                        if ($restartDueToDuplicateNextlinkCounter -gt 3) {
+                            Write-Host " $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
+                            if ($AzureDevOpsWikiAsCode) {
+                                Write-Error "Error"
+                            }
+                            else {
+                                break script
+                            }
+                        }
+                        else {
+                            $restartDueToDuplicateNextlinkCounter++
+                            Write-Host "nextLinkLog: uri is equal to nextLinkUri"
+                            Write-Host "nextLinkLog: uri: $uri"
+                            Write-Host "nextLinkLog: nextLinkUri: $($azAPIRequestConvertedFromJson.properties.nextLink)"
+                            Write-Host "nextLinkLog: re-starting (#$($restartDueToDuplicateNextlinkCounter)) '$currentTask'"
+                            $apiCallResultsCollection = @()
+                            $uri = $initialUri
+                            Start-Sleep -Seconds 1
+                            createBearerToken -targetEndPoint $targetEndpoint
+                            Start-Sleep -Seconds 1
+                        }
+                    }
+                    else {
+                        $uri = $azAPIRequestConvertedFromJson.properties.nextLink
+                    }
+                    if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: nextLink: $Uri" }
                 }
                 else {
                     if ($Script:debugAzAPICall -eq $true) { Write-Host "   DEBUG: NextLink: none" }
@@ -524,8 +599,6 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType) {
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
     
-
-
     do {
         if ($arrayAzureManagementEndPointUrls | Where-Object { $uri -match $_ }) {
             $targetEndpoint = "ManagementAPI"
@@ -1106,6 +1179,22 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
             }
         }
 
+        $currentTask = "Policy exemptions '$($getMg.properties.displayName)' ('$($getMg.Name)')"
+        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$($getMg.Name)/providers/Microsoft.Authorization/policyExemptions?api-version=2020-07-01-preview&`$filter=atScope()"
+        #$path = "/subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+        $method = "GET"
+
+        $requestPolicyExemptionAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+        $requestPolicyExemptionAPICount = ($requestPolicyExemptionAPI | Measure-Object).Count
+        if ($requestPolicyExemptionAPICount -gt 0){
+            foreach ($exemption in $requestPolicyExemptionAPI){
+                if (-not $htPolicyAssignmentExemptions.($exemption.id)){
+                    $htPolicyAssignmentExemptions.($exemption.id) = @{ }
+                    $htPolicyAssignmentExemptions.($exemption.id).exemption = $exemption
+                }
+            }
+        }
+
         #MGCustomPolicies
         $currentTask = "Custom Policy definitions '$($getMg.properties.displayName)' ('$($getMg.Name)')"
         $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($getMg.Name)/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
@@ -1373,16 +1462,16 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
 
         #cmdletgetazroleassignment
         $retryCmletCount = 0
-        do{
+        do {
             $errorOccurred = "no"
             $retryCmletCount++
-            try{
+            try {
                 $L0mgmtGroupRoleAssignments = Get-AzRoleAssignment -scope "/providers/Microsoft.Management/managementGroups/$($getMg.Name)"
             }
-            catch{
+            catch {
                 $errorOccurred = "yes"
             }
-            if ($errorOccurred -ne "no"){
+            if ($errorOccurred -ne "no") {
                 Write-Host "try#$($retryCmletCount) cmdlet Get-AzRoleAssignment ManagementGroup $($getMg.Name) failed, retry in 1 second"
                 start-sleep -Seconds 1
             }
@@ -1489,10 +1578,10 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
     $endMgLoop = get-date
     Write-Host " CustomDataCollection: L$hierarchyLevel MG '$($getMg.properties.displayName)' ('$($getMg.Name)') processing duration: $((NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalSeconds) seconds"
     $null = $script:CustomDataCollectionDuration.Add([PSCustomObject]@{ 
-        Type      = "MG"
-        Id        = $getMg.Name
-        DurationSec = (NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalSeconds
-    })
+            Type        = "MG"
+            Id          = $getMg.Name
+            DurationSec = (NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalSeconds
+        })
 
     #SUBSCRIPTION
     
@@ -1571,145 +1660,102 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                     $subscriptionQuotaId = $currentSubscription.subscriptionPolicies.quotaId
                     $subscriptionState = $currentSubscription.state
 
-                    if (-not $NoAzureConsumption) {
-                        $currenttask = "GetConsumption $childMgSubId $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
-                        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Consumption/usageDetails?api-version=2019-10-01&`$expand=properties/meterDetails&`$filter=properties/usageStart ge '$($azureConsumptionStartDate)' and properties/usageEnd le '$($azureConsumptionEndDate)'"
-                        $method = "GET"
-                        $subscriptionConsumptionData = AzAPICall -uri $uri -method $method -currenttask $currentTask -getConsumption $true
-                        $utcTimeDataRetrieved = $([System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId((Get-Date), [System.TimeZoneInfo]::Local.Id, 'UTC')).ToString("yyyy-MM-dd HH:mm:ss")
-                        
-                        if (($subscriptionConsumptionData | Measure-Object).Count -gt 0){
-                            $arrayAzureConsumptionDetailedThisSubscription = [System.Collections.ArrayList]@()
+                    #resourceLocks
+                    $currentTask = "Subscription ResourceLocks '$($childMgSubDisplayName)' ('$childMgSubId')"
+                    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Authorization/locks?api-version=2016-09-01"
+                    #$path = "/subscriptions/$childMgSubId/providers/Microsoft.Authorization/locks?api-version=2016-09-01"
+                    $method = "GET"
 
-                            foreach ($consumptionLine in $subscriptionConsumptionData) {
-                                $resourceId = "n/a"
-                                if ($null -ne $consumptionLine.properties.resourceId) {
-                                    $resourceId = $consumptionLine.properties.resourceId.ToLower()
+                    $requestSubscriptionResourceLocks = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+                    $requestSubscriptionResourceLocksCount = ($requestSubscriptionResourceLocks | Measure-Object).Count
+                    if ($requestSubscriptionResourceLocksCount -gt 0) {
+                        $script:htResourceLocks.($childMgSubId) = @{ }
+                        $locksAnyLockSubscriptionCount = 0
+                        $locksCannotDeleteSubscriptionCount = 0
+                        $locksReadOnlySubscriptionCount = 0
+                        $arrayResourceGroupsAnyLock = [System.Collections.ArrayList]@()
+                        $arrayResourceGroupsCannotDeleteLock = [System.Collections.ArrayList]@()
+                        $arrayResourceGroupsReadOnlyLock = [System.Collections.ArrayList]@()
+                        $arrayResourcesAnyLock = [System.Collections.ArrayList]@()
+                        $arrayResourcesCannotDeleteLock = [System.Collections.ArrayList]@()
+                        $arrayResourcesReadOnlyLock = [System.Collections.ArrayList]@()
+                        foreach ($requestSubscriptionResourceLock in $requestSubscriptionResourceLocks) {
+                            
+                            $splitRequestSubscriptionResourceLockId = ($requestSubscriptionResourceLock.id).Split('/')
+                            switch (($splitRequestSubscriptionResourceLockId | Measure-Object).Count - 1) {
+                                #subLock
+                                6 {
+                                    $locksAnyLockSubscriptionCount++
+                                    if ($requestSubscriptionResourceLock.properties.level -eq "CanNotDelete") {
+                                        $locksCannotDeleteSubscriptionCount++
+                                    }
+                                    if ($requestSubscriptionResourceLock.properties.level -eq "ReadOnly") {
+                                        $locksReadOnlySubscriptionCount++
+                                    }
                                 }
-                                $resourceName = "n/a"
-                                if ($null -ne $consumptionLine.properties.resourceName) {
-                                    $resourceName = $consumptionLine.properties.resourceName.ToLower()
-                                }
-                                $resourceGroupName = "n/a"
-                                if ($null -ne $consumptionLine.properties.resourceGroup) {
-                                    $resourceGroupName = $consumptionLine.properties.resourceGroup.ToLower()
-                                }
-                                $consumedService = "n/a"
-                                if ($null -ne $consumptionLine.properties.consumedService) {
-                                    $consumedService = $consumptionLine.properties.consumedService.ToLower()
-                                }
-                                
-                                #thisSub
-                                $null = $arrayAzureConsumptionDetailedThisSubscription.Add([PSCustomObject]@{ 
-                                    UTCTimeDataRetrieved = $utcTimeDataRetrieved
-                                    SubscriptionId       = $consumptionLine.properties.subscriptionId
-                                    SubscriptionName     = $childMgSubDisplayName
-                                    SubscriptionMgPath   = $consumptionSubscriptionMgPath -join "$CsvDelimiterOpposite "
-                                    ResourceGroupName    = $resourceGroupName
-                                    ResourceName         = $resourceName
-                                    ResourceId           = $resourceId
-                                    UsageDate            = $consumptionLine.properties.date
-                                    Tags                 = $consumptionLine.tags
-                                    BillingCurrency      = $consumptionLine.properties.billingCurrency
-                                    ChargeType           = $consumptionLine.properties.chargeType
-                                    ConsumedService      = $consumedService
-                                    Cost                 = [decimal]$consumptionLine.properties.cost
-                                    EffectivePrice       = $consumptionLine.properties.effectivePrice
-                                    Frequency            = $consumptionLine.properties.frequency
-                                    MeterCategory        = $consumptionLine.properties.meterDetails.meterCategory
-                                    MeterId              = $consumptionLine.properties.meterId
-                                    MeterName            = $consumptionLine.properties.meterDetails.meterName
-                                    MeterSubCategory     = $consumptionLine.properties.meterDetails.meterSubCategory
-                                    ServiceFamily        = $consumptionLine.properties.meterDetails.serviceFamily
-                                    PartNumber           = $consumptionLine.properties.partNumber
-                                    Product              = $consumptionLine.properties.product
-                                    Quantity             = $consumptionLine.properties.quantity
-                                    UnitOfMeasure        = $consumptionLine.properties.meterDetails.unitOfMeasure
-                                    UnitPrice            = $consumptionLine.properties.unitPrice
-                                    Location             = $consumptionLine.properties.resourceLocation
-                                    ReservationId        = $consumptionLine.properties.reservationId
-                                    ReservationName      = $consumptionLine.properties.reservationName
-                                    UsageId              = $consumptionLine.id
-                                    UsageName            = $consumptionLine.name
-                                })
-                                
-                                #allSubs
-                                $null = $arrayAzureConsumptionDetailedAllSubscriptions.Add([PSCustomObject]@{ 
-                                        UTCTimeDataRetrieved = $utcTimeDataRetrieved
-                                        SubscriptionId       = $consumptionLine.properties.subscriptionId
-                                        SubscriptionName     = $childMgSubDisplayName
-                                        SubscriptionMgPath   = $consumptionSubscriptionMgPath -join "$CsvDelimiterOpposite "
-                                        ResourceGroupName    = $resourceGroupName
-                                        ResourceName         = $resourceName
-                                        ResourceId           = $resourceId
-                                        UsageDate            = $consumptionLine.properties.date
-                                        Tags                 = $consumptionLine.tags
-                                        BillingCurrency      = $consumptionLine.properties.billingCurrency
-                                        ChargeType           = $consumptionLine.properties.chargeType
-                                        ConsumedService      = $consumedService
-                                        Cost                 = [decimal]$consumptionLine.properties.cost
-                                        EffectivePrice       = $consumptionLine.properties.effectivePrice
-                                        Frequency            = $consumptionLine.properties.frequency
-                                        MeterCategory        = $consumptionLine.properties.meterDetails.meterCategory
-                                        MeterId              = $consumptionLine.properties.meterId
-                                        MeterName            = $consumptionLine.properties.meterDetails.meterName
-                                        MeterSubCategory     = $consumptionLine.properties.meterDetails.meterSubCategory
-                                        ServiceFamily        = $consumptionLine.properties.meterDetails.serviceFamily
-                                        PartNumber           = $consumptionLine.properties.partNumber
-                                        Product              = $consumptionLine.properties.product
-                                        Quantity             = $consumptionLine.properties.quantity
-                                        UnitOfMeasure        = $consumptionLine.properties.meterDetails.unitOfMeasure
-                                        UnitPrice            = $consumptionLine.properties.unitPrice
-                                        Location             = $consumptionLine.properties.resourceLocation
-                                        ReservationId        = $consumptionLine.properties.reservationId
-                                        ReservationName      = $consumptionLine.properties.reservationName
-                                        UsageId              = $consumptionLine.id
-                                        UsageName            = $consumptionLine.name
-                                    })
-                            }
-
-                            $subscriptionConsumptionCurrency = $arrayAzureConsumptionDetailedThisSubscription.billingCurrency | sort-object -Unique
-                            $groupSubscriptionConsumptionData = $arrayAzureConsumptionDetailedThisSubscription | where-object { $_.cost -gt 0 } | group-object -property ConsumedService, ChargeType, MeterCategory
-                            $groupSubscriptionConsumptionDataCount = ($groupSubscriptionConsumptionData | Measure-Object).Count
-                            if ($groupSubscriptionConsumptionDataCount -gt 0) {
-                                $htAzureConsumption.($childMgSubId) = @{ }
-                                $arraySubscriptionAzureConsumption = [System.Collections.ArrayList]@()
-                                $consumptionSubscriptionMgPath = ($arrayEntitiesFromAPI | Where-Object { $_.id -eq "/subscriptions/$($childMgSubId)" }).Properties.parentNameChain
-                                $htAzureConsumption.($childMgSubId).mgPath = $consumptionSubscriptionMgPath
-
-                                foreach ($consumptionLine in $groupSubscriptionConsumptionData) {
-                                    $consumedService = ($consumptionLine.Name).split(", ")[0]
-                                    $consumedServiceChargeType = ($consumptionLine.Name).split(", ")[1]
-                                    $consumedServiceCategory = ($consumptionLine.Name).split(", ")[2]
-                                    $consumedServiceInstanceCount = ($consumptionLine.group | group-object -property resourceid | measure-object).count
-                                    $consumedServiceCost = ($consumptionLine.group.cost | Measure-Object -Sum).Sum
-
-                                    $null = $arraySubscriptionAzureConsumption.Add([PSCustomObject]@{ 
-                                            ConsumedService                 = $consumedService
-                                            ConsumedServiceChargeType       = $consumedServiceChargeType
-                                            ConsumedServiceCategory         = $consumedServiceCategory
-                                            ConsumedServiceInstanceCount    = $consumedServiceInstanceCount
-                                            ConsumedServiceCost             = [decimal]$consumedServiceCost
+                                #rgLock
+                                8 {
+                                    $resourceGroupName = $splitRequestSubscriptionResourceLockId[0..4] -join "/"
+                                    $null = $arrayResourceGroupsAnyLock.Add([PSCustomObject]@{ 
+                                            rg = $resourceGroupName
                                         })
-                                    #write-host ($consumptionLine.group | group-object -property resourceid | measure-object).count "x $($consumptionLine.Name) created cost:" ($consumptionLine.group.cost | Measure-Object -Sum).Sum
-
-                                    $null = $arrayAzureConsumptionSummarizedByResourceType.Add([PSCustomObject]@{ 
-                                            ConsumedService                 = $consumedService
-                                            ConsumedServiceChargeType       = $consumedServiceChargeType
-                                            ConsumedServiceCategory         = $consumedServiceCategory
-                                            ConsumedServiceInstanceCount    = $consumedServiceInstanceCount
-                                            ConsumedServiceCost             = [decimal]$consumedServiceCost
-                                            SubscriptionId                  = $childMgSubId
-                                            SubscriptionName                = $childMgSubDisplayName
-                                            SubscriptionMgPath              = $consumptionSubscriptionMgPath
-                                            SubscriptionConsumptionCurrency = $subscriptionConsumptionCurrency
-                                        })
+                                    if ($requestSubscriptionResourceLock.properties.level -eq "CanNotDelete") {
+                                        $null = $arrayResourceGroupsCannotDeleteLock.Add([PSCustomObject]@{ 
+                                                rg = $resourceGroupName
+                                            })
+                                    }
+                                    if ($requestSubscriptionResourceLock.properties.level -eq "ReadOnly") {
+                                        $null = $arrayResourceGroupsReadOnlyLock.Add([PSCustomObject]@{ 
+                                                rg = $resourceGroupName
+                                            })
+                                    }
                                 }
-                                $htAzureConsumption.($childMgSubId).ConsumptionData = $arraySubscriptionAzureConsumption
-                                $htAzureConsumption.($childMgSubId).ConsumptionTotal = [decimal]($arraySubscriptionAzureConsumption.ConsumedServiceCost | measure-object -Sum).Sum
-                                $htAzureConsumption.($childMgSubId).Currency = $subscriptionConsumptionCurrency
+                                #resLock
+                                12 {
+                                    $resourceId = $splitRequestSubscriptionResourceLockId[0..8] -join "/"
+                                    $null = $arrayResourcesAnyLock.Add([PSCustomObject]@{ 
+                                            res = $resourceId
+                                        })
+                                    if ($requestSubscriptionResourceLock.properties.level -eq "CanNotDelete") {
+                                        $null = $arrayResourcesCannotDeleteLock.Add([PSCustomObject]@{ 
+                                                res = $resourceId
+                                            })
+                                    }
+                                    if ($requestSubscriptionResourceLock.properties.level -eq "ReadOnly") {
+                                        $null = $arrayResourcesReadOnlyLock.Add([PSCustomObject]@{ 
+                                                res = $resourceId
+                                            })
+                                    }
+                                }
                             }
                         }
+
+                        $script:htResourceLocks.($childMgSubId).SubscriptionLocksCannotDeleteCount = $locksCannotDeleteSubscriptionCount
+                        $script:htResourceLocks.($childMgSubId).SubscriptionLocksReadOnlyCount = $locksReadOnlySubscriptionCount
+
+                        #resourceGroups
+                        $resourceGroupsLocksCannotDeleteCount = ($arrayResourceGroupsCannotDeleteLock | Measure-Object).Count
+                        $script:htResourceLocks.($childMgSubId).ResourceGroupsLocksCannotDeleteCount = $resourceGroupsLocksCannotDeleteCount
+                        $script:resourceGroupsLocksCannotDeleteCountTotal = $script:resourceGroupsLocksCannotDeleteCountTotal + $resourceGroupsLocksCannotDeleteCount
+                        
+                        $resourceGroupsLocksReadOnlyCount = ($arrayResourceGroupsReadOnlyLock | Measure-Object).Count
+                        $script:htResourceLocks.($childMgSubId).resourceGroupsLocksReadOnlyCount = $resourceGroupsLocksReadOnlyCount
+                        $script:resourceGroupsLocksReadOnlyCountTotal = $script:resourceGroupsLocksReadOnlyCountTotal + $resourceGroupsLocksReadOnlyCount
+
+                        $script:htResourceLocks.($childMgSubId).ResourceGroupsLocksCannotDelete = $arrayResourceGroupsCannotDeleteLock
+                        $script:htResourceLocks.($childMgSubId).ResourceGroupsLocksReadOnly = $arrayResourceGroupsReadOnlyLock
+
+                        #resources
+                        $resourcesLocksCannotDeleteCount = ($arrayResourcesCannotDeleteLock | Measure-Object).Count
+                        $script:htResourceLocks.($childMgSubId).ResourcesLocksCannotDeleteCount = $resourcesLocksCannotDeleteCount
+                        $script:resourcesLocksCannotDeleteCountTotal = $script:resourcesLocksCannotDeleteCountTotal + $resourcesLocksCannotDeleteCount
+
+                        $resourcesLocksReadOnlyCount = ($arrayResourcesReadOnlyLock | Measure-Object).Count
+                        $script:htResourceLocks.($childMgSubId).ResourcesLocksReadOnlyCount = $resourcesLocksReadOnlyCount
+                        $script:resourcesLocksReadOnlyCountTotal = $script:resourcesLocksReadOnlyCountTotal + $resourcesLocksReadOnlyCount
+
+                        $script:htResourceLocks.($childMgSubId).ResourcesLocksCannotDelete = $arrayResourcesCannotDeleteLock
+                        $script:htResourceLocks.($childMgSubId).ResourcesLocksReadOnly = $arrayResourcesReadOnlyLock
                     }
 
                     #tags
@@ -1719,12 +1765,40 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                     $method = "GET"
     
                     $requestSubscriptionTags = ((AzAPICall -uri $uri -method $method -currenttask $currentTask -listenOn "Content"))
+                    $htSubscriptionTagList.($childMgSubId) = New-Object system.collections.hashtable
+                    $htSubscriptionTagList.($childMgSubId).Subscription = New-Object system.collections.hashtable
                     if ($requestSubscriptionTags.properties.tags) {
                         $subscriptionTags = @()
                         ($htSubscriptionTags).($childMgSubId) = @{ }
                         ($requestSubscriptionTags.properties.tags).PSObject.Properties | ForEach-Object {
                             $subscriptionTags += "$($_.Name)/$($_.Value)"
                             ($htSubscriptionTags).($childMgSubId).($_.Name) = $_.Value
+                            $tagName = $_.Name
+
+                            #subscription
+                            If ($htSubscriptionTagList.($childMgSubId).Subscription.ContainsKey($tagName)) {
+                                $htSubscriptionTagList.($childMgSubId).Subscription."$tagName" += 1
+                            }
+                            Else {
+                                $htSubscriptionTagList.($childMgSubId).Subscription."$tagName" = 1
+                            }
+
+                            #subscriptionAll
+                            If ($htAllTagList.Subscription.ContainsKey($tagName)) {
+                                $htAllTagList.Subscription."$tagName" += 1
+                            }
+                            Else {
+                                $htAllTagList.Subscription."$tagName" = 1
+                            }
+                    
+                            #all
+                            If ($htAllTagList.AllScopes.ContainsKey($tagName)) {
+                                $htAllTagList.AllScopes."$tagName" += 1
+                            }
+                            Else {
+                                $htAllTagList.AllScopes."$tagName" = 1
+                            }
+
                         }
                         $subscriptionTagsCount = ($subscriptionTags | Measure-Object).Count
                         $subscriptionTags = $subscriptionTags -join "$CsvDelimiterOpposite "
@@ -1887,6 +1961,25 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                                 -BlueprintScoped $blueprintScoped `
                                 -BlueprintAssignmentVersion $blueprintAssignmentVersion `
                                 -BlueprintAssignmentId $blueprintAssignmentId
+                        }
+                    }
+
+                    #SubscriptionPolicyExemptions
+                    #https://management.azure.com/subscriptions/b2ac7057-8edf-4617-a1f7-5ed6b44ef2c8/providers/Microsoft.Authorization/policyExemptions?api-version=2020-07-01-preview
+                    #$childMgSubId = "b2ac7057-8edf-4617-a1f7-5ed6b44ef2c8"
+                    $currentTask = "Policy exemptions '$($childMgSubDisplayName)' ('$childMgSubId')"
+                    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyExemptions?api-version=2020-07-01-preview"
+                    #$path = "/subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+                    $method = "GET"
+
+                    $requestPolicyExemptionAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+                    $requestPolicyExemptionAPICount = ($requestPolicyExemptionAPI | Measure-Object).Count
+                    if ($requestPolicyExemptionAPICount -gt 0){
+                        foreach ($exemption in $requestPolicyExemptionAPI){
+                            if (-not $htPolicyAssignmentExemptions.($exemption.id)){
+                                $htPolicyAssignmentExemptions.($exemption.id) = @{ }
+                                $htPolicyAssignmentExemptions.($exemption.id).exemption = $exemption
+                            }
                         }
                     }
 
@@ -2192,16 +2285,16 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
 
                     #cmdletgetazroleassignment
                     $retryCmletCount = 0
-                    do{
+                    do {
                         $errorOccurred = "no"
                         $retryCmletCount++
-                        try{
-                            $L1mgmtGroupSubRoleAssignments = Get-AzRoleAssignment -Scope "$($childMg.Id)" -ErrorAction Stop #exclude rg roleassignments
+                        try {
+                            $L1mgmtGroupSubRoleAssignments = Get-AzRoleAssignment -Scope "$($childMg.Id)" #exclude rg roleassignments
                         }
-                        catch{
+                        catch {
                             $errorOccurred = "yes"
                         }
-                        if ($errorOccurred -ne "no"){
+                        if ($errorOccurred -ne "no") {
                             Write-Host "try#$($retryCmletCount) cmdlet Get-AzRoleAssignment $($childMg.Id) failed, retry in 1 second"
                             start-sleep -Seconds 1
                         }
@@ -2323,10 +2416,10 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
             $endSubLoop = get-date
             Write-Host " CustomDataCollection: Subscription processing duration: $((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds) seconds"
             $null = $script:CustomDataCollectionDuration.Add([PSCustomObject]@{ 
-                Type      = "SUB"
-                Id        = $childMgSubId
-                DurationSec = (NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds
-            })
+                    Type        = "SUB"
+                    Id          = $childMgSubId
+                    DurationSec = (NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds
+                })
         }
         $childrenManagementGroups = $arrayEntitiesFromAPI | Where-Object { $_.type -eq "Microsoft.Management/managementGroups" -and $_.properties.parent.id -eq "/providers/Microsoft.Management/managementGroups/$($getMg.Name)" }
         foreach ($childMg in $childrenManagementGroups) {
@@ -2723,27 +2816,253 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId) {
 <tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> ASC Secure Score: $subscriptionASCPoints</p></td></tr>
 <tr><td class="detailstd">
 "@
+        #Tags
+        #region ScopeInsightsTags
+        $tagsSubscriptionCount = ($htSubscriptionTags.$subscriptionId.Keys | Measure-Object).count
+        if ($tagsSubscriptionCount -gt 0) {
+            $tfCount = $tagsSubscriptionCount
+            $tableId = "DetailsTable_Tags_$($subscriptionId -replace '-','_')"
+            $randomFunctionName = "func_$tableId"
+            $htmlScopeInsights += @"
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible">
+<p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $tagsSubscriptionCount Subscription Tags | Limit: ($tagsSubscriptionCount/$LimitTagsSubscription)</p></button>
+<div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
+<table id="$tableId" class="$cssClass">
+<thead>
+<tr>
+<th class="widthCustom">Tag Name</th>
+<th>Tag Value</th>
+</tr>
+</thead>
+<tbody>
+"@
+            $htmlScopeInsightsTags = $null
+            $htmlScopeInsightsTags = foreach ($tag in (($htSubscriptionTags).($subscriptionId)).keys | Sort-Object) {
+                @"
+<tr>
+<td>$tag</td>
+<td>$($htSubscriptionTags.$subscriptionId[$tag])</td>
+</tr>
+"@        
+            }
+            $htmlScopeInsights += $htmlScopeInsightsTags 
+            $htmlScopeInsights += @"
+            </tbody>
+        </table>
+        <script>
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                $htmlScopeInsights += @"
+paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
+"@
+            }
+            $htmlScopeInsights += @"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+                col_types: [
+                    'caseinsensitivestring',
+                    'caseinsensitivestring'
+                ],
+extensions: [{ name: 'sort' }]
+            };
+            var tf = new TableFilter('$tableId', tfConfig4$tableId);
+            tf.init();}}
+        </script>
+    </div>
+"@
+        }
+        else {
+            $htmlScopeInsights += @"
+            <p><i class="fa fa-ban" aria-hidden="true"></i> $tagsSubscriptionCount Subscription Tags</p>
+"@
+        }
+        $htmlScopeInsights += @"
+        </td></tr>
+        <tr><!--y--><td class="detailstd"><!--y-->
+"@
+        #endregion ScopeInsightsTags
 
+        #TagNameUsage
+        #region ScopeInsightsTagNameUsage
+        $arrayTagListSubscription = [System.Collections.ArrayList]@()
+        foreach ($tagScope in $htSubscriptionTagList.($subscriptionId).keys) {
+            foreach ($tagScopeTagName in $htSubscriptionTagList.($subscriptionId).$tagScope.Keys) {
+                $null = $arrayTagListSubscription.Add([PSCustomObject]@{ 
+                        Scope    = $tagScope
+                        TagName  = ($tagScopeTagName)
+                        TagCount = $htAllTagList.($tagScope).($tagScopeTagName)
+                    })
+            }
+        }
+        $tagsUsageCount = ($arrayTagListSubscription | Measure-Object).Count
+
+        if ($tagsUsageCount -gt 0) {
+            $tagNamesUniqueCount = ($arrayTagListSubscription | Sort-Object -Property TagName -Unique | Measure-Object).Count
+            $tagNamesUsedInScopes = ($arrayTagListSubscription | Sort-Object -Property Scope -Unique).scope -join "$($CsvDelimiterOpposite) "
+            $tfCount = $arrayTagListSubscriptionUniqueTagsCount
+            $tableId = "DetailsTable_TagNameUsage_$($subscriptionId -replace '-','_')"
+            $randomFunctionName = "func_$tableId"
+            $htmlScopeInsights += @"
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible">
+<p><i class="fa fa-check-circle blue" aria-hidden="true"></i> Tag Name Usage ($tagNamesUniqueCount unique Tag Names applied at $($tagNamesUsedInScopes)</p></button>
+<div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
+<table id="$tableId" class="$cssClass">
+<thead>
+<tr>
+<th>Scope</th>
+<th>TagName</th>
+<th>Count</th>
+</tr>
+</thead>
+<tbody>
+"@
+            $htmlScopeInsightsTagsUsage = $null
+            $htmlScopeInsightsTagsUsage = foreach ($tagEntry in $arrayTagListSubscription | Sort-Object Scope, TagName) {
+                @"
+<tr>
+<td>$($tagEntry.Scope)</td>
+<td>$($tagEntry.TagName)</td>
+<td>$($tagEntry.TagCount)</td>
+</tr>
+"@        
+            }
+            $htmlScopeInsights += $htmlScopeInsightsTagsUsage 
+            $htmlScopeInsights += @"
+            </tbody>
+        </table>
+        <script>
+            function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
+   window.helpertfConfig4$tableId =1;
+   var tfConfig4$tableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                $htmlScopeInsights += @"
+paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
+"@
+            }
+            $htmlScopeInsights += @"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_0: 'multiple',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number'
+                ],
+extensions: [{ name: 'sort' }]
+            };
+            var tf = new TableFilter('$tableId', tfConfig4$tableId);
+            tf.init();}}
+        </script>
+    </div>
+"@
+        }
+        else {
+            $htmlScopeInsights += @"
+            <p><i class="fa fa-ban" aria-hidden="true"></i> Tag Name Usage ($tagsUsageCount Tags)</p>
+"@
+        }
+        $htmlScopeInsights += @"
+        </td></tr>
+        <tr><!--y--><td class="detailstd"><!--y-->
+"@
+        #endregion ScopeInsightsTagNameUsage
+
+        #Consumption
         #region ScopeInsightsConsumptionSub
         if (-not $NoAzureConsumption) {
 
-            if ($htAzureConsumption.($subscriptionId)) {
-                $currency = $htAzureConsumption.($subscriptionId).Currency
-                if ([math]::Round($htAzureConsumption.($subscriptionId).ConsumptionTotal,4) -eq 0){
-                    $cost = $htAzureConsumption.($subscriptionId).ConsumptionTotal
-                }
-                else{
-                    $cost = [math]::Round($htAzureConsumption.($subscriptionId).ConsumptionTotal,4)
-                }
-                $totalCost = "$($cost) $($htAzureConsumption.($subscriptionId).Currency)"
-                $groupedArrayAzureConsumptionSummarizedByResourceType = $htAzureConsumption.($subscriptionId).Consumptiondata | group-object -property ConsumedService, ConsumedServiceCategory
-                $groupedArrayAzureConsumptionSummarizedByResourceTypeCount = ($groupedArrayAzureConsumptionSummarizedByResourceType | Measure-Object).count
+            $consumptionData = $allConsumptionData | Where-Object { $_.SubscriptionId -eq $subscriptionId }
+            if (($consumptionData | Measure-Object).Count -gt 0) {
+                $arrayTotalCostSummary = @()
+                $arrayConsumptionData = [System.Collections.ArrayList]@()
+                $consumptionDataGroupedByCurrency = $consumptionData | group-object -property Currency
+
+                foreach ($currency in $consumptionDataGroupedByCurrency) {
+                    $totalCost = 0
+                    $tenantSummaryConsumptionDataGrouped = $currency.group | group-object -property ConsumedService, ChargeType, MeterCategory
+                    $subsCount = ($tenantSummaryConsumptionDataGrouped.group.subscriptionId | Sort-Object -Unique | Measure-Object).Count
+                    $consumedServiceCount = ($tenantSummaryConsumptionDataGrouped.group.consumedService | Sort-Object -Unique | Measure-Object).Count
+                    $resourceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceId | Sort-Object -Unique | Measure-Object).Count
+                    foreach ($consumptionline in $tenantSummaryConsumptionDataGrouped) {
         
-                $tfCount = $groupedArrayAzureConsumptionSummarizedByResourceTypeCount
+                        $costConsumptionLine = ($consumptionline.group.PreTaxCost | Measure-Object -Sum).Sum
+                        if ([math]::Round($costConsumptionLine, 4) -eq 0) {
+                            $cost = $costConsumptionLine
+                        }
+                        else {
+                            $cost = [math]::Round($costConsumptionLine, 4)
+                        }
+                        
+                        $null = $arrayConsumptionData.Add([PSCustomObject]@{ 
+                                ConsumedService              = ($consumptionline.name).split(", ")[0]
+                                ConsumedServiceChargeType    = ($consumptionline.name).split(", ")[1]
+                                ConsumedServiceCategory      = ($consumptionline.name).split(", ")[2]
+                                ConsumedServiceInstanceCount = $consumptionline.Count
+                                ConsumedServiceCost          = [decimal]$cost
+                                ConsumedServiceCurrency      = $currency.Name
+                            })
+                        
+                        $totalCost = $totalCost + $costConsumptionLine
+        
+                    }
+                    if ([math]::Round($totalCost, 4) -eq 0) {
+                        $totalCost = $totalCost
+                    }
+                    else {
+                        $totalCost = [math]::Round($totalCost, 4)
+                    }
+                    $arrayTotalCostSummary += "$([decimal]$totalCost) $($currency.Name) generated by $($resourceCount) Resources ($($consumedServiceCount) ResourceTypes)"
+                }
+
+                $tfCount = ($arrayConsumptionData | Measure-Object).Count
                 $tableId = "DetailsTable_Consumption_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$tableId"
                 $htmlScopeInsights += @"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><i class="fa fa-credit-card" aria-hidden="true" style="color: #0078df"></i> Total cost $($totalCost) generated by $groupedArrayAzureConsumptionSummarizedByResourceTypeCount ResourceTypes last $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)</button>
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><i class="fa fa-credit-card" aria-hidden="true" style="color: #0078df"></i> Total cost $($arrayTotalCostSummary -join ", ") last $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)</button>
 <div class="content">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="$cssClass">
@@ -2760,21 +3079,15 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId) {
 <tbody>
 "@
                 $htmlScopeInsightsConsumptionSub = $null
-                $htmlScopeInsightsConsumptionSub = foreach ($consumptionData in $htAzureConsumption.($subscriptionId).Consumptiondata) {
-                    if ([math]::Round(($consumptionData.ConsumedServiceCost),4) -eq 0){
-                        $cost = [decimal]($consumptionData.ConsumedServiceCost)
-                    }
-                    else{
-                        $cost = [decimal]([math]::Round(($consumptionData.ConsumedServiceCost),4))
-                    }
+                $htmlScopeInsightsConsumptionSub = foreach ($consumptionLine in $arrayConsumptionData) {
                     @"
 <tr>
-<td>$($consumptionData.ConsumedServiceChargeType)</td>
-<td>$($consumptionData.ConsumedService)</td>
-<td>$($consumptionData.ConsumedServiceCategory)</td>
-<td>$($consumptionData.ConsumedServiceInstanceCount)</td>
-<td>$($cost)</td>
-<td>$currency</td>
+<td>$($consumptionLine.ConsumedServiceChargeType)</td>
+<td>$($consumptionLine.ConsumedService)</td>
+<td>$($consumptionLine.ConsumedServiceCategory)</td>
+<td>$($consumptionLine.ConsumedServiceInstanceCount)</td>
+<td>$($consumptionLine.ConsumedServiceCost)</td>
+<td>$($consumptionLine.ConsumedServiceCurrency)</td>
 </tr>
 "@ 
                 }
@@ -2791,8 +3104,11 @@ var tfConfig4$tableId = {
 "@      
                 if ($tfCount -gt 10) {
                     $spectrum = "10, $tfCount"
+                    if ($tfCount -gt 50) {
+                        $spectrum = "10, 25, 50, $tfCount"
+                    }        
                     if ($tfCount -gt 100) {
-                        $spectrum = "10, 30, 50, $tfCount"
+                        $spectrum = "10, 30, 50, 100, $tfCount"
                     }
                     if ($tfCount -gt 500) {
                         $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -2845,6 +3161,24 @@ tf.init();}}
         }
         #endregion ScopeInsightsConsumptionSub
 
+        #ResourceGroups
+        #region ScopeInsightsResourceGroups
+        if ($subscriptionResourceGroupsCount -gt 0) {
+            $htmlScopeInsights += @"
+    <p><i class="fa fa-check-circle" aria-hidden="true"></i> $subscriptionResourceGroupsCount Resource Groups | Limit: ($subscriptionResourceGroupsCount/$LimitResourceGroups)</p>
+"@
+        }
+        else {
+            $htmlScopeInsights += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> $subscriptionResourceGroupsCount Resource Groups</p>
+"@
+        }
+        $htmlScopeInsights += @"
+</td></tr>
+<tr><td class="detailstd">
+"@
+        #endregion ScopeInsightsResourceGroups
+
         #ResourceProvider
         #region ScopeInsightsResourceProvidersDetailed
         if (-not $NoResourceProvidersDetailed) {
@@ -2887,8 +3221,11 @@ tf.init();}}
 "@      
                 if ($tfCount -gt 10) {
                     $spectrum = "10, $tfCount"
+                    if ($tfCount -gt 50) {
+                        $spectrum = "10, 25, 50, $tfCount"
+                    }        
                     if ($tfCount -gt 100) {
-                        $spectrum = "10, 30, 50, $tfCount"
+                        $spectrum = "10, 30, 50, 100, $tfCount"
                     }
                     if ($tfCount -gt 500) {
                         $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -2932,59 +3269,41 @@ extensions: [{ name: 'sort' }]
         }    
         #endregion ScopeInsightsResourceProvidersDetailed
         
-        #ResourceGroups
-        #region ScopeInsightsResourceGroups
-        if ($subscriptionResourceGroupsCount -gt 0) {
-            $htmlScopeInsights += @"
-    <p><i class="fa fa-check-circle" aria-hidden="true"></i> $subscriptionResourceGroupsCount Resource Groups | Limit: ($subscriptionResourceGroupsCount/$LimitResourceGroups)</p>
-"@
-        }
-        else {
-            $htmlScopeInsights += @"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> $subscriptionResourceGroupsCount Resource Groups</p>
-"@
-        }
-        $htmlScopeInsights += @"
-</td></tr>
-<tr><td class="detailstd">
-"@
-        #endregion ScopeInsightsResourceGroups
-
-        #Tags
-        #region ScopeInsightsTags
-        $tagsSubscriptionCount = ($htSubscriptionTags.$subscriptionId.Keys | Measure-Object).count
-        if ($tagsSubscriptionCount -gt 0) {
-            $tfCount = $tagsSubscriptionCount
-            $tableId = "DetailsTable_Tags_$($subscriptionId -replace '-','_')"
+        #ResourceLocks
+        #region ScopeInsightsResourceLocks
+        if ($script:htResourceLocks.($subscriptionId)) {
+            $tableId = "DetailsTable_ResourceLocks_$($subscriptionId -replace '-','_')"
             $randomFunctionName = "func_$tableId"
+
+            $subscriptionLocksCannotDeleteCount = $script:htResourceLocks.($subscriptionId).SubscriptionLocksCannotDeleteCount
+            $subscriptionLocksReadOnlyCount = $script:htResourceLocks.($subscriptionId).SubscriptionLocksReadOnlyCount
+            $resourceGroupsLocksCannotDeleteCount = $script:htResourceLocks.($subscriptionId).ResourceGroupsLocksCannotDeleteCount
+            $resourceGroupsLocksReadOnlyCount = $script:htResourceLocks.($subscriptionId).ResourceGroupsLocksReadOnlyCount
+            $resourcesLocksCannotDeleteCount = $script:htResourceLocks.($subscriptionId).ResourcesLocksCannotDeleteCount
+            $resourcesLocksReadOnlyCount = $script:htResourceLocks.($subscriptionId).ResourcesLocksReadOnlyCount
+
             $htmlScopeInsights += @"
 <button onclick="loadtf$randomFunctionName()" type="button" class="collapsible">
-<p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $tagsSubscriptionCount Subscription Tags | Limit: ($tagsSubscriptionCount/$LimitTagsSubscription)</p></button>
+<p><i class="fa fa-check-circle blue" aria-hidden="true"></i> Resource Locks</p></button>
 <div class="content">
-&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
-<th class="widthCustom">Tag Name</th>
-<th>Tag Value</th>
+<th>Lock scope</th>
+<th>Lock type</th>
+<th>presence</th>
 </tr>
 </thead>
 <tbody>
-"@
-            $htmlScopeInsightsTags = $null
-            $htmlScopeInsightsTags = foreach ($tag in (($htSubscriptionTags).($subscriptionId)).keys | Sort-Object) {
-                @"
-<tr>
-<td>$tag</td>
-<td>$($htSubscriptionTags.$subscriptionId[$tag])</td>
-</tr>
-"@        
-            }
-            $htmlScopeInsights += $htmlScopeInsightsTags 
-            $htmlScopeInsights += @"
-            </tbody>
-        </table>
-        <script>
+<tr><td>Subscription</td><td>CannotDelete</td><td>$($subscriptionLocksCannotDeleteCount)</td></tr>
+<tr><td>Subscription</td><td>ReadOnly</td><td>$($subscriptionLocksReadOnlyCount)</td></tr>
+<tr><td>ResourceGroup</td><td>CannotDelete</td><td>$($resourceGroupsLocksCannotDeleteCount)</td></tr>
+<tr><td>ResourceGroup</td><td>ReadOnly</td><td>$($resourceGroupsLocksReadOnlyCount)</td></tr>
+<tr><td>Resource</td><td>CannotDelete</td><td>$($resourcesLocksCannotDeleteCount)</td></tr>
+<tr><td>Resource</td><td>ReadOnly</td><td>$($resourcesLocksReadOnlyCount)</td></tr>
+</tbody>
+</table>
+<script>
             function loadtf$randomFunctionName() { if (window.helpertfConfig4$tableId !== 1) { 
    window.helpertfConfig4$tableId =1;
    var tfConfig4$tableId = {
@@ -2992,8 +3311,11 @@ extensions: [{ name: 'sort' }]
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -3013,29 +3335,32 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
             }
             $htmlScopeInsights += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-                col_types: [
-                    'caseinsensitivestring',
-                    'caseinsensitivestring'
-                ],
+            col_0: 'select',
+            col_1: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number'
+            ],
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$tableId', tfConfig4$tableId);
             tf.init();}}
         </script>
-    </div>
+</div>
 "@
         }
         else {
             $htmlScopeInsights += @"
-            <p><i class="fa fa-ban" aria-hidden="true"></i> $tagsSubscriptionCount Subscription Tags</p>
+            <p><i class="fa fa-ban" aria-hidden="true"></i> 0 Resource Locks</p>
 "@
         }
         $htmlScopeInsights += @"
         </td></tr>
         <tr><!--y--><td class="detailstd"><!--y-->
 "@
+        #endregion ScopeInsightsResourceLocks
         
-        #endregion ScopeInsightsTags
     }
         
     #MgChildInfo
@@ -3051,31 +3376,51 @@ extensions: [{ name: 'sort' }]
 
         #region ScopeInsightsConsumptionMg
         if (-not $NoAzureConsumption) {
-            if (($arrayAzureConsumptionSummarizedByResourceType | Measure-Object).Count -gt 0) {
-                $arrayAzureConsumptionSummarizedByResourceTypeWhereMgIsInParentchain = $arrayAzureConsumptionSummarizedByResourceType | Where-Object { $_.SubscriptionMgPath -contains $mgChild }
-                $arrayAzureConsumptionSummarizedByResourceTypeWhereMgIsInParentchainCount = ($arrayAzureConsumptionSummarizedByResourceTypeWhereMgIsInParentchain | Measure-Object).Count
-                
-                if ($arrayAzureConsumptionSummarizedByResourceTypeWhereMgIsInParentchainCount -gt 0) {
+            if ($allConsumptionDataCount -gt 0) {
 
-                    $groupedByCurrency = $arrayAzureConsumptionSummarizedByResourceTypeWhereMgIsInParentchain | Group-Object -Property SubscriptionConsumptionCurrency
+                $consumptionData = $allConsumptionData | Where-Object { $_.SubscriptionMgPath -contains $mgChild }
+                if (($consumptionData | Measure-Object).Count -gt 0) {
                     $arrayTotalCostSummary = @()
-                    foreach ($currency in $groupedByCurrency){
-                        $totalCostTenant = ($currency.group.ConsumedServiceCost | Measure-Object -Sum).Sum
-                        if ([math]::Round($totalCostTenant, 4) -eq 0){
-                            $totalCostTenantRounded = $totalCostTenant
+                    $arrayConsumptionData = [System.Collections.ArrayList]@()
+                    $consumptionDataGroupedByCurrency = $consumptionData | group-object -property Currency
+                    foreach ($currency in $consumptionDataGroupedByCurrency) {
+                        $totalCost = 0
+                        $tenantSummaryConsumptionDataGrouped = $currency.group | group-object -property ConsumedService, ChargeType, MeterCategory
+                        $subsCount = ($tenantSummaryConsumptionDataGrouped.group.subscriptionId | Sort-Object -Unique | Measure-Object).Count
+                        $consumedServiceCount = ($tenantSummaryConsumptionDataGrouped.group.consumedService | Sort-Object -Unique | Measure-Object).Count
+                        $resourceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceId | Sort-Object -Unique | Measure-Object).Count
+                        foreach ($consumptionline in $tenantSummaryConsumptionDataGrouped) {
+            
+                            $costConsumptionLine = ($consumptionline.group.PreTaxCost | Measure-Object -Sum).Sum
+                            if ([math]::Round($costConsumptionLine, 4) -eq 0) {
+                                $cost = $costConsumptionLine
+                            }
+                            else {
+                                $cost = [math]::Round($costConsumptionLine, 4)
+                            }
+                            
+                            $null = $arrayConsumptionData.Add([PSCustomObject]@{ 
+                                    ConsumedService              = ($consumptionline.name).split(", ")[0]
+                                    ConsumedServiceChargeType    = ($consumptionline.name).split(", ")[1]
+                                    ConsumedServiceCategory      = ($consumptionline.name).split(", ")[2]
+                                    ConsumedServiceInstanceCount = $consumptionline.Count
+                                    ConsumedServiceCost          = [decimal]$cost
+                                    ConsumedServiceSubscriptions = ($consumptionline.group.SubscriptionId | Sort-Object -Unique).Count
+                                    ConsumedServiceCurrency      = $currency.Name
+                                })
+                            
+                            $totalCost = $totalCost + $costConsumptionLine
                         }
-                        else{
-                            $totalCostTenantRounded = [math]::Round($totalCostTenant, 4)
+                        if ([math]::Round($totalCost, 4) -eq 0) {
+                            $totalCost = $totalCost
                         }
-                        $totalCostTenantSubscriptionsCount = ($currency.group.SubscriptionId | Sort-Object -Unique | Measure-Object).Count
-                        $totalCostTenantResourceTypesCount = ($currency.group.ConsumedService | Sort-Object -Unique | Measure-Object).Count
-                        $totalCostTenantCurrency = $currency.Name
-                        $arrayTotalCostSummary += "$($totalCostTenantRounded) $($totalCostTenantCurrency) generated by $($totalCostTenantResourceTypesCount) ResourceTypes in $($totalCostTenantSubscriptionsCount) Subscriptions"
+                        else {
+                            $totalCost = [math]::Round($totalCost, 4)
+                        }
+                        $arrayTotalCostSummary += "$([decimal]$totalCost) $($currency.Name) generated by $($resourceCount) Resources ($($consumedServiceCount) ResourceTypes) in $($subsCount) Subscriptions"
                     }
-                    $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency = $arrayAzureConsumptionSummarizedByResourceTypeWhereMgIsInParentchain | group-object -property ConsumedService, SubscriptionConsumptionCurrency, ConsumedServiceChargeType, ConsumedServiceCategory
-                    $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrencyCount = ($groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency | Measure-Object).count
-                
-                    $tfCount = $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrencyCount
+
+                    $tfCount = ($arrayConsumptionData | Measure-Object).Count
                     $tableId = "DetailsTable_Consumption_$($mgChild -replace '-','_')"
                     $randomFunctionName = "func_$tableId"
                     $htmlScopeInsights += @"
@@ -3097,22 +3442,16 @@ extensions: [{ name: 'sort' }]
 <tbody>
 "@
                     $htmlScopeInsightsConsumptionMg = $null
-                    $htmlScopeInsightsConsumptionMg = foreach ($consumedService in $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency) {
-                        if ([math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4) -eq 0){
-                            $cost = [decimal]($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum
-                        }
-                        else{
-                            $cost = [decimal]([math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4))
-                        }
+                    $htmlScopeInsightsConsumptionMg = foreach ($consumptionLine in $arrayConsumptionData) {
                         @"
 <tr>
-<td>$((($ConsumedService.Name).split(", "))[2])</td>
-<td>$((($ConsumedService.Name).split(", "))[0])</td>
-<td>$((($ConsumedService.Name).split(", "))[3])</td>
-<td>$(($consumedService.group.ConsumedServiceInstanceCount | Measure-Object -Sum).Sum)</td>
-<td>$($cost)</td>
-<td>$((($ConsumedService.Name).split(", "))[1])</td>
-<td>$((($consumedService.group.SubscriptionId | sort-object -Unique) | Measure-Object).count)</td>
+<td>$($consumptionLine.ConsumedServiceChargeType)</td>
+<td>$($consumptionLine.ConsumedService)</td>
+<td>$($consumptionLine.ConsumedServiceCategory)</td>
+<td>$($consumptionLine.ConsumedServiceInstanceCount)</td>
+<td>$($consumptionLine.ConsumedServiceCost)</td>
+<td>$($consumptionLine.ConsumedServiceCurrency)</td>
+<td>$($consumptionLine.ConsumedServiceSubscriptions)</td>
 </tr>
 "@ 
                     }
@@ -3129,8 +3468,11 @@ var tfConfig4$tableId = {
 "@      
                     if ($tfCount -gt 10) {
                         $spectrum = "10, $tfCount"
+                        if ($tfCount -gt 50) {
+                            $spectrum = "10, 25, 50, $tfCount"
+                        }        
                         if ($tfCount -gt 100) {
-                            $spectrum = "10, 30, 50, $tfCount"
+                            $spectrum = "10, 30, 50, 100, $tfCount"
                         }
                         if ($tfCount -gt 500) {
                             $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -3236,8 +3578,11 @@ tf.init();}}
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -3322,8 +3667,11 @@ extensions: [{ name: 'sort' }]
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -3442,8 +3790,11 @@ extensions: [{ name: 'sort' }]
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -3566,8 +3917,11 @@ extensions: [{ name: 'sort' }]
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -3685,12 +4039,13 @@ extensions: [{ name: 'sort' }]
 <button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $policiesCount Policy Assignments ($policiesAssignedAtScope at scope, $policiesInherited inherited) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom)</p></button>
 <div class="content">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a><br>
-&nbsp;&nbsp;<span style="color:#FF5733">*Depending on the number of entries and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
+&nbsp;&nbsp;<span style="color:#FF5733">*Depending on the number of rows and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
 <th>Inheritance</th>
 <th>ScopeExcluded</th>
+<th>Exemption applies</th>
 <th>Policy DisplayName</th>
 <th>PolicyId</th>
 <th>Type</th>
@@ -3722,6 +4077,7 @@ extensions: [{ name: 'sort' }]
 <tr>
 <td>$($policyAssignment.Inheritance)</td>
 <td>$($policyAssignment.ExcludedScope)</td>
+<td>$($policyAssignment.ExemptionScope)</td>
 <td class="breakwordall">$($policyAssignment.PolicyName)</td>
 <td class="breakwordall">$($policyAssignment.PolicyId)</td>
 <td>$($policyAssignment.PolicyType)</td>
@@ -3758,8 +4114,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -3780,9 +4139,11 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
         $htmlScopeInsights += @"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_1: 'select',
+            col_2: 'select',
             col_4: 'select',
             col_6: 'select',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -3807,7 +4168,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring'
             ],
-            watermark: ['', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$tableId', tfConfig4$tableId);
@@ -3961,8 +4322,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -4145,8 +4509,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -4269,8 +4636,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -4370,8 +4740,11 @@ extensions: [{ name: 'sort' }]
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -4469,8 +4842,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -4617,7 +4993,7 @@ extensions: [{ name: 'sort' }]
 <button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p>$faIcon $rolesAssignedCount Role Assignments ($rolesAssignedInheritedCount inherited) (User: $rolesAssignedUser | Group: $rolesAssignedGroup | ServicePrincipal: $rolesAssignedServicePrincipal | Orphaned: $rolesAssignedUnknown) ($($roleSecurityFindingCustomRoleOwnerImg)CustomRoleOwner: $roleSecurityFindingCustomRoleOwner, $($RoleSecurityFindingOwnerAssignmentSPImg)OwnerAssignmentSP: $roleSecurityFindingOwnerAssignmentSP) (Policy related: $roleAssignmentsRelatedToPolicyCount) | Limit: ($rolesAssignedAtScopeCount/$LimitRoleAssignmentsScope)</p></button>
 <div class="content">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a><br>
-&nbsp;&nbsp;<span style="color:#FF5733">*Depending on the number of entries and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
+&nbsp;&nbsp;<span style="color:#FF5733">*Depending on the number of rows and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
 <table id="$tableId" class="$cssClass">
 <thead>
 <tr>
@@ -4687,8 +5063,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -4951,8 +5330,11 @@ function summary() {
 "@      
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -5077,8 +5459,11 @@ extensions: [{ name: 'sort' }]
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -5199,8 +5584,11 @@ extensions: [{ name: 'sort' }]
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -5321,8 +5709,11 @@ extensions: [{ name: 'sort' }]
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -5479,8 +5870,11 @@ extensions: [{ name: 'sort' }]
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -5601,8 +5995,11 @@ extensions: [{ name: 'sort' }]
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -5705,8 +6102,11 @@ extensions: [{ name: 'sort' }]
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -5815,8 +6215,11 @@ extensions: [{ name: 'sort' }]
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -5928,8 +6331,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -6071,8 +6477,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -6117,6 +6526,190 @@ extensions: [{ name: 'sort' }]
     }
     #endregion SUMMARYPolicyAssignmentsDeprecatedPolicy
 
+    #region SUMMARYPolicyExemptions
+    Write-Host "  processing TenantSummary Policy Exemptions"
+    $policyExemptionsCount = ($htPolicyAssignmentExemptions.Keys | Measure-Object).Count
+
+    if ($policyExemptionsCount -gt 0) {
+        $tfCount = $policyExemptionsCount
+        $tableId = "SummaryTable_policyExemptions"
+
+        $expiredExemptionsCount = ($htPolicyAssignmentExemptions.Keys | where-object { $htPolicyAssignmentExemptions.($_).exemption.properties.expiresOn -and $htPolicyAssignmentExemptions.($_).exemption.properties.expiresOn -lt (Get-Date).ToUniversalTime() } | Measure-Object).count
+
+        $htmlTenantSummary += @"
+<button type="button" class="collapsible" id="summary_policyExemptions"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($policyExemptionsCount) Policy Exemptions | Expired: $($expiredExemptionsCount)</span>
+</button>
+<div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
+<table id= "$tableId" class="summaryTable">
+<thead>
+<tr>
+<th>Mg/Sub</th>
+<th>Management Group Id</th>
+<th>Management Group Name</th>
+<th>SubscriptionId</th>
+<th>Subscription Name</th>
+<th>ResourceGroup</th>
+<th>ResourceName / ResourceType</th>
+<th>DisplayName</th>
+<th>Category</th>
+<th>ExpiresOn (UTC)</th>
+<th>Id</th>
+<th>Policy AssignmentId</th>
+</tr>
+</thead>
+<tbody>
+"@
+
+        $htmlSUMMARYPolicyExemptions = $null
+        $htmlSUMMARYPolicyExemptions = foreach ($policyExemption in $htPolicyAssignmentExemptions.Keys) {
+            $exemption = $htPolicyAssignmentExemptions.$policyExemption.exemption
+            if ($exemption.properties.expiresOn){
+                $exemptionExpiresOnFormated = (($exemption.properties.expiresOn).ToString("yyyy-MM-dd HH:mm:ss"))
+                if (-not $exemption.properties.expiresOn -gt (Get-Date).ToUniversalTime()){
+                    $exemptionExpiresOn = $exemptionExpiresOnFormated
+                }
+                else{
+                    $exemptionExpiresOn = "expired $($exemptionExpiresOnFormated)"
+                }
+            }
+            else{
+                $exemptionExpiresOn = "n/a"
+            }
+
+            $splitExemptionId = ($exemption.Id).Split('/')
+            if(($exemption.Id) -like "/subscriptions/*"){
+                
+                switch (($splitExemptionId | Measure-Object).Count - 1) {
+                    #sub
+                    6 {
+                        $exemptionScope = "Sub"
+                        $subId = $splitExemptionId[2]
+                        $subdetails =($optimizedTableForPathQueryMgAndSub | Where-Object { $_.SubscriptionId -eq $subId })
+                        $mgId = $subdetails.MgId
+                        $mgName = $subdetails.MgName
+                        $subName = $subdetails.Subscription
+                        $rgName = ""
+                        $resName = ""
+                    }
+
+                    #rg
+                    8 {
+                        $exemptionScope = "RG"
+                        $subId = $splitExemptionId[2]
+                        $subdetails =($optimizedTableForPathQueryMgAndSub | Where-Object { $_.SubscriptionId -eq $subId })
+                        $mgId = $subdetails.MgId
+                        $mgName = $subdetails.MgName
+                        $subName = $subdetails.Subscription
+                        $rgName = $splitExemptionId[4]
+                        $resName = ""
+                    }
+
+                    #res
+                    12 {
+                        $exemptionScope = "Res"
+                        $subId = $splitExemptionId[2]
+                        $subdetails =($optimizedTableForPathQueryMgAndSub | Where-Object { $_.SubscriptionId -eq $subId })
+                        $mgId = $subdetails.MgId
+                        $mgName = $subdetails.MgName
+                        $subName = $subdetails.Subscription
+                        $rgName = $splitExemptionId[4]
+                        $resName = "$($splitExemptionId[8]) / $($splitExemptionId[6..7] -join "/")"
+                    }
+                }
+            }
+            else{
+                $exemptionScope = "MG"
+                $mgId = $splitExemptionId[4]
+                $mgdetails =($optimizedTableForPathQueryMg | Where-Object { $_.MgId -eq $mgId })
+                $mgName = $mgdetails.MgName
+                $subId = ""
+                $subName = ""
+                $rgName = ""
+                $resName = ""
+            }
+
+            @"
+<tr>
+<td>$($exemptionScope)</td>
+<td>$($mgId)</td>
+<td>$($mgName)</td>
+<td>$($subId)</td>
+<td>$($subName)</td>
+<td>$($rgName)</td>
+<td>$($resName)</td>
+<td>$($exemption.properties.DisplayName)</td>
+<td>$($exemption.properties.exemptionCategory)</td>
+<td>$($exemptionExpiresOn)</td>
+<td class="breakwordall">$($exemption.Id)</td>
+<td class="breakwordall">$($exemption.properties.policyAssignmentId)</td>
+</tr>
+"@ 
+        }
+        $htmlTenantSummary += $htmlSUMMARYPolicyExemptions
+        $htmlTenantSummary += @"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            $htmlTenantSummary += @"
+paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
+"@ 
+        }
+        $htmlTenantSummary += @"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_0: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+    }
+    else {
+        $htmlTenantSummary += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$($policyExemptionsCount) Policy Exemptions</span></p>
+"@
+    }
+    #endregion SUMMARYPolicyExemptions
+
     #region SUMMARYPolicyAssignmentsAll
     $startSummaryPolicyAssignmentsAll = get-date
     $allPolicyAssignments = ($policyBaseQuery | Measure-Object).count
@@ -6134,6 +6727,7 @@ extensions: [{ name: 'sort' }]
 
     $htPolicyAssignmentRelatedRoleAssignments = @{ }
     $htPolicyAssignmentEffect = @{ }
+    $htPolicyAssignmentRelatedExemptions = @{ }
 
     foreach ($policyAssignmentIdUnique in $policyBaseQueryUniqueAssignments) {
         $assignment = ($htCacheAssignments).policy.($policyAssignmentIdUnique.PolicyAssignmentId)
@@ -6189,7 +6783,36 @@ extensions: [{ name: 'sort' }]
         else {
             $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentIdUnique.PolicyAssignmentId).policyWithWithoutLinkToAzAdvertizer = $policyAssignmentIdUnique.policy
         }
+
+        #exemptions
+        #
+        #$htPolicyAssignmentExemptions | fl
+        #
+        #write-host $policyAssignmentIdUnique
+        $arrayExemptions = @()
+        foreach ($exemptionId in $htPolicyAssignmentExemptions.keys){
+            if ($htPolicyAssignmentExemptions.($exemptionId).exemption.properties.policyAssignmentId -eq $policyAssignmentIdUnique.PolicyAssignmentId){
+                $arrayExemptions += $htPolicyAssignmentExemptions.($exemptionId).exemption
+                if (-not $htPolicyAssignmentRelatedExemptions.($policyAssignmentIdUnique.PolicyAssignmentId)){
+                    $htPolicyAssignmentRelatedExemptions.($policyAssignmentIdUnique.PolicyAssignmentId) = @{ }
+                    $htPolicyAssignmentRelatedExemptions.($policyAssignmentIdUnique.PolicyAssignmentId).exemptionsCount = 1
+                    $htPolicyAssignmentRelatedExemptions.($policyAssignmentIdUnique.PolicyAssignmentId).exemptions = $arrayExemptions
+                }
+                else{
+                    $htPolicyAssignmentRelatedExemptions.($policyAssignmentIdUnique.PolicyAssignmentId).exemptionsCount += 1
+                    $htPolicyAssignmentRelatedExemptions.($policyAssignmentIdUnique.PolicyAssignmentId).exemptions = $arrayExemptions
+                }
+            }
+        }
+
+
     }
+    <#sduhsduhs
+    $htPolicyAssignmentRelatedExemptions."/providers/Microsoft.Management/managementGroups/0/providers/Microsoft.Authorization/policyAssignments/ed5888f0ca2840a8af597f98".exemptionsCount
+    $htPolicyAssignmentRelatedExemptions."/providers/Microsoft.Management/managementGroups/0/providers/Microsoft.Authorization/policyAssignments/aa53183cda6f429d973d2553".exemptionsCount
+    $htPolicyAssignmentExemptions.($exemption.id).exemption.properties
+    $htPolicyAssignmentExemptions | fl
+    #>
     $endtest = get-date
     Write-Host "   processing duration: $((NEW-TIMESPAN -Start $starttest -End $endtest).TotalSeconds) seconds"
 
@@ -6214,6 +6837,43 @@ extensions: [{ name: 'sort' }]
                 else {
                     if ($htAllMgsPath.($policyAssignmentAll.MgId).path -contains "'$($policyAssignmentNotScope -replace "/providers/Microsoft.Management/managementGroups/")'") {
                         $excludedScope = "true"
+                    }
+                }
+            }
+        }
+
+        #exemptions
+        $exemptionScope = "false"
+        if ($htPolicyAssignmentRelatedExemptions.($policyAssignmentAll.PolicyAssignmentId)){
+            foreach ($exemption in $htPolicyAssignmentRelatedExemptions.($policyAssignmentAll.PolicyAssignmentId).exemptions) {
+                if ($exemption.properties.expiresOn){
+                    if (-not $exemption.properties.expiresOn -gt (Get-Date).ToUniversalTime()){
+                        if ("" -ne $policyAssignmentAll.subscriptionId) {
+                            if ($htAllSubsMgPath.($policyAssignmentAll.subscriptionId).path -contains "'$(($exemption.id -split "/providers/Microsoft.Authorization/policyExemptions/")[0] -replace "/subscriptions/" -replace "/providers/Microsoft.Management/managementGroups/")'") {
+                                $exemptionScope = "true"
+                            }
+                        }
+                        else {
+                            if ($htAllMgsPath.($policyAssignmentAll.MgId).path -contains "'$(($exemption.id -split "/providers/Microsoft.Authorization/policyExemptions/")[0] -replace "/subscriptions/" -replace "/providers/Microsoft.Management/managementGroups/")'") {
+                                $exemptionScope = "true"
+                            }
+                        }
+                    }
+                    else{
+                        #Write-Host "$($exemption.id) $($exemption.properties.expiresOn) $((Get-Date).ToUniversalTime()) expired"
+                    }
+                }
+                else{
+                    #same code as above / function?
+                    if ("" -ne $policyAssignmentAll.subscriptionId) {
+                        if ($htAllSubsMgPath.($policyAssignmentAll.subscriptionId).path -contains "'$(($exemption.id -split "/providers/Microsoft.Authorization/policyExemptions/")[0] -replace "/subscriptions/" -replace "/providers/Microsoft.Management/managementGroups/")'") {
+                            $exemptionScope = "true"
+                        }
+                    }
+                    else {
+                        if ($htAllMgsPath.($policyAssignmentAll.MgId).path -contains "'$(($exemption.id -split "/providers/Microsoft.Authorization/policyExemptions/")[0] -replace "/subscriptions/" -replace "/providers/Microsoft.Management/managementGroups/")'") {
+                            $exemptionScope = "true"
+                        }
                     }
                 }
             }
@@ -6305,6 +6965,7 @@ extensions: [{ name: 'sort' }]
                 CompliantPolicies           = $CompliantPolicies
                 NonCompliantResources       = $NonCompliantResources
                 CompliantResources          = $CompliantResources 
+                ExemptionScope              = $exemptionScope
             }
         }
         else {
@@ -6328,9 +6989,13 @@ extensions: [{ name: 'sort' }]
                 ExcludedScope               = $excludedScope
                 RelatedRoleAssignments      = $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentAll.PolicyAssignmentId).relatedRoleAssignments
                 MgOrSub                     = $mgOrSub
+                ExemptionScope              = $exemptionScope
             }
         }
     }
+    #uuhudeh
+    #($script:policyAssignmentsAllArray | where-object { $_.ExemptionScope -eq "true"} | select-object MgId, subscriptionId, PolicyAssignmentId, ExemptionsCount, ExemptionScope, ExemptionThatApplies)
+    #
     $endtest2 = get-date
     Write-Host "   processing duration: $((NEW-TIMESPAN -Start $starttest2 -End $endtest2).TotalSeconds) seconds"
 
@@ -6343,7 +7008,7 @@ extensions: [{ name: 'sort' }]
 </button>
 <div class="content">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a><br>
-&nbsp;&nbsp;<span style="color:#FF5733">*Depending on the number of entries and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
+&nbsp;&nbsp;<span style="color:#FF5733">*Depending on the number of rows and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
 <table id= "$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -6354,6 +7019,7 @@ extensions: [{ name: 'sort' }]
 <th>Subscription Name</th>
 <th>Inheritance</th>
 <th>ScopeExcluded</th>
+<th>Exemption applies</th>
 <th>Policy/Set DisplayName</th>
 <th>Policy/Set Description</th>
 <th>Policy/SetId</th>
@@ -6396,6 +7062,7 @@ extensions: [{ name: 'sort' }]
 <td>$($policyAssignment.SubscriptionName)</td>
 <td>$($policyAssignment.Inheritance)</td>
 <td>$($policyAssignment.ExcludedScope)</td>
+<td>$($policyAssignment.ExemptionScope)</td>
 <td>$($policyAssignment.PolicyName)</td>
 <td>$($policyAssignment.PolicyDescription)</td>
 <td class="breakwordall">$($policyAssignment.PolicyId)</td>
@@ -6442,8 +7109,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -6465,10 +7135,12 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_0: 'select',
             col_6: 'select',
+            col_7: 'select',
             col_10: 'select',
             col_11: 'select',
             col_13: 'select',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -6504,12 +7176,12 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 
         if (-not $NoPolicyComplianceStates) {
             $htmlTenantSummary += @"
-            watermark: ['', '', '', 'try [nonempty]', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', '', '', 'try [nonempty]', '', '', '', '', '', '', '', '','', '', '', '', '', '', ''],
 "@
         }
         else {
             $htmlTenantSummary += @"
-            watermark: ['', '', '', 'try [nonempty]', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', '', '', 'try [nonempty]', '', '', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', ''],
 "@ 
         }
 
@@ -6521,12 +7193,12 @@ extensions: [
 
         if (-not $NoPolicyComplianceStates) {
             $htmlTenantSummary += @"
-        at_start: [8, 20],
+        at_start: [9, 21],
 "@
         }
         else {
             $htmlTenantSummary += @"
-            at_start: [8, 16],
+            at_start: [9, 17],
 "@        
         }
 
@@ -6617,8 +7289,11 @@ extensions: [
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -6733,8 +7408,11 @@ extensions: [{ name: 'sort' }]
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -6862,8 +7540,11 @@ extensions: [{ name: 'sort' }]
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -6912,7 +7593,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($roleAssignmentsOrphanedUnique | measure-object).count
         $tableId = "SummaryTable_roleAssignmnetsOrphaned"
         $htmlTenantSummary += @"
-<button type="button" class="collapsible" id="summary_roleAssignmnetsOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOrphanedUnique | measure-object).count) Orphaned Role Assignments ($scopeNamingSummary) <abbr title="Role was deleted although and assignment existed &#13;OR &#13;Target identity (User, Group, ServicePrincipal) was deleted"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+<button type="button" class="collapsible" id="summary_roleAssignmnetsOrphaned"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOrphanedUnique | measure-object).count) Orphaned Role Assignments ($scopeNamingSummary) <abbr title="Role definition was deleted although and assignment existed &#13;OR &#13;Target identity (User, Group, ServicePrincipal) was deleted"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
@@ -6951,8 +7632,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -7266,7 +7950,7 @@ extensions: [{ name: 'sort' }]
 </button>
 <div class="content">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a><br>
-&nbsp;&nbsp;<span style="color:#FF5733">*Depending on the number of entries and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span> 
+&nbsp;&nbsp;<span style="color:#FF5733">*Depending on the number of rows and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span> 
 <table id= "$tableId" class="summaryTable">
 <thead>
 <tr>
@@ -7356,8 +8040,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -7499,8 +8186,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -7590,8 +8280,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -7689,8 +8382,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -7793,8 +8489,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -7893,8 +8592,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -7982,8 +8684,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -8084,8 +8789,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -8191,8 +8899,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -8272,8 +8983,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -8353,8 +9067,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -8434,8 +9151,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -8525,22 +9245,23 @@ extensions: [{ name: 'sort' }]
             }    
 
             if (-not $NoAzureConsumption) {
-                $subCurrency = $htAzureConsumption.($summarySubscription.subscriptionId).Currency
-                if ($htAzureConsumption.($summarySubscription.subscriptionId)) {
-                    #$totalCost = "$([math]::Round($htAzureConsumption.($summarySubscription.subscriptionId).ConsumptionTotal,4))"
-                    if ([math]::Round($htAzureConsumption.($summarySubscription.subscriptionId).ConsumptionTotal,4) -eq 0){
-                        $totalCost = [decimal]$htAzureConsumption.($summarySubscription.subscriptionId).ConsumptionTotal
+                if ($htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId)) {
+                    if ([math]::Round($htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId).TotalCost, 4) -eq 0) {
+                        $totalCost = [decimal]$htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId).TotalCost
                     }
-                    else{
-                        $totalCost = [decimal]([math]::Round($htAzureConsumption.($summarySubscription.subscriptionId).ConsumptionTotal,4))
+                    else {
+                        $totalCost = [decimal]([math]::Round($htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId).TotalCost, 4))
                     }
+                    $currency = $htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId).Currency
                 }
                 else {
                     $totalCost = "0"
+                    $currency = "n/a"
                 }
             }
             else {
                 $totalCost = "n/a"
+                $currency = "n/a"
             }
             @"
 <tr>
@@ -8553,7 +9274,7 @@ extensions: [{ name: 'sort' }]
             if (-not $NoAzureConsumption) {
                 @"
 <td>$totalCost</td>
-<td>$subCurrency</td>
+<td>$currency</td>
 "@
             }
             @"
@@ -8572,8 +9293,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -8668,8 +9392,11 @@ extensions: [{ name: 'sort' }]
 "@      
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -8708,6 +9435,94 @@ extensions: [{ name: 'sort' }]
 "@
     }
     #endregion SUMMARYOutOfScopeSubscriptions
+
+    #region SUMMARYTagNameUsage
+    Write-Host "  processing TenantSummary TagsUsage"
+    $tagsUsageCount = ($arrayTagList | Measure-Object).Count
+    if ($tagsUsageCount -gt 0) {
+        $tagNamesUniqueCount = ($arrayTagList | Sort-Object -Property TagName -Unique | Measure-Object).Count
+        $tagNamesUsedInScopes = ($arrayTagList | Where-Object { $_.Scope -ne "AllScopes" } | Sort-Object -Property Scope -Unique).scope -join "$($CsvDelimiterOpposite) "
+        $tfCount = $tagsUsageCount
+        $tableId = "SummaryTable_tagsUsage"
+        $htmlTenantSummary += @"
+<button type="button" class="collapsible" id="summary_tagsUsage"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Tag Name Usage ($tagNamesUniqueCount unique Tag Names applied at $($tagNamesUsedInScopes))</span></button>
+<div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$tableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$tableId');">comma</a>
+<table id="$tableId" class="summaryTable">
+<thead>
+<tr>
+<th>Scope</th>
+<th>TagName</th>
+<th>Count</th>
+</tr>
+</thead>
+<tbody>
+"@
+        $htmlSUMMARYtagsUsage = $null
+        $htmlSUMMARYtagsUsage = foreach ($tagEntry in $arrayTagList | Sort-Object Scope, TagName) {
+            @"
+<tr>
+<td>$($tagEntry.Scope)</td>
+<td>$($tagEntry.TagName)</td>
+<td>$($tagEntry.TagCount)</td>
+</tr>
+"@ 
+        }
+        $htmlTenantSummary += $htmlSUMMARYtagsUsage
+        $htmlTenantSummary += @"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+            
+"@      
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            $htmlTenantSummary += @"
+paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
+"@  
+        }
+        $htmlTenantSummary += @"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_0: 'multiple',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+"@
+    }
+    else {
+        $htmlTenantSummary += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> Tag Name Usage ($tagsUsageCount Tags)</p>
+"@
+    }
+    #endregion SUMMARYTagNameUsage
 
     #region SUMMARYResources
     Write-Host "  processing TenantSummary Subscriptions Resources"
@@ -8765,8 +9580,11 @@ extensions: [{ name: 'sort' }]
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -8871,8 +9689,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -8937,6 +9758,7 @@ extensions: [{ name: 'sort' }]
                 $diagnosticsPolicyAnalysis = @()
                 $diagnosticsPolicyAnalysis = [System.Collections.ArrayList]@()
                 foreach ($policy in $policiesThatDefineDiagnostics) {
+
                     if (
                         (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match "/providers/diagnosticSettings" }).properties.workspaceId -or
                         (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match "/providers/diagnosticSettings" }).properties.eventHubAuthorizationRuleId -or
@@ -9027,6 +9849,7 @@ extensions: [{ name: 'sort' }]
 
                                 #PolicyUsedinPolicySet
                                 $policySetAssignmentsColl = 0
+                                $policySetAssignmentsArray = @()
                                 $policyUsedinPolicySets = "n/a"
                                 
                                 $usedInPolicySetArray = [System.Collections.ArrayList]@()
@@ -9118,11 +9941,13 @@ extensions: [{ name: 'sort' }]
                             }
                         } 
                         else {
-                            Write-Host "  DiagnosticsLifeCycle: something unexpected - no Logs defined"
+                            if (-not (($htCacheDefinitions).policy.($policy).json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match "/providers/diagnosticSettings" }).properties.metrics ) {
+                                Write-Host "  DiagnosticsLifeCycle check?!: $($policy) - something unexpected, no Logs and no Metrics defined"
+                            } 
                         }
                     }
                     else {
-                        Write-Host "   DiagnosticsLifeCycle: something unexpected - not EH, LA, SA"
+                        Write-Host "   DiagnosticsLifeCycle check?!: $($policy) - something unexpected - not EH, LA, SA"
                     }
                 }
                 #where no Policy exists
@@ -9137,7 +9962,7 @@ extensions: [{ name: 'sort' }]
                         else {
                             $resourceCount = "0"
                         }
-                        $recommendation = "Create and assign a diagnostics policy for this ResourceType"
+                        $recommendation = "Create diagnostics policy for this ResourceType. To verify GA check <a class=`"externallink`" href=`"https://docs.microsoft.com/en-us/azure/azure-monitor/platform/resource-logs-categories`" target=`"_blank`">Microsoft docs</a>"
                         $null = $diagnosticsPolicyAnalysis.Add([PSCustomObject]@{
                                 Priority                    = "2-Medium"
                                 PolicyId                    = "n/a"
@@ -9167,7 +9992,7 @@ extensions: [{ name: 'sort' }]
     
                     $tableId = "SummaryTable_DiagnosticsLifecycle"
                     $htmlTenantSummary += @"
-<button type="button" class="collapsible" id="Summary_DiagnosticsLifecycle"><i class="fa fa-check" aria-hidden="true" style="color: #67C409"></i> <span class="valignMiddle">ResourceDiagnostics Policy Lifecycle recommendations</span></button>
+<button type="button" class="collapsible" id="Summary_DiagnosticsLifecycle"><i class="fa fa-check" aria-hidden="true" style="color: #67C409"></i> <span class="valignMiddle">ResourceDiagnostics for Logs - Policy Lifecycle recommendations</span></button>
 <div class="content">
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <b>Create Custom Policies for Azure ResourceTypes that support Diagnostics Logs and Metrics</b> <a class="externallink" href="https://github.com/JimGBritt/AzurePolicy/blob/master/AzureMonitor/Scripts/README.md#overview-of-create-azdiagpolicyps1" target="_blank">Create-AzDiagPolicy</a><br>
 &nbsp;&nbsp;<i class="fa fa-windows" aria-hidden="true" style="color:#00a2ed;"></i> <b>Supported categories for Azure Resource Logs</b> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/platform/resource-logs-categories" target="_blank">Microsoft Docs</a>
@@ -9178,7 +10003,7 @@ extensions: [{ name: 'sort' }]
 <th>Recommendation</th>
 <th>ResourceType</th>
 <th>Resource Count</th>
-<th>Diagnostics capable</th>
+<th>Diagnostics capable (logs)</th>
 <th>Policy Id</th>
 <th>Policy DisplayName</th>
 <th>Role Definitions</th>              
@@ -9246,8 +10071,11 @@ extensions: [{ name: 'sort' }]
 "@
                     if ($tfCount -gt 10) {
                         $spectrum = "10, $tfCount"
+                        if ($tfCount -gt 50) {
+                            $spectrum = "10, 25, 50, $tfCount"
+                        }        
                         if ($tfCount -gt 100) {
-                            $spectrum = "10, 30, 50, $tfCount"
+                            $spectrum = "10, 30, 50, 100, $tfCount"
                         }
                         if ($tfCount -gt 500) {
                             $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -9427,8 +10255,11 @@ extensions: [{ name: 'sort' }]
 "@      
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -9499,7 +10330,7 @@ extensions: [{ name: 'sort' }]
             $startResProvDetailed = get-date
             $htmlSUMMARYSubResourceProvidersDetailed = $null
             $htmlSUMMARYSubResourceProvidersDetailed = foreach ($subscriptionResProv in ($htResourceProvidersAll.Keys | sort-object)) {
-                $subscriptionResProvDetails = $optimizedTableForPathQuerySub | Where-Object { $_.SubscriptionId -eq $subscriptionResProv } | sort-object -Property SubscriptionId -Unique
+                $subscriptionResProvDetails = $optimizedTableForPathQueryMgAndSub | Where-Object { $_.SubscriptionId -eq $subscriptionResProv } | sort-object -Property SubscriptionId -Unique
                 foreach ($provider in ($htResourceProvidersAll).($subscriptionResProv).Providers | sort-object @{Expression = { $_.namespace } }) {
                     $cnter++
                     if ($cnter % 500 -eq 0) {
@@ -9508,8 +10339,8 @@ extensions: [{ name: 'sort' }]
                     }
                     @"
 <tr>
-<td>$($subscriptionResProvDetails.MgId)</td>
 <td>$($subscriptionResProvDetails.MgName)</td>
+<td>$($subscriptionResProvDetails.MgId)</td>
 <td>$($subscriptionResProvDetails.Subscription)</td>
 <td>$($subscriptionResProv)</td>
 <td>$($provider.namespace)</td>
@@ -9530,8 +10361,11 @@ extensions: [{ name: 'sort' }]
 "@      
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -9577,6 +10411,96 @@ extensions: [{ name: 'sort' }]
     }
     #endregion SUMMARYSubResourceProvidersDetailed
 
+    #region SUMMARYSubResourceLocks
+    Write-Host "  processing TenantSummary Subscriptions Resource Locks"
+    $startResourceLocks = get-date
+    $resourceProvidersAllCount = ($htResourceProvidersAll.Keys | Measure-Object).count
+    if (($script:htResourceLocks.keys | Measure-Object).Count -gt 0) {
+        $tableId = "SummaryTable_ResourceLocks"
+        
+        $subscriptionLocksCannotDeleteCount = ($script:htResourceLocks.Keys | Where-Object { $script:htResourceLocks.($_).SubscriptionLocksCannotDeleteCount -gt 0 } | Measure-Object).Count
+        $subscriptionLocksReadOnlyCount = ($script:htResourceLocks.Keys | Where-Object { $script:htResourceLocks.($_).SubscriptionLocksReadOnlyCount -gt 0 } | Measure-Object).Count
+
+        $resourceGroupsLocksCannotDeleteCount = ($script:htResourceLocks.Keys | Where-Object { $script:htResourceLocks.($_).ResourceGroupsLocksCannotDeleteCount -gt 0 } | Measure-Object).Count
+        $resourceGroupsLocksReadOnlyCount = ($script:htResourceLocks.Keys | Where-Object { $script:htResourceLocks.($_).ResourceGroupsLocksReadOnlyCount -gt 0 } | Measure-Object).Count
+
+        $resourcesLocksCannotDeleteCount = ($script:htResourceLocks.Keys | Where-Object { $script:htResourceLocks.($_).ResourcesLocksCannotDeleteCount -gt 0 } | Measure-Object).Count
+        $resourcesLocksReadOnlyCount = ($script:htResourceLocks.Keys | Where-Object { $script:htResourceLocks.($_).ResourcesLocksReadOnlyCount -gt 0 } | Measure-Object).Count
+        
+        $htmlTenantSummary += @"
+<button type="button" class="collapsible" id="SUMMARY_ResourceLocks"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Locks</span></button>
+<div class="content">
+<table id="$tableId" class="summaryTable">
+<thead>
+<tr>
+<th>Lock scope</th>
+<th>Lock type</th>
+<th>presence</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>Subscription</td><td>CannotDelete</td><td>$($subscriptionLocksCannotDeleteCount) of $totalSubCount Subscriptions</td></tr>
+<tr><td>Subscription</td><td>ReadOnly</td><td>$($subscriptionLocksReadOnlyCount) of $totalSubCount Subscriptions</td></tr>
+<tr><td>ResourceGroup</td><td>CannotDelete</td><td>$($resourceGroupsLocksCannotDeleteCount) of $totalSubCount Subscriptions (total: $($script:resourceGroupsLocksCannotDeleteCountTotal))</td></tr>
+<tr><td>ResourceGroup</td><td>ReadOnly</td><td>$($resourceGroupsLocksReadOnlyCount) of $totalSubCount Subscriptions (total: $($script:resourceGroupsLocksReadOnlyCountTotal))</td></tr>
+<tr><td>Resource</td><td>CannotDelete</td><td>$($resourcesLocksCannotDeleteCount) of $totalSubCount Subscriptions (total: $($script:resourcesLocksCannotDeleteCountTotal))</td></tr>
+<tr><td>Resource</td><td>ReadOnly</td><td>$($resourcesLocksReadOnlyCount) of $totalSubCount Subscriptions (total: $($script:resourcesLocksReadOnlyCountTotal))</td></tr>
+</tbody>
+</table>
+<script>
+        var tfConfig4$tableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@      
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            $htmlTenantSummary += @"
+paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
+"@ 
+        }
+        $htmlTenantSummary += @"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_0: 'select',
+            col_1: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$tableId', tfConfig4$tableId);
+        tf.init();
+    </script>
+</div>
+"@
+    }
+    else {
+        $htmlTenantSummary += @"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Resource Locks at all</span></p>
+"@
+    }
+    $endResourceLocks = get-date
+    Write-Host "   ResourceLocks processing duration: $((NEW-TIMESPAN -Start $startResourceLocks -End $endResourceLocks).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startResourceLocks -End $endResourceLocks).TotalSeconds) seconds)"
+    #endregion SUMMARYSubResourceLocks
+
     #region SUMMARYSubsapproachingLimitsResourceGroups
     Write-Host "  processing TenantSummary Subscriptions Limit Resource Groups"
     $subscriptionsApproachingLimitFromResourceGroupsAll = $resourceGroupsAll | Where-Object { $_.count_ -gt ($LimitResourceGroups * ($LimitCriticalPercentage / 100)) }
@@ -9619,8 +10543,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -9700,8 +10627,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -9781,8 +10711,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -9862,8 +10795,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -9943,8 +10879,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -10024,8 +10963,11 @@ extensions: [{ name: 'sort' }]
 "@
         if ($tfCount -gt 10) {
             $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
             if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, $tfCount"
+                $spectrum = "10, 30, 50, 100, $tfCount"
             }
             if ($tfCount -gt 500) {
                 $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -10131,8 +11073,11 @@ var tfConfig4$tableId = {
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -10294,8 +11239,11 @@ var tfConfig4$tableId = {
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -10424,8 +11372,11 @@ var tfConfig4$tableId = {
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -10493,26 +11444,8 @@ tf.init();
         $startConsumption = get-date
         Write-Host "  processing TenantSummary Consumption"
 
-        if (($arrayAzureConsumptionSummarizedByResourceType | Measure-Object).Count -gt 0) {
-            $groupedByCurrency = $arrayAzureConsumptionSummarizedByResourceType | Group-Object -Property SubscriptionConsumptionCurrency
-            $arrayTotalCostSummary = @()
-            foreach ($currency in $groupedByCurrency){
-                $totalCostTenant = ($currency.group.ConsumedServiceCost | Measure-Object -Sum).Sum
-                #$totalCostTenantRounded = [math]::Round($totalCostTenant, 4)
-                if ([math]::Round($totalCostTenant,4) -eq 0){
-                    $totalCostTenantRounded = $totalCostTenant
-                }
-                else{
-                    $totalCostTenantRounded = [math]::Round($totalCostTenant,4)
-                }
-                $totalCostTenantSubscriptionsCount = ($currency.group.SubscriptionId | Sort-Object -Unique | Measure-Object).Count
-                $totalCostTenantResourceTypesCount = ($currency.group.ConsumedService | Sort-Object -Unique | Measure-Object).Count
-                $totalCostTenantCurrency = $currency.Name
-                $arrayTotalCostSummary += "$($totalCostTenantRounded) $($totalCostTenantCurrency) generated by $($totalCostTenantResourceTypesCount) ResourceTypes in $($totalCostTenantSubscriptionsCount) Subscriptions"
-            }
-            $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency = $arrayAzureConsumptionSummarizedByResourceType | group-object -property ConsumedService, SubscriptionConsumptionCurrency, ConsumedServiceChargeType, ConsumedServiceCategory
-            $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrencyCount = ($groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency | Measure-Object).count
-            $tfCount = $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrencyCount
+        if (($arrayConsumptionData | Measure-Object).Count -gt 0) {
+            $tfCount = ($arrayConsumptionData | Measure-Object).Count
             $tableId = "SummaryTable_Consumption"
             $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="summary_Consumption"><i class="fa fa-credit-card" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">Total cost $($arrayTotalCostSummary -join "$CsvDelimiterOpposite ") last $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)</span></button>
@@ -10533,22 +11466,16 @@ tf.init();
 <tbody>
 "@
             $htmlSUMMARYConsumption = $null
-            $htmlSUMMARYConsumption = foreach ($ConsumedService in $groupedArrayAzureConsumptionSummarizedByResourceTypeAndCurrency) {
-                if ([math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4) -eq 0){
-                    $cost = [decimal]($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum
-                }
-                else{
-                    $cost = [decimal]([math]::Round(($consumedService.group.ConsumedServiceCost | Measure-Object -Sum).Sum,4))
-                }
+            $htmlSUMMARYConsumption = foreach ($consumptionLine in $arrayConsumptionData) {
                 @"
 <tr>
-<td>$((($ConsumedService.Name).split(", "))[2])</td>
-<td>$((($ConsumedService.Name).split(", "))[0])</td>
-<td>$((($ConsumedService.Name).split(", "))[3])</td>
-<td>$(($consumedService.group.ConsumedServiceInstanceCount | Measure-Object -Sum).Sum)</td>
-<td>$($cost)</td>
-<td>$((($ConsumedService.Name).split(", "))[1])</td>
-<td>$((($consumedService.group.SubscriptionId | sort-object -Unique) | Measure-Object).count)</td>
+<td>$($consumptionLine.ConsumedServiceChargeType)</td>
+<td>$($consumptionLine.ConsumedService)</td>
+<td>$($consumptionLine.ConsumedServiceCategory)</td>
+<td>$($consumptionLine.ConsumedServiceInstanceCount)</td>
+<td>$($consumptionLine.ConsumedServiceCost)</td>
+<td>$($consumptionLine.ConsumedServiceCurrency)</td>
+<td>$($consumptionLine.ConsumedServiceSubscriptions)</td>
 </tr>
 "@
             }
@@ -10563,8 +11490,11 @@ base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter:
 "@
             if ($tfCount -gt 10) {
                 $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
                 if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, $tfCount"
+                    $spectrum = "10, 30, 50, 100, $tfCount"
                 }
                 if ($tfCount -gt 500) {
                     $spectrum = "10, 30, 50, 100, 250, $tfCount"
@@ -10756,7 +11686,7 @@ if ($AzureDevOpsWikiAsCode) {
     Write-Host "Checking AzDO ServiceConnection permissions"
     $testSCSPAPIReadAccessResult = "letscheck"
     try {
-        $testSCSPAPIReadAccess = Get-AzRoleAssignment -scope "/providers/Microsoft.Management/managementGroups/$($selectedManagementGroupId.Name)" -ErrorAction Stop
+        $testSCSPAPIReadAccess = Get-AzRoleAssignment -scope "/providers/Microsoft.Management/managementGroups/$($selectedManagementGroupId.Name)"
     }
     catch {
         $testSCSPAPIReadAccessResult = $_.Exception.Message
@@ -10768,6 +11698,15 @@ if ($AzureDevOpsWikiAsCode) {
     else {
         Write-Host " Permissions test passed: 'Azure Active Directory API' permissions OK"
     }
+}
+
+if ($accountType -eq "User") {
+    Write-Host "Checking AAD UserType"
+    $uri = "https://graph.microsoft.com/v1.0/me?`$select=userType"
+    $method = "GET"
+    $checkUserType = AzAPICall -uri $uri -method $method -listenOn "Content"
+    $userType = $checkUserType.userType
+    Write-Host "AAD UserType: $($userType)" -ForegroundColor Yellow
 }
 
 if (($checkContext).Tenant.Id -ne $ManagementGroupId) {
@@ -10831,11 +11770,11 @@ else {
 if (-not $HierarchyMapOnly) {
     $paramsUsed = $Null
     $paramsUsed += "RunInfo &#13;"
-    if ($accountType -eq "ServicePrincipal"){
+    if ($accountType -eq "ServicePrincipal") {
         $paramsUsed += "ExecutedBy: $($accountId) (App/ClientId) ($($accountType)) &#13;"
     }
-    else{
-        $paramsUsed += "ExecutedBy: $($accountId) ($($accountType)) &#13;"
+    else {
+        $paramsUsed += "ExecutedBy: $($accountId) ($($accountType), $($userType)) &#13;"
     }
     $paramsUsed += "HierarchyMapOnly: false &#13;"
     Write-Host "Run Info:"
@@ -10958,7 +11897,7 @@ if (-not $HierarchyMapOnly) {
             }
         }
         else {
-            $azureConsumptionStartDate = ((get-date).AddDays(-($($AzureConsumptionPeriod)))).ToString("yyyy-MM-dd")
+            $azureConsumptionStartDate = ((get-date).AddDays( - ($($AzureConsumptionPeriod)))).ToString("yyyy-MM-dd")
             $azureConsumptionEndDate = ((get-date).AddDays(-1)).ToString("yyyy-MM-dd")
 
             if ($AzureConsumptionPeriod -eq 1) {
@@ -10985,8 +11924,8 @@ if (-not $HierarchyMapOnly) {
     }
 
 
-    $startDefinitionsCaching = get-date
-    Write-Host "Caching built-in Policy and RBAC Role definitions"
+    $startMgSubData = get-date
+    Write-Host "Getting Subscription/ManagementGroup data"
 
     #helper ht / collect results /save some time
     $htCacheDefinitions = @{ }
@@ -11014,11 +11953,25 @@ if (-not $HierarchyMapOnly) {
     $script:outOfScopeSubscriptions = [System.Collections.ArrayList]@()
     $htAllSubscriptionsFromAPI = @{ }
     if (-not $NoAzureConsumption) {
-        $arrayAzureConsumptionDetailedAllSubscriptions = [System.Collections.ArrayList]@()
-        $htAzureConsumption = @{ } 
-        $arrayAzureConsumptionSummarizedByResourceType = [System.Collections.ArrayList]@()
+        $htAzureConsumptionSubscriptions = @{ }
     }
     $script:CustomDataCollectionDuration = [System.Collections.ArrayList]@()    
+    $script:htResourceLocks = @{ }
+    $htSubscriptionsMgPath = @{ }
+    $htManagementGroupsMgPath = @{ }
+    $script:resourceGroupsLocksCannotDeleteCountTotal = 0
+    $script:resourceGroupsLocksReadOnlyCountTotal = 0
+    $script:resourcesLocksCannotDeleteCountTotal = 0
+    $script:resourcesLocksReadOnlyCountTotal = 0
+    $htAllTagList = New-Object system.collections.hashtable
+    $htAllTagList.AllScopes = New-Object system.collections.hashtable
+    $htAllTagList.Subscription = New-Object system.collections.hashtable
+    $htAllTagList.ResourceGroup = New-Object system.collections.hashtable
+    $htAllTagList.Resource = New-Object system.collections.hashtable
+    $arrayTagList = [System.Collections.ArrayList]@()
+    $htSubscriptionTagList = New-Object system.collections.hashtable
+    $htPolicyAssignmentExemptions = @{ }
+      
 
     #current context sub not AAD*
     do {
@@ -11076,7 +12029,151 @@ if (-not $HierarchyMapOnly) {
     $method = "POST"
 
     $arrayEntitiesFromAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+    foreach ($entity in $arrayEntitiesFromAPI) {
+        if ($entity.id.StartsWith("/subscriptions/")) {
+            $htSubscriptionsMgPath.($entity.name) = @{ }
+            $htSubscriptionsMgPath.($entity.name).ParentNameChain = $entity.properties.parentNameChain
+            $htSubscriptionsMgPath.($entity.name).Parent = $entity.properties.parent.id -replace ".*/"
+        }
+        if ($entity.id.StartsWith("/providers/Microsoft.Management/managementGroups/")) {
+            $htManagementGroupsMgPath.($entity.name) = @{ }
+            $htManagementGroupsMgPath.($entity.name).ParentNameChain = $entity.properties.parentNameChain
+            $htManagementGroupsMgPath.($entity.name).Parent = $entity.properties.parent.id -replace ".*/"
+        }
+    }
 
+    $endMgSubData = get-date
+    Write-Host "Getting Subscription/ManagementGroup data duration: $((NEW-TIMESPAN -Start $startMgSubData -End $endMgSubData).TotalSeconds) seconds"
+
+    if (-not $NoAzureConsumption) {
+        
+        #consumption
+        $startConsumptionData = Get-Date
+
+        <#filter out Subscritions with QuotaId like 'AAD*'
+        $subscriptionsInScope = $arrayEntitiesFromAPI | Where-Object { $_.properties.parentNameChain -contains $ManagementGroupId }
+        $subscriptionsNotConsumptionUnsupportedQuotaId = ($requestAllSubscriptionsAPI | Where-Object { $_.subscriptionPolicies.quotaId -notlike "AAD_*" }).subscriptionId
+        $arraySubscriptionsInScopeWithoutConsumptionUnsupportedQuotaId = @()
+        $arraySubscriptionsInScopeWithoutConsumptionUnsupportedQuotaId = foreach ($subscriptionInScope in $subscriptionsInScope.name) {
+            if ($subscriptionsNotConsumptionUnsupportedQuotaId -contains $subscriptionInScope) {
+                $subscriptionInScope
+            }
+        }
+        $arraySubscriptionsInScopeWithoutConsumptionUnsupportedQuotaIdCount = ($arraySubscriptionsInScopeWithoutConsumptionUnsupportedQuotaId | Measure-Object).Count
+        #>
+        
+        $currenttask = "Getting Consumption data for scope: '$($ManagementGroupId)' for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
+        Write-Host "$currentTask"
+        $uri = "https://management.azure.com/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000" #2019-05-01-preview
+        $method = "POST"
+        $body = @"
+{
+    "type": "ActualCost",
+    "dataset": {
+        "granularity": "none",
+        "aggregation": {
+            "totalCost": {
+                "name": "PreTaxCost",
+                "function": "Sum"
+            }
+        },
+        "grouping": [
+            {
+                "type": "Dimension",
+                "name": "SubscriptionId"
+            },
+            {
+                "type": "Dimension",
+                "name": "ResourceId"
+            },
+            {
+                "type": "Dimension",
+                "name": "ConsumedService"
+            },
+            {
+                "type": "Dimension",
+                "name": "MeterCategory"
+            },
+            {
+                "type": "Dimension",
+                "name": "ChargeType"
+            }
+        ]
+    },
+    "timeframe": "Custom",
+    "timeperiod": {
+        "from": "$($azureConsumptionStartDate)",
+        "to": "$($azureConsumptionEndDate)"
+    }
+}
+"@
+
+        $allConsumptionData = AzAPICall -uri $uri -method $method -body $body -currenttask $currentTask -listenOn "ContentProperties" -getConsumption $true
+        $allConsumptionDataCount = ($allConsumptionData | Measure-Object).Count
+
+        if ($allConsumptionDataCount -gt 0) {
+            Write-Host " $allConsumptionDataCount consumption data entries"
+            $allConsumptionData = $allConsumptionData | where-Object { $_.PreTaxCost -ne 0 }
+
+            $arrayTotalCostSummary = @()
+            $arrayConsumptionData = [System.Collections.ArrayList]@()
+            $consumptionData = $allConsumptionData
+            $consumptionDataGroupedByCurrency = $consumptionData | group-object -property Currency
+
+            foreach ($currency in $consumptionDataGroupedByCurrency) {
+
+                #subscriptions
+                $groupAllConsumptionDataBySubscriptionId = $currency.group | Group-Object -Property SubscriptionId
+                foreach ($subscriptionId in $groupAllConsumptionDataBySubscriptionId) {
+                    $htAzureConsumptionSubscriptions.($subscriptionId.Name) = @{ }
+                    $htAzureConsumptionSubscriptions.($subscriptionId.Name).ConsumptionData = $subscriptionId.group
+                    $htAzureConsumptionSubscriptions.($subscriptionId.Name).TotalCost = ($subscriptionId.Group.PreTaxCost | Measure-Object -Sum).Sum
+                    $htAzureConsumptionSubscriptions.($subscriptionId.Name).Currency = $currency.Name
+                }
+
+                $totalCost = 0
+                $tenantSummaryConsumptionDataGrouped = $currency.group | group-object -property ConsumedService, ChargeType, MeterCategory
+                $subsCount = ($tenantSummaryConsumptionDataGrouped.group.subscriptionId | Sort-Object -Unique | Measure-Object).Count
+                $consumedServiceCount = ($tenantSummaryConsumptionDataGrouped.group.consumedService | Sort-Object -Unique | Measure-Object).Count
+                $resourceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceId | Sort-Object -Unique | Measure-Object).Count
+                foreach ($consumptionline in $tenantSummaryConsumptionDataGrouped) {
+
+                    $costConsumptionLine = ($consumptionline.group.PreTaxCost | Measure-Object -Sum).Sum
+                    if ([math]::Round($costConsumptionLine, 4) -eq 0) {
+                        $cost = $costConsumptionLine
+                    }
+                    else {
+                        $cost = [math]::Round($costConsumptionLine, 4)
+                    }
+                
+                    $null = $arrayConsumptionData.Add([PSCustomObject]@{ 
+                            ConsumedService              = ($consumptionline.name).split(", ")[0]
+                            ConsumedServiceChargeType    = ($consumptionline.name).split(", ")[1]
+                            ConsumedServiceCategory      = ($consumptionline.name).split(", ")[2]
+                            ConsumedServiceInstanceCount = $consumptionline.Count
+                            ConsumedServiceCost          = [decimal]$cost
+                            ConsumedServiceSubscriptions = ($consumptionline.group.SubscriptionId | Sort-Object -Unique).Count
+                            ConsumedServiceCurrency      = $currency.Name
+                        })
+                
+                    $totalCost = $totalCost + $costConsumptionLine
+
+                }
+                if ([math]::Round($totalCost, 4) -eq 0) {
+                    $totalCost = $totalCost
+                }
+                else {
+                    $totalCost = [math]::Round($totalCost, 4)
+                }
+                $arrayTotalCostSummary += "$([decimal]$totalCost) $($currency.Name) generated by $($resourceCount) Resources ($($consumedServiceCount) ResourceTypes) in $($subsCount) Subscriptions"
+            }
+        }
+        $endConsumptionData = get-date
+        Write-Host "Getting Consumption data duration: $((NEW-TIMESPAN -Start $startConsumptionData -End $endConsumptionData).TotalSeconds) seconds"
+    }
+
+    $startDefinitionsCaching = get-date
+    Write-Host "Caching built-in Policy and RBAC Role definitions"
     $currentTask = "Caching built-in Policy definitions"
     Write-Host " $currentTask"
     $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
@@ -11202,8 +12299,8 @@ dataCollection -mgId $ManagementGroupId -hierarchyLevel $hierarchyLevel -mgParen
 $endDataCollection = get-date
 Write-Host "Collecting custom data duration: $((NEW-TIMESPAN -Start $startDataCollection -End $endDataCollection).TotalMinutes) minutes"
 
-$durationDataMG = ($script:CustomDataCollectionDuration | Where-Object { $_.Type -eq "MG"})
-$durationDataSUB = ($script:CustomDataCollectionDuration | Where-Object { $_.Type -eq "SUB"})
+$durationDataMG = ($script:CustomDataCollectionDuration | Where-Object { $_.Type -eq "MG" })
+$durationDataSUB = ($script:CustomDataCollectionDuration | Where-Object { $_.Type -eq "SUB" })
 $durationMGAverageMaxMin = ($durationDataMG.DurationSec | Measure-Object -Average -Maximum -Minimum)
 $durationSUBAverageMaxMin = ($durationDataSUB.DurationSec | Measure-Object -Average -Maximum -Minimum)
 Write-Host "Collecting custom data for $($arrayEntitiesFromAPIManagementGroupsCount) ManagementGroups Avg/Max/Min duration in seconds: Average: $([math]::Round($durationMGAverageMaxMin.Average,4)); Maximum: $([math]::Round($durationMGAverageMaxMin.Maximum,4)); Minimum: $([math]::Round($durationMGAverageMaxMin.Minimum,4))"
@@ -11358,16 +12455,16 @@ if (-not $HierarchyMapOnly) {
                             $method = "GET"
                             $getApplication = AzAPICall -uri $uri -method $method -currenttask "getApp $($getServicePrincipal.appId)" -getApp $true
                             
-                            if ($getApplication -eq "Request_ResourceNotFound"){
+                            if ($getApplication -eq "Request_ResourceNotFound") {
                                 $null = $arrayApplicationRequestResourceNotFound.Add([PSCustomObject]@{ 
-                                    appId = $getServicePrincipal.appId
-                                })
+                                        appId = $getServicePrincipal.appId
+                                    })
                             }
-                            else{
-                                if (($getApplication | Measure-Object).Count -eq 0){
+                            else {
+                                if (($getApplication | Measure-Object).Count -eq 0) {
                                     Write-Host "$($getServicePrincipal.appId) no data returned / seems non existent?"
                                 }
-                                else{
+                                else {
                                     $htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).appGraphDetails = $getApplication
                                     $appPasswordCredentialsCount = ($getApplication.passwordCredentials | Measure-Object).count
                                     if ($appPasswordCredentialsCount -gt 0) {
@@ -11449,7 +12546,7 @@ if (-not $HierarchyMapOnly) {
                 }
             }
             $applicationRequestResourceNotFoundCount = ($arrayApplicationRequestResourceNotFound | Measure-Object).Count
-            if ($applicationRequestResourceNotFoundCount -gt 0){
+            if ($applicationRequestResourceNotFoundCount -gt 0) {
                 Write-Host "$applicationRequestResourceNotFoundCount ServicePrincipals could not be checked for Secret/certificate expiry"
             }
         }
@@ -11482,7 +12579,11 @@ if (-not $HierarchyMapOnly) {
     
     $lastSubsCnter = 0
     $subsCnter = 0
+    $subscriptionIdsCount = ($subscriptionIds | Measure-Object).Count
     foreach ($subscriptionId in $subscriptionIds) {
+
+        #$htSubscriptionTagList.($subscriptionId) = New-Object system.collections.hashtable
+
         $subsCnter++
         #alternative to ARG
         $currentTask = "Getting ResourceTypes for SubscriptionId: '$($subscriptionId)'"
@@ -11490,13 +12591,44 @@ if (-not $HierarchyMapOnly) {
         #$path = "/subscriptions/$($subscriptionId)/resources?api-version=2020-06-01"
         $method = "GET"
 
-        $resourcesSubscriptionResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+        $resourcesSubscriptionResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))        
         $resourcesAll += foreach ($resourceTypeLocation in ($resourcesSubscriptionResult | Group-Object -Property type, location)) {
             [PSCustomObject]@{
                 subscriptionId = $subscriptionId
                 type           = ($resourceTypeLocation.values[0]).ToLower()
                 location       = ($resourceTypeLocation.values[1]).ToLower()
                 count_         = $resourceTypeLocation.Count 
+            }
+        }
+
+        #resourceTags
+        
+        $htSubscriptionTagList.($subscriptionId).Resource = New-Object system.collections.hashtable
+        ForEach ($tags in ($resourcesSubscriptionResult | Where-Object { $_.Tags -and -not [String]::IsNullOrWhiteSpace($_.Tags) }).Tags) {
+            ForEach ($tagName in $tags.PSObject.Properties.Name) {
+                #resource
+                If ($htSubscriptionTagList.($subscriptionId).Resource.ContainsKey($tagName)) {
+                    $htSubscriptionTagList.($subscriptionId).Resource."$tagName" += 1
+                }
+                Else {
+                    $htSubscriptionTagList.($subscriptionId).Resource."$tagName" = 1
+                }
+
+                #resourceAll
+                If ($htAllTagList.Resource.ContainsKey($tagName)) {
+                    $htAllTagList.Resource."$tagName" += 1
+                }
+                Else {
+                    $htAllTagList.Resource."$tagName" = 1
+                }
+
+                #all
+                If ($htAllTagList.AllScopes.ContainsKey($tagName)) {
+                    $htAllTagList.AllScopes."$tagName" += 1
+                }
+                Else {
+                    $htAllTagList.AllScopes."$tagName" = 1
+                }
             }
         }
 
@@ -11514,6 +12646,37 @@ if (-not $HierarchyMapOnly) {
         }
         $resourceGroupsAll += $resourceGroupsAllSubscriptionObject
 
+        #resourceGroupTags
+        $htSubscriptionTagList.($subscriptionId).ResourceGroup = New-Object system.collections.hashtable
+        ForEach ($tags in ($resourceGroupsSubscriptionResult | Where-Object { $_.Tags -and -not [String]::IsNullOrWhiteSpace($_.Tags) }).Tags) {
+            ForEach ($tagName in $tags.PSObject.Properties.Name) {
+                
+                #resource
+                If ($htSubscriptionTagList.($subscriptionId).ResourceGroup.ContainsKey($tagName)) {
+                    $htSubscriptionTagList.($subscriptionId).ResourceGroup."$tagName" += 1
+                }
+                Else {
+                    $htSubscriptionTagList.($subscriptionId).ResourceGroup."$tagName" = 1
+                }
+
+                #resourceAll
+                If ($htAllTagList.ResourceGroup.ContainsKey($tagName)) {
+                    $htAllTagList.ResourceGroup."$tagName" += 1
+                }
+                Else {
+                    $htAllTagList.ResourceGroup."$tagName" = 1
+                }
+
+                #all
+                If ($htAllTagList.AllScopes.ContainsKey($tagName)) {
+                    $htAllTagList.AllScopes."$tagName" += 1
+                }
+                Else {
+                    $htAllTagList.AllScopes."$tagName" = 1
+                }
+            }
+        }
+
         ($htResourceProvidersAll).($subscriptionId) = @{ }
         $currentTask = "Getting ResourceProviders for SubscriptionId: '$($subscriptionId)'"
         $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subscriptionId)/providers?api-version=2019-10-01"
@@ -11524,16 +12687,59 @@ if (-not $HierarchyMapOnly) {
         ($htResourceProvidersAll).($subscriptionId).Providers = $resProvResult
         $arrayResourceProvidersAll += $resProvResult
 
-        if ($subsCnter % 25 -eq 0) {
-            $lastSubsCnter = $subsCnter + $lastSubsCnter
-            Write-Host "  $('{0:d4}' -f $lastSubsCnter) subscriptions processed"
-            $subsCnter = 0
+        if ($subscriptionIdsCount -gt 50){
+            if ($subsCnter % 25 -eq 0) {
+                $lastSubsCnter = $subsCnter + $lastSubsCnter
+                Write-Host "  $('{0:d4}' -f $lastSubsCnter) subscriptions processed"
+                $subsCnter = 0
+            }
         }
+        else{
+            if ($subsCnter % 5 -eq 0) {
+                $lastSubsCnter = $subsCnter + $lastSubsCnter
+                Write-Host "  $('{0:d4}' -f $lastSubsCnter) subscriptions processed"
+                $subsCnter = 0
+            }
+        }
+
     }
     Write-Host "  $($subsCnter + $lastSubsCnter) Subscriptions processed total"
     $endResourceProviders = get-date
     Write-Host " Getting ResourceTypes, ResourceGroups and ResourceProviders duration: $((NEW-TIMESPAN -Start $startResourceProviders -End $endResourceProviders).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startResourceProviders -End $endResourceProviders).TotalSeconds) seconds)"
     
+
+    #createTagListArray
+    $startTagListArray = Get-Date
+    Write-Host "Creating TagList array"
+
+    $tagsSubRgResCount = ($htAllTagList."All".Keys | Measure-Object).Count
+    $tagsSubsriptionCount = ($htAllTagList."Subscription".Keys | Measure-Object).Count
+    $tagsResourceGroupCount = ($htAllTagList."ResourceGroup".Keys | Measure-Object).Count
+    $tagsResourceCount = ($htAllTagList."Resource".Keys | Measure-Object).Count
+    Write-Host "Total Number of ALL unique Tag Names: $tagsSubRgResCount"
+    Write-Host "Total Number of Subscription unique Tag Names: $tagsSubsriptionCount"
+    Write-Host "Total Number of ResourceGroup unique Tag Names: $tagsResourceGroupCount"
+    Write-Host "Total Number of Resource unique Tag Names: $tagsResourceCount"
+
+    foreach ($tagScope in $htAllTagList.keys) {
+        foreach ($tagScopeTagName in $htAllTagList.($tagScope).keys) {
+            $null = $arrayTagList.Add([PSCustomObject]@{ 
+                    Scope    = $tagScope
+                    TagName  = ($tagScopeTagName)
+                    TagCount = $htAllTagList.($tagScope).($tagScopeTagName)
+                })
+        }
+    }
+
+    $endTagListArray = get-date
+    Write-Host "Creating TagList array duration: $((NEW-TIMESPAN -Start $startTagListArray -End $endTagListArray).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startTagListArray -End $endTagListArray).TotalSeconds) seconds)"
+
+   
+    <#
+    Write-Host " Getting ResourceTypes and ResourceGroups"
+    $startResourceTypesResourceGroups = get-date
+
+
     <#
     Write-Host " Getting ResourceTypes and ResourceGroups"
     $startResourceTypesResourceGroups = get-date
@@ -11745,7 +12951,7 @@ if (-not $HierarchyMapOnly) {
 
 #region BuildHTML
 #testhelper
-#$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
+$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 
 $startBuildHTML = get-date
 Write-Host "Building HTML"
@@ -12176,7 +13382,13 @@ Write-Host "Building Markdown total duration: $((NEW-TIMESPAN -Start $startBuild
 #region BuildCSV
 Write-Host "Exporting CSV"
 $startBuildCSV = get-date
-$table | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+if ($CsvExportUseQuotesAsNeeded) {
+    $table | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
+}
+else {
+    $table | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+}
+
 $endBuildCSV = get-date
 Write-Host "Exporting CSV total duration: $((NEW-TIMESPAN -Start $startBuildCSV -End $endBuildCSV).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startBuildCSV -End $endBuildCSV).TotalSeconds) seconds)"
 #endregion BuildCSV
@@ -12187,7 +13399,12 @@ if (-not $NoAzureConsumption) {
     if (-not $NoAzureConsumptionReportExportToCSV) {
         Write-Host "Exporting Consumption CSV"
         $startBuildConsumptionCSV = get-date
-        $arrayAzureConsumptionDetailedAllSubscriptions | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        if ($CsvExportUseQuotesAsNeeded) {
+            $allConsumptionData | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
+        }
+        else {
+            $allConsumptionData | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        }
         $endBuildConsumptionCSV = get-date
         Write-Host "Exporting Consumption CSV total duration: $((NEW-TIMESPAN -Start $startBuildConsumptionCSV -End $endBuildConsumptionCSV).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startBuildCSV -End $endBuildCSV).TotalSeconds) seconds)"
     }
