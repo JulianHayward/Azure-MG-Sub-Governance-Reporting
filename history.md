@@ -1,10 +1,16 @@
 # AzGovViz - Azure Governance Visualizer
 
-go to [AzGovViz Repository](https://github.com/julianhayward/azure-mg-sub-governance-reporting)
-
 ## AzGovViz version history
 
 ### AzGovViz version 4
+
+Updates 2021-Jan-26
+* Role Assigments indicate if User is Member/Guest
+* Enrich information for Policy assignment related ServicePrincipal/Managed Identity (Policy assignment details on policy/set definition and Role assignments)
+* Preloading of <a href="https://www.tablefilter.com/" target="_blank">TableFilter</a> removed for __TenantSummary__ PolicyAssignmentsAll and RoleAssignmentsAll (on poor hardware loading the HTML file took quite long)
+* Fix 'Orphaned Custom Roles' bug - thanks to Tim Wanierke
+* More bugfixes
+* Performance optimization
 
 Updates 2021-Jan-18
 * Feature: __Policy Exemptions__
@@ -69,7 +75,7 @@ Updates 2020-Nov-01
 Updates 2020-Oct-12
 * Adding option to download HTML tables to csv  
 ![Download CSV](img/downloadcsv450.png)
-* preloading of <a href="https://www.tablefilter.com/" target="_blank">TableFilter</a> removed for __ScopeInsights__ (on poor hardware loading the HTML file took quite long)
+* Preloading of <a href="https://www.tablefilter.com/" target="_blank">TableFilter</a> removed for __ScopeInsights__ (on poor hardware loading the HTML file took quite long)
 * Added column un-select option for some HTML tables
 * Performance optimization
 

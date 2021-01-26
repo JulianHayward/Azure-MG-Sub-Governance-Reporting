@@ -48,12 +48,13 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## AzGovViz release history
 
-Updates 2021-Jan-18
-* Feature: __Policy Exemptions__
-* Feature: __ResourceLocks__
-* Feature: __Tag Name Usage__
-* Feature: __Cost Management / Consumption Reporting__ - use another API
-* Bugfixes
+Updates 2021-Jan-26
+* Role Assigments indicate if User is Member/Guest
+* Enrich information for Policy assignment related ServicePrincipal/Managed Identity (Policy assignment details on policy/set definition and Role assignments)
+* Preloading of <a href="https://www.tablefilter.com/" target="_blank">TableFilter</a> removed for __TenantSummary__ PolicyAssignmentsAll and RoleAssignmentsAll (on poor hardware loading the HTML file took quite long)
+* Fix 'Orphaned Custom Roles' bug - thanks to Tim Wanierke
+* More bugfixes
+* Performance optimization
 
 [full history](history.md)
 
@@ -64,7 +65,7 @@ Updates 2021-Jan-18
 <table>
 <td>
 
-<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip.html" target="_blank">![Demo](img/demo4_66.png)</a>
+<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v4_minor_20210126_3.html" target="_blank">![Demo](img/demo4_66.png)</a>
 
 </td>
 <td>
@@ -126,6 +127,8 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
     * Advanced information on Role assignments
       * Role assignment scope (at scope / inheritance)
       * For Role Assignments on Groups the AAD Group members are fully resolved. With this capability AzGovViz can ultimately provide holistic insights on permissions granted
+      * For identity-type == 'ServicePrincipal' the type (Application/ManagedIdentity) will be reported
+      * For identity-type == 'User' the userType (Member/Guest) will be reported
       * Related Policy assignments (Policy assignment of a Policy definition that uses the DeployIfNotExists (DINE) effect)
   * Security & Best practice analysis
     * Existence of custom Role definition that reflect 'Owner' permissions
