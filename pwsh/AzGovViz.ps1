@@ -11466,7 +11466,7 @@ extensions: [{ name: 'sort' }]
                         $policyAssignmentspolicyDefinitionIdFull = $assignmentInfo.properties.policyDefinitionId
                         $definitionInfo = $htCacheDefinitions.($policyAssignmentsPolicyVariant).($assignmentInfo.properties.policyDefinitionId)
                         if ($definitionInfo.type -eq "BuiltIn"){
-                            $policyAssignmentMoreInfo = "$($definitionInfo.type) $($policyAssignmentsPolicyVariant): <a class=`"externallink`" href=`"https://www.azadvertizer.net/$($linkHelper)/$policyAssignmentspolicyDefinitionIdGuid`" target=`"_blank`">$($definitionInfo.displayname)</a> ($policyAssignmentspolicyDefinitionIdGuid)"
+                            $policyAssignmentMoreInfo = "$($definitionInfo.type) $($policyAssignmentsPolicyVariant): <a class=`"externallink`" href=`"https://www.azadvertizer.net/$($linkHelper)/$($policyAssignmentspolicyDefinitionIdGuid).html`" target=`"_blank`">$($definitionInfo.displayname)</a> ($policyAssignmentspolicyDefinitionIdGuid)"
                         }
                         else{
                             $policyAssignmentMoreInfo = "$($definitionInfo.type) $($policyAssignmentsPolicyVariant): <b>$($definitionInfo.displayname)</b> ($($policyAssignmentspolicyDefinitionIdFull))"
