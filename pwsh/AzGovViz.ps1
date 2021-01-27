@@ -6688,7 +6688,7 @@ extensions: [{ name: 'sort' }]
             $exemption = $htPolicyAssignmentExemptions.$policyExemption.exemption
             if ($exemption.properties.expiresOn){
                 $exemptionExpiresOnFormated = (($exemption.properties.expiresOn).ToString("yyyy-MM-dd HH:mm:ss"))
-                if (-not $exemption.properties.expiresOn -gt (Get-Date).ToUniversalTime()){
+                if ($exemption.properties.expiresOn -gt (Get-Date).ToUniversalTime()){
                     $exemptionExpiresOn = $exemptionExpiresOnFormated
                 }
                 else{
