@@ -1,4 +1,4 @@
-<#v4_minor_20210126_3
+<#v4_patch_20210128_1
 .SYNOPSIS  
     This script creates the following files to help better understand and audit your governance setup
     csv file
@@ -155,7 +155,7 @@ Param
     [int]$AzureConsumptionPeriod = 1,
     [switch]$NoAzureConsumptionReportExportToCSV,
     [switch]$NoAADGuestUsers,
-    [int]$TFCriticalRowsCount = 40000,
+    [int]$TFCriticalRowsCount = 40000, #HTML ScopeInsights Role Assignments -> becomes unresponsive depending on client device performance. A recommendation will be shown to download the CSV instead of opening the TF table
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]$LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -184,7 +184,7 @@ Param
 $startAzGovViz = get-date
 $startTime = get-date -format "dd-MMM-yyyy HH:mm:ss"
 $startTimeUTC = ((Get-Date).ToUniversalTime()).ToString("dd-MMM-yyyy HH:mm:ss")
-$AzGovVizVersion = "v4_minor_20210126_3"
+$AzGovVizVersion = "v4_patch_20210128_1"
 Write-Host "Start AzGovViz $($startTime) (#$($AzGovVizVersion))"
 
 if ($DebugAzAPICall -eq $false) {
@@ -1659,10 +1659,6 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                     $subscriptionQuotaId = $currentSubscription.subscriptionPolicies.quotaId
                     $subscriptionState = $currentSubscription.state
 
-                    #region TEST
-                    #$subsCnter++
-                    #alternative to ARG
-                    #$childMgSubId = "69c27575-fa7b-4208-ba84-368541ce2e7f"
                     $currentTask = "Getting ResourceTypes for SubscriptionId: '$($childMgSubId)'"
                     $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/resources?api-version=2020-06-01"
                     #$path = "/subscriptions/$($childMgSubId)/resources?api-version=2020-06-01"
@@ -1685,13 +1681,6 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         }
                     }
                     
-                    <#
-                    $script:htResourceTypesUniqueResource | fl
-                    $script:htResourceTypesUniqueResource."Microsoft.Network/networkWatchers"
-                    $script:htResourceTypesUniqueResource."Microsoft.Storage/storageAccounts"
-                    #>
-
-
                     #resourceTags
                     $script:htSubscriptionTagList.($childMgSubId) = New-Object system.collections.hashtable
                     $script:htSubscriptionTagList.($childMgSubId).Resource = New-Object system.collections.hashtable
@@ -1723,7 +1712,6 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                         }
                     }
 
-                    #alternative to ARG
                     #https://management.azure.com/subscriptions/{subscriptionId}/resourcegroups?api-version=2020-06-01
                     $currentTask = "Getting ResourceGroups for SubscriptionId: '$($childMgSubId)'"
                     $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/resourcegroups?api-version=2020-06-01"
@@ -1776,9 +1764,7 @@ function dataCollection($mgId, $hierarchyLevel, $mgParentId, $mgParentName) {
                     $resProvResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
                     ($script:htResourceProvidersAll).($childMgSubId).Providers = $resProvResult
                     $script:arrayResourceProvidersAll += $resProvResult
-                    #$null = $script:arrayResourceProvidersAll.Add($resProvResult)
 
-                    #endregionTEST
 
                     #resourceLocks
                     $currentTask = "Subscription ResourceLocks '$($childMgSubDisplayName)' ('$childMgSubId')"
@@ -2838,6 +2824,7 @@ function tableSubForMgHTML($mgChild) {
 "@
 }
 
+
 #rsi
 #region ScopeInsights
 function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId) {
@@ -2847,7 +2834,7 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId) {
     if ($mgOrSub -eq "mg") {
         #$startScopeInsightsPreQueryMg = get-date
         #BLUEPRINT
-        $blueprintReleatedQuery = $blueprintBaseQuery | Where-Object { $_.MgId -eq $mgChild -and "" -eq $_.SubscriptionId -and "" -eq $_.BlueprintAssignmentId }
+        $blueprintReleatedQuery = $blueprintBaseQuery | Where-Object { $_.MgId -eq $mgChild -and [String]::IsNullOrEmpty($_.SubscriptionId) -and [String]::IsNullOrEmpty($_.BlueprintAssignmentId) }
         $blueprintsScoped = $blueprintReleatedQuery
         $blueprintsScopedCount = ($blueprintsScoped | measure-object).count
         #Resources
@@ -2904,7 +2891,7 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId) {
         $blueprintReleatedQuery = $blueprintBaseQuery | Where-Object { $_.SubscriptionId -eq $subscriptionId -and "" -ne $_.BlueprintName }
         $blueprintsAssigned = $blueprintReleatedQuery | Where-Object { "" -ne $_.BlueprintAssignmentId }
         $blueprintsAssignedCount = ($blueprintsAssigned | measure-object).count
-        $blueprintsScoped = $blueprintReleatedQuery | Where-Object { $_.BlueprintScoped -eq "/subscriptions/$subscriptionId" -and "" -eq $_.BlueprintAssignmentId }
+        $blueprintsScoped = $blueprintReleatedQuery | Where-Object { $_.BlueprintScoped -eq "/subscriptions/$subscriptionId" -and [String]::IsNullOrEmpty($_.BlueprintAssignmentId) }
         $blueprintsScopedCount = ($blueprintsScoped | measure-object).count
         #SubscriptionDetails
         $subscriptionDetailsReleatedQuery = $optimizedTableForPathQuerySub | Where-Object { $_.SubscriptionId -eq $subscriptionId }
@@ -4121,7 +4108,7 @@ extensions: [{ name: 'sort' }]
         $policiesInherited = 0
         #$policyAssignmentsAllArrayForThisManagementGroup = ($script:policyAssignmentsAllArrayGroupedByManagementGroup | where-Object { $_.name -eq $mgChild }).group
         foreach ($policyAssignment in $policyAssignmentsAllArrayForThisManagementGroupVariantPolicy) {
-            if ("" -eq $policyAssignment.subscriptionId) {
+            if ([String]::IsNullOrEmpty($policyAssignment.subscriptionId)) {
                 $null = $policiesAssigned.Add($policyAssignment)
                 $policiesCount++
                 if ($policyAssignment.PolicyType -eq "BuiltIn") {
@@ -4343,7 +4330,7 @@ extensions: [{ name: 'sort' }]
         $policySetsAssignedAtScope = 0
         $policySetsInherited = 0
         foreach ($policySetAssignment in $policyAssignmentsAllArrayForThisManagementGroupVariantPolicySet) {
-            if ("" -eq $policySetAssignment.subscriptionId) {
+            if ([String]::IsNullOrEmpty($policySetAssignment.subscriptionId)) {
                 $null = $policySetsAssigned.Add($policySetAssignment)
                 $policySetsCount++
                 if ($policySetAssignment.PolicyType -eq "BuiltIn") {
@@ -4556,7 +4543,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         if ($mgOrSub -eq "mg") {
-            $scopePolicyAssignmentsLimit = $policyPolicyBaseQueryScopeInsights | Where-Object { "" -eq $_.SubscriptionId -and $_.MgId -eq $mgChild }
+            $scopePolicyAssignmentsLimit = $policyPolicyBaseQueryScopeInsights | Where-Object { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.MgId -eq $mgChild }
         }
         if ($mgOrSub -eq "sub") {
             $scopePolicyAssignmentsLimit = $policyPolicyBaseQueryScopeInsights | Where-Object { $_.SubscriptionId -eq $subscriptionId }
@@ -5062,7 +5049,7 @@ extensions: [{ name: 'sort' }]
         $roleSecurityFindingOwnerAssignmentSP = 0
         $rbacForThisManagementGroup = ($script:rbacAllGroupedByManagementGroup | Where-Object { $_.name -eq $mgChild }).group
         foreach ($roleAssignment in $rbacForThisManagementGroup) {
-            if ("" -eq $roleAssignment.subscriptionId) {
+            if ([String]::IsNullOrEmpty($roleAssignment.subscriptionId)) {
                 $null = $rolesAssigned.Add($roleAssignment)
                 $rolesAssignedCount++
                 if ($roleAssignment.Scope -notlike "this*") {
@@ -7138,7 +7125,7 @@ extensions: [{ name: 'sort' }]
             $effect = "n/a"
         }
 
-        if ("" -eq $policyAssignmentAll.SubscriptionId) {
+        if ([String]::IsNullOrEmpty($policyAssignmentAll.SubscriptionId)) {
             $mgOrSub = "Mg"
         }
         else {
@@ -7147,7 +7134,7 @@ extensions: [{ name: 'sort' }]
 
         if (-not $NoPolicyComplianceStates) {
             #compliance
-            if ("" -eq $policyAssignmentAll.subscriptionId) {
+            if ([String]::IsNullOrEmpty($policyAssignmentAll.subscriptionId)) {
                 $compliance = ($htCachePolicyCompliance).mg.($policyAssignmentAll.MgId).($policyAssignmentAll.policyAssignmentId)
                 $NonCompliantPolicies = $compliance.NonCompliantPolicies
                 $CompliantPolicies = $compliance.CompliantPolicies
@@ -7869,7 +7856,7 @@ extensions: [{ name: 'sort' }]
 "@
         $htmlSUMMARYOrphanedRoleAssignments = $null
         foreach ($roleAssignmentOrphanedUnique in $roleAssignmentsOrphanedUnique) {
-            $impactedMgs = ($roleAssignmentsOrphanedAll | Where-Object { "" -eq $_.SubscriptionId -and $_.RoleAssignmentId -eq $roleAssignmentOrphanedUnique.RoleAssignmentId } | Sort-Object -Property MgId)
+            $impactedMgs = ($roleAssignmentsOrphanedAll | Where-Object { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.RoleAssignmentId -eq $roleAssignmentOrphanedUnique.RoleAssignmentId } | Sort-Object -Property MgId)
             $impactedSubs = $roleAssignmentsOrphanedAll | Where-Object { "" -ne $_.SubscriptionId -and $_.RoleAssignmentId -eq $roleAssignmentOrphanedUnique.RoleAssignmentId } | Sort-Object -Property SubscriptionId
             $htmlSUMMARYOrphanedRoleAssignments += @"
 <tr>
@@ -8046,7 +8033,7 @@ extensions: [{ name: 'sort' }]
             $scope = "inherited ROOT"
         }
 
-        if ("" -eq $rbac.SubscriptionId) {
+        if ([String]::IsNullOrEmpty($rbac.SubscriptionId)) {
             $mgOrSub = "Mg"
         }
         else {
@@ -8615,7 +8602,7 @@ extensions: [{ name: 'sort' }]
 "@
         $htmlSUMMARYSecurityOwnerAssignmentSP = $null
         $htmlSUMMARYSecurityOwnerAssignmentSP = foreach ($roleAssignmentOwnerAssignmentSP in ($roleAssignmentsOwnerAssignmentSP)) {
-            $impactedMgs = $roleAssignmentsOwnerAssignmentSPAll | Where-Object { "" -eq $_.SubscriptionId -and $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentSP.RoleAssignmentId }
+            $impactedMgs = $roleAssignmentsOwnerAssignmentSPAll | Where-Object { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentSP.RoleAssignmentId }
             $impactedSubs = $roleAssignmentsOwnerAssignmentSPAll | Where-Object { "" -ne $_.SubscriptionId -and $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentSP.RoleAssignmentId }
             $servicePrincipal = ($roleAssignmentsOwnerAssignmentSP | Where-Object { $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentSP.RoleAssignmentId }) | Get-Unique
             @"
@@ -8716,7 +8703,7 @@ extensions: [{ name: 'sort' }]
         $htmlSUMMARYSecurityOwnerAssignmentNotGroup = $null
         $htmlSUMMARYSecurityOwnerAssignmentNotGroup = foreach ($roleAssignmentOwnerAssignmentNotGroup in ($roleAssignmentsOwnerAssignmentNotGroup)) {
             $impactedMgSubBaseQuery = $roleAssignmentsOwnerAssignmentNotGroupAll | Where-Object { $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentId }
-            $impactedMgs = $impactedMgSubBaseQuery | Where-Object { "" -eq $_.SubscriptionId }
+            $impactedMgs = $impactedMgSubBaseQuery | Where-Object { [String]::IsNullOrEmpty($_.SubscriptionId) }
             $impactedSubs = $impactedMgSubBaseQuery | Where-Object { "" -ne $_.SubscriptionId }
             $servicePrincipal = ($roleAssignmentsOwnerAssignmentNotGroup | Where-Object { $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentId }) | Get-Unique
             @"
@@ -8914,7 +8901,7 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYBlueprintDefinitions
     Write-Host "  processing TenantSummary Blueprints"
-    $blueprintDefinitions = ($blueprintBaseQuery | Where-Object { "" -eq $_.BlueprintAssignmentId })
+    $blueprintDefinitions = ($blueprintBaseQuery | Where-Object { [String]::IsNullOrEmpty($_.BlueprintAssignmentId) })
     $blueprintDefinitionsCount = ($blueprintDefinitions | measure-object).count
     if ($blueprintDefinitionsCount -gt 0) {
         $tableId = "TenantSummary_BlueprintDefinitions"
@@ -9223,7 +9210,7 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYMgsapproachingLimitsPolicyAssignments
     Write-Host "  processing TenantSummary ManagementGroups Limit PolicyAssignments"
-    $mgsApproachingLimitPolicyAssignments = (($policyBaseQueryManagementGroups | Where-Object { "" -eq $_.SubscriptionId -and $_.PolicyAndPolicySetAssigmentAtScopeCount -gt 0 -and (($_.PolicyAndPolicySetAssigmentAtScopeCount -gt ($_.PolicyAssigmentLimit * ($LimitCriticalPercentage / 100)))) }) | Select-Object MgId, MgName, PolicyAssigmentAtScopeCount, PolicySetAssigmentAtScopeCount, PolicyAndPolicySetAssigmentAtScopeCount, PolicyAssigmentLimit -Unique)
+    $mgsApproachingLimitPolicyAssignments = (($policyBaseQueryManagementGroups | Where-Object { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.PolicyAndPolicySetAssigmentAtScopeCount -gt 0 -and (($_.PolicyAndPolicySetAssigmentAtScopeCount -gt ($_.PolicyAssigmentLimit * ($LimitCriticalPercentage / 100)))) }) | Select-Object MgId, MgName, PolicyAssigmentAtScopeCount, PolicySetAssigmentAtScopeCount, PolicyAndPolicySetAssigmentAtScopeCount, PolicyAssigmentLimit -Unique)
     if (($mgsApproachingLimitPolicyAssignments | measure-object).count -gt 0) {
         $tfCount = ($mgsApproachingLimitPolicyAssignments | measure-object).count
         $tableId = "TenantSummary_MgsapproachingLimitsPolicyAssignments"
@@ -9307,7 +9294,7 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYMgsapproachingLimitsPolicyScope
     Write-Host "  processing TenantSummary ManagementGroups Limit PolicyScope"
-    $mgsApproachingLimitPolicyScope = (($policyBaseQueryManagementGroups | Where-Object { "" -eq $_.SubscriptionId -and $_.PolicyDefinitionsScopedCount -gt 0 -and (($_.PolicyDefinitionsScopedCount -gt ($_.PolicyDefinitionsScopedLimit * ($LimitCriticalPercentage / 100)))) }) | Select-Object MgId, MgName, PolicyDefinitionsScopedCount, PolicyDefinitionsScopedLimit -Unique)
+    $mgsApproachingLimitPolicyScope = (($policyBaseQueryManagementGroups | Where-Object { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.PolicyDefinitionsScopedCount -gt 0 -and (($_.PolicyDefinitionsScopedCount -gt ($_.PolicyDefinitionsScopedLimit * ($LimitCriticalPercentage / 100)))) }) | Select-Object MgId, MgName, PolicyDefinitionsScopedCount, PolicyDefinitionsScopedLimit -Unique)
     if (($mgsApproachingLimitPolicyScope | measure-object).count -gt 0) {
         $tfCount = ($mgsApproachingLimitPolicyScope | measure-object).count
         $tableId = "TenantSummary_MgsapproachingLimitsPolicyScope"
@@ -9391,7 +9378,7 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYMgsapproachingLimitsPolicySetScope
     Write-Host "  processing TenantSummary ManagementGroups Limit PolicySetScope"
-    $mgsApproachingLimitPolicySetScope = (($policyBaseQueryManagementGroups | Where-Object { "" -eq $_.SubscriptionId -and $_.PolicySetDefinitionsScopedCount -gt 0 -and (($_.PolicySetDefinitionsScopedCount -gt ($_.PolicySetDefinitionsScopedLimit * ($LimitCriticalPercentage / 100)))) }) | Select-Object MgId, MgName, PolicySetDefinitionsScopedCount, PolicySetDefinitionsScopedLimit -Unique)
+    $mgsApproachingLimitPolicySetScope = (($policyBaseQueryManagementGroups | Where-Object { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.PolicySetDefinitionsScopedCount -gt 0 -and (($_.PolicySetDefinitionsScopedCount -gt ($_.PolicySetDefinitionsScopedLimit * ($LimitCriticalPercentage / 100)))) }) | Select-Object MgId, MgName, PolicySetDefinitionsScopedCount, PolicySetDefinitionsScopedLimit -Unique)
     if ($mgsApproachingLimitPolicySetScope.count -gt 0) {
         $tfCount = ($mgsApproachingLimitPolicySetScope | measure-object).count 
         $tableId = "TenantSummary_MgsapproachingLimitsPolicySetScope"
@@ -9475,8 +9462,7 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYMgsapproachingLimitsRoleAssignment
     Write-Host "  processing TenantSummary ManagementGroups Limit RoleAssignments"
-    #$mgsApproachingRoleAssignmentLimit = $rbacBaseQuery | Where-Object { "" -eq $_.SubscriptionId -and $_.RoleAssignmentsCount -gt ($_.RoleAssignmentsLimit * $LimitCriticalPercentage / 100) } | Sort-Object -Property MgId -Unique | select-object -Property MgId, MgName, RoleAssignmentsCount, RoleAssignmentsLimit
-    $mgsApproachingRoleAssignmentLimit = $rbacBaseQueryArrayList.Where( { "" -eq $_.SubscriptionId -and $_.RoleAssignmentsCount -gt ($_.RoleAssignmentsLimit * $LimitCriticalPercentage / 100) }) | Sort-Object -Property MgId -Unique | select-object -Property MgId, MgName, RoleAssignmentsCount, RoleAssignmentsLimit
+    $mgsApproachingRoleAssignmentLimit = $rbacBaseQueryArrayList.Where( { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.RoleAssignmentsCount -gt ($_.RoleAssignmentsLimit * $LimitCriticalPercentage / 100) }) | Sort-Object -Property MgId -Unique | select-object -Property MgId, MgName, RoleAssignmentsCount, RoleAssignmentsLimit
     
     if (($mgsApproachingRoleAssignmentLimit | measure-object).count -gt 0) {
         $tfCount = ($mgsApproachingRoleAssignmentLimit | measure-object).count
@@ -11487,7 +11473,7 @@ extensions: [{ name: 'sort' }]
                     $helperMiRoleAssignments = $script:htPolicyAssignmentMiRoleAssignmentMappingAll.($serviceprincipalApp).roleassignments
                     foreach ($roleAssignment in $helperMiRoleAssignments){
                         if ($roleAssignment.roleDefinitionType -eq "builtin"){
-                            $arrayMiRoleAssignments += "$($roleAssignment.roleassignmentId) (<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($roleAssignment.roleDefinitionId).html`" target=`"_blank`"><b>$($roleAssignment.roleDefinitionName)</b></a>)"  
+                            $arrayMiRoleAssignments += "$($roleAssignment.roleassignmentId) (<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($roleAssignment.roleDefinitionId).html`" target=`"_blank`">$($roleAssignment.roleDefinitionName)</a>)"  
                         }
                         else{
                             $arrayMiRoleAssignments += "$($roleAssignment.roleassignmentId) (<b>$roleAssignment.roleDefinitionName</b>; $roleAssignment.roleDefinitionId)"
@@ -13215,7 +13201,7 @@ if (-not $HierarchyMapOnly) {
     Write-Host " Build preQueries"
     $policyBaseQuery = $table | Where-Object { "" -ne $_.PolicyVariant } | Sort-Object -Property PolicyType, Policy | Select-Object -Property Level, Policy*, mgId, mgname, SubscriptionId, Subscription
     $policyBaseQuerySubscriptions = $policyBaseQuery | Where-Object { "" -ne $_.SubscriptionId }
-    $policyBaseQueryManagementGroups = $policyBaseQuery | Where-Object { "" -eq $_.SubscriptionId }
+    $policyBaseQueryManagementGroups = $policyBaseQuery | Where-Object { [String]::IsNullOrEmpty($_.SubscriptionId) }
     $policyPolicyBaseQueryScopeInsights = ($policyBaseQuery | Select-Object Mg*, Subscription*, PolicyAssigmentAtScopeCount, PolicySetAssigmentAtScopeCount, PolicyAndPolicySetAssigmentAtScopeCount, PolicyAssigmentLimit -Unique)
     $policyBaseQueryUniqueAssignments = $policyBaseQuery | Select-Object -Property PolicyDefinitionIdGuid, PolicyDefinitionIdFull, PolicyAssignmentId, PolicyVariant, Policy, PolicyType, PolicyAssignmentName -Unique | sort-object -Property PolicyAssignmentId 
 
@@ -13258,7 +13244,7 @@ if (-not $HierarchyMapOnly) {
 
     Write-Host " Build MgPaths"
     $htAllMgsPath = @{ }
-    foreach ($mgid in (($optimizedTableForPathQuery | Where-Object { "" -eq $_.SubscriptionId } ).mgid)) {
+    foreach ($mgid in (($optimizedTableForPathQuery | Where-Object { [String]::IsNullOrEmpty($_.SubscriptionId) } ).mgid)) {
         $htAllMgsPath.($mgid) = @{ }
         createMgPath -mgid $mgid
         [array]::Reverse($script:mgPathArray)
@@ -13320,17 +13306,33 @@ $html += @"
         var rows = document.querySelectorAll('table#' + table_id + ' tr');
         // Construct csv
         var csv = [];
-        for (var i = 1; i < rows.length; i++) {
-            var row = [], cols = rows[i].querySelectorAll('td, th');
-            for (var j = 0; j < cols.length; j++) {
-                // Clean innertext to remove multiple spaces and jumpline (break csv)
-                var data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, '').replace(/(\s\s)/gm, ' ')
-                // Escape double-quote with double-double-quote (see https://stackoverflow.com/questions/17808511/properly-escape-a-double-quote-in-csv)
-                data = data.replace(/"/g, '""');
-                // Push escaped string
-                row.push('"' + data + '"');
+        if (window.helpertfConfig4TenantSummary_roleAssignmentsAll !== 1){
+            for (var i = 0; i < rows.length; i++) {
+                var row = [], cols = rows[i].querySelectorAll('td, th');
+                for (var j = 0; j < cols.length; j++) {
+                    // Clean innertext to remove multiple spaces and jumpline (break csv)
+                    var data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, '').replace(/(\s\s)/gm, ' ')
+                    // Escape double-quote with double-double-quote (see https://stackoverflow.com/questions/17808511/properly-escape-a-double-quote-in-csv)
+                    data = data.replace(/"/g, '""');
+                    // Push escaped string
+                    row.push('"' + data + '"');
+                }
+                csv.push(row.join(';'));
             }
-            csv.push(row.join(';'));
+        }
+        else{
+            for (var i = 1; i < rows.length; i++) {
+                var row = [], cols = rows[i].querySelectorAll('td, th');
+                for (var j = 0; j < cols.length; j++) {
+                    // Clean innertext to remove multiple spaces and jumpline (break csv)
+                    var data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, '').replace(/(\s\s)/gm, ' ')
+                    // Escape double-quote with double-double-quote (see https://stackoverflow.com/questions/17808511/properly-escape-a-double-quote-in-csv)
+                    data = data.replace(/"/g, '""');
+                    // Push escaped string
+                    row.push('"' + data + '"');
+                }
+                csv.push(row.join(';'));
+            }
         }
         var csv_string = csv.join('\n');
         // Download it
@@ -13353,17 +13355,33 @@ $html += @"
         var rows = document.querySelectorAll('table#' + table_id + ' tr');
         // Construct csv
         var csv = [];
-        for (var i = 1; i < rows.length; i++) {
-            var row = [], cols = rows[i].querySelectorAll('td, th');
-            for (var j = 0; j < cols.length; j++) {
-                // Clean innertext to remove multiple spaces and jumpline (break csv)
-                var data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, '').replace(/(\s\s)/gm, ' ')
-                // Escape double-quote with double-double-quote (see https://stackoverflow.com/questions/17808511/properly-escape-a-double-quote-in-csv)
-                data = data.replace(/"/g, '""');
-                // Push escaped string
-                row.push('"' + data + '"');
+        if (window.helpertfConfig4TenantSummary_roleAssignmentsAll !== 1){
+            for (var i = 0; i < rows.length; i++) {
+                var row = [], cols = rows[i].querySelectorAll('td, th');
+                for (var j = 0; j < cols.length; j++) {
+                    // Clean innertext to remove multiple spaces and jumpline (break csv)
+                    var data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, '').replace(/(\s\s)/gm, ' ')
+                    // Escape double-quote with double-double-quote (see https://stackoverflow.com/questions/17808511/properly-escape-a-double-quote-in-csv)
+                    data = data.replace(/"/g, '""');
+                    // Push escaped string
+                    row.push('"' + data + '"');
+                }
+                csv.push(row.join(','));
             }
-            csv.push(row.join(','));
+        }
+        else{
+            for (var i = 1; i < rows.length; i++) {
+                var row = [], cols = rows[i].querySelectorAll('td, th');
+                for (var j = 0; j < cols.length; j++) {
+                    // Clean innertext to remove multiple spaces and jumpline (break csv)
+                    var data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, '').replace(/(\s\s)/gm, ' ')
+                    // Escape double-quote with double-double-quote (see https://stackoverflow.com/questions/17808511/properly-escape-a-double-quote-in-csv)
+                    data = data.replace(/"/g, '""');
+                    // Push escaped string
+                    row.push('"' + data + '"');
+                }
+                csv.push(row.join(','));
+            }
         }
         var csv_string = csv.join('\n');
         // Download it
