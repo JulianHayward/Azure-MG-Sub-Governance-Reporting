@@ -1,4 +1,4 @@
-<#v4_patch_20210128_1
+<#v4_patch_20210129_1
 .SYNOPSIS  
     This script creates the following files to help better understand and audit your governance setup
     csv file
@@ -184,7 +184,7 @@ Param
 $startAzGovViz = get-date
 $startTime = get-date -format "dd-MMM-yyyy HH:mm:ss"
 $startTimeUTC = ((Get-Date).ToUniversalTime()).ToString("dd-MMM-yyyy HH:mm:ss")
-$AzGovVizVersion = "v4_patch_20210128_1"
+$AzGovVizVersion = "v4_patch_20210129_1"
 Write-Host "Start AzGovViz $($startTime) (#$($AzGovVizVersion))"
 
 if ($DebugAzAPICall -eq $false) {
@@ -5299,12 +5299,7 @@ function summary() {
         $temp0000000 = ($htCacheDefinitions).policy.($customPolicy.Id)
 
         #uniqueAssignments
-        #$policyUniqueAssignments = (($policyPolicyBaseQueryUniqueAssignments | Where-Object { $_.PolicyDefinitionIdFull -eq $temp0000000.Id }).PolicyAssignmentId)
         $policyUniqueAssignments = ($policyPolicyBaseQueryUniqueAssignmentsArrayList.where({ $_.PolicyDefinitionIdFull -eq $temp0000000.Id })).PolicyAssignmentId
-        <#$policyUniqueAssignmentsArray = [System.Collections.ArrayList]@()
-        foreach ($policyUniqueAssignment in $policyUniqueAssignments) {
-            $null = $policyUniqueAssignmentsArray.Add($policyUniqueAssignment)
-        }#>
         $policyUniqueAssignmentsCount = ($policyUniqueAssignments | measure-object).count 
 
         $uniqueAssignments = $null
@@ -5319,12 +5314,10 @@ function summary() {
         #usedInPolicySet
         $usedInPolicySetArray = [System.Collections.ArrayList]@()
         foreach ($customPolicySet in $tenantCustomPolicySets) {
-            #if (($htCacheDefinitions).policySet.$customPolicySet.Type -eq "Custom") {
-                $hlpCustomPolicySet = ($htCacheDefinitions).policySet.($customPolicySet)
-                if (($hlpCustomPolicySet.PolicySetPolicyIds).contains($customPolicy.PolicyDefinitionId)) {
-                    $null = $usedInPolicySetArray.Add(($hlpCustomPolicySet.Id))                          
-                }
-            #}
+            $hlpCustomPolicySet = ($htCacheDefinitions).policySet.($customPolicySet)
+            if (($hlpCustomPolicySet.PolicySetPolicyIds).contains($customPolicy.PolicyDefinitionId)) {
+                $null = $usedInPolicySetArray.Add(($hlpCustomPolicySet.Id))                          
+            }
         }
         $usedInPolicySetList = [System.Collections.ArrayList]@()
         foreach ($usedPolicySet in $usedInPolicySetArray) {
@@ -7967,9 +7960,9 @@ extensions: [{ name: 'sort' }]
                                 
                     }
                     
-                    $LinkOrNotLinkToAzAdvertizer = $policyDisplayName
+                    $LinkOrNotLinkToAzAdvertizer = "<b>$($policyDisplayName)</b>"
                 }
-                $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignment = "$($policyAssignmentId) (<b>$LinkOrNotLinkToAzAdvertizer</b>)"
+                $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignment = "$($policyAssignmentId) ($LinkOrNotLinkToAzAdvertizer)"
             }
             else{
                 $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignment = "none"
