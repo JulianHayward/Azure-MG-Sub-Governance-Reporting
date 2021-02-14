@@ -2,6 +2,22 @@
 
 ## AzGovViz version history
 
+### AzGovViz version 5
+
+Release 2021-Feb-14  
+__Let´s accellerate by going parallel!__  
+* Support for PowerShell Core ONLY! No support for PowerShell version < 7.0.3
+* New section __DefinitionInsights__ - Insights on all built-in and custom Policy, PolicySet and RBAC Role definitions
+* New parameter `-NoScopeInsights` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
+* New parameter `-ThrottleLimit` - Leveraging PowerShell Core´s parallel capability you can define the ThrottleLimit (default=5)
+* New parameter `DoTranscript` - Log the console output
+* Parameter `SubscriptionQuotaIdWhitelist` now expects an array
+* Renamed parameter `-NoServicePrincipalResolve` to `-NoAADServicePrincipalResolve`
+* Renamed parameter `-ServicePrincipalExpiryWarningDays` to `-AADServicePrincipalExpiryWarningDays`
+* Bugfixes
+
+__Note:__ In order to run AzGovViz Version 5 in Azure DevOps you also must use the v5 pipeline YAML.
+
 ### AzGovViz version 4
 
 Updates 2021-Jan-26

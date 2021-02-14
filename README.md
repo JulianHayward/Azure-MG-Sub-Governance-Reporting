@@ -1,7 +1,7 @@
 # AzGovViz - Azure Governance Visualizer
 
 Do you want to get granular insights on your technical Azure Governance implementation? - document it in CSV, HTML and MD (Markdown)?  
-AzGovViz is a PowerShell based script that iterates your Azure Tenant´s Management Group hierarchy down to Subscription level. It captures most relevant Azure governance capabilities such as Azure Policy, RBAC and Blueprints and a lot more. From the collected data AzGovViz provides visibility on your __HierarchyMap__, creates a __TenantSummary__ and builds granular __ScopeInsights__ on Management Groups and Subscriptions. The technical requirements as well as the required permissions are minimal.
+AzGovViz is a PowerShell based script that iterates your Azure Tenant´s Management Group hierarchy down to Subscription level. It captures most relevant Azure governance capabilities such as Azure Policy, RBAC and Blueprints and a lot more. From the collected data AzGovViz provides visibility on your __HierarchyMap__, creates a __TenantSummary__, creates __DefinitionInsights__ and builds granular __ScopeInsights__ on Management Groups and Subscriptions. The technical requirements as well as the required permissions are minimal.
 
 You can run the script either for your Tenant Root Group or any other Management Group that you have read access on.
 
@@ -38,8 +38,7 @@ AzGovViz is intended to help you to get a holistic overview on your technical Az
 Listed as tool for the Govern discipline in the Microsoft Cloud Adoption Framework!  
 https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-templates#govern
 
-Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template. 
-
+Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template.
 
 </td>
 </table>
@@ -48,13 +47,19 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## AzGovViz release history
 
-Updates 2021-Jan-26
-* Role Assigments indicate if User is Member/Guest
-* Enrich information for Policy assignment related ServicePrincipal/Managed Identity (Policy assignment details on policy/set definition and Role assignments)
-* Preloading of <a href="https://www.tablefilter.com/" target="_blank">TableFilter</a> removed for __TenantSummary__ PolicyAssignmentsAll and RoleAssignmentsAll (on poor hardware loading the HTML file took quite long)
-* Fix 'Orphaned Custom Roles' bug - thanks to Tim Wanierke
-* More bugfixes
-* Performance optimization
+__Release Version 5 - Let´s accellerate by going parallel!__ (2021-Feb-14)  
+  
+* Breaking Change: Support for __PowerShell Core ONLY!__ No support for PowerShell version < 7.0.3
+* New section __DefinitionInsights__ - Insights on all built-in and custom Policy, PolicySet and RBAC Role definitions
+* New parameter `-ThrottleLimit` - Leveraging PowerShell Core´s parallel capability you can define the ThrottleLimit (default=5)
+* New parameter `-NoScopeInsights` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
+* New parameter `-DoTranscript` - Log the console output
+* Parameter `-SubscriptionQuotaIdWhitelist` now expects an array
+* Renamed parameter `-NoServicePrincipalResolve` to `-NoAADServicePrincipalResolve`
+* Renamed parameter `-ServicePrincipalExpiryWarningDays` to `-AADServicePrincipalExpiryWarningDays`
+* Bugfixes
+
+__Note:__ In order to run AzGovViz Version 5 in Azure DevOps you also must use the v5 pipeline YAML.
 
 [full history](history.md)
 
@@ -65,12 +70,14 @@ Updates 2021-Jan-26
 <table>
 <td>
 
-<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v4_minor_20210126_3.html" target="_blank">![Demo](img/demo4_66.png)</a>
+<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210212_1.html" target="_blank">![Demo](img/demo4_66.png)</a>
+
+[Demo (Version 5; 2021-Feb-12)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210212_1.html)
 
 </td>
 <td>
 
-Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation (v4 2021-Jan-15)
+Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation
 
 </td>
 </table>
@@ -191,6 +198,8 @@ __HierarchyMap__
 ![alt text](img/HierarchyMap.png "HierarchyMap")  
 __TenantSummary__  
 ![alt text](img/TenantSummary.png "TenantSummary")  
+__DefinitionInsights__  
+![alt text](img/DefinitionInsights.png "DefinitionInsights") 
 __ScopeInsights__  
 ![alt text](img/ScopeInsights.png "ScopeInsights")  
 *_IDs from screenshot are randomized_
@@ -204,7 +213,7 @@ markdown in Azure DevOps Wiki as Code
 
 * CSV file
 * HTML file
-  * the HTML file uses Java Script and CSS files which are hosted on various CDNs (Content Delivery Network). For details review the BuildHTML region in the AzGovViz.ps1 script file.
+  * the HTML file uses Java Script and CSS files which are hosted on various CDNs (Content Delivery Network). For details review the BuildHTML region in the PowerShell script file.
   * Browsers tested: Edge, new Edge and Chrome
 * MD (Markdown) file
   * for use with Azure DevOps Wiki leveraging the [Mermaid](https://docs.microsoft.com/en-us/azure/devops/release-notes/2019/sprint-158-update#mermaid-diagram-support-in-wiki) plugin
@@ -225,7 +234,7 @@ Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
 * API permissions: 
   * If you run the script in the context of a __Service Principal__ in a Azure DevOps Pipeline (hosted agent) you must grant API permissions in Azure Active Directory (get-AzRoleAssignment cmdlet requirements): The Azure DevOps Service Connection's __App registration (Application)__ must be granted with __Azure Active Directory API | Application | Directory | Read.All__ (admin consent required)
 * AAD permissions: 
-  * If you run the script as a User AND you are a __Guest__ User in the tenant AND you want to resolve ServicePrincipal information, then you need to be member of AAD Role __Directory readers__. As an alternative you can use the parameter `-NoServicePrincipalResolve`
+  * If you run the script as a User AND you are a __Guest__ User in the tenant AND you want to resolve ServicePrincipal information, then you need to be member of AAD Role __Directory readers__. As an alternative you can use the parameters `-NoAADServicePrincipalResolve` and `-NoAADGuestUsers`
 
 ### Usage
 
@@ -236,7 +245,7 @@ Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
   * Az.Resources
   * Az.ResourceGraph
 * Usage
-  * `.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id>`
+  * `.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>`
 * Parameters
   * `-ManagementGroupId` Tenant Id or any child Management Group Id
   * `-CsvDelimiter` the world is split into two kind of delimiters - comma and semicolon - choose yours
@@ -251,16 +260,19 @@ Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
   * ~~`-DisablePolicyComplianceStates`~~ `-NoPolicyComplianceStates` will not query policy compliance states. You may want to use this parameter to accellerate script execution or when receiving error 'ResponseTooLarge'. 
   * `-NoResourceDiagnosticsPolicyLifecycle` disables Resource Diagnostics Policy Lifecycle recommendations
   * `-NoAADGroupsResolveMembers` disables resolving Azure Active Directory Group memberships
-  * `-NoServicePrincipalResolve` disables resolving ServicePrincipals
-  * `-ServicePrincipalExpiryWarningDays` define warning period for Service Principal secret and certificate expiry; default is 14 days
+  * `-NoAADGuestUsers` disables resolving Azure Active Directory User type (Guest or Member)
+  * ~~`-NoServicePrincipalResolve`~~ `-NoAADServicePrincipalResolve` disables resolving ServicePrincipals
+  * ~~`-ServicePrincipalExpiryWarningDays`~~ `-AADServicePrincipalExpiryWarningDays` define warning period for Service Principal secret and certificate expiry; default is 14 days
   * `-NoAzureConsumption` Azure Consumption data should not be collected/reported
   * `-AzureConsumptionPeriod` define for which time period Azure Consumption data should be gathered; default is 1 day
   * `-NoAzureConsumptionReportExportToCSV` Azure Consumption data should not be exported (CSV)
+  * `-NoScopeInsights` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
+  * `-ThrottleLimit` - Leveraging PowerShell´s parallel capability you can define the ThrottleLimit (default=5)
+  * `-DoTranscript` - Log the console output
   * ~~`-UseAzureRM`~~ support for AzureRm modules has been deprecated
-  * ~~`-Experimental`~~ executes experimental features. Latest experimental feature: 'ResourceDiagnostics Policy Lifecycle recommendations' - e.g. it checks on all existing Custom Policy definitions that deploy resource diagnostics settings if all available log categories are defined in the policy (may they be enabled or disabled)
-* Passed tests: Powershell Core on Windows
-* Passed tests: Powershell 5.1.18362.752 on Windows
-* Passed tests: Powershell Core on Linux Ubuntu 18.04 LTS
+* Passed tests: Powershell Core 7.1.1 on Windows
+* ~~Passed tests: Powershell 5.1.18362.752 on Windows~~
+* Passed tests: Powershell Core 7.1.1 Azure DevOps hosted ubuntu-18.04
 
 #### Azure DevOps Pipeline
 
@@ -284,7 +296,7 @@ AzGovViz creates very detailed information about your Azure Governance setup. In
 
 ### Facts
 
-Disabled Subscriptions and Subscriptions where Quota Id starts with with "AAD_" are being skipped (check parameter `-SubscriptionQuotaIdWhitelist`), all others are queried. More info on Quota Id / Offer numbers: <a href="https://docs.microsoft.com/en-us/azure/cost-management-billing/costs/understand-cost-mgt-data#supported-microsoft-azure-offers" target="_blank">Supported Microsoft Azure offers</a> 
+Disabled Subscriptions and Subscriptions where Quota Id starts with with "AAD_" are being skipped, all others are queried. More info on Quota Id / Offer numbers: <a href="https://docs.microsoft.com/en-us/azure/cost-management-billing/costs/understand-cost-mgt-data#supported-microsoft-azure-offers" target="_blank">Supported Microsoft Azure offers</a> 
 .  
 
 ARM Limits are not acquired programmatically, they are hardcoded. The links used to check related Limits are commented in the param section of the script.
