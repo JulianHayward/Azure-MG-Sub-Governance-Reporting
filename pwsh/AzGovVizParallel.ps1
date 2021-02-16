@@ -155,7 +155,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210214_1",
+    [string]$AzGovVizVersion = "v5_major_20210216_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -1664,14 +1664,14 @@ function dataCollection($mgId) {
                 $errorOccurred = "no"
                 $retryCmletCount++
                 try {
-                    $L0mgmtGroupRoleAssignments = Get-AzRoleAssignment -scope "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)"
+                    $L0mgmtGroupRoleAssignments = Get-AzRoleAssignment -scope "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" -ErrorAction SilentlyContinue
                 }
                 catch {
                     $errorOccurred = "yes"
                 }
                 if ($errorOccurred -ne "no") {
-                    Write-Host "try#$($retryCmletCount) cmdlet Get-AzRoleAssignment ManagementGroup $($mgdetail.Name) failed, retry in 1 second"
-                    start-sleep -Seconds 1
+                    Write-Host "try#$($retryCmletCount) cmdlet Get-AzRoleAssignment ManagementGroup '$($mgdetail.Name)' failed, retry in $($retryCmletCount) seconds"
+                    start-sleep -Seconds $retryCmletCount
                 }
             }
             until($errorOccurred -eq "no")
@@ -2749,14 +2749,14 @@ function dataCollection($mgId) {
                         $errorOccurred = "no"
                         $retryCmletCount++
                         try {
-                            $L1mgmtGroupSubRoleAssignments = Get-AzRoleAssignment -Scope "/subscriptions/$($childMgSubId)" #exclude rg roleassignments
+                            $L1mgmtGroupSubRoleAssignments = Get-AzRoleAssignment -Scope "/subscriptions/$($childMgSubId)" -ErrorAction SilentlyContinue
                         }
                         catch {
                             $errorOccurred = "yes"
                         }
                         if ($errorOccurred -ne "no") {
-                            Write-Host "try#$($retryCmletCount) cmdlet Get-AzRoleAssignment /subscriptions/$($childMgSubId) failed, retry in 1 second"
-                            start-sleep -Seconds 1
+                            Write-Host "try#$($retryCmletCount) cmdlet Get-AzRoleAssignment Subscription '$($childMgSubId)' failed, retry in $($retryCmletCount) seconds"
+                            start-sleep -Seconds $retryCmletCount
                         }
                     }
                     until($errorOccurred -eq "no")
@@ -5641,7 +5641,7 @@ function summary() {
 
     $script:customPoliciesDetailed = [System.Collections.ArrayList]@()
     foreach ($customPolicy in ($customPoliciesArray | Sort-Object @{Expression = { $_.DisplayName } }, @{Expression = { $_.PolicyDefinitionId } })) {
-
+    #foreach ($customPolicy in ($customPoliciesArray | Sort-Object -Property DisplayName, PolicyDefinitionId)) {
         #uniqueAssignments
         $policyUniqueAssignments = ($policyPolicyBaseQueryUniqueAssignmentsArrayList.where( { $_.PolicyDefinitionId -eq $customPolicy.PolicyDefinitionId })).PolicyAssignmentId
         $policyUniqueAssignmentsCount = ($policyUniqueAssignments | measure-object).count 
@@ -5655,27 +5655,11 @@ function summary() {
             $uniqueAssignments = $policyUniqueAssignmentsCount
         }
 
-        #usedInPolicySet
-        $usedInPolicySetArray = [System.Collections.ArrayList]@()
-        foreach ($customPolicySet in $customPolicySetsArray) {
-            if (($customPolicySet.PolicySetPolicyIds) -contains ($customPolicy.PolicyDefinitionId)) {
-                $null = $usedInPolicySetArray.Add(($customPolicySet.id))                          
-            }
-        }
-        
-        $usedInPolicySetList = [System.Collections.ArrayList]@()
-        foreach ($usedPolicySet in $usedInPolicySetArray) {
-            $hlpPolicySetUsed = ($htCacheDefinitions).policySet.($usedPolicySet)
-            $null = $usedInPolicySetList.Add("<b>$($hlpPolicySetUsed.DisplayName)</b> ($($hlpPolicySetUsed.PolicyDefinitionId))")
-        }
-        $usedInPolicySetListCount = ($usedInPolicySetList | Measure-Object).count
-        $usedInPolicySet = $null
-        if ($usedInPolicySetListCount -gt 0) {
-            $usedInPolicySetListInBrackets = "($(($usedInPolicySetList | Sort-Object) -join "$CsvDelimiterOpposite "))"
-            $usedInPolicySet = "$usedInPolicySetListCount $usedInPolicySetListInBrackets"
-        }
-        else {
-            $usedInPolicySet = $usedInPolicySetListCount
+        #PolicyUsedInPolicySet
+        $usedInPolicySet = "0"
+        if (($htPoliciesUsedInPolicySets).($customPolicy.PolicyDefinitionId)){
+            $hlpPolicySetUsed = ($htPoliciesUsedInPolicySets).($customPolicy.PolicyDefinitionId)
+            $usedInPolicySet = "$(($hlpPolicySetUsed.PolicySet | Measure-Object).Count) ($($hlpPolicySetUsed.PolicySet -join "$CsvDelimiterOpposite ")"
         }
 
         #policyEffect
@@ -5686,7 +5670,7 @@ function summary() {
             $effect = "Fixed: $($customPolicy.effectFixedValue)"
         }
 
-        #policyRoledefinitions
+        <#policyRoledefinitions
         $policyRoleDefinitionsArray = [System.Collections.ArrayList]@()
         if (($htCacheDefinitionsAsIs).policy.($customPolicy.id).properties.policyrule.then.details.roledefinitionIds) {
             foreach ($policyRoledefinitionId in ($htCacheDefinitionsAsIs).policy.($customPolicy.id).properties.policyrule.then.details.roledefinitionIds) {
@@ -5699,6 +5683,21 @@ function summary() {
         else {
             $policyRoleDefinitions = "n/a"
         }
+        #>
+
+        if (($customPolicy.RoleDefinitionIds) -ne "n/a"){
+            $policyRoleDefinitionsArray = @()
+            $policyRoleDefinitionsArray = foreach ($roleDefinitionId in $customPolicy.RoleDefinitionIds | Sort-Object){
+                ($htCacheDefinitions).role.($roleDefinitionId -replace ".*/").Name
+                #write-host ($htCacheDefinitions).role.($roleDefinitionId -replace ".*/").Name
+            }
+            $policyRoleDefinitions = $policyRoleDefinitionsArray -join "$CsvDelimiterOpposite "
+        }
+        else{
+            $policyRoleDefinitions = "n/a"
+        }
+        #$policyRoleDefinitions
+        #Write-host "_____"
 
         $null = $script:customPoliciesDetailed.Add([PSCustomObject]@{ 
                 Scope              = $customPolicy.ScopeMgSub
@@ -5956,19 +5955,19 @@ extensions: [{ name: 'sort' }]
         $customPoliciesOrphaned = [System.Collections.ArrayList]@()
         foreach ($customPolicyAll in $customPoliciesArray) {
             if (($policyPolicyBaseQueryUniqueCustomDefinitions | measure-object).count -eq 0) {
-                $hlpCustomPolicy = $customPolicyAll
-                if ($hlpCustomPolicy.Type -eq "Custom") {
-                    $null = $customPoliciesOrphaned.Add($hlpCustomPolicy)
-                }
+                #$hlpCustomPolicy = $customPolicyAll
+                #if ($customPolicyAll.Type -eq "Custom") {
+                    $null = $customPoliciesOrphaned.Add($customPolicyAll)
+                #}
             }
             else {
-                if ($policyPolicyBaseQueryUniqueCustomDefinitions -contains ($customPolicyAll)) {
-                }
-                else {
-                    $hlpCustomPolicy = $customPolicyAll
-                    if ($hlpCustomPolicy.Type -eq "Custom") {
-                        $null = $customPoliciesOrphaned.Add($hlpCustomPolicy)
-                    }
+                if ($policyPolicyBaseQueryUniqueCustomDefinitions -notcontains ($customPolicyAll.PolicyDefinitionId)) {
+                #}
+                #else {
+                    #$hlpCustomPolicy = $customPolicyAll
+                    #if ($customPolicyAll.Type -eq "Custom") {
+                        $null = $customPoliciesOrphaned.Add($customPolicyAll)
+                    #}
                 }
             }
         }
@@ -6070,15 +6069,11 @@ extensions: [{ name: 'sort' }]
         $customPoliciesOrphaned = [System.Collections.ArrayList]@()
         foreach ($customPolicyAll in $customPoliciesArray) {
             if (($policyPolicyBaseQueryUniqueCustomDefinitions | measure-object).count -eq 0) {
-                if ($customPolicyAll.Type -eq "Custom") {
-                    $null = $customPoliciesOrphaned.Add($customPolicyAll)
-                }
+                $null = $customPoliciesOrphaned.Add($customPolicyAll)
             }
             else {
-                if ($policyPolicyBaseQueryUniqueCustomDefinitions -notcontains ($customPolicyAll.id)) {    
-                    if ($customPolicyAll.Type -eq "Custom") {
-                        $null = $customPoliciesOrphaned.Add($customPolicyAll)
-                    }
+                if ($policyPolicyBaseQueryUniqueCustomDefinitions -notcontains ($customPolicyAll.PolicyDefinitionId)) {    
+                    $null = $customPoliciesOrphaned.Add($customPolicyAll)
                 }
             }
         }
@@ -6087,13 +6082,13 @@ extensions: [{ name: 'sort' }]
         foreach ($customPolicyOrphaned in  $customPoliciesOrphaned) {
             $hlpOrphanedInScope = $customPolicyOrphaned
             if (($hlpOrphanedInScope.PolicyDefinitionId) -like "/providers/Microsoft.Management/managementGroups/*") {
-                $policyScopedMgSub = $hlpOrphanedInScope.PolicyDefinitionId -replace "/providers/Microsoft.Management/managementGroups/", "" -replace '/.*'
+                $policyScopedMgSub = $hlpOrphanedInScope.PolicyDefinitionId -replace "/providers/Microsoft.Management/managementGroups/" -replace "/.*"
                 if ($mgsAndSubs.MgId -contains ($policyScopedMgSub)) {
                     $null = $customPoliciesOrphanedInScopeArray.Add($hlpOrphanedInScope)
                 }
             }
             if (($hlpOrphanedInScope.PolicyDefinitionId) -like "/subscriptions/*") {
-                $policyScopedMgSub = $hlpOrphanedInScope.PolicyDefinitionId -replace "/subscriptions/", "" -replace '/.*'
+                $policyScopedMgSub = $hlpOrphanedInScope.PolicyDefinitionId -replace "/subscriptions/" -replace "/.*"
                 if ($mgsAndSubs.SubscriptionId -contains ($policyScopedMgSub)) {
                     $null = $customPoliciesOrphanedInScopeArray.Add($hlpOrphanedInScope)
                 }
@@ -7499,7 +7494,7 @@ extensions: [{ name: 'sort' }]
                     MgName                      = $policyAssignmentAll.MgName
                     subscriptionId              = $policyAssignmentAll.SubscriptionId
                     subscriptionName            = $policyAssignmentAll.Subscription
-                    PolicyAssignmentId          = $policyAssignmentAll.PolicyAssignmentId
+                    PolicyAssignmentId          = (($policyAssignmentAll.PolicyAssignmentId).Tolower())
                     PolicyAssignmentDisplayName = $policyAssignmentAll.PolicyAssignmentDisplayName
                     PolicyAssignmentDescription = $policyAssignmentAll.PolicyAssignmentDescription
                     Effect                      = $effect
@@ -7527,7 +7522,7 @@ extensions: [{ name: 'sort' }]
                     MgName                      = $policyAssignmentAll.MgName
                     subscriptionId              = $policyAssignmentAll.SubscriptionId
                     subscriptionName            = $policyAssignmentAll.Subscription
-                    PolicyAssignmentId          = $policyAssignmentAll.PolicyAssignmentId
+                    PolicyAssignmentId          = (($policyAssignmentAll.PolicyAssignmentId).Tolower())
                     PolicyAssignmentDisplayName = $policyAssignmentAll.PolicyAssignmentDisplayName
                     PolicyAssignmentDescription = $policyAssignmentAll.PolicyAssignmentDescription
                     Effect                      = $effect
@@ -12526,7 +12521,7 @@ tf.init();
 
 #region DefinitionInsights
 function definitionInsights() {
-
+    $startDefinitionInsights = get-date
     Write-Host " Building DefinitionInsights"
 
     #region definitionInsightsAzurePolicy
@@ -12545,15 +12540,55 @@ function definitionInsights() {
         if ($policyOrPolicySetNameSplit[1] -eq "Policy") {
             #policy
             if (-not ($htPolicyWithAssignments).policy.($policyOrPolicySetNameSplit[0])) {
+                $pscustomObj = [System.Collections.ArrayList]@()
+                $null = $pscustomObj.Add([PSCustomObject]@{ 
+                    PolicyAssignmentId             = $policyOrPolicySet.group.PolicyAssignmentId
+                    PolicyAssignmentDisplayName    = $policyOrPolicySet.group.PolicyAssignmentDisplayName
+                })
                 ($htPolicyWithAssignments).policy.($policyOrPolicySetNameSplit[0]) = @{ }
-                ($htPolicyWithAssignments).policy.($policyOrPolicySetNameSplit[0]).Assignments = $policyOrPolicySet.group
+                ($htPolicyWithAssignments).policy.($policyOrPolicySetNameSplit[0]).Assignments = [array]($pscustomObj)
             }
         }
         else {
             #policySet
             if (-not ($htPolicyWithAssignments).policySet.($policyOrPolicySetNameSplit[0])) {
+                $pscustomObj = [System.Collections.ArrayList]@()
+                $null = $pscustomObj.Add([PSCustomObject]@{ 
+                    PolicyAssignmentId             = $policyOrPolicySet.group.PolicyAssignmentId
+                    PolicyAssignmentDisplayName    = $policyOrPolicySet.group.PolicyAssignmentDisplayName
+                })
                 ($htPolicyWithAssignments).policySet.($policyOrPolicySetNameSplit[0]) = @{ }
-                ($htPolicyWithAssignments).policySet.($policyOrPolicySetNameSplit[0]).Assignments = $policyOrPolicySet.group
+                ($htPolicyWithAssignments).policySet.($policyOrPolicySetNameSplit[0]).Assignments = [array]($pscustomObj)
+            }
+        }
+    }
+
+    foreach ($customPolicy in $customPoliciesArray){
+        if ($htPoliciesWithAssignmentOnRgRes.($customPolicy.PolicyDefinitionId)) {
+            if (-not ($htPolicyWithAssignments).policy.($customPolicy.PolicyDefinitionId)) {
+                ($htPolicyWithAssignments).policy.($customPolicy.PolicyDefinitionId) = @{ }
+                ($htPolicyWithAssignments).policy.($customPolicy.PolicyDefinitionId).Assignments = [array]($htPoliciesWithAssignmentOnRgRes.($customPolicy.PolicyDefinitionId).Assignments)
+            }
+            else{
+                $array = @()
+                $array += ($htPolicyWithAssignments).policy.($customPolicy.PolicyDefinitionId).Assignments
+                $array += $htPoliciesWithAssignmentOnRgRes.($customPolicy.PolicyDefinitionId).Assignments
+                ($htPolicyWithAssignments).policy.($customPolicy.PolicyDefinitionId).Assignments = $array
+            }
+        }
+    }
+
+    foreach ($customPolicySet in $customPolicySetsArray){
+        if ($htPoliciesWithAssignmentOnRgRes.($customPolicySet.PolicyDefinitionId)) {
+            if (-not ($htPolicyWithAssignments).policySet.($customPolicySet.PolicyDefinitionId)) {
+                ($htPolicyWithAssignments).policySet.($customPolicySet.PolicyDefinitionId) = @{ }
+                ($htPolicyWithAssignments).policySet.($customPolicySet.PolicyDefinitionId).Assignments = [array]($htPoliciesWithAssignmentOnRgRes.($customPolicySet.PolicyDefinitionId).Assignments)
+            }
+            else{
+                $array = @()
+                $array += ($htPolicyWithAssignments).policySet.($customPolicySet.PolicyDefinitionId).Assignments
+                $array += $htPoliciesWithAssignmentOnRgRes.($customPolicySet.PolicyDefinitionId).Assignments
+                ($htPolicyWithAssignments).policySet.($customPolicySet.PolicyDefinitionId).Assignments = $array
             }
         }
     }
@@ -12613,6 +12648,21 @@ function definitionInsights() {
         </div>
 
         <div class="me">
+            <label>usedInPolicySet</label>
+            <span id="polUsedInPolicySet"></span>
+        </div>
+
+        <div class="me" style="display: none;">
+            <label>polUsedInPolicySetCount</label>
+            <span id="polUsedInPolicySetCount"></span>
+        </div>
+
+        <div class="me" style="display: none;">
+            <label>polUsedInPolicySets</label>
+            <span id="polUsedInPolicySets"></span>
+        </div>
+
+        <div class="me">
             <label>Roles</label>
             <span id="polRoledefs"></span>
         </div>
@@ -12634,6 +12684,9 @@ function definitionInsights() {
 <th>hasAssignments</th>
 <th>Assignments Count</th>
 <th>Assignments</th>
+<th>UsedInPolicySet</th>
+<th>PolicySetsCount</th>
+<th>PolicySets</th>
 <th>Roles</th>
 </tr>
 </thead>
@@ -12653,7 +12706,13 @@ function definitionInsights() {
             if ($assignmentsCount -gt 0) {
                 $arrayAssignmentDetails = @()
                 $arrayAssignmentDetails = foreach ($assignment in $assignments) {
-                    "$($assignment.PolicyAssignmentId) ($($assignment.PolicyAssignmentDisplayName))"
+                    if ($assignment.PolicyAssignmentDisplayName -eq ""){
+                        $polAssDisplayName = "<i>#no AssignmentName given</i>"
+                    }
+                    else{
+                        $polAssDisplayName = $assignment.PolicyAssignmentDisplayName
+                    }
+                    "$($assignment.PolicyAssignmentId) (<b>$($polAssDisplayName)</b>)"
                 }
                 $assignmentsDetailed = $arrayAssignmentDetails -join "$CsvDelimiterOpposite "
             }
@@ -12664,8 +12723,14 @@ function definitionInsights() {
         if ($policy.RoleDefinitionIds -ne "n/a") {
             $arrayRoleDefDetails = @()
             $arrayRoleDefDetails = foreach ($roleDef in $policy.RoleDefinitionIds) {
-                $roleDefHlp = ($htCacheDefinitions).role.($roleDef -replace ".*/", "")
-                "'$($roleDefHlp.Name)' ($($roleDefHlp.id))"
+                $roleDefIdOnly = $roleDef -replace ".*/"
+                if (($roleDefIdOnly).Length -ne 36){
+                    "'INVALID RoleDefId!' ($($roleDefIdOnly))"
+                }
+                else{
+                    $roleDefHlp = ($htCacheDefinitions).role.($roleDefIdOnly)
+                    "'$($roleDefHlp.Name)' ($($roleDefHlp.id))"
+                }
             }
             $roleDefinitionIds = $arrayRoleDefDetails -join "$CsvDelimiterOpposite "
         }
@@ -12673,6 +12738,16 @@ function definitionInsights() {
         $scopeDetails = "n/a"
         if ($policy.ScopeId -ne "n/a") {
             $scopeDetails = "$($policy.ScopeId) ($($htEntities.($policy.ScopeId).DisplayName))"
+        }
+
+        $usedInPolicySet = "false"
+        $usedInPolicySetCount = 0
+        $usedInPolicySets = "n/a"
+    
+        if ($htPoliciesUsedInPolicySets.($policy.PolicyDefinitionId)){
+            $usedInPolicySet = "true"
+            $usedInPolicySetCount = ($htPoliciesUsedInPolicySets.($policy.PolicyDefinitionId).policySet).Count
+            $usedInPolicySets = ($htPoliciesUsedInPolicySets.($policy.PolicyDefinitionId).policySet) -join "$CsvDelimiterOpposite "
         }
 
         @"
@@ -12686,6 +12761,9 @@ function definitionInsights() {
 <td>$hasAssignments</td>
 <td>$assignmentsCount</td>
 <td class="breakwordall">$assignmentsDetailed</td>
+<td class="breakwordall">$usedInPolicySet</td>
+<td class="breakwordall">$usedInPolicySetCount</td>
+<td class="breakwordall">$usedInPolicySets</td>
 <td class="breakwordall">$roleDefinitionIds</td>
 </tr>
 "@ 
@@ -12756,6 +12834,7 @@ function loadtf$htmlTableId() { if (window.helpertfConfig4$htmlTableId !== 1) {
     col_3: 'select',
     col_5: 'select',
     col_6: 'select',
+    col_9: 'select',
     col_types: [
         'caseinsensitivestring',
         'caseinsensitivestring',
@@ -12765,6 +12844,9 @@ function loadtf$htmlTableId() { if (window.helpertfConfig4$htmlTableId !== 1) {
         'caseinsensitivestring',
         'caseinsensitivestring',
         'number',
+        'caseinsensitivestring',
+        'number',
+        'caseinsensitivestring',
         'caseinsensitivestring',
         'caseinsensitivestring'
     ],
@@ -12778,16 +12860,19 @@ function loadtf$htmlTableId() { if (window.helpertfConfig4$htmlTableId !== 1) {
         'polHasAssignment',
         'polPolAssignments',
         'polhid1',
+        'polUsedInPolicySet',
+        'polUsedInPolicySetCount',
+        'polUsedInPolicySets',
         'polRoledefs'
     ],
-    watermark: ['', '', '', '', '', '', '', '','', 'try: \'Contributor\''],
+    watermark: ['', '', '', '', '', '', '', '','','','','', 'try: \'Contributor\''],
     extensions: [
         { 
             name: 'sort' 
         },
         {
             name: 'colsVisibility',
-            at_start: [1,2,3,4,5,6,7,8,9],
+            at_start: [1,2,3,4,5,6,7,8,9,10,11,12],
             text: 'Columns: ',
             enable_tick_all: true
         }
@@ -12874,7 +12959,13 @@ tf.init();}}
             if ($assignmentsCount -gt 0) {
                 $arrayAssignmentDetails = @()
                 $arrayAssignmentDetails = foreach ($assignment in $assignments) {
-                    "$($assignment.PolicyAssignmentId) ($($assignment.PolicyAssignmentDisplayName))"
+                    if ($assignment.PolicyAssignmentDisplayName -eq ""){
+                        $polAssDisplayName = "<i>#no AssignmentName given</i>"
+                    }
+                    else{
+                        $polAssDisplayName = $assignment.PolicyAssignmentDisplayName
+                    }
+                    "$($assignment.PolicyAssignmentId) (<b>$($polAssDisplayName)</b>)"
                 }
                 $assignmentsDetailed = $arrayAssignmentDetails -join "$CsvDelimiterOpposite "
             }
@@ -13220,6 +13311,8 @@ tf.init();}}
     $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
     $script:html = $null
 
+    $endDefinitionInsights = get-date
+    Write-Host "  DefinitionInsights processing duration: $((NEW-TIMESPAN -Start $startDefinitionInsights -End $endDefinitionInsights).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefinitionInsights -End $endDefinitionInsights).TotalSeconds) seconds)"
 }
 #endregion DefinitionInsights
 
@@ -14575,22 +14668,36 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
     Write-Host "Create helper hash table"
     $startHelperHt = get-date
-    $customPolicySetshlpr = ($htCacheDefinitions).policySet.keys | Where-Object { ($htCacheDefinitions).policySet.($_).Type -eq "Custom" }
-    $customPolicySetshlprCount = ( $customPolicySetshlpr | Measure-Object).Count
+    $htPoliciesUsedInPolicySets = @{ }
+    $policySetshlpr = ($htCacheDefinitions).policySet.keys
+    $customPolicySetshlprCount = ( $policySetshlpr | Measure-Object).Count
     if ($customPolicySetshlprCount -gt 0) {
-        foreach ($policySet in $customPolicySetshlpr) {
+        foreach ($policySet in $policySetshlpr) {
             $PolicySetPolicyIds = ($htCacheDefinitions).policySet.($policySet).PolicySetPolicyIds
             foreach ($PolicySetPolicyId in $PolicySetPolicyIds) {
+                $hlper = ($htCacheDefinitions).policySet.($policySet)
+                if ($hlper.LinkToAzAdvertizer){
+                    $hlperDisplayNameWithOrWithoutLinkToAzAdvertizer = "$($hlper.LinkToAzAdvertizer) ($($hlper.PolicyDefinitionId))"
+                }
+                else{
+                    $hlperDisplayNameWithOrWithoutLinkToAzAdvertizer = "<b>$($hlper.DisplayName)</b> ($($hlper.PolicyDefinitionId))"
+                }
                 if (-not $htPoliciesUsedInPolicySets.($PolicySetPolicyId)) {
                     $htPoliciesUsedInPolicySets.($PolicySetPolicyId) = @{ }
+                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet = [array]$hlperDisplayNameWithOrWithoutLinkToAzAdvertizer
+                }
+                else{
+                    $array = @()
+                    $array = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet
+                    $array += $hlperDisplayNameWithOrWithoutLinkToAzAdvertizer
+                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet = $array
                 }
             }
         }
     }
+   
     $endHelperHt = get-date
     Write-Host "Create helper hash table duration: $((NEW-TIMESPAN -Start $startHelperHt -End $endHelperHt).TotalSeconds) seconds"
-    
-
         
 }
 #endregion dataCollection
@@ -14599,7 +14706,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
 #region BuildHTML
 #testhelper
-#$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
+$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 
 $startBuildHTML = get-date
 Write-Host "Building HTML"
@@ -14750,6 +14857,36 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         }
     }
     #endregion assignments
+
+    #region assignmentRgRes
+    $htPoliciesWithAssignmentOnRgRes = @{ }
+    foreach ($policyAssignmentRgRes in $arrayCachePolicyAssignmentsResourceGroupsAndResources | Sort-Object -Property id -Unique){
+        $hlperPolDefId = (($policyAssignmentRgRes.properties.policyDefinitionId).Tolower())
+        if (-not $htPoliciesWithAssignmentOnRgRes.($hlperPolDefId)){
+            $pscustomObj = [System.Collections.ArrayList]@()
+            $null = $pscustomObj.Add([PSCustomObject]@{ 
+                PolicyAssignmentId             = ($policyAssignmentRgRes.id).tolower()
+                PolicyAssignmentDisplayName    = $policyAssignmentRgRes.properties.displayName
+            })
+            $htPoliciesWithAssignmentOnRgRes.($hlperPolDefId) = @{ }
+            $htPoliciesWithAssignmentOnRgRes.($hlperPolDefId).Assignments = [array](($pscustomObj))
+        }
+        else{
+            $pscustomObj = [System.Collections.ArrayList]@()
+            $null = $pscustomObj.Add([PSCustomObject]@{ 
+                PolicyAssignmentId             = ($policyAssignmentRgRes.id).tolower()
+                PolicyAssignmentDisplayName    = $policyAssignmentRgRes.properties.displayName
+            })
+            $array = @()
+            $array += $htPoliciesWithAssignmentOnRgRes.($hlperPolDefId).Assignments
+            $array += (($pscustomObj))
+            $htPoliciesWithAssignmentOnRgRes.($hlperPolDefId).Assignments = $array
+        }
+    }
+
+    #$htPoliciesWithAssignmentOnRgRes.Keys
+    #$arrayCachePolicyAssignmentsResourceGroupsAndResources.properties.policyDefinitionId | Sort-Object -Unique
+    #endregion assignmentRgRes
 
 
     $tenantAllRoles = $($htCacheDefinitions).role.keys
