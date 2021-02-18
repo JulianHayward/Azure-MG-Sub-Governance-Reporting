@@ -161,7 +161,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210218_1",
+    [string]$AzGovVizVersion = "v5_major_20210218_2",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -15437,7 +15437,7 @@ if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
 ## Hierarchy Diagram (Mermaid)
 
 ::: mermaid
-    graph $($AzureDevOpsWikiHierarchyDirection);`n
+    graph $($AzureDevOpsWikiHierarchyDirection.ToUpper());`n
 "@
 }
 else {
@@ -15583,18 +15583,6 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 #endregion BuildConsumptionCSV
 
 #endregion createoutputs
-
-<#
-                CurrentTask    = $currentTask
-                TargetEndpoint = $targetEndpoint
-                Uri            = $uri
-                Method         = $method
-                TryCounter = $tryCounter
-                TryCounterUnexpectedError = $tryCounterUnexpectedError
-                RetryAuthorizationFailedCounter = $retryAuthorizationFailedCounter
-                RestartDueToDuplicateNextlinkCounter = $restartDueToDuplicateNextlinkCounter
-                TimeStamp = $tstmp
-#>
 
 #APITracking
 $APICallTrackingCount = ($arrayAPICallTracking | Measure-Object).Count

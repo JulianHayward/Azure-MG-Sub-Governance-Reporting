@@ -1,4 +1,4 @@
-# AzGovViz v5_major_20210218_1
+# AzGovViz v5_major_20210218_2
 # First things first: 
 # 1. edit line 45 and line 46 
 # 2. check line 60 if branch 'master' is applicable 
@@ -25,7 +25,7 @@
 # NoScopeInsights | example: -NoScopeInsights | WhatDoesItDo? and why would you want to do this? In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
 # ThrottleLimit | example: -ThrottleLimit 10 | WhatDoesItDo? Define the number of script blocks running in parallel. Leveraging PowerShell Core´s parallel capability you can define the ThrottleLimit (default=5)
 # DoTranscript | example: -DoTranscript | WhatDoesItDo? Log the console output
-# AzureDevOpsWikiHierarchyDirection | example: -AzureDevOpsWikiHierarchyDirection | WhatDoesItDo? Define the direction the Hierarchy should be built in Azure DevOps WokiAsCode (Markdown) TD = TopDown (Horizontal), LR = LeftRight (Vertical)
+# AzureDevOpsWikiHierarchyDirection | example: - "LR" | WhatDoesItDo? Define the direction the Hierarchy should be built in Azure DevOps WokiAsCode (Markdown) TD = TopDown (Horizontal), LR = LeftRight (Vertical)
 
 trigger: none
 
