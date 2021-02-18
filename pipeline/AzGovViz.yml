@@ -1,11 +1,11 @@
-# AzGovViz v5_major_20210214_1
+# AzGovViz v5_major_20210218_1
 # First things first: 
-# 1. edit line 44 and line 45 
-# 2. check line 59 if branch 'master' is applicable 
+# 1. edit line 45 and line 46 
+# 2. check line 60 if branch 'master' is applicable 
 # Documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 # Also check https://www.azadvertizer.net - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
 # 
-# Parameters reference (use in line 90)
+# Parameters reference (use in line 91)
 # LimitCriticalPercentage | default is '80' | example: -LimitCriticalPercentage 90  | WhatDoesItDo? marks capabilities that approch limits e.g. limit 100, usage 80 will mark with warning
 # SubscriptionQuotaIdWhitelist | default is 'undefined' | example: -SubscriptionQuotaIdWhitelist MSDN_, EnterpriseAgreement_ | WhatDoesItDo? processes only subscriptions that startWith the given QuotaIds
 # HierarchyMapOnly | switch | example: -HierarchyMapOnly | WhatDoesItDo? only creates the Hierarchy Tree
@@ -25,6 +25,7 @@
 # NoScopeInsights | example: -NoScopeInsights | WhatDoesItDo? and why would you want to do this? In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
 # ThrottleLimit | example: -ThrottleLimit 10 | WhatDoesItDo? Define the number of script blocks running in parallel. Leveraging PowerShell Core´s parallel capability you can define the ThrottleLimit (default=5)
 # DoTranscript | example: -DoTranscript | WhatDoesItDo? Log the console output
+# AzureDevOpsWikiHierarchyDirection | example: -AzureDevOpsWikiHierarchyDirection | WhatDoesItDo? Define the direction the Hierarchy should be built in Azure DevOps WokiAsCode (Markdown) TD = TopDown (Horizontal), LR = LeftRight (Vertical)
 
 trigger: none
 

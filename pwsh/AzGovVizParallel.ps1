@@ -80,6 +80,9 @@
 .PARAMETER DoTranscript
     Log the console output
 
+.PARAMETER AzureDevOpsWikiHierarchyDirection
+    Define the direction the Hierarchy should be built in Azure DevOps TD (default) = TopDown (Horizontal), LR = LeftRight (Vertical)
+
 .EXAMPLE
     Define the ManagementGroup ID
     PS C:\> .\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id>
@@ -144,6 +147,9 @@
     Define if you want to log the console output
     PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -DoTranscript
 
+    Define the direction the Hierarchy should be built in Azure DevOps WokiAsCode (Markdown) TD = TopDown (Horizontal), LR = LeftRight (Vertical)
+    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -AzureDevOpsWikiHierarchyDirection "LR"
+
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
@@ -155,7 +161,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210216_1",
+    [string]$AzGovVizVersion = "v5_major_20210218_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -184,6 +190,8 @@ Param
     [int]$ThrottleLimit = 5, 
     [array]$ExludedResourceTypesDiagnosticsCapable = @("microsoft.web/certificates"),
     [switch]$IncludeResourceGroupsAndResources,
+    #[string]$AzureDevOpsWikiHierarchyDirection = "TD",
+    [parameter(ValueFromPipeline)][ValidateSet("TD","LR")][string[]]$AzureDevOpsWikiHierarchyDirection = "TD",
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]$LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -455,7 +463,7 @@ $htBearerAccessToken = [System.Collections.Hashtable]::Synchronized((New-Object 
 
 #API
 #region azapicall
-function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumption, $getApp, $getSp, $getGuests) {
+function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumption, $getApp, $getSp, $getGuests, $caller) {
     #$debugAzAPICall = $true
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
@@ -473,6 +481,34 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
         else {
             $targetEndpoint = "GraphAPI"
             $bearerToUse = $htBearerAccessToken.AccessTokenGraph
+        }
+
+        #API Call Tracking
+        $tstmp = (Get-Date -format "yyyyMMddHHmmssms")
+        $null = $script:arrayAPICallTracking.Add([PSCustomObject]@{ 
+                CurrentTask    = $currentTask
+                TargetEndpoint = $targetEndpoint
+                Uri            = $uri
+                Method         = $method
+                TryCounter = $tryCounter
+                TryCounterUnexpectedError = $tryCounterUnexpectedError
+                RetryAuthorizationFailedCounter = $retryAuthorizationFailedCounter
+                RestartDueToDuplicateNextlinkCounter = $restartDueToDuplicateNextlinkCounter
+                TimeStamp = $tstmp
+            })
+        
+        if ($caller -eq "CustomDataCollection"){
+            $null = $script:arrayAPICallTrackingCustomDataCollection.Add([PSCustomObject]@{ 
+                    CurrentTask    = $currentTask
+                    TargetEndpoint = $targetEndpoint
+                    Uri            = $uri
+                    Method         = $method
+                    TryCounter = $tryCounter
+                    TryCounterUnexpectedError = $tryCounterUnexpectedError
+                    RetryAuthorizationFailedCounter = $retryAuthorizationFailedCounter
+                    RestartDueToDuplicateNextlinkCounter = $restartDueToDuplicateNextlinkCounter
+                    TimeStamp = $tstmp
+                })
         }
 
         $unexpectedError = $false
@@ -516,7 +552,6 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     ($getApp -and $catchResult.error.code -like "*Authorization_RequestDenied*") -or 
                     ($getGuests -and $catchResult.error.code -like "*Authorization_RequestDenied*") -or 
                     $catchResult.error.message -like "*The offer MS-AZR-0110P is not supported*") {
-
                     if ($catchResult.error.code -like "*ResponseTooLarge*") {
                         Write-Host "###### LIMIT #################################"
                         Write-Host "Hitting LIMIT getting Policy Compliance States!"
@@ -735,10 +770,11 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
         }
         else {
             if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: unexpectedError: notFalse" }
-            if ($tryCounterUnexpectedError -lt 6) {
-                Write-Host " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (trying 5 times)"
+            if ($tryCounterUnexpectedError -lt 10) {
+                $sleepSec = @(1,2,3,5,10,20,30,40,50,60)[$tryCounterUnexpectedError]
+                Write-Host " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (trying 10 times); sleep $sleepSec seconds"
                 Write-Host $catchResult
-                Start-Sleep -Seconds 2
+                Start-Sleep -Seconds $sleepSec
             }
             else {
                 Write-Host " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (tried 5 times)/exit"
@@ -771,6 +807,20 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType) {
             $targetEndpoint = "GraphAPI"
             $bearerToUse = $htBearerAccessToken.AccessTokenGraph
         }
+
+        #API Call Tracking
+        $tstmp = (Get-Date -format "yyyyMMddHHmmssms")
+        $null = $script:arrayAPICallTracking.Add([PSCustomObject]@{ 
+                CurrentTask    = $currentTask
+                TargetEndpoint = $targetEndpoint
+                Uri            = $uri
+                Method         = $method
+                TryCounter = $tryCounter
+                TryCounterUnexpectedError = 0
+                RetryAuthorizationFailedCounter = 0
+                RestartDueToDuplicateNextlinkCounter = 0
+                TimeStamp = $tstmp
+            })
 
         $tryCounter++
         $retryAuthorizationFailed = 5
@@ -1249,6 +1299,8 @@ function dataCollection($mgId) {
         $allManagementGroupsFromEntitiesChildOfRequestedMg = $using:allManagementGroupsFromEntitiesChildOfRequestedMg
         $allManagementGroupsFromEntitiesChildOfRequestedMgCount = $using:allManagementGroupsFromEntitiesChildOfRequestedMgCount
         $arrayDataCollectionProgressMg = $using:arrayDataCollectionProgressMg
+        $arrayAPICallTracking = $using:arrayAPICallTracking
+        $arrayAPICallTrackingCustomDataCollection = $using:arrayAPICallTrackingCustomDataCollection
         #Functions
         $function:AzAPICall = $using:funcAzAPICall
         $function:createBearerToken = $using:funcCreateBearerToken
@@ -1283,7 +1335,7 @@ function dataCollection($mgId) {
                 #$path = "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
                 $method = "POST"
     
-                foreach ($policyAssignment in (((AzAPICall -uri $uri -method $method -currenttask $currentTask))).policyassignments | sort-object -Property policyAssignmentId) {
+                foreach ($policyAssignment in (((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))).policyassignments | sort-object -Property policyAssignmentId) {
                     #$policyAssignment
                     $policyAssignmentIdToLower = ($policyAssignment.policyAssignmentId).ToLower()
                     ($script:htCachePolicyCompliance).mg.($mgdetail.Name).($policyAssignmentIdToLower) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
@@ -1314,7 +1366,7 @@ function dataCollection($mgId) {
             $method = "GET"
     
             $mgBlueprintDefinitionResult = ""
-            $mgBlueprintDefinitionResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+            $mgBlueprintDefinitionResult = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
     
             if (($mgBlueprintDefinitionResult | measure-object).count -gt 0) {
                 foreach ($blueprint in $mgBlueprintDefinitionResult) {
@@ -1348,7 +1400,7 @@ function dataCollection($mgId) {
             #$path = "/subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
             $method = "GET"
     
-            $requestPolicyExemptionAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+            $requestPolicyExemptionAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
             $requestPolicyExemptionAPICount = ($requestPolicyExemptionAPI | Measure-Object).Count
             if ($requestPolicyExemptionAPICount -gt 0) {
                 foreach ($exemption in $requestPolicyExemptionAPI) {
@@ -1365,7 +1417,7 @@ function dataCollection($mgId) {
             #$path = "/providers/Microsoft.Management/managementgroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
             $method = "GET"
     
-            $requestPolicyDefinitionAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+            $requestPolicyDefinitionAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
             $mgPolicyDefinitions = $requestPolicyDefinitionAPI | Where-Object { $_.properties.policyType -eq "custom" }
             $PolicyDefinitionsScopedCount = (($mgPolicyDefinitions | Where-Object { ($_.id) -like "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/*" }) | measure-object).count
             foreach ($mgPolicyDefinition in $mgPolicyDefinitions) {
@@ -1436,7 +1488,7 @@ function dataCollection($mgId) {
             #$path = "/providers/Microsoft.Management/managementgroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2019-09-01"
             $method = "GET"
             
-            $requestPolicySetDefinitionAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+            $requestPolicySetDefinitionAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
             $mgPolicySetDefinitions = $requestPolicySetDefinitionAPI | Where-Object { $_.properties.policyType -eq "custom" }
             $PolicySetDefinitionsScopedCount = (($mgPolicySetDefinitions | Where-Object { ($_.id) -like "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/*" }) | measure-object).count
             foreach ($mgPolicySetDefinition in $mgPolicySetDefinitions) {
@@ -1472,7 +1524,7 @@ function dataCollection($mgId) {
             #$path = "/providers/Microsoft.Management/managementgroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atscope()&api-version=2019-09-01"
             $method = "GET"
            
-            $L0mgmtGroupPolicyAssignments = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+            $L0mgmtGroupPolicyAssignments = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
             $L0mgmtGroupPolicyAssignmentsPolicyCount = (($L0mgmtGroupPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" }) | measure-object).count
             $L0mgmtGroupPolicyAssignmentsPolicySetCount = (($L0mgmtGroupPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" }) | measure-object).count
             $L0mgmtGroupPolicyAssignmentsPolicyAtScopeCount = (($L0mgmtGroupPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.id -match "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" }) | measure-object).count
@@ -1642,7 +1694,7 @@ function dataCollection($mgId) {
             #$path = "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/providers/Microsoft.Authorization/roleDefinitions?api-version=2015-07-01&`$filter=type%20eq%20'CustomRole'"
             $method = "GET"
             
-            $mgCustomRoleDefinitions = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+            $mgCustomRoleDefinitions = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
             foreach ($mgCustomRoleDefinition in $mgCustomRoleDefinitions) {
                 if (-not $($htCacheDefinitions).role[$mgCustomRoleDefinition.name]) {
                     ($script:htCacheDefinitions).role.$($mgCustomRoleDefinition.name) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
@@ -1842,6 +1894,8 @@ function dataCollection($mgId) {
             $arrayDataCollectionProgressSub = $using:arrayDataCollectionProgressSub
             $htAllSubscriptionsFromAPI = $using:htAllSubscriptionsFromAPI
             $arrayEntitiesFromAPI = $using:arrayEntitiesFromAPI
+            $arrayAPICallTracking = $using:arrayAPICallTracking
+            $arrayAPICallTrackingCustomDataCollection = $using:arrayAPICallTrackingCustomDataCollection
             #Functions
             $function:AzAPICall = $using:funcAzAPICall
             $function:createBearerToken = $using:funcCreateBearerToken
@@ -1933,7 +1987,7 @@ function dataCollection($mgId) {
                     #$path = "/subscriptions/$($childMgSubId)/resources?api-version=2020-06-01"
                     $method = "GET"
 
-                    $resourcesSubscriptionResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))    
+                    $resourcesSubscriptionResult = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))    
                     foreach ($resourceTypeLocation in ($resourcesSubscriptionResult | Group-Object -Property type, location)) {
                         $null = $script:resourcesAll.Add([PSCustomObject]@{
                                 subscriptionId = $childMgSubId
@@ -1987,7 +2041,7 @@ function dataCollection($mgId) {
                     #$path = "/subscriptions/$($childMgSubId)/resourcegroups?api-version=2020-06-01"
                     $method = "GET"
                     
-                    $resourceGroupsSubscriptionResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+                    $resourceGroupsSubscriptionResult = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
                     $null = $script:resourceGroupsAll.Add([PSCustomObject]@{
                             subscriptionId = $childMgSubId
                             count_         = ($resourceGroupsSubscriptionResult | Measure-Object).count
@@ -2031,7 +2085,7 @@ function dataCollection($mgId) {
                     #$path = "/subscriptions/$($childMgSubId)/providers?api-version=2019-10-01"
                     $method = "GET"
 
-                    $resProvResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+                    $resProvResult = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
                     ($script:htResourceProvidersAll).($childMgSubId).Providers = $resProvResult
 
                     #resourceLocks
@@ -2040,7 +2094,7 @@ function dataCollection($mgId) {
                     #$path = "/subscriptions/$childMgSubId/providers/Microsoft.Authorization/locks?api-version=2016-09-01"
                     $method = "GET"
 
-                    $requestSubscriptionResourceLocks = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+                    $requestSubscriptionResourceLocks = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
                     $requestSubscriptionResourceLocksCount = ($requestSubscriptionResourceLocks | Measure-Object).Count
                     if ($requestSubscriptionResourceLocksCount -gt 0) {
                         $script:htResourceLocks.($childMgSubId) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
@@ -2138,7 +2192,7 @@ function dataCollection($mgId) {
                     #$path = "/subscriptions/$childMgSubId/providers/Microsoft.Resources/tags/default?api-version=2020-06-01"
                     $method = "GET"
 
-                    $requestSubscriptionTags = ((AzAPICall -uri $uri -method $method -currenttask $currentTask -listenOn "Content"))
+                    $requestSubscriptionTags = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn "Content" -caller "CustomDataCollection"))
                     
                     $script:htSubscriptionTagList.($childMgSubId).Subscription = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
                     if ($requestSubscriptionTags.properties.tags) {
@@ -2191,7 +2245,7 @@ function dataCollection($mgId) {
                         #$path = "/subscriptions/$childMgSubId/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
                         $method = "POST"
                         
-                        $subPolicyComplianceResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+                        $subPolicyComplianceResult = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
                         ($script:htCachePolicyCompliance).sub.($childMgSubId) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
                         foreach ($policyAssignment in $subPolicyComplianceResult.policyassignments | sort-object -Property policyAssignmentId) {
                             $policyAssignmentIdToLower = ($policyAssignment.policyAssignmentId).ToLower()
@@ -2223,7 +2277,7 @@ function dataCollection($mgId) {
                         #$path = "/subscriptions/$childMgSubId/providers/Microsoft.Security/securescores?api-version=2020-01-01-preview"
                         $method = "GET"
 
-                        $subASCSecureScoreResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+                        $subASCSecureScoreResult = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
                         if (($subASCSecureScoreResult | measure-object).count -gt 0) {
                             $subscriptionASCSecureScore = "$($subASCSecureScoreResult.properties.score.current) of $($subASCSecureScoreResult.properties.score.max) points" 
                         }
@@ -2241,7 +2295,7 @@ function dataCollection($mgId) {
                     #$path = "/subscriptions/$childMgSubId/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
                     $method = "GET"
 
-                    $subBlueprintDefinitionResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+                    $subBlueprintDefinitionResult = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
                     if (($subBlueprintDefinitionResult | measure-object).count -gt 0) {
                         foreach ($blueprint in $subBlueprintDefinitionResult) {
 
@@ -2282,7 +2336,7 @@ function dataCollection($mgId) {
                     #$path = "/subscriptions/$childMgSubId/providers/Microsoft.Blueprint/blueprintAssignments?api-version=2018-11-01-preview"
                     $method = "GET"
                     
-                    $subscriptionBlueprintAssignmentsResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+                    $subscriptionBlueprintAssignmentsResult = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
                     
                     if (($subscriptionBlueprintAssignmentsResult | measure-object).count -gt 0) {
                         foreach ($subscriptionBlueprintAssignment in $subscriptionBlueprintAssignmentsResult) {
@@ -2306,7 +2360,7 @@ function dataCollection($mgId) {
                             #$path = "$($blueprintScope)/providers/Microsoft.Blueprint/blueprints/$($blueprintName)?api-version=2018-11-01-preview"
                             $method = "GET"
                             
-                            $subscriptionBlueprintDefinitionResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask -listenOn "Content"))
+                            $subscriptionBlueprintDefinitionResult = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn "Content" -caller "CustomDataCollection"))
                             $blueprintName = $subscriptionBlueprintDefinitionResult.name
                             $blueprintId = $subscriptionBlueprintDefinitionResult.id
                             $blueprintAssignmentVersion = $subscriptionBlueprintAssignment.properties.blueprintId -replace ".*/"
@@ -2344,7 +2398,7 @@ function dataCollection($mgId) {
                     #$path = "/subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
                     $method = "GET"
 
-                    $requestPolicyExemptionAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+                    $requestPolicyExemptionAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
                     $requestPolicyExemptionAPICount = ($requestPolicyExemptionAPI | Measure-Object).Count
                     if ($requestPolicyExemptionAPICount -gt 0) {
                         foreach ($exemption in $requestPolicyExemptionAPI) {
@@ -2361,7 +2415,7 @@ function dataCollection($mgId) {
                     #$path = "/subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
                     $method = "GET"
                     
-                    $requestPolicyDefinitionAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+                    $requestPolicyDefinitionAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
                     $subPolicyDefinitions = $requestPolicyDefinitionAPI | Where-Object { $_.properties.policyType -eq "custom" }
                     $PolicyDefinitionsScopedCount = (($subPolicyDefinitions | Where-Object { ($_.id) -like "/subscriptions/$childMgSubId/*" }) | measure-object).count
                     foreach ($subPolicyDefinition in $subPolicyDefinitions) {
@@ -2438,7 +2492,7 @@ function dataCollection($mgId) {
                     #$path = "/subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2019-09-01"
                     $method = "GET"
                 
-                    $requestPolicySetDefinitionAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+                    $requestPolicySetDefinitionAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
                     $subPolicySetDefinitions = $requestPolicySetDefinitionAPI | Where-Object { $_.properties.policyType -eq "custom" }
                     $PolicySetDefinitionsScopedCount = (($subPolicySetDefinitions | Where-Object { ($_.id) -like "/subscriptions/$childMgSubId/*" }) | measure-object).count
                     foreach ($subPolicySetDefinition in $subPolicySetDefinitions) {
@@ -2482,14 +2536,14 @@ function dataCollection($mgId) {
                     $method = "GET"
                  
                     if ($htParameters.IncludeResourceGroupsAndResources -eq $true) {
-                        $L1mgmtGroupSubPolicyAssignments = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+                        $L1mgmtGroupSubPolicyAssignments = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
                         $L1mgmtGroupSubPolicyAssignmentsPolicyCount = (($L1mgmtGroupSubPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" }) | measure-object).count
                         $L1mgmtGroupSubPolicyAssignmentsPolicySetCount = (($L1mgmtGroupSubPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" }) | measure-object).count
                         $L1mgmtGroupSubPolicyAssignmentsPolicyAtScopeCount = (($L1mgmtGroupSubPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.id -match "/subscriptions/$($childMgSubId)" }) | measure-object).count
                         $L1mgmtGroupSubPolicyAssignmentsPolicySetAtScopeCount = (($L1mgmtGroupSubPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.id -match "/subscriptions/$($childMgSubId)" }) | measure-object).count
                     }
                     else {
-                        $L1mgmtGroupSubPolicyAssignments = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+                        $L1mgmtGroupSubPolicyAssignments = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
                         $L1mgmtGroupSubPolicyAssignmentsPolicyCount = (($L1mgmtGroupSubPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.id -notmatch "/subscriptions/$($childMgSubId)/resourceGroups" }) | measure-object).count
                         $L1mgmtGroupSubPolicyAssignmentsPolicySetCount = (($L1mgmtGroupSubPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.id -notmatch "/subscriptions/$($childMgSubId)/resourceGroups" }) | measure-object).count
                         $L1mgmtGroupSubPolicyAssignmentsPolicyAtScopeCount = (($L1mgmtGroupSubPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.id -match "/subscriptions/$($childMgSubId)" -and $_.id -notmatch "/subscriptions/$($childMgSubId)/resourceGroups" }) | measure-object).count
@@ -2720,7 +2774,7 @@ function dataCollection($mgId) {
                     #$path = "/subscriptions/$childMgSubId/providers/Microsoft.Authorization/roleDefinitions?api-version=2015-07-01&`$filter=type%20eq%20'CustomRole'"
                     $method = "GET"
                     
-                    $subCustomRoleDefinitions = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+                    $subCustomRoleDefinitions = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
                     foreach ($subCustomRoleDefinition in $subCustomRoleDefinitions) {
                         if (-not $($htCacheDefinitions).role[$subCustomRoleDefinition.name]) {
                             ($script:htCacheDefinitions).role.$($subCustomRoleDefinition.name) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
@@ -2741,7 +2795,7 @@ function dataCollection($mgId) {
                     $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics?api-version=2019-08-01-preview"
                     #$path = "/subscriptions/$childMgSubId/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics?api-version=2019-08-01-preview"
                     $method = "GET"
-                    $roleAssignmentsUsage = ((AzAPICall -uri $uri -method $method -currenttask $currentTask -listenOn "Content"))
+                    $roleAssignmentsUsage = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn "Content" -caller "CustomDataCollection"))
 
                     #cmdletgetazroleassignment
                     $retryCmletCount = 0
@@ -9013,8 +9067,9 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYSecurityOwnerAssignmentNotGroup
     Write-Host "  processing TenantSummary RoleAssignments security (owner notGroup)"
-    $roleAssignmentsOwnerAssignmentNotGroupAll = ($rbacBaseQueryArrayList.Where( { $_.RoleDefinitionName -eq "Owner" -and $_.RoleAssignmentIdentityObjectType -ne "Group" }) | Sort-Object -Property RoleAssignmentId)
-    $roleAssignmentsOwnerAssignmentNotGroup = $roleAssignmentsOwnerAssignmentNotGroupAll | sort-object -Property RoleAssignmentId -Unique
+    $startSUMMARYSecurityOwnerAssignmentNotGroup = get-date
+    #$roleAssignmentsOwnerAssignmentNotGroupAll = ($rbacBaseQueryArrayList.Where( { $_.RoleDefinitionName -eq "Owner" -and $_.RoleAssignmentIdentityObjectType -ne "Group" }) | Sort-Object -Property RoleAssignmentId)
+    $roleAssignmentsOwnerAssignmentNotGroup = $rbacBaseQueryArrayListNotGroupOwner | sort-object -Property RoleAssignmentId -Unique
 
     if (($roleAssignmentsOwnerAssignmentNotGroup | measure-object).count -gt 0) {
         $tfCount = ($roleAssignmentsOwnerAssignmentNotGroup | measure-object).count
@@ -9041,10 +9096,10 @@ extensions: [{ name: 'sort' }]
 "@
         $htmlSUMMARYSecurityOwnerAssignmentNotGroup = $null
         $htmlSUMMARYSecurityOwnerAssignmentNotGroup = foreach ($roleAssignmentOwnerAssignmentNotGroup in ($roleAssignmentsOwnerAssignmentNotGroup)) {
-            $impactedMgSubBaseQuery = $roleAssignmentsOwnerAssignmentNotGroupAll | Where-Object { $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentId }
+            $impactedMgSubBaseQuery = $rbacBaseQueryArrayListNotGroupOwner | Where-Object { $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentId }
             $impactedMgs = $impactedMgSubBaseQuery | Where-Object { [String]::IsNullOrEmpty($_.SubscriptionId) }
             $impactedSubs = $impactedMgSubBaseQuery | Where-Object { -not [String]::IsNullOrEmpty($_.SubscriptionId) }
-            $servicePrincipal = ($roleAssignmentsOwnerAssignmentNotGroup | Where-Object { $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentId }) | Get-Unique
+            #$servicePrincipal = ($roleAssignmentsOwnerAssignmentNotGroup | Where-Object { $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentId }) | Get-Unique
             @"
 <tr>
 <td>$($roleAssignmentOwnerAssignmentNotGroup.RoleDefinitionName)</td>
@@ -9117,12 +9172,15 @@ extensions: [{ name: 'sort' }]
     <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOwnerAssignmentNotGroup | measure-object).count) Owner permission assignments to notGroup ($scopeNamingSummary)</span></p>
 "@
     }
+    $endSUMMARYSecurityOwnerAssignmentNotGroup = get-date
+    Write-Host "   TenantSummary RoleAssignments security (owner notGroup) duration: $((NEW-TIMESPAN -Start $startSUMMARYSecurityOwnerAssignmentNotGroup -End $endSUMMARYSecurityOwnerAssignmentNotGroup).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYSecurityOwnerAssignmentNotGroup -End $endSUMMARYSecurityOwnerAssignmentNotGroup).TotalSeconds) seconds)"
     #endregion SUMMARYSecurityOwnerAssignmentNotGroup
 
     #region SUMMARYSecurityUserAccessAdministratorAssignmentNotGroup
+    $startSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup = get-date
     Write-Host "  processing TenantSummary RoleAssignments security (userAccessAdministrator notGroup)"
-    $roleAssignmentsUserAccessAdministratorAssignmentNotGroupAll = ($rbacBaseQueryArrayList.Where( { $_.RoleDefinitionName -eq "User Access Administrator" -and $_.RoleAssignmentIdentityObjectType -ne "Group" }) | Sort-Object -Property RoleAssignmentId)
-    $roleAssignmentsUserAccessAdministratorAssignmentNotGroup = $roleAssignmentsUserAccessAdministratorAssignmentNotGroupAll | sort-object -Property RoleAssignmentId -Unique
+    #$roleAssignmentsUserAccessAdministratorAssignmentNotGroupAll = ($rbacBaseQueryArrayList.Where( { $_.RoleDefinitionName -eq "User Access Administrator" -and $_.RoleAssignmentIdentityObjectType -ne "Group" }) | Sort-Object -Property RoleAssignmentId)
+    $roleAssignmentsUserAccessAdministratorAssignmentNotGroup = $rbacBaseQueryArrayListNotGroupUserAccessAdministrator | sort-object -Property RoleAssignmentId -Unique
 
     if (($roleAssignmentsUserAccessAdministratorAssignmentNotGroup | measure-object).count -gt 0) {
         $tfCount = ($roleAssignmentsUserAccessAdministratorAssignmentNotGroup | measure-object).count
@@ -9149,10 +9207,12 @@ extensions: [{ name: 'sort' }]
 "@
         $htmlSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup = $null
         $htmlSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup = foreach ($roleAssignmentUserAccessAdministratorAssignmentNotGroup in ($roleAssignmentsUserAccessAdministratorAssignmentNotGroup)) {
-            $impactedMgSubBaseQuery = $roleAssignmentsUserAccessAdministratorAssignmentNotGroupAll | Where-Object { $roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentId }
-            $impactedMgs = $impactedMgSubBaseQuery | Where-Object { $_.RoleAssignmentId -eq $roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentId }
-            $impactedSubs = $impactedMgSubBaseQuery | Where-Object { $_.RoleAssignmentId -eq $roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentId }
-            $servicePrincipal = ($roleAssignmentsUserAccessAdministratorAssignmentNotGroup | Where-Object { $_.RoleAssignmentId -eq $roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentId }) | Get-Unique
+            $impactedMgSubBaseQuery = $rbacBaseQueryArrayListNotGroupUserAccessAdministrator | Where-Object { $_.RoleAssignmentId -eq $roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentId }
+            #$impactedMgs = $impactedMgSubBaseQuery | Where-Object { $_.RoleAssignmentId -eq $roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentId }
+            #$impactedSubs = $impactedMgSubBaseQuery | Where-Object { $_.RoleAssignmentId -eq $roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentId }
+            $impactedMgs = $impactedMgSubBaseQuery | Where-Object { [String]::IsNullOrEmpty($_.SubscriptionId) }
+            $impactedSubs = $impactedMgSubBaseQuery | Where-Object { -not [String]::IsNullOrEmpty($_.SubscriptionId) }
+            #$servicePrincipal = ($roleAssignmentsUserAccessAdministratorAssignmentNotGroup | Where-Object { $_.RoleAssignmentId -eq $roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentId }) | Get-Unique
             @"
 <tr>
 <td>$($roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleDefinitionName)</td>
@@ -9224,6 +9284,8 @@ extensions: [{ name: 'sort' }]
     <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsUserAccessAdministratorAssignmentNotGroup | measure-object).count) UserAccessAdministrator permission assignments to notGroup ($scopeNamingSummary)</span></p>
 "@
     }
+    $endSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup = get-date
+    Write-Host "   TenantSummary RoleAssignments security (userAccessAdministrator notGroup) duration: $((NEW-TIMESPAN -Start $startSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup -End $endSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup -End $endSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup).TotalSeconds) seconds)"
     #endregion SUMMARYSecurityUserAccessAdministratorAssignmentNotGroup
 
     $htmlTenantSummary += @"
@@ -13344,7 +13406,7 @@ function diagramMermaid() {
                 $mgNameId = "$mgName<br/>$mgInLevel"
             }
             $script:markdownhierarchyMgs += @"
-$mgParentId($mgParentNameId) --> $mgInLevel($mgNameId)`n
+$mgParentId(`"$mgParentNameId`") --> $mgInLevel(`"$mgNameId`")`n
 "@
             $subsUnderMg = ($optimizedTableForPathQueryMgAndSub | Where-Object { -not [string]::IsNullOrEmpty($_.SubscriptionId) -and $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel }).SubscriptionId
             if (($subsUnderMg | measure-object).count -gt 0) {
@@ -13367,7 +13429,7 @@ $mgParentId($mgParentNameId) --> $mgInLevel($mgNameId)`n
                     $mgNameId = "$mgName<br/>$mgInLevel"
                 }
                 $script:markdownhierarchySubs += @"
-$mgInLevel($mgNameId) --> SubsOf$mgInLevel(($(($subsUnderMg | measure-object).count)))`n
+$mgInLevel(`"$mgNameId`") --> SubsOf$mgInLevel(`"$(($subsUnderMg | measure-object).count)`")`n
 "@
             }
             else {
@@ -13396,7 +13458,7 @@ $mgInLevel($mgNameId) --> SubsOf$mgInLevel(($(($subsUnderMg | measure-object).co
                         $mgNameId = "$mgName<br/>$mgInLevel"
                     }
                     $script:markdownhierarchySubs += @"
-$mgInLevel($mgNameId) --> SubsoosOf$mgInLevel(($(($subsoosUnderMg | measure-object).count)))`n
+$mgInLevel(`"$mgNameId`") --> SubsoosOf$mgInLevel(`"$(($subsoosUnderMg | measure-object).count)`")`n
 "@
                 }
             }
@@ -13455,12 +13517,16 @@ if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
     }
 }
 
+$arrayAPICallTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+$arrayAPICallTrackingCustomDataCollection = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+
 $userType = "n/a"
 if ($accountType -eq "User") {
-    Write-Host "Checking AAD UserType"
+    $currentTask = "Checking AAD UserType"
+    Write-Host $currentTask
     $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).GraphUrl)/v1.0/me?`$select=userType"
     $method = "GET"
-    $checkUserType = AzAPICall -uri $uri -method $method -listenOn "Content"
+    $checkUserType = AzAPICall -uri $uri -method $method -listenOn "Content" -currentTask $currentTask
     $userType = $checkUserType.userType
     Write-Host "AAD UserType: $($userType)" -ForegroundColor Yellow
 }
@@ -13489,13 +13555,13 @@ else {
 }
 
 if ($htParameters.AzureDevOpsWikiAsCode -eq $false) {
-    Write-Host "Get Tenant details"
     $currentTask = "Get Tenant details"
+    Write-Host $currentTask
     $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)tenants?api-version=2020-01-01"
     #$path = "/tenants?api-version=2020-01-01"
     $method = "GET"
 
-    $tenantDetailsResult = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+    $tenantDetailsResult = ((AzAPICall -uri $uri -method $method -currentTask $currentTask))
     if (($tenantDetailsResult | measure-object).count -gt 0) {
         $tenantDetails = $tenantDetailsResult | Where-Object { $_.tenantId -eq ($checkContext).Tenant.id }
         $tenantDisplayName = $tenantDetails.displayName
@@ -13515,7 +13581,7 @@ $method = "GET"
 
 #default Management Group
 #https://docs.microsoft.com/en-us/azure/governance/management-groups/how-to/protect-resource-hierarchy#setting---default-management-group
-$defaultMG = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+$defaultMG = ((AzAPICall -uri $uri -method $method -currentTask $currentTask))
 if (($defaultMG | Measure-Object).count -gt 0) {
     write-host " default ManagementGroup Id: $($defaultMG.properties.defaultManagementGroup)"
     $defaultManagementGroupId = $defaultMG.properties.defaultManagementGroup
@@ -13534,7 +13600,7 @@ $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).Reso
 #$path = "/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
 $method = "POST"
 
-$arrayEntitiesFromAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+$arrayEntitiesFromAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask))
 
 $htSubscriptionsMgPath = @{ }
 $htManagementGroupsMgPath = @{ }
@@ -13868,7 +13934,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     #$path = "/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
     $method = "GET"
 
-    $requestAllSubscriptionsAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+    $requestAllSubscriptionsAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask))
     foreach ($subscription in $requestAllSubscriptionsAPI) {   
         $htAllSubscriptionsFromAPI.($subscription.subscriptionId) = @{ }
         $htAllSubscriptionsFromAPI.($subscription.subscriptionId).subDetails = $subscription
@@ -13927,7 +13993,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 }
 "@
 
-        $allConsumptionData = AzAPICall -uri $uri -method $method -body $body -currenttask $currentTask -listenOn "ContentProperties" -getConsumption $true
+        $allConsumptionData = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask -listenOn "ContentProperties" -getConsumption $true
         $allConsumptionDataCount = ($allConsumptionData | Measure-Object).Count
 
         if ($allConsumptionDataCount -gt 0) {
@@ -14005,7 +14071,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     #$path = "/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
     $method = "GET"
 
-    $requestPolicyDefinitionAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+    $requestPolicyDefinitionAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask))
     $builtinPolicyDefinitions = $requestPolicyDefinitionAPI | Where-Object { $_.properties.policyType -eq "builtin" }
     foreach ($builtinPolicyDefinition in $builtinPolicyDefinitions) {
         ($htCacheDefinitions).policy.(($builtinPolicyDefinition.id).ToLower()) = @{ }
@@ -14074,7 +14140,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     #$path = "/providers/Microsoft.Authorization/policySetDefinitions?api-version=2019-09-01"
     $method = "GET"
 
-    $requestPolicySetDefinitionAPI = ((AzAPICall -uri $uri -method $method -currenttask $currentTask))
+    $requestPolicySetDefinitionAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask))
     $builtinPolicySetDefinitions = $requestPolicySetDefinitionAPI | Where-Object { $_.properties.policyType -eq "builtin" }
     foreach ($builtinPolicySetDefinition in $builtinPolicySetDefinitions) {
         ($htCacheDefinitions).policySet.(($builtinPolicySetDefinition.id).ToLower()) = @{ }
@@ -14171,6 +14237,12 @@ $durationSUBAverageMaxMin = ($durationDataSUB.DurationSec | Measure-Object -Aver
 Write-Host "Collecting custom data for $($arrayEntitiesFromAPIManagementGroupsCount) ManagementGroups Avg/Max/Min duration in seconds: Average: $([math]::Round($durationMGAverageMaxMin.Average,4)); Maximum: $([math]::Round($durationMGAverageMaxMin.Maximum,4)); Minimum: $([math]::Round($durationMGAverageMaxMin.Minimum,4))"
 Write-Host "Collecting custom data for $($arrayEntitiesFromAPISubscriptionsCount) Subscriptions Avg/Max/Min duration in seconds: Average: $([math]::Round($durationSUBAverageMaxMin.Average,4)); Maximum: $([math]::Round($durationSUBAverageMaxMin.Maximum,4)); Minimum: $([math]::Round($durationSUBAverageMaxMin.Minimum,4))"
 
+#APITracking
+$APICallTrackingCount = ($arrayAPICallTrackingCustomDataCollection | Measure-Object).Count
+$APICallTrackingRetriesCount = ($arrayAPICallTrackingCustomDataCollection | Where-Object { $_.TryCounter -gt 0 } | Measure-Object).Count
+$APICallTrackingRestartDueToDuplicateNextlinkCounterCount = ($arrayAPICallTrackingCustomDataCollection | Where-Object { $_.RestartDueToDuplicateNextlinkCounter -gt 0 } | Measure-Object).Count
+Write-Host "Collecting custom data APICalls (Management) total count: $APICallTrackingCount ($APICallTrackingRetriesCount retries; $APICallTrackingRestartDueToDuplicateNextlinkCounterCount nextLinkReset)"
+
 $optimizedTableForPathQuery = ($newTable | Select-Object -Property level, mg*, subscription*) | sort-object -Property level, mgid, subscriptionId -Unique
 $optimizedTableForPathQueryMgAndSub = ($optimizedTableForPathQuery  | Where-Object { -not [String]::IsNullOrEmpty($_.SubscriptionId) } | Select-Object -Property level, mg*, subscription*) | sort-object -Property level, mgid, mgname, mgparentId, mgparentName, subscriptionId, subscription -Unique
 $optimizedTableForPathQueryMg = ($optimizedTableForPathQuery | Where-Object { [String]::IsNullOrEmpty($_.SubscriptionId) } | Select-Object -Property level, mgid, mgName, mgparentid, mgparentName) | sort-object -Property level, mgid, mgname, mgparentId, mgparentName -Unique
@@ -14215,7 +14287,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 $script:htAADGroupsDetails.($aadGroupId).displayname = $aadGroupDisplayName
                 $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).GraphUrl)/beta/groups/$($aadGroupId)/transitiveMembers"
                 $method = "GET"
-                $aadGroupMembers = AzAPICall -uri $uri -method $method -currenttask "getGroupMembers $($aadGroupId)"
+                $aadGroupMembers = AzAPICall -uri $uri -method $method -currentTask "getGroupMembers $($aadGroupId)"
 
                 $aadGroupMembersAll = ($aadGroupMembers)
                 $aadGroupMembersUsers = ($aadGroupMembers | Where-Object { $_.'@odata.type' -eq "#microsoft.graph.user" })
@@ -14276,6 +14348,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 $htAADGroupsDetails = $using:htAADGroupsDetails
                 $arrayGroupRoleAssignmentsOnServicePrincipals = $using:arrayGroupRoleAssignmentsOnServicePrincipals
                 $arrayProgressedAADGroups = $using:arrayProgressedAADGroups
+                $arrayAPICallTracking = $using:arrayAPICallTracking
                 #Functions
                 $function:AzAPICall = $using:funcAzAPICall
                 $function:createBearerToken = $using:funcCreateBearerToken
@@ -14372,6 +14445,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 $arrayApplicationRequestResourceNotFound = $using:arrayApplicationRequestResourceNotFound
                 $htServicePrincipalsDetails = $using:htServicePrincipalsDetails
                 $arrayProgressedServicePrincipals = $using:arrayProgressedServicePrincipals
+                $arrayAPICallTracking = $using:arrayAPICallTracking
                 #Functions
                 $function:AzAPICall = $using:funcAzAPICall
                 $function:createBearerToken = $using:funcCreateBearerToken
@@ -14385,7 +14459,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                     $currentTask = "getSP $($servicePrincipalWithRoleAssignment)"
                     $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).GraphUrl)/v1.0/servicePrincipals/$($servicePrincipalWithRoleAssignment)"
                     $method = "GET"
-                    $getServicePrincipal = AzAPICall -uri $uri -method $method -currenttask $currentTask -listenOn "Content" -getSp $true
+                    $getServicePrincipal = AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn "Content" -getSp $true
                     if ($getServicePrincipal -eq "Request_ResourceNotFound") {
                         $null = $arrayServicePrincipalRequestResourceNotFound.Add([PSCustomObject]@{ 
                                 spId = $servicePrincipalWithRoleAssignment
@@ -14402,7 +14476,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                                 $currentTask = "getApp $($getServicePrincipal.appId)"
                                 $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).GraphUrl)/v1.0/applications?`$filter=appId eq '$($getServicePrincipal.appId)'"
                                 $method = "GET"
-                                $getApplication = AzAPICall -uri $uri -method $method -currenttask $currentTask -getApp $true
+                                $getApplication = AzAPICall -uri $uri -method $method -currentTask $currentTask -getApp $true
                                 
                                 if ($getApplication -eq "Request_ResourceNotFound") {
                                     $null = $arrayApplicationRequestResourceNotFound.Add([PSCustomObject]@{ 
@@ -14544,7 +14618,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $startTagListArray = Get-Date
     Write-Host "Creating TagList array"
 
-    $tagsSubRgResCount = ($htAllTagList."All".Keys | Measure-Object).Count
+    $tagsSubRgResCount = ($htAllTagList."AllScopes".Keys | Measure-Object).Count
     $tagsSubsriptionCount = ($htAllTagList."Subscription".Keys | Measure-Object).Count
     $tagsResourceGroupCount = ($htAllTagList."ResourceGroup".Keys | Measure-Object).Count
     $tagsResourceCount = ($htAllTagList."Resource".Keys | Measure-Object).Count
@@ -14600,6 +14674,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
             $resourceTypesDiagnosticsArray = $using:resourceTypesDiagnosticsArray
             $htResourceTypesUniqueResource = $using:htResourceTypesUniqueResource
             $resourceTypesSummarizedArray = $using:resourceTypesSummarizedArray
+            $arrayAPICallTracking = $using:arrayAPICallTracking
             #Functions
             $function:AzAPICallDiag = $using:funcAzAPICallDiag
             $function:createBearerToken = $using:funcCreateBearerToken
@@ -14706,7 +14781,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
 #region BuildHTML
 #testhelper
-$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
+#$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 
 $startBuildHTML = get-date
 Write-Host "Building HTML"
@@ -14750,10 +14825,26 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
     $rbacBaseQuery = $newTable | Where-Object { -not [String]::IsNullOrEmpty($_.RoleDefinitionName) } | Sort-Object -Property RoleIsCustom, RoleDefinitionName | Select-Object -Property Level, Role*, mgId, MgName, SubscriptionId, Subscription
 
+    #rbacArrayList
+    $startcreateArrayListRBAC = get-date
     $rbacBaseQueryArrayList = [System.Collections.ArrayList]@()
+    $rbacBaseQueryArrayListNotGroupOwner = [System.Collections.ArrayList]@()
+    $rbacBaseQueryArrayListNotGroupUserAccessAdministrator = [System.Collections.ArrayList]@()
     foreach ($rbac in $rbacBaseQuery) {
         $null = $rbacBaseQueryArrayList.Add($rbac)
+        if ($rbac.RoleAssignmentIdentityObjectType -ne "Group"){
+            if ($rbac.RoleDefinitionName -eq "Owner"){
+                $null = $rbacBaseQueryArrayListNotGroupOwner.Add($rbac)
+            }
+            if ($rbac.RoleDefinitionName -eq "User Access Administrator"){
+                $null = $rbacBaseQueryArrayListNotGroupUserAccessAdministrator.Add($rbac)
+            }
+        }
     }
+    $endcreateArrayListRBAC = get-date
+    Write-Host "  Create ArrayListsRBAC duration: $((NEW-TIMESPAN -Start $startcreateArrayListRBAC -End $endcreateArrayListRBAC).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startcreateArrayListRBAC -End $endcreateArrayListRBAC).TotalSeconds) seconds)"
+    
+    
     
     $blueprintBaseQuery = $newTable | Where-Object { -not [String]::IsNullOrEmpty($_.BlueprintName) }
     $mgsAndSubs = (($optimizedTableForPathQuery | Where-Object { $_.mgId -ne "" -and $_.Level -ne "0" }) | select-object MgId, SubscriptionId -unique)
@@ -15346,7 +15437,7 @@ if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
 ## Hierarchy Diagram (Mermaid)
 
 ::: mermaid
-    graph TD;`n
+    graph $($AzureDevOpsWikiHierarchyDirection);`n
 "@
 }
 else {
@@ -15492,6 +15583,26 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 #endregion BuildConsumptionCSV
 
 #endregion createoutputs
+
+<#
+                CurrentTask    = $currentTask
+                TargetEndpoint = $targetEndpoint
+                Uri            = $uri
+                Method         = $method
+                TryCounter = $tryCounter
+                TryCounterUnexpectedError = $tryCounterUnexpectedError
+                RetryAuthorizationFailedCounter = $retryAuthorizationFailedCounter
+                RestartDueToDuplicateNextlinkCounter = $restartDueToDuplicateNextlinkCounter
+                TimeStamp = $tstmp
+#>
+
+#APITracking
+$APICallTrackingCount = ($arrayAPICallTracking | Measure-Object).Count
+$APICallTrackingManagementCount = ($arrayAPICallTracking | Where-Object { $_.TargetEndpoint -eq "ManagementAPI" } | Measure-Object).Count
+$APICallTrackingGraphCount = ($arrayAPICallTracking | Where-Object { $_.TargetEndpoint -eq "GraphAPI" } | Measure-Object).Count
+$APICallTrackingRetriesCount = ($arrayAPICallTracking | Where-Object { $_.TryCounter -gt 0 } | Measure-Object).Count
+$APICallTrackingRestartDueToDuplicateNextlinkCounterCount = ($arrayAPICallTracking | Where-Object { $_.RestartDueToDuplicateNextlinkCounter -gt 0 } | Measure-Object).Count
+Write-Host "AzGovViz APICalls total count: $APICallTrackingCount ($APICallTrackingManagementCount ManagementAPI; $APICallTrackingGraphCount GraphAPI; $APICallTrackingRetriesCount retries; $APICallTrackingRestartDueToDuplicateNextlinkCounterCount nextLinkReset)"
 
 $endAzGovViz = get-date
 Write-Host "AzGovViz duration: $((NEW-TIMESPAN -Start $startAzGovViz -End $endAzGovViz).TotalMinutes) minutes"
