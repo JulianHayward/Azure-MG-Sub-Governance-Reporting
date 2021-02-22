@@ -161,7 +161,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210218_2",
+    [string]$AzGovVizVersion = "v5_major_20210222_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -526,7 +526,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
         catch {
             try {
                 $catchResultPlain = $_.ErrorDetails.Message
-                $catchResult = ($catchResultPlain | ConvertFrom-Json)
+                $catchResult = ($catchResultPlain | ConvertFrom-Json -ErrorAction SilentlyContinue) 
             }
             catch {
                 $catchResult = $catchResultPlain
@@ -833,7 +833,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType) {
         catch {
             try {
                 $catchResultPlain = $_.ErrorDetails.Message
-                $catchResult = ($catchResultPlain | ConvertFrom-Json)
+                $catchResult = ($catchResultPlain | ConvertFrom-Json -ErrorAction SilentlyContinue)
             }
             catch {
                 $catchResult = $catchResultPlain
@@ -1438,6 +1438,19 @@ function dataCollection($mgId) {
                     ($script:htCacheDefinitions).policy.(($mgPolicyDefinition.id).ToLower()).Type = $($mgPolicyDefinition.Properties.policyType)
                     ($script:htCacheDefinitions).policy.(($mgPolicyDefinition.id).ToLower()).Category = $($mgPolicyDefinition.Properties.metadata.Category)
                     ($script:htCacheDefinitions).policy.(($mgPolicyDefinition.id).ToLower()).PolicyDefinitionId = ($mgPolicyDefinition.id).ToLower()
+                    
+                    if ($mgPolicyDefinition.Properties.metadata.deprecated -eq $true -or $mgPolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
+                        ($script:htCacheDefinitions).policy.(($mgPolicyDefinition.id).ToLower()).Deprecated = $mgPolicyDefinition.Properties.metadata.deprecated
+                    }
+                    else {
+                        ($script:htCacheDefinitions).policy.(($mgPolicyDefinition.id).ToLower()).Deprecated = $false
+                    }
+                    if ($mgPolicyDefinition.Properties.metadata.preview -eq $true -or $mgPolicyDefinition.Properties.displayname -like "``[*Preview``]*") {
+                        ($script:htCacheDefinitions).policy.(($mgPolicyDefinition.id).ToLower()).Preview = $mgPolicyDefinition.Properties.metadata.preview
+                    }
+                    else {
+                        ($script:htCacheDefinitions).policy.(($mgPolicyDefinition.id).ToLower()).Preview = $false
+                    }
 
                     #effects
                     if ($mgPolicyDefinition.properties.parameters.effect.defaultvalue) {
@@ -1492,7 +1505,7 @@ function dataCollection($mgId) {
             $mgPolicySetDefinitions = $requestPolicySetDefinitionAPI | Where-Object { $_.properties.policyType -eq "custom" }
             $PolicySetDefinitionsScopedCount = (($mgPolicySetDefinitions | Where-Object { ($_.id) -like "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/*" }) | measure-object).count
             foreach ($mgPolicySetDefinition in $mgPolicySetDefinitions) {
-                if (-not $($script:htCacheDefinitions).policySet.(($mgPolicySetDefinition.id).ToLower())) {
+                if (-not $($htCacheDefinitions).policySet.(($mgPolicySetDefinition.id).ToLower())) {
                     if (($mgPolicySetDefinition.Properties.description).length -eq 0) {
                         $policySetDefinitionDescription = "no description given"
                     }
@@ -1515,6 +1528,19 @@ function dataCollection($mgId) {
                     }
                     ($script:htCacheDefinitions).policySet.(($mgPolicySetDefinition.id).ToLower()).PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
                     ($script:htCacheDefinitions).policySet.(($mgPolicySetDefinition.id).ToLower()).json = $mgPolicySetDefinition
+                    if ($mgPolicySetDefinition.Properties.metadata.deprecated -eq $true -or $mgPolicySetDefinition.Properties.displayname -like "``[Deprecated``]*") {
+                        ($script:htCacheDefinitions).policySet.(($mgPolicySetDefinition.id).ToLower()).Deprecated = $mgPolicySetDefinition.Properties.metadata.deprecated
+                    }
+                    else {
+                        ($script:htCacheDefinitions).policySet.(($mgPolicySetDefinition.id).ToLower()).Deprecated = $false
+                    }
+                    if ($mgPolicySetDefinition.Properties.metadata.preview -eq $true -or $mgPolicySetDefinition.Properties.displayname -like "``[*Preview``]*") {
+                        ($script:htCacheDefinitions).policySet.(($mgPolicySetDefinition.id).ToLower()).Preview = $mgPolicySetDefinition.Properties.metadata.preview
+                    }
+                    else {
+                        ($script:htCacheDefinitions).policySet.(($mgPolicySetDefinition.id).ToLower()).Preview = $false
+                    }
+                    
                 }  
             }
     
@@ -2443,6 +2469,18 @@ function dataCollection($mgId) {
                             ($script:htCacheDefinitions).policy.(($subPolicyDefinition.id).ToLower()).Type = $($subPolicyDefinition.Properties.policyType)
                             ($script:htCacheDefinitions).policy.(($subPolicyDefinition.id).ToLower()).Category = $($subPolicyDefinition.Properties.metadata.category)
                             ($script:htCacheDefinitions).policy.(($subPolicyDefinition.id).ToLower()).PolicyDefinitionId = ($subPolicyDefinition.id).ToLower()
+                            if ($subPolicyDefinition.Properties.metadata.deprecated -eq $true -or $subPolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
+                                ($script:htCacheDefinitions).policy.(($subPolicyDefinition.id).ToLower()).Deprecated = $subPolicyDefinition.Properties.metadata.deprecated
+                            }
+                            else {
+                                ($script:htCacheDefinitions).policy.(($subPolicyDefinition.id).ToLower()).Deprecated = $false
+                            }
+                            if ($subPolicyDefinition.Properties.metadata.preview -eq $true -or $subPolicyDefinition.Properties.displayname -like "``[*Preview``]*") {
+                                ($script:htCacheDefinitions).policy.(($subPolicyDefinition.id).ToLower()).Preview = $subPolicyDefinition.Properties.metadata.preview
+                            }
+                            else {
+                                ($script:htCacheDefinitions).policy.(($subPolicyDefinition.id).ToLower()).Preview = $false
+                            }
                             #effects
                             if ($subPolicyDefinition.properties.parameters.effect.defaultvalue) {
                                 ($script:htCacheDefinitions).policy.(($subPolicyDefinition.id).ToLower()).effectDefaultValue = $subPolicyDefinition.properties.parameters.effect.defaultvalue
@@ -2526,6 +2564,18 @@ function dataCollection($mgId) {
                             }
                             $($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.id).ToLower()).PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
                             $($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.id).ToLower()).json = $subPolicySetDefinition
+                            if ($subPolicySetDefinition.Properties.metadata.deprecated -eq $true -or $subPolicySetDefinition.Properties.displayname -like "``[Deprecated``]*") {
+                                ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.id).ToLower()).Deprecated = $subPolicySetDefinition.Properties.metadata.deprecated
+                            }
+                            else {
+                                ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.id).ToLower()).Deprecated = $false
+                            }
+                            if ($subPolicySetDefinition.Properties.metadata.preview -eq $true -or $subPolicySetDefinition.Properties.displayname -like "``[*Preview``]*") {
+                                ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.id).ToLower()).Preview = $subPolicySetDefinition.Properties.metadata.preview
+                            }
+                            else {
+                                ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.id).ToLower()).Preview = $false
+                            }
                         }  
                     }
 
@@ -2953,6 +3003,7 @@ function dataCollection($mgId) {
 #endregion Function_dataCollection
 
 #HTML
+#
 function createMgPath($mgid) {
     $script:mgPathArray = @()
     $script:mgPathArray += "'$mgid'"
@@ -3346,7 +3397,7 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId) {
 <p>State: $subscriptionState</p>
 </td></tr>
 <tr><td class="detailstd"><p>QuotaId: $subscriptionQuotaId</p></td></tr>
-<tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> ASC Secure Score: $subscriptionASCPoints</p></td></tr>
+<tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> ASC Secure Score: $subscriptionASCPoints <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a></p></td></tr>
 <tr><td class="detailstd">
 "@
         #Tags
@@ -7339,7 +7390,6 @@ extensions: [{ name: 'sort' }]
             if ($htPolicyAssignmentRoleAssignmentMapping.($policyAssignmentIdUnique.PolicyAssignmentId)) {
                 $relatedRoleAssignmentsArray += foreach ($entry in $htPolicyAssignmentRoleAssignmentMapping.($policyAssignmentIdUnique.PolicyAssignmentId).roleassignments) {
                     if ($entry.roleDefinitionType -eq "builtin") {
-                        #Write-Output "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($entry.roleDefinitionId).html`" target=`"_blank`">$($entry.roleDefinitionName)</a> ($($entry.roleAssignmentId))"
                         Write-Output "$(($htCacheDefinitions).role.($entry.roleDefinitionId).LinkToAzAdvertizer) ($($entry.roleAssignmentId))"
                     }
                     else {
@@ -7362,38 +7412,18 @@ extensions: [{ name: 'sort' }]
             $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentIdUnique.PolicyAssignmentId).relatedRoleAssignments = "n/a"
         }
 
-        <#
         $htPolicyAzAdvertizerOrNot.($policyAssignmentIdUnique.PolicyAssignmentId) = @{ }
         if ($policyAssignmentIdUnique.PolicyType -eq "builtin") {
             if ($policyAssignmentIdUnique.PolicyVariant -eq "Policy") {
-                $htPolicyAzAdvertizerOrNot.($policyAssignmentIdUnique.PolicyAssignmentId).policyWithWithoutLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$($policyAssignmentIdUnique.policyDefinitionIdGuid).html`" target=`"_blank`">$($policyAssignmentIdUnique.policy)</a>"
-            }
-            else {
-                $htPolicyAzAdvertizerOrNot.($policyAssignmentIdUnique.PolicyAssignmentId).policyWithWithoutLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($policyAssignmentIdUnique.policyDefinitionIdGuid).html`" target=`"_blank`">$($policyAssignmentIdUnique.policy)</a>"
-            }
-        }
-        else {
-            $htPolicyAzAdvertizerOrNot.($policyAssignmentIdUnique.PolicyAssignmentId).policyWithWithoutLinkToAzAdvertizer = $policyAssignmentIdUnique.policy
-        }
-        #>
-
-        #
-        $htPolicyAzAdvertizerOrNot.($policyAssignmentIdUnique.PolicyAssignmentId) = @{ }
-        if ($policyAssignmentIdUnique.PolicyType -eq "builtin") {
-            if ($policyAssignmentIdUnique.PolicyVariant -eq "Policy") {
-                #$htPolicyAzAdvertizerOrNot.($policyAssignmentIdUnique.PolicyAssignmentId).policyWithWithoutLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$($policyAssignmentIdUnique.policyDefinitionIdGuid).html`" target=`"_blank`">$($policyAssignmentIdUnique.policy)</a>"
                 $htPolicyAzAdvertizerOrNot.($policyAssignmentIdUnique.PolicyAssignmentId).policyWithWithoutLinkToAzAdvertizer = $hlpDefinitionPolicy.LinkToAzAdvertizer
             }
             else {
-                #$htPolicyAzAdvertizerOrNot.($policyAssignmentIdUnique.PolicyAssignmentId).policyWithWithoutLinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($policyAssignmentIdUnique.policyDefinitionIdGuid).html`" target=`"_blank`">$($policyAssignmentIdUnique.policy)</a>"
                 $htPolicyAzAdvertizerOrNot.($policyAssignmentIdUnique.PolicyAssignmentId).policyWithWithoutLinkToAzAdvertizer = ($htCacheDefinitions).policySet.($policyAssignmentIdUnique.PolicyDefinitionId).LinkToAzAdvertizer
             }
         }
         else {
             $htPolicyAzAdvertizerOrNot.($policyAssignmentIdUnique.PolicyAssignmentId).policyWithWithoutLinkToAzAdvertizer = $policyAssignmentIdUnique.policy
         }
-        #
-
 
         #region exemptions
         $arrayExemptions = @()
@@ -9596,17 +9626,214 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYMGs
     Write-Host "  processing TenantSummary ManagementGroups"
-    $htmlTenantSummary += @"
-    <p><img class="imgMgTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle">$totalMgCount Management Groups ($mgDepth levels of depth)</span></p>
+        
+    $summaryManagementGroups = $optimizedTableForPathQueryMg | Sort-Object -Property Level, mgid, mgParentId
+    $summaryManagementGroupsCount = ($summaryManagementGroups | Measure-Object).Count
+    if ($summaryManagementGroupsCount -gt 0) {
+        $tfCount = $summaryManagementGroupsCount
+        $htmlTableId = "TenantSummary_ManagementGroups"
+        $htmlTenantSummary += @"
+<button type="button" class="collapsible" id="buttonTenantSummary_Subs"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle">$($summaryManagementGroupsCount) Management Groups</span></button>
+<div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Level</th>
+<th>ManagementGroup</th>
+<th>ManagementGroup Id</th>
+<th>Mg children (total)</th>
+<th>Mg children (direct)</th>
+<th>Sub children (total)</th>
+<th>Sub children (direct)</th>
 "@
+        if ($htParameters.NoAzureConsumption -eq $false) {
+            $htmlTenantSummary += @"
+<th>Cost ($($AzureConsumptionPeriod)d)</th>
+"@
+        }
+        $htmlTenantSummary += @"
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+"@
+        $htmlSUMMARYManagementGroups = $null
+        $htmlSUMMARYManagementGroups = foreach ($summaryManagementGroup in $summaryManagementGroups) {
+            $mgPath = $htAllMgsPath.($summaryManagementGroup.mgId).path -join "/"
+
+            if ($summaryManagementGroup.mgid -eq $mgSubPathTopMg -and ($checkContext).Tenant.id -ne $ManagementGroupId) {
+                $pathhlper = "$($mgPath)"
+                $arrayTotalCostSummary = "n/a"
+                $mgAllChildMgsCountTotal = "n/a"
+                $mgAllChildMgsCountDirect = "n/a"
+                $mgAllChildSubscriptionsCountTotal = "n/a"
+                $mgAllChildSubscriptionsCountDirect = "n/a"
+            }
+            else {
+                if ($htParameters.NoAzureConsumption -eq $false) {
+                    if ($allConsumptionDataCount -gt 0) {
+            
+                        $consumptionData = $allConsumptionData | Where-Object { $_.SubscriptionMgPath -contains $summaryManagementGroup.mgid }
+                        if (($consumptionData | Measure-Object).Count -gt 0) {
+                            $arrayTotalCostSummary = @()
+                            $arrayConsumptionData = [System.Collections.ArrayList]@()
+                            $consumptionDataGroupedByCurrency = $consumptionData | group-object -property Currency
+                            foreach ($currency in $consumptionDataGroupedByCurrency) {
+                                $totalCost = 0
+                                $tenantSummaryConsumptionDataGrouped = $currency.group | group-object -property ConsumedService, ChargeType, MeterCategory
+                                $subsCount = ($tenantSummaryConsumptionDataGrouped.group.subscriptionId | Sort-Object -Unique | Measure-Object).Count
+                                $consumedServiceCount = ($tenantSummaryConsumptionDataGrouped.group.consumedService | Sort-Object -Unique | Measure-Object).Count
+                                $resourceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceId | Sort-Object -Unique | Measure-Object).Count
+                                foreach ($consumptionline in $tenantSummaryConsumptionDataGrouped) {
+                        
+                                    $costConsumptionLine = ($consumptionline.group.PreTaxCost | Measure-Object -Sum).Sum                            
+                                    $totalCost = $totalCost + $costConsumptionLine
+                                }
+                                if ([math]::Round($totalCost, 4) -eq 0) {
+                                    $totalCost = $totalCost
+                                }
+                                else {
+                                    $totalCost = [math]::Round($totalCost, 4)
+                                }
+                                $arrayTotalCostSummary += "$([decimal]$totalCost) $($currency.Name) generated by $($resourceCount) Resources ($($consumedServiceCount) ResourceTypes) in $($subsCount) Subscriptions"
+                            }
+                        }
+                        else {
+                            $arrayTotalCostSummary = "no consumption data available"
+                        }
+                    }
+                    else {
+                        $arrayTotalCostSummary = "no consumption data available"
+                    }
+                }
+                $pathhlper = "<a href=`"#hierarchy_$($summaryManagementGroup.mgId)`"><i class=`"fa fa-eye`" aria-hidden=`"true`"></i></a> $($mgPath)"
+                    
+                #childrenMgInfo
+                #
+                $mgAllChildMgs = [System.Collections.ArrayList]@()
+                $mgAllChildMgs = foreach ($entry in $htAllMgsPath.keys) {
+                    if (($htAllMgsPath.($entry).path) -contains "'$($summaryManagementGroup.mgid)'") {
+                        $entry
+                    }
+                }
+                $mgAllChildMgsCountTotal = (($mgAllChildMgs | Measure-Object).Count - 1)
+                $mgAllChildMgsCountDirect = ($optimizedTableForPathQueryMg | Where-Object { $_.mgParentId -eq $summaryManagementGroup.mgid } | Measure-Object).Count
+                    
+                    
+                #
+                $mgAllChildSubscriptions = [System.Collections.ArrayList]@()
+                $mgAllChildSubscriptions = foreach ($entry in $htAllSubsMgPath.keys) {
+                    if (($htAllSubsMgPath.($entry).path) -contains "'$($summaryManagementGroup.mgid)'") {
+                        $entry
+                    }
+                }
+                $mgAllChildSubscriptionsCountTotal = (($mgAllChildSubscriptions | Measure-Object).Count)
+                $mgAllChildSubscriptionsCountDirect = ($optimizedTableForPathQueryMgAndSub | Where-Object { $_.mgId -eq $summaryManagementGroup.mgid } | Measure-Object).Count
+                    
+            }
+
+            @"
+<tr>
+<td>$($summaryManagementGroup.level)</td>
+<td>$($summaryManagementGroup.mgName)</td>
+<td>$($summaryManagementGroup.mgId)</td>
+<td>$($mgAllChildMgsCountTotal)</td>
+<td>$($mgAllChildMgsCountDirect)</td>
+<td>$($mgAllChildSubscriptionsCountTotal)</td>
+<td>$($mgAllChildSubscriptionsCountDirect)</td>
+"@
+            if ($htParameters.NoAzureConsumption -eq $false) {
+                @"
+<td>$arrayTotalCostSummary</td>
+"@
+            }
+            @"
+<td>$($pathhlper)</td>
+</tr>
+"@
+        }
+        $htmlTenantSummary += $htmlSUMMARYManagementGroups
+        $htmlTenantSummary += @"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            $htmlTenantSummary += @"
+paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
+"@   
+        }
+        $htmlTenantSummary += @"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_0: 'select',            
+            col_types: [
+                'number',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number',
+                'number',
+                'number',
+                'number',
+"@
+        if ($htParameters.NoAzureConsumption -eq $false) {
+            $htmlTenantSummary += @"
+                'caseinsensitivestring',
+"@
+        }
+        $htmlTenantSummary += @"
+                'caseinsensitivestring'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();
+    </script>
+
+"@
+    }
+    else {
+        $htmlTenantSummary += @"
+    <p><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle">$($summaryManagementGroupsCount) Management Groups</span></p>
+"@
+    }
     #endregion SUMMARYMGs
 
     #region SUMMARYMGdefault
     Write-Host "  processing TenantSummary ManagementGroups - default Management Group"
     $htmlTenantSummary += @"
-    <p><img class="imgMgTree defaultMG" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle">Default Management Group Id: $defaultManagementGroupId <a class="externallink" href="https://docs.microsoft.com/en-us/azure/governance/management-groups/how-to/protect-resource-hierarchy#setting---default-management-group" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></span></p>
+    <p><img class="imgMgTree defaultMG" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle">Hierarchy Settings | Default Management Group Id: '<b>$($defaultManagementGroupId)</b>' <a class="externallink" href="https://docs.microsoft.com/en-us/azure/governance/management-groups/how-to/protect-resource-hierarchy#setting---default-management-group" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></span></p>
 "@
     #endregion SUMMARYMGdefault
+
+    #region SUMMARYMGRequireAuthorizationForGroupCreation
+    Write-Host "  processing TenantSummary ManagementGroups - requireAuthorizationForGroupCreation Management Group"
+    $htmlTenantSummary += @"
+    <p><img class="imgMgTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle">Hierarchy Settings | Require authorization for Management Group creation: '<b>$($requireAuthorizationForGroupCreation)</b>' <a class="externallink" href="https://docs.microsoft.com/en-us/azure/governance/management-groups/how-to/protect-resource-hierarchy#setting---require-authorization" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></span></p>
+"@
+    #endregion SUMMARYMGRequireAuthorizationForGroupCreation
 
     #region SUMMARYMgsapproachingLimitsPolicyAssignments
     Write-Host "  processing TenantSummary ManagementGroups Limit PolicyAssignments"
@@ -9966,6 +10193,7 @@ extensions: [{ name: 'sort' }]
         $htmlTenantSummary += @"
 <button type="button" class="collapsible" id="buttonTenantSummary_Subs"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle">$($summarySubscriptionsCount) Subscriptions (state: enabled)</span></button>
 <div class="content">
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <b>Understand ASC Secure Score</b> <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
 <thead>
@@ -12680,6 +12908,16 @@ function definitionInsights() {
         </div>
 
         <div class="me">
+            <label>Deprecated</label>
+            <span id="polDeprecated"></span>
+        </div>
+
+        <div class="me">
+            <label>Preview</label>
+            <span id="polPreview"></span>
+        </div>
+
+        <div class="me">
             <label>Scope Mg/Sub</label>
             <span id="polScope"></span>
         </div>
@@ -12740,6 +12978,8 @@ function definitionInsights() {
 <th>JSON</th>
 <th>PolicyType</th>
 <th>Category</th>
+<th>Deprecated</th>
+<th>Preview</th>
 <th>Scope Mg/Sub</th>
 <th>Scope Name/Id</th>
 <th>effectDefaultValue</th>
@@ -12817,6 +13057,8 @@ function definitionInsights() {
 <td><pre class="precode"><code class="language-json hljs">$($policy.json | convertto-json -depth 99)</code></pre></td>
 <td>$($policy.Type)</td>
 <td>$($policy.Category)</td>
+<td>$($policy.Deprecated)</td>
+<td>$($policy.Preview)</td>
 <td>$($policy.ScopeMgSub)</td>
 <td>$scopeDetails</td>
 <td>$($policy.effectDefaultValue)</td>
@@ -12894,10 +13136,14 @@ function loadtf$htmlTableId() { if (window.helpertfConfig4$htmlTableId !== 1) {
     col_1: 'select',
     col_2: 'select',
     col_3: 'select',
+    col_4: 'select',
     col_5: 'select',
-    col_6: 'select',
-    col_9: 'select',
+    col_7: 'select',
+    col_8: 'select',
+    col_11: 'select',
     col_types: [
+        'caseinsensitivestring',
+        'caseinsensitivestring',
         'caseinsensitivestring',
         'caseinsensitivestring',
         'caseinsensitivestring',
@@ -12916,6 +13162,8 @@ function loadtf$htmlTableId() { if (window.helpertfConfig4$htmlTableId !== 1) {
         'polJson',
         'polType',
         'polCategory',
+        'polDeprecated',
+        'polPreview',
         'polScope',
         'polScopeNameId',
         'polEffectDefaultValue',
@@ -12927,14 +13175,14 @@ function loadtf$htmlTableId() { if (window.helpertfConfig4$htmlTableId !== 1) {
         'polUsedInPolicySets',
         'polRoledefs'
     ],
-    watermark: ['', '', '', '', '', '', '', '','','','','', 'try: \'Contributor\''],
+    watermark: ['', '','', '', '', '', '', '', '', '','','','','', 'try: \'Contributor\''],
     extensions: [
         { 
             name: 'sort' 
         },
         {
             name: 'colsVisibility',
-            at_start: [1,2,3,4,5,6,7,8,9,10,11,12],
+            at_start: [1,2,3,4,5,6,7,8,9,10,11,12,13,14],
             text: 'Columns: ',
             enable_tick_all: true
         }
@@ -12972,6 +13220,16 @@ tf.init();}}
         </div>
 
         <div class="me">
+            <label>Deprecated</label>
+            <span id="polsetDeprecated"></span>
+        </div>
+
+        <div class="me">
+            <label>Preview</label>
+            <span id="polsetPreview"></span>
+        </div>
+
+        <div class="me">
             <label>Scope Mg/Sub</label>
             <span id="polSetScope"></span>
         </div>
@@ -12998,6 +13256,8 @@ tf.init();}}
 <th>JSON</th>
 <th>PolicySet Type</th>
 <th>Category</th>
+<th>Deprecated</th>
+<th>Preview</th>
 <th>Scope Mg/Sub</th>
 <th>Scope Name/Id</th>
 <th>hasAssignments</th>
@@ -13043,6 +13303,8 @@ tf.init();}}
 <td><pre class="precode"><code class="language-json hljs">$($policySet.json | convertto-json -depth 99)</code></pre></td>
 <td>$($policySet.Type)</td>
 <td>$($policySet.Category)</td>
+<td>$($policySet.Deprecated)</td>
+<td>$($policySet.Preview)</td>
 <td>$($policySet.ScopeMgSub)</td>
 <td>$scopeDetails</td>
 <td>$hasAssignments</td>
@@ -13115,8 +13377,12 @@ function loadtf$htmlTableId() { if (window.helpertfConfig4$htmlTableId !== 1) {
     col_1: 'select',
     col_2: 'select',
     col_3: 'select',
+    col_4: 'select',
     col_5: 'select',
+    col_7: 'select',
     col_types: [
+        'caseinsensitivestring',
+        'caseinsensitivestring',
         'caseinsensitivestring',
         'caseinsensitivestring',
         'caseinsensitivestring',
@@ -13131,6 +13397,8 @@ function loadtf$htmlTableId() { if (window.helpertfConfig4$htmlTableId !== 1) {
         'polsetJson',
         'polsetType',
         'polsetCategory',
+        'polsetDeprecated',
+        'polsetPreview',
         'polSetScope',
         'polSetScopeNameId',
         'polSetHasAssignment'
@@ -13141,7 +13409,7 @@ function loadtf$htmlTableId() { if (window.helpertfConfig4$htmlTableId !== 1) {
         },
         {
             name: 'colsVisibility',
-            at_start: [1,2,3,4,5,6,7],
+            at_start: [1,2,3,4,5,6,7,8,9],
             text: 'Columns: ',
             enable_tick_all: true
         }
@@ -13533,64 +13801,6 @@ if ($accountType -eq "User") {
 
 $newTable = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 
-if (($checkContext).Tenant.id -ne $ManagementGroupId) {
-    $mgSubPathTopMg = $selectedManagementGroupId.ParentName
-    $getMgParentId = $selectedManagementGroupId.ParentName
-    $getMgParentName = $selectedManagementGroupId.ParentDisplayName
-    $mermaidprnts = "'$(($checkContext).Tenant.id)',$getMgParentId"
-    $hierarchyLevel = 0
-    addRowToTable `
-        -level $hierarchyLevel `
-        -mgName $getMgParentName `
-        -mgId $getMgParentId `
-        -mgParentId "'$(($checkContext).Tenant.id)'" `
-        -mgParentName "Tenant Root"
-}
-else {
-    $hierarchyLevel = -1
-    $mgSubPathTopMg = "$ManagementGroupId"
-    $getMgParentId = "'$ManagementGroupId'"
-    $getMgParentName = "Tenant Root"
-    $mermaidprnts = "'$getMgParentId',$getMgParentId"
-}
-
-if ($htParameters.AzureDevOpsWikiAsCode -eq $false) {
-    $currentTask = "Get Tenant details"
-    Write-Host $currentTask
-    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)tenants?api-version=2020-01-01"
-    #$path = "/tenants?api-version=2020-01-01"
-    $method = "GET"
-
-    $tenantDetailsResult = ((AzAPICall -uri $uri -method $method -currentTask $currentTask))
-    if (($tenantDetailsResult | measure-object).count -gt 0) {
-        $tenantDetails = $tenantDetailsResult | Where-Object { $_.tenantId -eq ($checkContext).Tenant.id }
-        $tenantDisplayName = $tenantDetails.displayName
-        $tenantDefaultDomain = $tenantDetails.defaultDomain
-        Write-Host " Tenant DisplayName: $tenantDisplayName"
-    }
-    else {
-        Write-Host " something unexpected"
-    }
-}
-
-Write-Host "Get Default Management Group"
-$currentTask = "Get Default Management Group"
-$uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$(($checkContext).Tenant.id)/settings?api-version=2020-02-01"
-#$path = "providers/Microsoft.Management/managementGroups/($checkContext).Tenant.id/settings?api-version=2020-02-01"
-$method = "GET"
-
-#default Management Group
-#https://docs.microsoft.com/en-us/azure/governance/management-groups/how-to/protect-resource-hierarchy#setting---default-management-group
-$defaultMG = ((AzAPICall -uri $uri -method $method -currentTask $currentTask))
-if (($defaultMG | Measure-Object).count -gt 0) {
-    write-host " default ManagementGroup Id: $($defaultMG.properties.defaultManagementGroup)"
-    $defaultManagementGroupId = $defaultMG.properties.defaultManagementGroup
-}
-else {
-    write-host " default ManagementGroup: $(($checkContext).Tenant.id) (Tenant Root)"
-    $defaultManagementGroupId = ($checkContext).Tenant.id
-}
-
 #region GettingEntities
 $startEntities = get-date
 $currentTask = "Getting Entities"
@@ -13632,7 +13842,6 @@ foreach ($entity in $arrayEntitiesFromAPI) {
         $htManagementGroupsMgPath.($entity.name).DisplayName = $entity.properties.displayName
     }
     
-    
     $htEntities.($entity.name) = @{ }
     $htEntities.($entity.name).ParentNameChain = $entity.properties.parentNameChain
     $htEntities.($entity.name).Parent = $parent
@@ -13647,10 +13856,73 @@ foreach ($entity in $arrayEntitiesFromAPI) {
     $htEntities.($entity.name).Id = $entity.Name
 }
 
-
 $endEntities = get-date
 Write-Host "Getting Entities duration: $((NEW-TIMESPAN -Start $startEntities -End $endEntities).TotalSeconds) seconds"
 #endregion GettingEntities
+
+
+if (($checkContext).Tenant.id -ne $ManagementGroupId) {
+    $mgSubPathTopMg = $selectedManagementGroupId.ParentName
+    $getMgParentId = $selectedManagementGroupId.ParentName
+    $getMgParentName = $selectedManagementGroupId.ParentDisplayName
+    $mermaidprnts = "'$(($checkContext).Tenant.id)',$getMgParentId"
+    #$hierarchyLevel = 0
+    addRowToTable `
+        -level (($htManagementGroupsMgPath.($ManagementGroupId).ParentNameChain | Measure-Object).Count -1) `
+        -mgName $getMgParentName `
+        -mgId $getMgParentId `
+        -mgParentId "'$(($checkContext).Tenant.id)'" `
+        -mgParentName "Tenant Root"
+}
+else {
+    $hierarchyLevel = -1
+    $mgSubPathTopMg = "$ManagementGroupId"
+    $getMgParentId = "'$ManagementGroupId'"
+    $getMgParentName = "Tenant Root"
+    $mermaidprnts = "'$getMgParentId',$getMgParentId"
+}
+
+if ($htParameters.AzureDevOpsWikiAsCode -eq $false) {
+    $currentTask = "Get Tenant details"
+    Write-Host $currentTask
+    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)tenants?api-version=2020-01-01"
+    #$path = "/tenants?api-version=2020-01-01"
+    $method = "GET"
+
+    $tenantDetailsResult = ((AzAPICall -uri $uri -method $method -currentTask $currentTask))
+    if (($tenantDetailsResult | measure-object).count -gt 0) {
+        $tenantDetails = $tenantDetailsResult | Where-Object { $_.tenantId -eq ($checkContext).Tenant.id }
+        $tenantDisplayName = $tenantDetails.displayName
+        $tenantDefaultDomain = $tenantDetails.defaultDomain
+        Write-Host " Tenant DisplayName: $tenantDisplayName"
+    }
+    else {
+        Write-Host " something unexpected"
+    }
+}
+
+Write-Host "Get Default Management Group"
+$currentTask = "Get Default Management Group"
+$uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$(($checkContext).Tenant.id)/settings?api-version=2020-02-01"
+#$path = "providers/Microsoft.Management/managementGroups/($checkContext).Tenant.id/settings?api-version=2020-02-01"
+$method = "GET"
+
+#default Management Group
+#https://docs.microsoft.com/en-us/azure/governance/management-groups/how-to/protect-resource-hierarchy#setting---default-management-group
+$settingsMG = ((AzAPICall -uri $uri -method $method -currentTask $currentTask))
+if (($settingsMG | Measure-Object).count -gt 0) {
+    write-host " default ManagementGroup Id: $($settingsMG.properties.defaultManagementGroup)"
+    $defaultManagementGroupId = $settingsMG.properties.defaultManagementGroup
+    write-host " requireAuthorizationForGroupCreation: $($settingsMG.properties.requireAuthorizationForGroupCreation)"
+    $requireAuthorizationForGroupCreation = $settingsMG.properties.requireAuthorizationForGroupCreation
+}
+else {
+    write-host " default ManagementGroup: $(($checkContext).Tenant.id) (Tenant Root)"
+    $defaultManagementGroupId = ($checkContext).Tenant.id
+    $requireAuthorizationForGroupCreation = $false
+}
+
+
 
 if ($htParameters.HierarchyMapOnly -eq $false) {
     
@@ -13666,6 +13938,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     else {
         $paramsUsed += "ExecutedBy: $($accountId) ($($accountType), $($userType)) &#13;"
     }
+    $paramsUsed += "ManagementGroupId: $($ManagementGroupId) &#13;"
     $paramsUsed += "HierarchyMapOnly: false &#13;"
     Write-Host "Run Info:"
     Write-Host " Creating HierarchyMap, TenantSummary and ScopeInsights - use parameter: '-HierarchyMapOnly' to only create the HierarchyMap" -ForegroundColor Yellow
@@ -14085,11 +14358,17 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         ($htCacheDefinitions).policy.(($builtinPolicyDefinition.id).ToLower()).Category = $builtinPolicyDefinition.Properties.metadata.category
         ($htCacheDefinitions).policy.(($builtinPolicyDefinition.id).ToLower()).PolicyDefinitionId = ($builtinPolicyDefinition.id).ToLower()
         ($htCacheDefinitions).policy.(($builtinPolicyDefinition.id).ToLower()).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$(($builtinPolicyDefinition.id -replace ".*/")).html`" target=`"_blank`">$($builtinPolicyDefinition.Properties.displayname)</a>"
-        if ($builtinPolicyDefinition.Properties.metadata.deprecated -eq $true) {
+        if ($builtinPolicyDefinition.Properties.metadata.deprecated -eq $true -or $builtinPolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
             ($htCacheDefinitions).policy.(($builtinPolicyDefinition.id).ToLower()).Deprecated = $builtinPolicyDefinition.Properties.metadata.deprecated
         }
         else {
             ($htCacheDefinitions).policy.(($builtinPolicyDefinition.id).ToLower()).Deprecated = $false
+        }
+        if ($builtinPolicyDefinition.Properties.metadata.preview -eq $true -or $builtinPolicyDefinition.Properties.displayname -like "``[*Preview``]*") {
+            ($htCacheDefinitions).policy.(($builtinPolicyDefinition.id).ToLower()).Preview = $builtinPolicyDefinition.Properties.metadata.preview
+        }
+        else {
+            ($htCacheDefinitions).policy.(($builtinPolicyDefinition.id).ToLower()).Preview = $false
         }
         #effects
         if ($builtinPolicyDefinition.properties.parameters.effect.defaultvalue) {
@@ -14159,11 +14438,17 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
             ($policySetPolicy).ToLower()
         }
         ($htCacheDefinitions).policySet.(($builtinPolicySetDefinition.id).ToLower()).PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
-        if ($builtinPolicySetDefinition.Properties.metadata.deprecated -eq $true) {
+        if ($builtinPolicySetDefinition.Properties.metadata.deprecated -eq $true -or $builtinPolicySetDefinition.Properties.displayname -like "``[Deprecated``]*") {
             ($htCacheDefinitions).policySet.(($builtinPolicySetDefinition.id).ToLower()).Deprecated = $builtinPolicySetDefinition.Properties.metadata.deprecated
         }
         else {
             ($htCacheDefinitions).policySet.(($builtinPolicySetDefinition.id).ToLower()).Deprecated = $false
+        }
+        if ($builtinPolicySetDefinition.Properties.metadata.preview -eq $true -or $builtinPolicySetDefinition.Properties.displayname -like "``[*Preview``]*") {
+            ($htCacheDefinitions).policySet.(($builtinPolicySetDefinition.id).ToLower()).Preview = $builtinPolicySetDefinition.Properties.metadata.preview
+        }
+        else {
+            ($htCacheDefinitions).policySet.(($builtinPolicySetDefinition.id).ToLower()).Preview = $false
         }
         ($htCacheDefinitions).policySet.(($builtinPolicySetDefinition.id).ToLower()).json = $builtinPolicySetDefinition
     }
@@ -14691,40 +14976,70 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
             }
             
             if ($skipThisResourceType -eq $false) {
-                $resourceId = $htResourceTypesUniqueResource.($resourcetype).resourceId
                 $resourceCount = ($resourceTypesSummarizedArray | Where-Object { $_.Resourcetype -eq $resourcetype }).ResourceCount
-    
-                #thx @Jim Britt (Microsoft) https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts Create-AzDiagPolicy.ps1
-                $responseJSON = ''
-                $logCategories = @()
-                $metrics = $false
-                $logs = $false
-    
-                $currentTask = "Checking if ResourceType '$resourceType' is capable for Resource Diagnostics using ResourceId: '$($resourceId)'"
-                $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)$($resourceId)/providers/microsoft.insights/diagnosticSettingsCategories/?api-version=2017-05-01-preview"
-                #$path = "$($resourceId)/providers/microsoft.insights/diagnosticSettingsCategories/?api-version=2017-05-01-preview"
-                $method = "GET"
-                        
-                ((AzAPICallDiag -uri $uri -method $method -currentTask $currentTask -resourceType $resourcetype))
-                if ($responseJSON) {                
-                    foreach ($response in $responseJSON.value) {
-                        if ($response.properties.categoryType -eq "Metrics") {
-                            $metrics = $true
-                        }
-                        if ($response.properties.categoryType -eq "Logs") {
-                            $logs = $true
-                            $logCategories += $response.name
-                        }
+
+                $resourceCheck = "undone"
+                $tryCounter = 0
+                do{
+                    $tryCounter++
+                    $getResource = Search-AzGraph -Query "resources | where type =~ '$($resourcetype)'" -First 1
+                    if (($getResource | Measure-Object).Count -ne 1){
+                        $sleepSec = @(1,2,3,5,10,20,30,40,50,60,60)[$tryCounter]
+                        Write-Host "Getting a resourceId for resourceType $($resourcetype) #try: $($tryCounter) (count (based on CustomDataCollection): $($resourceCount)) not successful. The resource(s) might meanwhile have been deleted - better check.. try again; sleep $sleepSec seconds"
+                        Start-Sleep -Seconds $sleepSec
+                    }
+                    else{
+                        $resourceCheck = "done"
+                        $resourceId = $getResource.id
                     }
                 }
-
-                $null = $script:resourceTypesDiagnosticsArray.Add([PSCustomObject]@{
+                until($resourceCheck -eq "done" -or $tryCounter -gt 10)
+                
+                if ($resourceCheck -eq "undone"){
+                    Write-Host "Getting a resourceId for resourceType $($resourcetype) skipped"
+                    $null = $script:resourceTypesDiagnosticsArray.Add([PSCustomObject]@{
                         ResourceType  = $resourcetype
-                        Metrics       = $metrics
-                        Logs          = $logs
-                        LogCategories = $logCategories
+                        Metrics       = "skipped"
+                        Logs          = "skipped"
+                        LogCategories = "skipped"
                         ResourceCount = [int]$resourceCount 
                     })
+                }
+                else{
+                    #thx @Jim Britt (Microsoft) https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts Create-AzDiagPolicy.ps1
+                    $responseJSON = ''
+                    $logCategories = @()
+                    $metrics = $false
+                    $logs = $false
+        
+                    $currentTask = "Checking if ResourceType '$resourceType' is capable for Resource Diagnostics using ResourceId: '$($resourceId)'"
+                    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)$($resourceId)/providers/microsoft.insights/diagnosticSettingsCategories/?api-version=2017-05-01-preview"
+                    #$path = "$($resourceId)/providers/microsoft.insights/diagnosticSettingsCategories/?api-version=2017-05-01-preview"
+                    $method = "GET"
+                            
+                    ((AzAPICallDiag -uri $uri -method $method -currentTask $currentTask -resourceType $resourcetype))
+                    if ($responseJSON) {                
+                        foreach ($response in $responseJSON.value) {
+                            if ($response.properties.categoryType -eq "Metrics") {
+                                $metrics = $true
+                            }
+                            if ($response.properties.categoryType -eq "Logs") {
+                                $logs = $true
+                                $logCategories += $response.name
+                            }
+                        }
+                    }
+
+                    $null = $script:resourceTypesDiagnosticsArray.Add([PSCustomObject]@{
+                            ResourceType  = $resourcetype
+                            Metrics       = $metrics
+                            Logs          = $logs
+                            LogCategories = $logCategories
+                            ResourceCount = [int]$resourceCount 
+                        })
+                }    
+
+                
             }
             else {
                 Write-Host "Skipping ResourceType $($resourcetype) as per '`$ExludedResourceTypesDiagnosticsCapable'"
@@ -14869,6 +15184,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                         id                 = ($htCacheDefinitions).policy.($tenantPolicy).id
                         json               = ($htCacheDefinitions).policy.($tenantPolicy).json
                         Deprecated         = ($htCacheDefinitions).policy.($tenantPolicy).Deprecated
+                        Preview            = ($htCacheDefinitions).policy.($tenantPolicy).Preview
                         effectAllowedValue = ($htCacheDefinitions).policy.($tenantPolicy).effectAllowedValue
                         Category           = ($htCacheDefinitions).policy.($tenantPolicy).Category
                         Scope              = ($htCacheDefinitions).policy.($tenantPolicy).Scope   
@@ -14887,6 +15203,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                     id                 = ($htCacheDefinitions).policy.($tenantPolicy).id
                     json               = ($htCacheDefinitions).policy.($tenantPolicy).json
                     Deprecated         = ($htCacheDefinitions).policy.($tenantPolicy).Deprecated
+                    Preview            = ($htCacheDefinitions).policy.($tenantPolicy).Preview
                     effectAllowedValue = ($htCacheDefinitions).policy.($tenantPolicy).effectAllowedValue
                     Category           = ($htCacheDefinitions).policy.($tenantPolicy).Category
                     Scope              = ($htCacheDefinitions).policy.($tenantPolicy).Scope   
@@ -14914,6 +15231,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                         DisplayName        = ($htCacheDefinitions).policySet.($tenantPolicySet).DisplayName
                         id                 = ($htCacheDefinitions).policySet.($tenantPolicySet).id
                         Deprecated         = ($htCacheDefinitions).policySet.($tenantPolicySet).Deprecated
+                        Preview            = ($htCacheDefinitions).policySet.($tenantPolicySet).Preview
                         json               = ($htCacheDefinitions).policySet.($tenantPolicySet).json
                         Category           = ($htCacheDefinitions).policySet.($tenantPolicySet).Category
                         Scope              = ($htCacheDefinitions).policySet.($tenantPolicySet).Scope   
@@ -14929,6 +15247,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                     DisplayName        = ($htCacheDefinitions).policySet.($tenantPolicySet).DisplayName
                     id                 = ($htCacheDefinitions).policySet.($tenantPolicySet).id
                     Deprecated         = ($htCacheDefinitions).policySet.($tenantPolicySet).Deprecated
+                    Preview            = ($htCacheDefinitions).policySet.($tenantPolicySet).Preview
                     json               = ($htCacheDefinitions).policySet.($tenantPolicySet).json
                     Category           = ($htCacheDefinitions).policySet.($tenantPolicySet).Category
                     Scope              = ($htCacheDefinitions).policySet.($tenantPolicySet).Scope   
