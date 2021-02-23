@@ -1,13 +1,13 @@
-# AzGovViz v4_minor_20210126_3
+# AzGovViz v5_major_20210218_2
 # First things first: 
-# 1. edit line 30 and line 31 
-# 2. check line 44 if branch 'master' is applicable 
+# 1. edit line 45 and line 46 
+# 2. check line 60 if branch 'master' is applicable 
 # Documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 # Also check https://www.azadvertizer.net - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
 # 
-# Parameters reference (use in line 71)
+# Parameters reference (use in line 91)
 # LimitCriticalPercentage | default is '80' | example: -LimitCriticalPercentage 90  | WhatDoesItDo? marks capabilities that approch limits e.g. limit 100, usage 80 will mark with warning
-# SubscriptionQuotaIdWhitelist | default is 'undefined'; separator is '\' | example: -SubscriptionQuotaIdWhitelist MSDN_\EnterpriseAgreement_ | WhatDoesItDo? processes only subscriptions that startWith the given QuotaIds
+# SubscriptionQuotaIdWhitelist | default is 'undefined' | example: -SubscriptionQuotaIdWhitelist MSDN_, EnterpriseAgreement_ | WhatDoesItDo? processes only subscriptions that startWith the given QuotaIds
 # HierarchyMapOnly | switch | example: -HierarchyMapOnly | WhatDoesItDo? only creates the Hierarchy Tree
 # DoNotShowRoleAssignmentsUserData | switch | example: -DoNotShowRoleAssignmentsUserData | WhatDoesItDo? scrub user information
 # NoASCSecureScore | switch | example: -NoASCSecureScore | WhatDoesItDo? disables ASC Secure Score request for subscriptions (ASC Score API currently in preview)
@@ -16,24 +16,40 @@
 # NoPolicyComplianceStates | example: -NoPolicyComplianceStates | WhatDoesItDo? will not query policy compliance states
 # NoResourceDiagnosticsPolicyLifecycle | example: -NoResourceDiagnosticsPolicyLifecycle | WhatDoesItDo? will not create Resource Diagnostics Policy Lifecycle recommendations
 # NoAADGroupsResolveMembers | example: -NoAADGroupsResolveMembers | WhatDoesItDo? will not resolve Azure Active Directory Group memberships for Role assignments where identity type is 'Group'
-# NoServicePrincipalResolve | example: -NoServicePrincipalResolve | WhatDoesItDo? disables resolving ServicePrincipals
-# ServicePrincipalExpiryWarningDays | example: -ServicePrincipalExpiryWarningDays 21 | WhatDoesItDo? define warning period for Service Principal secret and certificate expiry; default is 14 days
+# NoAADGuestUsers | example: -NoAADGuestUsers | WhatDoesItDo? will not resolve Azure Active Directory User type (Guest or Member) for Role assignments where identity type is 'User'
+# NoAADServicePrincipalResolve | example: -NoAADServicePrincipalResolve | WhatDoesItDo? disables resolving ServicePrincipals
+# AADServicePrincipalExpiryWarningDays | example: -AADServicePrincipalExpiryWarningDays 21 | WhatDoesItDo? define warning period for Service Principal secret and certificate expiry; default is 14 days
 # NoAzureConsumption | example: -NoAzureConsumption | WhatDoesItDo? Azure Consumption data will not be collected/reported
 # AzureConsumptionPeriod | example: -AzureConsumptionPeriod 7 | WhatDoesItDo? define for which time period Azure Consumption data should be gathered; default is 1 day
 # NoAzureConsumptionReportExportToCSV | example: -NoAzureConsumptionReportExportToCSV | WhatDoesItDo? Azure Consumption data will not be exported (CSV)
+# NoScopeInsights | example: -NoScopeInsights | WhatDoesItDo? and why would you want to do this? In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
+# ThrottleLimit | example: -ThrottleLimit 10 | WhatDoesItDo? Define the number of script blocks running in parallel. Leveraging PowerShell Core´s parallel capability you can define the ThrottleLimit (default=5)
+# DoTranscript | example: -DoTranscript | WhatDoesItDo? Log the console output
+# AzureDevOpsWikiHierarchyDirection | example: - "LR" | WhatDoesItDo? Define the direction the Hierarchy should be built in Azure DevOps WokiAsCode (Markdown) TD = TopDown (Horizontal), LR = LeftRight (Vertical)
 
 trigger: none
 
 pr: none
 
+parameters:
+- name: exludedResourceTypesDiagnosticsCapableParameters
+  type: object
+  default:
+    - microsoft.web/certificates
+- name: subscriptionQuotaIdWhitelistParameters
+  type: object
+  default:
+    - undefined
+
 variables:
   ServiceConnection: <YourServiceConnection> #permissions set? https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#required-permissions-in-azure 
   ManagementGroupId: <YourManagementGroupId>
-  SubscriptionQuotaIdWhitelist: undefined
+  SubscriptionQuotaIdWhitelist: ${{ join(',',parameters.subscriptionQuotaIdWhitelistParameters) }}
+  ExludedResourceTypesDiagnosticsCapable: ${{ join(',',parameters.exludedResourceTypesDiagnosticsCapableParameters) }}
   WikiDir: wiki
   CsvDelimiter: ;
   ScriptDir: pwsh
-  Script: AzGovViz.ps1
+  Script: AzGovVizParallel.ps1
 
 schedules:
 - cron: "0 0,12 * * *"
@@ -41,7 +57,7 @@ schedules:
   always: true
   branches:
     include:
-    - master #check if applicable (master, main, etc.)!
+    - master
 
 jobs:
 - job: AzGovViz  
@@ -69,8 +85,10 @@ jobs:
   - task: AzurePowerShell@4
     inputs:
       azureSubscription: '$(ServiceConnection)'
+      scriptType: filePath
+      pwsh: true
       scriptPath: '$(System.DefaultWorkingDirectory)/$(ScriptDir)/$(Script)'
-      scriptArguments: '-ManagementGroupId $(ManagementGroupId) -OutputPath $(WikiDir) -CsvDelimiter "$(CsvDelimiter)" -AzureDevOpsWikiAsCode -SubscriptionQuotaIdWhitelist $(SubscriptionQuotaIdWhitelist)'
+      scriptArguments: '-ManagementGroupId $(ManagementGroupId) -OutputPath $(WikiDir) -CsvDelimiter "$(CsvDelimiter)" -AzureDevOpsWikiAsCode -SubscriptionQuotaIdWhitelist $(SubscriptionQuotaIdWhitelist) -ExludedResourceTypesDiagnosticsCapable $(ExludedResourceTypesDiagnosticsCapable)'
       azurePowerShellVersion: latestVersion
     displayName: 'Run AzGovViz'
   - powershell: |
