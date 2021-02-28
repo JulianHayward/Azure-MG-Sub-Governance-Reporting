@@ -4,8 +4,11 @@
 
 ### AzGovViz version 5
 
-Release 2021-Feb-14  
-__Let´s accellerate by going parallel!__  
+__Breaking Changes__ (2021-Feb-28)
+
+* When granting __Azure Active Directory Graph__ API permissions in the background an AAD Role assignment for AAD Group __Directory readers__ was triggered automatically - since January/February 2021 this is no longer the case. Review the updated [__AzGovViz technical documentation__](#azgovviz-technical-documentation) section for detailed permission requirements.
+
+__Let´s accellerate by going parallel!__  (2021-Feb-14)
 * Support for PowerShell Core ONLY! No support for PowerShell version < 7.0.3
 * New section __DefinitionInsights__ - Insights on all built-in and custom Policy, PolicySet and RBAC Role definitions
 * New parameter `-NoScopeInsights` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)

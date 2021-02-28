@@ -161,7 +161,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210224_1",
+    [string]$AzGovVizVersion = "v5_major_20210228_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -190,6 +190,8 @@ Param
     [int]$ThrottleLimit = 5, 
     [array]$ExludedResourceTypesDiagnosticsCapable = @("microsoft.web/certificates"),
     [switch]$IncludeResourceGroupsAndResources,
+    [switch]$AtScopeOnlyPolicy,
+    [switch]$AtScopeOnlyRBAC,
     #[string]$AzureDevOpsWikiHierarchyDirection = "TD",
     [parameter(ValueFromPipeline)][ValidateSet("TD","LR")][string[]]$AzureDevOpsWikiHierarchyDirection = "TD",
 
@@ -312,6 +314,20 @@ if ($IncludeResourceGroupsAndResources) {
 }
 else {
     $htParameters.IncludeResourceGroupsAndResources = $false
+}
+
+if ($AtScopeOnlyPolicy) {
+    $htParameters.AtScopeOnlyPolicy = $true
+}
+else {
+    $htParameters.AtScopeOnlyPolicy = $false
+}
+
+if ($AtScopeOnlyRBAC) {
+    $htParameters.AtScopeOnlyRBAC = $true
+}
+else {
+    $htParameters.AtScopeOnlyRBAC = $false
 }
 #endregion htParameters
 
@@ -551,7 +567,8 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     ($getApp -and $catchResult.error.code -like "*Request_ResourceNotFound*") -or 
                     ($getApp -and $catchResult.error.code -like "*Authorization_RequestDenied*") -or 
                     ($getGuests -and $catchResult.error.code -like "*Authorization_RequestDenied*") -or 
-                    $catchResult.error.message -like "*The offer MS-AZR-0110P is not supported*") {
+                    $catchResult.error.message -like "*The offer MS-AZR-0110P is not supported*" -or
+                    $catchResult.error.code -like "*UnknownError*") {
                     if ($catchResult.error.code -like "*ResponseTooLarge*") {
                         Write-Host "###### LIMIT #################################"
                         Write-Host "Hitting LIMIT getting Policy Compliance States!"
@@ -570,9 +587,9 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - seems we´re hitting a malicious endpoint .. try again in $tryCounter second(s)"
                         Start-Sleep -Seconds $tryCounter
                     }
-                    if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*RequestTimeout*") {
+                    if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*UnknownError*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again"
-                        Start-Sleep -Milliseconds 250
+                        Start-Sleep -Seconds $tryCounter
                     }
                     if ($catchResult.error.code -like "*AuthorizationFailed*") {
                         if ($retryAuthorizationFailedCounter -gt $retryAuthorizationFailed) {
@@ -794,7 +811,7 @@ $funcAzAPICall = $function:AzAPICall.ToString()
 #endregion azapicall
 
 #region azapicalldiag
-function AzAPICallDiag($uri, $method, $currentTask, $resourceType) {
+function AzAPICallDiag($uri, $method, $currentTask, $resourceType, $resourceId) {
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
     
@@ -843,10 +860,10 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType) {
         }
         if ($unexpectedError -eq $false) {
             if ($azAPIRequest.StatusCode -ne 200) {
-                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.code -like "*NotSupported*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*") {
-                    if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*RequestTimeout*") {
+                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.code -like "*NotSupported*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*" -or $catchResult.error.code -like "*ResourceNotFound*" -or $catchResult.error.code -like "*UnknownError*") {
+                    if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*UnknownError*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again"
-                        Start-Sleep -Milliseconds 250
+                        Start-Sleep -Seconds $tryCounter
                     }
                     if ($catchResult.code -like "*NotSupported*") {
                         Write-Host "  $($catchResult.code) | $($catchResult.message)"
@@ -875,6 +892,10 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType) {
                     if ($catchResult.error.code -like "*ExpiredAuthenticationToken*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token"
                         createBearerToken -targetEndPoint $targetEndpoint
+                    }
+                    if ($catchResult.error.code -like "*ResourceNotFound*"){
+                        Write-Host "  ResourceGone | The resourceId '$($resourceId)' seems meanwhile deleted."
+                        $Script:responseJSON = "meanwhile_deleted"
                     }
                 }
                 else {
@@ -1546,7 +1567,12 @@ function dataCollection($mgId) {
     
             #MgPolicyAssignments
             $currentTask = "Policy assignments '$($mgdetail.properties.displayName)' ('$($mgdetail.Name)')"
-            $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atscope()&api-version=2019-09-01"
+            if ($htParameters.AtScopeOnlyPolicy -eq $false) {
+                $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atscope()&api-version=2019-09-01"
+            }
+            else{
+                $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atExactScope()&api-version=2019-09-01"
+            }
             #$path = "/providers/Microsoft.Management/managementgroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atscope()&api-version=2019-09-01"
             $method = "GET"
            
@@ -1755,6 +1781,9 @@ function dataCollection($mgId) {
             until($errorOccurred -eq "no")
     
             $L0mgmtGroupRoleAssignmentsLimitUtilization = (($L0mgmtGroupRoleAssignments | Where-Object { $_.Scope -eq "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" }) | measure-object).count
+            if ($htParameters.AtScopeOnlyRBAC -eq $true) {
+                $L0mgmtGroupRoleAssignments = $L0mgmtGroupRoleAssignments | Where-Object { $_.Scope -eq "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" }
+            }
             foreach ($L0mgmtGroupRoleAssignment in $L0mgmtGroupRoleAssignments) {
                 
                 if (-not $($htCacheAssignments).role[$L0mgmtGroupRoleAssignment.RoleAssignmentId]) {
@@ -1898,6 +1927,7 @@ function dataCollection($mgId) {
             $newTable = $using:newTable
             $outOfScopeSubscriptions = $using:outOfScopeSubscriptions
             $resourcesAll = $using:resourcesAll
+            $resourcesIdsAll = $using:resourcesIdsAll
             $resourceGroupsAll = $using:resourceGroupsAll
             $arrayCachePolicyAssignmentsResourceGroupsAndResources = $using:arrayCachePolicyAssignmentsResourceGroupsAndResources
             $arrayCacheRoleAssignmentsResourceGroups = $using:arrayCacheRoleAssignmentsResourceGroups
@@ -1919,6 +1949,7 @@ function dataCollection($mgId) {
             $LimitPOLICYPolicySetAssignmentsSubscription = $using:LimitPOLICYPolicySetAssignmentsSubscription
             $childrenSubscriptionsCount = $using:childrenSubscriptionsCount
             $arrayDataCollectionProgressSub = $using:arrayDataCollectionProgressSub
+            $arraySubResourcesAddArrayDuration = $using:arraySubResourcesAddArrayDuration
             $htAllSubscriptionsFromAPI = $using:htAllSubscriptionsFromAPI
             $arrayEntitiesFromAPI = $using:arrayEntitiesFromAPI
             $arrayAPICallTracking = $using:arrayAPICallTracking
@@ -2029,7 +2060,27 @@ function dataCollection($mgId) {
                             $script:htResourceTypesUniqueResource.(($resourceType.name).ToLower()) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
                             $script:htResourceTypesUniqueResource.(($resourceType.name).ToLower()).resourceId = $resourceType.Group.id | Select-Object -first 1
                         }
+                        <#foreach ($resourceId in $resourceType.Group.id){
+                            $null = $script:resourcesIdsAll.Add($resourceId)
+                        }#>
                     }
+    
+                    $startSubResourceIdsThis = get-date
+                    foreach ($resource in ($resourcesSubscriptionResult)) {
+                        $null = $script:resourcesIdsAll.Add([PSCustomObject]@{
+                                subscriptionId = $childMgSubId
+                                type           = ($resource.type).ToLower()
+                                id             = ($resource.id).ToLower()
+                                name           = ($resource.name).ToLower()
+                                location       = ($resource.location).ToLower()
+                            })
+                    }
+                    $endSubResourceIdsThis = get-date
+                    $null = $script:arraySubResourcesAddArrayDuration.Add([PSCustomObject]@{ 
+                            sub          = $childMgSubId
+                            DurationSec = (NEW-TIMESPAN -Start $startSubResourceIdsThis -End $endSubResourceIdsThis).TotalSeconds
+                        })
+
                     
                     #resourceTags
                     $script:htSubscriptionTagList.($childMgSubId) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
@@ -2582,7 +2633,12 @@ function dataCollection($mgId) {
 
                     #SubscriptionPolicyAssignments
                     $currentTask = "Policy assignments '$($childMgSubDisplayName)' ('$childMgSubId')"
-                    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyAssignments?api-version=2019-09-01"
+                    if ($htParameters.AtScopeOnlyPolicy -eq $false) {
+                        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyAssignments?api-version=2019-09-01"
+                    }
+                    else{
+                        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyAssignments?`$filter=atExactScope()&api-version=2019-09-01"
+                    }
                     #$path = "/subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyAssignments?api-version=2019-09-01"
                     $method = "GET"
                  
@@ -2873,8 +2929,15 @@ function dataCollection($mgId) {
                         }
                     }
 
-                    foreach ($L1mgmtGroupSubRoleAssignment in $L1mgmtGroupSubRoleAssignments | Where-Object { $_.RoleAssignmentId -notmatch "/subscriptions/$($childMgSubId)/resourcegroups/" }) {
+                    if ($htParameters.AtScopeOnlyRBAC -eq $false) {
+                        $assignmentsScope = $L1mgmtGroupSubRoleAssignments | Where-Object { $_.RoleAssignmentId -notmatch "/subscriptions/$($childMgSubId)/resourcegroups/" }
+                    }
+                    else{
+                        $assignmentsScope = $L1mgmtGroupSubRoleAssignments | Where-Object { $_.Scope -eq "/subscriptions/$($childMgSubId)" }
+                    }
 
+                    #foreach ($L1mgmtGroupSubRoleAssignment in $L1mgmtGroupSubRoleAssignments | Where-Object { $_.RoleAssignmentId -notmatch "/subscriptions/$($childMgSubId)/resourcegroups/" }) {
+                    foreach ($L1mgmtGroupSubRoleAssignment in $assignmentsScope) {
                         if (-not $($htCacheAssignments).role[$L1mgmtGroupSubRoleAssignment.RoleAssignmentId]) {
                             $($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
                             $($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId) = $L1mgmtGroupSubRoleAssignment
@@ -13881,12 +13944,9 @@ if (($checkContext).Tenant.id -ne $ManagementGroupId) {
     $getMgParentName = $selectedManagementGroupId.ParentDisplayName
     $mermaidprnts = "'$(($checkContext).Tenant.id)',$getMgParentId"
     #$hierarchyLevel = 0
-    addRowToTable `
-        -level (($htManagementGroupsMgPath.($ManagementGroupId).ParentNameChain | Measure-Object).Count -1) `
-        -mgName $getMgParentName `
-        -mgId $getMgParentId `
-        -mgParentId "'$(($checkContext).Tenant.id)'" `
-        -mgParentName "Tenant Root"
+
+    
+    
 }
 else {
     $hierarchyLevel = -1
@@ -14171,12 +14231,15 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         $htUserTypes = @{ }
     }
     $resourcesAll = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $resourcesIdsAll = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $resourceGroupsAll = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htResourceProvidersAll = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
     $arrayResourceProvidersAll = @()
     $htResourceTypesUniqueResource = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
     $arrayDataCollectionProgressMg = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayDataCollectionProgressSub = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arraySubResourcesAddArrayDuration = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+
 
     #current context sub not AAD*
     do {
@@ -14501,6 +14564,295 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
     dataCollection -mgId $ManagementGroupId
 
+
+    if ($htParameters.AtScopeOnlyPolicy -eq $false -or $htParameters.AtScopeOnlyRBAC -eq $false) {
+
+        if (($checkContext).Tenant.id -ne $ManagementGroupId) {
+            addRowToTable `
+            -level (($htManagementGroupsMgPath.($ManagementGroupId).ParentNameChain | Measure-Object).Count -1) `
+            -mgName $getMgParentName `
+            -mgId $getMgParentId `
+            -mgParentId "'upperScopes'" `
+            -mgParentName "upperScopes"
+
+            
+
+            #
+        }
+    }
+    else{
+        if ($htParameters.AtScopeOnlyPolicy -eq $true) {
+            if (($checkContext).Tenant.id -ne $ManagementGroupId) {
+                $currentTask = "Policy assignments ('$($ManagementGroupId)')"
+                $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($ManagementGroupId)/providers/Microsoft.Authorization/policyAssignments?`$filter=atScope()&api-version=2019-09-01"
+                $method = "GET"
+                $upperScopesPolicyAssignments = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
+                #write-host "*****************************here"
+                #$upperScopesPolicyAssignments.properties
+                #pause
+                $upperScopesPolicyAssignments = $upperScopesPolicyAssignments | where-object { $_.properties.scope -ne "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)"}
+                $upperScopesPolicyAssignmentsPolicyCount = (($upperScopesPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" }) | measure-object).count
+                $upperScopesPolicyAssignmentsPolicySetCount = (($upperScopesPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" }) | measure-object).count
+                $upperScopesPolicyAssignmentsPolicyAtScopeCount = (($upperScopesPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.id -match "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" }) | measure-object).count
+                $upperScopesPolicyAssignmentsPolicySetAtScopeCount = (($upperScopesPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.id -match "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" }) | measure-object).count
+                $upperScopesPolicyAssignmentsPolicyAndPolicySetAtScopeCount = ($upperScopesPolicyAssignmentsPolicyAtScopeCount + $upperScopesPolicyAssignmentsPolicySetAtScopeCount)
+                foreach ($L0mgmtGroupPolicyAssignment in $upperScopesPolicyAssignments) {
+                    
+                    if ($L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -OR $L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/") {
+                        if ($L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/") {
+                            $PolicyVariant = "Policy"
+                            $definitiontype = "policy"
+                            $Id = ($L0mgmtGroupPolicyAssignment.properties.policydefinitionid).ToLower()
+                            $Def = ($htCacheDefinitions).($definitiontype).($Id)
+                            $PolicyAssignmentScope = $L0mgmtGroupPolicyAssignment.Properties.Scope
+                            $PolicyAssignmentNotScopes = $L0mgmtGroupPolicyAssignment.Properties.NotScopes -join "$CsvDelimiterOpposite "
+                            $PolicyAssignmentId = $L0mgmtGroupPolicyAssignment.id
+                            $PolicyAssignmentName = $L0mgmtGroupPolicyAssignment.Name
+                            $PolicyAssignmentDisplayName = $L0mgmtGroupPolicyAssignment.Properties.DisplayName
+                            if (($L0mgmtGroupPolicyAssignment.Properties.Description).length -eq 0) {
+                                $PolicyAssignmentDescription = "no description given"
+                            }
+                            else {
+                                $PolicyAssignmentDescription = $L0mgmtGroupPolicyAssignment.Properties.Description
+                            }
+
+                            if ($L0mgmtGroupPolicyAssignment.identity) {
+                                $PolicyAssignmentIdentity = $L0mgmtGroupPolicyAssignment.identity.principalId
+                            }
+                            else {
+                                $PolicyAssignmentIdentity = "n/a"
+                            }
+
+                            if ($Def.Type -eq "Custom") {
+                                $policyDefintionScope = $Def.Scope
+                                $policyDefintionScopeMgSub = $Def.ScopeMgSub
+                                $policyDefintionScopeId = $Def.ScopeId
+                            }
+                            else {
+                                $policyDefintionScope = "n/a"
+                                $policyDefintionScopeMgSub = "n/a"
+                                $policyDefintionScopeId = "n/a"
+                            }
+
+                            addRowToTable `
+                                -level (($htManagementGroupsMgPath.($ManagementGroupId).ParentNameChain | Measure-Object).Count -1) `
+                                -mgName $getMgParentName `
+                                -mgId $getMgParentId `
+                                -mgParentId "'upperScopes'" `
+                                -mgParentName "upperScopes" `
+                                -Policy $Def.DisplayName `
+                                -PolicyDescription $Def.Description `
+                                -PolicyVariant $PolicyVariant `
+                                -PolicyType $Def.Type `
+                                -PolicyCategory $Def.Category `
+                                -PolicyDefinitionIdGuid (($Def.id) -replace ".*/") `
+                                -PolicyDefinitionId $Def.PolicyDefinitionId `
+                                -PolicyDefintionScope $policyDefintionScope `
+                                -PolicyDefintionScopeMgSub $policyDefintionScopeMgSub `
+                                -PolicyDefintionScopeId $policyDefintionScopeId `
+                                -PolicyDefinitionsScopedLimit $LimitPOLICYPolicyDefinitionsScopedManagementGroup `
+                                -PolicyDefinitionsScopedCount $PolicyDefinitionsScopedCount `
+                                -PolicySetDefinitionsScopedLimit $LimitPOLICYPolicySetDefinitionsScopedManagementGroup `
+                                -PolicySetDefinitionsScopedCount $PolicySetDefinitionsScopedCount `
+                                -PolicyAssignmentScope $PolicyAssignmentScope `
+                                -PolicyAssignmentScopeMgSubRgRes "Mg" `
+                                -PolicyAssignmentScopeName ($PolicyAssignmentScope -replace ".*/", "") `
+                                -PolicyAssignmentNotScopes $L0mgmtGroupPolicyAssignment.Properties.NotScopes `
+                                -PolicyAssignmentId $PolicyAssignmentId `
+                                -PolicyAssignmentName $PolicyAssignmentName `
+                                -PolicyAssignmentDisplayName $PolicyAssignmentDisplayName `
+                                -PolicyAssignmentDescription $PolicyAssignmentDescription `
+                                -PolicyAssignmentIdentity $PolicyAssignmentIdentity `
+                                -PolicyAssigmentLimit $LimitPOLICYPolicyAssignmentsManagementGroup `
+                                -PolicyAssigmentCount $upperScopesPolicyAssignmentsPolicyCount `
+                                -PolicyAssigmentAtScopeCount $upperScopesPolicyAssignmentsPolicyAtScopeCount `
+                                -PolicyAssigmentParameters $L0mgmtGroupPolicyAssignment.Properties.Parameters `
+                                -PolicySetAssigmentLimit $LimitPOLICYPolicySetAssignmentsManagementGroup `
+                                -PolicySetAssigmentCount $upperScopesPolicyAssignmentsPolicySetCount `
+                                -PolicySetAssigmentAtScopeCount $upperScopesPolicyAssignmentsPolicySetAtScopeCount `
+                                -PolicyAndPolicySetAssigmentAtScopeCount $upperScopesPolicyAssignmentsPolicyAndPolicySetAtScopeCount
+                        }
+
+                        if ($L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/") {
+                            $PolicyVariant = "PolicySet"
+                            $definitiontype = "policySet"
+                            $Id = ($L0mgmtGroupPolicyAssignment.properties.policydefinitionid).ToLower()
+                            $Def = ($htCacheDefinitions).($definitiontype).($Id)
+                            $PolicyAssignmentScope = $L0mgmtGroupPolicyAssignment.Properties.Scope
+                            $PolicyAssignmentNotScopes = $L0mgmtGroupPolicyAssignment.Properties.NotScopes -join "$CsvDelimiterOpposite "
+                            $PolicyAssignmentId = $L0mgmtGroupPolicyAssignment.id
+                            $PolicyAssignmentName = $L0mgmtGroupPolicyAssignment.Name
+                            $PolicyAssignmentDisplayName = $L0mgmtGroupPolicyAssignment.Properties.DisplayName
+                            if (($L0mgmtGroupPolicyAssignment.Properties.Description).length -eq 0) {
+                                $PolicyAssignmentDescription = "no description given"
+                            }
+                            else {
+                                $PolicyAssignmentDescription = $L0mgmtGroupPolicyAssignment.Properties.Description
+                            }
+
+                            if ($L0mgmtGroupPolicyAssignment.identity) {
+                                $PolicyAssignmentIdentity = $L0mgmtGroupPolicyAssignment.identity.principalId
+                            }
+                            else {
+                                $PolicyAssignmentIdentity = "n/a"
+                            }
+
+                            if ($Def.Type -eq "Custom") {
+                                $policyDefintionScope = $Def.Scope
+                                $policyDefintionScopeMgSub = $Def.ScopeMgSub
+                                $policyDefintionScopeId = $Def.ScopeId
+                            }
+                            else {
+                                $policyDefintionScope = "n/a"
+                                $policyDefintionScopeMgSub = "n/a"
+                                $policyDefintionScopeId = "n/a"
+                            }
+
+                            addRowToTable `
+                                -level (($htManagementGroupsMgPath.($ManagementGroupId).ParentNameChain | Measure-Object).Count -1) `
+                                -mgName $getMgParentName `
+                                -mgId $getMgParentId `
+                                -mgParentId "'upperScopes'" `
+                                -mgParentName "upperScopes" `
+                                -Policy $Def.DisplayName `
+                                -PolicyDescription $Def.Description `
+                                -PolicyVariant $PolicyVariant `
+                                -PolicyType $Def.Type `
+                                -PolicyCategory $Def.Category `
+                                -PolicyDefinitionIdGuid (($Def.id) -replace ".*/") `
+                                -PolicyDefinitionId $Def.PolicyDefinitionId `
+                                -PolicyDefintionScope $policyDefintionScope `
+                                -PolicyDefintionScopeMgSub $policyDefintionScopeMgSub `
+                                -PolicyDefintionScopeId $policyDefintionScopeId `
+                                -PolicyDefinitionsScopedLimit $LimitPOLICYPolicyDefinitionsScopedManagementGroup `
+                                -PolicyDefinitionsScopedCount $PolicyDefinitionsScopedCount `
+                                -PolicySetDefinitionsScopedLimit $LimitPOLICYPolicySetDefinitionsScopedManagementGroup `
+                                -PolicySetDefinitionsScopedCount $PolicySetDefinitionsScopedCount `
+                                -PolicyAssignmentScope $PolicyAssignmentScope `
+                                -PolicyAssignmentScopeMgSubRgRes "Mg" `
+                                -PolicyAssignmentScopeName ($PolicyAssignmentScope -replace ".*/", "") `
+                                -PolicyAssignmentNotScopes $L0mgmtGroupPolicyAssignment.Properties.NotScopes `
+                                -PolicyAssignmentId $PolicyAssignmentId `
+                                -PolicyAssignmentName $PolicyAssignmentName `
+                                -PolicyAssignmentDisplayName $PolicyAssignmentDisplayName `
+                                -PolicyAssignmentDescription $PolicyAssignmentDescription `
+                                -PolicyAssignmentIdentity $PolicyAssignmentIdentity `
+                                -PolicyAssigmentLimit $LimitPOLICYPolicyAssignmentsManagementGroup `
+                                -PolicyAssigmentCount $upperScopesPolicyAssignmentsPolicyCount `
+                                -PolicyAssigmentAtScopeCount $upperScopesPolicyAssignmentsPolicyAtScopeCount `
+                                -PolicyAssigmentParameters $L0mgmtGroupPolicyAssignment.Properties.Parameters `
+                                -PolicySetAssigmentLimit $LimitPOLICYPolicySetAssignmentsManagementGroup `
+                                -PolicySetAssigmentCount $upperScopesPolicyAssignmentsPolicySetCount `
+                                -PolicySetAssigmentAtScopeCount $upperScopesPolicyAssignmentsPolicySetAtScopeCount `
+                                -PolicyAndPolicySetAssigmentAtScopeCount $upperScopesPolicyAssignmentsPolicyAndPolicySetAtScopeCount
+                        }
+                    }
+
+                }
+            }
+        }
+        #
+        if ($htParameters.AtScopeOnlyRBAC -eq $true) {
+            $upperScopesRoleAssignments = Get-AzRoleAssignment -Scope "/providers/Microsoft.Management/managementGroups/$ManagementGroupId"
+            foreach ($upperScopesRoleAssignment in $upperScopesRoleAssignments){
+                if ($upperScopesRoleAssignment.Scope -ne "/providers/Microsoft.Management/managementGroups/$ManagementGroupId"){
+                    $Id = $upperScopesRoleAssignment.RoleDefinitionId
+                    $definitiontype = "role"
+        
+                    if (($upperScopesRoleAssignment.RoleDefinitionName).length -eq 0) {
+                        $RoleDefinitionName = "'This roleDefinition likely was deleted although a roleAssignment existed'" 
+                    }
+                    else {
+                        $RoleDefinitionName = $upperScopesRoleAssignment.RoleDefinitionName
+                    }
+                    if (($upperScopesRoleAssignment.DisplayName).length -eq 0) {
+                        $RoleAssignmentIdentityDisplayname = "n/a" 
+                    }
+                    else {
+                        if ($upperScopesRoleAssignment.ObjectType -eq "User") {
+                            if ($htParameters.DoNotShowRoleAssignmentsUserData -eq $false) {
+                                $RoleAssignmentIdentityDisplayname = $upperScopesRoleAssignment.DisplayName
+                            }
+                            else {
+                                $RoleAssignmentIdentityDisplayname = "scrubbed"
+                            }
+                        }
+                        else {
+                            $RoleAssignmentIdentityDisplayname = $upperScopesRoleAssignment.DisplayName
+                        }
+                    }                
+                    if (($upperScopesRoleAssignment.SignInName).length -eq 0) {
+                        $RoleAssignmentIdentitySignInName = "n/a" 
+                    }
+                    else {
+                        if ($upperScopesRoleAssignment.ObjectType -eq "User") {
+                            if ($htParameters.DoNotShowRoleAssignmentsUserData -eq $false) {
+                                $RoleAssignmentIdentitySignInName = $upperScopesRoleAssignment.SignInName
+                            }
+                            else {
+                                $RoleAssignmentIdentitySignInName = "scrubbed"
+                            }
+                        }
+                        else {
+                            $RoleAssignmentIdentitySignInName = $upperScopesRoleAssignment.SignInName
+                        }
+                    }
+                    $RoleAssignmentIdentityObjectId = $upperScopesRoleAssignment.ObjectId
+                    $RoleAssignmentIdentityObjectType = $upperScopesRoleAssignment.ObjectType
+                    $RoleAssignmentId = $upperScopesRoleAssignment.RoleAssignmentId
+                    $RoleAssignmentScope = $upperScopesRoleAssignment.Scope
+                    $RoleAssignmentScopeName = $RoleAssignmentScope -replace '.*/'
+        
+                    $RoleSecurityCustomRoleOwner = 0
+                    if (($htCacheDefinitions).$definitiontype.$($Id).Actions -eq '*' -and ((($htCacheDefinitions).$definitiontype.$($Id).NotActions)).length -eq 0 -and ($htCacheDefinitions).$definitiontype.$($Id).IsCustom -eq $True) {
+                        $RoleSecurityCustomRoleOwner = 1
+                    }
+                    $RoleSecurityOwnerAssignmentSP = 0
+                    if ((($htCacheDefinitions).$definitiontype.$($Id).id -eq '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' -and $RoleAssignmentIdentityObjectType -eq "ServicePrincipal") -or (($htCacheDefinitions).$definitiontype.$($Id).Actions -eq '*' -and ((($htCacheDefinitions).$definitiontype.$($Id).NotActions)).length -eq 0 -and ($htCacheDefinitions).$definitiontype.$($Id).IsCustom -eq $True -and $RoleAssignmentIdentityObjectType -eq "ServicePrincipal")) {
+                        $RoleSecurityOwnerAssignmentSP = 1
+                    }
+
+                    if (($checkContext).Tenant.id -ne $ManagementGroupId) {
+                        $levelToUse = (($htManagementGroupsMgPath.($ManagementGroupId).ParentNameChain | Measure-Object).Count -1)
+                        $toUseAsmgName = $getMgParentName
+                        $toUseAsmgId = $getMgParentId
+                        $toUseAsmgParentId = "'upperScopes'"
+                        $toUseAsmgParentName = "upperScopes"
+                    }
+                    else{
+                        $levelToUse = (($htManagementGroupsMgPath.($ManagementGroupId).ParentNameChain | Measure-Object).Count)
+                        $toUseAsmgName = $selectedManagementGroupId.DisplayName
+                        $toUseAsmgId = $selectedManagementGroupId.Name
+                        $toUseAsmgParentId = "TenantRoot"
+                        $toUseAsmgParentName = "TenantRoot"
+                    }
+                    addRowToTable `
+                    -level $levelToUse `
+                    -mgName $toUseAsmgName `
+                    -mgId $toUseAsmgId `
+                    -mgParentId $toUseAsmgParentId `
+                    -mgParentName $toUseAsmgParentName `
+                    -RoleDefinitionId ($htCacheDefinitions).$definitiontype.$($Id).id `
+                    -RoleDefinitionName $RoleDefinitionName `
+                    -RoleIsCustom ($htCacheDefinitions).$definitiontype.$($Id).IsCustom `
+                    -RoleAssignableScopes (($htCacheDefinitions).$definitiontype.$($Id).AssignableScopes -join "$CsvDelimiterOpposite ") `
+                    -RoleActions (($htCacheDefinitions).$definitiontype.$($Id).Actions -join "$CsvDelimiterOpposite ") `
+                    -RoleNotActions (($htCacheDefinitions).$definitiontype.$($Id).NotActions -join "$CsvDelimiterOpposite ") `
+                    -RoleDataActions (($htCacheDefinitions).$definitiontype.$($Id).DataActions -join "$CsvDelimiterOpposite ") `
+                    -RoleNotDataActions (($htCacheDefinitions).$definitiontype.$($Id).NotDataActions -join "$CsvDelimiterOpposite ") `
+                    -RoleAssignmentIdentityDisplayname $RoleAssignmentIdentityDisplayname `
+                    -RoleAssignmentIdentitySignInName $RoleAssignmentIdentitySignInName `
+                    -RoleAssignmentIdentityObjectId $RoleAssignmentIdentityObjectId `
+                    -RoleAssignmentIdentityObjectType $RoleAssignmentIdentityObjectType `
+                    -RoleAssignmentId $RoleAssignmentId `
+                    -RoleAssignmentScope $RoleAssignmentScope `
+                    -RoleAssignmentScopeName $RoleAssignmentScopeName `
+                }
+            }
+        }
+
+    }
+
     $endDataCollection = get-date
     Write-Host "Collecting custom data duration: $((NEW-TIMESPAN -Start $startDataCollection -End $endDataCollection).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDataCollection -End $endDataCollection).TotalSeconds) seconds)"
 }
@@ -14535,6 +14887,8 @@ $durationMGAverageMaxMin = ($durationDataMG.DurationSec | Measure-Object -Averag
 $durationSUBAverageMaxMin = ($durationDataSUB.DurationSec | Measure-Object -Average -Maximum -Minimum)
 Write-Host "Collecting custom data for $($arrayEntitiesFromAPIManagementGroupsCount) ManagementGroups Avg/Max/Min duration in seconds: Average: $([math]::Round($durationMGAverageMaxMin.Average,4)); Maximum: $([math]::Round($durationMGAverageMaxMin.Maximum,4)); Minimum: $([math]::Round($durationMGAverageMaxMin.Minimum,4))"
 Write-Host "Collecting custom data for $($arrayEntitiesFromAPISubscriptionsCount) Subscriptions Avg/Max/Min duration in seconds: Average: $([math]::Round($durationSUBAverageMaxMin.Average,4)); Maximum: $([math]::Round($durationSUBAverageMaxMin.Maximum,4)); Minimum: $([math]::Round($durationSUBAverageMaxMin.Minimum,4))"
+$totaldurationSubResourcesAddArray = ($arraySubResourcesAddArrayDuration.DurationSec | Measure-Object -sum).Sum
+Write-Host "Collecting custom data total duration writing the subResourcesArray: $totaldurationSubResourcesAddArray seconds"
 
 #APITracking
 $APICallTrackingCount = ($arrayAPICallTrackingCustomDataCollection | Measure-Object).Count
@@ -14944,24 +15298,18 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $startResourceDiagnosticsCheck = get-date
     if (($resourcesAll | Measure-Object).count -gt 0) {
 
-        $resourceTypesUnique = ($resourcesAll | select-object type).type.ToLower() | sort-object -Unique  
+        $startGroupResourceIdsByType = get-date
+        $resourceTypesUnique = ($resourcesIdsAll | group-object -property type)
+        $endGroupResourceIdsByType = get-date
+        Write-Host " GroupResourceIdsByType processing duration: $((NEW-TIMESPAN -Start $startGroupResourceIdsByType -End $endGroupResourceIdsByType).TotalSeconds) seconds)"
         $resourceTypesUniqueCount = ($resourceTypesUnique | Measure-Object).count
         Write-Host " $($resourceTypesUniqueCount) unique Resource Types to process"
         $resourceTypesSummarizedArray = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-        $resourcesTypeAllCountTotal = 0
-        ($resourcesAll).count_ | ForEach-Object { $resourcesTypeAllCountTotal += $_ }
-        foreach ($resourceTypeUnique in $resourceTypesUnique) {
-            $resourcesTypeCountTotal = 0
-            ($resourcesAll | Where-Object { $_.type -eq $resourceTypeUnique }).count_ | ForEach-Object { $resourcesTypeCountTotal += $_ }
-            $null = $resourceTypesSummarizedArray.Add([PSCustomObject]@{
-                    ResourceType  = $resourceTypeUnique
-                    ResourceCount = $resourcesTypeCountTotal 
-                })
-        }
 
         $resourceTypesDiagnosticsArray = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-        $resourceTypesSummarizedArray.ResourceType | ForEach-Object -Parallel {
-            $resourcetype = $_
+        $resourceTypesUnique | ForEach-Object -Parallel {
+            $resourceTypesUniqueGroup = $_
+            $resourcetype = $resourceTypesUniqueGroup.Name
             #region UsingVARs
             #fromOtherFunctions
             $arrayAzureManagementEndPointUrls = $using:arrayAzureManagementEndPointUrls
@@ -14990,48 +15338,43 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
             }
             
             if ($skipThisResourceType -eq $false) {
-                $resourceCount = ($resourceTypesSummarizedArray | Where-Object { $_.Resourcetype -eq $resourcetype }).ResourceCount
+                $resourceCount = $resourceTypesUniqueGroup.Count
 
-                $resourceCheck = "undone"
-                $tryCounter = 0
-                do{
-                    $tryCounter++
-                    $getResource = Search-AzGraph -Query "resources | where type =~ '$($resourcetype)'" -First 1
-                    if (($getResource | Measure-Object).Count -ne 1){
-                        $sleepSec = @(1,2,3,5,10,20,30,40,50,60,60)[$tryCounter]
-                        Write-Host "Getting a resourceId for resourceType $($resourcetype) #try: $($tryCounter) (count (based on CustomDataCollection): $($resourceCount)) not successful. The resource(s) might meanwhile have been deleted - better check.. try again; sleep $sleepSec seconds"
-                        Start-Sleep -Seconds $sleepSec
+                #thx @Jim Britt (Microsoft) https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts Create-AzDiagPolicy.ps1
+                $responseJSON = ''
+                $logCategories = @()
+                $metrics = $false
+                $logs = $false
+
+                $resourceAvailability = ($resourceCount - 1)
+                do {
+                    if ($resourceCount -gt 1) {
+                        $resourceId = $resourceTypesUniqueGroup.Group.id[$resourceAvailability]
                     }
-                    else{
-                        $resourceCheck = "done"
-                        $resourceId = $getResource.id
+                    else {
+                        $resourceId = $resourceTypesUniqueGroup.Group.id
                     }
-                }
-                until($resourceCheck -eq "done" -or $tryCounter -gt 10)
-                
-                if ($resourceCheck -eq "undone"){
-                    Write-Host "Getting a resourceId for resourceType $($resourcetype) skipped"
-                    $null = $script:resourceTypesDiagnosticsArray.Add([PSCustomObject]@{
-                        ResourceType  = $resourcetype
-                        Metrics       = "skipped"
-                        Logs          = "skipped"
-                        LogCategories = "skipped"
-                        ResourceCount = [int]$resourceCount 
-                    })
-                }
-                else{
-                    #thx @Jim Britt (Microsoft) https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts Create-AzDiagPolicy.ps1
-                    $responseJSON = ''
-                    $logCategories = @()
-                    $metrics = $false
-                    $logs = $false
-        
+                        
+                    $resourceAvailability = $resourceAvailability - 1
                     $currentTask = "Checking if ResourceType '$resourceType' is capable for Resource Diagnostics using ResourceId: '$($resourceId)'"
                     $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)$($resourceId)/providers/microsoft.insights/diagnosticSettingsCategories/?api-version=2017-05-01-preview"
                     #$path = "$($resourceId)/providers/microsoft.insights/diagnosticSettingsCategories/?api-version=2017-05-01-preview"
                     $method = "GET"
-                            
-                    ((AzAPICallDiag -uri $uri -method $method -currentTask $currentTask -resourceType $resourcetype))
+                    ((AzAPICallDiag -uri $uri -method $method -currentTask $currentTask -resourceType $resourcetype -resourceId $resourceId))
+                }
+                until ($resourceAvailability -lt 0 -or $responseJSON -ne "meanwhile_deleted")
+
+                if ($resourceAvailability -lt 0 -and $responseJSON -eq "meanwhile_deleted") {
+                    Write-Host "tried for all available resourceIds ($($resourceCount)) for resourceType $resourceType, but seems all resources meanwhile have been deleted"
+                    $null = $script:resourceTypesDiagnosticsArray.Add([PSCustomObject]@{
+                            ResourceType  = $resourcetype
+                            Metrics       = "resourcesGone"
+                            Logs          = "resourcesGone"
+                            LogCategories = "resourcesGone"
+                            ResourceCount = $resourceCount
+                        })
+                }
+                else {
                     if ($responseJSON) {                
                         foreach ($response in $responseJSON.value) {
                             if ($response.properties.categoryType -eq "Metrics") {
@@ -15043,23 +15386,19 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                             }
                         }
                     }
-
+    
                     $null = $script:resourceTypesDiagnosticsArray.Add([PSCustomObject]@{
                             ResourceType  = $resourcetype
                             Metrics       = $metrics
                             Logs          = $logs
                             LogCategories = $logCategories
-                            ResourceCount = [int]$resourceCount 
+                            ResourceCount = $resourceCount
                         })
-                }    
-
-                
+                } 
             }
             else {
                 Write-Host "Skipping ResourceType $($resourcetype) as per '`$ExludedResourceTypesDiagnosticsCapable'"
             }
-
-            
         } -ThrottleLimit $ThrottleLimit
     }
     else {
@@ -15110,7 +15449,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
 #region BuildHTML
 #testhelper
-#$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
+$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 
 $startBuildHTML = get-date
 Write-Host "Building HTML"
@@ -15354,7 +15693,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
     Write-Host " Build MgPaths"
     $htAllMgsPath = @{ }
-    foreach ($mgid in (($optimizedTableForPathQuery | Where-Object { [String]::IsNullOrEmpty($_.SubscriptionId) } ).mgid)) {
+    foreach ($mgid in (($optimizedTableForPathQuery | Where-Object { [String]::IsNullOrEmpty($_.SubscriptionId)} ).mgid)) {
         $htAllMgsPath.($mgid) = @{ }
         createMgPath -mgid $mgid
         [array]::Reverse($mgPathArray)

@@ -47,19 +47,9 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## AzGovViz release history
 
-__Release Version 5 - Let´s accellerate by going parallel!__ (2021-Feb-14)  
-  
-* Breaking Change: Support for __PowerShell Core ONLY!__ No support for PowerShell version < 7.0.3
-* New section __DefinitionInsights__ - Insights on all built-in and custom Policy, PolicySet and RBAC Role definitions
-* New parameter `-ThrottleLimit` - Leveraging PowerShell Core´s parallel capability you can define the ThrottleLimit (default=5)
-* New parameter `-NoScopeInsights` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
-* New parameter `-DoTranscript` - Log the console output
-* Parameter `-SubscriptionQuotaIdWhitelist` now expects an array
-* Renamed parameter `-NoServicePrincipalResolve` to `-NoAADServicePrincipalResolve`
-* Renamed parameter `-ServicePrincipalExpiryWarningDays` to `-AADServicePrincipalExpiryWarningDays`
-* Bugfixes
+__Breaking Changes__ (2021-Feb-28)
 
-__Note:__ In order to run AzGovViz Version 5 in Azure DevOps you also must use the v5 pipeline YAML.
+* When granting __Azure Active Directory Graph__ API permissions in the background an AAD Role assignment for AAD Group __Directory readers__ was triggered automatically - since January/February 2021 this is no longer the case. Review the updated [__AzGovViz technical documentation__](#azgovviz-technical-documentation) section for detailed permission requirements.
 
 [full history](history.md)
 
@@ -229,12 +219,109 @@ Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
 
 ### Required permissions in Azure
 
-* RBAC permissions: 
-  * Mandatory in each and every scenario: __Reader__ Role assignment on Management Group level
-* API permissions: 
-  * If you run the script in the context of a __Service Principal__ in a Azure DevOps Pipeline (hosted agent) you must grant API permissions in Azure Active Directory (get-AzRoleAssignment cmdlet requirements): The Azure DevOps Service Connection's __App registration (Application)__ must be granted with __Azure Active Directory API | Application | Directory | Read.All__ (admin consent required)
-* AAD permissions: 
-  * If you run the script as a User AND you are a __Guest__ User in the tenant AND you want to resolve ServicePrincipal information, then you need to be member of AAD Role __Directory readers__. As an alternative you can use the parameters `-NoAADServicePrincipalResolve` and `-NoAADGuestUsers`
+This permission is <b>mandatory</b> in each and every scenario!
+
+<table>
+  <tbody>
+    <tr>
+      <th>Scenario</th>
+      <th>Permissions</th>
+    </tr>
+    <tr>
+      <td>Console or AzureDevOps Pipeline</td>
+      <td><b>Reader</b> Role assignment on Management Group level</td>
+    </tr>
+  </tbody>
+</table>
+
+### Required permissions in Azure Active Directory / API permissions
+
+<table>
+  <tbody>
+    <tr>
+      <th>Scenario</th>
+      <th>Permissions</th>
+    </tr>
+    <tr>
+      <td>Console using a Guest user</td>
+      <td>Add to AAD Role <b>Directory readers</b><br>OR<br>Use parameters:<br>&nbsp;-NoAADGuestUsers<br>&nbsp;-NoAADGroupsResolveMembers<br>&nbsp;-NoAADServicePrincipalResolve</td>
+    </tr>
+    <tr>
+      <td>Console using Service Principal</td>
+      <td>
+        <b>Option 1</b> (simple setup but more read permissions than required)<br>
+        Add Service Principal to AAD Role <b>Directory readers</b><br><br>
+        <b>Option 2</b> (explicit permission model)
+        <table>
+          <tbody>
+            <tr>
+              <th>Feature</th>
+              <th>Permissions</th>
+              <th>Parameter</th>
+            </tr>
+            <tr>
+              <td>Get identity<br>Role assignments</td>
+              <td>Service Principal's <b>App registration</b><br>must be granted with <b>Azure Active Directory Graph</b> permissions:<br>Application permissions / Directory / Read.All</td>
+              <td>n/a</td>
+            </tr>
+            <tr>
+              <td>Get AAD<br>Guest Users</td>
+              <td>Service Principal's <b>App registration</b><br>must be granted with <b>Microsoft Graph</b> permissions:<br>Application permissions / User / User.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/user-get#permissions" target="_blank">Get user</a>)</td>
+              <td>NoAADGuestUsers</td>
+            </tr>
+            <tr>
+              <td>Get AAD<br>Groups</td>
+              <td>Service Principal's <b>App registration</b><br>must be granted with <b>Microsoft Graph</b> permissions:<br>Application permissions / Group / Group.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/group-get#permissions" target="_blank">Get group</a>)</td>
+              <td>NoAADGroupsResolveMembers</td>
+            </tr>
+            <tr>
+              <td>Get AAD<br>SP/App</td>
+              <td>Service Principal's <b>App registration</b><br>must be granted with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a>)</td>
+              <td>NoAADServicePrincipalResolve</td>
+            </tr>
+          </tbody>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td>Azure DevOps Pipeline</td>
+      <td>
+        <b>Option 1</b> (simple setup but more read permissions than required)<br>
+        Add Azure DevOps Service Connection's Service Principal to AAD Role <b>Directory readers</b><br><br>
+        <b>Option 2</b> (explicit permission model)
+        <table>
+          <tbody>
+            <tr>
+              <th>Feature</th>
+              <th>Permissions</th>
+              <th>Parameter</th>
+            </tr>
+            <tr>
+              <td>Get identity<br>Role assignments</td>
+              <td>Azure DevOps Service Connection's <b>App registration</b><br>must be granted with <b>Azure Active Directory Graph</b> permissions:<br>Application permissions / Directory / Read.All</td>
+              <td>n/a</td>
+            </tr>
+            <tr>
+              <td>Get AAD<br>Guest Users</td>
+              <td>Azure DevOps Service Connection's <b>App registration</b><br>must be granted with <b>Microsoft Graph</b> permissions:<br>Application permissions / User / User.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/user-get#permissions" target="_blank">Get user</a>)</td>
+              <td>NoAADGuestUsers</td>
+            </tr>
+            <tr>
+              <td>Get AAD<br>Groups</td>
+              <td>Azure DevOps Service Connection's <b>App registration</b><br>must be granted with <b>Microsoft Graph</b> permissions:<br>Application permissions / Group / Group.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/group-get#permissions" target="_blank">Get group</a>)</td>
+              <td>NoAADGroupsResolveMembers</td>
+            </tr>
+            <tr>
+              <td>Get AAD<br>SP/App</td>
+              <td>Azure DevOps Service Connection's <b>App registration</b><br>must be granted with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a>)</td>
+              <td>NoAADServicePrincipalResolve</td>
+            </tr>
+          </tbody>
+        </table>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 ### Usage
 
