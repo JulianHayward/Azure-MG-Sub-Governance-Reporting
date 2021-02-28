@@ -261,22 +261,22 @@ This permission is <b>mandatory</b> in each and every scenario!
             </tr>
             <tr>
               <td>Get identity<br>Role assignments</td>
-              <td>Service Principal's <b>App registration</b><br>must be granted with <b>Azure Active Directory Graph</b> permissions:<br>Application permissions / Directory / Read.All</td>
+              <td>Service Principal's <b>App registration</b><br>grant with <b>Azure Active Directory Graph</b> permissions:<br>Application permissions / Directory / Read.All</td>
               <td>n/a</td>
             </tr>
             <tr>
               <td>Get AAD<br>Guest Users</td>
-              <td>Service Principal's <b>App registration</b><br>must be granted with <b>Microsoft Graph</b> permissions:<br>Application permissions / User / User.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/user-get#permissions" target="_blank">Get user</a>)</td>
+              <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / User / User.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/user-get#permissions" target="_blank">Get user</a>)</td>
               <td>NoAADGuestUsers</td>
             </tr>
             <tr>
               <td>Get AAD<br>Groups</td>
-              <td>Service Principal's <b>App registration</b><br>must be granted with <b>Microsoft Graph</b> permissions:<br>Application permissions / Group / Group.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/group-get#permissions" target="_blank">Get group</a>)</td>
+              <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Group / Group.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/group-get#permissions" target="_blank">Get group</a>)</td>
               <td>NoAADGroupsResolveMembers</td>
             </tr>
             <tr>
               <td>Get AAD<br>SP/App</td>
-              <td>Service Principal's <b>App registration</b><br>must be granted with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a>)</td>
+              <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a>)</td>
               <td>NoAADServicePrincipalResolve</td>
             </tr>
           </tbody>
@@ -298,22 +298,22 @@ This permission is <b>mandatory</b> in each and every scenario!
             </tr>
             <tr>
               <td>Get identity<br>Role assignments</td>
-              <td>Azure DevOps Service Connection's <b>App registration</b><br>must be granted with <b>Azure Active Directory Graph</b> permissions:<br>Application permissions / Directory / Read.All</td>
+              <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Azure Active Directory Graph</b> permissions:<br>Application permissions / Directory / Read.All</td>
               <td>n/a</td>
             </tr>
             <tr>
               <td>Get AAD<br>Guest Users</td>
-              <td>Azure DevOps Service Connection's <b>App registration</b><br>must be granted with <b>Microsoft Graph</b> permissions:<br>Application permissions / User / User.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/user-get#permissions" target="_blank">Get user</a>)</td>
+              <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / User / User.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/user-get#permissions" target="_blank">Get user</a>)</td>
               <td>NoAADGuestUsers</td>
             </tr>
             <tr>
               <td>Get AAD<br>Groups</td>
-              <td>Azure DevOps Service Connection's <b>App registration</b><br>must be granted with <b>Microsoft Graph</b> permissions:<br>Application permissions / Group / Group.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/group-get#permissions" target="_blank">Get group</a>)</td>
+              <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Group / Group.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/group-get#permissions" target="_blank">Get group</a>)</td>
               <td>NoAADGroupsResolveMembers</td>
             </tr>
             <tr>
               <td>Get AAD<br>SP/App</td>
-              <td>Azure DevOps Service Connection's <b>App registration</b><br>must be granted with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a>)</td>
+              <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a>)</td>
               <td>NoAADServicePrincipalResolve</td>
             </tr>
           </tbody>
