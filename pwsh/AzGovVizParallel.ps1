@@ -161,7 +161,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210308_3",
+    [string]$AzGovVizVersion = "v5_major_20210311_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -217,7 +217,6 @@ Param
     [int]$LimitResourceGroups = 980,
     [int]$LimitTagsSubscription = 50
 )
-
 $ErrorActionPreference = "Stop"
 
 #filedir
@@ -590,7 +589,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         Start-Sleep -Seconds $tryCounter
                     }
                     if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*UnknownError*") {
-                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again"
+                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again in $tryCounter second(s)"
                         Start-Sleep -Seconds $tryCounter
                     }
                     if ($catchResult.error.code -like "*AuthorizationFailed*") {
@@ -868,7 +867,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType, $resourceId) 
             if ($azAPIRequest.StatusCode -ne 200) {
                 if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.code -like "*NotSupported*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*" -or $catchResult.error.code -like "*ResourceNotFound*" -or $catchResult.error.code -like "*UnknownError*") {
                     if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*UnknownError*") {
-                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again"
+                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again in $tryCounter second(s)"
                         Start-Sleep -Seconds $tryCounter
                     }
                     if ($catchResult.code -like "*NotSupported*") {
@@ -1918,8 +1917,8 @@ function dataCollection($mgId) {
 
 
     #SUBSCRIPTION
-    Write-Host " preCustomDataCollection Subscriptions"
-    #API in rare cases returns duplicats, therefor sorting unique (id)
+    #Write-Host " preCustomDataCollection Subscriptions"
+    <#API in rare cases returns duplicats, therefor sorting unique (id)
     $childrenSubscriptions = $arrayEntitiesFromAPI | Where-Object { $_.properties.parentNameChain -contains $mgid -and $_.type -eq "/subscriptions" } | Sort-Object -Property id -Unique
     $childrenSubscriptionsCount = ($childrenSubscriptions | Measure-Object).Count
     $script:subsToProcessInCustomDataCollection = [System.Collections.ArrayList]@()
@@ -1989,17 +1988,17 @@ function dataCollection($mgId) {
         }
     }
     $subsToProcessInCustomDataCollectionCount = ($subsToProcessInCustomDataCollection | Measure-Object).Count
-    #
+    #>
 
     Write-Host " CustomDataCollection Subscriptions"
     $subsExcludedStateCount = ($outOfScopeSubscriptions | where-object { $_.outOfScopeReason -like "State*" } | Measure-Object).Count
     $subsExcludedWhitelistCount = ($outOfScopeSubscriptions | where-object { $_.outOfScopeReason -like "QuotaId*" } | Measure-Object).Count
-    Write-Host " CustomDataCollection $($subsExcludedStateCount + $subsExcludedWhitelistCount) Subscriptions excluded (state, quotaId whitelist, quotaId AAD_)"
+    #Write-Host " CustomDataCollection $($subsExcludedStateCount + $subsExcludedWhitelistCount) Subscriptions excluded (state, quotaId whitelist ($($SubscriptionQuotaIdWhitelist -join ", ")), quotaId AAD_)"
     if ($subsExcludedStateCount -gt 0) {
-        Write-Host " CustomDataCollection $($subsExcludedStateCount) Subscriptions excluded (State != enabled)"
+        Write-Host "  CustomDataCollection $($subsExcludedStateCount) Subscriptions excluded (State != enabled)"
     }
     if ($subsExcludedWhitelistCount -gt 0) {
-        Write-Host " CustomDataCollection $($subsExcludedWhitelistCount) Subscriptions excluded (not in quotaId whitelist OR is AAD_ quotaId)"
+        Write-Host "  CustomDataCollection $($subsExcludedWhitelistCount) Subscriptions excluded (not in quotaId whitelist ($($SubscriptionQuotaIdWhitelist -join ", ")) OR is AAD_ quotaId)"
     }
     Write-Host " CustomDataCollection Subscriptions will process $subsToProcessInCustomDataCollectionCount of $childrenSubscriptionsCount"
 
@@ -14416,16 +14415,153 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $endGetSubscriptions = get-date
     Write-Host "Getting all Subscriptions duration: $((NEW-TIMESPAN -Start $startGetSubscriptions -End $endGetSubscriptions).TotalSeconds) seconds"  
 
+
+    #
+    #API in rare cases returns duplicats, therefor sorting unique (id)
+    $childrenSubscriptions = $arrayEntitiesFromAPI | Where-Object { $_.properties.parentNameChain -contains $ManagementGroupID -and $_.type -eq "/subscriptions" } | Sort-Object -Property id -Unique
+    $childrenSubscriptionsCount = ($childrenSubscriptions | Measure-Object).Count
+    $script:subsToProcessInCustomDataCollection = [System.Collections.ArrayList]@()
+
+    foreach ($childrenSubscription in $childrenSubscriptions) {
+
+        $sub = $htAllSubscriptionsFromAPI.($childrenSubscription.name)
+        if ($sub.subDetails.subscriptionPolicies.quotaId.startswith("AAD_", "CurrentCultureIgnoreCase") -or $sub.subDetails.state -ne "Enabled") {
+            if (($sub.subDetails.subscriptionPolicies.quotaId).startswith("AAD_", "CurrentCultureIgnoreCase")) {
+                #Write-Host " preCustomDataCollection: Subscription ($childrenSubscription.name) Quota Id: $($sub.subDetails.subscriptionPolicies.quotaId) is out of scope for AzGovViz"
+                $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{ 
+                        subscriptionId      = $childrenSubscription.name
+                        subscriptionName    = $childrenSubscription.properties.displayName
+                        outOfScopeReason    = "QuotaId: AAD_ (State: $($sub.subDetails.state))"
+                        ManagementGroupId   = $htSubscriptionsMgPath.($childrenSubscription.name).Parent
+                        ManagementGroupName = $htSubscriptionsMgPath.($childrenSubscription.name).ParentName
+                        Level               = $htSubscriptionsMgPath.($childrenSubscription.name).level
+                    })
+            }
+            if ($sub.subDetails.state -ne "Enabled") {
+                #Write-Host " preCustomDataCollection: Subscription ($childrenSubscription.name) State: ($sub.subDetails.state) is out of scope for AzGovViz"
+                $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{ 
+                        subscriptionId      = $childrenSubscription.name
+                        subscriptionName    = $childrenSubscription.properties.displayName
+                        outOfScopeReason    = "State: $($sub.subDetails.state)"
+                        ManagementGroupId   = $htSubscriptionsMgPath.($childrenSubscription.name).Parent
+                        ManagementGroupName = $htSubscriptionsMgPath.($childrenSubscription.name).ParentName
+                        Level               = $htSubscriptionsMgPath.($childrenSubscription.name).level
+                    })
+            }
+        }
+        else {
+
+            if ($SubscriptionQuotaIdWhitelist[0] -ne "undefined") {
+                $whitelistMatched = "unknown"
+                foreach ($subscriptionQuotaIdWhitelistQuotaId in $SubscriptionQuotaIdWhitelist) {
+                    if (($sub.subDetails.subscriptionPolicies.quotaId).startswith($subscriptionQuotaIdWhitelistQuotaId, "CurrentCultureIgnoreCase")) {
+                        $whitelistMatched = "inWhitelist"
+                    }
+                }
+    
+                if ($whitelistMatched -eq "inWhitelist") {
+                    #write-host "$($childrenSubscription.properties.displayName) in whitelist"
+                    $null = $script:subsToProcessInCustomDataCollection.Add([PSCustomObject]@{ 
+                            subscriptionId   = $childrenSubscription.name
+                            subscriptionName = $childrenSubscription.properties.displayName
+                        })
+                }
+                else {
+                    #Write-Host " preCustomDataCollection: $($childrenSubscription.properties.displayName) ($($childrenSubscription.name)) Subscription Quota Id: $($sub.subDetails.subscriptionPolicies.quotaId) is out of scope for AzGovViz (not in Whitelist)"
+                    $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{ 
+                            subscriptionId      = $childrenSubscription.name
+                            subscriptionName    = $childrenSubscription.properties.displayName
+                            outOfScopeReason    = "QuotaId: '$($sub.subDetails.subscriptionPolicies.quotaId)' not in Whitelist"
+                            ManagementGroupId   = $htSubscriptionsMgPath.($childrenSubscription.name).Parent
+                            ManagementGroupName = $htSubscriptionsMgPath.($childrenSubscription.name).ParentName
+                            Level               = $htSubscriptionsMgPath.($childrenSubscription.name).level
+                        })
+                }
+            }
+            else {
+                $null = $script:subsToProcessInCustomDataCollection.Add([PSCustomObject]@{ 
+                        subscriptionId   = $childrenSubscription.name
+                        subscriptionName = $childrenSubscription.properties.displayName
+                    })
+            }
+        }#>
+    }
+    $subsToProcessInCustomDataCollectionCount = ($subsToProcessInCustomDataCollection | Measure-Object).Count
+    #
+    #
+
     if ($htParameters.NoAzureConsumption -eq $false) {
         
         #region dataprocessingConsumption
         $startConsumptionData = Get-Date
         
-        $currenttask = "Getting Consumption data for scope: '$($ManagementGroupId)' for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
-        Write-Host "$currentTask"
-        $uri = "https://management.azure.com/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
-        $method = "POST"
-        $body = @"
+        #cost only for whitelisted quotaId
+        if ($SubscriptionQuotaIdWhitelist[0] -ne "undefined") {
+
+            $subscriptionIdsOptimizedForBody = '"{0}"' -f ($subsToProcessInCustomDataCollection.subscriptionId -join '","')
+            $currenttask = "Getting Consumption data for $($subsToProcessInCustomDataCollectionCount) Subscriptions (QuotaId Whitelist ($($SubscriptionQuotaIdWhitelist -join ", ")); state:enabled) for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
+            Write-Host "$currentTask"
+            $uri = "https://management.azure.com/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
+            $method = "POST"
+            $body = @"
+{
+    "type": "ActualCost",
+    "dataset": {
+        "granularity": "none",
+        "filter": {
+            "dimensions": {
+                "name": "SubscriptionId",
+                "operator": "In",
+                "values": [
+                    $($subscriptionIdsOptimizedForBody)
+                ]
+            }
+        },
+        "aggregation": {
+            "totalCost": {
+                "name": "PreTaxCost",
+                "function": "Sum"
+            }
+        },
+        "grouping": [
+            {
+                "type": "Dimension",
+                "name": "SubscriptionId"
+            },
+            {
+                "type": "Dimension",
+                "name": "ResourceId"
+            },
+            {
+                "type": "Dimension",
+                "name": "ConsumedService"
+            },
+            {
+                "type": "Dimension",
+                "name": "MeterCategory"
+            },
+            {
+                "type": "Dimension",
+                "name": "ChargeType"
+            }
+        ]
+    },
+    "timeframe": "Custom",
+    "timeperiod": {
+        "from": "$($azureConsumptionStartDate)",
+        "to": "$($azureConsumptionEndDate)"
+    }
+}
+"@
+
+        }
+        else {
+
+            $currenttask = "Getting Consumption data for scope: '$($ManagementGroupId)' for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
+            Write-Host "$currentTask"
+            $uri = "https://management.azure.com/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
+            $method = "POST"
+            $body = @"
 {
     "type": "ActualCost",
     "dataset": {
@@ -14466,6 +14602,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     }
 }
 "@
+        }
 
         $allConsumptionData = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask -listenOn "ContentProperties" -getConsumption $true
         $allConsumptionDataCount = ($allConsumptionData | Measure-Object).Count
