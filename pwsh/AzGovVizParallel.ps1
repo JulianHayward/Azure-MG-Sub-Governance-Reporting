@@ -161,7 +161,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210308_3",
+    [string]$AzGovVizVersion = "v5_minor_20210316_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -335,15 +335,49 @@ else {
 #region PowerShellEditionAnVersionCheck
 Write-Host "Checking powershell edition and version"
 $requiredPSVersion = "7.0.3"
-if ($PSVersionTable.PSEdition -eq "Core" -and ( [version]('{0}.{1}.{2}' -f (($PSVersionTable.PSVersion).tostring()).split('.')) -ge [version]('{0}.{1}.{2}' -f ($requiredPSVersion).split('.')) ) ) {
-    Write-Host " PS check passed"
+$splitRequiredPSVersion = $requiredPSVersion.split('.')
+$splitRequiredPSVersionMajor = $splitRequiredPSVersion[0]
+$splitRequiredPSVersionMinor = $splitRequiredPSVersion[1]
+$splitRequiredPSVersionPatch = $splitRequiredPSVersion[2]
+
+$thisPSVersion = ($PSVersionTable.PSVersion)
+$thisPSVersionMajor = ($thisPSVersion).Major
+$thisPSVersionMinor = ($thisPSVersion).Minor
+$thisPSVersionPatch = ($thisPSVersion).Patch
+
+$psVersionCheckResult = "letsCheck"
+
+if ($PSVersionTable.PSEdition -eq "Core" -and $thisPSVersionMajor -eq $splitRequiredPSVersionMajor) {
+    if ($thisPSVersionMinor -gt $splitRequiredPSVersionMinor) {
+        $psVersionCheckResult = "passed"
+        $psVersionCheck = "(Major[$splitRequiredPSVersionMajor]; Minor[$thisPSVersionMinor] gt $($splitRequiredPSVersionMinor))"
+    }
+    else {
+        if ($thisPSVersionPatch -ge $splitRequiredPSVersionPatch) {
+            $psVersionCheckResult = "passed"
+            $psVersionCheck = "(Major[$splitRequiredPSVersionMajor]; Minor[$splitRequiredPSVersionMinor]; Patch[$thisPSVersionPatch] gt $($splitRequiredPSVersionPatch))"
+        }
+        else {
+            $psVersionCheckResult = "failed"
+            $psVersionCheck = "(Major[$splitRequiredPSVersionMajor]; Minor[$splitRequiredPSVersionMinor]; Patch[$thisPSVersionPatch] lt $($splitRequiredPSVersionPatch))"
+        }
+    }
+}
+else {
+    $psVersionCheckResult = "failed"
+    $psVersionCheck = "(Major[$splitRequiredPSVersionMajor] ne $($splitRequiredPSVersionMajor))"
+}
+
+if ($psVersionCheckResult -eq "passed") {
+    Write-Host " PS check $psVersionCheckResult : $($psVersionCheck); (minimum supported version '$requiredPSVersion')"
     Write-Host " PS Edition: $($PSVersionTable.PSEdition)"
     Write-Host " PS Version: $($PSVersionTable.PSVersion)"
 }
 else {
+    Write-Host " PS check $psVersionCheckResult : $($psVersionCheck)"
     Write-Host " PS Edition: $($PSVersionTable.PSEdition)"
     Write-Host " PS Version: $($PSVersionTable.PSVersion)"
-    Write-Host " This AzGovViz version only supports Powershell 'Core' version '7.0.3' or higher"
+    Write-Host " This AzGovViz version only supports Powershell 'Core' version '$($requiredPSVersion)' or higher"
     if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
         Write-Error "Error"
     }
