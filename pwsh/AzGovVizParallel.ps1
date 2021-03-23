@@ -161,7 +161,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210319_3",
+    [string]$AzGovVizVersion = "v5_major_20210323_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -193,6 +193,7 @@ Param
     [switch]$AtScopeOnlyPolicy,
     [switch]$AtScopeOnlyRBAC,
     [parameter(ValueFromPipeline)][ValidateSet("TD", "LR")][string[]]$AzureDevOpsWikiHierarchyDirection = "TD",
+    [string]$SubscriptionId4AzContext = "undefined",
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]$LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -1038,19 +1039,38 @@ else {
     Write-Host " Context AccountId: '$($accountId)'" -ForegroundColor Yellow
     Write-Host " Context AccountType: '$($accountType)'" -ForegroundColor Yellow
 
-    if (-not $checkContext.Subscription) {
-        $checkContext
-        Write-Host " Context test failed: Context is not set to any Subscription. Set your context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run AzGovViz" -ForegroundColor Red
-        if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
-            Write-Error "Error"
+    if ($SubscriptionId4AzContext -ne "undefined"){
+        Write-Host " Setting AzContext to SubscriptionId: '$SubscriptionId4AzContext'" -ForegroundColor Yellow
+        try{
+            Set-AzContext -SubscriptionId $SubscriptionId4AzContext
+        }
+        catch{
+            if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                Write-Error "Error"
+            }
+            else {
+                Throw "Error - check the last console output for details"
+            }
+        }
+        $checkContext = Get-AzContext -ErrorAction Stop
+    }
+    
+    #else{
+        if (-not $checkContext.Subscription) {
+            $checkContext
+            Write-Host " Context test failed: Context is not set to any Subscription. Set your context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run AzGovViz" -ForegroundColor Red
+            if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                Write-Error "Error"
+            }
+            else {
+                Throw "Error - check the last console output for details"
+            }
         }
         else {
-            Throw "Error - check the last console output for details"
+            Write-Host " Context test passed: Context OK" -ForegroundColor Green
         }
-    }
-    else {
-        Write-Host " Context test passed: Context OK" -ForegroundColor Green
-    }
+    #}
+
 }
 #endregion checkAzContext
 
@@ -1205,6 +1225,7 @@ function addRowToTable() {
         [string]$PolicyAssignmentName = "", 
         [string]$PolicyAssignmentDisplayName = "", 
         [string]$PolicyAssignmentDescription = "",
+        [string]$PolicyAssignmentEnforcementMode = "",
         [string]$PolicyAssignmentIdentity = "", 
         [int]$PolicyAssigmentLimit = 0, 
         [int]$PolicyAssigmentCount = 0, 
@@ -1277,6 +1298,7 @@ function addRowToTable() {
             PolicyAssignmentName                    = $PolicyAssignmentName 
             PolicyAssignmentDisplayName             = $PolicyAssignmentDisplayName 
             PolicyAssignmentDescription             = $PolicyAssignmentDescription
+            PolicyAssignmentEnforcementMode         = $PolicyAssignmentEnforcementMode
             PolicyAssignmentIdentity                = $PolicyAssignmentIdentity  
             PolicyAssigmentLimit                    = $PolicyAssigmentLimit
             PolicyAssigmentCount                    = $PolicyAssigmentCount
@@ -1696,6 +1718,7 @@ function dataCollection($mgId) {
                             -PolicyAssignmentName $PolicyAssignmentName `
                             -PolicyAssignmentDisplayName $PolicyAssignmentDisplayName `
                             -PolicyAssignmentDescription $PolicyAssignmentDescription `
+                            -PolicyAssignmentEnforcementMode $L0mgmtGroupPolicyAssignment.Properties.EnforcementMode `
                             -PolicyAssignmentIdentity $PolicyAssignmentIdentity `
                             -PolicyAssigmentLimit $LimitPOLICYPolicyAssignmentsManagementGroup `
                             -PolicyAssigmentCount $L0mgmtGroupPolicyAssignmentsPolicyCount `
@@ -1771,6 +1794,7 @@ function dataCollection($mgId) {
                             -PolicyAssignmentName $PolicyAssignmentName `
                             -PolicyAssignmentDisplayName $PolicyAssignmentDisplayName `
                             -PolicyAssignmentDescription $PolicyAssignmentDescription `
+                            -PolicyAssignmentEnforcementMode $L0mgmtGroupPolicyAssignment.Properties.EnforcementMode `
                             -PolicyAssignmentIdentity $PolicyAssignmentIdentity `
                             -PolicyAssigmentLimit $LimitPOLICYPolicyAssignmentsManagementGroup `
                             -PolicyAssigmentCount $L0mgmtGroupPolicyAssignmentsPolicyCount `
@@ -2857,6 +2881,7 @@ function dataCollection($mgId) {
                                 -PolicyAssignmentName $PolicyAssignmentName `
                                 -PolicyAssignmentDisplayName $PolicyAssignmentDisplayName `
                                 -PolicyAssignmentDescription $PolicyAssignmentDescription `
+                                -PolicyAssignmentEnforcementMode $L1mgmtGroupSubPolicyAssignment.Properties.EnforcementMode `
                                 -PolicyAssignmentIdentity $PolicyAssignmentIdentity `
                                 -PolicyAssigmentLimit $LimitPOLICYPolicyAssignmentsSubscription `
                                 -PolicyAssigmentCount $L1mgmtGroupSubPolicyAssignmentsPolicyCount `
@@ -2956,6 +2981,7 @@ function dataCollection($mgId) {
                                 -PolicyAssignmentName $PolicyAssignmentName `
                                 -PolicyAssignmentDisplayName $PolicyAssignmentDisplayName `
                                 -PolicyAssignmentDescription $PolicyAssignmentDescription `
+                                -PolicyAssignmentEnforcementMode $L1mgmtGroupSubPolicyAssignment.Properties.EnforcementMode `
                                 -PolicyAssignmentIdentity $PolicyAssignmentIdentity `
                                 -PolicyAssigmentLimit $LimitPOLICYPolicyAssignmentsSubscription `
                                 -PolicyAssigmentCount $L1mgmtGroupSubPolicyAssignmentsPolicyCount `
@@ -4851,6 +4877,7 @@ extensions: [{ name: 'sort' }]
 <th>Type</th>
 <th>Category</th>
 <th>Effect</th>
+<th>Enforcement</th>
 "@
 
         if ($htParameters.NoPolicyComplianceStates -eq $false) {
@@ -4883,6 +4910,7 @@ extensions: [{ name: 'sort' }]
 <td>$($policyAssignment.PolicyType)</td>
 <td>$($policyAssignment.PolicyCategory)</td>
 <td>$($policyAssignment.Effect)</td>
+<td>$($policyAssignment.PolicyAssignmentEnforcementMode)</td>
 "@
 
             if ($htParameters.NoPolicyComplianceStates -eq $false) {
@@ -4940,9 +4968,12 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_1: 'select',
             col_2: 'select',
-            col_4: 'select',
-            col_6: 'select',
+            col_5: 'select',
+            col_6: 'multiple',
+            col_7: 'select',
+            col_8: 'select',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -4968,7 +4999,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring'
             ],
-            watermark: ['', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
@@ -5067,6 +5098,7 @@ extensions: [{ name: 'sort' }]
 <th>PolicySetId</th>
 <th>Type</th>
 <th>Category</th>
+<th>Enforcement</th>
 "@
 
         if ($htParameters.NoPolicyComplianceStates -eq $false) {
@@ -5097,6 +5129,7 @@ extensions: [{ name: 'sort' }]
 <td class="breakwordall">$($policyAssignment.PolicyId)</td>
 <td>$($policyAssignment.PolicyType)</td>
 <td>$($policyAssignment.PolicyCategory)</td>
+<td>$($policyAssignment.PolicyAssignmentEnforcementMode)</td>
 "@
             if ($htParameters.NoPolicyComplianceStates -eq $false) {
                 @"
@@ -5152,7 +5185,10 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_1: 'select',
             col_4: 'select',
+            col_5: 'multiple',
+            col_6: 'select',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -5174,7 +5210,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring'
             ],
-            watermark: ['', '', '', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', '', '', '', '', '', '', '', '', '', '', '', '', ''],
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
@@ -7777,6 +7813,7 @@ extensions: [{ name: 'sort' }]
                     PolicyAssignmentId          = (($policyAssignmentAll.PolicyAssignmentId).Tolower())
                     PolicyAssignmentDisplayName = $policyAssignmentAll.PolicyAssignmentDisplayName
                     PolicyAssignmentDescription = $policyAssignmentAll.PolicyAssignmentDescription
+                    PolicyAssignmentEnforcementMode = $policyAssignmentAll.PolicyAssignmentEnforcementMode
                     Effect                      = $effect
                     PolicyName                  = $htPolicyAzAdvertizerOrNot.($policyAssignmentAll.PolicyAssignmentId).policyWithWithoutLinkToAzAdvertizer
                     PolicyNameClear             = $policyAssignmentAll.Policy
@@ -7807,6 +7844,7 @@ extensions: [{ name: 'sort' }]
                     PolicyAssignmentId          = (($policyAssignmentAll.PolicyAssignmentId).Tolower())
                     PolicyAssignmentDisplayName = $policyAssignmentAll.PolicyAssignmentDisplayName
                     PolicyAssignmentDescription = $policyAssignmentAll.PolicyAssignmentDescription
+                    PolicyAssignmentEnforcementMode = $policyAssignmentAll.PolicyAssignmentEnforcementMode
                     Effect                      = $effect
                     PolicyName                  = $htPolicyAzAdvertizerOrNot.($policyAssignmentAll.PolicyAssignmentId).policyWithWithoutLinkToAzAdvertizer
                     PolicyNameClear             = $policyAssignmentAll.Policy
@@ -7866,6 +7904,7 @@ extensions: [{ name: 'sort' }]
 <th>Type</th>
 <th>Category</th>
 <th>Effect</th>
+<th>Enforcement</th>
 "@
 
         if ($htParameters.NoPolicyComplianceStates -eq $false) {
@@ -7925,6 +7964,7 @@ extensions: [{ name: 'sort' }]
 <td>$($policyAssignment.PolicyType)</td>
 <td>$($policyAssignment.PolicyCategory)</td>
 <td>$($policyAssignment.Effect)</td>
+<td>$($policyAssignment.PolicyAssignmentEnforcementMode)</td>
 "@
 
             if ($htParameters.NoPolicyComplianceStates -eq $false) {
@@ -8001,9 +8041,11 @@ extensions: [{ name: 'sort' }]
             col_7: 'select',
             col_11: 'select',
             col_12: 'select',
-            col_13: 'select',
+            col_13: 'multiple',
             col_14: 'select',
+            col_15: 'select',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -8040,12 +8082,12 @@ extensions: [{ name: 'sort' }]
 
         if ($htParameters.NoPolicyComplianceStates -eq $false) {
             $htmlTenantSummary += @"
-            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', ''],
+            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', ''],
 "@
         }
         else {
             $htmlTenantSummary += @"
-            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', ''],
 "@ 
         }
 
@@ -8998,7 +9040,7 @@ extensions: [{ name: 'sort' }]
 
         $htmlSummaryRoleAssignmentsAll = foreach ($roleAssignment in $rbacAll | sort-object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, Scope, Role, ObjectDisplayName, RoleAssignmentId) {
             $cnter++
-            if ($cnter % 1000 -eq 0) {
+            if ($cnter % 10000 -eq 0) {
                 Write-Host "   create HTML $cnter of $rbacAllCount RoleAssignments processed"
                 $htmlTenantSummary += $htmlSummaryRoleAssignmentsAll
                 $start = get-date
@@ -9035,6 +9077,7 @@ extensions: [{ name: 'sort' }]
         $start = get-date
         $htmlTenantSummary += $htmlSummaryRoleAssignmentsAll
         $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+        $htmlSummaryRoleAssignmentsAll = $null #cleanup
         $htmlTenantSummary = $null
         $end = get-date
         Write-Host "   append file duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
@@ -11614,9 +11657,9 @@ extensions: [{ name: 'sort' }]
         $htResProvSummary = @{ }
         foreach ($grp in $grped) {
             $htResProvSummary.($grp.name) = @{ }
-            $regstates = ($grp.group | sort-object -property registrationState -unique | select-object registrationState).registrationstate
+            $regstates = ($grp.group | sort-object -property registrationState -unique).registrationstate
             foreach ($regstate in $regstates) {
-                $htResProvSummary.($grp.name).$regstate = ($grp.group | Where-Object { $_.registrationstate -eq $regstate } | measure-object).count
+                $htResProvSummary.($grp.name).$regstate = (($grp.group).where( { $_.registrationstate -eq $regstate }) | measure-object).count
             }
         }
         $providerSummary = [System.Collections.ArrayList]@()
@@ -11662,12 +11705,12 @@ extensions: [{ name: 'sort' }]
         $uniqueNamespaces = ($arrayResourceProvidersAll) | Sort-Object -Property namespace -Unique
         $uniqueNamespacesCount = ($uniqueNamespaces | Measure-Object).count
         $uniqueNamespaceRegistrationState = ($arrayResourceProvidersAll) | Sort-Object -Property namespace, registrationState -Unique
-        $providersRegistered = $uniqueNamespaceRegistrationState.where({ $_.registrationState -eq "registered" -or $_.registrationState -eq "registering" }) | select-object -property namespace | Sort-Object namespace -Unique
+        $providersRegistered = ($uniqueNamespaceRegistrationState.where({ $_.registrationState -eq "registered" -or $_.registrationState -eq "registering" }) | Sort-Object namespace -Unique).namespace
         $providersRegisteredCount = ($providersRegistered | Measure-Object).count
 
         $providersNotRegisteredUniqueCount = 0 
         foreach ($uniqueNamespace in $uniqueNamespaces) {
-            if ($providersRegistered.namespace -notcontains ($uniqueNamespace.namespace)) {
+            if ($providersRegistered -notcontains ($uniqueNamespace.namespace)) {
                 $providersNotRegisteredUniqueCount++
             }
         }
@@ -13503,13 +13546,15 @@ function definitionInsights() {
     $htmlDefinitionInsightshlp = foreach ($policy in ($allPoliciesArray | Sort-Object @{Expression = { $_.DisplayName } }, @{Expression = { $_.PolicyDefinitionId } })) {
         
         $cnter++
-        if ($cnter % 100 -eq 0) {
+        if ($cnter % 1000 -eq 0) {
             Write-Host "   $cnter Policy definitions processed"
+            <#
             $start = get-date
             $htmlDefinitionInsightshlp | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
             $end = get-date
             Write-Host "    append file duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
             $htmlDefinitionInsightshlp = $null
+            #>
         }
         
         $hasAssignments = "false"
@@ -14839,7 +14884,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
             $subscriptionIdsOptimizedForBody = '"{0}"' -f ($subsToProcessInCustomDataCollection.subscriptionId -join '","')
             $currenttask = "Getting Consumption data for $($subsToProcessInCustomDataCollectionCount) Subscriptions (QuotaId Whitelist ($($SubscriptionQuotaIdWhitelist -join ", ")); state:enabled) for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
             Write-Host "$currentTask"
-            $uri = "https://management.azure.com/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
+            $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
             $method = "POST"
             $body = @"
 {
@@ -14897,7 +14942,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
             $currenttask = "Getting Consumption data for scope: '$($ManagementGroupId)' for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
             Write-Host "$currentTask"
-            $uri = "https://management.azure.com/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
+            $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
             $method = "POST"
             $body = @"
 {
@@ -15327,6 +15372,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                                 -PolicyAssignmentName $PolicyAssignmentName `
                                 -PolicyAssignmentDisplayName $PolicyAssignmentDisplayName `
                                 -PolicyAssignmentDescription $PolicyAssignmentDescription `
+                                -PolicyAssignmentEnforcementMode $L0mgmtGroupPolicyAssignment.Properties.EnforcementMode `
                                 -PolicyAssignmentIdentity $PolicyAssignmentIdentity `
                                 -PolicyAssigmentLimit $LimitPOLICYPolicyAssignmentsManagementGroup `
                                 -PolicyAssigmentCount $upperScopesPolicyAssignmentsPolicyCount `
@@ -15401,6 +15447,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                                 -PolicyAssignmentName $PolicyAssignmentName `
                                 -PolicyAssignmentDisplayName $PolicyAssignmentDisplayName `
                                 -PolicyAssignmentDescription $PolicyAssignmentDescription `
+                                -PolicyAssignmentEnforcementMode $L0mgmtGroupPolicyAssignment.Properties.EnforcementMode `
                                 -PolicyAssignmentIdentity $PolicyAssignmentIdentity `
                                 -PolicyAssigmentLimit $LimitPOLICYPolicyAssignmentsManagementGroup `
                                 -PolicyAssigmentCount $upperScopesPolicyAssignmentsPolicyCount `
@@ -16891,7 +16938,7 @@ $markdownTable
 
 $markdown | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).md" -Encoding utf8 -Force
 $endBuildMD = get-date
-Write-Host "Building Markdown total duration: $((NEW-TIMESPAN -Start $startBuildMD -End $endBuildMD).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startBuildMD -End $endBuildMD).TotalMinutes) seconds)"
+Write-Host "Building Markdown total duration: $((NEW-TIMESPAN -Start $startBuildMD -End $endBuildMD).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startBuildMD -End $endBuildMD).TotalSeconds) seconds)"
 #endregion BuildMD
 
 #region BuildCSV
