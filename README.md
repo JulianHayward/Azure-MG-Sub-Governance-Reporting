@@ -60,9 +60,9 @@ __Breaking Changes__ (2021-Feb-28)
 <table>
 <td>
 
-<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210212_1.html" target="_blank">![Demo](img/demo4_66.png)</a>
+<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210323_1.html" target="_blank">![Demo](img/demo4_66.png)</a>
 
-[Demo (Version 5; 2021-Feb-12)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210212_1.html)
+[Demo (Version 5; 2021-MAR-23)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210323_1.html)
 
 </td>
 <td>
@@ -131,7 +131,8 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
     * Existence of custom Role definition that reflect 'Owner' permissions
     * Role assignments for 'Owner' permissions on identity-type == 'ServicePrincipal' 
     * Role assignments for 'Owner' permissions on identity-type != 'Group'
-    * Role assignments for 'UserAccessAdministrator' permissions on identity-type != 'Group'
+    * Role assignments for 'User Access Administrator' permissions on identity-type != 'Group'
+    * High priviledge Role assignments for 'Guest Users' (Owner & User Access Administrator)
 * __Blueprints__
   * Blueprint scopes and assignments
   * Orphaned Blueprints
@@ -244,13 +245,15 @@ This permission is <b>mandatory</b> in each and every scenario!
     </tr>
     <tr>
       <td>Console using a Guest user</td>
-      <td>Add to AAD Role <b>Directory readers</b><br>OR<br>Use parameters:<br>&nbsp;-NoAADGuestUsers<br>&nbsp;-NoAADGroupsResolveMembers<br>&nbsp;-NoAADServicePrincipalResolve</td>
+      <td>Add to AAD Role <b>Directory readers</b><br>OR<br>Use parameters:<br>&nbsp;-NoAADGuestUsers<br>&nbsp;-NoAADGroupsResolveMembers<br>&nbsp;-NoAADServicePrincipalResolve<br>
+      &#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/fundamentals/users-default-permissions.md#compare-member-and-guest-default-permissions" target="_blank">Compare member and guest default permissions</a>
+      </td>
     </tr>
     <tr>
       <td>Console using Service Principal</td>
       <td>
         <b>Option 1</b> (simple setup but more read permissions than required)<br>
-        Add Service Principal to AAD Role <b>Directory readers</b><br><br>
+        Add Service Principal to AAD Role <b>Directory readers</b><br>&#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/roles/permissions-reference.md#directory-readers" target="_blank">Directory readers</a><br><br>
         <b>Option 2</b> (explicit permission model)
         <table>
           <tbody>
@@ -261,22 +264,22 @@ This permission is <b>mandatory</b> in each and every scenario!
             </tr>
             <tr>
               <td>Get identity<br>Role assignments</td>
-              <td>Service Principal's <b>App registration</b><br>grant with <b>Azure Active Directory Graph</b> permissions:<br>Application permissions / Directory / Read.All</td>
+              <td>Service Principal's <b>App registration</b><br>grant with <b>Azure Active Directory Graph</b> permissions:<br>Application permissions / Directory / Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/previous-versions/azure/ad/graph/howto/azure-ad-graph-api-permission-scopes#permission-scope-details-" target="_blank">Read directory data</a></td>
               <td>n/a</td>
             </tr>
             <tr>
               <td>Get AAD<br>Guest Users</td>
-              <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / User / User.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/user-get#permissions" target="_blank">Get user</a>)</td>
+              <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / User / User.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/user-get#permissions" target="_blank">Get user</a></td>
               <td>NoAADGuestUsers</td>
             </tr>
             <tr>
               <td>Get AAD<br>Groups</td>
-              <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Group / Group.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/group-get#permissions" target="_blank">Get group</a>)</td>
+              <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Group / Group.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/group-get#permissions" target="_blank">Get group</a></td>
               <td>NoAADGroupsResolveMembers</td>
             </tr>
             <tr>
               <td>Get AAD<br>SP/App</td>
-              <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a>)</td>
+              <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a></td>
               <td>NoAADServicePrincipalResolve</td>
             </tr>
           </tbody>
@@ -287,7 +290,7 @@ This permission is <b>mandatory</b> in each and every scenario!
       <td>Azure DevOps Pipeline</td>
       <td>
         <b>Option 1</b> (simple setup but more read permissions than required)<br>
-        Add Azure DevOps Service Connection's Service Principal to AAD Role <b>Directory readers</b><br><br>
+        Add Azure DevOps Service Connection's Service Principal to AAD Role <b>Directory readers</b><br>&#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/roles/permissions-reference.md#directory-readers" target="_blank">Directory readers</a><br><br>
         <b>Option 2</b> (explicit permission model)
         <table>
           <tbody>
@@ -298,22 +301,22 @@ This permission is <b>mandatory</b> in each and every scenario!
             </tr>
             <tr>
               <td>Get identity<br>Role assignments</td>
-              <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Azure Active Directory Graph</b> permissions:<br>Application permissions / Directory / Read.All</td>
+              <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Azure Active Directory Graph</b> permissions:<br>Application permissions / Directory / Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/previous-versions/azure/ad/graph/howto/azure-ad-graph-api-permission-scopes#permission-scope-details-" target="_blank">Read directory data</a></td>
               <td>n/a</td>
             </tr>
             <tr>
               <td>Get AAD<br>Guest Users</td>
-              <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / User / User.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/user-get#permissions" target="_blank">Get user</a>)</td>
+              <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / User / User.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/user-get#permissions" target="_blank">Get user</a></td>
               <td>NoAADGuestUsers</td>
             </tr>
             <tr>
               <td>Get AAD<br>Groups</td>
-              <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Group / Group.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/group-get#permissions" target="_blank">Get group</a>)</td>
+              <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Group / Group.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/group-get#permissions" target="_blank">Get group</a></td>
               <td>NoAADGroupsResolveMembers</td>
             </tr>
             <tr>
               <td>Get AAD<br>SP/App</td>
-              <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>(<a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a>)</td>
+              <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a></td>
               <td>NoAADServicePrincipalResolve</td>
             </tr>
           </tbody>
@@ -373,7 +376,7 @@ The provided example Pipeline is configured to run based on a [schedule](https:/
 5. Run the Pipeline
 6. Create Wiki by choosing [Publish Code as Wiki](https://docs.microsoft.com/en-us/azure/devops/project/wiki/publish-repo-to-wiki?view=azure-devops&tabs=browser), define the folder 'wiki' from the 'Azure-MG-Sub-Governance-Reporting' Repository as source
 
-> Make sure your Service Connection has the required permissions (see [__Required permissions in Azure__](#required-permissions-in-azure)).
+> Make sure your Service Connection´s Service Principal has been granted with the required permissions (see [__Required permissions in Azure Active Directory / API permissions__](#required-permissions-in-azure-active-directory-/-api-permissions)).
 
 ## AzGovViz sidenotes
 
@@ -394,7 +397,7 @@ Please feel free to contribute. Thanks to so many supporters - testing, giving f
 
 Thanks Stefan Stranger (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale. Make sure you read Stefan´s Blog Article: <a href="https://stefanstranger.github.io/2020/08/28/EnterpriseScalePolicyDrivenGovernance/" target="_blank">Enterprise-Scale - Policy Driven Governance</a> 
 
-Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale (see latest [__demo__](#demo)).
+Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale (see latest [__demo__](#azgovviz-in-action)).
 
 Special thanks to Tim Wanierke, Brooks Vaughn and Friedrich Weinmann (Microsoft).
 
