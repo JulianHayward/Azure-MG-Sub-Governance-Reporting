@@ -47,9 +47,13 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## AzGovViz release history
 
-__Breaking Changes__ (2021-Feb-28)
+__Changes__ (2021-Mar-26)
 
-* When granting __Azure Active Directory Graph__ API permissions in the background an AAD Role assignment for AAD Group __Directory readers__ was triggered automatically - since January/February 2021 this is no longer the case. Review the updated [__AzGovViz technical documentation__](#azgovviz-technical-documentation) section for detailed permission requirements.
+* Code adaption to prevent billing related errors in sovereign cloud __AzureChinaCloud__ (.Billing n/a)
+* New parameter `-SubscriptionId4AzContext` - Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
+* New parameter `-AzureDevOpsWikiHierarchyDirection` - Azure DevOps Markdown Management Group hierarchy tree direction. Use 'TD' for Top->Down, use 'LR' for Left->Right (default is 'TD'; use 'LR' for larger Management Group hierarchies)
+* Bugfixes
+* Performance optimization
 
 [full history](history.md)
 
@@ -103,7 +107,7 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
     * Summary on expired Exemptions
   * Policy assignments throughout the entirety of scopes (Management Groups, Subscriptions)
     * Core information on Policy assignments
-    * Advanced information on Policy assignments
+    * Advanced/enriched information on Policy assignments
       * Policy assignment scope (at scope/inheritance)
       * Indicates if scope is excluded from Policy assignment 
       * Indicates if Exemption applies for scope 
@@ -357,8 +361,9 @@ This permission is <b>mandatory</b> in each and every scenario!
   * `-AzureConsumptionPeriod` define for which time period Azure Consumption data should be gathered; default is 1 day
   * `-NoAzureConsumptionReportExportToCSV` Azure Consumption data should not be exported (CSV)
   * `-NoScopeInsights` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
-  * `-ThrottleLimit` - Leveraging PowerShell´s parallel capability you can define the ThrottleLimit (default=5)
+  * `-ThrottleLimit` - Leveraging PowerShell´s parallel capability you can define the ThrottleLimit (default=5; &#x1F4A1; values from 5 up to 15 proved to perform best)  
   * `-DoTranscript` - Log the console output
+  * `-SubscriptionId4AzContext` - Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
   * ~~`-UseAzureRM`~~ support for AzureRm modules has been deprecated
 * Passed tests: Powershell Core 7.1.1 on Windows
 * ~~Passed tests: Powershell 5.1.18362.752 on Windows~~
