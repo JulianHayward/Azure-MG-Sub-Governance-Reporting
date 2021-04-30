@@ -185,7 +185,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210421_1",
+    [string]$AzGovVizVersion = "v5_major_20210430_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -243,6 +243,10 @@ Param
     [int]$LimitResourceGroups = 980,
     [int]$LimitTagsSubscription = 50
 )
+$ThrottleLimit = 10
+$RBACIncludeResourceGroupsAndResources = $true
+$PolicyIncludeResourceGroupsAndResources = $true
+#$DebugAzAPICall = $True
 $ErrorActionPreference = "Stop"
 
 #filedir
@@ -252,7 +256,7 @@ if (-not [IO.Path]::IsPathRooted($outputPath)) {
 $outputPath = Join-Path -Path $outputPath -ChildPath '.'
 $outputPath = [IO.Path]::GetFullPath($outputPath)
 if (-not (test-path $outputPath)) {
-    Write-Host "path $outputPath does not exist -create it!" -ForegroundColor Red
+    Write-Host "path $outputPath does not exist - please create it!" -ForegroundColor Red
     Throw "Error - check the last console output for details"
 }
 else {
@@ -683,6 +687,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     ($getGuests -and $catchResult.error.code -like "*Authorization_RequestDenied*") -or 
                     $catchResult.error.message -like "*The offer MS-AZR-0110P is not supported*" -or
                     $catchResult.error.code -like "*UnknownError*" -or
+                    $catchResult.error.code -like "*BlueprintNotFound*" -or
                     $catchResult.error.code -eq "500") {
                     if ($catchResult.error.code -like "*ResponseTooLarge*") {
                         <#
@@ -778,6 +783,10 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                                 Throw "Authorization_RequestDenied"
                             }
                         }
+                    }
+                    if ($catchResult.error.code -like "*BlueprintNotFound*") {
+                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Blueprint definition is gone - skipping for now :)"
+                        return "BlueprintNotFound"
                     }                    
                 }
                 else {
@@ -2713,13 +2722,25 @@ function dataCollection($mgId) {
                             $method = "GET"
                                 
                             $subscriptionBlueprintDefinitionResult = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn "Content" -caller "CustomDataCollection"))
-                            $blueprintName = $subscriptionBlueprintDefinitionResult.name
-                            $blueprintId = $subscriptionBlueprintDefinitionResult.Id
-                            $blueprintAssignmentVersion = $subscriptionBlueprintAssignment.properties.blueprintId -replace ".*/"
-                            $blueprintDisplayName = $subscriptionBlueprintDefinitionResult.properties.displayName
-                            $blueprintDescription = $subscriptionBlueprintDefinitionResult.properties.description
-                            $blueprintScoped = $blueprintScope
-                            $blueprintAssignmentId = $subscriptionBlueprintAssignmentsResult.Id
+                            if ($subscriptionBlueprintDefinitionResult -eq "BlueprintNotFound"){
+                                $blueprintName = "BlueprintNotFound"
+                                $blueprintId = "BlueprintNotFound"
+                                $blueprintAssignmentVersion = $subscriptionBlueprintAssignment.properties.blueprintId -replace ".*/"
+                                $blueprintDisplayName = "BlueprintNotFound"
+                                $blueprintDescription = "BlueprintNotFound"
+                                $blueprintScoped = $blueprintScope
+                                $blueprintAssignmentId = $subscriptionBlueprintAssignmentsResult.Id
+                            }
+                            else{
+                                $blueprintName = $subscriptionBlueprintDefinitionResult.name
+                                $blueprintId = $subscriptionBlueprintDefinitionResult.Id
+                                $blueprintAssignmentVersion = $subscriptionBlueprintAssignment.properties.blueprintId -replace ".*/"
+                                $blueprintDisplayName = $subscriptionBlueprintDefinitionResult.properties.displayName
+                                $blueprintDescription = $subscriptionBlueprintDefinitionResult.properties.description
+                                $blueprintScoped = $blueprintScope
+                                $blueprintAssignmentId = $subscriptionBlueprintAssignmentsResult.Id
+                            }
+
 
                             $addRowToTableDone = $true
                             addRowToTable `
@@ -2947,7 +2968,7 @@ function dataCollection($mgId) {
                         $L1mgmtGroupSubPolicyAssignmentsQuery = $L1mgmtGroupSubPolicyAssignments | Where-Object { $_.Id -notmatch "/subscriptions/$($childMgSubId)/resourceGroups" }
                     }
 
-                    foreach ($L1mgmtGroupSubPolicyAssignment in $L1mgmtGroupSubPolicyAssignmentsQuery ) {
+                    foreach ($L1mgmtGroupSubPolicyAssignment in $L1mgmtGroupSubPolicyAssignmentsQuery ) {            
 
                         if (-not $htCacheAssignmentsPolicy.($L1mgmtGroupSubPolicyAssignment.Id)) {
                             $script:htCacheAssignmentsPolicy.($L1mgmtGroupSubPolicyAssignment.Id) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
@@ -2959,7 +2980,41 @@ function dataCollection($mgId) {
                                 $PolicyVariant = "Policy"
                                 $definitiontype = "policy"
                                 $Id = ($L1mgmtGroupSubPolicyAssignment.properties.policydefinitionid).ToLower()
-                                $Def = ($htCacheDefinitions).($definitiontype).($Id)
+
+                                if (($htCacheDefinitions).($definitiontype).($Id)){
+                                    $Def = ($htCacheDefinitions).($definitiontype).($Id)
+                                    $policyDisplayName = $Def.DisplayName
+                                    $policyDescription = $Def.Description
+                                    $policyType = $Def.Type
+                                    $policyCategory = $Def.Category
+                                    $policyDefinitionIdGuid = (($Def.Id) -replace ".*/")
+                                    $policyDefinitionId = $Def.PolicyDefinitionId
+                                    if (($htCacheDefinitions).($definitiontype).($Id).Type -eq "Custom") {
+                                        $policyDefintionScope = $Def.Scope
+                                        $policyDefintionScopeMgSub = $Def.ScopeMgSub
+                                        $policyDefintionScopeId = $Def.ScopeId
+                                    }
+                                    else {
+                                        $policyDefintionScope = "n/a"
+                                        $policyDefintionScopeMgSub = "n/a"
+                                        $policyDefintionScopeId = "n/a"
+                                    }
+                                }
+                                #policyDefinition not exists!
+                                else{
+                                    $policyDisplayName = "unknown"
+                                    $policyDescription = "unknown"
+                                    
+                                    $policyType = "unknown"
+                                    $policyCategory = "unknown"
+                                    $policyDefinitionIdGuid = (($Id) -replace ".*/")
+                                    $policyDefinitionId = $Id
+
+                                    $policyDefintionScope = "unknown"
+                                    $policyDefintionScopeMgSub = "unknown"
+                                    $policyDefintionScopeId = "unknown"
+                                }
+                                
                                 $PolicyAssignmentScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
 
                                 if ($PolicyAssignmentScope -like "/providers/Microsoft.Management/managementGroups/*") {
@@ -2999,16 +3054,7 @@ function dataCollection($mgId) {
                                     $PolicyAssignmentIdentity = "n/a"
                                 }
 
-                                if (($htCacheDefinitions).$definitiontype.$($Id).Type -eq "Custom") {
-                                    $policyDefintionScope = $Def.Scope
-                                    $policyDefintionScopeMgSub = $Def.ScopeMgSub
-                                    $policyDefintionScopeId = $Def.ScopeId
-                                }
-                                else {
-                                    $policyDefintionScope = "n/a"
-                                    $policyDefintionScopeMgSub = "n/a"
-                                    $policyDefintionScopeId = "n/a"
-                                }
+
 
                                 $assignedBy = "n/a"
                                 $createdBy = ""
@@ -3047,13 +3093,13 @@ function dataCollection($mgId) {
                                     -SubscriptionASCSecureScore $subscriptionASCSecureScore `
                                     -SubscriptionTags $subscriptionTags `
                                     -SubscriptionTagsCount $subscriptionTagsCount `
-                                    -Policy $Def.DisplayName `
-                                    -PolicyDescription $Def.Description `
+                                    -Policy $policyDisplayName `
+                                    -PolicyDescription $policyDescription `
                                     -PolicyVariant $PolicyVariant `
-                                    -PolicyType $Def.Type `
-                                    -PolicyCategory $Def.Category `
-                                    -PolicyDefinitionIdGuid (($Def.Id) -replace ".*/") `
-                                    -PolicyDefinitionId $Def.PolicyDefinitionId `
+                                    -PolicyType $policyType `
+                                    -PolicyCategory $policyCategory `
+                                    -PolicyDefinitionIdGuid $policyDefinitionIdGuid `
+                                    -PolicyDefinitionId $policyDefinitionId `
                                     -PolicyDefintionScope $policyDefintionScope `
                                     -PolicyDefintionScopeMgSub $policyDefintionScope `
                                     -PolicyDefintionScopeId $policyDefintionScopeId `
@@ -13449,6 +13495,7 @@ tf.init();
                 $spAlternativeNames = $htServicePrincipalsDetails.($serviceprincipalApp).spGraphDetails.alternativeNames
 
                 if ($spAlternativeNames -like "*/providers/Microsoft.Authorization/policyAssignments/*") {
+
                     $usage = "Policy Assignments"
                     $policyAssignmentId = $spAlternativeNames | Where-Object { $_ -like "*/providers/Microsoft.Authorization/policyAssignments/*" }
 
@@ -13482,18 +13529,24 @@ tf.init();
                     }
 
                     if ($assignmentinfo -ne "n/a") {
-                        if ($assignmentinfo.Id -like "/subscriptions/*/resourcegroups/*") {
-                            if ($assignmentInfo.Id -like "*/providers/Microsoft.Authorization/policyDefinitions/*") {
+                        if ($assignmentinfo.PolicyAssignmentId -like "/subscriptions/*/resourcegroups/*") {
+                            if ($assignmentInfo.PolicyAssignmentId -like "*/providers/Microsoft.Authorization/policyDefinitions/*") {
                                 $policyAssignmentsPolicyVariant = "Policy"
                                 $policyAssignmentsPolicyVariant4ht = "policy"
                             }
-                            if ($assignmentInfo.Id -like "*/providers/Microsoft.Authorization/policySetDefinitions/*") {
+                            if ($assignmentInfo.PolicyAssignmentId -like "*/providers/Microsoft.Authorization/policySetDefinitions/*") {
                                 $policyAssignmentsPolicyVariant = "PolicySet"
                                 $policyAssignmentsPolicyVariant4ht = "policySet"
                             }
                             $policyAssignmentspolicyDefinitionIdGuid = $assignmentInfo.properties.PolicyDefinitionId -replace ".*/"
                             $policyAssignmentsPolicyDefinitionId = $assignmentInfo.properties.PolicyDefinitionId
-                            $definitionInfo = ($htCacheDefinitions).($policyAssignmentsPolicyVariant4ht).($assignmentInfo.properties.PolicyDefinitionId)
+                            if (($htCacheDefinitions).($policyAssignmentsPolicyVariant4ht).($assignmentInfo.properties.PolicyDefinitionId)){
+                                $definitionInfo = ($htCacheDefinitions).($policyAssignmentsPolicyVariant4ht).($assignmentInfo.properties.PolicyDefinitionId)
+                            }
+                            else{
+                                $definitionInfo = "unknown"
+                            }
+                            
                         }
                         else {
                             if ($assignmentInfo.PolicyDefinitionId -like "*/providers/Microsoft.Authorization/policyDefinitions/*") {
@@ -13506,14 +13559,25 @@ tf.init();
                             }
                             $policyAssignmentspolicyDefinitionIdGuid = $assignmentInfo.PolicyDefinitionIdGuid
                             $policyAssignmentsPolicyDefinitionId = $assignmentInfo.PolicyDefinitionId
-                            $definitionInfo = ($htCacheDefinitions).($policyAssignmentsPolicyVariant4ht).($assignmentInfo.PolicyDefinitionId)
+                            if (($htCacheDefinitions).($policyAssignmentsPolicyVariant4ht).($assignmentInfo.PolicyDefinitionId)){
+                                $definitionInfo = ($htCacheDefinitions).($policyAssignmentsPolicyVariant4ht).($assignmentInfo.PolicyDefinitionId)
+                            }
+                            else{
+                                $definitionInfo = "unknown"
+                            }
+                            
                         }
 
-                        if ($definitionInfo.type -eq "BuiltIn") {
-                            $policyAssignmentMoreInfo = "$($definitionInfo.Type) $($policyAssignmentsPolicyVariant): $($definitionInfo.LinkToAzAdvertizer) ($policyAssignmentspolicyDefinitionIdGuid)"
+                        if ($definitionInfo -eq "unknown"){
+                            $policyAssignmentMoreInfo = "unknown definition ($($policyAssignmentsPolicyDefinitionId))"
                         }
-                        else {
-                            $policyAssignmentMoreInfo = "$($definitionInfo.Type) $($policyAssignmentsPolicyVariant): <b>$($definitionInfo.DisplayName)</b> ($($policyAssignmentsPolicyDefinitionId))"
+                        else{
+                            if ($definitionInfo.type -eq "BuiltIn") {
+                                $policyAssignmentMoreInfo = "$($definitionInfo.Type) $($policyAssignmentsPolicyVariant): $($definitionInfo.LinkToAzAdvertizer) ($policyAssignmentspolicyDefinitionIdGuid)"
+                            }
+                            else {
+                                $policyAssignmentMoreInfo = "$($definitionInfo.Type) $($policyAssignmentsPolicyVariant): <b>$($definitionInfo.DisplayName)</b> ($($policyAssignmentsPolicyDefinitionId))"
+                            }
                         }
 
                     }
@@ -14144,9 +14208,22 @@ tf.init();
     #rbac assignments createdMg
     $roleAssignmentsCreatedMg = $roleAssignmentsCreated.where({ $_.RoleAssignmentScope -notlike "/subscriptions/*" })
     $roleAssignmentsCreatedMgCount = $roleAssignmentsCreatedMg.Count
+    #write-host "mg $roleAssignmentsCreatedMgCount"
     #rbac assignments createdSub
-    $roleAssignmentsCreatedSub = $roleAssignmentsCreated.where({ $_.RoleAssignmentScope -like "/subscriptions/*" })
+    $roleAssignmentsCreatedSub = $roleAssignmentsCreated.where({ $_.RoleAssignmentScope -like "/subscriptions/*" -and $_.RoleAssignmentScope -notlike "/subscriptions/*/resourcegroups/*" })
     $roleAssignmentsCreatedSubCount = $roleAssignmentsCreatedSub.Count
+    #write-host "sub $roleAssignmentsCreatedSubCount"
+    $roleAssignmentsChangeTrackingHTML = "<p><span class=`"valignMiddle`">Created RBAC Role assignments: $roleAssignmentsCreatedCount (Mg: $roleAssignmentsCreatedMgCount; Sub: $roleAssignmentsCreatedSubCount) (last $ChangeTrackingDays days)</span></p>"
+    if ($RBACIncludeResourceGroupsAndResources){
+        $roleAssignmentsCreatedSubRg = $roleAssignmentsCreated.where({ $_.RoleAssignmentScope -like "/subscriptions/*/resourcegroups/*" -and $_.RoleAssignmentScope -notlike "/subscriptions/*/resourcegroups/*/providers*" })
+        $roleAssignmentsCreatedSubRgCount = $roleAssignmentsCreatedSubRg.Count
+        #write-host "rg $roleAssignmentsCreatedSubRgCount"
+        $roleAssignmentsCreatedSubRgRes = $roleAssignmentsCreated.where({ $_.RoleAssignmentScope -like "/subscriptions/*/resourcegroups/*/providers*" })
+        $roleAssignmentsCreatedSubRgResCount = $roleAssignmentsCreatedSubRgRes.Count
+        #write-host "res $roleAssignmentsCreatedSubRgResCount"
+        $roleAssignmentsChangeTrackingHTML = "<p><span class=`"valignMiddle`">Created RBAC Role assignments: $roleAssignmentsCreatedCount (Mg: $roleAssignmentsCreatedMgCount; Sub: $roleAssignmentsCreatedSubCount; RG: $roleAssignmentsCreatedSubRgCount; Res: $roleAssignmentsCreatedSubRgResCount) (last $ChangeTrackingDays days)</span></p>"
+    }
+    
 
     #resources
     $resourcesCreatedOrChanged = $resourcesIdsAll.where({$_.createdTime -gt $xdaysAgo -or $_.changedTime -gt $xdaysAgo})
@@ -14175,7 +14252,7 @@ tf.init();
         <p><span class="valignMiddle">Created Custom RBAC Role definitions: $customRoleDefinitionsCreatedCount (last $ChangeTrackingDays days)</span></p>
         <p><span class="valignMiddle">Updated Custom RBAC Role  definitions: $customRoleDefinitionsUpdatedCount (last $ChangeTrackingDays days)</span></p>
 
-        <p><span class="valignMiddle">Created RBAC Role assignments: $roleAssignmentsCreatedCount (Mg: $roleAssignmentsCreatedMgCount; Sub: $roleAssignmentsCreatedSubCount) (last $ChangeTrackingDays days)</span></p>
+        $roleAssignmentsChangeTrackingHTML
 
         <p><span class="valignMiddle">Created Resources: $resourcesCreatedCount (last $ChangeTrackingDays days)</span></p>
         <p><span class="valignMiddle">Updated Resources: $resourcesChangedCount (last $ChangeTrackingDays days)</span></p>
@@ -17134,7 +17211,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
 #region BuildHTML
 #testhelper
-#$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
+$fileTimestamp = (get-date -format "yyyyMMddHHmmss")
 
 $startBuildHTML = get-date
 Write-Host "Building HTML"
