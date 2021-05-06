@@ -47,11 +47,18 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## AzGovViz release history
 
-__Changes__ (2021-Mar-26)
+__Changes__ (2021-May-05)
 
-* Code adaption to prevent billing related errors in sovereign cloud __AzureChinaCloud__ (.Billing n/a)
-* New parameter `-SubscriptionId4AzContext` - Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
-* New parameter `-AzureDevOpsWikiHierarchyDirection` - Azure DevOps Markdown Management Group hierarchy tree direction. Use 'TD' for Top->Down, use 'LR' for Left->Right (default is 'TD'; use 'LR' for larger Management Group hierarchies)
+* Removed Azure PowerShell module requirement Az.ResourceGraph 
+* Preview __TenantSummary__ 'Change tracking' section. Tracks newly created and updated custom Policy, PolicySet and RBAC Role definitions, Policy/RBAC Role assignments and Resources that occured within the last 14 days (period can be adjusted using new parameter `-ChangeTrackingDays`) 
+* New parameters `-PolicyIncludeResourceGroups` and `-RBACIncludeResourceGroupsAndResources` - include Policy/Role assignments on ResourceGroups and Resources
+* New parameters `-PolicyAtScopeOnly` and `-RBACAtScopeOnly` - removing 'inherited' lines in the HTML file; use this parameter if you run against a larger tenants
+* New parameter `-CsvExport` - export enriched data for 'Role assignments', 'Policy assignments' data and 'all resources' (subscriptionId, managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
+* Added ClassicAdministrators Role assignment information
+* Restructure __TenantSummary__ - Limits gets its own section
+* Added sytem metadata for Policy/RBAC definitions and assignments
+* Updated API error codes
+* Cosmetics / Icons
 * Bugfixes
 * Performance optimization
 
@@ -89,6 +96,7 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
     * If Policy effect is DeployIfNotExists (DINE) will show the specified RBAC Role 
     * List of assignments
     * Usage in custom PolicySet definitions 
+    * System metadata 'createdOn, createdBy, updatedOn, updatedBy'
   * Orphaned custom Policy definitions
     * List of custom Policy definitions that matches the following criteria:
       * Policy definition is not used in any custom PolicySet definition
@@ -111,11 +119,13 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
       * Policy assignment scope (at scope/inheritance)
       * Indicates if scope is excluded from Policy assignment 
       * Indicates if Exemption applies for scope 
-      * Policy/Resource Compliance
+      * Policy/Resource Compliance (Policy: NonCompliant, Compliant; Resource: NonCompliant, Compliant, Conflicting)
       * Related RBAC Role assignments (if Policy effect is DeployIfNotExists (DINE))
+      * System metadata 'createdOn, createdBy, updatedOn, updatedBy'
 * __Role-Based Access Control (RBAC)__
   * Custom Role definitions
     * List assignable scopes
+    * System metadata 'createdOn, createdBy, updatedOn, updatedBy'
   * Orphaned custom Role definitions
     * List of custom Role definitions that matches the following criteria:
       * Role definition is not used in any Role assignment
@@ -131,6 +141,8 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
       * For identity-type == 'ServicePrincipal' the type (Application/ManagedIdentity) will be reported
       * For identity-type == 'User' the userType (Member/Guest) will be reported
       * Related Policy assignments (Policy assignment of a Policy definition that uses the DeployIfNotExists (DINE) effect)
+      * System metadata 'createdOn, createdBy'
+  * Role assignments ClassicAdministrators
   * Security & Best practice analysis
     * Existence of custom Role definition that reflect 'Owner' permissions
     * Role assignments for 'Owner' permissions on identity-type == 'ServicePrincipal' 
@@ -239,7 +251,7 @@ This permission is <b>mandatory</b> in each and every scenario!
   </tbody>
 </table>
 
-### Required permissions in Azure Active Directory / API permissions
+### Required permissions in Azure Active Directory
 
 <table>
   <tbody>
@@ -249,7 +261,7 @@ This permission is <b>mandatory</b> in each and every scenario!
     </tr>
     <tr>
       <td>Console using a Guest user</td>
-      <td>Add to AAD Role <b>Directory readers</b><br>OR<br>Use parameters:<br>&nbsp;-NoAADGuestUsers<br>&nbsp;-NoAADGroupsResolveMembers<br>&nbsp;-NoAADServicePrincipalResolve<br>
+      <td>Add assignment for the Guest user to AAD Role <b>Directory readers</b><br>OR<br>Use parameters:<br>&nbsp;-NoAADGuestUsers<br>&nbsp;-NoAADGroupsResolveMembers<br>&nbsp;-NoAADServicePrincipalResolve<br>
       &#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/fundamentals/users-default-permissions.md#compare-member-and-guest-default-permissions" target="_blank">Compare member and guest default permissions</a>
       </td>
     </tr>
@@ -257,7 +269,7 @@ This permission is <b>mandatory</b> in each and every scenario!
       <td>Console using Service Principal</td>
       <td>
         <b>Option 1</b> (simple setup but more read permissions than required)<br>
-        Add Service Principal to AAD Role <b>Directory readers</b><br>&#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/roles/permissions-reference.md#directory-readers" target="_blank">Directory readers</a><br><br>
+        Add assignment for the Service Principal to AAD Role <b>Directory readers</b><br>&#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/roles/permissions-reference.md#directory-readers" target="_blank">Directory readers</a><br><br>
         <b>Option 2</b> (explicit permission model)
         <table>
           <tbody>
@@ -294,7 +306,7 @@ This permission is <b>mandatory</b> in each and every scenario!
       <td>Azure DevOps Pipeline</td>
       <td>
         <b>Option 1</b> (simple setup but more read permissions than required)<br>
-        Add Azure DevOps Service Connection's Service Principal to AAD Role <b>Directory readers</b><br>&#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/roles/permissions-reference.md#directory-readers" target="_blank">Directory readers</a><br><br>
+        Add assignment for the Azure DevOps Service Connection's Service Principal to AAD Role <b>Directory readers</b><br>&#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/roles/permissions-reference.md#directory-readers" target="_blank">Directory readers</a><br><br>
         <b>Option 2</b> (explicit permission model)
         <table>
           <tbody>
@@ -337,7 +349,7 @@ This permission is <b>mandatory</b> in each and every scenario!
 * Requires PowerShell Az Modules
   * Az.Accounts
   * Az.Resources
-  * Az.ResourceGraph
+  * ~~Az.ResourceGraph~~
 * Usage
   * `.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>`
 * Parameters
@@ -361,13 +373,18 @@ This permission is <b>mandatory</b> in each and every scenario!
   * `-AzureConsumptionPeriod` define for which time period Azure Consumption data should be gathered; default is 1 day
   * `-NoAzureConsumptionReportExportToCSV` Azure Consumption data should not be exported (CSV)
   * `-NoScopeInsights` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
-  * `-ThrottleLimit` - Leveraging PowerShell´s parallel capability you can define the ThrottleLimit (default=5; &#x1F4A1; values from 5 up to 15 proved to perform best)  
-  * `-DoTranscript` - Log the console output
+  * `-ThrottleLimit` - leveraging PowerShell´s parallel capability you can define the ThrottleLimit (default=5; &#x1F4A1; values from 5 up to 15 proved to perform best)
+  * `-DoTranscript` - log the console output
   * `-SubscriptionId4AzContext` - Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
-  * ~~`-UseAzureRM`~~ support for AzureRm modules has been deprecated
-* Passed tests: Powershell Core 7.1.1 on Windows
-* ~~Passed tests: Powershell 5.1.18362.752 on Windows~~
-* Passed tests: Powershell Core 7.1.1 Azure DevOps hosted ubuntu-18.04
+  * `-PolicyAtScopeOnly` - removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants
+  * `-RBACAtScopeOnly` - removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants
+  * `-CsvExport` - export enriched data for 'Role assignments', 'Policy assignments' data and 'all resources' (subscriptionId,  managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
+  * `-PolicyIncludeResourceGroups` - include Policy assignments on ResourceGroups
+  * `-RBACIncludeResourceGroupsAndResources` - include Role assignments on ResourceGroups and Resources
+  * `-ChangeTrackingDays` - Define the period for Change tracking on newly created and updated custom Policy, PolicySet and RBAC Role definitions and Policy/RBAC Role assignments (default is '14') 
+
+* Passed tests: Powershell Core 7.1.2 on Windows
+* Passed tests: Powershell Core 7.1.3 Azure DevOps hosted ubuntu-18.04
 
 #### Azure DevOps Pipeline
 
@@ -381,7 +398,7 @@ The provided example Pipeline is configured to run based on a [schedule](https:/
 5. Run the Pipeline
 6. Create Wiki by choosing [Publish Code as Wiki](https://docs.microsoft.com/en-us/azure/devops/project/wiki/publish-repo-to-wiki?view=azure-devops&tabs=browser), define the folder 'wiki' from the 'Azure-MG-Sub-Governance-Reporting' Repository as source
 
-> Make sure your Service Connection´s Service Principal has been granted with the required permissions (see [__Required permissions in Azure Active Directory / API permissions__](#required-permissions-in-azure-active-directory-/-api-permissions)).
+> Make sure your Service Connection´s Service Principal has been granted with the required permissions (see [__Required permissions in Azure Active Directory / API permissions__](#required-permissions-in-azure-active-directory)).
 
 ## AzGovViz sidenotes
 

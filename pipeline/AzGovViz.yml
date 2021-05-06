@@ -1,7 +1,7 @@
-# AzGovViz v5_major_20210326_2
+# AzGovViz v5_major_20210505_1
 # First things first: 
-# 1. edit line 46 and line 47 
-# 2. check line 61 if branch 'master' is applicable 
+# 1. edit line 52 and line 53 
+# 2. check line 67 if branch 'master' is applicable 
 # Documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 # Also check https://www.azadvertizer.net - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
 # 
@@ -27,6 +27,12 @@
 # DoTranscript | example: -DoTranscript | WhatDoesItDo? Log the console output
 # AzureDevOpsWikiHierarchyDirection | example: -AzureDevOpsWikiHierarchyDirection "LR" | WhatDoesItDo? Define the direction the Hierarchy should be built in Azure DevOps WokiAsCode (Markdown) TD = TopDown (Horizontal), LR = LeftRight (Vertical)
 # SubscriptionId4AzContext | example: -SubscriptionId4AzContext "<your-Subscription-Id>" | WhatDoesItDo? Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
+# PolicyAtScopeOnly | example: -PolicyAtScopeOnly | WhatDoesItDo? Removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants
+# RBACAtScopeOnly | example: -RBACAtScopeOnly | WhatDoesItDo? Removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants
+# CsvExport | example: -CsvExport | WhatDoesItDo? Export enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, resourceType, id, name, location, tags, createdTime, changedTime)
+# PolicyIncludeResourceGroups | example: -PolicyIncludeResourceGroups | WhatDoesItDo? Include Policy assignments on ResourceGroups
+# RBACIncludeResourceGroupsAndResources | example: -RBACIncludeResourceGroupsAndResources | WhatDoesItDo? Include Role assignments on ResourceGroups and Resources
+# ChangeTrackingDays | example: -ChangeTrackingDays 30 | WhatDoesItDo? Tracks newly created and updated custom Policy, PolicySet and RBAC Role definitions, Policy/RBAC Role assignments and Resources that occured within the last 14 days (default)
 
 trigger: none
 
@@ -74,12 +80,6 @@ jobs:
       write-host "#################################"
       write-host "wiki dir check"
       if(!(test-path $(System.DefaultWorkingDirectory)/$(WikiDir))){New-Item -ItemType Directory -Force -Path $(System.DefaultWorkingDirectory)/$(WikiDir)}
-      write-host "install Azure Powershell Module 'Az.ResourceGraph'"
-      Install-Module -Name Az.ResourceGraph -Force
-      $installedAzResourceGraphInfo = Get-InstalledModule -name Az.ResourceGraph
-      $installedAzResourceGraphVersion = "unknown"
-      if ($installedAzResourceGraphInfo){ $installedAzResourceGraphVersion = $installedAzResourceGraphInfo.Version }
-      if ($installedAzResourceGraphVersion -ne "unknown"){ Write-Host "Installed Az.ResourceGraph version: $installedAzResourceGraphVersion" }else{ Write-Host "Az.ResourceGraph was not installed" }
     displayName: 'Ensure AzGovViz v5 prerequisites'
     env:
       workingdirectory: $(Agent.BuildDirectory)
