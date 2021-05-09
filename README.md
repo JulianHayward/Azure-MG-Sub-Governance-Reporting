@@ -234,6 +234,10 @@ Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
 
 ## AzGovViz technical documentation
 
+### Permissions overview
+
+![alt text](img/permissions.png "example output")
+
 ### Required permissions in Azure
 
 This permission is <b>mandatory</b> in each and every scenario!
@@ -245,8 +249,8 @@ This permission is <b>mandatory</b> in each and every scenario!
       <th>Permissions</th>
     </tr>
     <tr>
-      <td>Console or AzureDevOps Pipeline</td>
-      <td><b>Reader</b> Role assignment on Management Group level</td>
+      <td><b>ANY</b><br>Console or AzureDevOps Pipeline</td>
+      <td><b>Reader</b> Role assignment on <b>Management Group</b></td>
     </tr>
   </tbody>
 </table>
@@ -260,13 +264,18 @@ This permission is <b>mandatory</b> in each and every scenario!
       <th>Permissions</th>
     </tr>
     <tr>
-      <td>Console using a Guest user</td>
+      <td><b>A</b><br>Console | Member user account</td>
+      <td>No AAD permissions required
+      </td>
+    </tr>
+    <tr>
+      <td><b>B</b><br>Console | Guest user account</td>
       <td>Add assignment for the Guest user to AAD Role <b>Directory readers</b><br>OR<br>Use parameters:<br>&nbsp;-NoAADGuestUsers<br>&nbsp;-NoAADGroupsResolveMembers<br>&nbsp;-NoAADServicePrincipalResolve<br>
       &#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/fundamentals/users-default-permissions.md#compare-member-and-guest-default-permissions" target="_blank">Compare member and guest default permissions</a>
       </td>
     </tr>
     <tr>
-      <td>Console using Service Principal</td>
+      <td><b>C</b><br>Console | Service Principal</td>
       <td>
         <b>Option 1</b> (simple setup but more read permissions than required)<br>
         Add assignment for the Service Principal to AAD Role <b>Directory readers</b><br>&#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/roles/permissions-reference.md#directory-readers" target="_blank">Directory readers</a><br><br>
@@ -303,7 +312,7 @@ This permission is <b>mandatory</b> in each and every scenario!
       </td>
     </tr>
     <tr>
-      <td>Azure DevOps Pipeline</td>
+      <td><b>D</b><br>Azure DevOps Pipeline | ServicePrincipal (ServiceConnection)</td>
       <td>
         <b>Option 1</b> (simple setup but more read permissions than required)<br>
         Add assignment for the Azure DevOps Service Connection's Service Principal to AAD Role <b>Directory readers</b><br>&#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/roles/permissions-reference.md#directory-readers" target="_blank">Directory readers</a><br><br>
