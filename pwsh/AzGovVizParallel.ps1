@@ -203,7 +203,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210509_1",
+    [string]$AzGovVizVersion = "v5_major_20210511_4",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -263,6 +263,7 @@ Param
     [int]$LimitTagsSubscription = 50
 )
 
+$Error.clear()
 $ErrorActionPreference = "Stop"
 
 #filedir
@@ -6278,7 +6279,7 @@ extensions: [{ name: 'sort' }]
 <td class="breakwordall">$($roleAssignment.ObjectDisplayName)</td>
 <td class="breakwordall">$($roleAssignment.ObjectSignInName)</td>
 <td class="breakwordall">$($roleAssignment.ObjectId)</td>
-<td>$($roleAssignment.ObjectType)</td>
+<td class="breakwordnone">$($roleAssignment.ObjectType)</td>
 <td>$($roleAssignment.AssignmentType)</td>
 <td>$($roleAssignment.AssignmentInheritFrom)</td>
 <td class="breakwordall">$($roleAssignment.RoleAssignmentId)</td>
@@ -6348,7 +6349,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring'
             ],
             watermark: ['', 'try owner||reader', '', '', '', '', '', '', '', '', '', '', '', ''],          
-            extensions: [{ name: 'sort' }]
+            extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
         tf.init();}}
@@ -6526,13 +6527,15 @@ function summary() {
         if (-not $NoAADGuestUsers) {
             if ($rbac.RoleAssignmentIdentityObjectType -eq "User") {
                 if ($htUserTypes.($rbac.RoleAssignmentIdentityObjectId)) {
-                    $objectTypeUserType = "(Guest)"
+                    $objectTypeUserType = "Guest"
                 }
                 else {
-                    $objectTypeUserType = "(Member)"
+                    $objectTypeUserType = "Member"
                 }
             }
         }
+
+
 
         $hlpRoleDataRelated = ($htCacheDefinitions).role.($rbac.RoleDefinitionId)
         if (-not [string]::IsNullOrEmpty($hlpRoleDataRelated.DataActions) -or -not [string]::IsNullOrEmpty($hlpRoleDataRelated.NotDataActions)) {
@@ -6591,10 +6594,10 @@ function summary() {
                             $grpMemberUserType = ""
                             if (-not $NoAADGuestUsers) {
                                 if ($htUserTypes.($grpMemberId)) {
-                                    $grpMemberUserType = "(Guest)"
+                                    $grpMemberUserType = "Guest"
                                 }
                                 else {
-                                    $grpMemberUserType = "(Member)"
+                                    $grpMemberUserType = "Member"
                                 }
                             }
                         }
@@ -6615,7 +6618,25 @@ function summary() {
 
                         if (-not $NoAADServicePrincipalResolve) {
                             if ($grpMemberType -eq "ServicePrincipal") {
-                                $identityType = "$($grpMemberType) ($($htServicePrincipalsDetails.($grpMemberId).servicePrincipalType))"
+                                if ([string]::IsNullOrEmpty($htServicePrincipalsDetails.($grpMemberId).spGraphDetails.appOwnerOrganizationId)){
+                                    $thisAppOwnerOrganizationId = ""
+                                }
+                                else{
+                                    if ($htServicePrincipalsDetails.($grpMemberId).spGraphDetails.appOwnerOrganizationId -eq $checkContext.Tenant.Id){
+                                        $thisAppOwnerOrganizationId = "INT"
+                                    }
+                                    else{
+                                        $thisAppOwnerOrganizationId = "EXT"
+                                    }
+                                }
+                                $grpMemberTypeShort = "SP"
+                                if ($htServicePrincipalsDetails.($grpMemberId).servicePrincipalType -eq "Application"){
+                                    $spType = "App"
+                                }
+                                if ($htServicePrincipalsDetails.($grpMemberId).servicePrincipalType -eq "ManagedIdentity"){
+                                    $spType = "MI"
+                                }
+                                $identityType = "$($grpMemberTypeShort) $spType $thisAppOwnerOrganizationId"
                             }
                             else {
                                 $identityType = $grpMemberType
@@ -6660,7 +6681,25 @@ function summary() {
 
                     if (-not $NoAADServicePrincipalResolve) {
                         if ($rbac.RoleAssignmentIdentityObjectType -eq "ServicePrincipal") {
-                            $identityType = "$($rbac.RoleAssignmentIdentityObjectType) ($($htServicePrincipalsDetails.($rbac.RoleAssignmentIdentityObjectId).servicePrincipalType))"
+                            if ([string]::IsNullOrEmpty($htServicePrincipalsDetails.($rbac.RoleAssignmentIdentityObjectId).spGraphDetails.appOwnerOrganizationId)){
+                                $thisAppOwnerOrganizationId = ""
+                            }
+                            else{
+                                if ($htServicePrincipalsDetails.($rbac.RoleAssignmentIdentityObjectId).spGraphDetails.appOwnerOrganizationId -eq $checkContext.Tenant.Id){
+                                    $thisAppOwnerOrganizationId = "INT"
+                                }
+                                else{
+                                    $thisAppOwnerOrganizationId = "EXT"
+                                }
+                            }
+                            $grpMemberTypeShort = "SP"
+                            if ($htServicePrincipalsDetails.($rbac.RoleAssignmentIdentityObjectId).servicePrincipalType -eq "Application"){
+                                $spType = "App"
+                            }
+                            if ($htServicePrincipalsDetails.($rbac.RoleAssignmentIdentityObjectId).servicePrincipalType -eq "ManagedIdentity"){
+                                $spType = "MI"
+                            }
+                            $identityType = "$($grpMemberTypeShort) $spType $thisAppOwnerOrganizationId"
                         }
                         else {
                             $identityType = $rbac.RoleAssignmentIdentityObjectType
@@ -6705,7 +6744,25 @@ function summary() {
 
                 if (-not $NoAADServicePrincipalResolve) {
                     if ($rbac.RoleAssignmentIdentityObjectType -eq "ServicePrincipal") {
-                        $identityType = "$($rbac.RoleAssignmentIdentityObjectType) ($($htServicePrincipalsDetails.($rbac.RoleAssignmentIdentityObjectId).servicePrincipalType))"
+                        if ([string]::IsNullOrEmpty($htServicePrincipalsDetails.($rbac.RoleAssignmentIdentityObjectId).spGraphDetails.appOwnerOrganizationId)){
+                            $thisAppOwnerOrganizationId = ""
+                        }
+                        else{
+                            if ($htServicePrincipalsDetails.($rbac.RoleAssignmentIdentityObjectId).spGraphDetails.appOwnerOrganizationId -eq $checkContext.Tenant.Id){
+                                $thisAppOwnerOrganizationId = "INT"
+                            }
+                            else{
+                                $thisAppOwnerOrganizationId = "EXT"
+                            }
+                        }
+                        $grpMemberTypeShort = "SP"
+                        if ($htServicePrincipalsDetails.($rbac.RoleAssignmentIdentityObjectId).servicePrincipalType -eq "Application"){
+                            $spType = "App"
+                        }
+                        if ($htServicePrincipalsDetails.($rbac.RoleAssignmentIdentityObjectId).servicePrincipalType -eq "ManagedIdentity"){
+                            $spType = "MI"
+                        }
+                        $identityType = "$($grpMemberTypeShort) $spType $thisAppOwnerOrganizationId"
                     }
                     else {
                         $identityType = $rbac.RoleAssignmentIdentityObjectType
@@ -6749,7 +6806,25 @@ function summary() {
         else {
             if (-not $NoAADServicePrincipalResolve) {
                 if ($rbac.RoleAssignmentIdentityObjectType -eq "ServicePrincipal") {
-                    $identityType = "$($rbac.RoleAssignmentIdentityObjectType) ($($htServicePrincipalsDetails.($rbac.RoleAssignmentIdentityObjectId).servicePrincipalType))"
+                    if ([string]::IsNullOrEmpty($htServicePrincipalsDetails.($rbac.RoleAssignmentIdentityObjectId).spGraphDetails.appOwnerOrganizationId)){
+                        $thisAppOwnerOrganizationId = ""
+                    }
+                    else{
+                        if ($htServicePrincipalsDetails.($rbac.RoleAssignmentIdentityObjectId).spGraphDetails.appOwnerOrganizationId -eq $checkContext.Tenant.Id){
+                            $thisAppOwnerOrganizationId = "INT"
+                        }
+                        else{
+                            $thisAppOwnerOrganizationId = "EXT"
+                        }
+                    }
+                    $grpMemberTypeShort = "SP"
+                    if ($htServicePrincipalsDetails.($rbac.RoleAssignmentIdentityObjectId).servicePrincipalType -eq "Application"){
+                        $spType = "App"
+                    }
+                    if ($htServicePrincipalsDetails.($rbac.RoleAssignmentIdentityObjectId).servicePrincipalType -eq "ManagedIdentity"){
+                        $spType = "MI"
+                    }
+                    $identityType = "$($grpMemberTypeShort) $spType $thisAppOwnerOrganizationId"
                 }
                 else {
                     $identityType = $rbac.RoleAssignmentIdentityObjectType
@@ -6793,6 +6868,8 @@ function summary() {
     }
     #endregion createRBACAll
 
+    Write-Host "   Processing unresoved Identities (createdBy)"
+    $startUnResolvedIdentitiesCreatedBy = get-date
     #prep prepUnresoledIdentities
     #region identitiesThatCreatedRoleAssignmentsButDontHaveARoleAssignmentThemselve
     $script:htIdentitiesWithRoleAssignmentsUnique = @{}
@@ -6818,6 +6895,7 @@ function summary() {
     #endregion identitiesThatCreatedRoleAssignmentsButDontHaveARoleAssignmentThemselve
 
     #enrich rbacAll with createdBy and UpdatedBy identity information
+    #region enrichrbacAll
     $htNonResolvedIdentities = @{}
     foreach ($rbac in $rbacAll){
         $createdBy = $rbac.createdBy
@@ -6831,12 +6909,22 @@ function summary() {
             }
         }
     }
+    #endregion enrichrbacAll
 
-    <#
     $htNonResolvedIdentitiesCount = $htNonResolvedIdentities.Count
     if ($htNonResolvedIdentitiesCount -gt 0){
-        Write-Host " $htNonResolvedIdentitiesCount unresolved identities that created a RBAC Role assignemnt (createdBy)"
-        $nonResolvedIdentitiesToCheck = '"{0}"' -f ($htNonResolvedIdentities.keys -join '","')
+        Write-Host "    $htNonResolvedIdentitiesCount unresolved identities that created a RBAC Role assignment (createdBy)"
+        $arrayUnresolvedIdentities = @()
+        $arrayUnresolvedIdentities = foreach ($unresolvedIdentity in  $htNonResolvedIdentities.keys){
+            if (-not [string]::IsNullOrEmpty($unresolvedIdentity)){
+                $unresolvedIdentity
+            }
+        }
+        $arrayUnresolvedIdentitiesCount = $arrayUnresolvedIdentities.Count
+        Write-Host "    $arrayUnresolvedIdentitiesCount unresolved identities that have a value"
+        $nonResolvedIdentitiesToCheck = '"{0}"' -f ($arrayUnresolvedIdentities -join '","')
+        
+        Write-Host "    IdentitiesToCheck: $nonResolvedIdentitiesToCheck"
 
         $currentTask = "getObjectbyId"
         $uri = "https://graph.microsoft.com/v1.0/directoryObjects/getByIds"
@@ -6848,30 +6936,77 @@ function summary() {
         }
 "@
         $resolvedIdentities = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask
-        if ($resolvedIdentities.Count -gt 0){
-            $htResolvedIdentities = @{}
+        $resolvedIdentitiesCount = $resolvedIdentities.Count
+        Write-Host "    $resolvedIdentitiesCount identities resolved"
+        if ($resolvedIdentitiesCount -gt 0){
+            
+            $script:htResolvedIdentities = @{}
             foreach ($resolvedIdentity in $resolvedIdentities){
-                $resolvedIdentity
-                write-host "____"
-                #$htResolvedIdentities.($resolvedId.id) = @{}
-                #$htResolvedIdentities.($resolvedId.id).details = $resolvedIdentity
+
+                if (-not $htResolvedIdentities.($resolvedIdentity.id)){
+
+                    $script:htResolvedIdentities.($resolvedIdentity.id) = @{}
+
+                    if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.servicePrincipal"){
+                        if ($resolvedIdentity.servicePrincipalType -eq "ManagedIdentity"){
+                            $sptype = "MI"
+                            $custObjectType = "ObjectType: resolved SP $sptype, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id)"
+                        }
+                        else{
+                            if ($resolvedIdentity.servicePrincipalType -eq "Application"){
+                                $sptype = "App"
+                                if ($resolvedIdentity.appOwnerOrganizationId -eq $checkContext.Tenant.Id){
+                                    $custObjectType = "ObjectType: resolved SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id)"
+                                }
+                                else{
+                                    $custObjectType = "ObjectType: resolved SP $sptype EXT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id)"
+                                }
+                            }
+                            else{
+                                Write-Host "* * * Unexpected IdentityType $($resolvedIdentity.servicePrincipalType)"
+                            }
+                        }
+                        $script:htResolvedIdentities.($resolvedIdentity.id).custObjectType = $custObjectType
+                        $script:htResolvedIdentities.($resolvedIdentity.id).obj = $resolvedIdentity
+                    }
+
+                    if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.user"){
+                        $custObjectType = "ObjectType: resolved User ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: $($resolvedIdentity.userPrincipalName), ObjectId: $($resolvedIdentity.id)"
+                        
+                        $script:htResolvedIdentities.($resolvedIdentity.id).custObjectType = $custObjectType
+                        $script:htResolvedIdentities.($resolvedIdentity.id).obj = $resolvedIdentity
+                    }
+
+                    if ($resolvedIdentity."@odata.type" -ne "#microsoft.graph.user" -and $resolvedIdentity."@odata.type" -ne "#microsoft.graph.servicePrincipal"){
+                        Write-Host "!!! * * * IdentityType '$($resolvedIdentity."@odata.type")' was not considered by AzGovViz - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
+                    }
+                }
             }
         }
  
-        <#foreach ($rbac in $rbacAll.where({ $_.createdBy -notlike "ObjectType:*"})){
-            if ($htResolvedIdentities.($rbac.RoleAssignmentId)){
-                $rbac.createdBy 
-
+        foreach ($rbac in $rbacAll.where({ $_.createdBy -notlike "ObjectType*"})){
+            if ($htResolvedIdentities.($rbac.createdBy)){
+                $rbac.CreatedBy = $htResolvedIdentities.($rbac.createdBy).custObjectType
             }
-        }#>
-    #}
-    #>
+            else{
+                if ([string]::IsNullOrEmpty($rbac.CreatedBy)){
+                    $rbac.CreatedBy = "IsNullOrEmpty"
+                }
+                else{
+                    $rbac.CreatedBy = "$($createdByCheck) (could not resolve this identity)"
+                }
+            }
+        }
+    }
+
+    $endUnResolvedIdentitiesCreatedBy = get-date
+    Write-Host "   UnresolvedIdentities (createdBy) duration: $((NEW-TIMESPAN -Start $startUnResolvedIdentitiesCreatedBy -End $endUnResolvedIdentitiesCreatedBy).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startUnResolvedIdentitiesCreatedBy -End $endUnResolvedIdentitiesCreatedBy).TotalSeconds) seconds)"
     
     $startRBACAllGrouping = get-date
     $script:rbacAllGroupedBySubscription = $rbacAll | Group-Object -Property SubscriptionId
     $script:rbacAllGroupedByManagementGroup = $rbacAll | Group-Object -Property MgId
     $endRBACAllGrouping = get-date
-    Write-Host "    RBACAll Grouping duration: $((NEW-TIMESPAN -Start $startRBACAllGrouping -End $endRBACAllGrouping).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startRBACAllGrouping -End $endRBACAllGrouping).TotalSeconds) seconds)"
+    Write-Host "   RBACAll Grouping duration: $((NEW-TIMESPAN -Start $startRBACAllGrouping -End $endRBACAllGrouping).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startRBACAllGrouping -End $endRBACAllGrouping).TotalSeconds) seconds)"
 
     $endCreateRBACAll = get-date
     Write-Host "   CreateRBACAll duration: $((NEW-TIMESPAN -Start $startCreateRBACAll -End $endCreateRBACAll).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startCreateRBACAll -End $endCreateRBACAll).TotalSeconds) seconds)"
@@ -6959,20 +7094,32 @@ function summary() {
         }
 
         $null = $script:customPoliciesDetailed.Add([PSCustomObject]@{ 
-                Scope              = $customPolicy.ScopeMgSub
-                ScopeId            = $customPolicy.ScopeId
-                PolicyDisplayName  = $customPolicy.DisplayName 
-                PolicyDefinitionId = $customPolicy.PolicyDefinitionId 
-                PolicyEffect       = $effect
-                PolicyCategory     = $customPolicy.Category
-                RoleDefinitions    = $policyRoleDefinitions 
-                UniqueAssignments  = $uniqueAssignments 
-                UsedInPolicySets   = $usedInPolicySet
-                CreatedOn          = $createdOn
-                CreatedBy          = $createdBy
-                UpdatedOn          = $updatedOn
-                UpdatedBy          = $updatedBy
+                Scope                 = $customPolicy.ScopeMgSub
+                ScopeId               = $customPolicy.ScopeId
+                PolicyDisplayName     = $customPolicy.DisplayName 
+                PolicyDefinitionId    = $customPolicy.PolicyDefinitionId 
+                PolicyEffect          = $effect
+                PolicyCategory        = $customPolicy.Category
+                RoleDefinitions       = $policyRoleDefinitions 
+                UniqueAssignments     = $uniqueAssignments 
+                UsedInPolicySets      = $usedInPolicySet
+                UsedInPolicySetsClean = $usedInPolicySet -replace "<b>" -replace "</b>"
+                CreatedOn             = $createdOn
+                CreatedBy             = $createdBy
+                UpdatedOn             = $updatedOn
+                UpdatedBy             = $updatedBy
+                Json                  = [string]($customPolicy.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
             })
+    }
+
+    if ($CsvExport){
+        if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+            $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_PolicyDefinitions"
+        }
+        else {
+            $csvFilename = "AzGovViz_$($AzGovVizVersion)_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)_PolicyDefinitions"
+        }
+        $script:customPoliciesDetailed | Select-Object -ExcludeProperty UsedInPolicySets | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
     }
 
     if ($getMgParentName -eq "Tenant Root") {
@@ -7509,6 +7656,7 @@ extensions: [{ name: 'sort' }]
             }
 
             $policySetPoliciesArray = [System.Collections.ArrayList]@()
+            $policySetPoliciesArrayClean = [System.Collections.ArrayList]@()
             foreach ($policyPolicySet in $customPolicySet.PolicySetPolicyIds) {
                 $hlpPolicyDef = ($htCacheDefinitions).policy.($policyPolicySet)
 
@@ -7518,13 +7666,17 @@ extensions: [{ name: 'sort' }]
                 else {
                     $null = $policySetPoliciesArray.Add("<b>$($hlpPolicyDef.DisplayName)</b> ($policyPolicySet)")
                 }
+                $null = $policySetPoliciesArrayClean.Add("$($hlpPolicyDef.DisplayName) ($policyPolicySet)")
+
             }
             $policySetPoliciesCount = ($policySetPoliciesArray | Measure-Object).count
             if ($policySetPoliciesCount -gt 0) {
                 $policiesUsed = "$policySetPoliciesCount ($(($policySetPoliciesArray | sort-Object) -join "$CsvDelimiterOpposite "))"
+                $policiesUsedClean = "$policySetPoliciesCount ($(($policySetPoliciesArrayClean | sort-Object) -join "$CsvDelimiterOpposite "))"
             }
             else {
                 $policiesUsed = "0 really?"
+                $policiesUsedClean = "0 really?"
             }
 
             #inscopeOrNot
@@ -7572,12 +7724,24 @@ extensions: [{ name: 'sort' }]
                     PolicySetCategory     = $customPolicySet.Category
                     UniqueAssignments     = $policySetUniqueAssignment 
                     PoliciesUsed          = $policiesUsed
+                    PoliciesUsedClean     = $policiesUsedClean
                     CreatedOn             = $createdOn
                     CreatedBy             = $createdBy
                     UpdatedOn             = $updatedOn
                     UpdatedBy             = $updatedBy
+                    Json                  = [string]($customPolicySet.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
                 })
         }
+    }
+
+    if ($CsvExport){
+        if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+            $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_PolicySetDefinitions"
+        }
+        else {
+            $csvFilename = "AzGovViz_$($AzGovVizVersion)_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)_PolicySetDefinitions"
+        }
+        $script:customPolicySetsDetailed | Select-Object -ExcludeProperty PoliciesUsed | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
     }
 
     if ($getMgParentName -eq "Tenant Root") {
@@ -9834,7 +9998,7 @@ extensions: [{ name: 'sort' }]
 <td class="breakwordall">{10}</td>
 <td class="breakwordall">{11}</td>
 <td class="breakwordall">{12}</td>
-<td>{13}</td>
+<td class="breakwordnone">{13}</td>
 <td>{14}</td>
 <td>{15}</td>
 <td class="breakwordall">{16}</td>
@@ -9948,7 +10112,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring'
             ],
             watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', 'try owner||reader', '', '', '', '', '', '', ''],
-            extensions: [{ name: 'sort' }]
+            extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
         tf.init();}}
@@ -18023,6 +18187,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
             $arrayServicePrincipalRequestResourceNotFound = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
             $arrayApplicationRequestResourceNotFound = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
             $htServicePrincipalsDetails = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+            $htServicePrincipals = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
             $arrayProgressedServicePrincipals = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
             $currentDateUTC = (Get-Date).ToUniversalTime()
 
@@ -18052,6 +18217,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 $arrayServicePrincipalRequestResourceNotFound = $using:arrayServicePrincipalRequestResourceNotFound
                 $arrayApplicationRequestResourceNotFound = $using:arrayApplicationRequestResourceNotFound
                 $htServicePrincipalsDetails = $using:htServicePrincipalsDetails
+                $htServicePrincipals = $using:htServicePrincipals
                 $arrayProgressedServicePrincipals = $using:arrayProgressedServicePrincipals
                 $arrayAPICallTracking = $using:arrayAPICallTracking
                 $indicator = $using:indicator
@@ -18072,6 +18238,12 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                             })
                     }
                     else {
+
+                        if (-not $htServicePrincipals.($getServicePrincipal.id)) {
+                            $htServicePrincipals.($getServicePrincipal.id) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+                            $htServicePrincipals.($getServicePrincipal.id) = $getServicePrincipal
+                        }
+
                         $script:htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
                         $script:htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).servicePrincipalType = $getServicePrincipal.servicePrincipalType
                         $script:htServicePrincipalsDetails.($servicePrincipalWithRoleAssignment).spGraphDetails = $getServicePrincipal
@@ -18404,10 +18576,8 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 #region createoutputs
 
 #region BuildHTML
-
-
 #testhelper
-#$fileTimestamp = (get-date -format $FileTimeStampFormat)
+$fileTimestamp = (get-date -format $FileTimeStampFormat)
 
 $startBuildHTML = get-date
 Write-Host "Building HTML"
@@ -18678,7 +18848,7 @@ $html += @"
         link.media = "screen,print";
         document.getElementsByTagName( "head" )[0].appendChild( link );
     </script>
-    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_032.css">
+    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_033.css">
     <script src="https://code.jquery.com/jquery-1.7.2.js" integrity="sha256-FxfqH96M63WENBok78hchTCDxmChGFlo+/lFIPcZPeI=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/ui/1.8.18/jquery-ui.js" integrity="sha256-lzf/CwLt49jbVoZoFcPZOc0LlMYPFBorVSwMsTs2zsA=" crossorigin="anonymous"></script>
     <script type="text/javascript" src="https://www.azadvertizer.net/azgovvizv4/js/highlight_v004_001.js"></script>
@@ -19139,6 +19309,10 @@ Write-Host "AzGovViz duration: $((NEW-TIMESPAN -Start $startAzGovViz -End $endAz
 #end
 $endTime = get-date -format "dd-MMM-yyyy HH:mm:ss"
 Write-Host "End AzGovViz $endTime"
+
+Write-Host "Dumping Error Messages"
+$Error | Out-host
+
 if ($DoTranscript) {
     Stop-Transcript
 }
