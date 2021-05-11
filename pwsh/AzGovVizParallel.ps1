@@ -5266,6 +5266,7 @@ extensions: [{ name: 'sort' }]
 <th>Role/Assignment $noteOrNot</th>
 <th>Assignment DisplayName</th>
 <th>AssignmentId</th>
+<th>AssignedBy</th>
 <th>CreatedOn</th>
 <th>CreatedBy</th>
 <th>UpdatedOn</th>
@@ -5303,6 +5304,7 @@ extensions: [{ name: 'sort' }]
 <td class="breakwordall">$($policyAssignment.RelatedRoleAssignments)</td>
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentDisplayName)</td>
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentId)</td>
+<td>$($policyAssignment.AssignedBy)</td>
 <td>$($policyAssignment.CreatedOn)</td>
 <td>$($policyAssignment.CreatedBy)</td>
 <td>$($policyAssignment.UpdatedOn)</td>
@@ -5381,13 +5383,14 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+                'caseinsensitivestring',
                 'date',
                 'caseinsensitivestring',
                 'date',
                 'caseinsensitivestring'
             ],
             watermark: ['try: thisScope'],
-extensions: [{ name: 'sort' }]
+            extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
         tf.init();}}
@@ -5503,6 +5506,7 @@ extensions: [{ name: 'sort' }]
 <th>Role/Assignment $noteOrNot</th>
 <th>Assignment DisplayName</th>
 <th>AssignmentId</th>
+<th>AssignedBy</th>
 <th>CreatedOn</th>
 <th>CreatedBy</th>
 <th>UpdatedOn</th>
@@ -5536,6 +5540,7 @@ extensions: [{ name: 'sort' }]
 <td class="breakwordall">$($policyAssignment.RelatedRoleAssignments)</td>
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentDisplayName)</td>
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentId)</td>
+<td>$($policyAssignment.AssignedBy)</td>
 <td>$($policyAssignment.CreatedOn)</td>
 <td>$($policyAssignment.CreatedBy)</td>
 <td>$($policyAssignment.UpdatedOn)</td>
@@ -5608,12 +5613,14 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+                'caseinsensitivestring',
                 'date',
                 'caseinsensitivestring',
                 'date',
                 'caseinsensitivestring'
             ],
-extensions: [{ name: 'sort' }]
+            watermark: ['try: thisScope'],
+            extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
         tf.init();}}
@@ -6950,16 +6957,16 @@ function summary() {
                     if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.servicePrincipal"){
                         if ($resolvedIdentity.servicePrincipalType -eq "ManagedIdentity"){
                             $sptype = "MI"
-                            $custObjectType = "ObjectType: resolved SP $sptype, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id)"
+                            $custObjectType = "ObjectType: SP $sptype, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
                         }
                         else{
                             if ($resolvedIdentity.servicePrincipalType -eq "Application"){
                                 $sptype = "App"
                                 if ($resolvedIdentity.appOwnerOrganizationId -eq $checkContext.Tenant.Id){
-                                    $custObjectType = "ObjectType: resolved SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id)"
+                                    $custObjectType = "ObjectType: SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
                                 }
                                 else{
-                                    $custObjectType = "ObjectType: resolved SP $sptype EXT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id)"
+                                    $custObjectType = "ObjectType: SP $sptype EXT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
                                 }
                             }
                             else{
@@ -6971,7 +6978,7 @@ function summary() {
                     }
 
                     if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.user"){
-                        $custObjectType = "ObjectType: resolved User ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: $($resolvedIdentity.userPrincipalName), ObjectId: $($resolvedIdentity.id)"
+                        $custObjectType = "ObjectType: User ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: $($resolvedIdentity.userPrincipalName), ObjectId: $($resolvedIdentity.id) (r)"
                         
                         $script:htResolvedIdentities.($resolvedIdentity.id).custObjectType = $custObjectType
                         $script:htResolvedIdentities.($resolvedIdentity.id).obj = $resolvedIdentity
@@ -8977,11 +8984,9 @@ extensions: [{ name: 'sort' }]
         #createdBy
         if ($policyAssignmentAll.PolicyAssignmentCreatedBy){
             $createdBy = $policyAssignmentAll.PolicyAssignmentCreatedBy
-            #if ([string]::IsNullOrEmpty($createdBy)) {
-                if ($htIdentitiesWithRoleAssignmentsUnique.($createdBy)) {
-                    $createdBy = $htIdentitiesWithRoleAssignmentsUnique.($createdBy).details
-                }
-            #}
+            if ($htIdentitiesWithRoleAssignmentsUnique.($createdBy)) {
+                $createdBy = $htIdentitiesWithRoleAssignmentsUnique.($createdBy).details
+            }
         }
         else{
             $createdBy = ""
@@ -8990,11 +8995,9 @@ extensions: [{ name: 'sort' }]
         #UpdatedBy
         if ($policyAssignmentAll.PolicyAssignmentUpdatedBy){
             $updatedBy = $policyAssignmentAll.PolicyAssignmentUpdatedBy
-            #if ($updatedBy -ne "n/a") {
-                if ($htIdentitiesWithRoleAssignmentsUnique.($updatedBy)) {
-                    $updatedBy = $htIdentitiesWithRoleAssignmentsUnique.($updatedBy).details
-                }
-            #}
+            if ($htIdentitiesWithRoleAssignmentsUnique.($updatedBy)) {
+                $updatedBy = $htIdentitiesWithRoleAssignmentsUnique.($updatedBy).details
+            }
         }
         else{
             $updatedBy = ""
@@ -9056,6 +9059,7 @@ extensions: [{ name: 'sort' }]
                     PolicyAssignmentDescription     = $policyAssignmentAll.PolicyAssignmentDescription
                     PolicyAssignmentEnforcementMode = $policyAssignmentAll.PolicyAssignmentEnforcementMode
                     PolicyAssignmentNotScopes       = $policyAssignmentNotScopes
+                    AssignedBy                      = $policyAssignmentAll.PolicyAssignmentAssignedBy
                     CreatedOn                       = $policyAssignmentAll.PolicyAssignmentCreatedOn
                     CreatedBy                       = $createdBy
                     UpdatedOn                       = $policyAssignmentAll.PolicyAssignmentUpdatedOn
@@ -9093,6 +9097,7 @@ extensions: [{ name: 'sort' }]
                     PolicyAssignmentDescription     = $policyAssignmentAll.PolicyAssignmentDescription
                     PolicyAssignmentEnforcementMode = $policyAssignmentAll.PolicyAssignmentEnforcementMode
                     PolicyAssignmentNotScopes       = $policyAssignmentNotScopes
+                    AssignedBy                      = $policyAssignmentAll.PolicyAssignmentAssignedBy
                     CreatedOn                       = $policyAssignmentAll.PolicyAssignmentCreatedOn
                     CreatedBy                       = $createdBy
                     UpdatedOn                       = $policyAssignmentAll.PolicyAssignmentUpdatedOn
@@ -9115,6 +9120,116 @@ extensions: [{ name: 'sort' }]
         }
     }
 
+
+    #resolveIdentities
+    Write-Host "    Processing unresoved Identities (createdBy/updatedBy)"
+    $startUnResolvedIdentitiesCreatedByUpdatedByPolicy = get-date
+
+    $createdByNotResolved = ($arrayPolicyAssignmentsEnriched.where({ -not [string]::IsNullOrEmpty($_.CreatedBy) -and $_.CreatedBy -notlike "ObjectType:*" }) | Sort-Object -Unique).CreatedBy
+    $updatedByNotResolved = ($arrayPolicyAssignmentsEnriched.where({ -not [string]::IsNullOrEmpty($_.UpdatedBy) -and $_.UpdatedBy -notlike "ObjectType:*" }) | Sort-Object -Unique).UpdatedBy
+
+    $htNonResolvedIdentitiesPolicy = @{}
+    foreach ($createdByNotResolvedEntry in $createdByNotResolved){
+        if (-not $htNonResolvedIdentitiesPolicy.($createdByNotResolvedEntry)){
+            $htNonResolvedIdentitiesPolicy.($createdByNotResolvedEntry) = @{}
+        }
+    }
+    foreach ($updatedByNotResolvedEntry in $updatedByNotResolved){
+        if (-not $htNonResolvedIdentitiesPolicy.($updatedByNotResolvedEntry)){
+            $htNonResolvedIdentitiesPolicy.($updatedByNotResolvedEntry) = @{}
+        }
+    }
+
+    $htNonResolvedIdentitiesPolicyCount = $htNonResolvedIdentitiesPolicy.Count
+    if ($htNonResolvedIdentitiesPolicyCount -gt 0){
+        Write-Host "    $htNonResolvedIdentitiesPolicyCount unresolved identities that created/updated a Policy assignment (createdBy/updatedBy)"
+        $arrayUnresolvedIdentities = @()
+        $arrayUnresolvedIdentities = foreach ($unresolvedIdentity in  $htNonResolvedIdentitiesPolicy.keys){
+            if (-not [string]::IsNullOrEmpty($unresolvedIdentity)){
+                $unresolvedIdentity
+            }
+        }
+        $arrayUnresolvedIdentitiesCount = $arrayUnresolvedIdentities.Count
+        Write-Host "    $arrayUnresolvedIdentitiesCount unresolved identities that have a value"
+        $nonResolvedIdentitiesToCheck = '"{0}"' -f ($arrayUnresolvedIdentities -join '","')
+        
+        Write-Host "    IdentitiesToCheck: $nonResolvedIdentitiesToCheck"
+
+        $currentTask = "getObjectbyId"
+        $uri = "https://graph.microsoft.com/v1.0/directoryObjects/getByIds"
+        $method = "POST"
+
+        $body = @"
+        {
+            "ids":[$($nonResolvedIdentitiesToCheck)]
+        }
+"@
+        $resolvedIdentities = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask
+        $resolvedIdentitiesCount = $resolvedIdentities.Count
+        Write-Host "    $resolvedIdentitiesCount identities resolved"
+        if ($resolvedIdentitiesCount -gt 0){
+            
+            $script:htResolvedIdentitiesPolicy = @{}
+            foreach ($resolvedIdentity in $resolvedIdentities){
+
+                if (-not $htResolvedIdentitiesPolicy.($resolvedIdentity.id)){
+
+                    $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id) = @{}
+
+                    if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.servicePrincipal"){
+                        if ($resolvedIdentity.servicePrincipalType -eq "ManagedIdentity"){
+                            $sptype = "MI"
+                            $custObjectType = "ObjectType: SP $sptype, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
+                        }
+                        else{
+                            if ($resolvedIdentity.servicePrincipalType -eq "Application"){
+                                $sptype = "App"
+                                if ($resolvedIdentity.appOwnerOrganizationId -eq $checkContext.Tenant.Id){
+                                    $custObjectType = "ObjectType: SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
+                                }
+                                else{
+                                    $custObjectType = "ObjectType: SP $sptype EXT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
+                                }
+                            }
+                            else{
+                                Write-Host "* * * Unexpected IdentityType $($resolvedIdentity.servicePrincipalType)"
+                            }
+                        }
+                        $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).custObjectType = $custObjectType
+                        $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).obj = $resolvedIdentity
+                    }
+
+                    if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.user"){
+                        $custObjectType = "ObjectType: User ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: $($resolvedIdentity.userPrincipalName), ObjectId: $($resolvedIdentity.id) (r)"
+                        
+                        $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).custObjectType = $custObjectType
+                        $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).obj = $resolvedIdentity
+                    }
+
+                    if ($resolvedIdentity."@odata.type" -ne "#microsoft.graph.user" -and $resolvedIdentity."@odata.type" -ne "#microsoft.graph.servicePrincipal"){
+                        Write-Host "!!! * * * IdentityType '$($resolvedIdentity."@odata.type")' was not considered by AzGovViz - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
+                    }
+                }
+            }
+        }
+
+        foreach ($policyAssignment in $script:arrayPolicyAssignmentsEnriched.where({ -not [string]::IsNullOrEmpty($_.CreatedBy) -and $_.CreatedBy -notlike "ObjectType*"})){
+            if ($htResolvedIdentitiesPolicy.($policyAssignment.createdBy)){
+                $policyAssignment.CreatedBy = $htResolvedIdentitiesPolicy.($policyAssignment.createdBy).custObjectType
+            }
+        }
+
+        foreach ($policyAssignment in $script:arrayPolicyAssignmentsEnriched.where({ -not [string]::IsNullOrEmpty($_.UpdatedBy) -and $_.UpdatedBy -notlike "ObjectType*"})){
+            if ($htResolvedIdentitiesPolicy.($policyAssignment.UpdatedBy)){
+                $policyAssignment.UpdatedBy = $htResolvedIdentitiesPolicy.($policyAssignment.UpdatedBy).custObjectType
+            }
+        }
+    }
+
+    $endUnResolvedIdentitiesCreatedByUpdatedByPolicy = get-date
+    Write-Host "    UnresolvedIdentities (createdBy/updatedBy) duration: $((NEW-TIMESPAN -Start $startUnResolvedIdentitiesCreatedByUpdatedByPolicy -End $endUnResolvedIdentitiesCreatedByUpdatedByPolicy).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startUnResolvedIdentitiesCreatedByUpdatedByPolicy -End $endUnResolvedIdentitiesCreatedByUpdatedByPolicy).TotalSeconds) seconds)"
+    
+    #
     $script:arrayPolicyAssignmentsEnrichedGroupedBySubscription = $arrayPolicyAssignmentsEnriched | Group-Object -Property subscriptionId
     $script:arrayPolicyAssignmentsEnrichedGroupedByManagementGroup = $arrayPolicyAssignmentsEnriched | Group-Object -Property MgId
 
@@ -9174,6 +9289,7 @@ extensions: [{ name: 'sort' }]
 <th>Assignment DisplayName</th>
 <th>Assignment Description</th>
 <th>AssignmentId</th>
+<th>AssignedBy</th>
 <th>CreatedOn</th>
 <th>CreatedBy</th>
 <th>UpdatedOn</th>
@@ -9239,6 +9355,7 @@ extensions: [{ name: 'sort' }]
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentDisplayName)</td>
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentDescription)</td>
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentId)</td>
+<td>$($policyAssignment.AssignedBy)</td>
 <td>$($policyAssignment.CreatedOn)</td>
 <td>$($policyAssignment.CreatedBy)</td>
 <td>$($policyAssignment.UpdatedOn)</td>
@@ -9341,6 +9458,7 @@ extensions: [{ name: 'sort' }]
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+                'caseinsensitivestring',
                 'date',
                 'caseinsensitivestring',
                 'date',
@@ -9350,12 +9468,12 @@ extensions: [{ name: 'sort' }]
 
         if ($htParameters.NoPolicyComplianceStates -eq $false) {
             [void]$htmlTenantSummary.AppendLine(@"
-            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', ''],
 "@)
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@"
-            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
 "@) 
         }
 
