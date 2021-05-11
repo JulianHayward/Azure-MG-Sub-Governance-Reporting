@@ -6521,15 +6521,6 @@ function summary() {
             $mgOrSubOrRGOrRes = "Mg"
         }
 
-        <#
-        if ([String]::IsNullOrEmpty($rbac.SubscriptionId)) {
-            $mgOrSub = "Mg"
-        }
-        else {
-            $mgOrSub = "Sub"
-        }
-        #>
-
         $objectTypeUserType = ""
         if (-not $NoAADGuestUsers) {
             if ($rbac.RoleAssignmentIdentityObjectType -eq "User") {
@@ -6541,8 +6532,6 @@ function summary() {
                 }
             }
         }
-
-
 
         $hlpRoleDataRelated = ($htCacheDefinitions).role.($rbac.RoleDefinitionId)
         if (-not [string]::IsNullOrEmpty($hlpRoleDataRelated.DataActions) -or -not [string]::IsNullOrEmpty($hlpRoleDataRelated.NotDataActions)) {
@@ -9686,7 +9675,6 @@ extensions: [{ name: 'sort' }]
                 if ($roleIsUsed -eq $false) {
                     $null = $arrayCustomRolesOrphanedFinalIncludingResourceGroups.Add($customRoleAll)
                 }
-                
             }
         }
 
@@ -9792,7 +9780,6 @@ extensions: [{ name: 'sort' }]
                             Continue
                         }
                     }
-
                 }
                 if ($roleIsUsed -eq $false) {
                     if (($mgSubRoleAssignmentsArrayRoleDefinitionIdUnique) -contains ($customRoleAll.Id)) {
@@ -9808,7 +9795,6 @@ extensions: [{ name: 'sort' }]
                 if ($roleIsUsed -eq $false) {
                     $null = $arrayCustomRolesOrphanedFinalIncludingResourceGroups.Add($customRoleAll)
                 }
-                
             }
         }
 
@@ -15030,17 +15016,6 @@ tf.init();
 <i class="padlxxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
 <thead>
-<!--<tr>
-<th>PolicySet DisplayName</th>
-<th>PolicySet Category</th>
-<th>PolicySet Scope</th>
-<th>Created/Updated</th>
-<th>CreatedOn</th>
-<th>CreatedBy</th>
-<th>UpdatedOn</th>
-<th>UpdatedBy</th>
-<th>PolicySet Id</th>
-</tr>-->
 <tr>
 <th>$($thMgSub)</th>
 <th>Management Group Id</th>
@@ -15076,6 +15051,7 @@ tf.init();
 <th>Assignment Description</th>
 <th>AssignmentId</th>
 <th>Created/Updated</th>
+<th>AssignedBy</th>
 <th>CreatedOn</th>
 <th>CreatedBy</th>
 <th>UpdatedOn</th>
@@ -15167,6 +15143,7 @@ tf.init();
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentDescription)</td>
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentId)</td>
 <td>$createOnUpdatedOn</td>
+<td>$($policyAssignment.AssignedBy)</td>
 <td>$($policyAssignment.CreatedOn)</td>
 <td>$($policyAssignment.CreatedBy)</td>
 <td>$($policyAssignment.UpdatedOn)</td>
@@ -15265,6 +15242,7 @@ col_0: 'select',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+                'caseinsensitivestring',
                 'date',
                 'caseinsensitivestring',
                 'date',
@@ -15274,12 +15252,12 @@ col_0: 'select',
 
         if ($htParameters.NoPolicyComplianceStates -eq $false) {
             [void]$htmlTenantSummary.AppendLine(@"
-            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', ''],
 "@)
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@"
-            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
 "@) 
         }
 
@@ -17343,11 +17321,9 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                         subscriptionName = $childrenSubscription.properties.displayName
                     })
             }
-        }#>
+        }
     }
     $subsToProcessInCustomDataCollectionCount = ($subsToProcessInCustomDataCollection | Measure-Object).Count
-    #
-    #
 
     if ($htParameters.NoAzureConsumption -eq $false) {
 
@@ -18695,7 +18671,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
 #region BuildHTML
 #testhelper
-$fileTimestamp = (get-date -format $FileTimeStampFormat)
+#$fileTimestamp = (get-date -format $FileTimeStampFormat)
 
 $startBuildHTML = get-date
 Write-Host "Building HTML"
@@ -18783,7 +18759,6 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
             ($htCacheAssignments2).policy.($policyAssignment.PolicyAssignmentId) = $policyAssignment
         }
     }
-
     
     $policyPolicySetBaseQueryUniqueAssignments = $policyBaseQueryUniqueAssignments.where( { $_.PolicyVariant -eq "PolicySet" } ) 
     $policyBaseQueryUniqueCustomDefinitions = ($policyBaseQuery.where( { $_.PolicyType -eq "Custom" } )) | select-object PolicyVariant, PolicyDefinitionId -Unique
