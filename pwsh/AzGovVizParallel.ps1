@@ -203,7 +203,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210511_4",
+    [string]$AzGovVizVersion = "v5_major_20210512_2",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -6923,7 +6923,7 @@ function summary() {
         Write-Host "    IdentitiesToCheck: $nonResolvedIdentitiesToCheck"
 
         $currentTask = "getObjectbyId"
-        $uri = "https://graph.microsoft.com/v1.0/directoryObjects/getByIds"
+        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/directoryObjects/getByIds"
         $method = "POST"
 
         $body = @"
@@ -6967,7 +6967,15 @@ function summary() {
                     }
 
                     if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.user"){
-                        $custObjectType = "ObjectType: User ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: $($resolvedIdentity.userPrincipalName), ObjectId: $($resolvedIdentity.id) (r)"
+                        if ($DoNotShowRoleAssignmentsUserData){
+                            $hlpObjectDisplayName = "scrubbed"
+                            $hlpObjectSigninName = "scrubbed"
+                        }
+                        else{
+                            $hlpObjectDisplayName = $resolvedIdentity.displayName
+                            $hlpObjectSigninName = $resolvedIdentity.userPrincipalName
+                        }
+                        $custObjectType = "ObjectType: User ObjectDisplayName: $hlpObjectDisplayName, ObjectSignInName: $hlpObjectSigninName, ObjectId: $($resolvedIdentity.id) (r)"
                         
                         $script:htResolvedIdentities.($resolvedIdentity.id).custObjectType = $custObjectType
                         $script:htResolvedIdentities.($resolvedIdentity.id).obj = $resolvedIdentity
@@ -9145,7 +9153,7 @@ extensions: [{ name: 'sort' }]
         Write-Host "    IdentitiesToCheck: $nonResolvedIdentitiesToCheck"
 
         $currentTask = "getObjectbyId"
-        $uri = "https://graph.microsoft.com/v1.0/directoryObjects/getByIds"
+        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/directoryObjects/getByIds"
         $method = "POST"
 
         $body = @"
@@ -9168,16 +9176,16 @@ extensions: [{ name: 'sort' }]
                     if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.servicePrincipal"){
                         if ($resolvedIdentity.servicePrincipalType -eq "ManagedIdentity"){
                             $sptype = "MI"
-                            $custObjectType = "ObjectType: SP $sptype, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
+                            $custObjectType = "ObjectType: SP $sptype, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (rp)"
                         }
                         else{
                             if ($resolvedIdentity.servicePrincipalType -eq "Application"){
                                 $sptype = "App"
                                 if ($resolvedIdentity.appOwnerOrganizationId -eq $checkContext.Tenant.Id){
-                                    $custObjectType = "ObjectType: SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
+                                    $custObjectType = "ObjectType: SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (rp)"
                                 }
                                 else{
-                                    $custObjectType = "ObjectType: SP $sptype EXT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
+                                    $custObjectType = "ObjectType: SP $sptype EXT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (rp)"
                                 }
                             }
                             else{
@@ -9189,7 +9197,16 @@ extensions: [{ name: 'sort' }]
                     }
 
                     if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.user"){
-                        $custObjectType = "ObjectType: User ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: $($resolvedIdentity.userPrincipalName), ObjectId: $($resolvedIdentity.id) (r)"
+
+                        if ($DoNotShowRoleAssignmentsUserData){
+                            $hlpObjectDisplayName = "scrubbed"
+                            $hlpObjectSigninName = "scrubbed"
+                        }
+                        else{
+                            $hlpObjectDisplayName = $resolvedIdentity.displayName
+                            $hlpObjectSigninName = $resolvedIdentity.userPrincipalName
+                        }
+                        $custObjectType = "ObjectType: User ObjectDisplayName: $hlpObjectDisplayName, ObjectSignInName: $hlpObjectSigninName, ObjectId: $($resolvedIdentity.id) (rp)"
                         
                         $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).custObjectType = $custObjectType
                         $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).obj = $resolvedIdentity
@@ -19403,7 +19420,7 @@ Write-Host "AzGovViz duration: $((NEW-TIMESPAN -Start $startAzGovViz -End $endAz
 $endTime = get-date -format "dd-MMM-yyyy HH:mm:ss"
 Write-Host "End AzGovViz $endTime"
 
-Write-Host "Dumping Error Messages"
+Write-Host "Dumping Error Messages" -ForegroundColor Yellow
 $Error | Out-host
 
 if ($DoTranscript) {
