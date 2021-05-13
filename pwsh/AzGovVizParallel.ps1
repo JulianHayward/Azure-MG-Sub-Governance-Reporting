@@ -203,7 +203,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210513_4",
+    [string]$AzGovVizVersion = "v5_major_20210513_5",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -2270,7 +2270,7 @@ function dataCollection($mgId) {
 
         $counterBatch = [PSCustomObject] @{ Value = 0 }
         #test
-        $batchSize = 5
+        $batchSize = 50
         if ($subsToProcessInCustomDataCollectionCount -gt 100) {
             $batchSize = 100
         }
