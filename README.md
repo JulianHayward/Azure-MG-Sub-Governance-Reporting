@@ -355,10 +355,15 @@ This permission is <b>mandatory</b> in each and every scenario!
 
 #### PowerShell
 
+* Requires PowerShell 7 (minimum supported version 7.0.3)
+  * [Get PowerShell](https://github.com/PowerShell/PowerShell#get-powershell)
+  * [Installing PowerShell on Windows](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-windows)
+  * [Installing PowerShell on Linux](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-linux)
 * Requires PowerShell Az Modules
   * Az.Accounts
   * Az.Resources
   * ~~Az.ResourceGraph~~
+  * [Install the Azure Az PowerShell module](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps)
 * Usage
   * `.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>`
 * Parameters
