@@ -203,7 +203,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210514_4",
+    [string]$AzGovVizVersion = "v5_major_20210515_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -1126,7 +1126,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType, $resourceId) 
 $funcAzAPICallDiag = $function:AzAPICallDiag.ToString()
 #endregion azapicalldiag
 
-#test required Az modules cmdlets
+#check required Az modules cmdlets
 #region testAzModules
 $testCommands = @('Get-AzContext', 'Get-AzRoleAssignment')
 $azModules = @('Az.Accounts', 'Az.Resources')
@@ -10939,7 +10939,7 @@ extensions: [{ name: 'sort' }]
     if ($blueprintDefinitionsCount -gt 0) {
         $htmlTableId = "TenantSummary_BlueprintDefinitions"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_BlueprintDefinitions"><p><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> $blueprintDefinitionsCount Blueprints</p></button>
+<button type="button" class="collapsible" id="buttonTenantSummary_BlueprintDefinitions"><p><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> $blueprintDefinitionsCount Blueprint definitions</p></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -11014,7 +11014,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-            <p><i class="padlxfa fa-ban" aria-hidden="true"></i> $blueprintDefinitionsCount Blueprints</p>
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> $blueprintDefinitionsCount Blueprint definitions</p>
 "@)
     }
     #endregion SUMMARYBlueprintDefinitions
@@ -11114,7 +11114,7 @@ extensions: [{ name: 'sort' }]
     #endregion SUMMARYBlueprintAssignments
 
     #region SUMMARYBlueprintsOrphaned
-    Write-Host "  processing TenantSummary Blueprints orphaned"
+    Write-Host "  processing TenantSummary Blueprint definitions orphaned"
     $blueprintDefinitionsOrphanedArray = @()
     if ($blueprintDefinitionsCount -gt 0) {
         if ($blueprintAssignmentsCount -gt 0) {
@@ -11211,7 +11211,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-                <p><i class="padlx fa fa-ban" aria-hidden="true"></i> $blueprintDefinitionsOrphanedCount Orphaned Blueprints</p>
+                <p><i class="padlx fa fa-ban" aria-hidden="true"></i> $blueprintDefinitionsOrphanedCount Orphaned Blueprint definitions</p>
 "@)
     }
     #endregion SUMMARYBlueprintsOrphaned
@@ -19578,6 +19578,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
 #region BuildJSON
 if (-not $NoJsonExport) {
+    #$fileName = get-date -format "yyyyMM-dd HHmmss"
     $startJSON = get-date
     $startBuildHt = get-date
 
@@ -19657,11 +19658,11 @@ if (-not $NoJsonExport) {
                     $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).PolicySetDefinitionsCustom.$($PolSetDef) = [ordered]@{}
                     $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).PolicySetDefinitionsCustom.$($PolSetDef) = ($htCacheDefinitions).policySet.$($PolSetDef).Json
                 }
-                foreach ($PolAssignment in $policyAssignmentsAtScope.Where( { $($htCacheAssignmentsPolicy).($_).Assignment.id -like "/subscriptions/$($subscription.subscriptionId)/*" })) {
+                foreach ($PolAssignment in $policyAssignmentsAtScope.Where( { $($htCacheAssignmentsPolicy).($_).Assignment.id -like "/subscriptions/$($subscription.subscriptionId)/*" -and $($htCacheAssignmentsPolicy).($_).Assignment.id -notlike "/subscriptions/$($subscription.subscriptionId)/resourceGroups/*"})) {
                     $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).PolicyAssignments.$($PolAssignment) = [ordered]@{}
                     $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).PolicyAssignments.$($PolAssignment) = $($htCacheAssignmentsPolicy).($PolAssignment).Assignment
                 }
-                foreach ($RoleAssignment in $roleAssignmentsAtScope.Where( { ($htCacheAssignments).role.$_.RoleAssignmentId -like "/subscriptions/$($subscription.subscriptionId)/*" })) {
+                foreach ($RoleAssignment in $roleAssignmentsAtScope.Where( { ($htCacheAssignments).role.$_.RoleAssignmentId -like "/subscriptions/$($subscription.subscriptionId)/*" -and ($htCacheAssignments).role.$_.RoleAssignmentId -notlike "/subscriptions/$($subscription.subscriptionId)/resourceGroups/*"})) {
                     $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).RoleAssignments.$($RoleAssignment) = [ordered]@{}
                     $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).RoleAssignments.$($RoleAssignment) = ($htCacheAssignments).role.$($RoleAssignment)
                 }
