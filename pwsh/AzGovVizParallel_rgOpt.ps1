@@ -6405,6 +6405,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         $script:scopescnter = 0
         Write-Host "   append file duration: " (Measure-Command { $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force }).TotalSeconds "seconds"
         $script:html = $null 
+        [System.GC]::Collect()
     }
 
 }
@@ -9416,6 +9417,8 @@ extensions: [{ name: 'sort' }]
         $htmlTenantSummary = [System.Text.StringBuilder]::new()
         $end = get-date
         Write-Host "   append file duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
+        [System.GC]::Collect()
+        
         [void]$htmlTenantSummary.AppendLine(@"
             </tbody>
         </table>
