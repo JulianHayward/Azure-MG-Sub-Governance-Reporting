@@ -104,6 +104,12 @@
 .PARAMETER ChangeTrackingDays 
     Define the period for Change tracking on newly created and updated custom Policy, PolicySet and RBAC Role definitions and Policy/RBAC Role assignments (default is '14')
 
+.PARAMETER FileTimeStampFormat
+    Ddefine the time format for the output files (default is `yyyyMMdd_HHmmss`)
+
+.PARAMETER JsonExport
+    Enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
+
 .EXAMPLE
     Define the ManagementGroup ID
     PS C:\> .\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id>
@@ -192,6 +198,12 @@
     Define the period for Change tracking on newly created and updated custom Policy, PolicySet and RBAC Role definitions and Policy/RBAC Role assignments (default is '14')
     PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -ChangeTrackingDays 30
 
+    Define the time format for the output files (default is `yyyyMMdd_HHmmss`)
+    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -FileTimeStampFormat "yyyyMM-dd_HHmm" (default is `yyyyMMdd_HHmmss`)
+
+    Enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
+    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -JsonExport
+
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
@@ -203,7 +215,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210515_1",
+    [string]$AzGovVizVersion = "v5_major_20210517_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -239,7 +251,7 @@ Param
     [string]$SubscriptionId4AzContext = "undefined",
     [int]$ChangeTrackingDays = 14,
     [string]$FileTimeStampFormat = "yyyyMMdd_HHmmss",
-    [switch]$NoJsonExport,
+    [switch]$JsonExport,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]$LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -407,11 +419,11 @@ else {
     $htParameters.RBACAtScopeOnly = $false
 }
 
-if ($NoJsonExport){
-    $htParameters.NoJsonExport = $true
+if ($JsonExport){
+    $htParameters.JsonExport = $true
 }
 else {
-    $htParameters.NoJsonExport = $false
+    $htParameters.JsonExport = $false
 }
 #endregion htParameters
 
@@ -1810,7 +1822,7 @@ function dataCollection($mgId) {
             $L0mgmtGroupPolicyAssignmentsPolicyAndPolicySetAtScopeCount = ($L0mgmtGroupPolicyAssignmentsPolicyAtScopeCount + $L0mgmtGroupPolicyAssignmentsPolicySetAtScopeCount)
             foreach ($L0mgmtGroupPolicyAssignment in $L0mgmtGroupPolicyAssignments) {
 
-                if ($htParameters.NoJsonExport -eq $false) {
+                if ($htParameters.JsonExport -eq $true) {
                     if (-not $htCacheAssignmentsPolicy.($L0mgmtGroupPolicyAssignment.Id)) {
                         $script:htCacheAssignmentsPolicy.($L0mgmtGroupPolicyAssignment.Id) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
                         $script:htCacheAssignmentsPolicy.($L0mgmtGroupPolicyAssignment.Id).Assignment = $L0mgmtGroupPolicyAssignment
@@ -3013,7 +3025,7 @@ function dataCollection($mgId) {
 
                     foreach ($L1mgmtGroupSubPolicyAssignment in $L1mgmtGroupSubPolicyAssignmentsQuery ) {            
 
-                        if ($htParameters.NoJsonExport -eq $false) {
+                        if ($htParameters.JsonExport -eq $true) {
                             if (-not $htCacheAssignmentsPolicy.($L1mgmtGroupSubPolicyAssignment.Id)) {
                                 $script:htCacheAssignmentsPolicy.($L1mgmtGroupSubPolicyAssignment.Id) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
                                 $script:htCacheAssignmentsPolicy.($L1mgmtGroupSubPolicyAssignment.Id).Assignment = $L1mgmtGroupSubPolicyAssignment
@@ -6499,6 +6511,9 @@ function summary() {
         if ($cnter % 1000 -eq 0) {
             $etappeRoleAssignmentsAll = get-date
             Write-Host "   $cnter of $roleAssignmentsallCount RoleAssignments processed; $((NEW-TIMESPAN -Start $startRoleAssignmentsAllPre -End $etappeRoleAssignmentsAll).TotalSeconds) seconds"
+            if ($cnter % 5000 -eq 0) {
+                [System.GC]::Collect()
+            }
         }
         $scope = $null
 
@@ -8892,6 +8907,9 @@ extensions: [{ name: 'sort' }]
         if ($cnter % 1000 -eq 0) {
             $etappeSummaryPolicyAssignmentsAll = get-date
             Write-Host "   $cnter of $allPolicyAssignments PolicyAssignments processed: $((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAll -End $etappeSummaryPolicyAssignmentsAll).TotalSeconds) seconds"
+            if ($cnter % 5000 -eq 0) {
+                [System.GC]::Collect()
+            }
         }
 
         $excludedScope = "false"
@@ -10127,8 +10145,14 @@ extensions: [{ name: 'sort' }]
         $htmlSummaryRoleAssignmentsAll = [System.Text.StringBuilder]::new()
         foreach ($roleAssignment in $rbacAllSorted) {
             $cnter++
-            if ($cnter % 10000 -eq 0) {
+            if ($cnter % 1000 -eq 0) {
                 Write-Host "    create HTML $cnter of $rbacAllCount RoleAssignments processed"
+                if ($cnter % 5000 -eq 0) {
+                    Write-Host "    appending.."
+                    [void]$htmlTenantSummary.AppendLine($htmlSummaryRoleAssignmentsAll)
+                    $htmlSummaryRoleAssignmentsAll = [System.Text.StringBuilder]::new()
+                    [System.GC]::Collect()
+                }
             }
             [void]$htmlSummaryRoleAssignmentsAll.AppendFormat( 
                 @'
@@ -18412,6 +18436,8 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
             Write-Host "$arrayGroupRequestResourceNotFoundCount Groups could not be checked for Memberships"
         }
 
+        Write-Host " Collected $($arrayProgressedAADGroups.Count) AAD Groups"
+
         $endAADGroupsResolveMembers = Get-Date
         Write-Host "Resolving AAD Groups duration: $((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
     }
@@ -19577,7 +19603,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 #endregion BuildConsumptionCSV
 
 #region BuildJSON
-if (-not $NoJsonExport) {
+if ($JsonExport) {
     #$fileName = get-date -format "yyyyMM-dd HHmmss"
     $startJSON = get-date
     $startBuildHt = get-date

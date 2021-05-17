@@ -1,9 +1,11 @@
 # AzGovViz - Azure Governance Visualizer
 
-Do you want to get granular insights on your technical Azure Governance implementation? - document it in CSV, HTML and MD (Markdown)?  
+Do you want to get granular insights on your technical Azure Governance implementation? - document it in CSV, HTML, Markdown and JSON?  
 AzGovViz is a PowerShell based script that iterates your Azure Tenant´s Management Group hierarchy down to Subscription level. It captures most relevant Azure governance capabilities such as Azure Policy, RBAC and Blueprints and a lot more. From the collected data AzGovViz provides visibility on your __HierarchyMap__, creates a __TenantSummary__, creates __DefinitionInsights__ and builds granular __ScopeInsights__ on Management Groups and Subscriptions. The technical requirements as well as the required permissions are minimal.
 
-You can run the script either for your Tenant Root Group or any other Management Group that you have read access on.
+You can run the script either for your Tenant Root Group or any other Management Group.
+
+## AzGovViz´s mission
 
 <table>
 <td>
@@ -15,7 +17,7 @@ Challenges:
  * Holistic overview on governance implementation  
  * Connecting the dots
 
-AzGovViz is intended to help you to get a holistic overview on your technical Azure Governance implementation by connecting the dots.
+__AzGovViz is intended to help you to get a holistic overview on your technical Azure Governance implementation by connecting the dots__
 
 </td>
 <td>
@@ -27,36 +29,25 @@ AzGovViz is intended to help you to get a holistic overview on your technical Az
 
 ## AzGovViz @ Microsoft Cloud Adoption Framework
 
-<table>
-<td>
-
-<img width="120" src="img/caf-govern.png">
-
-</td>
-<td>
-
-Listed as tool for the Govern discipline in the Microsoft Cloud Adoption Framework!  
+<img align="left" height="80" src="img/caf.png"> Listed as tool for the Govern discipline in the Microsoft Cloud Adoption Framework!  
 https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-templates#govern
 
 Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template.
 
-</td>
-</table>
-
-<hr>
-
 ## AzGovViz release history
 
-__Changes__ (2021-May-05)
+__Changes__ (2021-May-17)
 
 * Removed Azure PowerShell module requirement Az.ResourceGraph 
-* Preview __TenantSummary__ 'Change tracking' section. Tracks newly created and updated custom Policy, PolicySet and RBAC Role definitions, Policy/RBAC Role assignments and Resources that occured within the last 14 days (period can be adjusted using new parameter `-ChangeTrackingDays`) 
-* New parameters `-PolicyIncludeResourceGroups` and `-RBACIncludeResourceGroupsAndResources` - include Policy/Role assignments on ResourceGroups and Resources
+* __TenantSummary__ 'Change tracking' section. Tracks newly created and updated custom Policy, PolicySet and RBAC Role definitions, Policy/RBAC Role assignments and Resources that occured within the last 14 days (period can be adjusted using new parameter `-ChangeTrackingDays`)
+* New parameters `-PolicyIncludeResourceGroups` and `-RBACIncludeResourceGroupsAndResources` - include Policy assignments on ResourceGroups, include Role assignments on ResourceGroups and Resources
 * New parameters `-PolicyAtScopeOnly` and `-RBACAtScopeOnly` - removing 'inherited' lines in the HTML file; use this parameter if you run against a larger tenants
 * New parameter `-CsvExport` - export enriched data for 'Role assignments', 'Policy assignments' data and 'all resources' (subscriptionId, managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
+* New parameter `-JsonExport`- export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
 * Added ClassicAdministrators Role assignment information
 * Restructure __TenantSummary__ - Limits gets its own section
 * Added sytem metadata for Policy/RBAC definitions and assignments
+* New parameter `-FileTimeStampFormat`- define the time format for the output files (default is `yyyyMMdd_HHmmss`)
 * Updated API error codes
 * Cosmetics / Icons
 * Bugfixes
@@ -152,22 +143,13 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
 * __Blueprints__
   * Blueprint scopes and assignments
   * Orphaned Blueprints
-* __Management Groups & limits__
-  * Management Group count and Management Group level depth
-  * Default Management Group
-  * Management Groups approaching ARM limits:
-    * Policy assignment limit
-    * Policy / PolicySet definition scope limit
-    * Role assignment limit
-* __Subscriptions, Resources & limits__
+* __Management Groups__
+  * Management Group count, level/depth, MG children, Sub children
+  * Hierarchy Settings | Default Management Group Id
+  * Hierarchy Settings | Require authorization for Management Group creation
+* __Subscriptions, Resources__
   * Subscription insights
     * QuotaId, State, Tags, Azure Security Center Secure Score, Cost, Management Group path
-    * Subscriptions approaching ARM limits:
-      * ResourceGroup limit
-      * Subscription Tags limit
-      * Policy assignment limit
-      * Policy / PolicySet definition scope limit
-      * Role assignment limit
   * Tag Name usage
     * Insights on usage of Tag Names on Subscriptions, ResourceGroups and Resources
   * Resources
@@ -185,6 +167,20 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
         * Explicit Resource Provider state per Subscription
       * Resource Locks
         * Aggregated insights for Lock and respective Lock-type usage on Subscriptions, ResourceGroups and Resources
+* __Limits__
+  * Tenant approaching ARM limits:
+    * Custom Role definitions
+    * PolicySet definitions
+  * Management Groups approaching ARM limits:
+    * Policy assignment limit
+    * Policy / PolicySet definition scope limit
+    * Role assignment limit
+  * Subscriptions approaching ARM limits:
+    * ResourceGroup limit
+    * Subscription Tags limit
+    * Policy assignment limit
+    * Policy / PolicySet definition scope limit
+    * Role assignment limit
 * __Azure Active Directory (AAD)__
   * Insights on those Service Principals where a Role assignment exists (scopes: Management Group, Subscription, ResourceGroup, Resource):
     * Type=ManagedIdentity
@@ -194,6 +190,15 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
       * Report on external Service Principals
 * __Consumption__
   * Aggregated consumption insights throughout the entirety of scopes (Management Groups, Subscriptions)
+* __Change tracking__
+  * Policy
+    * Created/Updated Policy and PolicySet definitions (system metadata 'createdOn, createdBy, updatedOn, updatedBy')
+    * Created/Updated Policy assignments (system metadata 'createdOn, createdBy, updatedOn, updatedBy')
+  * RBAC
+    * Created/Updated Role definitions (system metadata 'createdOn, createdBy, updatedOn, updatedBy')
+    * Created Role assignments (system metadata 'createdOn, createdBy)
+  * Resources
+    * Aggregated insights on Created/Changed Resources
 
 <hr>
 
@@ -395,7 +400,9 @@ This permission is <b>mandatory</b> in each and every scenario!
   * `-CsvExport` - export enriched data for 'Role assignments', 'Policy assignments' data and 'all resources' (subscriptionId,  managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
   * `-PolicyIncludeResourceGroups` - include Policy assignments on ResourceGroups
   * `-RBACIncludeResourceGroupsAndResources` - include Role assignments on ResourceGroups and Resources
-  * `-ChangeTrackingDays` - Define the period for Change tracking on newly created and updated custom Policy, PolicySet and RBAC Role definitions and Policy/RBAC Role assignments (default is '14') 
+  * `-ChangeTrackingDays` - define the period for Change tracking on newly created and updated custom Policy, PolicySet and RBAC Role definitions and Policy/RBAC Role assignments (default is '14') 
+  * `-FileTimeStampFormat`- define the time format for the output files (default is `yyyyMMdd_HHmmss`)
+  * `-JsonExport` - enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON 
 
 * Passed tests: Powershell Core 7.1.2 on Windows
 * Passed tests: Powershell Core 7.1.3 Azure DevOps hosted ubuntu-18.04
