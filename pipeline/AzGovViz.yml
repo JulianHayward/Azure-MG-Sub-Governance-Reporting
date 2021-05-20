@@ -1,11 +1,11 @@
-# AzGovViz v5_major_20210505_1
+# AzGovViz v5_major_20210517_1
 # First things first: 
-# 1. edit line 52 and line 53 
-# 2. check line 67 if branch 'master' is applicable 
+# 1. edit line 54 and line 55 
+# 2. check line 69 if branch 'master' is applicable 
 # Documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 # Also check https://www.azadvertizer.net - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
 # 
-# Parameters reference (use in line 92)
+# Parameters reference (use in line 94)
 # LimitCriticalPercentage | default is '80' | example: -LimitCriticalPercentage 90  | WhatDoesItDo? marks capabilities that approch limits e.g. limit 100, usage 80 will mark with warning
 # SubscriptionQuotaIdWhitelist | default is 'undefined' | example: -SubscriptionQuotaIdWhitelist MSDN_, EnterpriseAgreement_ | WhatDoesItDo? processes only subscriptions that startWith the given QuotaIds
 # HierarchyMapOnly | switch | example: -HierarchyMapOnly | WhatDoesItDo? only creates the Hierarchy Tree
@@ -33,6 +33,8 @@
 # PolicyIncludeResourceGroups | example: -PolicyIncludeResourceGroups | WhatDoesItDo? Include Policy assignments on ResourceGroups
 # RBACIncludeResourceGroupsAndResources | example: -RBACIncludeResourceGroupsAndResources | WhatDoesItDo? Include Role assignments on ResourceGroups and Resources
 # ChangeTrackingDays | example: -ChangeTrackingDays 30 | WhatDoesItDo? Tracks newly created and updated custom Policy, PolicySet and RBAC Role definitions, Policy/RBAC Role assignments and Resources that occured within the last 14 days (default)
+# FileTimeStampFormat | example: -FileTimeStampFormat "yyyyMM-dd_HHmm" | WhatDoesItDo? Time format for the output files (default is `yyyyMMdd_HHmmss`)
+# JsonExport | example: -JsonExport | WhatDoesItDo? Export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
 
 trigger: none
 

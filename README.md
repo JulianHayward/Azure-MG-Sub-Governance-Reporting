@@ -1,9 +1,11 @@
 # AzGovViz - Azure Governance Visualizer
 
-Do you want to get granular insights on your technical Azure Governance implementation? - document it in CSV, HTML and MD (Markdown)?  
+Do you want to get granular insights on your technical Azure Governance implementation? - document it in CSV, HTML, Markdown and JSON?  
 AzGovViz is a PowerShell based script that iterates your Azure Tenant´s Management Group hierarchy down to Subscription level. It captures most relevant Azure governance capabilities such as Azure Policy, RBAC and Blueprints and a lot more. From the collected data AzGovViz provides visibility on your __HierarchyMap__, creates a __TenantSummary__, creates __DefinitionInsights__ and builds granular __ScopeInsights__ on Management Groups and Subscriptions. The technical requirements as well as the required permissions are minimal.
 
-You can run the script either for your Tenant Root Group or any other Management Group that you have read access on.
+You can run the script either for your Tenant Root Group or any other Management Group.
+
+## AzGovViz´s mission
 
 <table>
 <td>
@@ -15,7 +17,7 @@ Challenges:
  * Holistic overview on governance implementation  
  * Connecting the dots
 
-AzGovViz is intended to help you to get a holistic overview on your technical Azure Governance implementation by connecting the dots.
+__AzGovViz is intended to help you to get a holistic overview on your technical Azure Governance implementation by connecting the dots__
 
 </td>
 <td>
@@ -27,36 +29,25 @@ AzGovViz is intended to help you to get a holistic overview on your technical Az
 
 ## AzGovViz @ Microsoft Cloud Adoption Framework
 
-<table>
-<td>
-
-<img width="120" src="img/caf-govern.png">
-
-</td>
-<td>
-
-Listed as tool for the Govern discipline in the Microsoft Cloud Adoption Framework!  
+<img align="left" height="80" src="img/caf.png"> Listed as tool for the Govern discipline in the Microsoft Cloud Adoption Framework!  
 https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-templates#govern
 
 Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template.
 
-</td>
-</table>
-
-<hr>
-
 ## AzGovViz release history
 
-__Changes__ (2021-May-05)
+__Changes__ (2021-May-19)
 
 * Removed Azure PowerShell module requirement Az.ResourceGraph 
-* Preview __TenantSummary__ 'Change tracking' section. Tracks newly created and updated custom Policy, PolicySet and RBAC Role definitions, Policy/RBAC Role assignments and Resources that occured within the last 14 days (period can be adjusted using new parameter `-ChangeTrackingDays`) 
-* New parameters `-PolicyIncludeResourceGroups` and `-RBACIncludeResourceGroupsAndResources` - include Policy/Role assignments on ResourceGroups and Resources
+* __TenantSummary__ 'Change tracking' section. Tracks newly created and updated custom Policy, PolicySet and RBAC Role definitions, Policy/RBAC Role assignments and Resources that occured within the last 14 days (period can be adjusted using new parameter `-ChangeTrackingDays`)
+* New parameters `-PolicyIncludeResourceGroups` and `-RBACIncludeResourceGroupsAndResources` - include Policy assignments on ResourceGroups, include Role assignments on ResourceGroups and Resources
 * New parameters `-PolicyAtScopeOnly` and `-RBACAtScopeOnly` - removing 'inherited' lines in the HTML file; use this parameter if you run against a larger tenants
 * New parameter `-CsvExport` - export enriched data for 'Role assignments', 'Policy assignments' data and 'all resources' (subscriptionId, managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
+* !_experimental_ New parameter `-JsonExport`- export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
 * Added ClassicAdministrators Role assignment information
 * Restructure __TenantSummary__ - Limits gets its own section
 * Added sytem metadata for Policy/RBAC definitions and assignments
+* New parameter `-FileTimeStampFormat`- define the time format for the output files (default is `yyyyMMdd_HHmmss`)
 * Updated API error codes
 * Cosmetics / Icons
 * Bugfixes
@@ -71,9 +62,9 @@ __Changes__ (2021-May-05)
 <table>
 <td>
 
-<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210323_1.html" target="_blank">![Demo](img/demo4_66.png)</a>
+<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210519_1.html" target="_blank">![Demo](img/demo4_66.png)</a>
 
-[Demo (Version 5; 2021-MAR-23)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210323_1.html)
+[Demo (Version 5; 2021-MAY-20)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210519_1.html)
 
 </td>
 <td>
@@ -152,22 +143,13 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
 * __Blueprints__
   * Blueprint scopes and assignments
   * Orphaned Blueprints
-* __Management Groups & limits__
-  * Management Group count and Management Group level depth
-  * Default Management Group
-  * Management Groups approaching ARM limits:
-    * Policy assignment limit
-    * Policy / PolicySet definition scope limit
-    * Role assignment limit
-* __Subscriptions, Resources & limits__
+* __Management Groups__
+  * Management Group count, level/depth, MG children, Sub children
+  * Hierarchy Settings | Default Management Group Id
+  * Hierarchy Settings | Require authorization for Management Group creation
+* __Subscriptions, Resources__
   * Subscription insights
     * QuotaId, State, Tags, Azure Security Center Secure Score, Cost, Management Group path
-    * Subscriptions approaching ARM limits:
-      * ResourceGroup limit
-      * Subscription Tags limit
-      * Policy assignment limit
-      * Policy / PolicySet definition scope limit
-      * Role assignment limit
   * Tag Name usage
     * Insights on usage of Tag Names on Subscriptions, ResourceGroups and Resources
   * Resources
@@ -185,6 +167,20 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
         * Explicit Resource Provider state per Subscription
       * Resource Locks
         * Aggregated insights for Lock and respective Lock-type usage on Subscriptions, ResourceGroups and Resources
+* __Limits__
+  * Tenant approaching ARM limits:
+    * Custom Role definitions
+    * PolicySet definitions
+  * Management Groups approaching ARM limits:
+    * Policy assignment limit
+    * Policy / PolicySet definition scope limit
+    * Role assignment limit
+  * Subscriptions approaching ARM limits:
+    * ResourceGroup limit
+    * Subscription Tags limit
+    * Policy assignment limit
+    * Policy / PolicySet definition scope limit
+    * Role assignment limit
 * __Azure Active Directory (AAD)__
   * Insights on those Service Principals where a Role assignment exists (scopes: Management Group, Subscription, ResourceGroup, Resource):
     * Type=ManagedIdentity
@@ -194,6 +190,15 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
       * Report on external Service Principals
 * __Consumption__
   * Aggregated consumption insights throughout the entirety of scopes (Management Groups, Subscriptions)
+* __Change tracking__
+  * Policy
+    * Created/Updated Policy and PolicySet definitions (system metadata 'createdOn, createdBy, updatedOn, updatedBy')
+    * Created/Updated Policy assignments (system metadata 'createdOn, createdBy, updatedOn, updatedBy')
+  * RBAC
+    * Created/Updated Role definitions (system metadata 'createdOn, createdBy, updatedOn, updatedBy')
+    * Created Role assignments (system metadata 'createdOn, createdBy)
+  * Resources
+    * Aggregated insights on Created/Changed Resources
 
 <hr>
 
@@ -224,7 +229,8 @@ markdown in Azure DevOps Wiki as Code
   * Browsers tested: Edge, new Edge and Chrome
 * MD (Markdown) file
   * for use with Azure DevOps Wiki leveraging the [Mermaid](https://docs.microsoft.com/en-us/azure/devops/release-notes/2019/sprint-158-update#mermaid-diagram-support-in-wiki) plugin
-
+* JSON file (_experimental_)
+  * export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
 > Note: there is some fixing ongoing at the mermaid project to optimize the graphical experience:  
  <https://github.com/mermaid-js/mermaid/issues/1177>
 
@@ -233,6 +239,10 @@ markdown in Azure DevOps Wiki as Code
 Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
 
 ## AzGovViz technical documentation
+
+### Permissions overview
+
+![alt text](img/permissions.png "example output")
 
 ### Required permissions in Azure
 
@@ -245,8 +255,8 @@ This permission is <b>mandatory</b> in each and every scenario!
       <th>Permissions</th>
     </tr>
     <tr>
-      <td>Console or AzureDevOps Pipeline</td>
-      <td><b>Reader</b> Role assignment on Management Group level</td>
+      <td><b>ANY</b><br>Console or AzureDevOps Pipeline</td>
+      <td><b>Reader</b> Role assignment on <b>Management Group</b></td>
     </tr>
   </tbody>
 </table>
@@ -260,13 +270,18 @@ This permission is <b>mandatory</b> in each and every scenario!
       <th>Permissions</th>
     </tr>
     <tr>
-      <td>Console using a Guest user</td>
+      <td><b>A</b><br>Console | Member user account</td>
+      <td>No AAD permissions required
+      </td>
+    </tr>
+    <tr>
+      <td><b>B</b><br>Console | Guest user account</td>
       <td>Add assignment for the Guest user to AAD Role <b>Directory readers</b><br>OR<br>Use parameters:<br>&nbsp;-NoAADGuestUsers<br>&nbsp;-NoAADGroupsResolveMembers<br>&nbsp;-NoAADServicePrincipalResolve<br>
       &#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/fundamentals/users-default-permissions.md#compare-member-and-guest-default-permissions" target="_blank">Compare member and guest default permissions</a>
       </td>
     </tr>
     <tr>
-      <td>Console using Service Principal</td>
+      <td><b>C</b><br>Console | Service Principal</td>
       <td>
         <b>Option 1</b> (simple setup but more read permissions than required)<br>
         Add assignment for the Service Principal to AAD Role <b>Directory readers</b><br>&#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/roles/permissions-reference.md#directory-readers" target="_blank">Directory readers</a><br><br>
@@ -303,7 +318,7 @@ This permission is <b>mandatory</b> in each and every scenario!
       </td>
     </tr>
     <tr>
-      <td>Azure DevOps Pipeline</td>
+      <td><b>D</b><br>Azure DevOps Pipeline | ServicePrincipal (ServiceConnection)</td>
       <td>
         <b>Option 1</b> (simple setup but more read permissions than required)<br>
         Add assignment for the Azure DevOps Service Connection's Service Principal to AAD Role <b>Directory readers</b><br>&#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/roles/permissions-reference.md#directory-readers" target="_blank">Directory readers</a><br><br>
@@ -346,10 +361,15 @@ This permission is <b>mandatory</b> in each and every scenario!
 
 #### PowerShell
 
+* Requires PowerShell 7 (minimum supported version 7.0.3)
+  * [Get PowerShell](https://github.com/PowerShell/PowerShell#get-powershell)
+  * [Installing PowerShell on Windows](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-windows)
+  * [Installing PowerShell on Linux](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-linux)
 * Requires PowerShell Az Modules
   * Az.Accounts
   * Az.Resources
   * ~~Az.ResourceGraph~~
+  * [Install the Azure Az PowerShell module](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps)
 * Usage
   * `.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>`
 * Parameters
@@ -381,7 +401,9 @@ This permission is <b>mandatory</b> in each and every scenario!
   * `-CsvExport` - export enriched data for 'Role assignments', 'Policy assignments' data and 'all resources' (subscriptionId,  managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
   * `-PolicyIncludeResourceGroups` - include Policy assignments on ResourceGroups
   * `-RBACIncludeResourceGroupsAndResources` - include Role assignments on ResourceGroups and Resources
-  * `-ChangeTrackingDays` - Define the period for Change tracking on newly created and updated custom Policy, PolicySet and RBAC Role definitions and Policy/RBAC Role assignments (default is '14') 
+  * `-ChangeTrackingDays` - define the period for Change tracking on newly created and updated custom Policy, PolicySet and RBAC Role definitions and Policy/RBAC Role assignments (default is '14') 
+  * `-FileTimeStampFormat`- define the time format for the output files (default is `yyyyMMdd_HHmmss`)
+  * `-JsonExport` - enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON 
 
 * Passed tests: Powershell Core 7.1.2 on Windows
 * Passed tests: Powershell Core 7.1.3 Azure DevOps hosted ubuntu-18.04
@@ -398,7 +420,7 @@ The provided example Pipeline is configured to run based on a [schedule](https:/
 5. Run the Pipeline
 6. Create Wiki by choosing [Publish Code as Wiki](https://docs.microsoft.com/en-us/azure/devops/project/wiki/publish-repo-to-wiki?view=azure-devops&tabs=browser), define the folder 'wiki' from the 'Azure-MG-Sub-Governance-Reporting' Repository as source
 
-> Make sure your Service Connection´s Service Principal has been granted with the required permissions (see [__Required permissions in Azure Active Directory / API permissions__](#required-permissions-in-azure-active-directory)).
+> Make sure your Service Connection´s Service Principal has been granted with the required permissions (see [__Required permissions in Azure Active Directory__](#required-permissions-in-azure-active-directory)).
 
 ## AzGovViz sidenotes
 
@@ -419,7 +441,7 @@ Please feel free to contribute. Thanks to so many supporters - testing, giving f
 
 Thanks Stefan Stranger (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale. Make sure you read Stefan´s Blog Article: <a href="https://stefanstranger.github.io/2020/08/28/EnterpriseScalePolicyDrivenGovernance/" target="_blank">Enterprise-Scale - Policy Driven Governance</a> 
 
-Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale (see latest [__demo__](#azgovviz-in-action)).
+Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale.
 
 Special thanks to Tim Wanierke, Brooks Vaughn and Friedrich Weinmann (Microsoft).
 
