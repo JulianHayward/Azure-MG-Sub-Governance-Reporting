@@ -106,91 +106,91 @@
 
 .EXAMPLE
     Define the ManagementGroup ID
-    PS C:\> .\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id>
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>
 
     Define how the CSV output should be delimited. Valid input is ; or , (semicolon is default)
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -CsvDelimiter ","
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -CsvDelimiter ","
     
     Define the outputPath (must exist)
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -OutputPath 123
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -OutputPath 123
     
     Define if User information should be scrubbed (default prints Userinformation to the CSV and HTML output)
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -DoNotShowRoleAssignmentsUserData
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -DoNotShowRoleAssignmentsUserData
     
     Define if only the HierarchyMap output should be created. Will ignore the parameters 'LimitCriticalPercentage' and 'DoNotShowRoleAssignmentsUserData' (default queries for Governance capabilities such as policy-, role-, blueprints assignments and more)
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -HierarchyMapOnly
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -HierarchyMapOnly
 
     Define if ASC SecureScore should be queried for Subscriptions
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -NoASCSecureScore
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoASCSecureScore
 
     Define if a detailed summary on Resource Provider states per Subscription should be created in the TenantSummary section
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -NoResourceProvidersDetailed
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoResourceProvidersDetailed
 
     Define if the script runs in AzureDevOps.
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -AzureDevOpsWikiAsCode
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -AzureDevOpsWikiAsCode
     
     Define when limits should be highlighted as warning (default is 80 percent)
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -LimitCriticalPercentage 90
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -LimitCriticalPercentage 90
 
     Define the QuotaId whitelist by providing strings separated by a backslash
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionQuotaIdWhitelist MSDN_\EnterpriseAgreement_
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionQuotaIdWhitelist MSDN_\EnterpriseAgreement_
 
     Define if policy compliance states should be queried
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPolicyComplianceStates
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPolicyComplianceStates
 
     Define if Resource Diagnostics Policy Lifecycle recommendations should not be created
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -NoResourceDiagnosticsPolicyLifecycle
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoResourceDiagnosticsPolicyLifecycle
 
     Define if Azure Active Directory Group memberships should not be resolved for Role assignments where identity type is 'Group'
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -NoAADGroupsResolveMembers
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoAADGroupsResolveMembers
 
     Define if Azure Active Directory User type (Guest or Member) should not be resolved for Role assignments where identity type is 'User'
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -NoAADGuestUsers
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoAADGuestUsers
 
     Define if Azure Active Directory Service Principals should not be resolved for Role assignments where identity type is 'ServicePrincipal'
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -NoAADServicePrincipalResolve
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoAADServicePrincipalResolve
 
     Define Service Principal Secret and Certificate grace period (lifetime below the defined will be marked for warning / default is 14 days)
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -AADServicePrincipalExpiryWarningDays 30
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -AADServicePrincipalExpiryWarningDays 30
 
     Define if Azure Consumption data should not be reported
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -NoAzureConsumption
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoAzureConsumption
 
     Define for which time period (days) Azure Consumption data should be gathered; e.g. 14 days; default is 1 day
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -AzureConsumptionPeriod 14
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -AzureConsumptionPeriod 14
 
     Define if ScopeInsights should be created or not. Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -NoScopeInsights
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoScopeInsights
 
     Define the number of script blocks running in parallel. Leveraging PowerShell Core´s parallel capability you can define the ThrottleLimit (default=5)
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -ThrottleLimit 10
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ThrottleLimit 10
 
     Define if you want to log the console output
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -DoTranscript
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -DoTranscript
 
     Define the direction the Hierarchy should be built in Azure DevOps WokiAsCode (Markdown) TD = TopDown (Horizontal), LR = LeftRight (Vertical)
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -AzureDevOpsWikiHierarchyDirection "LR"
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -AzureDevOpsWikiHierarchyDirection "LR"
 
     Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionId4AzContext "<your-Subscription-Id>"
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionId4AzContext "<your-Subscription-Id>"
 
     Removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -PolicyAtScopeOnly
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -PolicyAtScopeOnly
 
     Removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -RBACAtScopeOnly
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -RBACAtScopeOnly
     
     Export enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, mgPath, resourceType, id, name, location, tags, createdTime, changedTime)
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -CsvExport
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -CsvExport
 
     Include Policy assignments on ResourceGroups
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -PolicyIncludeResourceGroups
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -PolicyIncludeResourceGroups
 
     Include Role assignments on ResourceGroups and Resources
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -RBACIncludeResourceGroupsAndResources
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -RBACIncludeResourceGroupsAndResources
 
     Define the period for Change tracking on newly created and updated custom Policy, PolicySet and RBAC Role definitions and Policy/RBAC Role assignments (default is '14')
-    PS C:\>.\AzGovViz.ps1 -ManagementGroupId <your-Management-Group-Id> -ChangeTrackingDays 30
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ChangeTrackingDays 30
 
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
