@@ -62,9 +62,9 @@ __Changes__ (2021-May-19)
 <table>
 <td>
 
-<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210323_1.html" target="_blank">![Demo](img/demo4_66.png)</a>
+<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210519_1.html" target="_blank">![Demo](img/demo4_66.png)</a>
 
-[Demo (Version 5; 2021-MAR-23)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210323_1.html)
+[Demo (Version 5; 2021-MAY-20)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210519_1.html)
 
 </td>
 <td>
@@ -229,7 +229,8 @@ markdown in Azure DevOps Wiki as Code
   * Browsers tested: Edge, new Edge and Chrome
 * MD (Markdown) file
   * for use with Azure DevOps Wiki leveraging the [Mermaid](https://docs.microsoft.com/en-us/azure/devops/release-notes/2019/sprint-158-update#mermaid-diagram-support-in-wiki) plugin
-
+* JSON file (_experimental_)
+  * export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
 > Note: there is some fixing ongoing at the mermaid project to optimize the graphical experience:  
  <https://github.com/mermaid-js/mermaid/issues/1177>
 
@@ -419,7 +420,7 @@ The provided example Pipeline is configured to run based on a [schedule](https:/
 5. Run the Pipeline
 6. Create Wiki by choosing [Publish Code as Wiki](https://docs.microsoft.com/en-us/azure/devops/project/wiki/publish-repo-to-wiki?view=azure-devops&tabs=browser), define the folder 'wiki' from the 'Azure-MG-Sub-Governance-Reporting' Repository as source
 
-> Make sure your Service Connection´s Service Principal has been granted with the required permissions (see [__Required permissions in Azure Active Directory / API permissions__](#required-permissions-in-azure-active-directory)).
+> Make sure your Service Connection´s Service Principal has been granted with the required permissions (see [__Required permissions in Azure Active Directory__](#required-permissions-in-azure-active-directory)).
 
 ## AzGovViz sidenotes
 
@@ -440,7 +441,7 @@ Please feel free to contribute. Thanks to so many supporters - testing, giving f
 
 Thanks Stefan Stranger (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale. Make sure you read Stefan´s Blog Article: <a href="https://stefanstranger.github.io/2020/08/28/EnterpriseScalePolicyDrivenGovernance/" target="_blank">Enterprise-Scale - Policy Driven Governance</a> 
 
-Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale (see latest [__demo__](#azgovviz-in-action)).
+Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale.
 
 Special thanks to Tim Wanierke, Brooks Vaughn and Friedrich Weinmann (Microsoft).
 
