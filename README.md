@@ -120,6 +120,7 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
   * Orphaned custom Role definitions
     * List of custom Role definitions that matches the following criteria:
       * Role definition is not used in any Role assignment
+      * Role is not used in a Policy definition´s rule (roleDefinitionIds)
   * Orphaned Role assignments
     * List of Role assignments that matches the following criteria:
       * Role definition was deleted although and assignment existed
