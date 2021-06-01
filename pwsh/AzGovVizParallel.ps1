@@ -215,7 +215,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_minor_20210524_1",
+    [string]$AzGovVizVersion = "v5_feature_20210601_4",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -1562,6 +1562,7 @@ function dataCollection($mgId) {
         $arrayDataCollectionProgressMg = $using:arrayDataCollectionProgressMg
         $arrayAPICallTracking = $using:arrayAPICallTracking
         $arrayAPICallTrackingCustomDataCollection = $using:arrayAPICallTrackingCustomDataCollection
+        $arrayDiagnosticSettingsMgSub = $using:arrayDiagnosticSettingsMgSub
         #Functions
         $function:AzAPICall = $using:funcAzAPICall
         $function:createBearerToken = $using:funcCreateBearerToken
@@ -1585,7 +1586,74 @@ function dataCollection($mgId) {
         start-sleep -Millisecond $rndom
         $startMgLoopThis = get-date
 
-        if ($htParameters.HierarchyMapOnly -eq $false) {         
+        if ($htParameters.HierarchyMapOnly -eq $false) {
+            
+            #mg https://management.azure.com/providers/Microsoft.Management/managementGroups/emea/providers/microsoft.insights/diagnosticSettings?api-version=2021-05-01-preview
+            $currentTask = "getDiagnosticSettingsMg '$($mgdetail.properties.displayName)' ('$($mgdetail.Name)')"
+            $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/providers/microsoft.insights/diagnosticSettings?api-version=2020-01-01-preview"
+            $method = "GET"
+            $getDiagnosticSettingsMg = AzAPICall -uri $uri -method $method -currentTask $currentTask
+
+            foreach ($diagnosticSetting in $getDiagnosticSettingsMg){
+                $arrayLogs = [System.Collections.ArrayList]@()
+                if ($diagnosticSetting.Properties.logs){
+                    foreach ($logCategory in $diagnosticSetting.properties.logs){
+                        $null = $arrayLogs.Add([PSCustomObject]@{
+                            Category = $logCategory.category
+                            Enabled = $logCategory.enabled
+                        })
+                    }
+                }
+
+                $htLogs = @{}
+                if ($diagnosticSetting.Properties.logs){
+                    foreach ($logCategory in $diagnosticSetting.properties.logs){
+                        if ($logCategory.enabled){
+                            $htLogs.($logCategory.category) = "true"
+                        }
+                        else{
+                            $htLogs.($logCategory.category) = "false"
+                        }
+                    }
+                }
+
+                if ($diagnosticSetting.Properties.workspaceId){
+                    $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                        Scope = "Mg"
+                        ScopeName = $mgdetail.properties.displayName
+                        ScopeId = $mgdetail.Name
+                        DiagnosticSettingName = $diagnosticSetting.name
+                        DiagnosticTargetType = "LA"
+                        DiagnosticTargetId = $diagnosticSetting.Properties.workspaceId
+                        DiagnosticCategories = $arrayLogs
+                        DiagnosticCategoriesHt = $htLogs
+                    })
+                }
+                if ($diagnosticSetting.Properties.storageAccountId){
+                    $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                        Scope = "Mg"
+                        ScopeName = $mgdetail.properties.displayName
+                        ScopeId = $mgdetail.Name
+                        DiagnosticSettingName = $diagnosticSetting.name
+                        DiagnosticTargetType = "SA"
+                        DiagnosticTargetId = $diagnosticSetting.Properties.storageAccountId
+                        DiagnosticCategories = $arrayLogs
+                        DiagnosticCategoriesHt = $htLogs
+                    })
+                }
+                if ($diagnosticSetting.Properties.eventHubAuthorizationRuleId){
+                    $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                        Scope = "Mg"
+                        ScopeName = $mgdetail.properties.displayName
+                        ScopeId = $mgdetail.Name
+                        DiagnosticSettingName = $diagnosticSetting.name
+                        DiagnosticTargetType = "EH"
+                        DiagnosticTargetId = $diagnosticSetting.Properties.eventHubAuthorizationRuleId
+                        DiagnosticCategories = $arrayLogs
+                        DiagnosticCategoriesHt = $htLogs
+                    })
+                }
+            }
 
             if ($htParameters.NoPolicyComplianceStates -eq $false) {
                 #MGPolicyCompliance
@@ -2377,6 +2445,7 @@ function dataCollection($mgId) {
                 $arrayEntitiesFromAPI = $using:arrayEntitiesFromAPI
                 $arrayAPICallTracking = $using:arrayAPICallTracking
                 $arrayAPICallTrackingCustomDataCollection = $using:arrayAPICallTrackingCustomDataCollection
+                $arrayDiagnosticSettingsMgSub = $using:arrayDiagnosticSettingsMgSub
                 #Functions
                 $function:AzAPICall = $using:funcAzAPICall
                 $function:createBearerToken = $using:funcCreateBearerToken
@@ -2400,12 +2469,77 @@ function dataCollection($mgId) {
                 $rndom = Get-Random -Minimum 10 -Maximum 750
                 start-sleep -Millisecond $rndom
                 if ($htParameters.HierarchyMapOnly -eq $false) {
-                    
                     $currentSubscription = $htAllSubscriptionsFromAPI.($childMgSubId).subDetails
-
-
                     $subscriptionQuotaId = $currentSubscription.subscriptionPolicies.quotaId
                     $subscriptionState = $currentSubscription.state
+
+                    
+                    #sub https://management.azure.com/subscriptions/<subId>/providers/microsoft.insights/diagnosticSettings?api-version=2021-05-01-preview
+                    $currentTask = "getDiagnosticSettingsSub for SubscriptionId: '$($childMgSubId)'"
+                    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/providers/microsoft.insights/diagnosticSettings?api-version=2021-05-01-preview"
+                    $method = "GET"
+                    $getDiagnosticSettingsSub = AzAPICall -uri $uri -method $method -currentTask $currentTask
+
+                    foreach ($diagnosticSetting in $getDiagnosticSettingsSub){
+                        $arrayLogs = [System.Collections.ArrayList]@()
+                        if ($diagnosticSetting.Properties.logs){
+                            foreach ($logCategory in $diagnosticSetting.properties.logs){
+                                $null = $arrayLogs.Add([PSCustomObject]@{
+                                    Category = $logCategory.category
+                                    Enabled = $logCategory.enabled
+                                })
+                            }
+                        }
+
+                        $htLogs = @{}
+                        if ($diagnosticSetting.Properties.logs){
+                            foreach ($logCategory in $diagnosticSetting.properties.logs){
+                                if ($logCategory.enabled){
+                                    $htLogs.($logCategory.category) = "true"
+                                }
+                                else{
+                                    $htLogs.($logCategory.category) = "false"
+                                }
+                            }
+                        }
+
+                        if ($diagnosticSetting.Properties.workspaceId){
+                            $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                                Scope = "Sub"
+                                ScopeName = $childMgSubDisplayName
+                                ScopeId = $childMgSubId
+                                DiagnosticSettingName = $diagnosticSetting.name
+                                DiagnosticTargetType = "LA"
+                                DiagnosticTargetId = $diagnosticSetting.Properties.workspaceId
+                                DiagnosticCategories = $arrayLogs
+                                DiagnosticCategoriesHt = $htLogs
+                            })
+                        }
+                        if ($diagnosticSetting.Properties.storageAccountId){
+                            $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                                Scope = "Sub"
+                                ScopeName = $childMgSubDisplayName
+                                ScopeId = $childMgSubId
+                                DiagnosticSettingName = $diagnosticSetting.name
+                                DiagnosticTargetType = "SA"
+                                DiagnosticTargetId = $diagnosticSetting.Properties.storageAccountId
+                                DiagnosticCategories = $arrayLogs
+                                DiagnosticCategoriesHt = $htLogs
+                            })
+                        }
+                        if ($diagnosticSetting.Properties.eventHubAuthorizationRuleId){
+                            $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                                Scope = "Sub"
+                                ScopeName = $childMgSubDisplayName
+                                ScopeId = $childMgSubId
+                                DiagnosticSettingName = $diagnosticSetting.name
+                                DiagnosticTargetType = "EH"
+                                DiagnosticTargetId = $diagnosticSetting.Properties.eventHubAuthorizationRuleId
+                                DiagnosticCategories = $arrayLogs
+                                DiagnosticCategoriesHt = $htLogs
+                            })
+                        }
+                    }
 
                     $currentTask = "Getting ResourceTypes for SubscriptionId: '$($childMgSubId)'"
                     $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/resources?`$expand=createdTime,changedTime&api-version=2020-06-01"
@@ -4084,9 +4218,150 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId) {
 <p>State: $subscriptionState</p>
 </td></tr>
 <tr><td class="detailstd"><p>QuotaId: $subscriptionQuotaId</p></td></tr>
-<tr><td class="detailstd"><p><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/10241-icon-service-Security-Center.svg"> ASC Secure Score: $subscriptionASCPoints <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a></p></td></tr>
+<tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> ASC Secure Score: $subscriptionASCPoints <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a></p></td></tr>
 <tr><td class="detailstd">
 "@)
+
+        #region ScopeInsightsDiganosticsSubscription
+        if (($htDiagnosticSettingsMgSub).sub.($subscriptionId)) {
+            $diagnosticsSubCount = (($htDiagnosticSettingsMgSub).sub.($subscriptionId).Values.Count)
+            $tfCount = $diagnosticsSubCount
+            $htmlTableId = "ScopeInsights_DiagnosticsSub_$($subscriptionId -replace '-','_')"
+            $randomFunctionName = "func_$htmlTableId"
+            [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $diagnosticsSubCount Subscription Diagnostic settings</p></button>
+<div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="$cssClass">
+<thead>
+<tr>
+<th>Diagnostic setting</th>
+<th>Target</th>
+<th>Target Id</th>
+"@)
+            foreach ($logCategory in $diagnosticSettingsSubCategories) {
+                [void]$htmlScopeInsights.AppendLine(@"
+<th>$logCategory</th>
+"@)
+            }
+            [void]$htmlScopeInsights.AppendLine(@"
+</tr>
+</thead>
+<tbody>
+"@)
+            $htmlScopeInsightsDiagnosticsSub = $null
+            $htmlScopeInsightsDiagnosticsSub = foreach ($entry in ($htDiagnosticSettingsMgSub).sub.($subscriptionId).keys) {
+                foreach ($diagset in ($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.keys) {
+                    @"
+<tr>
+<td>$(($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.$diagset.DiagnosticSettingName)</td>
+<td>$(($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.$diagset.DiagnosticTargetType)</td>
+<td>$(($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.$diagset.DiagnosticTargetId)</td>
+"@  
+                    foreach ($logCategory in $diagnosticSettingsSubCategories) {
+                        if (($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.$diagset.DiagnosticCategoriesHt.($logCategory)) {
+                            @"
+<td>$(($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.$diagset.DiagnosticCategoriesHt.($logCategory))</td>
+"@  
+                        }
+                        else {
+                            @"
+<td>n/a</td>
+"@ 
+                        }
+                    }
+                    @"
+</tr>
+"@
+                }
+            }
+
+            [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsDiagnosticsSub)
+            [void]$htmlScopeInsights.AppendLine(@"
+</tbody>
+</table>
+<script>
+function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) { 
+window.helpertfConfig4$htmlTableId =1;
+var tfConfig4$htmlTableId = {
+base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlScopeInsights.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
+"@)  
+            }
+            [void]$htmlScopeInsights.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_1: 'select',
+"@)
+            $cnt = 2
+            foreach ($logCategory in $diagnosticSettingsSubCategories){
+                $cnt++
+                [void]$htmlScopeInsights.AppendLine(@"
+                col_$($cnt): 'select',
+"@)          
+            }
+[void]$htmlScopeInsights.AppendLine(@"
+col_types: [
+    'caseinsensitivestring',
+    'caseinsensitivestring',
+    'caseinsensitivestring',
+"@)
+            $cnt = 0
+            foreach ($logCategory in $diagnosticSettingsSubCategories) {
+                $cnt++
+                if ($diagnosticSettingsSubCategories.Count -eq $cnt) {
+                    [void]$htmlScopeInsights.AppendLine(@"
+    'caseinsensitivestring'
+"@)
+                }
+                else {
+                    [void]$htmlScopeInsights.AppendLine(@"
+    'caseinsensitivestring',
+"@)          
+                }
+            }
+            [void]$htmlScopeInsights.AppendLine(@"
+],
+extensions: [{ name: 'sort' }]
+};
+var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+tf.init();}}
+</script>
+</div>
+"@)
+        }
+        else {
+            [void]$htmlScopeInsights.AppendLine(@"
+<p><i class="fa fa-ban" aria-hidden="true"></i> No Subscription Diagnostic settings <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/essentials/quick-collect-activity-log-portal#create-diagnostic-setting" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+"@)
+        }
+        [void]$htmlScopeInsights.AppendLine(@"
+</td></tr>
+<tr><!--y--><td class="detailstd"><!--y-->
+"@)
+        #endregion ScopeInsightsDiganosticsSubscription
+
         #Tags
         #region ScopeInsightsTags
         $tagsSubscriptionCount = ($htSubscriptionTags.$subscriptionId.Keys | Measure-Object).count
@@ -4646,9 +4921,149 @@ extensions: [{ name: 'sort' }]
     if ($mgOrSub -eq "mg") {
 
         [void]$htmlScopeInsights.AppendLine(@"
-<p>$(($mgAllChildMgs | Measure-Object).count -1) ManagementGroups below this scope</p>
-</td></tr>
+<tr><td class="detailstd"><p>$(($mgAllChildMgs | Measure-Object).count -1) ManagementGroups below this scope</p></td></tr>
 <tr><td class="detailstd"><p>$(($mgAllChildSubscriptions | Measure-Object).count) Subscriptions below this scope</p></td></tr>
+<tr><td class="detailstd">
+"@)
+
+        #region ScopeInsightsDiagnosticsMg
+        if (($htDiagnosticSettingsMgSub).mg.($mgChild)) {
+            $diagnosticsMgCount = (($htDiagnosticSettingsMgSub).mg.($mgChild).Values.Count)
+            $tfCount = $diagnosticsMgCount
+            $htmlTableId = "ScopeInsights_DiagnosticsMg_$($mgChild -replace '-','_')"
+            $randomFunctionName = "func_$htmlTableId"
+            [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $diagnosticsMgCount Management Group Diagnostic settings</p></button>
+<div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="$cssClass">
+<thead>
+<tr>
+<th>Diagnostic setting</th>
+<th>Target</th>
+<th>Target Id</th>
+"@)
+            foreach ($logCategory in $diagnosticSettingsMgCategories) {
+                [void]$htmlScopeInsights.AppendLine(@"
+<th>$logCategory</th>
+"@)
+            }
+            [void]$htmlScopeInsights.AppendLine(@"
+</tr>
+</thead>
+<tbody>
+"@)
+            $htmlScopeInsightsDiagnosticsMg = $null
+            $htmlScopeInsightsDiagnosticsMg = foreach ($entry in ($htDiagnosticSettingsMgSub).mg.($mgChild).keys) {
+                foreach ($diagset in ($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.keys) {
+                    @"
+<tr>
+<td>$(($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.$diagset.DiagnosticSettingName)</td>
+<td>$(($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.$diagset.DiagnosticTargetType)</td>
+<td>$(($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.$diagset.DiagnosticTargetId)</td>
+"@  
+                    foreach ($logCategory in $diagnosticSettingsMgCategories) {
+                        if (($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.$diagset.DiagnosticCategoriesHt.($logCategory)) {
+                            @"
+<td>$(($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.$diagset.DiagnosticCategoriesHt.($logCategory))</td>
+"@  
+                        }
+                        else {
+                            @"
+<td>n/a</td>
+"@ 
+                        }
+                    }
+                    @"
+</tr>
+"@
+                }
+            }
+
+            [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsDiagnosticsMg)
+            [void]$htmlScopeInsights.AppendLine(@"
+    </tbody>
+</table>
+<script>
+    function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) { 
+window.helpertfConfig4$htmlTableId =1;
+var tfConfig4$htmlTableId = {
+        base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlScopeInsights.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
+"@)  
+            }
+            [void]$htmlScopeInsights.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_1: 'select',
+"@)
+            $cnt = 2
+            foreach ($logCategory in $diagnosticSettingsMgCategories){
+                $cnt++
+                [void]$htmlScopeInsights.AppendLine(@"
+                col_$($cnt): 'select',
+"@)          
+            }
+[void]$htmlScopeInsights.AppendLine(@"
+        col_types: [
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+"@)
+            $cnt = 0
+            foreach ($logCategory in $diagnosticSettingsMgCategories) {
+                $cnt++
+                if ($diagnosticSettingsMgCategories.Count -eq $cnt) {
+                    [void]$htmlScopeInsights.AppendLine(@"
+            'caseinsensitivestring'
+"@)
+                }
+                else {
+                    [void]$htmlScopeInsights.AppendLine(@"
+            'caseinsensitivestring',
+"@)          
+                }
+            }
+            [void]$htmlScopeInsights.AppendLine(@"
+        ],
+extensions: [{ name: 'sort' }]
+    };
+    var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+    tf.init();}}
+</script>
+</div>
+"@)
+        }
+        else {
+            [void]$htmlScopeInsights.AppendLine(@"
+    <p><i class="fa fa-ban" aria-hidden="true"></i> No Management Group Diagnostic settings <a class="externallink" href="https://docs.microsoft.com/en-us/rest/api/monitor/managementgroupdiagnosticsettings/createorupdate" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+"@)
+        }
+        #endregion ScopeInsightsDiagnosticsMg
+
+        [void]$htmlScopeInsights.AppendLine(@"
+</td></tr>
 <tr><td class="detailstd">
 "@)
 
@@ -12103,8 +12518,678 @@ extensions: [{ name: 'sort' }]
     Write-Host "   SUMMARY Resources ByLocation processing duration: $((NEW-TIMESPAN -Start $startSUMMARYResources -End $endSUMMARYResources).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYResources -End $endSUMMARYResources).TotalSeconds) seconds)"
     #endregion SUMMARYResourcesByLocation
 
+    #region SUMMARYSubResourceProviders
+    $startSUMMARYSubResourceProviders = get-date
+    Write-Host "  processing TenantSummary Subscriptions Resource Providers"
+    $resourceProvidersAllCount = (($htResourceProvidersAll).Keys | Measure-Object).count
+    if ($resourceProvidersAllCount -gt 0) {
+        $grped = ($arrayResourceProvidersAll) | sort-object -property namespace, registrationState | group-object namespace
+        $htResProvSummary = @{ }
+        foreach ($grp in $grped) {
+            $htResProvSummary.($grp.name) = @{ }
+            $regstates = ($grp.group | sort-object -property registrationState -unique).registrationstate
+            foreach ($regstate in $regstates) {
+                $htResProvSummary.($grp.name).$regstate = (($grp.group).where( { $_.registrationstate -eq $regstate }) | measure-object).count
+            }
+        }
+        $providerSummary = [System.Collections.ArrayList]@()
+        foreach ($provider in $htResProvSummary.keys) {
+            $hlperProvider = $htResProvSummary.$provider
+            if ($hlperProvider.registered) {
+                $registered = $hlperProvider.registered
+            }
+            else {
+                $registered = "0"
+            }
+
+            if ($hlperProvider.registering) {
+                $registering = $hlperProvider.registering
+            }
+            else {
+                $registering = "0"
+            }
+
+            if ($hlperProvider.notregistered) {
+                $notregistered = $hlperProvider.notregistered
+            }
+            else {
+                $notregistered = "0"
+            }
+
+            if ($hlperProvider.unregistering) {
+                $unregistering = $hlperProvider.unregistering
+            }
+            else {
+                $unregistering = "0"
+            }
+
+            $null = $providerSummary.Add([PSCustomObject]@{
+                    Provider      = $provider
+                    Registered    = $registered
+                    NotRegistered = $notregistered
+                    Registering   = $registering
+                    Unregistering = $unregistering 
+                })
+        }
+
+        $uniqueNamespaces = ($arrayResourceProvidersAll) | Sort-Object -Property namespace -Unique
+        $uniqueNamespacesCount = ($uniqueNamespaces | Measure-Object).count
+        $uniqueNamespaceRegistrationState = ($arrayResourceProvidersAll) | Sort-Object -Property namespace, registrationState -Unique
+        $providersRegistered = ($uniqueNamespaceRegistrationState.where( { $_.registrationState -eq "registered" -or $_.registrationState -eq "registering" }) | Sort-Object namespace -Unique).namespace
+        $providersRegisteredCount = ($providersRegistered | Measure-Object).count
+
+        $providersNotRegisteredUniqueCount = 0 
+        foreach ($uniqueNamespace in $uniqueNamespaces) {
+            if ($providersRegistered -notcontains ($uniqueNamespace.namespace)) {
+                $providersNotRegisteredUniqueCount++
+            }
+        }
+        $tfCount = $uniqueNamespacesCount
+        $htmlTableId = "TenantSummary_SubResourceProviders"
+        [void]$htmlTenantSummary.AppendLine(@"
+<button type="button" class="collapsible" id="buttonTenantSummary_SubResourceProviders"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Total: $uniqueNamespacesCount Registered/Registering: $providersRegisteredCount NotRegistered/Unregistering: $providersNotRegisteredUniqueCount</span></button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Provider</th>
+<th>Registered</th>
+<th>Registering</th>
+<th>NotRegistered</th>
+<th>Unregistering</th>
+</tr>
+</thead>
+<tbody>
+"@)
+        $htmlSUMMARYSubResourceProviders = $null
+        $htmlSUMMARYSubResourceProviders = foreach ($provider in ($providerSummary | Sort-Object -Property Provider)) {
+            @"
+<tr>
+<td>$($provider.Provider)</td>
+<td>$($provider.Registered)</td>
+<td>$($provider.Registering)</td>
+<td>$($provider.NotRegistered)</td>
+<td>$($provider.Unregistering)</td>
+</tr>
+"@ 
+        }
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYSubResourceProviders)
+        [void]$htmlTenantSummary.AppendLine(@"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,      
+"@)      
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
+"@)
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_types: [
+                'caseinsensitivestring',
+                'number',
+                'number',
+                'number',
+                'number'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();
+    </script>
+"@)
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$resourceProvidersAllCount Resource Providers</span></p>
+"@)
+    }
+    $endSUMMARYSubResourceProviders = get-date
+    Write-Host "   TenantSummary Subscriptions Resource Providers duration: $((NEW-TIMESPAN -Start $startSUMMARYSubResourceProviders -End $endSUMMARYSubResourceProviders).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYSubResourceProviders -End $endSUMMARYSubResourceProviders).TotalSeconds) seconds)"
+    #endregion SUMMARYSubResourceProviders
+
+    #region SUMMARYSubResourceProvidersDetailed
+    if ($htParameters.NoResourceProvidersDetailed -eq $false) {
+
+        Write-Host "  processing TenantSummary Subscriptions Resource Providers detailed"
+        $startsumRPDetailed = get-date
+        $resourceProvidersAllCount = (($htResourceProvidersAll).Keys | Measure-Object).count
+        if ($resourceProvidersAllCount -gt 0) {
+            $tfCount = (($arrayResourceProvidersAll) | Measure-Object).Count
+            $htmlTableId = "TenantSummary_SubResourceProvidersDetailed"
+            [void]$htmlTenantSummary.AppendLine(@"
+<button type="button" class="collapsible" id="buttonTenantSummary_SubResourceProvidersDetailed"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Mg Name</th>
+<th>MgId</th>
+<th>Subscription Name</th>
+<th>SubscriptionId</th>
+<th>Provider</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+"@)
+            $cnter = 0
+            $startResProvDetailed = get-date
+            $htmlSUMMARYSubResourceProvidersDetailed = $null
+            $htmlSUMMARYSubResourceProvidersDetailed = foreach ($subscriptionResProv in (($htResourceProvidersAll).Keys | sort-object)) {
+                $subscriptionResProvDetails = $optimizedTableForPathQueryMgAndSub.where( { $_.SubscriptionId -eq $subscriptionResProv }) | sort-object -Property SubscriptionId -Unique
+                foreach ($provider in ($htResourceProvidersAll).($subscriptionResProv).Providers | sort-object @{Expression = { $_.namespace } }) {
+                    $cnter++
+                    if ($cnter % 1000 -eq 0) {
+                        $etappeResProvDetailed = get-date
+                        Write-Host "   $cnter ResProv processed; $((NEW-TIMESPAN -Start $startResProvDetailed -End $etappeResProvDetailed).TotalSeconds) seconds"  
+                    }
+                    @"
+<tr>
+<td>$($subscriptionResProvDetails.MgName)</td>
+<td>$($subscriptionResProvDetails.MgId)</td>
+<td>$($subscriptionResProvDetails.Subscription)</td>
+<td>$($subscriptionResProv)</td>
+<td>$($provider.namespace)</td>
+<td>$($provider.registrationState)</td>
+</tr>
+"@ 
+                }
+            }
+            [void]$htmlTenantSummary.AppendLine($htmlSUMMARYSubResourceProvidersDetailed)
+            [void]$htmlTenantSummary.AppendLine(@"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+            
+"@)      
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
+"@) 
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_5: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();
+    </script>
+"@)
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$resourceProvidersAllCount Resource Providers</span></p>
+"@)
+        }
+        $endsumRPDetailed = get-date
+        Write-Host "   RP detailed processing duration: $((NEW-TIMESPAN -Start $startsumRPDetailed -End $endsumRPDetailed).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startsumRPDetailed -End $endsumRPDetailed).TotalSeconds) seconds)"
+    }
+    #endregion SUMMARYSubResourceProvidersDetailed
+
+    #region SUMMARYSubResourceLocks
+    Write-Host "  processing TenantSummary Subscriptions Resource Locks"
+    $tfCount = 6
+    $startResourceLocks = get-date
+
+    if (($htResourceLocks.keys | Measure-Object).Count -gt 0) {
+        $htmlTableId = "TenantSummary_ResourceLocks"        
+        
+        $subscriptionLocksCannotDeleteCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).SubscriptionLocksCannotDeleteCount -gt 0 } | Measure-Object).Count
+        $subscriptionLocksReadOnlyCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).SubscriptionLocksReadOnlyCount -gt 0 } | Measure-Object).Count
+
+        $resourceGroupsLocksCannotDeleteCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).ResourceGroupsLocksCannotDeleteCount -gt 0 } | Measure-Object).Count
+        $resourceGroupsLocksReadOnlyCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).ResourceGroupsLocksReadOnlyCount -gt 0 } | Measure-Object).Count
+
+        $resourcesLocksCannotDeleteCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).ResourcesLocksCannotDeleteCount -gt 0 } | Measure-Object).Count
+        $resourcesLocksReadOnlyCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).ResourcesLocksReadOnlyCount -gt 0 } | Measure-Object).Count
+        
+        [void]$htmlTenantSummary.AppendLine(@"
+<button type="button" class="collapsible" id="buttonTenantSummary_ResourceLocks"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Locks</span></button>
+<div class="content TenantSummary">
+<span class="padlxx info">Considerations before applying locks</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources#considerations-before-applying-locks" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Lock scope</th>
+<th>Lock type</th>
+<th>presence</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>Subscription</td><td>CannotDelete</td><td>$($subscriptionLocksCannotDeleteCount) of $totalSubCount Subscriptions</td></tr>
+<tr><td>Subscription</td><td>ReadOnly</td><td>$($subscriptionLocksReadOnlyCount) of $totalSubCount Subscriptions</td></tr>
+<tr><td>ResourceGroup</td><td>CannotDelete</td><td>$($resourceGroupsLocksCannotDeleteCount) of $totalSubCount Subscriptions (total: $(($htResourceLocks.Values.ResourceGroupsLocksCannotDeleteCount | Measure-Object -Sum).Sum))</td></tr>
+<tr><td>ResourceGroup</td><td>ReadOnly</td><td>$($resourceGroupsLocksReadOnlyCount) of $totalSubCount Subscriptions (total: $(($htResourceLocks.Values.ResourceGroupsLocksReadOnlyCount | Measure-Object -Sum).Sum))</td></tr>
+<tr><td>Resource</td><td>CannotDelete</td><td>$($resourcesLocksCannotDeleteCount) of $totalSubCount Subscriptions (total: $(($htResourceLocks.Values.ResourcesLocksCannotDeleteCount | Measure-Object -Sum).Sum))</td></tr>
+<tr><td>Resource</td><td>ReadOnly</td><td>$($resourcesLocksReadOnlyCount) of $totalSubCount Subscriptions (total: $(($htResourceLocks.Values.ResourcesLocksReadOnlyCount | Measure-Object -Sum).Sum))</td></tr>
+</tbody>
+</table>
+<script>
+        var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)      
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
+"@) 
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_0: 'select',
+            col_1: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();
+    </script>
+</div>
+"@)
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Resource Locks at all <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources#considerations-before-applying-locks" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></span></p>
+"@)
+    }
+    $endResourceLocks = get-date
+    Write-Host "   ResourceLocks processing duration: $((NEW-TIMESPAN -Start $startResourceLocks -End $endResourceLocks).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startResourceLocks -End $endResourceLocks).TotalSeconds) seconds)"
+    #endregion SUMMARYSubResourceLocks
+
+    [void]$htmlTenantSummary.AppendLine(@"
+    </div>
+"@)
+    #endregion tenantSummarySubscriptions
+
+    #region tenantSummaryDiagnostics
+    [void]$htmlTenantSummary.AppendLine(@"
+    <button type="button" class="collapsible" id="tenantSummaryDiagnostics"><hr class="hr-textDiagnostics" data-content="Diagnostics" /></button>
+    <div class="content TenantSummaryContent">
+"@)
+
+[void]$htmlTenantSummary.AppendLine( @"
+<p><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle"><b>Management Groups</b></span></p>
+"@)
+
+    #region SUMMARYDiagnosticsManagementGroups
+    Write-Host "  processing TenantSummary Diagnostics Management Groups"
+    
+    if ($diagnosticSettingsMgCount -gt 0) {
+        $tfCount = $diagnosticSettingsMgCount
+        $htmlTableId = "TenantSummary_DiagnosticsManagementGroups"
+        [void]$htmlTenantSummary.AppendLine(@"
+<button type="button" class="collapsible" id="buttonTenantSummary_DiagnosticsManagementGroups"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$diagnosticSettingsMgManagementGroupsCount Management Groups configured for Diagnostic settings ($diagnosticSettingsMgCount settings)</span></button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <span class="info">Management Group Diagnostic Settings - Create Or Update - REST API</span> <a class="externallink" href="https://docs.microsoft.com/en-us/rest/api/monitor/managementgroupdiagnosticsettings/createorupdate" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id= "$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Management Group</th>
+<th>Management Group Id</th>
+<th>Diagnostic setting</th>
+<th>Target</th>
+<th>TargetId</th>
+"@)
+
+    foreach ($logCategory in $diagnosticSettingsMgCategories){
+        [void]$htmlTenantSummary.AppendLine(@"
+<th>$logCategory</th>
+"@)
+    }
+
+    [void]$htmlTenantSummary.AppendLine(@"
+</tr>
+</thead>
+<tbody>
+"@)
+        $htmlSUMMARYDiagnosticsManagementGroups = $null
+        $htmlSUMMARYDiagnosticsManagementGroups = foreach ($entry in $diagnosticSettingsMg) {
+
+            @"
+<tr>
+<td>$($entry.ScopeName)</td>
+<td>$($entry.ScopeId)</td>
+<td>$($entry.DiagnosticSettingName)</td>
+<td>$($entry.DiagnosticTargetType)</td>
+<td>$($entry.DiagnosticTargetId)</td>
+"@
+            foreach ($logCategory in $diagnosticSettingsMgCategories){
+                if ($entry.DiagnosticCategoriesHt.($logCategory)){
+                    @"
+                    <td>$($entry.DiagnosticCategoriesHt.($logCategory))</td>
+"@
+                }
+                else{
+                    @"
+                    <td>n/a</td>
+"@
+                }
+            }
+            @"
+</tr>
+"@
+        }
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYDiagnosticsManagementGroups)
+        [void]$htmlTenantSummary.AppendLine(@"
+        </tbody>
+    </table>
+</div>
+<script>
+    var tfConfig4$htmlTableId = {
+        base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
+"@)  
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+        col_3: 'select',
+"@)
+            $cnt = 4
+            foreach ($logCategory in $diagnosticSettingsMgCategories){
+                $cnt++
+                [void]$htmlTenantSummary.AppendLine(@"
+                col_$($cnt): 'select',
+"@)          
+            }
+[void]$htmlTenantSummary.AppendLine(@"
+        col_types: [
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+"@)
+            $cnt = 0
+            foreach ($logCategory in $diagnosticSettingsMgCategories){
+                $cnt++
+                if ($diagnosticSettingsMgCategories.Count -eq $cnt){
+                    [void]$htmlTenantSummary.AppendLine(@"
+                    'caseinsensitivestring'
+"@)
+                }
+                else{
+                    [void]$htmlTenantSummary.AppendLine(@"
+                    'caseinsensitivestring',
+"@)          
+                }
+            }
+[void]$htmlTenantSummary.AppendLine(@"
+        ],
+extensions: [{ name: 'sort' }]
+    };
+    var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+    tf.init();
+</script>
+"@)
+    }
+    else {
+
+        [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Management Groups configured for Diagnostic settings</span> <a class="externallink" href="https://docs.microsoft.com/en-us/rest/api/monitor/managementgroupdiagnosticsettings/createorupdate" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+"@)
+    }
+    #endregion SUMMARYDiagnosticsManagementGroups
+
+#region subscriptions
+[void]$htmlTenantSummary.AppendLine( @"
+<p><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle"><b>Subscriptions</b></span></p>
+"@)
+
+    #
+    #region SUMMARYDiagnosticsSubscriptions
+    Write-Host "  processing TenantSummary Diagnostics Subscriptions"
+    
+    if ($diagnosticSettingsSubCount -gt 0) {
+        $tfCount = $diagnosticSettingsSubCount
+        $htmlTableId = "TenantSummary_DiagnosticsSubscriptions"
+        [void]$htmlTenantSummary.AppendLine(@"
+<button type="button" class="collapsible" id="buttonTenantSummary_DiagnosticsSubscriptions"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$diagnosticSettingsSubSubscriptionsCount Subscriptions configured for Diagnostic settings ($diagnosticSettingsSubCount settings)</span></button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <span class="info">Create diagnostic setting</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/essentials/quick-collect-activity-log-portal#create-diagnostic-setting" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id= "$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Subscription</th>
+<th>SubscriptionId</th>
+<th>Diagnostic setting</th>
+<th>Target</th>
+<th>TargetId</th>
+"@)
+
+    foreach ($logCategory in $diagnosticSettingsSubCategories){
+        [void]$htmlTenantSummary.AppendLine(@"
+<th>$logCategory</th>
+"@)
+    }
+
+    [void]$htmlTenantSummary.AppendLine(@"
+</tr>
+</thead>
+<tbody>
+"@)
+        $htmlSUMMARYDiagnosticsSubscriptions = $null
+        $htmlSUMMARYDiagnosticsSubscriptions = foreach ($entry in $diagnosticSettingsSub) {
+
+            @"
+<tr>
+<td>$($entry.ScopeName)</td>
+<td>$($entry.ScopeId)</td>
+<td>$($entry.DiagnosticSettingName)</td>
+<td>$($entry.DiagnosticTargetType)</td>
+<td>$($entry.DiagnosticTargetId)</td>
+"@
+            foreach ($logCategory in $diagnosticSettingsSubCategories){
+                if ($entry.DiagnosticCategoriesHt.($logCategory)){
+                    @"
+                    <td>$($entry.DiagnosticCategoriesHt.($logCategory))</td>
+"@
+                }
+                else{
+                    @"
+                    <td>n/a</td>
+"@
+                }
+            }
+            @"
+</tr>
+"@
+        }
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYDiagnosticsSubscriptions)
+        [void]$htmlTenantSummary.AppendLine(@"
+        </tbody>
+    </table>
+</div>
+<script>
+    var tfConfig4$htmlTableId = {
+        base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
+"@)  
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+        col_3: 'select',
+"@)
+            $cnt = 4
+            foreach ($logCategory in $diagnosticSettingsSubCategories){
+                $cnt++
+                [void]$htmlTenantSummary.AppendLine(@"
+                col_$($cnt): 'select',
+"@)          
+            }
+[void]$htmlTenantSummary.AppendLine(@"
+        col_types: [
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+"@)
+            $cnt = 0
+            foreach ($logCategory in $diagnosticSettingsSubCategories){
+                $cnt++
+                if ($diagnosticSettingsSubCategories.Count -eq $cnt){
+                    [void]$htmlTenantSummary.AppendLine(@"
+                    'caseinsensitivestring'
+"@)
+                }
+                else{
+                    [void]$htmlTenantSummary.AppendLine(@"
+                    'caseinsensitivestring',
+"@)          
+                }
+            }
+[void]$htmlTenantSummary.AppendLine(@"
+        ],
+extensions: [{ name: 'sort' }]
+    };
+    var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+    tf.init();
+</script>
+"@)
+    }
+    else {
+
+        [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Subscriptions configured for Diagnostic settings</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/essentials/quick-collect-activity-log-portal#create-diagnostic-setting" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+"@)
+    }
+    #endregion SUMMARYDiagnosticsSubscriptions
+    #>
+
+#endregion subscriptions
+
+#region resources
+[void]$htmlTenantSummary.AppendLine( @"
+<p><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/10001-icon-service-All-Resources.svg"> <span class="valignMiddle"><b>Resources</b></span></p>
+"@)
+
     #region SUMMARYResourcesDiagnosticsCapable
-    Write-Host "  processing TenantSummary Subscriptions Resources Diagnostics Capable"
+    Write-Host "  processing TenantSummary Diagnostics Resources Diagnostics Capable"
     $resourceTypesDiagnosticsArraySorted = $resourceTypesDiagnosticsArray | Sort-Object -Property ResourceType, ResourceCount, Metrics, Logs, LogCategories
     $resourceTypesDiagnosticsArraySortedCount = ($resourceTypesDiagnosticsArraySorted | measure-object).count
     $resourceTypesDiagnosticsMetricsTrueCount = ($resourceTypesDiagnosticsArray.where( { $_.Metrics -eq $True }) | Measure-Object).count
@@ -12219,7 +13304,7 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYDiagnosticsPolicyLifecycle
     if (-not $NoResourceDiagnosticsPolicyLifecycle) {
-        Write-Host "  processing TenantSummary Resource Diagnostics Policy Lifecycle"
+        Write-Host "  processing TenantSummary Disagnostics Resource Diagnostics Policy Lifecycle"
         $startsumDiagLifecycle = get-date
 
         if ($tenantCustomPoliciesCount -gt 0) {
@@ -12630,367 +13715,13 @@ extensions: [{ name: 'sort' }]
     }
     #endregion SUMMARYDiagnosticsPolicyLifecycle
 
-    #region SUMMARYSubResourceProviders
-    $startSUMMARYSubResourceProviders = get-date
-    Write-Host "  processing TenantSummary Subscriptions Resource Providers"
-    $resourceProvidersAllCount = (($htResourceProvidersAll).Keys | Measure-Object).count
-    if ($resourceProvidersAllCount -gt 0) {
-        $grped = ($arrayResourceProvidersAll) | sort-object -property namespace, registrationState | group-object namespace
-        $htResProvSummary = @{ }
-        foreach ($grp in $grped) {
-            $htResProvSummary.($grp.name) = @{ }
-            $regstates = ($grp.group | sort-object -property registrationState -unique).registrationstate
-            foreach ($regstate in $regstates) {
-                $htResProvSummary.($grp.name).$regstate = (($grp.group).where( { $_.registrationstate -eq $regstate }) | measure-object).count
-            }
-        }
-        $providerSummary = [System.Collections.ArrayList]@()
-        foreach ($provider in $htResProvSummary.keys) {
-            $hlperProvider = $htResProvSummary.$provider
-            if ($hlperProvider.registered) {
-                $registered = $hlperProvider.registered
-            }
-            else {
-                $registered = "0"
-            }
-
-            if ($hlperProvider.registering) {
-                $registering = $hlperProvider.registering
-            }
-            else {
-                $registering = "0"
-            }
-
-            if ($hlperProvider.notregistered) {
-                $notregistered = $hlperProvider.notregistered
-            }
-            else {
-                $notregistered = "0"
-            }
-
-            if ($hlperProvider.unregistering) {
-                $unregistering = $hlperProvider.unregistering
-            }
-            else {
-                $unregistering = "0"
-            }
-
-            $null = $providerSummary.Add([PSCustomObject]@{
-                    Provider      = $provider
-                    Registered    = $registered
-                    NotRegistered = $notregistered
-                    Registering   = $registering
-                    Unregistering = $unregistering 
-                })
-        }
-
-        $uniqueNamespaces = ($arrayResourceProvidersAll) | Sort-Object -Property namespace -Unique
-        $uniqueNamespacesCount = ($uniqueNamespaces | Measure-Object).count
-        $uniqueNamespaceRegistrationState = ($arrayResourceProvidersAll) | Sort-Object -Property namespace, registrationState -Unique
-        $providersRegistered = ($uniqueNamespaceRegistrationState.where( { $_.registrationState -eq "registered" -or $_.registrationState -eq "registering" }) | Sort-Object namespace -Unique).namespace
-        $providersRegisteredCount = ($providersRegistered | Measure-Object).count
-
-        $providersNotRegisteredUniqueCount = 0 
-        foreach ($uniqueNamespace in $uniqueNamespaces) {
-            if ($providersRegistered -notcontains ($uniqueNamespace.namespace)) {
-                $providersNotRegisteredUniqueCount++
-            }
-        }
-        $tfCount = $uniqueNamespacesCount
-        $htmlTableId = "TenantSummary_SubResourceProviders"
-        [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_SubResourceProviders"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Total: $uniqueNamespacesCount Registered/Registering: $providersRegisteredCount NotRegistered/Unregistering: $providersNotRegisteredUniqueCount</span></button>
-<div class="content TenantSummary">
-<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
-<table id="$htmlTableId" class="summaryTable">
-<thead>
-<tr>
-<th>Provider</th>
-<th>Registered</th>
-<th>Registering</th>
-<th>NotRegistered</th>
-<th>Unregistering</th>
-</tr>
-</thead>
-<tbody>
-"@)
-        $htmlSUMMARYSubResourceProviders = $null
-        $htmlSUMMARYSubResourceProviders = foreach ($provider in ($providerSummary | Sort-Object -Property Provider)) {
-            @"
-<tr>
-<td>$($provider.Provider)</td>
-<td>$($provider.Registered)</td>
-<td>$($provider.Registering)</td>
-<td>$($provider.NotRegistered)</td>
-<td>$($provider.Unregistering)</td>
-</tr>
-"@ 
-        }
-        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYSubResourceProviders)
-        [void]$htmlTenantSummary.AppendLine(@"
-            </tbody>
-        </table>
-    </div>
-    <script>
-        var tfConfig4$htmlTableId = {
-            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,      
-"@)      
-        if ($tfCount -gt 10) {
-            $spectrum = "10, $tfCount"
-            if ($tfCount -gt 50) {
-                $spectrum = "10, 25, 50, $tfCount"
-            }        
-            if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, 100, $tfCount"
-            }
-            if ($tfCount -gt 500) {
-                $spectrum = "10, 30, 50, 100, 250, $tfCount"
-            }
-            if ($tfCount -gt 1000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-            }
-            if ($tfCount -gt 2000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-            }
-            if ($tfCount -gt 3000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-            }
-            [void]$htmlTenantSummary.AppendLine(@"
-paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
-"@)
-        }
-        [void]$htmlTenantSummary.AppendLine(@"
-btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-            col_types: [
-                'caseinsensitivestring',
-                'number',
-                'number',
-                'number',
-                'number'
-            ],
-extensions: [{ name: 'sort' }]
-        };
-        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
-    </script>
-"@)
-    }
-    else {
-        [void]$htmlTenantSummary.AppendLine(@"
-    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$resourceProvidersAllCount Resource Providers</span></p>
-"@)
-    }
-    $endSUMMARYSubResourceProviders = get-date
-    Write-Host "   TenantSummary Subscriptions Resource Providers duration: $((NEW-TIMESPAN -Start $startSUMMARYSubResourceProviders -End $endSUMMARYSubResourceProviders).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYSubResourceProviders -End $endSUMMARYSubResourceProviders).TotalSeconds) seconds)"
-    #endregion SUMMARYSubResourceProviders
-
-    #region SUMMARYSubResourceProvidersDetailed
-    if ($htParameters.NoResourceProvidersDetailed -eq $false) {
-
-        Write-Host "  processing TenantSummary Subscriptions Resource Providers detailed"
-        $startsumRPDetailed = get-date
-        $resourceProvidersAllCount = (($htResourceProvidersAll).Keys | Measure-Object).count
-        if ($resourceProvidersAllCount -gt 0) {
-            $tfCount = (($arrayResourceProvidersAll) | Measure-Object).Count
-            $htmlTableId = "TenantSummary_SubResourceProvidersDetailed"
-            [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_SubResourceProvidersDetailed"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
-<div class="content TenantSummary">
-<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
-<table id="$htmlTableId" class="summaryTable">
-<thead>
-<tr>
-<th>Mg Name</th>
-<th>MgId</th>
-<th>Subscription Name</th>
-<th>SubscriptionId</th>
-<th>Provider</th>
-<th>State</th>
-</tr>
-</thead>
-<tbody>
-"@)
-            $cnter = 0
-            $startResProvDetailed = get-date
-            $htmlSUMMARYSubResourceProvidersDetailed = $null
-            $htmlSUMMARYSubResourceProvidersDetailed = foreach ($subscriptionResProv in (($htResourceProvidersAll).Keys | sort-object)) {
-                $subscriptionResProvDetails = $optimizedTableForPathQueryMgAndSub.where( { $_.SubscriptionId -eq $subscriptionResProv }) | sort-object -Property SubscriptionId -Unique
-                foreach ($provider in ($htResourceProvidersAll).($subscriptionResProv).Providers | sort-object @{Expression = { $_.namespace } }) {
-                    $cnter++
-                    if ($cnter % 1000 -eq 0) {
-                        $etappeResProvDetailed = get-date
-                        Write-Host "   $cnter ResProv processed; $((NEW-TIMESPAN -Start $startResProvDetailed -End $etappeResProvDetailed).TotalSeconds) seconds"  
-                    }
-                    @"
-<tr>
-<td>$($subscriptionResProvDetails.MgName)</td>
-<td>$($subscriptionResProvDetails.MgId)</td>
-<td>$($subscriptionResProvDetails.Subscription)</td>
-<td>$($subscriptionResProv)</td>
-<td>$($provider.namespace)</td>
-<td>$($provider.registrationState)</td>
-</tr>
-"@ 
-                }
-            }
-            [void]$htmlTenantSummary.AppendLine($htmlSUMMARYSubResourceProvidersDetailed)
-            [void]$htmlTenantSummary.AppendLine(@"
-            </tbody>
-        </table>
-    </div>
-    <script>
-        var tfConfig4$htmlTableId = {
-            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
-            
-"@)      
-            if ($tfCount -gt 10) {
-                $spectrum = "10, $tfCount"
-                if ($tfCount -gt 50) {
-                    $spectrum = "10, 25, 50, $tfCount"
-                }        
-                if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, 100, $tfCount"
-                }
-                if ($tfCount -gt 500) {
-                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
-                }
-                if ($tfCount -gt 1000) {
-                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-                }
-                if ($tfCount -gt 2000) {
-                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-                }
-                if ($tfCount -gt 3000) {
-                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-                }
-                [void]$htmlTenantSummary.AppendLine(@"
-paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
-"@) 
-            }
-            [void]$htmlTenantSummary.AppendLine(@"
-btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-            col_5: 'select',
-            col_types: [
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring'
-            ],
-extensions: [{ name: 'sort' }]
-        };
-        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
-    </script>
-"@)
-        }
-        else {
-            [void]$htmlTenantSummary.AppendLine(@"
-    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$resourceProvidersAllCount Resource Providers</span></p>
-"@)
-        }
-        $endsumRPDetailed = get-date
-        Write-Host "   RP detailed processing duration: $((NEW-TIMESPAN -Start $startsumRPDetailed -End $endsumRPDetailed).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startsumRPDetailed -End $endsumRPDetailed).TotalSeconds) seconds)"
-    }
-    #endregion SUMMARYSubResourceProvidersDetailed
-
-    #region SUMMARYSubResourceLocks
-    Write-Host "  processing TenantSummary Subscriptions Resource Locks"
-    $tfCount = 6
-    $startResourceLocks = get-date
-
-    if (($htResourceLocks.keys | Measure-Object).Count -gt 0) {
-        $htmlTableId = "TenantSummary_ResourceLocks"        
-        
-        $subscriptionLocksCannotDeleteCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).SubscriptionLocksCannotDeleteCount -gt 0 } | Measure-Object).Count
-        $subscriptionLocksReadOnlyCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).SubscriptionLocksReadOnlyCount -gt 0 } | Measure-Object).Count
-
-        $resourceGroupsLocksCannotDeleteCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).ResourceGroupsLocksCannotDeleteCount -gt 0 } | Measure-Object).Count
-        $resourceGroupsLocksReadOnlyCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).ResourceGroupsLocksReadOnlyCount -gt 0 } | Measure-Object).Count
-
-        $resourcesLocksCannotDeleteCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).ResourcesLocksCannotDeleteCount -gt 0 } | Measure-Object).Count
-        $resourcesLocksReadOnlyCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).ResourcesLocksReadOnlyCount -gt 0 } | Measure-Object).Count
-        
-        [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_ResourceLocks"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Locks</span></button>
-<div class="content TenantSummary">
-<span class="padlxx info">Considerations before applying locks</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources#considerations-before-applying-locks" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
-<table id="$htmlTableId" class="summaryTable">
-<thead>
-<tr>
-<th>Lock scope</th>
-<th>Lock type</th>
-<th>presence</th>
-</tr>
-</thead>
-<tbody>
-<tr><td>Subscription</td><td>CannotDelete</td><td>$($subscriptionLocksCannotDeleteCount) of $totalSubCount Subscriptions</td></tr>
-<tr><td>Subscription</td><td>ReadOnly</td><td>$($subscriptionLocksReadOnlyCount) of $totalSubCount Subscriptions</td></tr>
-<tr><td>ResourceGroup</td><td>CannotDelete</td><td>$($resourceGroupsLocksCannotDeleteCount) of $totalSubCount Subscriptions (total: $(($htResourceLocks.Values.ResourceGroupsLocksCannotDeleteCount | Measure-Object -Sum).Sum))</td></tr>
-<tr><td>ResourceGroup</td><td>ReadOnly</td><td>$($resourceGroupsLocksReadOnlyCount) of $totalSubCount Subscriptions (total: $(($htResourceLocks.Values.ResourceGroupsLocksReadOnlyCount | Measure-Object -Sum).Sum))</td></tr>
-<tr><td>Resource</td><td>CannotDelete</td><td>$($resourcesLocksCannotDeleteCount) of $totalSubCount Subscriptions (total: $(($htResourceLocks.Values.ResourcesLocksCannotDeleteCount | Measure-Object -Sum).Sum))</td></tr>
-<tr><td>Resource</td><td>ReadOnly</td><td>$($resourcesLocksReadOnlyCount) of $totalSubCount Subscriptions (total: $(($htResourceLocks.Values.ResourcesLocksReadOnlyCount | Measure-Object -Sum).Sum))</td></tr>
-</tbody>
-</table>
-<script>
-        var tfConfig4$htmlTableId = {
-            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
-"@)      
-        if ($tfCount -gt 10) {
-            $spectrum = "10, $tfCount"
-            if ($tfCount -gt 50) {
-                $spectrum = "10, 25, 50, $tfCount"
-            }        
-            if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, 100, $tfCount"
-            }
-            if ($tfCount -gt 500) {
-                $spectrum = "10, 30, 50, 100, 250, $tfCount"
-            }
-            if ($tfCount -gt 1000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-            }
-            if ($tfCount -gt 2000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-            }
-            if ($tfCount -gt 3000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-            }
-            [void]$htmlTenantSummary.AppendLine(@"
-paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
-"@) 
-        }
-        [void]$htmlTenantSummary.AppendLine(@"
-btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-            col_0: 'select',
-            col_1: 'select',
-            col_types: [
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'number'
-            ],
-extensions: [{ name: 'sort' }]
-        };
-        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
-    </script>
-</div>
-"@)
-    }
-    else {
-        [void]$htmlTenantSummary.AppendLine(@"
-    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Resource Locks at all <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources#considerations-before-applying-locks" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></span></p>
-"@)
-    }
-    $endResourceLocks = get-date
-    Write-Host "   ResourceLocks processing duration: $((NEW-TIMESPAN -Start $startResourceLocks -End $endResourceLocks).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startResourceLocks -End $endResourceLocks).TotalSeconds) seconds)"
-    #endregion SUMMARYSubResourceLocks
+#endregion resources
 
     [void]$htmlTenantSummary.AppendLine(@"
     </div>
 "@)
-    #endregion tenantSummarySubscriptions
+
+    #endregion tenantSummaryDiagnostics
 
     #region tenantSummaryLimits
     [void]$htmlTenantSummary.AppendLine(@"
@@ -13000,7 +13731,7 @@ extensions: [{ name: 'sort' }]
 
     #region tenantSummaryLimitsTenant
     [void]$htmlTenantSummary.AppendLine( @"
-<p><i class="padlx fa fa-home" aria-hidden="true"></i> <span class="valignMiddle"><b>Tenant</b></span></p>
+<p><i class="fa fa-home" aria-hidden="true"></i> <span class="valignMiddle"><b>Tenant</b></span></p>
 "@)
 
     #policySets
@@ -13031,7 +13762,7 @@ extensions: [{ name: 'sort' }]
 
     #region tenantSummaryLimitsManagementGroups
     [void]$htmlTenantSummary.AppendLine( @"
-<p><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle"><b>Management Groups</b></span></p>
+<p><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle"><b>Management Groups</b></span></p>
 "@)
 
     #region SUMMARYMgsapproachingLimitsPolicyAssignments
@@ -13379,7 +14110,7 @@ extensions: [{ name: 'sort' }]
 
     #region tenantSummaryLimitsSubscriptions
     [void]$htmlTenantSummary.AppendLine( @"
-<p><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle"><b>Subscriptions</b></span></p>
+<p><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle"><b>Subscriptions</b></span></p>
 "@)
 
     #region SUMMARYSubsapproachingLimitsResourceGroups
@@ -14775,49 +15506,44 @@ tf.init();
     $xdaysAgo = (get-date).AddDays(-$ChangeTrackingDays)
     
     #policy
-    write-host "ct policy"
+    write-host "   processing Policy"
     $customPolicyCreatedOrUpdated = ($customPoliciesDetailed.where( { (-not [string]::IsNullOrEmpty($_.CreatedOn) -and [datetime]$_.CreatedOn -gt $xdaysAgo) -or (-not [string]::IsNullOrEmpty($_.UpdatedOn) -and [datetime]$_.UpdatedOn -gt $xdaysAgo) }))
     $customPolicyCreatedOrUpdatedCount = $customPolicyCreatedOrUpdated.Count
     $customPolicyCreatedMgSub = ($customPolicyCreatedOrUpdated.where( { -not [string]::IsNullOrEmpty($_.CreatedOn) -and [datetime]$_.CreatedOn -gt $xdaysAgo }))
-    $customPolicyCreatedMgSubCount = ($customPolicyCreatedMgSub).count
     $customPolicyCreatedMg = ($customPolicyCreatedMgSub.where( { $_.Scope -eq "Mg" }))
     $customPolicyCreatedMgCount = ($customPolicyCreatedMg).count
     $customPolicyCreatedSub = ($customPolicyCreatedMgSub.where( { $_.Scope -eq "Sub" }))
     $customPolicyCreatedSubCount = ($customPolicyCreatedSub).count
     
     $customPolicyUpdatedMgSub = ($customPolicyCreatedOrUpdated.where( { -not [string]::IsNullOrEmpty($_.UpdatedOn) -and [datetime]$_.UpdatedOn -gt $xdaysAgo }))
-    $customPolicyUpdatedMgSubCount = ($customPolicyUpdatedMgSub).count
     $customPolicyUpdatedMg = ($customPolicyUpdatedMgSub.where( { $_.Scope -eq "Mg" }))
     $customPolicyUpdatedMgCount = ($customPolicyUpdatedMg).count
     $customPolicyUpdatedSub = ($customPolicyUpdatedMgSub.where( { $_.Scope -eq "Sub" }))
     $customPolicyUpdatedSubCount = ($customPolicyUpdatedSub).count
 
     #policySet
-    write-host "ct policySet"
+    write-host "   processing PolicySet"
     $customPolicySetCreatedOrUpdated = ($customPolicySetsDetailed.where( { (-not [string]::IsNullOrEmpty($_.CreatedOn) -and [datetime]$_.CreatedOn -gt $xdaysAgo) -or (-not [string]::IsNullOrEmpty($_.UpdatedOn) -and [datetime]$_.UpdatedOn -gt $xdaysAgo) }))
     $customPolicySetCreatedOrUpdatedCount = $customPolicySetCreatedOrUpdated.Count
 
     $customPolicySetCreatedMgSub = ($customPolicySetCreatedOrUpdated.where( { -not [string]::IsNullOrEmpty($_.CreatedOn) -and [datetime]$_.CreatedOn -gt $xdaysAgo }))
-    $customPolicySetCreatedMgSubCount = ($customPolicySetCreatedMgSub).count
     $customPolicySetCreatedMg = ($customPolicySetCreatedMgSub.where( { $_.Scope -eq "Mg" }))
     $customPolicySetCreatedMgCount = ($customPolicySetCreatedMg).count
     $customPolicySetCreatedSub = ($customPolicySetCreatedMgSub.where( { $_.Scope -eq "Sub" }))
     $customPolicySetCreatedSubCount = ($customPolicySetCreatedSub).count
     
     $customPolicySetUpdatedMgSub = ($customPolicySetCreatedOrUpdated.where( { -not [string]::IsNullOrEmpty($_.UpdatedOn) -and [datetime]$_.UpdatedOn -gt $xdaysAgo }))
-    $customPolicySetUpdatedMgSubCount = ($customPolicySetUpdatedMgSub).count
     $customPolicySetUpdatedMg = ($customPolicySetUpdatedMgSub.where( { $_.Scope -eq "Mg" }))
     $customPolicySetUpdatedMgCount = ($customPolicySetUpdatedMg).count
     $customPolicySetUpdatedSub = ($customPolicySetUpdatedMgSub.where( { $_.Scope -eq "Sub" }))
     $customPolicySetUpdatedSubCount = ($customPolicySetUpdatedSub).count
 
     #policyAssignments 
-    write-host "ct policyAssignments"
+    write-host "   processing Policy assignment"
     $policyAssignmentsCreatedOrUpdated = (($arrayPolicyAssignmentsEnriched | Sort-Object -Property PolicyAssignmentId -Unique).where( { (-not [string]::IsNullOrEmpty($_.CreatedOn) -and [datetime]$_.CreatedOn -gt $xdaysAgo) -or (-not [string]::IsNullOrEmpty($_.UpdatedOn) -and [datetime]$_.UpdatedOn -gt $xdaysAgo) }))
     $policyAssignmentsCreatedOrUpdatedCount = $policyAssignmentsCreatedOrUpdated.Count
     
     $policyAssignmentsCreatedMgSub = $policyAssignmentsCreatedOrUpdated.where( { (-not [string]::IsNullOrEmpty($_.CreatedOn) -and [datetime]$_.CreatedOn -gt $xdaysAgo) })
-    $policyAssignmentsCreatedMgSubCount = $policyAssignmentsCreatedMgSub.Count
     $policyAssignmentsCreatedMg = ($policyAssignmentsCreatedMgSub.where( { $_.mgOrSubOrRG -eq "Mg" }))
     $policyAssignmentsCreatedMgCount = ($policyAssignmentsCreatedMg).count
     $policyAssignmentsCreatedSub = ($policyAssignmentsCreatedMgSub.where( { $_.mgOrSubOrRG -eq "Sub" }))
@@ -14828,7 +15554,6 @@ tf.init();
     }
 
     $policyAssignmentsUpdatedMgSub = $policyAssignmentsCreatedOrUpdated.where( { (-not [string]::IsNullOrEmpty($_.UpdatedOn) -and [datetime]$_.UpdatedOn -gt $xdaysAgo) })
-    $policyAssignmentsUpdatedMgSubCount = $policyAssignmentsUpdatedMgSub.Count
     $policyAssignmentsUpdatedMg = ($policyAssignmentsUpdatedMgSub.where( { $_.mgOrSubOrRG -eq "Mg" }))
     $policyAssignmentsUpdatedMgCount = ($policyAssignmentsUpdatedMg).count
     $policyAssignmentsUpdatedSub = ($policyAssignmentsUpdatedMgSub.where( { $_.mgOrSubOrRG -eq "Sub" }))
@@ -14856,17 +15581,17 @@ tf.init();
 
     ##RBAC
     #rbac defs
-    write-host "ct rbac"
+    write-host "   processing RBAC"
     $customRoleDefinitionsCreatedOrUpdated = $tenantCustomRolesArray.where( { $_.IsCustom -eq $true -and $_.Json.properties.createdOn -gt $xdaysAgo -or $_.Json.properties.updatedOn -gt $xdaysAgo })
     $customRoleDefinitionsCreatedOrUpdatedCount = $customRoleDefinitionsCreatedOrUpdated.Count
 
     #rbac defs created
-    write-host "rbac defs created"
+    write-host "   processing RBAC Role definition created"
     $customRoleDefinitionsCreated = $customRoleDefinitionsCreatedOrUpdated.where( { $_.Json.properties.createdOn -gt $xdaysAgo })
     $customRoleDefinitionsCreatedCount = $customRoleDefinitionsCreated.Count
 
     #rbac defs updated
-    write-host "rbac defs updated"
+    write-host "   processing RBAC Role definition updated"
     $customRoleDefinitionsUpdated = $customRoleDefinitionsCreatedOrUpdated.where( { $_.Json.properties.updatedOn -ne $_.Json.properties.createdOn -and $_.Json.properties.updatedOn -gt $xdaysAgo })
     $customRoleDefinitionsUpdatedCount = $customRoleDefinitionsUpdated.Count
 
@@ -14876,7 +15601,7 @@ tf.init();
     #$roleAssignmentsCreatedCount
 
     #rbac roleassignments
-    write-host "rbac roleassignments"
+    write-host "   processing RBAC Role assignments"
     $roleAssignmentsCreated = ($rbacAll | Sort-Object -Property RoleAssignmentId, ObjectId -Unique).where( { -not [string]::IsNullOrEmpty($_.CreatedOn) -and [datetime]$_.CreatedOn -gt $xdaysAgo })
     $roleAssignmentsCreatedUnique = ($roleAssignmentsCreated | sort-object -Property RoleAssignmentId -Unique)
     $roleAssignmentsCreatedCount = ($roleAssignmentsCreated | sort-object -Property RoleAssignmentId -Unique).Count
@@ -14917,6 +15642,7 @@ tf.init();
     
 
     #region ctresources
+    write-host "   processing Resources"
     $resourcesCreatedOrChanged = $resourcesIdsAll.where( { $_.createdTime -gt $xdaysAgo -or $_.changedTime -gt $xdaysAgo })
     $resourcesCreatedOrChangedCount = $resourcesCreatedOrChanged.Count
 
@@ -17030,7 +17756,7 @@ if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
     Write-Host "Checking AzDO ServiceConnection permissions"
     $testSCSPAPIReadAccessResult = "letscheck"
     try {
-        $testSCSPAPIReadAccess = Get-AzRoleAssignment -scope "/providers/Microsoft.Management/managementGroups/$($selectedManagementGroupId.Name)"
+        $null = Get-AzRoleAssignment -scope "/providers/Microsoft.Management/managementGroups/$($selectedManagementGroupId.Name)"
     }
     catch {
         $testSCSPAPIReadAccessResult = $_.Exception.Message
@@ -17499,7 +18225,10 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $arrayDataCollectionProgressMg = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayDataCollectionProgressSub = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arraySubResourcesAddArrayDuration = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-
+    $arrayDiagnosticSettingsMgSub = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $htDiagnosticSettingsMgSub = @{}
+    ($htDiagnosticSettingsMgSub).mg = @{}
+    ($htDiagnosticSettingsMgSub).sub = @{}
     #subscriptions
     $startGetSubscriptions = get-date
     $currentTask = "Getting all Subscriptions"
@@ -19194,6 +19923,65 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
     $endHelperQueries = get-date
     Write-Host "Helper Queries duration: $((NEW-TIMESPAN -Start $startHelperQueries -End $endHelperQueries).TotalSeconds) seconds"
+    
+    #diagnostics Mg/Sub
+    $diagnosticSettingsMg = $arrayDiagnosticSettingsMgSub.where({ $_.Scope -eq "Mg"})
+    $diagnosticSettingsMgCount = $diagnosticSettingsMg.Count
+    $diagnosticSettingsMgCategories = ($diagnosticSettingsMg.DiagnosticCategories | Group-Object -Property Category).Name
+    $diagnosticSettingsMgGrouped = $diagnosticSettingsMg | Group-Object -Property ScopeId
+    $diagnosticSettingsMgManagementGroupsCount = ($diagnosticSettingsMgGrouped | Measure-Object).Count
+
+    foreach ($entry in $diagnosticSettingsMgGrouped){
+        $dsgrouped = $entry.group | group-object -property DiagnosticSettingName
+
+        foreach ($ds in $dsgrouped){
+            $targetTypegrouped = $ds.group | group-object -property DiagnosticTargetType
+            foreach ($tt in $targetTypegrouped){
+                if (-not ($htDiagnosticSettingsMgSub).mg.($entry.Name)){
+                    ($htDiagnosticSettingsMgSub).mg.($entry.Name) = @{}
+                }
+                if (-not ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name)){
+                    ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name) = @{}
+                }
+                if (-not ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name).($tt.Name)){
+                    ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name).($tt.Name) = $tt.group
+                }                
+            }
+        }
+    }
+
+    $diagnosticSettingsSub = $arrayDiagnosticSettingsMgSub.where({ $_.Scope -eq "Sub"})
+    $diagnosticSettingsSubCount = $diagnosticSettingsSub.Count
+    $diagnosticSettingsSubCategories = ($diagnosticSettingsSub.DiagnosticCategories | Group-Object -Property Category).Name
+    $diagnosticSettingsSubGrouped = $diagnosticSettingsSub | Group-Object -Property ScopeId
+    $diagnosticSettingsSubSubscriptionsCount = ($diagnosticSettingsSubGrouped | Measure-Object).Count
+
+    foreach ($entry in $diagnosticSettingsSubGrouped){
+        $dsgrouped = $entry.group | group-object -property DiagnosticSettingName
+
+        foreach ($ds in $dsgrouped){
+            $targetTypegrouped = $ds.group | group-object -property DiagnosticTargetType
+            foreach ($tt in $targetTypegrouped){
+                if (-not ($htDiagnosticSettingsMgSub).sub.($entry.Name)){
+                    ($htDiagnosticSettingsMgSub).sub.($entry.Name) = @{}
+                }
+                if (-not ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name)){
+                    ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name) = @{}
+                }
+                if (-not ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name).($tt.Name)){
+                    ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name).($tt.Name) = $tt.group
+                }                
+            }
+        }
+    }
+
+    <#foreach ($entry in $diagnosticSettingsSub){
+        if (-not ($htDiagnosticSettingsMgSub).sub.($entry.ScopeId)){
+            ($htDiagnosticSettingsMgSub).sub.($entry.ScopeId) = @{}
+        }
+        ($htDiagnosticSettingsMgSub).sub.($entry.ScopeId) = $entry
+    }
+    #>
     #endregion preQueries
 
     #region summarizeDataCollectionResults
@@ -19270,7 +20058,7 @@ $html += @"
         link.media = "screen,print";
         document.getElementsByTagName( "head" )[0].appendChild( link );
     </script>
-    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_033.css">
+    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_035.css">
     <script src="https://code.jquery.com/jquery-1.7.2.js" integrity="sha256-FxfqH96M63WENBok78hchTCDxmChGFlo+/lFIPcZPeI=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/ui/1.8.18/jquery-ui.js" integrity="sha256-lzf/CwLt49jbVoZoFcPZOc0LlMYPFBorVSwMsTs2zsA=" crossorigin="anonymous"></script>
     <script type="text/javascript" src="https://www.azadvertizer.net/azgovvizv4/js/highlight_v004_001.js"></script>

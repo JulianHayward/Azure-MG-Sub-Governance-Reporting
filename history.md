@@ -4,6 +4,11 @@
 
 ### AzGovViz version 5
 
+__Changes__ (2021-June-01 / Feature)
+
+* Added Management Group and Subscription Diagnostic settings
+* Restructure __TenantSummary__ - 'Diagnostics' gets its own section
+
 __Changes__ (2021-May-19)
 
 * Removed Azure PowerShell module requirement Az.ResourceGraph 

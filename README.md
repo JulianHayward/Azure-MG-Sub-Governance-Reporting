@@ -34,45 +34,25 @@ https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-
 
 Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template.
 
+<hr>
+
 ## AzGovViz release history
 
-__Changes__ (2021-May-19)
+__Changes__ (2021-June-01 / Feature)
 
-* Removed Azure PowerShell module requirement Az.ResourceGraph 
-* __TenantSummary__ 'Change tracking' section. Tracks newly created and updated custom Policy, PolicySet and RBAC Role definitions, Policy/RBAC Role assignments and Resources that occured within the last 14 days (period can be adjusted using new parameter `-ChangeTrackingDays`)
-* New parameters `-PolicyIncludeResourceGroups` and `-RBACIncludeResourceGroupsAndResources` - include Policy assignments on ResourceGroups, include Role assignments on ResourceGroups and Resources
-* New parameters `-PolicyAtScopeOnly` and `-RBACAtScopeOnly` - removing 'inherited' lines in the HTML file; use this parameter if you run against a larger tenants
-* New parameter `-CsvExport` - export enriched data for 'Role assignments', 'Policy assignments' data and 'all resources' (subscriptionId, managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
-* !_experimental_ New parameter `-JsonExport`- export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
-* Added ClassicAdministrators Role assignment information
-* Restructure __TenantSummary__ - Limits gets its own section
-* Added sytem metadata for Policy/RBAC definitions and assignments
-* New parameter `-FileTimeStampFormat`- define the time format for the output files (default is `yyyyMMdd_HHmmss`)
-* Updated API error codes
-* Cosmetics / Icons
-* Bugfixes
-* Performance optimization
+* Added Management Group and Subscription Diagnostic settings
+* Restructure __TenantSummary__ - 'Diagnostics' gets its own section
 
-[full history](history.md)
+[Release history](history.md)
 
 <hr>
 
 ## AzGovViz in Action
 
-<table>
-<td>
-
 <a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210519_1.html" target="_blank">![Demo](img/demo4_66.png)</a>
 
-[Demo (Version 5; 2021-MAY-20)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210519_1.html)
-
-</td>
-<td>
-
+[Demo (Version 5; 2021-MAY-20)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210519_1.html)  
 Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation
-
-</td>
-</table>
 
 <hr>
 
@@ -156,18 +136,24 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
   * Resources
     * Resource Types
       * ResourceType count per location
-      * ResourceType capability for Resource Diagnostics including
-        * ResourceType count and information if capable for logs including list of available og categories
-        * ResourceType count and information if capable for metrics
-      * Lifecyle recommendations for existing Azure Policy definitions that configure Resource diagnostics of type=Log
-        * Check if Policy definitions hold the latest set of applicable log categories
-        * Recommendation to create Policy definition for ResourceType if supported
-        * Lists all PolicyDefinitions that deploy Resource diagnostics of type=log, lists Policy assignments and PolicySet assignments if the Policy defintion is used in a PolicySet definition
       * Resource Provider
         * Resource Provider state aggregation throughout all Subscriptions
         * Explicit Resource Provider state per Subscription
       * Resource Locks
         * Aggregated insights for Lock and respective Lock-type usage on Subscriptions, ResourceGroups and Resources
+* __Diagnostics__
+  * Management Groups Diagnostic settings report
+    * Management Group, Diagnostic setting name, target type (LA, SA, EH), target Id, Log Category status
+  * Subscriptions Diagnostic settings report
+    * Subscription, Diagnostic setting name, target type (LA, SA, EH), target Id, Log Category status
+  * Resources Diagnostic capabilty report
+    * ResourceType capability for Resource Diagnostics including
+      * ResourceType count and information if capable for logs including list of available og categories
+      * ResourceType count and information if capable for metrics
+  * Lifecyle recommendations for existing Azure Policy definitions that configure Resource diagnostics of type=Log
+    * Check if Policy definitions hold the latest set of applicable log categories
+    * Recommendation to create Policy definition for ResourceType if supported
+    * Lists all PolicyDefinitions that deploy Resource diagnostics of type=log, lists Policy assignments and PolicySet assignments if the Policy defintion is used in a PolicySet definition
 * __Limits__
   * Tenant approaching ARM limits:
     * Custom Role definitions
@@ -374,8 +360,8 @@ This permission is <b>mandatory</b> in each and every scenario!
 * Usage
   * `.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>`
 * Parameters
-  * `-ManagementGroupId` Tenant Id or any child Management Group Id
-  * `-CsvDelimiter` the world is split into two kind of delimiters - comma and semicolon - choose yours
+  * `-ManagementGroupId` Management Group Id (Root Management Group Id equals your Tenant Id)
+  * `-CsvDelimiter` the world is split into two kinds of delimiters - comma and semicolon - choose yours (default is semicolon ';')
   * `-OutputPath`
   * `-AzureDevOpsWikiAsCode`
   * `-DoNotShowRoleAssignmentsUserData` scrub personally identifiable information (PII)
@@ -449,6 +435,8 @@ Special thanks to Tim Wanierke, Brooks Vaughn and Friedrich Weinmann (Microsoft)
 Kudos to the <a href="https://www.tablefilter.com/" target="_blank">TableFilter</a> Project Team!
 
 ## AzAdvertizer
+
+![alt text](img/azadvertizer70.png "example output")
 
 Also check <https://www.azadvertizer.net> - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's Policy definitions, initiatives (Set definitions), aliases and Azure RBAC's Role definitions and resource provider operations.
 
