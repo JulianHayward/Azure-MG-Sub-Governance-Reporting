@@ -38,10 +38,15 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## AzGovViz release history
 
-__Changes__ (2021-June-01 / Feature)
+__Changes__ (2021-June-07 / Major)
 
-* Added Management Group and Subscription Diagnostic settings
-* Restructure __TenantSummary__ - 'Diagnostics' gets its own section
+* Breaking Changes
+  * Changed parameter `-CsvExport` to `-NoCsvExport` - You will need to explicitly deny CSV export using `-NoCsvExport`
+  * Changed parameter `-JsonExport` to `-NoJsonExport` - You will need to explicitly deny JSON export using `-NoJsonExport`
+* __HierarchyMap__ enrich Management Groups with counts on Policy assignments, scoped Policy definitions and Role assignments
+* Enhanced Management Group and Subscription Diagnostic settings / list Management Groups and Subscriptions that do not have Diagnostic settings applied
+* Updated API error codes / throttle handling
+* Bugfixes
 
 [Release history](history.md)
 
@@ -385,12 +390,12 @@ This permission is <b>mandatory</b> in each and every scenario!
   * `-SubscriptionId4AzContext` - Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
   * `-PolicyAtScopeOnly` - removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants
   * `-RBACAtScopeOnly` - removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants
-  * `-CsvExport` - export enriched data for 'Role assignments', 'Policy assignments' data and 'all resources' (subscriptionId,  managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
+  * ~~`-CsvExport`~~ `-NoCsvExport` - do not export enriched data for 'Role assignments', 'Policy assignments' data and 'all resources' (subscriptionId,  managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
   * `-PolicyIncludeResourceGroups` - include Policy assignments on ResourceGroups
   * `-RBACIncludeResourceGroupsAndResources` - include Role assignments on ResourceGroups and Resources
   * `-ChangeTrackingDays` - define the period for Change tracking on newly created and updated custom Policy, PolicySet and RBAC Role definitions and Policy/RBAC Role assignments (default is '14') 
   * `-FileTimeStampFormat`- define the time format for the output files (default is `yyyyMMdd_HHmmss`)
-  * `-JsonExport` - enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON 
+  * ~~`-JsonExport`~~ `-NoJsonExport` - do not enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON 
 
 * Passed tests: Powershell Core 7.1.2 on Windows
 * Passed tests: Powershell Core 7.1.3 Azure DevOps hosted ubuntu-18.04

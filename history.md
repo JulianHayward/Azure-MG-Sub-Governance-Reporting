@@ -4,6 +4,16 @@
 
 ### AzGovViz version 5
 
+__Changes__ (2021-June-07 / Major)
+
+* Breaking Changes
+  * Changed parameter `-CsvExport` to `-NoCsvExport` - You will need to explicitly deny CSV export using `-NoCsvExport`
+  * Changed parameter `-JsonExport` to `-NoJsonExport` - You will need to explicitly deny JSON export using `-NoJsonExport`
+* __HierarchyMap__ enrich Management Groups with counts on Policy assignments, scoped Policy definitions and Role assignments
+* Enhanced Management Group and Subscription Diagnostic settings / list Management Groups and Subscriptions that do not have Diagnostic settings applied
+* Updated API error codes / throttle handling
+* Bugfixes
+
 __Changes__ (2021-June-01 / Feature)
 
 * Added Management Group and Subscription Diagnostic settings

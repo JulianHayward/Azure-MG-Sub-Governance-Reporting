@@ -92,13 +92,13 @@
 .PARAMETER RBACAtScopeOnly 
     Removing 'inherited' lines in the HTML file; use this parameter if you run against a larger tenants
 
-.PARAMETER CsvExport 
+.PARAMETER NoCsvExport 
     Export enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, mgPath, resourceType, id, name, location, tags, createdTime, changedTime)
 
 .PARAMETER PolicyIncludeResourceGroups 
     Include Policy assignments on ResourceGroups
 
-.PARAMETER CsvExport 
+.PARAMETER RBACIncludeResourceGroupsAndResources 
     Include Role assignments on ResourceGroups and Resources
 
 .PARAMETER ChangeTrackingDays 
@@ -107,7 +107,7 @@
 .PARAMETER FileTimeStampFormat
     Ddefine the time format for the output files (default is `yyyyMMdd_HHmmss`)
 
-.PARAMETER JsonExport
+.PARAMETER NoJsonExport
     Enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
 
 .EXAMPLE
@@ -186,8 +186,8 @@
     Removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -RBACAtScopeOnly
     
-    Export enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, mgPath, resourceType, id, name, location, tags, createdTime, changedTime)
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -CsvExport
+    Do not Export enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, mgPath, resourceType, id, name, location, tags, createdTime, changedTime)
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoCsvExport
 
     Include Policy assignments on ResourceGroups
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -PolicyIncludeResourceGroups
@@ -201,8 +201,8 @@
     Define the time format for the output files (default is `yyyyMMdd_HHmmss`)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -FileTimeStampFormat "yyyyMM-dd_HHmm" (default is `yyyyMMdd_HHmmss`)
 
-    Enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -JsonExport
+    Do not enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoJsonExport
 
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
@@ -215,11 +215,11 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_feature_20210601_4",
+    [string]$AzGovVizVersion = "v5_major_20210607_2",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
-    [switch]$CsvExport,
+    [switch]$NoCsvExport,
     [string]$CsvDelimiter = ";",
     [switch]$CsvExportUseQuotesAsNeeded,
     [string]$OutputPath,
@@ -251,7 +251,7 @@ Param
     [string]$SubscriptionId4AzContext = "undefined",
     [int]$ChangeTrackingDays = 14,
     [string]$FileTimeStampFormat = "yyyyMMdd_HHmmss",
-    [switch]$JsonExport,
+    [switch]$NoJsonExport,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]$LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -275,6 +275,7 @@ Param
     [int]$LimitResourceGroups = 980,
     [int]$LimitTagsSubscription = 50
 )
+
 $Error.clear()
 $ErrorActionPreference = "Stop"
 
@@ -286,7 +287,7 @@ $outputPath = Join-Path -Path $outputPath -ChildPath '.'
 $outputPath = [IO.Path]::GetFullPath($outputPath)
 if (-not (test-path $outputPath)) {
     Write-Host "path $outputPath does not exist - please create it!" -ForegroundColor Red
-    Throw "Error - check the last console output for details"
+    Throw "Error - AzGovViz: check the last console output for details"
 }
 else {
     Write-Host "Output/Files will be created in path $outputPath"
@@ -419,11 +420,11 @@ else {
     $htParameters.RBACAtScopeOnly = $false
 }
 
-if ($JsonExport){
-    $htParameters.JsonExport = $true
+if (-not $NoJsonExport){
+    $htParameters.NoJsonExport = $false
 }
 else {
-    $htParameters.JsonExport = $false
+    $htParameters.NoJsonExport = $true
 }
 #endregion htParameters
 
@@ -480,7 +481,7 @@ else {
         Write-Error "Error"
     }
     else {
-        Throw "Error - check the last console output for details"
+        Throw "Error - AzGovViz: check the last console output for details"
     }
 }
 #endregion PowerShellEditionAnVersionCheck
@@ -592,7 +593,7 @@ function createBearerToken($targetEndPoint) {
         Write-Host "-ERROR processing new bearer token request ($targetEndPoint): $catchResult" -ForegroundColor Red
         Write-Host "Likely your Azure credentials have not been set up or have expired, please run 'Connect-AzAccount' to set up your Azure credentials."
         Write-Host "It could also well be that there are multiple context in cache, please run 'Clear-AzContext' and then run 'Connect-AzAccount'."
-        Throw "Error - check the last console output for details"
+        Throw "Error - AzGovViz: check the last console output for details"
     }
     $dateTimeTokenCreated = (get-date -format "MM/dd/yyyy HH:mm:ss")
     if ($targetEndPoint -eq "ManagementAPI") {
@@ -736,25 +737,10 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     $catchResult.error.message -like "*The offer MS-AZR-0110P is not supported*" -or
                     $catchResult.error.code -like "*UnknownError*" -or
                     $catchResult.error.code -like "*BlueprintNotFound*" -or
-                    $catchResult.error.code -eq "500") {
+                    $catchResult.error.code -eq "500" -or
+                    $catchResult.error.code -eq "ResourceRequestsThrottled") {
                     if ($catchResult.error.code -like "*ResponseTooLarge*") {
-                        <#
-                        Write-Host "###### LIMIT #################################"
-                        Write-Host "Hitting LIMIT getting Policy Compliance States!"
-                        Write-Host "ErrorCode: $($catchResult.error.code)"
-                        Write-Host "ErrorMessage: $($catchResult.error.message)"
-                        Write-Host "There is nothing we can do about this right now. Please run AzGovViz with the following parameter: '-NoPolicyComplianceStates'." -ForegroundColor Yellow
-                        Write-Host "Impact using parameter '-NoPolicyComplianceStates': only policy compliance states will not be available in the various AzGovViz outputs - all other output remains." -ForegroundColor Yellow
-                        #>
                         Write-Host "Info: $currentTask - Response too large, skipping this scope."
-                        <#
-                        if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
-                            Write-Error "Error"
-                        }
-                        else {
-                            break # Break Script
-                        }
-                        #>
                         break
                     }
                     if ($catchResult.error.message -like "*The offer MS-AZR-0110P is not supported*") {
@@ -772,7 +758,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                                 Write-Error "Error"
                             }
                             else {
-                                Throw "Error - check the last console output for details"
+                                Throw "Error - AzGovViz: check the last console output for details"
                             }
                         }
                         else {
@@ -835,6 +821,10 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     if ($catchResult.error.code -like "*BlueprintNotFound*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Blueprint definition is gone - skipping for now :)"
                         return "BlueprintNotFound"
+                    }
+                    if ($catchResult.error.code -eq "ResourceRequestsThrottled") {
+                        Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - throttled! sleeping 11 seconds"
+                        start-sleep -Seconds 11
                     }                    
                 }
                 else {
@@ -850,7 +840,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             Write-Error "Error"
                         }
                         else {
-                            Throw "Error - check the last console output for details"
+                            Throw "Error - AzGovViz: check the last console output for details"
                         }
                     }
 
@@ -905,7 +895,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                                 Write-Error "Error"
                             }
                             else {
-                                Throw "Error - check the last console output for details"
+                                Throw "Error - AzGovViz: check the last console output for details"
                             }
                         }
                         else {
@@ -935,7 +925,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                                 Write-Error "Error"
                             }
                             else {
-                                Throw "Error - check the last console output for details"
+                                Throw "Error - AzGovViz: check the last console output for details"
                             }
                         }
                         else {
@@ -965,7 +955,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                                 Write-Error "Error"
                             }
                             else {
-                                Throw "Error - check the last console output for details"
+                                Throw "Error - AzGovViz: check the last console output for details"
                             }
                         }
                         else {
@@ -1005,7 +995,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     Write-Error "Error"
                 }
                 else {
-                    Throw "Error - check the last console output for details"
+                    Throw "Error - AzGovViz: check the last console output for details"
                 }
             }
         }
@@ -1082,7 +1072,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType, $resourceId) 
                                 Write-Error "Error"
                             }
                             else {
-                                Throw "Error - check the last console output for details"
+                                Throw "Error - AzGovViz: check the last console output for details"
                             }
                         }
                         else {
@@ -1111,7 +1101,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType, $resourceId) 
                         Write-Error "Error"
                     }
                     else {
-                        Throw "Error - check the last console output for details"
+                        Throw "Error - AzGovViz: check the last console output for details"
                     }
                 }
             }
@@ -1131,7 +1121,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType, $resourceId) 
                     Write-Error "Error"
                 }
                 else {
-                    Throw "Error - check the last console output for details"
+                    Throw "Error - AzGovViz: check the last console output for details"
                 }
             }
         }
@@ -1156,7 +1146,7 @@ foreach ($testCommand in $testCommands) {
         else {
             Write-Host " AzModule test failed: cmdlet $testCommand not available - make sure the modules $($azModules -join ", ") are installed" -ForegroundColor Red
             Write-Host " Install the Azure Az PowerShell module: https://docs.microsoft.com/en-us/powershell/azure/install-az-ps"
-            Throw "Error - check the last console output for details"
+            Throw "Error - AzGovViz: check the last console output for details"
         }
     }
     else {
@@ -1186,7 +1176,7 @@ if (-not $checkContext) {
         Write-Error "Error"
     }
     else {
-        Throw "Error - check the last console output for details"
+        Throw "Error - AzGovViz: check the last console output for details"
     }
 }
 else {
@@ -1205,7 +1195,7 @@ else {
                 Write-Error "Error"
             }
             else {
-                Throw "Error - check the last console output for details"
+                Throw "Error - AzGovViz: check the last console output for details"
             }
         }
         $checkContext = Get-AzContext -ErrorAction Stop
@@ -1219,7 +1209,7 @@ else {
             Write-Error "Error"
         }
         else {
-            Throw "Error - check the last console output for details"
+            Throw "Error - AzGovViz: check the last console output for details"
         }
     }
     else {
@@ -1295,13 +1285,13 @@ if (-not $ManagementGroupId) {
     }
     if ($catchResult -ne "letscheck") {
         Write-Host "$catchResult"
-        Throw "Error - check the last console output for details"
+        Throw "Error - AzGovViz: check the last console output for details"
     }
 
     [array]$MgtGroupArray = Add-IndexNumberToArray ($getAzManagementGroups)
     if (-not $MgtGroupArray) {
         Write-Host "Seems you do not have access to any Management Group. Please make sure you have the required RBAC role [Reader] assigned on at least one Management Group" -ForegroundColor Red
-        Throw "Error - check the last console output for details"
+        Throw "Error - AzGovViz: check the last console output for details"
     }
     function selectMg() {
         Write-Host "Please select a Management Group from the list below:"
@@ -1551,6 +1541,7 @@ function dataCollection($mgId) {
         $htCacheAssignments = $using:htCacheAssignments
         $htCacheAssignmentsPolicy = $using:htCacheAssignmentsPolicy
         $htPolicyAssignmentExemptions = $using:htPolicyAssignmentExemptions
+        $htManagementGroupsMgPath = $using:htManagementGroupsMgPath
         $LimitPOLICYPolicyDefinitionsScopedManagementGroup = $using:LimitPOLICYPolicyDefinitionsScopedManagementGroup
         $LimitPOLICYPolicySetDefinitionsScopedManagementGroup = $using:LimitPOLICYPolicySetDefinitionsScopedManagementGroup
         $LimitPOLICYPolicyAssignmentsManagementGroup = $using:LimitPOLICYPolicyAssignmentsManagementGroup
@@ -1563,6 +1554,7 @@ function dataCollection($mgId) {
         $arrayAPICallTracking = $using:arrayAPICallTracking
         $arrayAPICallTrackingCustomDataCollection = $using:arrayAPICallTrackingCustomDataCollection
         $arrayDiagnosticSettingsMgSub = $using:arrayDiagnosticSettingsMgSub
+        $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments = $using:htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments
         #Functions
         $function:AzAPICall = $using:funcAzAPICall
         $function:createBearerToken = $using:funcCreateBearerToken
@@ -1587,6 +1579,8 @@ function dataCollection($mgId) {
         $startMgLoopThis = get-date
 
         if ($htParameters.HierarchyMapOnly -eq $false) {
+
+            $mgPath = $htManagementGroupsMgPath.($mgdetail.Name).path -join "/"
             
             #mg https://management.azure.com/providers/Microsoft.Management/managementGroups/emea/providers/microsoft.insights/diagnosticSettings?api-version=2021-05-01-preview
             $currentTask = "getDiagnosticSettingsMg '$($mgdetail.properties.displayName)' ('$($mgdetail.Name)')"
@@ -1594,64 +1588,81 @@ function dataCollection($mgId) {
             $method = "GET"
             $getDiagnosticSettingsMg = AzAPICall -uri $uri -method $method -currentTask $currentTask
 
-            foreach ($diagnosticSetting in $getDiagnosticSettingsMg){
-                $arrayLogs = [System.Collections.ArrayList]@()
-                if ($diagnosticSetting.Properties.logs){
-                    foreach ($logCategory in $diagnosticSetting.properties.logs){
-                        $null = $arrayLogs.Add([PSCustomObject]@{
-                            Category = $logCategory.category
-                            Enabled = $logCategory.enabled
-                        })
-                    }
-                }
-
-                $htLogs = @{}
-                if ($diagnosticSetting.Properties.logs){
-                    foreach ($logCategory in $diagnosticSetting.properties.logs){
-                        if ($logCategory.enabled){
-                            $htLogs.($logCategory.category) = "true"
+            if ($getDiagnosticSettingsMg.Count -eq 0){
+                $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                    Scope                  = "Mg"
+                    ScopeName              = $mgdetail.properties.displayName
+                    ScopeId                = $mgdetail.Name
+                    ScopeMgPath            = $mgPath
+                    DiagnosticsPresent     = "false"
+                })
+            }
+            else {           
+                foreach ($diagnosticSetting in $getDiagnosticSettingsMg) {
+                    $arrayLogs = [System.Collections.ArrayList]@()
+                    if ($diagnosticSetting.Properties.logs) {
+                        foreach ($logCategory in $diagnosticSetting.properties.logs) {
+                            $null = $arrayLogs.Add([PSCustomObject]@{
+                                    Category = $logCategory.category
+                                    Enabled  = $logCategory.enabled
+                                })
                         }
-                        else{
-                            $htLogs.($logCategory.category) = "false"
+                    }
+
+                    $htLogs = @{}
+                    if ($diagnosticSetting.Properties.logs) {
+                        foreach ($logCategory in $diagnosticSetting.properties.logs) {
+                            if ($logCategory.enabled) {
+                                $htLogs.($logCategory.category) = "true"
+                            }
+                            else {
+                                $htLogs.($logCategory.category) = "false"
+                            }
                         }
                     }
-                }
 
-                if ($diagnosticSetting.Properties.workspaceId){
-                    $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
-                        Scope = "Mg"
-                        ScopeName = $mgdetail.properties.displayName
-                        ScopeId = $mgdetail.Name
-                        DiagnosticSettingName = $diagnosticSetting.name
-                        DiagnosticTargetType = "LA"
-                        DiagnosticTargetId = $diagnosticSetting.Properties.workspaceId
-                        DiagnosticCategories = $arrayLogs
-                        DiagnosticCategoriesHt = $htLogs
-                    })
-                }
-                if ($diagnosticSetting.Properties.storageAccountId){
-                    $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
-                        Scope = "Mg"
-                        ScopeName = $mgdetail.properties.displayName
-                        ScopeId = $mgdetail.Name
-                        DiagnosticSettingName = $diagnosticSetting.name
-                        DiagnosticTargetType = "SA"
-                        DiagnosticTargetId = $diagnosticSetting.Properties.storageAccountId
-                        DiagnosticCategories = $arrayLogs
-                        DiagnosticCategoriesHt = $htLogs
-                    })
-                }
-                if ($diagnosticSetting.Properties.eventHubAuthorizationRuleId){
-                    $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
-                        Scope = "Mg"
-                        ScopeName = $mgdetail.properties.displayName
-                        ScopeId = $mgdetail.Name
-                        DiagnosticSettingName = $diagnosticSetting.name
-                        DiagnosticTargetType = "EH"
-                        DiagnosticTargetId = $diagnosticSetting.Properties.eventHubAuthorizationRuleId
-                        DiagnosticCategories = $arrayLogs
-                        DiagnosticCategoriesHt = $htLogs
-                    })
+                    if ($diagnosticSetting.Properties.workspaceId) {
+                        $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                                Scope                  = "Mg"
+                                ScopeName              = $mgdetail.properties.displayName
+                                ScopeId                = $mgdetail.Name
+                                ScopeMgPath            = $mgPath
+                                DiagnosticsPresent     = "true"
+                                DiagnosticSettingName  = $diagnosticSetting.name
+                                DiagnosticTargetType   = "LA"
+                                DiagnosticTargetId     = $diagnosticSetting.Properties.workspaceId
+                                DiagnosticCategories   = $arrayLogs
+                                DiagnosticCategoriesHt = $htLogs
+                            })
+                    }
+                    if ($diagnosticSetting.Properties.storageAccountId) {
+                        $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                                Scope                  = "Mg"
+                                ScopeName              = $mgdetail.properties.displayName
+                                ScopeId                = $mgdetail.Name
+                                ScopeMgPath            = $mgPath
+                                DiagnosticsPresent     = "true"
+                                DiagnosticSettingName  = $diagnosticSetting.name
+                                DiagnosticTargetType   = "SA"
+                                DiagnosticTargetId     = $diagnosticSetting.Properties.storageAccountId
+                                DiagnosticCategories   = $arrayLogs
+                                DiagnosticCategoriesHt = $htLogs
+                            })
+                    }
+                    if ($diagnosticSetting.Properties.eventHubAuthorizationRuleId) {
+                        $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                                Scope                  = "Mg"
+                                ScopeName              = $mgdetail.properties.displayName
+                                ScopeId                = $mgdetail.Name
+                                ScopeMgPath            = $mgPath
+                                DiagnosticsPresent     = "true"
+                                DiagnosticSettingName  = $diagnosticSetting.name
+                                DiagnosticTargetType   = "EH"
+                                DiagnosticTargetId     = $diagnosticSetting.Properties.eventHubAuthorizationRuleId
+                                DiagnosticCategories   = $arrayLogs
+                                DiagnosticCategoriesHt = $htLogs
+                            })
+                    }
                 }
             }
 
@@ -1729,7 +1740,7 @@ function dataCollection($mgId) {
     
             $currentTask = "Policy exemptions '$($mgdetail.properties.displayName)' ('$($mgdetail.Name)')"
             $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyExemptions?api-version=2020-07-01-preview&`$filter=atScope()"
-            #$path = "/subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+            #$path = "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyExemptions?api-version=2020-07-01-preview&`$filter=atScope()"
             $method = "GET"
     
             $requestPolicyExemptionAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
@@ -1814,23 +1825,28 @@ function dataCollection($mgId) {
                     }
                     ($script:htCacheDefinitions).policy.(($mgPolicyDefinition.Id).ToLower()).Json = $mgPolicyDefinition
 
-                    if ($mgPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
+                    if (-not [string]::IsNullOrEmpty($mgPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
                         ($script:htCacheDefinitions).policy.(($mgPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $mgPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
-                        foreach ($rolefefinitionId in $mgPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds){
-                            if (-not $htRoleDefinitionIdsUsedInPolicy.($rolefefinitionId)){
-                                $script:htRoleDefinitionIdsUsedInPolicy.($rolefefinitionId) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
-                                $script:htRoleDefinitionIdsUsedInPolicy.($rolefefinitionId).UsedInPolicies = [array]$mgPolicyDefinition.Id
+                        foreach ($roledefinitionId in $mgPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
+                            if (-not [string]::IsNullOrEmpty($roledefinitionId)) {
+                                if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
+                                    $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+                                    $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies = [array]$mgPolicyDefinition.Id
+                                }
+                                else {
+                                    $usedInPolicies = $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies
+                                    $usedInPolicies += $mgPolicyDefinition.Id
+                                    $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies = $usedInPolicies
+                                }
                             }
-                            else{
-                                $usedInPolicies = $htRoleDefinitionIdsUsedInPolicy.($rolefefinitionId).UsedInPolicies
-                                $usedInPolicies += $mgPolicyDefinition.Id
-                                $script:htRoleDefinitionIdsUsedInPolicy.($rolefefinitionId).UsedInPolicies = $usedInPolicies
+                            else {
+                                Write-Host "********** policy $($mgPolicyDefinition.Id) has an issue - empty roleDefinitionId in roledefinitionIds"
                             }
                         }
                     }
                     else {
                         ($script:htCacheDefinitions).policy.(($mgPolicyDefinition.Id).ToLower()).RoleDefinitionIds = "n/a"
-                    }
+                    }               
                 }
                 #if (-not $($htCacheDefinitionsAsIs).policy[$mgPolicyDefinition.Id]) {
                 #    ($script:htCacheDefinitionsAsIs).policy.(($mgPolicyDefinition.Id).ToLower()) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
@@ -1886,6 +1902,11 @@ function dataCollection($mgId) {
                     
                 }  
             }
+
+            if (-not $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.PoliciesScoped.($mgdetail.Name)){
+                $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.PoliciesScoped.($mgdetail.Name) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+                $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.PoliciesScoped.($mgdetail.Name).ScopedCount = $PolicyDefinitionsScopedCount + $PolicySetDefinitionsScopedCount
+            }
     
             #MgPolicyAssignments
             $currentTask = "Policy assignments '$($mgdetail.properties.displayName)' ('$($mgdetail.Name)')"
@@ -1904,9 +1925,15 @@ function dataCollection($mgId) {
             $L0mgmtGroupPolicyAssignmentsPolicyAtScopeCount = (($L0mgmtGroupPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.Id -match "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" }) | measure-object).count
             $L0mgmtGroupPolicyAssignmentsPolicySetAtScopeCount = (($L0mgmtGroupPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.Id -match "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" }) | measure-object).count
             $L0mgmtGroupPolicyAssignmentsPolicyAndPolicySetAtScopeCount = ($L0mgmtGroupPolicyAssignmentsPolicyAtScopeCount + $L0mgmtGroupPolicyAssignmentsPolicySetAtScopeCount)
+            
+            if (-not $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.PolicyAssignments.($mgdetail.Name)){
+                $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.PolicyAssignments.($mgdetail.Name) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+                $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.PolicyAssignments.($mgdetail.Name).AssignmentsCount = $L0mgmtGroupPolicyAssignmentsPolicyAndPolicySetAtScopeCount
+            }
+            
             foreach ($L0mgmtGroupPolicyAssignment in $L0mgmtGroupPolicyAssignments) {
 
-                if ($htParameters.JsonExport -eq $true) {
+                if ($htParameters.NoJsonExport -eq $false) {
                     if (-not $htCacheAssignmentsPolicy.($L0mgmtGroupPolicyAssignment.Id)) {
                         $script:htCacheAssignmentsPolicy.($L0mgmtGroupPolicyAssignment.Id) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
                         $script:htCacheAssignmentsPolicy.($L0mgmtGroupPolicyAssignment.Id).Assignment = $L0mgmtGroupPolicyAssignment
@@ -2157,7 +2184,7 @@ function dataCollection($mgId) {
             #RoleAssignment API (system metadata e.g. createdOn)
             $currentTask = "Role assignments API '$($mgdetail.properties.displayName)' ('$($mgdetail.Name)')"
             $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/providers/Microsoft.Authorization/roleAssignments?api-version=2015-07-01"
-            #$path = "/subscriptions/$childMgSubId/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics?api-version=2019-08-01-preview"
+            #$path = "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/providers/Microsoft.Authorization/roleAssignments?api-version=2015-07-01"
             $method = "GET"
             $roleAssignmentsFromAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
 
@@ -2189,6 +2216,11 @@ function dataCollection($mgId) {
             until($errorOccurred -eq "no")
     
             $L0mgmtGroupRoleAssignmentsLimitUtilization = (($L0mgmtGroupRoleAssignments | Where-Object { $_.Scope -eq "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" }) | measure-object).count
+            if (-not $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.RoleAssignments.($mgdetail.Name)){
+                $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.RoleAssignments.($mgdetail.Name) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+                $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.RoleAssignments.($mgdetail.Name).AssignmentsCount = $L0mgmtGroupRoleAssignmentsLimitUtilization
+            }
+            
             if ($htParameters.RBACAtScopeOnly -eq $true) {
                 $L0mgmtGroupRoleAssignments = $L0mgmtGroupRoleAssignments | Where-Object { $_.Scope -eq "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" }
             }
@@ -2480,64 +2512,81 @@ function dataCollection($mgId) {
                     $method = "GET"
                     $getDiagnosticSettingsSub = AzAPICall -uri $uri -method $method -currentTask $currentTask
 
-                    foreach ($diagnosticSetting in $getDiagnosticSettingsSub){
-                        $arrayLogs = [System.Collections.ArrayList]@()
-                        if ($diagnosticSetting.Properties.logs){
-                            foreach ($logCategory in $diagnosticSetting.properties.logs){
-                                $null = $arrayLogs.Add([PSCustomObject]@{
-                                    Category = $logCategory.category
-                                    Enabled = $logCategory.enabled
+                    if ($getDiagnosticSettingsSub.Count -eq 0){
+                        $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                                Scope              = "Sub"
+                                ScopeName          = $childMgSubDisplayName
+                                ScopeId            = $childMgSubId
+                                ScopeMgPath        = $childMgMgPath
+                                DiagnosticsPresent = "false"
+                            })
+                    }
+                    else {   
+                        foreach ($diagnosticSetting in $getDiagnosticSettingsSub){
+                            $arrayLogs = [System.Collections.ArrayList]@()
+                            if ($diagnosticSetting.Properties.logs){
+                                foreach ($logCategory in $diagnosticSetting.properties.logs){
+                                    $null = $arrayLogs.Add([PSCustomObject]@{
+                                        Category = $logCategory.category
+                                        Enabled = $logCategory.enabled
+                                    })
+                                }
+                            }
+
+                            $htLogs = @{}
+                            if ($diagnosticSetting.Properties.logs){
+                                foreach ($logCategory in $diagnosticSetting.properties.logs){
+                                    if ($logCategory.enabled){
+                                        $htLogs.($logCategory.category) = "true"
+                                    }
+                                    else{
+                                        $htLogs.($logCategory.category) = "false"
+                                    }
+                                }
+                            }
+
+                            if ($diagnosticSetting.Properties.workspaceId){
+                                $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                                    Scope = "Sub"
+                                    ScopeName = $childMgSubDisplayName
+                                    ScopeId = $childMgSubId
+                                    ScopeMgPath = $childMgMgPath
+                                    DiagnosticsPresent = "true"
+                                    DiagnosticSettingName = $diagnosticSetting.name
+                                    DiagnosticTargetType = "LA"
+                                    DiagnosticTargetId = $diagnosticSetting.Properties.workspaceId
+                                    DiagnosticCategories = $arrayLogs
+                                    DiagnosticCategoriesHt = $htLogs
                                 })
                             }
-                        }
-
-                        $htLogs = @{}
-                        if ($diagnosticSetting.Properties.logs){
-                            foreach ($logCategory in $diagnosticSetting.properties.logs){
-                                if ($logCategory.enabled){
-                                    $htLogs.($logCategory.category) = "true"
-                                }
-                                else{
-                                    $htLogs.($logCategory.category) = "false"
-                                }
+                            if ($diagnosticSetting.Properties.storageAccountId){
+                                $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                                    Scope = "Sub"
+                                    ScopeName = $childMgSubDisplayName
+                                    ScopeId = $childMgSubId
+                                    ScopeMgPath = $childMgMgPath
+                                    DiagnosticsPresent = "true"
+                                    DiagnosticSettingName = $diagnosticSetting.name
+                                    DiagnosticTargetType = "SA"
+                                    DiagnosticTargetId = $diagnosticSetting.Properties.storageAccountId
+                                    DiagnosticCategories = $arrayLogs
+                                    DiagnosticCategoriesHt = $htLogs
+                                })
                             }
-                        }
-
-                        if ($diagnosticSetting.Properties.workspaceId){
-                            $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
-                                Scope = "Sub"
-                                ScopeName = $childMgSubDisplayName
-                                ScopeId = $childMgSubId
-                                DiagnosticSettingName = $diagnosticSetting.name
-                                DiagnosticTargetType = "LA"
-                                DiagnosticTargetId = $diagnosticSetting.Properties.workspaceId
-                                DiagnosticCategories = $arrayLogs
-                                DiagnosticCategoriesHt = $htLogs
-                            })
-                        }
-                        if ($diagnosticSetting.Properties.storageAccountId){
-                            $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
-                                Scope = "Sub"
-                                ScopeName = $childMgSubDisplayName
-                                ScopeId = $childMgSubId
-                                DiagnosticSettingName = $diagnosticSetting.name
-                                DiagnosticTargetType = "SA"
-                                DiagnosticTargetId = $diagnosticSetting.Properties.storageAccountId
-                                DiagnosticCategories = $arrayLogs
-                                DiagnosticCategoriesHt = $htLogs
-                            })
-                        }
-                        if ($diagnosticSetting.Properties.eventHubAuthorizationRuleId){
-                            $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
-                                Scope = "Sub"
-                                ScopeName = $childMgSubDisplayName
-                                ScopeId = $childMgSubId
-                                DiagnosticSettingName = $diagnosticSetting.name
-                                DiagnosticTargetType = "EH"
-                                DiagnosticTargetId = $diagnosticSetting.Properties.eventHubAuthorizationRuleId
-                                DiagnosticCategories = $arrayLogs
-                                DiagnosticCategoriesHt = $htLogs
-                            })
+                            if ($diagnosticSetting.Properties.eventHubAuthorizationRuleId){
+                                $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                                    Scope = "Sub"
+                                    ScopeName = $childMgSubDisplayName
+                                    ScopeId = $childMgSubId
+                                    ScopeMgPath = $childMgMgPath
+                                    DiagnosticsPresent = "true"
+                                    DiagnosticSettingName = $diagnosticSetting.name
+                                    DiagnosticTargetType = "EH"
+                                    DiagnosticTargetId = $diagnosticSetting.Properties.eventHubAuthorizationRuleId
+                                    DiagnosticCategories = $arrayLogs
+                                    DiagnosticCategoriesHt = $htLogs
+                                })
+                            }
                         }
                     }
 
@@ -2848,8 +2897,8 @@ function dataCollection($mgId) {
                     #SubscriptionASCSecureScore
                     if ($htParameters.NoASCSecureScore -eq $false) {
                         $currentTask = "ASC Secure Score '$($childMgSubDisplayName)' ('$childMgSubId')"
-                        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Security/securescores?api-version=2020-01-01-preview"
-                        #$path = "/subscriptions/$childMgSubId/providers/Microsoft.Security/securescores?api-version=2020-01-01-preview"
+                        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Security/securescores?api-version=2020-01-01"
+                        #$path = "/subscriptions/$childMgSubId/providers/Microsoft.Security/securescores?api-version=2020-01-01"
                         $method = "GET"
 
                         $subASCSecureScoreResult = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
@@ -2983,10 +3032,9 @@ function dataCollection($mgId) {
                     }
 
                     #SubscriptionPolicyExemptions
-                    #https://management.azure.com/subscriptions/b2ac7057-8edf-4617-a1f7-5ed6b44ef2c8/providers/Microsoft.Authorization/policyExemptions?api-version=2020-07-01-preview
                     $currentTask = "Policy exemptions '$($childMgSubDisplayName)' ('$childMgSubId')"
                     $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyExemptions?api-version=2020-07-01-preview"
-                    #$path = "/subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+                    #$path = "/subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyExemptions?api-version=2020-07-01-preview"
                     $method = "GET"
 
                     $requestPolicyExemptionAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"))
@@ -3076,17 +3124,22 @@ function dataCollection($mgId) {
                             }
                             $($script:htCacheDefinitions).policy.(($subPolicyDefinition.Id).ToLower()).Json = $subPolicyDefinition
 
-                            if ($subPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
+                            if (-not [string]::IsNullOrEmpty($subPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
                                 ($script:htCacheDefinitions).policy.(($subPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $subPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
-                                foreach ($rolefefinitionId in $subPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds){
-                                    if (-not $htRoleDefinitionIdsUsedInPolicy.($rolefefinitionId)){
-                                        $script:htRoleDefinitionIdsUsedInPolicy.($rolefefinitionId) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
-                                        $script:htRoleDefinitionIdsUsedInPolicy.($rolefefinitionId).UsedInPolicies = [array]$subPolicyDefinition.Id
+                                foreach ($roledefinitionId in $subPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
+                                    if (-not [string]::IsNullOrEmpty($roledefinitionId)) {
+                                        if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
+                                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+                                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies = [array]$subPolicyDefinition.Id
+                                        }
+                                        else {
+                                            $usedInPolicies = $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies
+                                            $usedInPolicies += $subPolicyDefinition.Id
+                                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies = $usedInPolicies
+                                        }
                                     }
-                                    else{
-                                        $usedInPolicies = $htRoleDefinitionIdsUsedInPolicy.($rolefefinitionId).UsedInPolicies
-                                        $usedInPolicies += $subPolicyDefinition.Id
-                                        $script:htRoleDefinitionIdsUsedInPolicy.($rolefefinitionId).UsedInPolicies = $usedInPolicies
+                                    else {
+                                        Write-Host "********** policy $($subPolicyDefinition.Id) has an issue - empty roleDefinitionId in roledefinitionIds"
                                     }
                                 }
                             }
@@ -3199,7 +3252,7 @@ function dataCollection($mgId) {
 
                     foreach ($L1mgmtGroupSubPolicyAssignment in $L1mgmtGroupSubPolicyAssignmentsQuery ) {            
 
-                        if ($htParameters.JsonExport -eq $true) {
+                        if ($htParameters.NoJsonExport -eq $false) {
                             if (-not $htCacheAssignmentsPolicy.($L1mgmtGroupSubPolicyAssignment.Id)) {
                                 $script:htCacheAssignmentsPolicy.($L1mgmtGroupSubPolicyAssignment.Id) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
                                 $script:htCacheAssignmentsPolicy.($L1mgmtGroupSubPolicyAssignment.Id).Assignment = $L1mgmtGroupSubPolicyAssignment
@@ -3886,8 +3939,87 @@ function hierarchyMgHTML($mgChild) {
     else {
         $mgNameAndOrId = "$mgName<br><i>$mgId</i>"
     }
+
+    $mgPolicyAssignmentCount = 0
+    if ($htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.PolicyAssignments.($mgId)){
+        $mgPolicyAssignmentCount = $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.PolicyAssignments.($mgId).AssignmentsCount
+    }
+    $mgPolicyPolicySetScopedCount = 0
+    if ($htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.PoliciesScoped.($mgId)){
+        $mgPolicyPolicySetScopedCount = $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.PoliciesScoped.($mgId).ScopedCount
+    }
+    $mgIdRoleAssignmentCount = 0
+    if ($htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.RoleAssignments.($mgId)){
+        $mgIdRoleAssignmentCount = $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.RoleAssignments.($mgId).AssignmentsCount
+    }
     $script:html += @"
-                    <li $liId $liclass><a $class href="#table_$mgId" id="hierarchy_$mgId"><p><img class="imgMgTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"></p><div class="fitme" id="fitme">$($tenantDisplayNameAndDefaultDomain)$($mgNameAndOrId)</div></a>
+                    <li $liId $liclass>
+                        <a $class href="#table_$mgId" id="hierarchy_$mgId">
+                            <div class="main">
+                                
+                                <div class="extraInfo">
+                                    <div class="extraInfoContent">
+"@
+if ($mgPolicyAssignmentCount -gt 0 -or $mgPolicyPolicySetScopedCount -gt 0){
+    if ($mgPolicyAssignmentCount -gt 0 -and $mgPolicyPolicySetScopedCount -gt 0){
+        $script:html += @"
+                                        <div class="extraInfoPolicyAss1">
+                                            <abbr class="abbrTree" title="$($mgPolicyAssignmentCount) Policy assignments">$($mgPolicyAssignmentCount)</abbr>
+                                        </div>
+                                        <div class="extraInfoPolicyScoped1">
+                                            <abbr class="abbrTree" title="$($mgPolicyPolicySetScopedCount) Policy/PolicySet definitions scoped">$($mgPolicyPolicySetScopedCount)</abbr>
+                                        </div>
+"@
+    }
+    else{
+        if ($mgPolicyAssignmentCount -gt 0){
+            $script:html += @"
+                                            <div class="extraInfoPolicyAss0">
+                                                <abbr class="abbrTree" title="$($mgPolicyAssignmentCount) Policy assignments">$($mgPolicyAssignmentCount)</abbr>
+                                            </div>
+"@
+        }
+        if ($mgPolicyPolicySetScopedCount -gt 0){
+            $script:html += @"
+                                            <div class="extraInfoPolicyScoped0">
+                                                <abbr class="abbrTree" title="$($mgPolicyPolicySetScopedCount) Policy/PolicySet definitions scoped">$($mgPolicyPolicySetScopedCount)</abbr>
+                                            </div>
+"@
+        }
+    }
+}
+else{
+    $script:html += @"
+    <div class="extraInfoPlchldr"></div>
+"@
+}
+    $script:html += @"
+                                            </div>
+                                            <div class="treeMgLogo">
+                                                <img class="imgTreeLogo" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg">
+                                            </div>
+                                            <div class="extraInfoContent">
+"@
+if ($mgIdRoleAssignmentCount -gt 0){
+    $script:html += @"
+                                            <div class="extraInfoRoleAss">
+                                                <abbr class="abbrTree" title="$($mgIdRoleAssignmentCount) Role assignments">$($mgIdRoleAssignmentCount)</abbr>
+                                            </div>
+"@
+}
+else{
+    $script:html += @"
+    <div class="extraInfoPlchldr"></div>
+"@
+}
+    $script:html += @"
+                                    </div>
+                                </div>
+
+                                <div class="fitme" id="fitme">$($tenantDisplayNameAndDefaultDomain)$($mgNameAndOrId)
+                                </div>
+                            </div>
+                        </a>
 "@
     $childMgs = ($optimizedTableForPathQueryMg | Where-Object { $_.mgParentId -eq "$mgId" }).MgId | Sort-Object -Unique
     if (($childMgs | measure-object).count -gt 0) {
@@ -3920,17 +4052,17 @@ function hierarchySubForMgHTML($mgChild) {
     if ($subscriptionsCnt -gt 0 -or $subscriptionsOutOfScopelinkedCnt -gt 0) {
         if ($subscriptionsCnt -gt 0 -and $subscriptionsOutOfScopelinkedCnt -gt 0) {
             $script:html += @"
-            <li><a href="#table_$mgChild"><p id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg">$(($subscriptions | measure-object).count)x <img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions_excluded_r.svg">$(($subscriptionsOutOfScopelinked | Measure-Object).count)x</p></a></li>
+            <li><a href="#table_$mgChild"><div class="hierarchyTreeSubs" id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg">$(($subscriptions | measure-object).count)x <img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions_excluded_r.svg">$(($subscriptionsOutOfScopelinked | Measure-Object).count)x</div></a></li>
 "@
         }
         if ($subscriptionsCnt -gt 0 -and $subscriptionsOutOfScopelinkedCnt -eq 0) {
             $script:html += @"
-            <li><a href="#table_$mgChild"><p id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> $(($subscriptions | measure-object).count)x</p></a></li>
+            <li><a href="#table_$mgChild"><div class="hierarchyTreeSubs" id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> $(($subscriptions | measure-object).count)x</div></a></li>
 "@
         }
         if ($subscriptionsCnt -eq 0 -and $subscriptionsOutOfScopelinkedCnt -gt 0) {
             $script:html += @"
-            <li><a href="#table_$mgChild"><p id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions_excluded_r.svg">$(($subscriptionsOutOfScopelinked | Measure-Object).count)x</p></a></li>
+            <li><a href="#table_$mgChild"><div class="hierarchyTreeSubs" id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions_excluded_r.svg">$(($subscriptionsOutOfScopelinked | Measure-Object).count)x</div></a></li>
 "@
         }
     }
@@ -3945,17 +4077,17 @@ function hierarchySubForMgUlHTML($mgChild) {
     if ($subscriptionsCnt -gt 0 -or $subscriptionsOutOfScopelinkedCnt -gt 0) {
         if ($subscriptionsCnt -gt 0 -and $subscriptionsOutOfScopelinkedCnt -gt 0) {
             $script:html += @"
-            <ul><li><a href="#table_$mgChild"><p id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> $(($subscriptions | measure-object).count)x <img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions_excluded_r.svg">$(($subscriptionsOutOfScopelinked | Measure-Object).count)x</p></a></li></ul>
+            <ul><li><a href="#table_$mgChild"><div class="hierarchyTreeSubs" id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> $(($subscriptions | measure-object).count)x <img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions_excluded_r.svg">$(($subscriptionsOutOfScopelinked | Measure-Object).count)x</div></a></li></ul>
 "@
         }
         if ($subscriptionsCnt -gt 0 -and $subscriptionsOutOfScopelinkedCnt -eq 0) {
             $script:html += @"
-            <ul><li><a href="#table_$mgChild"><p id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> $(($subscriptions | measure-object).count)x</p></a></li></ul>
+            <ul><li><a href="#table_$mgChild"><div class="hierarchyTreeSubs" id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> $(($subscriptions | measure-object).count)x</div></a></li></ul>
 "@
         }
         if ($subscriptionsCnt -eq 0 -and $subscriptionsOutOfScopelinkedCnt -gt 0) {
             $script:html += @"
-            <ul><li><a href="#table_$mgChild"><p id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions_excluded_r.svg">$(($subscriptionsOutOfScopelinked | Measure-Object).count)x</p></a></li></ul>
+            <ul><li><a href="#table_$mgChild"><div class="hierarchyTreeSubs" id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions_excluded_r.svg">$(($subscriptionsOutOfScopelinked | Measure-Object).count)x</div></a></li></ul>
 "@
         }
     }
@@ -7640,7 +7772,7 @@ function summary() {
             })
     }
 
-    if ($CsvExport) {
+    if (-not $NoCsvExport) {
         if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
             $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_PolicyDefinitions"
         }
@@ -8262,7 +8394,7 @@ extensions: [{ name: 'sort' }]
         }
     }
 
-    if ($CsvExport) {
+    if (-not $NoCsvExport) {
         if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
             $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_PolicySetDefinitions"
         }
@@ -9847,7 +9979,7 @@ extensions: [{ name: 'sort' }]
         $htmlSummaryPolicyAssignmentsAll = $null
         $startloop = get-date 
 
-        if ($CsvExport) {
+        if (-not $NoCsvExport) {
             if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
                 $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_$($htmlTableId)"
             }
@@ -10626,7 +10758,7 @@ extensions: [{ name: 'sort' }]
         $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
         $htmlTenantSummary = [System.Text.StringBuilder]::new()
 
-        if ($CsvExport) {
+        if (-not $NoCsvExport) {
             $startCreateRBACAllCSV = get-date
 
             if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
@@ -12893,6 +13025,7 @@ extensions: [{ name: 'sort' }]
     #region SUMMARYDiagnosticsManagementGroups
     Write-Host "  processing TenantSummary Diagnostics Management Groups"
     
+    #hasDiag
     if ($diagnosticSettingsMgCount -gt 0) {
         $tfCount = $diagnosticSettingsMgCount
         $htmlTableId = "TenantSummary_DiagnosticsManagementGroups"
@@ -12984,7 +13117,8 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
         }
         [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-        col_3: 'select',
+            linked_filters: true,
+            col_3: 'select',
 "@)
             $cnt = 4
             foreach ($logCategory in $diagnosticSettingsMgCategories){
@@ -13030,6 +13164,90 @@ extensions: [{ name: 'sort' }]
     <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Management Groups configured for Diagnostic settings</span> <a class="externallink" href="https://docs.microsoft.com/en-us/rest/api/monitor/managementgroupdiagnosticsettings/createorupdate" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
 "@)
     }
+
+    #hasNoDiag
+    if ($diagnosticSettingsMgNoDiagCount -gt 0) {
+        $tfCount = $diagnosticSettingsMgNoDiagCount
+        $htmlTableId = "TenantSummary_NoDiagnosticsManagementGroups"
+        [void]$htmlTenantSummary.AppendLine(@"
+<button type="button" class="collapsible" id="buttonTenantSummary_NoDiagnosticsManagementGroups"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$diagnosticSettingsMgNoDiagCount Management Groups NOT configured for Diagnostic settings</span></button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <span class="info">Management Group Diagnostic Settings - Create Or Update - REST API</span> <a class="externallink" href="https://docs.microsoft.com/en-us/rest/api/monitor/managementgroupdiagnosticsettings/createorupdate" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id= "$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Management Group</th>
+<th>Management Group Id</th>
+<th>Management Group path</th>
+</tr>
+</thead>
+<tbody>
+"@)
+        $htmlSUMMARYNoDiagnosticsManagementGroups = $null
+        $htmlSUMMARYNoDiagnosticsManagementGroups = foreach ($entry in $diagnosticSettingsMgNoDiag) {
+
+            @"
+<tr>
+<td>$($entry.ScopeName)</td>
+<td>$($entry.ScopeId)</td>
+<td>$($entry.ScopeMgPath)</td>
+</tr>
+"@
+        }
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYNoDiagnosticsManagementGroups)
+        [void]$htmlTenantSummary.AppendLine(@"
+        </tbody>
+    </table>
+</div>
+<script>
+    var tfConfig4$htmlTableId = {
+        base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
+"@)  
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+        col_types: [
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring'
+        ],
+extensions: [{ name: 'sort' }]
+    };
+    var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+    tf.init();
+</script>
+"@)
+    }
+    else {
+
+        [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">All Management Groups are configured for Diagnostic settings</span> <a class="externallink" href="https://docs.microsoft.com/en-us/rest/api/monitor/managementgroupdiagnosticsettings/createorupdate" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+"@)
+    }
     #endregion SUMMARYDiagnosticsManagementGroups
 
 #region subscriptions
@@ -13037,10 +13255,10 @@ extensions: [{ name: 'sort' }]
 <p><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle"><b>Subscriptions</b></span></p>
 "@)
 
-    #
     #region SUMMARYDiagnosticsSubscriptions
     Write-Host "  processing TenantSummary Diagnostics Subscriptions"
     
+    #hasDiag
     if ($diagnosticSettingsSubCount -gt 0) {
         $tfCount = $diagnosticSettingsSubCount
         $htmlTableId = "TenantSummary_DiagnosticsSubscriptions"
@@ -13132,7 +13350,8 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_st
         }
         [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-        col_3: 'select',
+            linked_filters: true,
+            col_3: 'select',
 "@)
             $cnt = 4
             foreach ($logCategory in $diagnosticSettingsSubCategories){
@@ -13178,8 +13397,92 @@ extensions: [{ name: 'sort' }]
     <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Subscriptions configured for Diagnostic settings</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/essentials/quick-collect-activity-log-portal#create-diagnostic-setting" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
 "@)
     }
+
+    #hasNoDiag
+        #hasNoDiag
+    if ($diagnosticSettingsSubNoDiagCount -gt 0) {
+        $tfCount = $diagnosticSettingsSubNoDiagCount
+        $htmlTableId = "TenantSummary_NoDiagnosticsSubscriptions"
+        [void]$htmlTenantSummary.AppendLine(@"
+<button type="button" class="collapsible" id="buttonTenantSummary_NoDiagnosticsSubscriptions"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$diagnosticSettingsSubNoDiagCount Subscriptions NOT configured for Diagnostic settings</span></button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <span class="info">Create diagnostic setting</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/essentials/quick-collect-activity-log-portal#create-diagnostic-setting" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id= "$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Subscription</th>
+<th>Subscription Id</th>
+<th>Subscription Mg path</th>
+</tr>
+</thead>
+<tbody>
+"@)
+        $htmlSUMMARYNoDiagnosticsSubscriptions = $null
+        $htmlSUMMARYNoDiagnosticsSubscriptions = foreach ($entry in $diagnosticSettingsSubNoDiag) {
+
+            @"
+<tr>
+<td>$($entry.ScopeName)</td>
+<td>$($entry.ScopeId)</td>
+<td>$($entry.ScopeMgPath)</td>
+</tr>
+"@
+        }
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYNoDiagnosticsSubscriptions)
+        [void]$htmlTenantSummary.AppendLine(@"
+        </tbody>
+    </table>
+</div>
+<script>
+    var tfConfig4$htmlTableId = {
+        base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},
+"@)  
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+        col_types: [
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring'
+        ],
+extensions: [{ name: 'sort' }]
+    };
+    var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+    tf.init();
+</script>
+"@)
+    }
+    else {
+
+        [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">All Subscriptions are configured for Diagnostic settings</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/essentials/quick-collect-activity-log-portal#create-diagnostic-setting" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+"@)
+    }
     #endregion SUMMARYDiagnosticsSubscriptions
-    #>
 
 #endregion subscriptions
 
@@ -15540,7 +15843,7 @@ tf.init();
 
     #policyAssignments 
     write-host "   processing Policy assignment"
-    $policyAssignmentsCreatedOrUpdated = (($arrayPolicyAssignmentsEnriched | Sort-Object -Property PolicyAssignmentId -Unique).where( { (-not [string]::IsNullOrEmpty($_.CreatedOn) -and [datetime]$_.CreatedOn -gt $xdaysAgo) -or (-not [string]::IsNullOrEmpty($_.UpdatedOn) -and [datetime]$_.UpdatedOn -gt $xdaysAgo) }))
+    $policyAssignmentsCreatedOrUpdated = (($arrayPolicyAssignmentsEnriched.where( { $_.Inheritance -notlike "inherited*" } )).where( { (-not [string]::IsNullOrEmpty($_.CreatedOn) -and [datetime]$_.CreatedOn -gt $xdaysAgo) -or (-not [string]::IsNullOrEmpty($_.UpdatedOn) -and [datetime]$_.UpdatedOn -gt $xdaysAgo) }))
     $policyAssignmentsCreatedOrUpdatedCount = $policyAssignmentsCreatedOrUpdated.Count
     
     $policyAssignmentsCreatedMgSub = $policyAssignmentsCreatedOrUpdated.where( { (-not [string]::IsNullOrEmpty($_.CreatedOn) -and [datetime]$_.CreatedOn -gt $xdaysAgo) })
@@ -15689,18 +15992,6 @@ tf.init();
 <i class="padlxxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
 <thead>
-<!--<tr>
-<th>Policy DisplayName</th>
-<th>Policy Category</th>
-<th>Policy Scope</th>
-<th>Policy Scope Id/Name</th>
-<th>Created/Updated</th>
-<th>CreatedOn</th>
-<th>CreatedBy</th>
-<th>UpdatedOn</th>
-<th>UpdatedBy</th>
-<th>Policy Id</th>
-</tr>-->
 <tr>
 <th>Scope</th>
 <th>Scope Id</th>
@@ -15757,18 +16048,6 @@ tf.init();
             }
 
             @"
-<!--<tr>
-<td>$($entry.PolicyDisplayName)</td>
-<td>$($entry.PolicyCategory)</td>
-<td>$($entry.Scope)</td>
-<td>$($entry.ScopeId)</td>
-<td>$createOnUpdatedOn</td>
-<td>$createdOn</td>
-<td>$($entry.CreatedBy)</td>
-<td>$updatedOn</td>
-<td>$($entry.UpdatedBy)</td>
-<td>$($entry.PolicyDefinitionId)</td>
-</tr>-->
 <tr>
 <td>$($entry.Scope)</td>
 <td>$($entry.ScopeId)</td>
@@ -15865,18 +16144,6 @@ tf.init();
 <i class="padlxxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
 <thead>
-<!--<tr>
-<th>PolicySet DisplayName</th>
-<th>PolicySet Category</th>
-<th>PolicySet Scope</th>
-<th>PolicySet Scope Id/Name</th>
-<th>Created/Updated</th>
-<th>CreatedOn</th>
-<th>CreatedBy</th>
-<th>UpdatedOn</th>
-<th>UpdatedBy</th>
-<th>PolicySet Id</th>
-</tr>-->
 <tr>
 <th>Scope</th>
 <th>ScopeId</th>
@@ -15931,18 +16198,6 @@ tf.init();
             }
 
             @"
-<!--<tr>
-<td>$($entry.PolicySetDisplayName)</td>
-<td>$($entry.PolicySetCategory)</td>
-<td>$($entry.Scope)</td>
-<td>$($entry.ScopeId)</td>
-<td>$createOnUpdatedOn</td>
-<td>$createdOn</td>
-<td>$($entry.CreatedBy)</td>
-<td>$updatedOn</td>
-<td>$($entry.UpdatedBy)</td>
-<td>$($entry.PolicySetDefinitionId)</td>
-</tr>-->
 <tr>
 <td>$($entry.Scope)</td>
 <td>$($entry.ScopeId)</td>
@@ -16116,17 +16371,6 @@ tf.init();
             }
 
             @"
-<!--<tr>
-<td>$($entry.DisplayName)</td>
-<td>$($entry.Category)</td>
-<td>$($entry.ScopeMgSub)</td>
-<td>$createOnUpdatedOn</td>
-<td>$createdOn</td>
-<td>$($entry.Json.properties.metadata.createdBy)</td>
-<td>$updatedOn</td>
-<td>$($entry.Json.properties.metadata.updatedBy)</td>
-<td>$($entry.PolicyDefinitionId)</td>
-</tr>-->
 <tr>
 <td>$($policyAssignment.mgOrSubOrRG)</td>
 <td>$($policyAssignment.MgId)</td>
@@ -17744,7 +17988,7 @@ if ($testMGReadAccessResult -ne "letscheck") {
     else {
         Write-Host " Error: $testMGReadAccessResult" -ForegroundColor Red
         Write-Host " Permissions test failed: Your Account '$($checkContext.Account.Id)' seems to lack ManagementGroup Read permissions (RBAC Role: Reader) or the ManagementGroupId '$ManagementGroupId' does not exist. Please check the documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#required-permissions-in-azure"
-        Throw "Error - check the last console output for details"
+        Throw "Error - AzGovViz: check the last console output for details"
     }
 }
 else {
@@ -17955,7 +18199,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                     Write-Error "Error"
                 }
                 else {
-                    Throw "Error - check the last console output for details"
+                    Throw "Error - AzGovViz: check the last console output for details"
                 }
             }
         }
@@ -18052,7 +18296,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 Write-Error "Error"
             }
             else {
-                Throw "Error - check the last console output for details"
+                Throw "Error - AzGovViz: check the last console output for details"
             }
         }
         elseif ($AzureConsumptionPeriod -eq 0) {
@@ -18061,7 +18305,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 Write-Error "Error"
             }
             else {
-                Throw "Error - check the last console output for details"
+                Throw "Error - AzGovViz: check the last console output for details"
             }
         }
         else {
@@ -18137,22 +18381,22 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         $paramsUsed += "PolicyIncludeResourceGroups: false &#13;"
     }
 
-    if ($CsvExport) {
-        Write-Host " CSV Export enabled: enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, mgPath, resourceType, id, name, location, tags, createdTime, changedTime) (-CsvExport = $($CsvExport))" -ForegroundColor Green
-        $paramsUsed += "CsvExport: true &#13;"
+    if (-not $NoCsvExport) {
+        Write-Host " CSV Export enabled: enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, mgPath, resourceType, id, name, location, tags, createdTime, changedTime) (-NoCsvExport = $($NoCsvExport))" -ForegroundColor Yellow
+        $paramsUsed += "NoCsvExport: false &#13;"
     }
     else {
-        Write-Host " CSV Export disabled: enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, mgPath, resourceType, id, name, location, tags, createdTime, changedTime) (-CsvExport = $($CsvExport))" -ForegroundColor Yellow
-        $paramsUsed += "CsvExport: false &#13;"
+        Write-Host " CSV Export disabled: enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, mgPath, resourceType, id, name, location, tags, createdTime, changedTime) (-NoCsvExport = $($NoCsvExport))" -ForegroundColor Green
+        $paramsUsed += "NoCsvExport: true &#13;"
     }
 
-    if ($JsonExport) {
-        Write-Host " JSON Export enabled: export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON (-JsonExport = $($JsonExport))" -ForegroundColor Green
-        $paramsUsed += "JsonExport: true &#13;"
+    if (-not $NoJsonExport) {
+        Write-Host " JSON Export enabled: export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON (-NoJsonExport = $($NoJsonExport))" -ForegroundColor Yellow
+        $paramsUsed += "NoJsonExport: false &#13;"
     }
     else {
-        Write-Host " JSON Export disabled: export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON (-JsonExport = $($JsonExport))" -ForegroundColor Yellow
-        $paramsUsed += "JsonExport: false &#13;"
+        Write-Host " JSON Export disabled: export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON (-NoJsonExport = $($NoJsonExport))" -ForegroundColor Green
+        $paramsUsed += "NoJsonExport: true &#13;"
     }
 
     if ($ThrottleLimit -eq 5) {
@@ -18229,6 +18473,10 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $htDiagnosticSettingsMgSub = @{}
     ($htDiagnosticSettingsMgSub).mg = @{}
     ($htDiagnosticSettingsMgSub).sub = @{}
+    $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+    $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.PolicyAssignments = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+    $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.PoliciesScoped = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+    $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.RoleAssignments = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
     #subscriptions
     $startGetSubscriptions = get-date
     $currentTask = "Getting all Subscriptions"
@@ -18279,7 +18527,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
             Write-Error "Error"
         }
         else {
-            Throw "Error - check the last console output for details"
+            Throw "Error - AzGovViz: check the last console output for details"
         }
     }
 
@@ -18667,28 +18915,23 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         }
         ($htCacheDefinitions).policy.(($builtinPolicyDefinition.Id).ToLower()).Json = $builtinPolicyDefinition
 
-        
-        if ($builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
+        if (-not [string]::IsNullOrEmpty($builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
             ($htCacheDefinitions).policy.(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
-            foreach ($rolefefinitionId in $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds){
-                if (-not $htRoleDefinitionIdsUsedInPolicy.($rolefefinitionId)){
-                    $script:htRoleDefinitionIdsUsedInPolicy.($rolefefinitionId) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
-                    $script:htRoleDefinitionIdsUsedInPolicy.($rolefefinitionId).UsedInPolicies = [array]$builtinPolicyDefinition.Id
+            foreach ($roledefinitionId in $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
+                if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
+                    $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+                    $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies = [array]$builtinPolicyDefinition.Id
                 }
-                else{
-                    $usedInPolicies = $htRoleDefinitionIdsUsedInPolicy.($rolefefinitionId).UsedInPolicies
+                else {
+                    $usedInPolicies = $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies
                     $usedInPolicies += $builtinPolicyDefinition.Id
-                    $script:htRoleDefinitionIdsUsedInPolicy.($rolefefinitionId).UsedInPolicies = $usedInPolicies
+                    $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies = $usedInPolicies
                 }
             }
         }
         else {
             ($htCacheDefinitions).policy.(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = "n/a"
-        }
-
-        #AsIs
-        #($htCacheDefinitionsAsIs).policy.(($builtinPolicyDefinition.Id).ToLower()) = @{ }
-        #($htCacheDefinitionsAsIs).policy.(($builtinPolicyDefinition.Id).ToLower()) = $builtinPolicyDefinition
+        }   
     }
 
     $currentTask = "Caching built-in PolicySet definitions"
@@ -19636,8 +19879,8 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                         
                     $resourceAvailability = $resourceAvailability - 1
                     $currentTask = "Checking if ResourceType '$resourceType' is capable for Resource Diagnostics using $counterTryForResourceType ResourceId: '$($resourceId)'"
-                    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)$($resourceId)/providers/microsoft.insights/diagnosticSettingsCategories/?api-version=2017-05-01-preview"
-                    #$path = "$($resourceId)/providers/microsoft.insights/diagnosticSettingsCategories/?api-version=2017-05-01-preview"
+                    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)$($resourceId)/providers/microsoft.insights/diagnosticSettingsCategories?api-version=2021-05-01-preview"
+                    #$path = "$($resourceId)/providers/microsoft.insights/diagnosticSettingsCategories/?api-version=2021-05-01-preview"
                     $method = "GET"
                     ((AzAPICallDiag -uri $uri -method $method -currentTask $currentTask -resourceType $resourcetype -resourceId $resourceId))
                 }
@@ -19777,7 +20020,7 @@ else {
     $newTable | Select-Object -Property $outprops | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
 }
 
-if ($CsvExport) {
+if (-not $NoCsvExport) {
     #DataCollection Export of All Resources
     $resourcesIdsAll | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
 }
@@ -19801,7 +20044,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $policyBaseQueryManagementGroups = $policyBaseQuery.where( { [String]::IsNullOrEmpty($_.SubscriptionId) } )
     $policyPolicyBaseQueryScopeInsights = ($policyBaseQuery | Select-Object Mg*, Subscription*, PolicyAssigmentAtScopeCount, PolicySetAssigmentAtScopeCount, PolicyAndPolicySetAssigmentAtScopeCount, PolicyAssigmentLimit -Unique)
     $policyBaseQueryUniqueAssignments = $policyBaseQuery | Select-Object -Property Policy* | sort-object -Property PolicyAssignmentId -Unique
-    
+
     $policyPolicyBaseQueryUniqueAssignmentsArrayList = [System.Collections.ArrayList]@()
     $htCacheAssignments2 = @{ }
     ($htCacheAssignments2).policy = @{ }
@@ -19843,8 +20086,6 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     }
     $endcreateArrayListRBAC = get-date
     Write-Host "  Create ArrayListsRBAC duration: $((NEW-TIMESPAN -Start $startcreateArrayListRBAC -End $endcreateArrayListRBAC).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startcreateArrayListRBAC -End $endcreateArrayListRBAC).TotalSeconds) seconds)"
-    
-    
     
     $blueprintBaseQuery = $newTable.where( { -not [String]::IsNullOrEmpty($_.BlueprintName) } )
     $mgsAndSubs = (($optimizedTableForPathQuery.where( { $_.mgId -ne "" -and $_.Level -ne "0" } )) | select-object MgId, SubscriptionId -unique)
@@ -19925,8 +20166,10 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     Write-Host "Helper Queries duration: $((NEW-TIMESPAN -Start $startHelperQueries -End $endHelperQueries).TotalSeconds) seconds"
     
     #diagnostics Mg/Sub
-    $diagnosticSettingsMg = $arrayDiagnosticSettingsMgSub.where({ $_.Scope -eq "Mg"})
+    $diagnosticSettingsMg = $arrayDiagnosticSettingsMgSub.where({ $_.Scope -eq "Mg" -and $_.DiagnosticsPresent -eq "true"})
     $diagnosticSettingsMgCount = $diagnosticSettingsMg.Count
+    $diagnosticSettingsMgNoDiag = $arrayDiagnosticSettingsMgSub.where({ $_.Scope -eq "Mg" -and $_.DiagnosticsPresent -eq "false"})
+    $diagnosticSettingsMgNoDiagCount = $diagnosticSettingsMgNoDiag.Count
     $diagnosticSettingsMgCategories = ($diagnosticSettingsMg.DiagnosticCategories | Group-Object -Property Category).Name
     $diagnosticSettingsMgGrouped = $diagnosticSettingsMg | Group-Object -Property ScopeId
     $diagnosticSettingsMgManagementGroupsCount = ($diagnosticSettingsMgGrouped | Measure-Object).Count
@@ -19950,8 +20193,10 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         }
     }
 
-    $diagnosticSettingsSub = $arrayDiagnosticSettingsMgSub.where({ $_.Scope -eq "Sub"})
+    $diagnosticSettingsSub = $arrayDiagnosticSettingsMgSub.where({ $_.Scope -eq "Sub" -and $_.DiagnosticsPresent -eq "true"})
     $diagnosticSettingsSubCount = $diagnosticSettingsSub.Count
+    $diagnosticSettingsSubNoDiag = $arrayDiagnosticSettingsMgSub.where({ $_.Scope -eq "Sub" -and $_.DiagnosticsPresent -eq "false"})
+    $diagnosticSettingsSubNoDiagCount = $diagnosticSettingsSubNoDiag.Count
     $diagnosticSettingsSubCategories = ($diagnosticSettingsSub.DiagnosticCategories | Group-Object -Property Category).Name
     $diagnosticSettingsSubGrouped = $diagnosticSettingsSub | Group-Object -Property ScopeId
     $diagnosticSettingsSubSubscriptionsCount = ($diagnosticSettingsSubGrouped | Measure-Object).Count
@@ -19974,14 +20219,6 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
             }
         }
     }
-
-    <#foreach ($entry in $diagnosticSettingsSub){
-        if (-not ($htDiagnosticSettingsMgSub).sub.($entry.ScopeId)){
-            ($htDiagnosticSettingsMgSub).sub.($entry.ScopeId) = @{}
-        }
-        ($htDiagnosticSettingsMgSub).sub.($entry.ScopeId) = $entry
-    }
-    #>
     #endregion preQueries
 
     #region summarizeDataCollectionResults
@@ -20058,15 +20295,14 @@ $html += @"
         link.media = "screen,print";
         document.getElementsByTagName( "head" )[0].appendChild( link );
     </script>
-    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_035.css">
-    <script src="https://code.jquery.com/jquery-1.7.2.js" integrity="sha256-FxfqH96M63WENBok78hchTCDxmChGFlo+/lFIPcZPeI=" crossorigin="anonymous"></script>
-    <script src="https://code.jquery.com/ui/1.8.18/jquery-ui.js" integrity="sha256-lzf/CwLt49jbVoZoFcPZOc0LlMYPFBorVSwMsTs2zsA=" crossorigin="anonymous"></script>
-    <script type="text/javascript" src="https://www.azadvertizer.net/azgovvizv4/js/highlight_v004_001.js"></script>
-    <script src="https://use.fontawesome.com/0c0b5cbde8.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_039.css">
+    <script src="https://www.azadvertizer.net/azgovvizv4/js/jquery-1.12.1.js"></script>
+    <script src="https://www.azadvertizer.net/azgovvizv4/js/jquery-ui-1.12.1.js"></script>
+    <script type="text/javascript" src="https://www.azadvertizer.net/azgovvizv4/js/highlight_v004_002.js"></script>
+    <script src="https://www.azadvertizer.net/azgovvizv4/js/fontawesome-0c0b5cbde8.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/tablefilter/tablefilter.js"></script>
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://www.azadvertizer.net/azgovvizv4/css/highlight-10.5.0.min.css">
+    <script src="https://www.azadvertizer.net/azgovvizv4/js/highlight-10.5.0.min.js"></script>
     <script>hljs.initHighlightingOnLoad();</script>
 
     <script>
@@ -20173,13 +20409,31 @@ $html += @"
         document.body.removeChild(link);
     }
     </script>
-
 </head>
 <body>
     <div class="se-pre-con"></div>
     <div class="tree">
         <div class="hierarchyTree" id="hierarchyTree">
-            <p class="pbordered pborderedspecial">HierarchyMap</p>
+            <div class="treeFeatureSel">
+                <p class="pbordered pborderedspecial">HierarchyMap</p>
+                <p>
+                    <!--<a id="showall"><span class="showhidemgextrainfo">Show</span></a><br>
+                    <a id="hideall"><span class="showhidemgextrainfo">Hide</span></a><br>
+                    <button id="extraInfoShowHide" onclick="toggleextrainfo()">Hide<br>ScopeInfo</button>-->
+                    <button id="showHideScopeInfo">Hide<br>ScopeInfo</button>
+                    <script>
+                        `$("#showHideScopeInfo").click(function() {
+                            if (`$(this).html() == "Hide<br>ScopeInfo") {
+                                `$(this).html("Show<br>ScopeInfo"); 
+                                jQuery('.extraInfoContent').hide();
+                            } else {
+                                `$(this).html("Hide<br>ScopeInfo");
+                                jQuery('.extraInfoContent').show();
+                            }; 
+                        });
+                    </script>
+                </p>
+            </div>
 "@
 
 if ($getMgParentName -eq "Tenant Root") {
@@ -20338,7 +20592,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
 $html += @"
     </div>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_003.js"></script>
+    <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_001.js"></script>
@@ -20508,7 +20762,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 #endregion BuildConsumptionCSV
 
 #region BuildJSON
-if ($JsonExport) {
+if (-not $NoJsonExport) {
     #$fileName = get-date -format "yyyyMM-dd HHmmss"
     $startJSON = get-date
     $startBuildHt = get-date
