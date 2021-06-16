@@ -38,15 +38,9 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## AzGovViz release history
 
-__Changes__ (2021-June-07 / Major)
+__Changes__ (2021-June-16 / Minor)
 
-* Breaking Changes
-  * Changed parameter `-CsvExport` to `-NoCsvExport` - You will need to explicitly deny CSV export using `-NoCsvExport`
-  * Changed parameter `-JsonExport` to `-NoJsonExport` - You will need to explicitly deny JSON export using `-NoJsonExport`
-* __HierarchyMap__ enrich Management Groups with counts on Policy assignments, scoped Policy definitions and Role assignments
-* Enhanced Management Group and Subscription Diagnostic settings / list Management Groups and Subscriptions that do not have Diagnostic settings applied
-* Updated API error codes / throttle handling
-* Bugfixes
+* added detailed [Setup](setup.md) instructions
 
 [Release history](history.md)
 
@@ -54,9 +48,9 @@ __Changes__ (2021-June-07 / Major)
 
 ## AzGovViz in Action
 
-<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210519_1.html" target="_blank">![Demo](img/demo4_66.png)</a>
+<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210607_2.html" target="_blank">![Demo](img/demo4_66.png)</a>
 
-[Demo (Version 5; 2021-MAY-20)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210519_1.html)  
+[Demo (v5_major_20210607_2)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210607_2.html)  
 Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation
 
 <hr>

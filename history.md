@@ -4,6 +4,10 @@
 
 ### AzGovViz version 5
 
+__Changes__ (2021-June-16 / Minor)
+
+* added detailed [Setup](setup.md) instructions
+
 __Changes__ (2021-June-07 / Major)
 
 * Breaking Changes
