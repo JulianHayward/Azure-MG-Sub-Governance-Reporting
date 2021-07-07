@@ -1,11 +1,11 @@
-# AzGovViz v5_major_20210607_2
+# AzGovViz v5_major_20210707_3
 # First things first: 
-# 1. edit line 54 and line 55 
-# 2. check line 69 if branch 'master' is applicable 
+# 1. edit line 52 and line 53 
+# 2. check line 67 if branch 'master' is applicable 
 # Documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 # Also check https://www.azadvertizer.net - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
 # 
-# Parameters reference (use in line 94)
+# Parameters reference (use in line 102)
 # LimitCriticalPercentage | default is '80' | example: -LimitCriticalPercentage 90  | WhatDoesItDo? marks capabilities that approch limits e.g. limit 100, usage 80 will mark with warning
 # SubscriptionQuotaIdWhitelist | default is 'undefined' | example: -SubscriptionQuotaIdWhitelist MSDN_, EnterpriseAgreement_ | WhatDoesItDo? processes only subscriptions that startWith the given QuotaIds
 # HierarchyMapOnly | switch | example: -HierarchyMapOnly | WhatDoesItDo? only creates the Hierarchy Tree
@@ -22,19 +22,17 @@
 # NoAzureConsumption | example: -NoAzureConsumption | WhatDoesItDo? Azure Consumption data will not be collected/reported
 # AzureConsumptionPeriod | example: -AzureConsumptionPeriod 7 | WhatDoesItDo? define for which time period Azure Consumption data should be gathered; default is 1 day
 # NoAzureConsumptionReportExportToCSV | example: -NoAzureConsumptionReportExportToCSV | WhatDoesItDo? Azure Consumption data will not be exported (CSV)
-# NoScopeInsights | example: -NoScopeInsights | WhatDoesItDo? and why would you want to do this? In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
 # ThrottleLimit | example: -ThrottleLimit 10 | WhatDoesItDo? Define the number of script blocks running in parallel. Leveraging PowerShell Core´s parallel capability you can define the ThrottleLimit (default=5)
 # DoTranscript | example: -DoTranscript | WhatDoesItDo? Log the console output
 # AzureDevOpsWikiHierarchyDirection | example: -AzureDevOpsWikiHierarchyDirection "LR" | WhatDoesItDo? Define the direction the Hierarchy should be built in Azure DevOps WokiAsCode (Markdown) TD = TopDown (Horizontal), LR = LeftRight (Vertical)
 # SubscriptionId4AzContext | example: -SubscriptionId4AzContext "<your-Subscription-Id>" | WhatDoesItDo? Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
-# PolicyAtScopeOnly | example: -PolicyAtScopeOnly | WhatDoesItDo? Removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants
-# RBACAtScopeOnly | example: -RBACAtScopeOnly | WhatDoesItDo? Removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants
 # NoCsvExport | example: -NoCsvExport | WhatDoesItDo? Do not export enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, resourceType, id, name, location, tags, createdTime, changedTime)
 # PolicyIncludeResourceGroups | example: -PolicyIncludeResourceGroups | WhatDoesItDo? Include Policy assignments on ResourceGroups
 # RBACIncludeResourceGroupsAndResources | example: -RBACIncludeResourceGroupsAndResources | WhatDoesItDo? Include Role assignments on ResourceGroups and Resources
 # ChangeTrackingDays | example: -ChangeTrackingDays 30 | WhatDoesItDo? Tracks newly created and updated custom Policy, PolicySet and RBAC Role definitions, Policy/RBAC Role assignments and Resources that occured within the last 14 days (default)
 # FileTimeStampFormat | example: -FileTimeStampFormat "yyyyMM-dd_HHmm" | WhatDoesItDo? Time format for the output files (default is `yyyyMMdd_HHmmss`)
 # NoJsonExport | example: -JsonExport | WhatDoesItDo? Do not export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
+# LargeTenant | example: -LargeTenant | WhatDoesItDo? A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big, therefore will not create ScopeInsights and will not show inheritance for Policy and Role assignments in the TenantSummary (html) output
 
 trigger: none
 
@@ -67,6 +65,16 @@ schedules:
   branches:
     include:
     - master
+
+#running ESLZ / AzOps? Run AzGovViz after Push ..
+#resources:
+#  pipelines:
+#    - pipeline: 'Push'
+#      source: 'AzOps - Push'
+#      trigger:
+#        branches:
+#          include:
+#            - main
 
 jobs:
 - job: AzGovViz  

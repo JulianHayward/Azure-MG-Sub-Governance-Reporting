@@ -38,9 +38,14 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## AzGovViz release history
 
-__Changes__ (2021-June-16 / Minor)
+__Changes__ (2021-July-07 / Major)
 
-* added detailed [Setup](setup.md) instructions
+* Replaced parameters `-NoScopeInsights`, `-RBACAtScopeOnly` and `-PolicyAtScopeOnly` with `-LargeTenant`. A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big, therefore will not create __ScopeInsights__ and will not show inheritance for Policy and Role assignments in the __TenantSummary__ (html) output
+* Add Tenant to __HierarchyMap__ including count of Role assignments
+* Executing against any child Management Group will show all parent Management Groups in __HierarchyMap__
+* Cosmetics / Icons
+* Bugfixes
+* Performance optimization - optimized data collection to reduce memory utilization -> __big, fat 'Thank You'__ to Tim Wanierke and Brooks Vaughn
 
 [Release history](history.md)
 
@@ -378,18 +383,19 @@ This permission is <b>mandatory</b> in each and every scenario!
   * `-NoAzureConsumption` Azure Consumption data should not be collected/reported
   * `-AzureConsumptionPeriod` define for which time period Azure Consumption data should be gathered; default is 1 day
   * `-NoAzureConsumptionReportExportToCSV` Azure Consumption data should not be exported (CSV)
-  * `-NoScopeInsights` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
+  * ~~`-NoScopeInsights`~~ Use `-LargeTenant` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
   * `-ThrottleLimit` - leveraging PowerShell´s parallel capability you can define the ThrottleLimit (default=5; &#x1F4A1; values from 5 up to 15 proved to perform best)
   * `-DoTranscript` - log the console output
   * `-SubscriptionId4AzContext` - Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
-  * `-PolicyAtScopeOnly` - removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants
-  * `-RBACAtScopeOnly` - removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants
+  * ~~`-PolicyAtScopeOnly`~~ Use `-LargeTenant` - removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants
+  * ~~`-RBACAtScopeOnly`~~ Use `-LargeTenant` - removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants
   * ~~`-CsvExport`~~ `-NoCsvExport` - do not export enriched data for 'Role assignments', 'Policy assignments' data and 'all resources' (subscriptionId,  managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
   * `-PolicyIncludeResourceGroups` - include Policy assignments on ResourceGroups
   * `-RBACIncludeResourceGroupsAndResources` - include Role assignments on ResourceGroups and Resources
   * `-ChangeTrackingDays` - define the period for Change tracking on newly created and updated custom Policy, PolicySet and RBAC Role definitions and Policy/RBAC Role assignments (default is '14') 
   * `-FileTimeStampFormat`- define the time format for the output files (default is `yyyyMMdd_HHmmss`)
   * ~~`-JsonExport`~~ `-NoJsonExport` - do not enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON 
+  * `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big, therefore will not create __ScopeInsights__ and will not show inheritance for Policy and Role assignments in the __TenantSummary__ (html) output
 
 * Passed tests: Powershell Core 7.1.2 on Windows
 * Passed tests: Powershell Core 7.1.3 Azure DevOps hosted ubuntu-18.04

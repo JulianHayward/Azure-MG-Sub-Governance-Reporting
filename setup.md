@@ -6,7 +6,7 @@ This guide will help you to setup and run AzGovViz.
     * Azure DevOps - AzDO
 
 ## Table of contents
-* AzGovViz from Console
+* [__AzGovViz from Console__](#azgovviz-from-console)
     * Grant permissions in Azure
     * Clone the AzGovViz repository
     * Option 1 - Execute as a Tenant Member User
@@ -20,7 +20,7 @@ This guide will help you to setup and run AzGovViz.
             * Option 2 - AAD Role
         * Run AzGovViz
     
-* AzGovViz in Azure DevOps (AzDO)
+* [__AzGovViz in Azure DevOps (AzDO)__](#azgovviz-in-azure-devops)
     * Create AzDO Project
     * Import AzGovViz Github repository
     * Create AzDO Service Connection
@@ -176,7 +176,7 @@ The following example will provide you with the maximum available data collected
 c:\Git\Azure-MG-Sub-Governance-Reporting\pwsh\AzGovVizParallel.ps1 -ManagementGroupId <target Management Group Id> -CsvExport -JsonExport -DoTranscript
 ```
 
-# AzGovViz in Azure DevOps (AzDO)
+# AzGovViz in Azure DevOps
 
 ## Create AzDO Project
 
