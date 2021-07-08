@@ -150,7 +150,7 @@ Have the 'Application (client) ID' of the App registration OR 'Application ID' o
 $pscredential = Get-Credential    
 Connect-AzAccount -ServicePrincipal -TenantId <TenantId> -Credential $pscredential
 ```
-User: Enter 'Application (client) ID' of the App registration OR 'Application ID' of the Service Principal (Enterprise Application)
+User: Enter 'Application (client) ID' of the App registration OR 'Application ID' of the Service Principal (Enterprise Application)  
 Password for user \<Id\>: Enter App registration´s secret 
 
 ### Run AzGovViz
