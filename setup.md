@@ -138,20 +138,20 @@ Proceed with step [__Run AzGovViz from Console__](#run-azgovviz-from-console)
 
 * PowerShell
 ```powershell
-Connect-AzAccount -TenantId <TenantId> -UseDeviceCode
+Connect-AzAccount -TenantId <TenantId> -UseDeviceAuthentication
 ```
 
 ### Connecting to Azure using Service Principal
 
-Have the objectId and the secret of the application at hand.
+Have the 'Application (client) ID' of the App registration OR 'Application ID' of the Service Principal (Enterprise Application) and the secret of the App registration at hand.
 
 * PowerShell
 ```powershell 
 $pscredential = Get-Credential    
 Connect-AzAccount -ServicePrincipal -TenantId <TenantId> -Credential $pscredential
 ```
-User: Enter the Service Principal´s objectId  
-Password for user \<objectId\>: Enter Service Principal´s secret 
+User: Enter 'Application (client) ID' of the App registration OR 'Application ID' of the Service Principal (Enterprise Application)
+Password for user \<Id\>: Enter App registration´s secret 
 
 ### Run AzGovViz
 
