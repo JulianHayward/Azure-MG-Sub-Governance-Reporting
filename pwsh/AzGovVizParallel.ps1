@@ -204,7 +204,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210707_3",
+    [string]$AzGovVizVersion = "v5_major_202107013_2",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -13671,7 +13671,7 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYDiagnosticsPolicyLifecycle
     if (-not $NoResourceDiagnosticsPolicyLifecycle) {
-        Write-Host "  processing TenantSummary Disagnostics Resource Diagnostics Policy Lifecycle"
+        Write-Host "  processing TenantSummary Diagnostics Resource Diagnostics Policy Lifecycle"
         $startsumDiagLifecycle = get-date
 
         if ($tenantCustomPoliciesCount -gt 0) {
@@ -21157,10 +21157,60 @@ if (-not $NoJsonExport) {
         }
     }
 
+    $JSONPath = "JSON"
+    if (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)") {
+        Write-Host " Cleaning old state"
+        Remove-Item -Recurse -Force "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)"
+    }
+    $null = new-item -Name $JSONPath -ItemType directory -path $outputPath
+    $null = new-item -Name "$($JSONPath)$($DirectorySeparatorChar)Definitions" -ItemType directory -path $outputPath
+
     $htJSON.RoleDefinitions = [ordered]@{}
+    $pathRoleDefinitions = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)RoleDefinitions"
+    if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitions)")) {
+        $null = new-item -Name $pathRoleDefinitions -ItemType directory -path $outputPath
+        $pathRoleDefinitionCustom = "$($pathRoleDefinitions)$($DirectorySeparatorChar)Custom"
+        $pathRoleDefinitionBuiltIn = "$($pathRoleDefinitions)$($DirectorySeparatorChar)BuiltIn"
+        $null = new-item -Name "$($pathRoleDefinitionCustom)" -ItemType directory -path $outputPath
+        $null = new-item -Name "$($pathRoleDefinitionBuiltIn)" -ItemType directory -path $outputPath
+    }
+
     if (($htCacheDefinitions).role.Keys.Count -gt 0) {
         foreach ($roleDefinition in ($htCacheDefinitions).role.Keys.Where( { ($htCacheDefinitions).role.($_).IsCustom })) {
             $htJSON.RoleDefinitions.($roleDefinition) = ($htCacheDefinitions).role.($roleDefinition).Json
+            $jsonConverted = ($htCacheDefinitions).role.($roleDefinition).Json.properties | ConvertTo-Json -Depth 99
+            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionCustom)$($DirectorySeparatorChar)$(($htCacheDefinitions).role.($roleDefinition).Name ) ($(($htCacheDefinitions).role.($roleDefinition).Id).json" -Encoding utf8
+        }
+        foreach ($roleDefinition in ($htCacheDefinitions).role.Keys.Where( { -not ($htCacheDefinitions).role.($_).IsCustom })) {
+            $htJSON.RoleDefinitions.($roleDefinition) = ($htCacheDefinitions).role.($roleDefinition).Json
+            $jsonConverted = ($htCacheDefinitions).role.($roleDefinition).Json | ConvertTo-Json -Depth 99
+            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionBuiltIn)$($DirectorySeparatorChar)$(($htCacheDefinitions).role.($roleDefinition).Name ) ($(($htCacheDefinitions).role.($roleDefinition).Id).json" -Encoding utf8
+        }
+    }
+
+    $pathPolicyDefinitions = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicyDefinitions"
+    if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicyDefinitions)")) {
+        $null = new-item -Name $pathPolicyDefinitions -ItemType directory -path $outputPath
+        $pathPolicyDefinitionBuiltIn = "$($pathPolicyDefinitions)$($DirectorySeparatorChar)BuiltIn"
+        $null = new-item -Name "$($pathPolicyDefinitionBuiltIn)" -ItemType directory -path $outputPath
+    }
+    if (($htCacheDefinitions).policy.Keys.Count -gt 0) {
+        foreach ($policyDefinition in ($htCacheDefinitions).policy.Keys.Where( { ($htCacheDefinitions).policy.($_).Type -eq "BuiltIn" })) {
+            $jsonConverted = ($htCacheDefinitions).policy.($policyDefinition).Json | ConvertTo-Json -Depth 99 
+            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicyDefinitionBuiltIn)$($DirectorySeparatorChar)$(($htCacheDefinitions).policy.($policyDefinition).displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|") ($(($htCacheDefinitions).policy.($policyDefinition).Json.name)).json" -Encoding utf8
+        }
+    }
+
+    $pathPolicySetDefinitions = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicySetDefinitions"
+    if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicySetDefinitions)")) {
+        $null = new-item -Name $pathPolicySetDefinitions -ItemType directory -path $outputPath
+        $pathPolicySetDefinitionBuiltIn = "$($pathPolicySetDefinitions)$($DirectorySeparatorChar)BuiltIn"
+        $null = new-item -Name "$($pathPolicySetDefinitionBuiltIn)" -ItemType directory -path $outputPath
+    }
+    if (($htCacheDefinitions).policySet.Keys.Count -gt 0) {
+        foreach ($policySetDefinition in ($htCacheDefinitions).policySet.Keys.Where( { ($htCacheDefinitions).policySet.($_).Type -eq "BuiltIn" })) {
+            $jsonConverted = ($htCacheDefinitions).policySet.($policySetDefinition).Json | ConvertTo-Json -Depth 99 
+            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicySetDefinitionBuiltIn)$($DirectorySeparatorChar)$(($htCacheDefinitions).policySet.($policySetDefinition).displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|") ($(($htCacheDefinitions).policySet.($policySetDefinition).Json.name)).json" -Encoding utf8
         }
     }
 
@@ -21169,16 +21219,153 @@ if (-not $NoJsonExport) {
 
     $startBuildJSON = get-date
     Write-Host " Build JSON"
-    function buildTree($mgId) {
+    function buildTree($mgId, $prnt) {
         $getMg = $arrayEntitiesFromAPI.Where( { $_.type -eq "Microsoft.Management/managementGroups" -and $_.name -eq $mgId })
         $childrenManagementGroups = $arrayEntitiesFromAPI.Where( { $_.type -eq "Microsoft.Management/managementGroups" -and $_.properties.parent.id -eq "/providers/Microsoft.Management/managementGroups/$($getMg.Name)" })
+        $prntx = "$($prnt)$($DirectorySeparatorChar)$($getMg.Name) ($($getMg.properties.displayName))"
+        if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)")) {
+            $null = new-item -Name $prntx -ItemType directory -path $outputPath
+        }
         
         if (-not $json."ManagementGroups") {
             $json."ManagementGroups" = [ordered]@{}
         }
         $json = $json."ManagementGroups".($getMg.Name) = [ordered]@{}
-        foreach ($mg in $htJSON.ManagementGroups.($getMg.Name).keys) {
-            $json.$mg = $htJSON.ManagementGroups.($getMg.Name).$mg
+        foreach ($mgCap in $htJSON.ManagementGroups.($getMg.Name).keys) {
+            $json.$mgCap = $htJSON.ManagementGroups.($getMg.Name).$mgCap
+            if ($mgCap -eq "PolicyDefinitionsCustom"){
+                foreach ($pdc in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys){
+                    $jsonConverted = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pdc) | ConvertTo-Json -Depth 99
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCap)_$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($pdc).name).json" -Encoding utf8
+                    $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicyDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($getMg.Name) ($($getMg.properties.displayName))"
+                    if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
+                        $null = new-item -Name $path -ItemType directory -path $outputPath
+                    }
+                    if ([string]::IsNullOrEmpty($htJSON.ManagementGroups.($getMg.Name).($mgCap).($pdc).properties.displayName)){
+                        $displayName = "noDisplayNameGiven"
+                    }
+                    else{
+                        $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pdc).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|"
+                    }
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($pdc).name)).json" -Encoding utf8
+                }
+            }
+            if ($mgCap -eq "PolicySetDefinitionsCustom"){
+                foreach ($psdc in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys){
+                    $jsonConverted = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($psdc) | ConvertTo-Json -Depth 99
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCap)_$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($psdc).name).json" -Encoding utf8
+                    $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicySetDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($getMg.Name) ($($getMg.properties.displayName))"
+                    if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
+                        $null = new-item -Name $path -ItemType directory -path $outputPath
+                    }
+                    if ([string]::IsNullOrEmpty($htJSON.ManagementGroups.($getMg.Name).($mgCap).($psdc).properties.displayName)){
+                        $displayName = "noDisplayNameGiven"
+                    }
+                    else{
+                        $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($psdc).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|"
+                    }
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($psdc).name)).json" -Encoding utf8
+                }
+            }
+            if ($mgCap -eq "PolicyAssignments"){
+                foreach ($pa in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys){
+                    $jsonConverted = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pa) | ConvertTo-Json -Depth 99
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCap)_$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($pa).name).json" -Encoding utf8
+                    $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($mgCap)$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($getMg.Name) ($($getMg.properties.displayName))"
+                    if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
+                        $null = new-item -Name $path -ItemType directory -path $outputPath
+                    }
+                    if ([string]::IsNullOrEmpty($htJSON.ManagementGroups.($getMg.Name).($mgCap).($pa).properties.displayName)){
+                        $displayName = "noDisplayNameGiven"
+                    }
+                    else{
+                        $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pa).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|"
+                    }
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($pa).name)).json" -Encoding utf8
+                }
+            }
+            if ($mgCap -eq "RoleAssignments"){
+                foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys){
+                    $jsonConverted = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($ra) | ConvertTo-Json -Depth 99
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCap)_$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($ra).RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                    $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($mgCap)$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($getMg.Name) ($($getMg.properties.displayName))"
+                    if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
+                        $null = new-item -Name $path -ItemType directory -path $outputPath
+                    }
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($ra).RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                }
+            }
+
+            if ($mgCap -eq "Subscriptions"){
+                foreach ($sub in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys){
+                    $subFolderName = "$($prntx)$($DirectorySeparatorChar)$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).SubscriptionName) ($($sub))"
+                    $null = new-item -Name $subFolderName -ItemType directory -path $outputPath
+                    foreach ($subCap in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).Keys){
+                        if ($subCap -eq "PolicyDefinitionsCustom"){
+                            foreach ($pdc in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys){
+                                $jsonConverted = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pdc) | ConvertTo-Json -Depth 99
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCap)_$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pdc).name).json" -Encoding utf8
+                                $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicyDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).SubscriptionName) ($($sub))"
+                                if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
+                                    $null = new-item -Name $path -ItemType directory -path $outputPath
+                                }
+                                if ([string]::IsNullOrEmpty($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pdc).properties.displayName)){
+                                    $displayName = "noDisplayNameGiven"
+                                }
+                                else{
+                                    $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pdc).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|"
+                                }
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pdc).name)).json" -Encoding utf8
+                            }
+                        }
+                        if ($subCap -eq "PolicySetDefinitionsCustom"){
+                            foreach ($psdc in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys){
+                                $jsonConverted = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($psdc) | ConvertTo-Json -Depth 99
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCap)_$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($psdc).name).json" -Encoding utf8
+                                $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicySetDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).SubscriptionName) ($($sub))"
+                                if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
+                                    $null = new-item -Name $path -ItemType directory -path $outputPath
+                                }
+                                if ([string]::IsNullOrEmpty($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($psdc).properties.displayName)){
+                                    $displayName = "noDisplayNameGiven"
+                                }
+                                else{
+                                    $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($psdc).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|"
+                                }
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($psdc).name)).json" -Encoding utf8
+                            }
+                        }
+                        if ($subCap -eq "PolicyAssignments"){
+                            foreach ($pa in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys){
+                                $jsonConverted = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pa) | ConvertTo-Json -Depth 99
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCap)_$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pa).name).json" -Encoding utf8
+                                $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($subCap)$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).SubscriptionName) ($($sub))"
+                                if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
+                                    $null = new-item -Name $path -ItemType directory -path $outputPath
+                                }
+                                if ([string]::IsNullOrEmpty($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pa).properties.displayName)){
+                                    $displayName = "noDisplayNameGiven"
+                                }
+                                else{
+                                    $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pa).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|"
+                                }
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pa).name)).json" -Encoding utf8
+                            }
+                        }
+                        if ($subCap -eq "RoleAssignments"){
+                            foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys){
+                                $jsonConverted = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($ra) | ConvertTo-Json -Depth 99
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCap)_$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($ra).RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                                $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($subCap)$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).SubscriptionName) ($($sub))"
+                                if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
+                                    $null = new-item -Name $path -ItemType directory -path $outputPath
+                                }
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($ra).RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         if ($childrenManagementGroups.Count -eq 0) {
@@ -21186,27 +21373,49 @@ if (-not $NoJsonExport) {
         }
         else {
             foreach ($childMg in $childrenManagementGroups) {
-                buildTree -mgId $childMg.Name -json $json
+                buildTree -mgId $childMg.Name -json $json -prnt $prntx
             }
         }
     }
+
+    $null = new-item -Name "$($JSONPath)$($DirectorySeparatorChar)Tenant" -ItemType directory -path $outputPath
 
     $htTree = [ordered]@{}
     $htTree."Tenant" = [ordered] @{}
     $htTree.Tenant.TenantId = $checkContext.Tenant.Id
     $htTree.Tenant.RoleAssignments = [ordered]@{}
     foreach ($RoleAssignment in ($grpTenantScopeRoleAssignments).Group) {
+
         $htTree.Tenant.RoleAssignments.$($RoleAssignment.Assignment.RoleAssignmentId) = [ordered]@{}
         $htTree.Tenant.RoleAssignments.$($RoleAssignment.Assignment.RoleAssignmentId) = $RoleAssignment.Assignment
+
+        $jsonConverted = $RoleAssignment.Assignment | ConvertTo-Json -Depth 99
+        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)Tenant$($DirectorySeparatorChar)RoleAssignments_$($RoleAssignment.Assignment.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+        $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)RoleAssignments$($DirectorySeparatorChar)Tenant"
+        if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
+            $null = new-item -Name $path -ItemType directory -path $outputPath
+        }
+        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($RoleAssignment.Assignment.RoleAssignmentId -replace ".*/").json" -Encoding utf8
     }
+
+
+
 
     $htTree."Tenant"."ManagementGroups" = [ordered] @{}
     $json = $htTree."Tenant"
-    buildTree -mgId $ManagementGroupId -json $json
+
+    if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)Assignments")) {
+        $null = new-item -Name "$($JSONPath)$($DirectorySeparatorChar)Assignments" -ItemType directory -path $outputPath
+    }
+    
+
+    buildTree -mgId $ManagementGroupId -json $json -prnt "$($JSONPath)$($DirectorySeparatorChar)Tenant"
+    #buildTree -mgId $checkContext.Tenant.Id -json $json
+    
 
     $htTree."Tenant"."CustomRoleDefinitions" = $htJSON.RoleDefinitions
 
-    $htTree | ConvertTo-JSON -Depth 99 | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).json" -Encoding utf8 -Force
+    $htTree | ConvertTo-JSON -Depth 99 | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)$($fileName).json" -Encoding utf8 -Force
 
     $endBuildJSON = get-date
     Write-Host " Building JSON duration: $((NEW-TIMESPAN -Start $startBuildJSON -End $endBuildJSON).TotalSeconds) seconds"
