@@ -204,7 +204,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_202107015_1",
+    [string]$AzGovVizVersion = "v5_major_202107015_2",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -21188,7 +21188,7 @@ if (-not $NoJsonExport) {
         foreach ($roleDefinition in ($htCacheDefinitions).role.Keys.Where( { ($htCacheDefinitions).role.($_).IsCustom }) | sort-object) {
             $htJSON.RoleDefinitions.($roleDefinition) = ($htCacheDefinitions).role.($roleDefinition).Json
             $jsonConverted = ($htCacheDefinitions).role.($roleDefinition).Json.properties | ConvertTo-Json -Depth 99
-            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionCustom)$($DirectorySeparatorChar)$(($htCacheDefinitions).role.($roleDefinition).Name ) ($(($htCacheDefinitions).role.($roleDefinition).Id).json" -Encoding utf8
+            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionCustom)$($DirectorySeparatorChar)$(($htCacheDefinitions).role.($roleDefinition).Name  -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|" -replace '"' ) ($(($htCacheDefinitions).role.($roleDefinition).Id).json" -Encoding utf8
         }
         foreach ($roleDefinition in ($htCacheDefinitions).role.Keys.Where( { -not ($htCacheDefinitions).role.($_).IsCustom })) {
             #$htJSON.RoleDefinitions.($roleDefinition) = ($htCacheDefinitions).role.($roleDefinition).Json
