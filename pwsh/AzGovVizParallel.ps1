@@ -204,7 +204,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_202107013_2",
+    [string]$AzGovVizVersion = "v5_major_202107015_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -1188,7 +1188,9 @@ else {
     if (-not $checkContext.Subscription) {
         $checkContext
         Write-Host " Context test failed: Context is not set to any Subscription. Set your context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run AzGovViz" -ForegroundColor Red
+        
         if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+            Write-host " If this error occurs you may want to leverage parameter 'SubscriptionId4AzContext' (AzGovVizParallel.ps1 -SubscriptionId4AzContext '<SubscriptionId>')"
             Write-Error "Error"
         }
         else {
@@ -1493,7 +1495,8 @@ function dataCollection($mgId) {
     Write-Host " CustomDataCollection ManagementGroups"
     $startMgLoop = get-date
     
-    $allManagementGroupsFromEntitiesChildOfRequestedMg = $arrayEntitiesFromAPI | Where-Object { $_.type -eq "Microsoft.Management/managementGroups" -and ($_.Name -eq $mgId -or $_.properties.parentNameChain -contains $mgId) } | Sort-Object -Property id -Unique
+    #$allManagementGroupsFromEntitiesChildOfRequestedMg = $arrayEntitiesFromAPI | Where-Object { $_.type -eq "Microsoft.Management/managementGroups" -and ($_.Name -eq $mgId -or $_.properties.parentNameChain -contains $mgId) } | Sort-Object -Property id -Unique
+    $allManagementGroupsFromEntitiesChildOfRequestedMg = $arrayEntitiesFromAPI | Where-Object { $_.type -eq "Microsoft.Management/managementGroups" -and ($_.Name -eq $mgId -or $_.properties.parentNameChain -contains $mgId) }
     $allManagementGroupsFromEntitiesChildOfRequestedMgCount = ($allManagementGroupsFromEntitiesChildOfRequestedMg | Measure-Object).Count
 
     $allManagementGroupsFromEntitiesChildOfRequestedMg | ForEach-Object -Parallel {
@@ -1550,7 +1553,8 @@ function dataCollection($mgId) {
             $MgParentName = "TenantRoot"
         }
         else {
-            $MgParentName = ($arrayEntitiesFromAPI | Where-Object { $_.Name -eq $MgParentId } | Sort-Object -Property id -Unique).Name
+            #$MgParentName = ($arrayEntitiesFromAPI | Where-Object { $_.Name -eq $MgParentId } | Sort-Object -Property id -Unique).Name
+            $MgParentName = $htManagementGroupsMgPath.($MgParentId).DisplayName
         }
         $hierarchyLevel = (($allManagementGroupsFromEntitiesChildOfRequestedMg | Where-Object { $_.Name -eq $mgdetail.Name }).properties.parentNameChain | Measure-Object).Count
 
@@ -1561,8 +1565,6 @@ function dataCollection($mgId) {
         if ($htParameters.HierarchyMapOnly -eq $false) {
 
             $mgPath = $htManagementGroupsMgPath.($mgdetail.Name).path -join "/"
-            
-            #mg https://management.azure.com/providers/Microsoft.Management/managementGroups/emea/providers/microsoft.insights/diagnosticSettings?api-version=2021-05-01-preview
             $currentTask = "getDiagnosticSettingsMg '$($mgdetail.properties.displayName)' ('$($mgdetail.Name)')"
             $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/providers/microsoft.insights/diagnosticSettings?api-version=2020-01-01-preview"
             $method = "GET"
@@ -2482,7 +2484,8 @@ function dataCollection($mgId) {
                 $childMgMgPath = $hierarchyInfo.path -join "/"
                 $childMgParentInfo = $htManagementGroupsMgPath.($childMgId)
                 $childMgParentId = $childMgParentInfo.Parent
-                $childMgParentName = $childMgParentInfo.ParentName
+                #$childMgParentName = $childMgParentInfo.ParentName
+                $childMgParentName = $htManagementGroupsMgPath.($childMgParentInfo.Parent).DisplayName
             
                 $rndom = Get-Random -Minimum 10 -Maximum 750
                 start-sleep -Millisecond $rndom
@@ -21083,22 +21086,22 @@ if (-not $NoJsonExport) {
         $htJSON.ManagementGroups.$($mg.MgId).RoleAssignments = [ordered]@{}
         $htJSON.ManagementGroups.$($mg.MgId).Subscriptions = [ordered]@{}
         
-        foreach ($PolDef in ($grpMgScopePolicyDefinitionsCustom.Where( { $_.Name -eq $mg.MgId })).group) {
+        foreach ($PolDef in ($grpMgScopePolicyDefinitionsCustom.Where( { $_.Name -eq $mg.MgId })).group | sort-object -Property PolicyDefinitionId) {
             $htJSON.ManagementGroups.$($mg.MgId).PolicyDefinitionsCustom.$($PolDef.Id) = [ordered]@{}
             $htJSON.ManagementGroups.$($mg.MgId).PolicyDefinitionsCustom.$($PolDef.Id) = $PolDef.Json
         }
 
-        foreach ($PolSetDef in ($grpMgScopePolicySetDefinitionsCustom.Where( { $_.Name -eq $mg.MgId })).group) {
+        foreach ($PolSetDef in ($grpMgScopePolicySetDefinitionsCustom.Where( { $_.Name -eq $mg.MgId })).group | sort-object -Property PolicyDefinitionId) {
             $htJSON.ManagementGroups.$($mg.MgId).PolicySetDefinitionsCustom.$($PolSetDef.Id) = [ordered]@{}
             $htJSON.ManagementGroups.$($mg.MgId).PolicySetDefinitionsCustom.$($PolSetDef.Id) = $PolSetDef.Json
         }
 
-        foreach ($PolAssignment in $grpMgScopePolicyAssignments.Where( { $_.Name -eq $mg.MgId }).group) {
+        foreach ($PolAssignment in $grpMgScopePolicyAssignments.Where( { $_.Name -eq $mg.MgId }).group| sort-object @{Expression = { $_.Assignment.Id }}) {
             $htJSON.ManagementGroups.$($mg.MgId).PolicyAssignments.$($PolAssignment.Assignment.id) = [ordered]@{}
             $htJSON.ManagementGroups.$($mg.MgId).PolicyAssignments.$($PolAssignment.Assignment.id) = $PolAssignment.Assignment
         }
         
-        foreach ($RoleAssignment in ($grpMgScopeRoleAssignments).Where( { $_.Name -eq $mg.MgId }).group) {
+        foreach ($RoleAssignment in ($grpMgScopeRoleAssignments).Where( { $_.Name -eq $mg.MgId }).group | sort-object @{Expression = { $_.Assignment.RoleAssignmentId }}) {
             $htJSON.ManagementGroups.$($mg.MgId).RoleAssignments.$($RoleAssignment.Assignment.RoleAssignmentId) = [ordered]@{}
             $htJSON.ManagementGroups.$($mg.MgId).RoleAssignments.$($RoleAssignment.Assignment.RoleAssignmentId) = $RoleAssignment.Assignment
         }
@@ -21115,7 +21118,7 @@ if (-not $NoJsonExport) {
                 $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).SubscriptionQuotaId = $subscription.SubscriptionQuotaId
                 $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).SubscriptionState = $subscription.SubscriptionState
                 if ($htSubscriptionTags.($subscription.SubscriptionId)) {
-                    $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).SubscriptionTags = $htSubscriptionTags.($subscription.SubscriptionId)
+                    $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).SubscriptionTags = $htSubscriptionTags.($subscription.SubscriptionId).getEnumerator() | Sort-Object Key
                 }
                 $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).PolicyDefinitionsCustom = [ordered]@{}
                 $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).PolicySetDefinitionsCustom = [ordered]@{}
@@ -21124,22 +21127,22 @@ if (-not $NoJsonExport) {
                 $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).RoleAssignments = [ordered]@{}
                 $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).BlueprintAssignments = [ordered]@{}
         
-                foreach ($PolDef in ($grpSubScopePolicyDefinitionsCustom.Where( { $_.Name -eq $subscription.subscriptionId })).group) {
+                foreach ($PolDef in ($grpSubScopePolicyDefinitionsCustom.Where( { $_.Name -eq $subscription.subscriptionId })).group | sort-object -Property PolicyDefinitionId) {
                     $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).PolicyDefinitionsCustom.$($PolDef.Id) = [ordered]@{}
                     $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).PolicyDefinitionsCustom.$($PolDef.Id) = $PolDef.Json
                 }
 
-                foreach ($PolSetDef in ($grpSubScopePolicySetDefinitionsCustom.Where( { $_.Name -eq $subscription.subscriptionId })).group) {
+                foreach ($PolSetDef in ($grpSubScopePolicySetDefinitionsCustom.Where( { $_.Name -eq $subscription.subscriptionId })).group | sort-object -Property PolicyDefinitionId) {
                     $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).PolicySetDefinitionsCustom.$($PolSetDef.Id) = [ordered]@{}
                     $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).PolicySetDefinitionsCustom.$($PolSetDef.Id) = $PolSetDef.Json
                 }
 
-                foreach ($PolAssignment in $grpSubScopePolicyAssignments.Where( { $_.Name -eq $subscription.subscriptionId }).group) {
+                foreach ($PolAssignment in $grpSubScopePolicyAssignments.Where( { $_.Name -eq $subscription.subscriptionId }).group| sort-object @{Expression = { $_.Assignment.Id }}) {
                     $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).PolicyAssignments.$($PolAssignment.Assignment.id) = [ordered]@{}
                     $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).PolicyAssignments.$($PolAssignment.Assignment.id) = $PolAssignment.Assignment
                 }
 
-                foreach ($RoleAssignment in ($grpSubScopeRoleAssignments).Where( { $_.Name -eq $subscription.subscriptionId }).group) {
+                foreach ($RoleAssignment in ($grpSubScopeRoleAssignments).Where( { $_.Name -eq $subscription.subscriptionId }).group | sort-object @{Expression = { $_.Assignment.RoleAssignmentId }}) {
                     $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).RoleAssignments.$($RoleAssignment.Assignment.RoleAssignmentId) = [ordered]@{}
                     $htJSON.ManagementGroups.$($mg.MgId).Subscriptions.$($subscription.subscriptionId).RoleAssignments.$($RoleAssignment.Assignment.RoleAssignmentId) = $RoleAssignment.Assignment
                 }
@@ -21157,10 +21160,16 @@ if (-not $NoJsonExport) {
         }
     }
 
-    $JSONPath = "JSON"
-    if (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)") {
-        Write-Host " Cleaning old state"
-        Remove-Item -Recurse -Force "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)"
+    if ($AzureDevOpsWikiAsCode){
+        $JSONPath = "JSON"
+        if (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)") {
+            Write-Host " Cleaning old state (Pipeline only)"
+            Remove-Item -Recurse -Force "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)"
+        }
+    }
+    else{
+        $JSONPath = "JSON_$($fileTimestamp)"
+        Write-Host " Creating new state (JSON_$($fileTimestamp) (local only))"
     }
     $null = new-item -Name $JSONPath -ItemType directory -path $outputPath
     $null = new-item -Name "$($JSONPath)$($DirectorySeparatorChar)Definitions" -ItemType directory -path $outputPath
@@ -21176,13 +21185,13 @@ if (-not $NoJsonExport) {
     }
 
     if (($htCacheDefinitions).role.Keys.Count -gt 0) {
-        foreach ($roleDefinition in ($htCacheDefinitions).role.Keys.Where( { ($htCacheDefinitions).role.($_).IsCustom })) {
+        foreach ($roleDefinition in ($htCacheDefinitions).role.Keys.Where( { ($htCacheDefinitions).role.($_).IsCustom }) | sort-object) {
             $htJSON.RoleDefinitions.($roleDefinition) = ($htCacheDefinitions).role.($roleDefinition).Json
             $jsonConverted = ($htCacheDefinitions).role.($roleDefinition).Json.properties | ConvertTo-Json -Depth 99
             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionCustom)$($DirectorySeparatorChar)$(($htCacheDefinitions).role.($roleDefinition).Name ) ($(($htCacheDefinitions).role.($roleDefinition).Id).json" -Encoding utf8
         }
         foreach ($roleDefinition in ($htCacheDefinitions).role.Keys.Where( { -not ($htCacheDefinitions).role.($_).IsCustom })) {
-            $htJSON.RoleDefinitions.($roleDefinition) = ($htCacheDefinitions).role.($roleDefinition).Json
+            #$htJSON.RoleDefinitions.($roleDefinition) = ($htCacheDefinitions).role.($roleDefinition).Json
             $jsonConverted = ($htCacheDefinitions).role.($roleDefinition).Json | ConvertTo-Json -Depth 99
             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionBuiltIn)$($DirectorySeparatorChar)$(($htCacheDefinitions).role.($roleDefinition).Name ) ($(($htCacheDefinitions).role.($roleDefinition).Id).json" -Encoding utf8
         }
@@ -21197,7 +21206,7 @@ if (-not $NoJsonExport) {
     if (($htCacheDefinitions).policy.Keys.Count -gt 0) {
         foreach ($policyDefinition in ($htCacheDefinitions).policy.Keys.Where( { ($htCacheDefinitions).policy.($_).Type -eq "BuiltIn" })) {
             $jsonConverted = ($htCacheDefinitions).policy.($policyDefinition).Json | ConvertTo-Json -Depth 99 
-            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicyDefinitionBuiltIn)$($DirectorySeparatorChar)$(($htCacheDefinitions).policy.($policyDefinition).displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|") ($(($htCacheDefinitions).policy.($policyDefinition).Json.name)).json" -Encoding utf8
+            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicyDefinitionBuiltIn)$($DirectorySeparatorChar)$(($htCacheDefinitions).policy.($policyDefinition).displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|" -replace '"') ($(($htCacheDefinitions).policy.($policyDefinition).Json.name)).json" -Encoding utf8
         }
     }
 
@@ -21210,7 +21219,7 @@ if (-not $NoJsonExport) {
     if (($htCacheDefinitions).policySet.Keys.Count -gt 0) {
         foreach ($policySetDefinition in ($htCacheDefinitions).policySet.Keys.Where( { ($htCacheDefinitions).policySet.($_).Type -eq "BuiltIn" })) {
             $jsonConverted = ($htCacheDefinitions).policySet.($policySetDefinition).Json | ConvertTo-Json -Depth 99 
-            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicySetDefinitionBuiltIn)$($DirectorySeparatorChar)$(($htCacheDefinitions).policySet.($policySetDefinition).displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|") ($(($htCacheDefinitions).policySet.($policySetDefinition).Json.name)).json" -Encoding utf8
+            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicySetDefinitionBuiltIn)$($DirectorySeparatorChar)$(($htCacheDefinitions).policySet.($policySetDefinition).displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|" -replace '"') ($(($htCacheDefinitions).policySet.($policySetDefinition).Json.name)).json" -Encoding utf8
         }
     }
 
@@ -21245,7 +21254,7 @@ if (-not $NoJsonExport) {
                         $displayName = "noDisplayNameGiven"
                     }
                     else{
-                        $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pdc).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|"
+                        $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pdc).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|" -replace '"'
                     }
                     $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($pdc).name)).json" -Encoding utf8
                 }
@@ -21262,7 +21271,7 @@ if (-not $NoJsonExport) {
                         $displayName = "noDisplayNameGiven"
                     }
                     else{
-                        $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($psdc).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|"
+                        $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($psdc).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|" -replace '"'
                     }
                     $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($psdc).name)).json" -Encoding utf8
                 }
@@ -21279,7 +21288,7 @@ if (-not $NoJsonExport) {
                         $displayName = "noDisplayNameGiven"
                     }
                     else{
-                        $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pa).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|"
+                        $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pa).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|" -replace '"'
                     }
                     $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($pa).name)).json" -Encoding utf8
                 }
@@ -21313,7 +21322,7 @@ if (-not $NoJsonExport) {
                                     $displayName = "noDisplayNameGiven"
                                 }
                                 else{
-                                    $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pdc).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|"
+                                    $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pdc).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|" -replace '"'
                                 }
                                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pdc).name)).json" -Encoding utf8
                             }
@@ -21330,7 +21339,7 @@ if (-not $NoJsonExport) {
                                     $displayName = "noDisplayNameGiven"
                                 }
                                 else{
-                                    $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($psdc).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|"
+                                    $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($psdc).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|" -replace '"'
                                 }
                                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($psdc).name)).json" -Encoding utf8
                             }
@@ -21347,7 +21356,7 @@ if (-not $NoJsonExport) {
                                     $displayName = "noDisplayNameGiven"
                                 }
                                 else{
-                                    $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pa).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|"
+                                    $displayName = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pa).properties.displayName -replace ":" -replace "/" -replace "\\" -replace "<" -replace ">" -replace "\*" -replace "\?" -replace "|" -replace '"'
                                 }
                                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pa).name)).json" -Encoding utf8
                             }
@@ -21384,7 +21393,7 @@ if (-not $NoJsonExport) {
     $htTree."Tenant" = [ordered] @{}
     $htTree.Tenant.TenantId = $checkContext.Tenant.Id
     $htTree.Tenant.RoleAssignments = [ordered]@{}
-    foreach ($RoleAssignment in ($grpTenantScopeRoleAssignments).Group) {
+    foreach ($RoleAssignment in ($grpTenantScopeRoleAssignments).Group | sort-object @{Expression = { $_.Assignment.RoleAssignmentId }}) {
 
         $htTree.Tenant.RoleAssignments.$($RoleAssignment.Assignment.RoleAssignmentId) = [ordered]@{}
         $htTree.Tenant.RoleAssignments.$($RoleAssignment.Assignment.RoleAssignmentId) = $RoleAssignment.Assignment
