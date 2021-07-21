@@ -83,7 +83,7 @@ _* a new BuiltIn RBAC Role definition was added_
 
 <a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_202107021_1.html" target="_blank">![Demo](img/demo4_66.png)</a>
 
-[Demo (v5_major_202107021_1)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_202107021_1.html)  
+[Demo (v5_major_20210721_1)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_202107021_1.html)  
 Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation
 
 <hr>
@@ -255,8 +255,8 @@ markdown in Azure DevOps Wiki as Code
   * all Policy and Role assignments (Scopes: Tenant, Management Groups and Subscriptions)
   * all BuiltIn and Custom Policy/Set definitions (Scopes: Management Groups and Subscriptions)
   * all BuiltIn and Custom Role definitions
-  * Tenant tree including all Policy and Role assignments AND all Custom Policy/Set and Role definitions
-  * JSON file of ManagementGroup Hierarchy including all Custom Policy/Set and RBAC definitions, Policy and Role assignments and some more relevant information  
+  * JSON file of ManagementGroup Hierarchy including all Custom Policy/Set and RBAC definitions, Policy and Role assignments and some more relevant information 
+  * Tenant tree including all Policy and Role assignments AND all Custom Policy/Set and Role definitions   
   ![alt text](img/jsonfolderfull450.jpg "JSONFolder")
 
 ## Slideset
