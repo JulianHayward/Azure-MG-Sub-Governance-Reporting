@@ -36,34 +36,62 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 <hr>
 
-## AzGovViz release history
+## Table of contents
+* [Release history](#release-history)
+* [Demo](#demo)
+* [Features](#features)
+* [Screenshots](#screenshots)
+* [Outputs](#outputs)
+* [Slideset](#slideset)
+* [Technical documentation](#technical-documentation)
+  * [Permissions overview](#permissions-overview)
+  * [Required permissions in Azure](#required-permissions-in-azure)
+  * [Required permissions in Azure Active Directory](#required-permissions-in-azure-active-directory)
+  * [PowerShell](#powershell)
+  * [Parameters](#parameters)
+* [AzGovViz step by step](#azgovviz-step-by-step)
+  * [AzGovViz in Azure DevOps](#azgovviz-in-azure-devops)
+* [Integrate with AzOps](#integrate-with-azops)
+* [Security](#security)
+* [Facts](#facts)
+* [Contributions](#contributions)
+* [AzAdvertizer](#azadvertizer)
+* [Final note](#final-note)
 
-__Changes__ (2021-July-07 / Major)
+<hr>
 
-* Replaced parameters `-NoScopeInsights`, `-RBACAtScopeOnly` and `-PolicyAtScopeOnly` with `-LargeTenant`. A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big, therefore will not create __ScopeInsights__ and will not show inheritance for Policy and Role assignments in the __TenantSummary__ (html) output
-* Add Tenant to __HierarchyMap__ including count of Role assignments
-* Executing against any child Management Group will show all parent Management Groups in __HierarchyMap__
-* Cosmetics / Icons
+## Release history
+
+__Changes__ (2021-July-21 / Major)
+
+* Full blown JSON definition output. Leveraging Git with this new capability you can easily track any changes that occurred in between the previous and last AzGovViz run.  
+![newBuiltInRoleDefinition](img/gitdiff600.jpg)  
+_* a new BuiltIn RBAC Role definition was added_
+* Renamed parameter `-PolicyIncludeResourceGroups` to , `-DoNotIncludeResourceGroupsOnPolicy` (from now Policy assignments on ResourceGroups will be included by default)
+* Renamed parameter `-RBACIncludeResourceGroupsAndResources` to , `-DoNotIncludeResourceGroupsAndResourcesOnRBAC` (from now Role assignments on ResourceGroups and Resources will be included by default)
+* New parameter `-HtmlTableRowsLimit`. Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 40.000.
+* Added NonCompliance Message for Policy assignments
+* Cosmetics
 * Bugfixes
-* Performance optimization - optimized data collection to reduce memory utilization -> __big, fat 'Thank You'__ to Tim Wanierke and Brooks Vaughn
+* Performance optimization
 
 [Release history](history.md)
 
 <hr>
 
-## AzGovViz in Action
+## Demo
 
-<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210607_2.html" target="_blank">![Demo](img/demo4_66.png)</a>
+<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_202107021_1.html" target="_blank">![Demo](img/demo4_66.png)</a>
 
-[Demo (v5_major_20210607_2)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210607_2.html)  
+[Demo (v5_major_202107021_1)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_202107021_1.html)  
 Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation
 
 <hr>
 
-### Features
+## Features
 
 * __Hierarchy of Management Groups__
-  * Builds a visual hierarchy of your Management Group setup including count of linked Subscriptions
+  * Builds a visual hierarchy of your Management Group setup including counts on linked Subscriptions, Policy assignments, scoped Policy/Set definitions and Role assignments per Management Group
 * __Azure Policy__
   * Custom Policy definitions
     * Scope information
@@ -71,7 +99,7 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
     * If Policy effect is DeployIfNotExists (DINE) will show the specified RBAC Role 
     * List of assignments
     * Usage in custom PolicySet definitions 
-    * System metadata 'createdOn, createdBy, updatedOn, updatedBy'
+    * System metadata 'createdOn, createdBy, updatedOn, updatedBy' ('createdBy', 'updatedBy' identity is fully resolved)
   * Orphaned custom Policy definitions
     * List of custom Policy definitions that matches the following criteria:
       * Policy definition is not used in any custom PolicySet definition
@@ -88,19 +116,20 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
     * Lists all Exemptions (scopes: Management Groups, Subscriptions, ResourceGroups, Resources)
     * Enrich information on Exemption scope
     * Summary on expired Exemptions
-  * Policy assignments throughout the entirety of scopes (Management Groups, Subscriptions)
+  * Policy assignments throughout the entirety of scopes (Management Groups, Subscriptions and Resource Groups)
     * Core information on Policy assignments
+      * NonCompliance Message on Policy assignment for a PolicySet will only show the default non-compliance message
     * Advanced/enriched information on Policy assignments
       * Policy assignment scope (at scope/inheritance)
       * Indicates if scope is excluded from Policy assignment 
       * Indicates if Exemption applies for scope 
       * Policy/Resource Compliance (Policy: NonCompliant, Compliant; Resource: NonCompliant, Compliant, Conflicting)
       * Related RBAC Role assignments (if Policy effect is DeployIfNotExists (DINE))
-      * System metadata 'createdOn, createdBy, updatedOn, updatedBy'
+      * System metadata 'createdOn, createdBy, updatedOn, updatedBy' ('createdBy', 'updatedBy' identity is fully resolved)
 * __Role-Based Access Control (RBAC)__
   * Custom Role definitions
     * List assignable scopes
-    * System metadata 'createdOn, createdBy, updatedOn, updatedBy'
+    * System metadata 'createdOn, createdBy, updatedOn, updatedBy' ('createdBy', 'updatedBy' identity is fully resolved)
   * Orphaned custom Role definitions
     * List of custom Role definitions that matches the following criteria:
       * Role definition is not used in any Role assignment
@@ -109,7 +138,7 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
     * List of Role assignments that matches the following criteria:
       * Role definition was deleted although and assignment existed
       * Role assignmet's target identity (User, Group, ServicePrincipal) was deleted
-  * Role assignments throughout the entirety of scopes (Management Groups, Subscriptions)
+  * Role assignments throughout the entirety of scopes (Management Groups, Subscriptions, Resource Groups and Resources)
     * Core information on Role assignments
     * Advanced information on Role assignments
       * Role assignment scope (at scope / inheritance)
@@ -117,7 +146,7 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
       * For identity-type == 'ServicePrincipal' the type (Application/ManagedIdentity) will be reported
       * For identity-type == 'User' the userType (Member/Guest) will be reported
       * Related Policy assignments (Policy assignment of a Policy definition that uses the DeployIfNotExists (DINE) effect)
-      * System metadata 'createdOn, createdBy'
+      * System metadata 'createdOn, createdBy' ('createdBy' identity is fully resolved)
   * Role assignments ClassicAdministrators
   * Security & Best practice analysis
     * Existence of custom Role definition that reflect 'Owner' permissions
@@ -193,7 +222,7 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
 
 <hr>
 
-### Screenshots
+## Screenshots
 
 HTML file
 
@@ -211,8 +240,10 @@ markdown in Azure DevOps Wiki as Code
 
 ![alt text](img/AzDO_md_v4.png "Azure DevOps Wiki as Code") 
 *_IDs from screenshot are randomized_
+> Note: there is some fixing ongoing at the mermaid project to optimize the graphical experience:  
+ <https://github.com/mermaid-js/mermaid/issues/1177>
 
-### Outputs
+## Outputs
 
 * CSV file
 * HTML file
@@ -220,16 +251,19 @@ markdown in Azure DevOps Wiki as Code
   * Browsers tested: Edge, new Edge and Chrome
 * MD (Markdown) file
   * for use with Azure DevOps Wiki leveraging the [Mermaid](https://docs.microsoft.com/en-us/azure/devops/release-notes/2019/sprint-158-update#mermaid-diagram-support-in-wiki) plugin
-* JSON file (_experimental_)
-  * export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
-> Note: there is some fixing ongoing at the mermaid project to optimize the graphical experience:  
- <https://github.com/mermaid-js/mermaid/issues/1177>
+* JSON folder containing 
+  * all Policy and Role assignments (Scopes: Tenant, Management Groups and Subscriptions)
+  * all BuiltIn and Custom Policy/Set definitions (Scopes: Management Groups and Subscriptions)
+  * all BuiltIn and Custom Role definitions
+  * Tenant tree including all Policy and Role assignments AND all Custom Policy/Set and Role definitions
+  * JSON file of ManagementGroup Hierarchy including all Custom Policy/Set and RBAC definitions, Policy and Role assignments and some more relevant information  
+  ![alt text](img/jsonfolderfull450.jpg "JSONFolder")
 
-## AzGovViz slideset
+## Slideset
 
 Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
 
-## AzGovViz technical documentation
+## Technical documentation
 
 ### Permissions overview
 
@@ -348,9 +382,7 @@ This permission is <b>mandatory</b> in each and every scenario!
   </tbody>
 </table>
 
-### Usage
-
-#### PowerShell
+### PowerShell
 
 * Requires PowerShell 7 (minimum supported version 7.0.3)
   * [Get PowerShell](https://github.com/PowerShell/PowerShell#get-powershell)
@@ -361,9 +393,10 @@ This permission is <b>mandatory</b> in each and every scenario!
   * Az.Resources
   * ~~Az.ResourceGraph~~
   * [Install the Azure Az PowerShell module](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps)
-* Usage
+* Usage/command
   * `.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>`
-* Parameters
+
+### Parameters
   * `-ManagementGroupId` Management Group Id (Root Management Group Id equals your Tenant Id)
   * `-CsvDelimiter` the world is split into two kinds of delimiters - comma and semicolon - choose yours (default is semicolon ';')
   * `-OutputPath`
@@ -390,17 +423,22 @@ This permission is <b>mandatory</b> in each and every scenario!
   * ~~`-PolicyAtScopeOnly`~~ Use `-LargeTenant` - removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants
   * ~~`-RBACAtScopeOnly`~~ Use `-LargeTenant` - removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants
   * ~~`-CsvExport`~~ `-NoCsvExport` - do not export enriched data for 'Role assignments', 'Policy assignments' data and 'all resources' (subscriptionId,  managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
-  * `-PolicyIncludeResourceGroups` - include Policy assignments on ResourceGroups
-  * `-RBACIncludeResourceGroupsAndResources` - include Role assignments on ResourceGroups and Resources
+  * ~~`-PolicyIncludeResourceGroups`~~ `-DoNotIncludeResourceGroupsOnPolicy` - do not include Policy assignments on ResourceGroups
+  * ~~`-RBACIncludeResourceGroupsAndResources`~~ `-DoNotIncludeResourceGroupsAndResourcesOnRBAC` - do not include Role assignments on ResourceGroups and Resources
   * `-ChangeTrackingDays` - define the period for Change tracking on newly created and updated custom Policy, PolicySet and RBAC Role definitions and Policy/RBAC Role assignments (default is '14') 
   * `-FileTimeStampFormat`- define the time format for the output files (default is `yyyyMMdd_HHmmss`)
   * ~~`-JsonExport`~~ `-NoJsonExport` - do not enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON 
-  * `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big, therefore will not create __ScopeInsights__ and will not show inheritance for Policy and Role assignments in the __TenantSummary__ (html) output
+  * `-LargeTenant` - a large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big, therefore will not create __ScopeInsights__ and will not show inheritance for Policy and Role assignments in the __TenantSummary__ (html) output
+  * `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 40.000. 
 
 * Passed tests: Powershell Core 7.1.2 on Windows
 * Passed tests: Powershell Core 7.1.3 Azure DevOps hosted ubuntu-18.04
 
-#### Azure DevOps Pipeline
+## AzGovViz step by step
+
+Detailed __[Setup](setup.md) instructions__
+
+### AzGovViz in Azure DevOps
 
 The provided example Pipeline is configured to run based on a [schedule](https://docs.microsoft.com/en-us/azure/devops/pipelines/process/scheduled-triggers) (every 12 hours). It will push the AzGovViz markdown output file to the 'wiki' folder in the 'Azure-MG-Sub-Governance-Reporting' Repository which will feed your Wiki.
 
@@ -414,20 +452,33 @@ The provided example Pipeline is configured to run based on a [schedule](https:/
 
 > Make sure your Service Connection´s Service Principal has been granted with the required permissions (see [__Required permissions in Azure Active Directory__](#required-permissions-in-azure-active-directory)).
 
-## AzGovViz sidenotes
+## Integrate with AzOps
 
-### Security
+Did you know you can run AzOps from Azure DevOps? Check [AzOps Accellerator](https://github.com/Azure/AzOps-Accelerator).
+You can integrate AzGovViz (same project as AzOps) by adding the following code to the AzGovViz pipeline (yml).
+
+```csharp
+#  pipelines:
+#    - pipeline: 'Push'
+#      source: 'AzOps - Push'
+#      trigger:
+#        branches:
+#          include:
+#            - master
+```
+
+## Security
 
 AzGovViz creates very detailed information about your Azure Governance setup. In your organization's best interest the __outputs should be protected from not authorized access!__
 
-### Facts
+## Facts
 
 Disabled Subscriptions and Subscriptions where Quota Id starts with with "AAD_" are being skipped, all others are queried. More info on Quota Id / Offer numbers: <a href="https://docs.microsoft.com/en-us/azure/cost-management-billing/costs/understand-cost-mgt-data#supported-microsoft-azure-offers" target="_blank">Supported Microsoft Azure offers</a> 
 .  
 
 ARM Limits are not acquired programmatically, they are hardcoded. The links used to check related Limits are commented in the param section of the script.
 
-### Contributions
+## Contributions
 
 Please feel free to contribute. Thanks to so many supporters - testing, giving feedback, making suggestions, presenting use-case, posting/blogging articles, refactoring code - THANK YOU!
 
