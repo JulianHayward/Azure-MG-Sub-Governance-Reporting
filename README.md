@@ -457,14 +457,14 @@ The provided example Pipeline is configured to run based on a [schedule](https:/
 Did you know you can run AzOps from Azure DevOps? Check [AzOps Accellerator](https://github.com/Azure/AzOps-Accelerator).
 You can integrate AzGovViz (same project as AzOps) by adding the following code to the AzGovViz pipeline (yml).
 
-```csharp
-#  pipelines:
-#    - pipeline: 'Push'
-#      source: 'AzOps - Push'
-#      trigger:
-#        branches:
-#          include:
-#            - master
+```yaml
+  pipelines:
+    - pipeline: 'Push'
+      source: 'AzOps - Push'
+      trigger:
+        branches:
+          include:
+            - master
 ```
 
 ## Security
