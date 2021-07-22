@@ -1,11 +1,11 @@
-# AzGovViz v5_major_20210721_2
+# AzGovViz v5_major_20210722_1
 # First things first: 
-# 1. edit line 53 and line 54 
-# 2. check line 68 and 79 if branch 'master' is applicable 
+# 1. edit line 54 and line 55 
+# 2. check line 69 and 80 if branch 'master' is applicable 
 # Documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 # Also check https://www.azadvertizer.net - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
 # 
-# Parameters reference (use in line 104)
+# Parameters reference (use in line 105)
 # LimitCriticalPercentage | default is '80' | example: -LimitCriticalPercentage 90  | WhatDoesItDo? marks capabilities that approch limits e.g. limit 100, usage 80 will mark with warning
 # SubscriptionQuotaIdWhitelist | default is 'undefined' | example: -SubscriptionQuotaIdWhitelist MSDN_, EnterpriseAgreement_ | WhatDoesItDo? processes only subscriptions that startWith the given QuotaIds
 # HierarchyMapOnly | switch | example: -HierarchyMapOnly | WhatDoesItDo? only creates the Hierarchy Tree
@@ -32,6 +32,7 @@
 # ChangeTrackingDays | example: -ChangeTrackingDays 30 | WhatDoesItDo? Tracks newly created and updated custom Policy, PolicySet and RBAC Role definitions, Policy/RBAC Role assignments and Resources that occured within the last 14 days (default)
 # FileTimeStampFormat | example: -FileTimeStampFormat "yyyyMM-dd_HHmm" | WhatDoesItDo? Time format for the output files (default is `yyyyMMdd_HHmmss`)
 # NoJsonExport | example: -JsonExport | WhatDoesItDo? Do not export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
+# NoScopeInsights | example: -NoScopeInsights | WhatDoesItDo? and why would you want to do this? In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size). To further reduce the output use parameter -LargeTenant
 # LargeTenant | example: -LargeTenant | WhatDoesItDo? A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big, therefore will not create ScopeInsights and will not show inheritance for Policy and Role assignments in the TenantSummary (html) output
 # HtmlTableRowsLimit | example: -HtmlTableRowsLimit | WhatDoesItDo? Although the parameter -LargeTenant was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 40.000
 

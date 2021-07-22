@@ -4,7 +4,7 @@
 
 ### AzGovViz version 5
 
-__Changes__ (2021-July-21 / Major)
+__Changes__ (2021-July-22 / Major)
 
 * Full blown JSON definition output. Leveraging Git with this new capability you can easily track any changes that occurred in between the previous and last AzGovViz run.  
 ![newBuiltInRoleDefinition](img/gitdiff600.jpg)  
@@ -19,7 +19,7 @@ _* a new BuiltIn RBAC Role definition was added_
 
 __Changes__ (2021-July-07 / Major)
 
-* Replaced parameters `-NoScopeInsights`, `-RBACAtScopeOnly` and `-PolicyAtScopeOnly` with `-LargeTenant`. A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big, therefore will not create __ScopeInsights__ and will not show inheritance for Policy and Role assignments in the __TenantSummary__ (html) output
+* Replaced parameters ~~`-NoScopeInsights`,~~ `-RBACAtScopeOnly` and `-PolicyAtScopeOnly` with `-LargeTenant`. A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big, therefore will not create __ScopeInsights__ and will not show inheritance for Policy and Role assignments in the __TenantSummary__ (html) output
 * Add Tenant to __HierarchyMap__ including count of Role assignments
 * Executing against any child Management Group will show all parent Management Groups in __HierarchyMap__
 * Cosmetics / Icons

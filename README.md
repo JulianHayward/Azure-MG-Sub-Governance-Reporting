@@ -62,7 +62,7 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## Release history
 
-__Changes__ (2021-July-21 / Major)
+__Changes__ (2021-July-22 / Major)
 
 * Full blown JSON definition output. Leveraging Git with this new capability you can easily track any changes that occurred in between the previous and last AzGovViz run.  
 ![newBuiltInRoleDefinition](img/gitdiff600.jpg)  
@@ -416,7 +416,7 @@ This permission is <b>mandatory</b> in each and every scenario!
   * `-NoAzureConsumption` Azure Consumption data should not be collected/reported
   * `-AzureConsumptionPeriod` define for which time period Azure Consumption data should be gathered; default is 1 day
   * `-NoAzureConsumptionReportExportToCSV` Azure Consumption data should not be exported (CSV)
-  * ~~`-NoScopeInsights`~~ Use `-LargeTenant` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
+  * `-NoScopeInsights` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size). Use `-LargeTenant` to further reduce the output.
   * `-ThrottleLimit` - leveraging PowerShell´s parallel capability you can define the ThrottleLimit (default=5; &#x1F4A1; values from 5 up to 15 proved to perform best)
   * `-DoTranscript` - log the console output
   * `-SubscriptionId4AzContext` - Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)

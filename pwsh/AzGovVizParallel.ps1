@@ -30,9 +30,6 @@
 .PARAMETER NoASCSecureScore
     default is to query all Subscriptions for Azure Security Center Secure Score. As the API is in preview you may want to disable it.
 
-.PARAMETER NoResourceProvidersDetailed
-    default is to output all ResourceProvider states for all Subscriptions. In large Tenants this can become time consuming.
-
 .PARAMETER AzureDevOpsWikiAsCode
     use this parameter when running AzGovViz in Azure DevOps (AzDO) pipeline
     default is to Throw at error, whilst in AzDO we will Write-Error "Error"
@@ -104,6 +101,14 @@
 .PARAMETER LargeTenant 
     A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big, therefore will not create ScopeInsights and will not show inheritance for Policy and Role assignments in the TenantSummary (html) output
 
+.PARAMETER NoResourceProvidersDetailed
+    Note if you use parameter -LargeTenant then parameter -NoResourceProvidersDetailed will be set to true
+    default is to output all ResourceProvider states for all Subscriptions in the TenantSummary. In large Tenants this can become time consuming and may blow off the html file.
+
+.PARAMETER NoScopeInsights
+    Note if you use parameter -LargeTenant then parameter -NoScopeInsights will be set to true
+    Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
+
 
 .EXAMPLE
     Define the ManagementGroup ID
@@ -123,9 +128,6 @@
 
     Define if ASC SecureScore should be queried for Subscriptions
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoASCSecureScore
-
-    Define if a detailed summary on Resource Provider states per Subscription should be created in the TenantSummary section
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoResourceProvidersDetailed
 
     Define if the script runs in AzureDevOps.
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -AzureDevOpsWikiAsCode
@@ -193,6 +195,14 @@
     A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big, therefore will not create ScopeInsights and will not show inheritance for Policy and Role assignments in the TenantSummary (html) output
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -LargeTenant
 
+    Define if a detailed summary on Resource Provider states per Subscription should be created in the TenantSummary section
+    Note if you use parameter -LargeTenant then parameter -NoResourceProvidersDetailed will be set to true
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoResourceProvidersDetailed
+
+    Define if ScopeInsights should be created or not. Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
+    Note if you use parameter -LargeTenant then parameter -NoScopeInsights will be set to true
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoScopeInsights
+
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
@@ -205,7 +215,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210721_2",
+    [string]$AzGovVizVersion = "v5_major_20210722_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -240,6 +250,7 @@ Param
     [string]$FileTimeStampFormat = "yyyyMMdd_HHmmss",
     [switch]$NoJsonExport,
     [switch]$LargeTenant,
+    [switch]$NoScopeInsights,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]$LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -360,6 +371,7 @@ else {
 }
 
 if ($LargeTenant -eq $true) {
+    $NoScopeInsights = $true
     $NoResourceProvidersDetailed = $true
 }
 if ($NoResourceProvidersDetailed) {
@@ -1884,7 +1896,6 @@ function dataCollection($mgId) {
                     else {
                         ($script:htCacheDefinitions).policySet.(($mgPolicySetDefinition.Id).ToLower()).Preview = $false
                     }
-                    
                 }  
             }
 
@@ -1896,11 +1907,9 @@ function dataCollection($mgId) {
             #MgPolicyAssignments
             $currentTask = "Policy assignments '$($mgdetail.properties.displayName)' ('$($mgdetail.Name)')"
             if ($htParameters.LargeTenant -eq $false) {
-                #$uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atscope()&api-version=2019-09-01"
                 $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atscope()&api-version=2020-09-01"
             }
             else {
-                #$uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atExactScope()&api-version=2019-09-01"
                 $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atExactScope()&api-version=2020-09-01"
             }
             #$path = "/providers/Microsoft.Management/managementgroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atscope()&api-version=2019-09-01"
@@ -3650,7 +3659,6 @@ function dataCollection($mgId) {
                         else {
                             $assignmentsScope = $L1mgmtGroupSubRoleAssignments | Where-Object { $_.RoleAssignmentId -notmatch "/subscriptions/$($childMgSubId)/resourcegroups/" }
                         }
-                        
                     }
                     else {
                         if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC -eq $false) {
@@ -3659,7 +3667,6 @@ function dataCollection($mgId) {
                         else {
                             $assignmentsScope = $L1mgmtGroupSubRoleAssignments | Where-Object { $_.Scope -eq "/subscriptions/$($childMgSubId)" }
                         }
-                        
                     }
 
                     foreach ($L1mgmtGroupSubRoleAssignment in $assignmentsScope) {
@@ -3671,8 +3678,6 @@ function dataCollection($mgId) {
                             }
                             continue
                         }
-
-
 
                         $Id = $L1mgmtGroupSubRoleAssignment.RoleDefinitionId
                         $definitiontype = "role"
@@ -3747,7 +3752,6 @@ function dataCollection($mgId) {
                                 $($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId).AssignmentScopeId = "$($splitAssignment[2])/$($splitAssignment[4])/$($splitAssignment[8])"
                             }
                         }  
-
 
                         $RoleSecurityCustomRoleOwner = 0
                         if (($htCacheDefinitions).$definitiontype.$($Id).Actions -eq '*' -and ((($htCacheDefinitions).$definitiontype.$($Id).NotActions)).length -eq 0 -and ($htCacheDefinitions).$definitiontype.$($Id).IsCustom -eq $True) {
@@ -3862,7 +3866,6 @@ function dataCollection($mgId) {
         $endSubLoop = get-date
         Write-Host " CustomDataCollection Subscriptions processing duration: $((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds) seconds)"
     }
-
 }
 
 #endregion Function_dataCollection
@@ -18400,14 +18403,22 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         $paramsUsed += "NoAzureConsumption: true &#13;"
     }
 
-    #new
     if ($LargeTenant) {
         Write-Host " TenantSummary Policy assignments and Role assignments will not include assignment information on scopes where assignment is inherited, ScopeInsights will not be created (-LargeTenant = $($LargeTenant))" -ForegroundColor Green
         $paramsUsed += "LargeTenant: true &#13;"
     }
     else {
-        Write-Host " TenantSummary Policy assignments and Role assignments will include assignment information on scopes where assignment is inherited, ScopeInsights will be created (-LargeTenant = $($LargeTenant)) Q: Why would you not want to show this information? A: In larger tenants the TenantSummary Policy assignments section may blow up the html file (up to unusable due to html file size)" -ForegroundColor Yellow
+        Write-Host " TenantSummary Policy assignments and Role assignments will include assignment information on scopes where assignment is inherited (-LargeTenant = $($LargeTenant)) Q: Why would you not want to show this information? A: In larger tenants showing the inheritance on each scope may blow up the html file (up to unusable due to html file size)" -ForegroundColor Yellow
         $paramsUsed += "LargeTenant: false &#13;"
+
+        if ($NoScopeInsights){
+            Write-Host " ScopeInsights will not be created (-NoScopeInsights = $($NoScopeInsights))" -ForegroundColor Green
+            $paramsUsed += "NoScopeInsights: true &#13;"
+        }
+        else{
+            Write-Host " ScopeInsights will be created (-NoScopeInsights = $($NoScopeInsights)) Q: Why would you not want to show ScopeInsights? A: In larger tenants ScopeInsights may blow up the html file (up to unusable due to html file size)" -ForegroundColor Yellow
+            $paramsUsed += "NoScopeInsights: false &#13;"
+        }
     }
 
     if (-not $DoNotIncludeResourceGroupsOnPolicy) {
@@ -19487,37 +19498,6 @@ $optimizedTableForPathQueryMg = ($optimizedTableForPathQuery.where( { [String]::
 $optimizedTableForPathQuerySub = ($optimizedTableForPathQuery.where( { -not [String]::IsNullOrEmpty($_.SubscriptionId) } ) | Select-Object -Property subscription*) | sort-object -Property subscriptionId -Unique
 
 if ($htParameters.HierarchyMapOnly -eq $false) {
-    #region dataprocessingAADGuests
-    if (-not $NoAADGuestUsers) {
-        Write-Host "Getting AAD Guest Users"
-        $startAADGuestUsers = get-date
-
-        $currenttask = "Get AAD Guest Users Count"
-        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/users/`$count?`$filter=userType eq 'Guest'"
-        $method = "GET"
-        $aadGuestUsersCountFromAPI = AzAPICall -uri $uri -method $method -currentTask $currenttask -listenOn "Content" $true -consistencyLevel "eventual"
-        Write-Host " Count of $aadGuestUsersCountFromAPI AAD Guest Users received"
-
-        if ($aadGuestUsersCountFromAPI -gt 0) {
-        
-            $currenttask = "Get AAD Guest Users"
-            $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/users?`$filter=userType eq 'Guest'"
-            $method = "GET"
-            $aadGuestUsers = AzAPICall -uri $uri -method $method -currentTask $currenttask -getGuests $true
-
-            $aadGuestUsersCount = ($aadGuestUsers | Measure-Object).Count
-            Write-Host " Collected $aadGuestUsersCount AAD Guest Users"
-        
-            foreach ($aadGuestUser in $aadGuestUsers) {
-                $htUserTypes.($aadGuestUser.Id) = @{ }
-                $htUserTypes.($aadGuestUser.Id).userType = "Guest"
-            }
-        }
-
-        $endAADGuestUsers = Get-Date
-        Write-Host "Getting AAD Guest Users duration: $((NEW-TIMESPAN -Start $startAADGuestUsers -End $endAADGuestUsers).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startAADGuestUsers -End $endAADGuestUsers).TotalSeconds) seconds)"
-    }
-    #endregion dataprocessingAADGuests
 
     #region dataprocessingAADGroups
     if (-not $NoAADGroupsResolveMembers) {
@@ -19664,6 +19644,87 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         Write-Host "Resolving AAD Groups duration: $((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
     }
     #endregion dataprocessingAADGroups
+
+    #region dataprocessingAADGuests
+    if (-not $NoAADGuestUsers) {
+        Write-Host "Getting AAD Guest Users"
+        $startAADGuestUsers = get-date
+
+        $currenttask = "Get AAD Guest Users Count"
+        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/users/`$count?`$filter=userType eq 'Guest'"
+        $method = "GET"
+        $aadGuestUsersCountFromAPI = AzAPICall -uri $uri -method $method -currentTask $currenttask -listenOn "Content" $true -consistencyLevel "eventual"
+        Write-Host " Count of $aadGuestUsersCountFromAPI AAD Guest Users received"
+
+        if ($aadGuestUsersCountFromAPI -gt 0) {
+
+
+            $startguestuserscheck = Get-Date
+            Write-Host "  GuestUsers check"
+            #users (objectId) that are group members
+            if (-not $NoAADGroupsResolveMembers) {
+                if ($htAADGroupsDetails.values.MembersUsers){
+                    $usersThatAreGroupMembers = ($htAADGroupsDetails.values.MembersUsers.id | sort-object -unique)
+                    $usersThatAreGroupMembersCount = $usersThatAreGroupMembers.Count
+                }
+                else{
+                    $usersThatAreGroupMembersCount = 0
+                }
+            }
+            else{
+                $usersThatAreGroupMembersCount = 0
+            }
+
+            #users (objectId) that have a direct ra
+            $usersThatHaveADirectRA = ($newTable.where( { $_.RoleAssignmentIdentityObjectType -eq "User" } ) | sort-object -Property RoleAssignmentIdentityObjectId -Unique).RoleAssignmentIdentityObjectId
+            $usersThatHaveADirectRACount = $usersThatHaveADirectRA.Count
+
+            $htUsersThatNeedToBeResolvedForUserType = @{}
+            if ($usersThatAreGroupMembersCount -gt 0){
+                foreach ($userThatIsAGroupMember in $usersThatAreGroupMembers){
+                    $htUsersThatNeedToBeResolvedForUserType.($userThatIsAGroupMember) = @{}
+                }
+            }
+            if ($usersThatHaveADirectRACount -gt 0){
+                foreach ($userThatHasADirectRA in $usersThatHaveADirectRA){
+                    if (-not $htUsersThatNeedToBeResolvedForUserType.($userThatHasADirectRA)){
+                        $htUsersThatNeedToBeResolvedForUserType.($userThatHasADirectRA) = @{}
+                    }
+                }
+            }
+            
+            $usersThatNeedToBeResolvedForUserTypeCount = $htUsersThatNeedToBeResolvedForUserType.Count
+
+            if ($aadGuestUsersCountFromAPI -gt $usersThatNeedToBeResolvedForUserTypeCount){
+                Write-Host "   guest count $aadGuestUsersCountFromAPI > usersToBeResolved count $usersThatNeedToBeResolvedForUserTypeCount"
+            }
+            else{
+                Write-Host "   guest count $aadGuestUsersCountFromAPI < usersToBeResolved count $usersThatNeedToBeResolvedForUserTypeCount"
+            }
+
+            $endguestuserscheck = Get-Date
+            Write-Host "  GuestUsers check duration: $((NEW-TIMESPAN -Start $startguestuserscheck -End $endguestuserscheck).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startguestuserscheck -End $endguestuserscheck).TotalSeconds) seconds)"
+
+
+        
+            $currenttask = "Get AAD Guest Users"
+            $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/users?`$filter=userType eq 'Guest'"
+            $method = "GET"
+            $aadGuestUsers = AzAPICall -uri $uri -method $method -currentTask $currenttask -getGuests $true
+
+            $aadGuestUsersCount = ($aadGuestUsers | Measure-Object).Count
+            Write-Host " Collected $aadGuestUsersCount AAD Guest Users"
+        
+            foreach ($aadGuestUser in $aadGuestUsers) {
+                $htUserTypes.($aadGuestUser.Id) = @{ }
+                $htUserTypes.($aadGuestUser.Id).userType = "Guest"
+            }
+        }
+
+        $endAADGuestUsers = Get-Date
+        Write-Host "Getting AAD Guest Users duration: $((NEW-TIMESPAN -Start $startAADGuestUsers -End $endAADGuestUsers).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startAADGuestUsers -End $endAADGuestUsers).TotalSeconds) seconds)"
+    }
+    #endregion dataprocessingAADGuests
 
     #region dataprocessingAADSP
     if (-not $NoAADServicePrincipalResolve) {
@@ -20807,7 +20868,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     </div><!--definitionInsightsprnt-->
 "@
 
-    if (-not $LargeTenant) {
+    if ((-not $LargeTenant) -or (-not $NoScopeInsights)) {
 
         $html += @"
     <div class="hierprnt" id="hierprnt">
@@ -20846,7 +20907,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $endAzGovVizHTML = get-date
     $AzGovVizHTMLDuration = (NEW-TIMESPAN -Start $startAzGovViz -End $endAzGovVizHTML).TotalMinutes
     $paramsUsed += "Creation duration: $AzGovVizHTMLDuration minutes &#13;"
-    if (-not $LargeTenant) {
+    if ((-not $LargeTenant) -or (-not $NoScopeInsights)) {
         $html += @"
         <abbr style="text-decoration:none" title="$($paramsUsed)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr> <button id="hierarchyTreeShowHide" onclick="toggleHierarchyTree()">Hide HierarchyMap</button> <button id="summaryShowHide" onclick="togglesummprnt()">Hide TenantSummary</button> <button id="definitionInsightsShowHide" onclick="toggledefinitioninsightsprnt()">Hide DefinitionInsights</button> <button id="hierprntShowHide" onclick="togglehierprnt()">Hide ScopeInsights</button>
         <hr>
