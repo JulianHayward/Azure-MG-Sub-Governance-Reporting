@@ -220,7 +220,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210722_6",
+    [string]$AzGovVizVersion = "v5_major_20210726_6",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -254,6 +254,8 @@ Param
     [int]$ChangeTrackingDays = 14,
     [string]$FileTimeStampFormat = "yyyyMMdd_HHmmss",
     [switch]$NoJsonExport,
+    [switch]$JsonExportExcludeResourceGroups,
+    [switch]$JsonExportExcludeResources,
     [switch]$LargeTenant,
     [switch]$NoScopeInsights,
     [int]$AADGroupMembersLimit = 500,
@@ -615,7 +617,7 @@ $htBearerAccessToken = [System.Collections.Hashtable]::Synchronized((New-Object 
 
 #API
 #region azapicall
-function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumption, $getGroup, $getApp, $getSp, $getGuests, $caller, $consistencyLevel, $getCount) {
+function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumption, $getGroup, $getGroupMembersCount, $getApp, $getSp, $getGuests, $caller, $consistencyLevel, $getCount) {
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
     $retryAuthorizationFailed = 5
@@ -729,12 +731,13 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     $catchResult.error.code -like "*Authentication_ExpiredToken*" -or 
                     $catchResult.error.code -like "*ResponseTooLarge*" -or 
                     $catchResult.error.code -like "*InvalidAuthenticationToken*" -or 
-                    ($getConsumption -and $catchResult.error.code -eq 404 -or $getConsumption -and $catchResult.error.code -eq "AccountCostDisabled") -or 
+                    (($getConsumption -and $catchResult.error.code -eq 404) -or ($getConsumption -and $catchResult.error.code -eq "AccountCostDisabled") -or ($getConsumption -and $catchResult.error.message -like "*does not have any valid subscriptions*")) -or 
                     ($getSp -and $catchResult.error.code -like "*Request_ResourceNotFound*") -or 
                     ($getSp -and $catchResult.error.code -like "*Authorization_RequestDenied*") -or
                     ($getApp -and $catchResult.error.code -like "*Request_ResourceNotFound*") -or 
                     ($getApp -and $catchResult.error.code -like "*Authorization_RequestDenied*") -or 
                     ($getGroup -and $catchResult.error.code -like "*Request_ResourceNotFound*") -or 
+                    ($getGroupMembersCount -and $catchResult.error.code -like "*Request_ResourceNotFound*") -or
                     ($getGuests -and $catchResult.error.code -like "*Authorization_RequestDenied*") -or 
                     $catchResult.error.message -like "*The offer MS-AZR-0110P is not supported*" -or
                     $catchResult.error.code -like "*UnknownError*" -or
@@ -778,7 +781,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
                         createBearerToken -targetEndPoint $targetEndpoint
                     }
-                    if ($getConsumption -and $catchResult.error.code -eq 404 -or $getConsumption -and $catchResult.error.code -eq "AccountCostDisabled") {
+                    if (($getConsumption -and $catchResult.error.code -eq 404) -or ($getConsumption -and $catchResult.error.code -eq "AccountCostDisabled") -or ($getConsumption -and $catchResult.error.message -like "*does not have any valid subscriptions*")) {
                         if ($getConsumption -and $catchResult.error.code -eq 404) {
                             Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Subscriptions was created only recently - skipping"
                             return $apiCallResultsCollection
@@ -787,8 +790,16 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Access to cost data has been disabled for this Account - skipping CostManagement"
                             return "AccountCostDisabled"
                         }
+                        if ($getConsumption -and $catchResult.error.message -like "*does not have any valid subscriptions*"){
+                            Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems there are no valid Subscriptions present - skipping CostManagement"
+                            return "NoValidSubscriptions"
+                        }
                     }
                     if (($getGroup) -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
+                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain Group status - skipping for now :)"
+                        return "Request_ResourceNotFound"
+                    }
+                    if (($getGroupMembersCount) -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain Group status - skipping for now :)"
                         return "Request_ResourceNotFound"
                     }
@@ -2423,7 +2434,7 @@ function dataCollection($mgId) {
         Write-Host "  $($progressCount)/$($allManagementGroupsFromEntitiesChildOfRequestedMgCount) ManagementGroups processed"
 
     } -ThrottleLimit $ThrottleLimit
-    [System.GC]::Collect()
+    #[System.GC]::Collect()
 
     $endMgLoop = get-date
     Write-Host " CustomDataCollection ManagementGroups processing duration: $((NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalSeconds) seconds)"
@@ -2456,7 +2467,7 @@ function dataCollection($mgId) {
         $subscriptionsBatch = $subsToProcessInCustomDataCollection | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
         $batchCnt = 0
         foreach ($batch in $subscriptionsBatch) { 
-            [System.GC]::Collect()
+            #[System.GC]::Collect()
             $startBatch = get-date
             $batchCnt++
             Write-Host " processing Batch #$batchCnt/$(($subscriptionsBatch | Measure-Object).Count) ($(($batch.Group | Measure-Object).Count) Subscriptions)"
@@ -3762,6 +3773,7 @@ function dataCollection($mgId) {
                             }
                             if ($RoleAssignmentScopeType -eq "Res") {
                                 $($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId).AssignmentScopeId = "$($splitAssignment[2])/$($splitAssignment[4])/$($splitAssignment[8])"
+                                $($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId).ResourceType = "$($splitAssignment[6])-$($splitAssignment[7])"
                             }
                         }  
 
@@ -3873,7 +3885,7 @@ function dataCollection($mgId) {
             $endBatch = get-date
             Write-Host " Batch #$batchCnt processing duration: $((NEW-TIMESPAN -Start $startBatch -End $endBatch).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startBatch -End $endBatch).TotalSeconds) seconds)"
         }
-        [System.GC]::Collect()
+        #[System.GC]::Collect()
 
         $endSubLoop = get-date
         Write-Host " CustomDataCollection Subscriptions processing duration: $((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds) seconds)"
@@ -7003,7 +7015,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         $script:scopescnter = 0
         Write-Host "   append file duration: "(Measure-Command { $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force }).TotalSeconds "seconds"
         $script:html = $null 
-        [System.GC]::Collect()
+        #[System.GC]::Collect()
     }
 
 }
@@ -7111,7 +7123,7 @@ function summary() {
             $etappeRoleAssignmentsAll = get-date
             Write-Host "   $cnter of $roleAssignmentsallCount RoleAssignments processed; $((NEW-TIMESPAN -Start $startRoleAssignmentsAllPre -End $etappeRoleAssignmentsAll).TotalSeconds) seconds"
             if ($cnter % 5000 -eq 0) {
-                [System.GC]::Collect()
+                #[System.GC]::Collect()
             }
         }
         $scope = $null
@@ -9585,7 +9597,7 @@ extensions: [{ name: 'sort' }]
             $etappeSummaryPolicyAssignmentsAll = get-date
             Write-Host "   $cnter of $allPolicyAssignments PolicyAssignments processed: $((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAll -End $etappeSummaryPolicyAssignmentsAll).TotalSeconds) seconds"
             if ($cnter % 5000 -eq 0) {
-                [System.GC]::Collect()
+                #[System.GC]::Collect()
             }
         }
 
@@ -10124,7 +10136,7 @@ extensions: [{ name: 'sort' }]
         $htmlTenantSummary = [System.Text.StringBuilder]::new()
         $end = get-date
         Write-Host "   append file duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
-        [System.GC]::Collect()
+        #[System.GC]::Collect()
         
         [void]$htmlTenantSummary.AppendLine(@"
             </tbody>
@@ -10902,7 +10914,7 @@ extensions: [{ name: 'sort' }]
                         #[void]$htmlTenantSummary.AppendLine($htmlSummaryRoleAssignmentsAll)
                         $htmlSummaryRoleAssignmentsAll | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
                         $htmlSummaryRoleAssignmentsAll = [System.Text.StringBuilder]::new()
-                        [System.GC]::Collect()
+                        #[System.GC]::Collect()
                     }
                 }
                 [void]$htmlSummaryRoleAssignmentsAll.AppendFormat( 
@@ -18821,8 +18833,13 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         }
 
         $allConsumptionData = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask -listenOn "ContentProperties" -getConsumption $true
-        if ($allConsumptionData -eq "AccountCostDisabled") {
-            Write-Host " Seems Access to cost data has been disabled for this Account - skipping CostManagement"
+        if ($allConsumptionData -eq "AccountCostDisabled" -or $allConsumptionData -eq "NoValidSubscriptions") {
+            if ($allConsumptionData -eq "AccountCostDisabled") {
+                Write-Host " Seems Access to cost data has been disabled for this Account - skipping CostManagement"
+            }
+            if ($allConsumptionData -eq "NoValidSubscriptions") {
+                Write-Host " Seems there are no valid Subscriptions present - skipping CostManagement"
+            }
             Write-Host " Activating parameter 'NoAzureConsumption'"
             $NoAzureConsumption = $true
         }
@@ -19676,15 +19693,22 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
                 $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/groups/$($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)/transitiveMembers/`$count"
                 $method = "GET"
-                $aadGroupMembersCount = AzAPICall -uri $uri -method $method -currentTask "getGroupMembersCount $($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)" -listenOn "Content" -consistencyLevel "eventual"
+                $aadGroupMembersCount = AzAPICall -uri $uri -method $method -currentTask "getGroupMembersCount $($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)" -listenOn "Content" -consistencyLevel "eventual" -getGroupMembersCount $True
                 
-                if ($aadGroupMembersCount -gt $AADGroupMembersLimit) {
-                    Write-Host "  Group exceeding limit ($($AADGroupMembersLimit)); memberCount: $aadGroupMembersCount; Group: $($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityDisplayname) ($($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)); Members will not be resolved adjust the limit using parameter -AADGroupMembersLimit"
-                    $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
-                    $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId).MembersAllCount = $aadGroupMembersCount
+                if ($aadGroupMembersCount -eq "Request_ResourceNotFound") {
+                    $null = $arrayGroupRequestResourceNotFound.Add([PSCustomObject]@{ 
+                            groupId = $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId
+                        })
                 }
-                else {
-                    GetGroupmembers -aadGroupId $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId -aadGroupDisplayName $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityDisplayname
+                else{
+                    if ($aadGroupMembersCount -gt $AADGroupMembersLimit) {
+                        Write-Host "  Group exceeding limit ($($AADGroupMembersLimit)); memberCount: $aadGroupMembersCount; Group: $($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityDisplayname) ($($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)); Members will not be resolved adjust the limit using parameter -AADGroupMembersLimit"
+                        $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+                        $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId).MembersAllCount = $aadGroupMembersCount
+                    }
+                    else {
+                        GetGroupmembers -aadGroupId $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId -aadGroupDisplayName $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityDisplayname
+                    }
                 }
 
                 $null = $script:arrayProgressedAADGroups.Add($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)
@@ -19696,7 +19720,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                     }
                 }
             } -ThrottleLimit ($ThrottleLimit * 2)
-            [System.GC]::Collect()
+            #[System.GC]::Collect()
         }
         else {
             Write-Host " processing $($aadGroupsCount) AAD Groups with Role assignments"
@@ -20004,7 +20028,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 }
 
             } -ThrottleLimit ($ThrottleLimit * 2)
-            [System.GC]::Collect()
+            #[System.GC]::Collect()
 
             $servicePrincipalRequestResourceNotFoundCount = ($arrayServicePrincipalRequestResourceNotFound | Measure-Object).Count
             if ($servicePrincipalRequestResourceNotFoundCount -gt 0) {
@@ -20185,7 +20209,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 Write-Host "Skipping ResourceType $($resourcetype) as per '`$ExludedResourceTypesDiagnosticsCapable'"
             }
         } -ThrottleLimit $ThrottleLimit
-        [System.GC]::Collect()
+        #[System.GC]::Collect()
     }
     else {
         Write-Host " No Resources at all"
@@ -20875,7 +20899,7 @@ $starthierarchyMap = get-date
 Write-Host " Building HierarchyMap"
 
 hierarchyMgHTML -mgChild $ManagementGroupIdCaseSensitived
-[System.GC]::Collect()
+#[System.GC]::Collect()
 
 $endhierarchyMap = get-date
 Write-Host " Building HierarchyMap duration: $((NEW-TIMESPAN -Start $starthierarchyMap -End $endhierarchyMap).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $starthierarchyMap -End $endhierarchyMap).TotalSeconds) seconds)"
@@ -20914,7 +20938,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $startSummary = get-date
 
     summary
-    [System.GC]::Collect()
+    #[System.GC]::Collect()
 
     $endSummary = get-date
     Write-Host " Building TenantSummary duration: $((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalSeconds) seconds)"
@@ -20930,7 +20954,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $html = $null
 
     definitionInsights
-    [System.GC]::Collect()
+    #[System.GC]::Collect()
 
     $html += @"
     </div><!--definitionInsights-->
@@ -20952,7 +20976,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
         $script:scopescnter = 0
         tableMgHTML -mgChild $ManagementGroupIdCaseSensitived -mgChildOf $getMgParentId
-        [System.GC]::Collect()
+        #[System.GC]::Collect()
 
         $endHierarchyTable = get-date
         Write-Host " Building ScopeInsights duration: $((NEW-TIMESPAN -Start $startHierarchyTable -End $endHierarchyTable).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startHierarchyTable -End $endHierarchyTable).TotalSeconds) seconds)"
@@ -21161,6 +21185,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 }
 #endregion BuildConsumptionCSV
 
+#$fileTimestamp = (get-date -format $FileTimeStampFormat)
 #region BuildJSON
 if (-not $NoJsonExport) {
     #$fileName = get-date -format "yyyyMM-dd HHmmss"
@@ -21186,10 +21211,75 @@ if (-not $NoJsonExport) {
     $grpMgScopePolicyAssignments = $grpScopePolicyAssignments.where( { $_.Name -eq "Mg" }).Group | sort-object @{Expression = { $_.Assignment.Id } } | Group-Object -Property AssignmentScopeId
     $grpSubScopePolicyAssignments = $grpScopePolicyAssignments.where( { $_.Name -eq "Sub" }).Group | sort-object @{Expression = { $_.Assignment.Id } } | Group-Object -Property AssignmentScopeId
 
+    if (-not $DoNotIncludeResourceGroupsOnPolicy) {
+        if (-not $JsonExportExcludeResourceGroups) {
+            $grpRGScopePolicyAssignments = $grpScopePolicyAssignments.where( { $_.Name -eq "RG" }).Group | sort-object @{Expression = { $_.Assignment.Id } } | Group-Object -Property AssignmentScopeId
+            $htSubRGPolicyAssignments = @{}
+            foreach ($rgpa in $grpRGScopePolicyAssignments) {
+                $subId = ($rgpa.Name).split("/")[0]
+                if (-not $htSubRGPolicyAssignments.($subId)) {
+                    $htSubRGPolicyAssignments.($subId) = @{}
+                    $htSubRGPolicyAssignments.($subId).PolicyAssignments = $rgpa.group
+                }
+            }
+        }
+    }
+
     $grpScopeRoleAssignments = ($htCacheAssignments).role.values | Group-Object -Property AssignmentScopeTenMgSubRgRes
     $grpTenantScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq "Tenant" }).Group | Group-Object -Property AssignmentScopeId
     $grpMgScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq "Mg" }).Group | sort-object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId
     $grpSubScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq "Sub" }).Group | sort-object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId
+
+    if (-not $DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+        if (-not $JsonExportExcludeResourceGroups) {
+            $grpRGScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq "RG" }).Group | sort-object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId
+            $htSubRGRoleAssignments = @{}
+            foreach ($rgra in $grpRGScopeRoleAssignments) {
+                $subId = ($rgra.Name).split("/")[0]
+                if (-not $htSubRGRoleAssignments.($subId)) {
+                    $htSubRGRoleAssignments.($subId) = @{}
+                }
+                if (-not $htSubRGRoleAssignments.($subId).RoleAssignments) {
+                    $htSubRGRoleAssignments.($subId).RoleAssignments = @()
+                }
+                $htSubRGRoleAssignments.($subId).RoleAssignments += $rgra.group
+            }
+
+            #res
+            if (-not $DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+                if (-not $JsonExportExcludeResources) {
+                    $grpResScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq "Res" }).Group | sort-object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId
+                    $htSubResRoleAssignments = @{}
+                    foreach ($resra in $grpResScopeRoleAssignments.Group) {
+                        $raSplit = ($resra.Assignment.RoleAssignmentId).split("/")
+                        $splitSubId = $raSplit[2]
+                        $splitRg = $raSplit[4]
+                        if (-not $htSubResRoleAssignments.($splitSubId)) {
+                            $htSubResRoleAssignments.($splitSubId) = @{}
+                        }
+                        if (-not $htSubResRoleAssignments.($splitSubId).($splitRg)) {
+                            $htSubResRoleAssignments.($splitSubId).($splitRg) = @{}
+                        
+                        }
+    
+                        $resourceName = $resra.AssignmentScopeId.split("/")[2]
+                        if (-not $htSubResRoleAssignments.($splitSubId).($splitRg).("$($resra.ResourceType)_$($resourceName)")) {
+                            $htSubResRoleAssignments.($splitSubId).($splitRg).("$($resra.ResourceType)_$($resourceName)") = @{}
+                        
+                        }
+                        if (-not $htSubResRoleAssignments.($splitSubId).($splitRg).("$($resra.ResourceType)_$($resourceName)").RoleAssignments) {
+                            $htSubResRoleAssignments.($splitSubId).($splitRg).("$($resra.ResourceType)_$($resourceName)").RoleAssignments = [ordered]@{}
+                        
+                        }
+                        ($htSubResRoleAssignments.($splitSubId).($splitRg).("$($resra.ResourceType)_$($resourceName)").RoleAssignments.($resra.Assignment.RoleAssignmentId)) = $resra.Assignment
+                    }
+                }
+            }
+        }
+        
+    }
+
+    
 
     $bluePrintsAssignmentsAtScope = ($htCacheAssignments).blueprint.keys | Sort-Object
     $bluePrintDefinitions = ($htCacheDefinitions).blueprint.Keys | Sort-Object
@@ -21311,6 +21401,75 @@ if (-not $NoJsonExport) {
                         }
                     }
                 }
+
+                if (-not $DoNotIncludeResourceGroupsOnPolicy) {
+                    if (-not $JsonExportExcludeResourceGroups) {
+                        if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups) {
+                            $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups = [ordered]@{}
+                        }
+                        if ($htSubRGPolicyAssignments.($subscription.subscriptionId)) {
+                            foreach ($rgpa in $htSubRGPolicyAssignments.($subscription.subscriptionId).PolicyAssignments) {
+                                $rgName = ($rgpa.AssignmentScopeId).split("/")[1]
+                                
+                                if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName)) {
+                                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName) = [ordered]@{}
+                                }
+                                if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName).PolicyAssignments) {
+                                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName).PolicyAssignments = [ordered]@{}
+                                }
+                                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName).PolicyAssignments.($rgpa.Assignment.id) = $rgpa.Assignment
+                            }
+                        }
+                    }
+                }
+
+                if (-not $DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+                    if (-not $JsonExportExcludeResourceGroups) {
+                        if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups) {
+                            $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups = [ordered]@{}
+                        }
+                        if ($htSubRGRoleAssignments.($subscription.subscriptionId)) {
+                            foreach ($rgra in $htSubRGRoleAssignments.($subscription.subscriptionId).RoleAssignments) {
+                                $rgName = ($rgra.AssignmentScopeId).split("/")[1]
+                                
+                                if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName)) {
+                                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName) = [ordered]@{}
+                                }
+                                if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName).RoleAssignments) {
+                                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName).RoleAssignments = [ordered]@{}
+                                }
+                                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName).RoleAssignments.($rgra.Assignment.RoleAssignmentId) = $rgra.Assignment
+                            }
+                        }
+                        #
+                        if (-not $JsonExportExcludeResources) {
+                            if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups) {
+                                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups = [ordered]@{}
+                            }
+                            if ($htSubResRoleAssignments.($subscription.subscriptionId)) {
+                                foreach ($rg in $htSubResRoleAssignments.($subscription.subscriptionId).keys) {
+                                    foreach ($res in $htSubResRoleAssignments.($subscription.subscriptionId).($rg).Keys | Sort-Object) {
+                                        $rgName = ($resra.AssignmentScopeId).split("/")[1]
+                                    
+                                        if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rg)) {
+                                            $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rg) = [ordered]@{}
+                                        }
+                                        if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rg).Resources) {
+                                            $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rg).Resources = [ordered]@{}
+                                        }
+                                        if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rg).Resources.($res)) {
+                                            $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rg).Resources.($res) = [ordered]@{}
+                                        }
+                                        if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rg).Resources.($res).RoleAssignments) {
+                                            $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rg).Resources.($res).RoleAssignments = [ordered]@{}
+                                        }
+                                        $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rg).Resources.($res).RoleAssignments = $htSubResRoleAssignments.($subscription.subscriptionId).($rg).($res).RoleAssignments
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -21415,65 +21574,74 @@ if (-not $NoJsonExport) {
         foreach ($mgCap in $htJSON.ManagementGroups.($getMg.Name).keys) {
             $json.$mgCap = $htJSON.ManagementGroups.($getMg.Name).$mgCap
             if ($mgCap -eq "PolicyDefinitionsCustom") {
+                $mgCapShort = "pd"
                 foreach ($pdc in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys) {
-                    $jsonConverted = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pdc) | ConvertTo-Json -Depth 99
-                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCap)_$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($pdc).name).json" -Encoding utf8
+                    $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pdc)
+                    if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
+                        $displayName = "noDisplayNameGiven"
+                    }
+                    else {
+                        $displayName = RemoveInvalidFileNameChars $hlp.properties.displayName
+                    }
+                    $jsonConverted = $hlp | ConvertTo-Json -Depth 99
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($displayName) ($($hlp.name)).json" -Encoding utf8
                     $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicyDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
                     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                         $null = new-item -Name $path -ItemType directory -path $outputPath
                     }
-                    if ([string]::IsNullOrEmpty($htJSON.ManagementGroups.($getMg.Name).($mgCap).($pdc).properties.displayName)) {
-                        $displayName = "noDisplayNameGiven"
-                    }
-                    else {
-                        $displayName = RemoveInvalidFileNameChars $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pdc).properties.displayName
-                    }
-                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($pdc).name)).json" -Encoding utf8
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($hlp.name)).json" -Encoding utf8
                 }
             }
             if ($mgCap -eq "PolicySetDefinitionsCustom") {
+                $mgCapShort = "psd"
                 foreach ($psdc in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys) {
-                    $jsonConverted = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($psdc) | ConvertTo-Json -Depth 99
-                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCap)_$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($psdc).name).json" -Encoding utf8
+                    $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($psdc)
+                    if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
+                        $displayName = "noDisplayNameGiven"
+                    }
+                    else {
+                        $displayName = RemoveInvalidFileNameChars $hlp.properties.displayName
+                    }
+                    $jsonConverted = $hlp | ConvertTo-Json -Depth 99
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($displayName) ($($hlp.name)).json" -Encoding utf8
                     $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicySetDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
                     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                         $null = new-item -Name $path -ItemType directory -path $outputPath
                     }
-                    if ([string]::IsNullOrEmpty($htJSON.ManagementGroups.($getMg.Name).($mgCap).($psdc).properties.displayName)) {
-                        $displayName = "noDisplayNameGiven"
-                    }
-                    else {
-                        $displayName = RemoveInvalidFileNameChars $htJSON.ManagementGroups.($getMg.Name).($mgCap).($psdc).properties.displayName
-                    }
-                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($psdc).name)).json" -Encoding utf8
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($hlp.name)).json" -Encoding utf8
                 }
             }
             if ($mgCap -eq "PolicyAssignments") {
+                $mgCapShort = "pa"
                 foreach ($pa in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys) {
-                    $jsonConverted = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pa) | ConvertTo-Json -Depth 99
-                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCap)_$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($pa).name).json" -Encoding utf8
-                    $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($mgCap)$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
-                    if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
-                        $null = new-item -Name $path -ItemType directory -path $outputPath
-                    }
-                    if ([string]::IsNullOrEmpty($htJSON.ManagementGroups.($getMg.Name).($mgCap).($pa).properties.displayName)) {
+                    $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pa)
+                    if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                         $displayName = "noDisplayNameGiven"
                     }
                     else {
-                        $displayName = RemoveInvalidFileNameChars $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pa).properties.displayName
+                        $displayName = RemoveInvalidFileNameChars $hlp.properties.displayName
                     }
-                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($pa).name)).json" -Encoding utf8
-                }
-            }
-            if ($mgCap -eq "RoleAssignments") {
-                foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys) {
-                    $jsonConverted = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($ra) | ConvertTo-Json -Depth 99
-                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCap)_$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($ra).RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                    $jsonConverted = $hlp | ConvertTo-Json -Depth 99
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($displayName) ($($hlp.name)).json" -Encoding utf8
                     $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($mgCap)$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
                     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                         $null = new-item -Name $path -ItemType directory -path $outputPath
                     }
-                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($ra).RoleAssignmentId -replace ".*/").json" -Encoding utf8
+
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($hlp.name)).json" -Encoding utf8
+                }
+            }
+            if ($mgCap -eq "RoleAssignments") {
+                $mgCapShort = "ra"
+                foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys) {
+                    $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($ra)
+                    $jsonConverted = $hlp | ConvertTo-Json -Depth 99
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                    $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($mgCap)$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
+                    if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
+                        $null = new-item -Name $path -ItemType directory -path $outputPath
+                    }
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
                 }
             }
 
@@ -21484,65 +21652,148 @@ if (-not $NoJsonExport) {
                     $null = new-item -Name $subFolderName -ItemType directory -path $outputPath
                     foreach ($subCap in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).Keys) {
                         if ($subCap -eq "PolicyDefinitionsCustom") {
+                            $subCapShort = "pd"
                             foreach ($pdc in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
-                                $jsonConverted = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pdc) | ConvertTo-Json -Depth 99
-                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCap)_$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pdc).name).json" -Encoding utf8
+                                $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pdc) 
+                                if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
+                                    $displayName = "noDisplayNameGiven"
+                                }
+                                else {
+                                    $displayName = RemoveInvalidFileNameChars $hlp.properties.displayName
+                                }
+                                $jsonConverted = $hlp | ConvertTo-Json -Depth 99
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($displayName) ($($hlp.name)).json" -Encoding utf8
                                 $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicyDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
                                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                                     $null = new-item -Name $path -ItemType directory -path $outputPath
                                 }
-                                if ([string]::IsNullOrEmpty($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pdc).properties.displayName)) {
-                                    $displayName = "noDisplayNameGiven"
-                                }
-                                else {
-                                    $displayName = RemoveInvalidFileNameChars $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pdc).properties.displayName
-                                }
-                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pdc).name)).json" -Encoding utf8
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($hlp.name)).json" -Encoding utf8
                             }
                         }
                         if ($subCap -eq "PolicySetDefinitionsCustom") {
+                            $subCapShort = "psd"
                             foreach ($psdc in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
-                                $jsonConverted = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($psdc) | ConvertTo-Json -Depth 99
-                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCap)_$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($psdc).name).json" -Encoding utf8
+                                $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($psdc)
+                                if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
+                                    $displayName = "noDisplayNameGiven"
+                                }
+                                else {
+                                    $displayName = RemoveInvalidFileNameChars $hlp.properties.displayName
+                                }
+                                $jsonConverted = $hlp | ConvertTo-Json -Depth 99
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($displayName) ($($hlp.name)).json" -Encoding utf8
                                 $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicySetDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
                                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                                     $null = new-item -Name $path -ItemType directory -path $outputPath
                                 }
-                                if ([string]::IsNullOrEmpty($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($psdc).properties.displayName)) {
-                                    $displayName = "noDisplayNameGiven"
-                                }
-                                else {
-                                    $displayName = RemoveInvalidFileNameChars $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($psdc).properties.displayName
-                                }
-                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($psdc).name)).json" -Encoding utf8
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($hlp.name)).json" -Encoding utf8
                             }
                         }
                         if ($subCap -eq "PolicyAssignments") {
+                            $subCapShort = "pa"
                             foreach ($pa in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
-                                $jsonConverted = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pa) | ConvertTo-Json -Depth 99
-                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCap)_$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pa).name).json" -Encoding utf8
-                                $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($subCap)$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
-                                if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
-                                    $null = new-item -Name $path -ItemType directory -path $outputPath
-                                }
-                                if ([string]::IsNullOrEmpty($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pa).properties.displayName)) {
+                                $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pa)
+                                if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                                     $displayName = "noDisplayNameGiven"
                                 }
                                 else {
-                                    $displayName = RemoveInvalidFileNameChars $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pa).properties.displayName
+                                    $displayName = RemoveInvalidFileNameChars $hlp.properties.displayName
                                 }
-                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pa).name)).json" -Encoding utf8
-                            }
-                        }
-                        if ($subCap -eq "RoleAssignments") {
-                            foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
-                                $jsonConverted = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($ra) | ConvertTo-Json -Depth 99
-                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCap)_$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($ra).RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                                $jsonConverted = $hlp | ConvertTo-Json -Depth 99
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($displayName) ($($hlp.name)).json" -Encoding utf8
                                 $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($subCap)$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
                                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                                     $null = new-item -Name $path -ItemType directory -path $outputPath
                                 }
-                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($ra).RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($hlp.name)).json" -Encoding utf8
+                            }
+                        }
+                        if ($subCap -eq "RoleAssignments") {
+                            $subCapShort = "ra"
+                            foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
+                                $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($ra)
+                                $jsonConverted = $hlp | ConvertTo-Json -Depth 99
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                                $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($subCap)$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
+                                if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
+                                    $null = new-item -Name $path -ItemType directory -path $outputPath
+                                }
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                            }
+                        }
+
+                        #RG Pol
+                        if (-not $DoNotIncludeResourceGroupsOnPolicy) {
+                            if (-not $JsonExportExcludeResourceGroups) {
+                                if ($subCap -eq "ResourceGroups") {
+                                    foreach ($rg in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
+                                        if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)")) {
+                                            $null = new-item -Name $rg -ItemType directory -path "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)"
+                                        }
+                                        foreach ($pa in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).PolicyAssignments.keys) {
+                                            $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).PolicyAssignments.($pa)
+                                            if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {                          
+                                                $displayName = "noDisplayNameGiven"
+                                            }
+                                            else {
+                                                $displayName = RemoveInvalidFileNameChars $hlp.properties.displayName
+                                            }
+                                            $jsonConverted = $hlp | ConvertTo-Json -Depth 99
+                                            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)pa_$($displayName) ($($hlp.name)).json" -Encoding utf8
+                                            $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)PolicyAssignments$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))$($DirectorySeparatorChar)$($rg)"
+                                            if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
+                                                $null = new-item -Name $path -ItemType directory -path $outputPath
+                                            }
+                                            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($hlp.name)).json" -Encoding utf8
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        #>
+
+                        #RG RoleAss
+                        if (-not $DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+                            if (-not $JsonExportExcludeResourceGroups) {
+                                if ($subCap -eq "ResourceGroups") {
+                                    foreach ($rg in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
+                                        if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)")) {
+                                            $null = new-item -Name $rg -ItemType directory -path "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)"
+                                        }
+                                        foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).RoleAssignments.keys) {
+                                            $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).RoleAssignments.($ra)
+                                            $jsonConverted = $hlp | ConvertTo-Json -Depth 99
+                                            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)ra_$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                                            $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)RoleAssignments$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))$($DirectorySeparatorChar)$($rg)"
+                                            if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
+                                                $null = new-item -Name $path -ItemType directory -path $outputPath
+                                            }
+                                            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                                        }
+                                        #res
+                                        if (-not $JsonExportExcludeResources) {
+
+                                            foreach ($res in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).Resources.keys) {
+                                                if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)")) {
+                                                    $null = new-item -Name $res -ItemType directory -path "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)"
+                                                }
+                                                foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.keys) {
+
+                                                    $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.($ra)
+                                                    
+                                                    $jsonConverted = $hlp | ConvertTo-Json -Depth 99
+
+                                                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)$($DirectorySeparatorChar)ra_$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                                                    $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)RoleAssignments$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)"
+                                                    if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
+                                                        $null = new-item -Name $path -ItemType directory -path $outputPath
+                                                    }
+                                                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -21572,12 +21823,12 @@ if (-not $NoJsonExport) {
         $htTree.Tenant.RoleAssignments.$($RoleAssignment.Assignment.RoleAssignmentId) = $RoleAssignment.Assignment
 
         $jsonConverted = $RoleAssignment.Assignment | ConvertTo-Json -Depth 99
-        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)Tenant$($DirectorySeparatorChar)RoleAssignments_$($RoleAssignment.Assignment.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)Tenant$($DirectorySeparatorChar)ra_$($RoleAssignment.Assignment.ObjectType)_$($RoleAssignment.Assignment.RoleAssignmentId -replace ".*/").json" -Encoding utf8
         $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)RoleAssignments$($DirectorySeparatorChar)Tenant"
         if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
             $null = new-item -Name $path -ItemType directory -path $outputPath
         }
-        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($RoleAssignment.Assignment.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($RoleAssignment.Assignment.ObjectType)_$($RoleAssignment.Assignment.RoleAssignmentId -replace ".*/").json" -Encoding utf8
     }
 
 
