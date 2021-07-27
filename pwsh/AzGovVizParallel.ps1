@@ -220,7 +220,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210726_6",
+    [string]$AzGovVizVersion = "v5_major_20210727_2",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -7166,7 +7166,7 @@ function summary() {
         $objectTypeUserType = ""
         if (-not $NoAADGuestUsers) {
             if ($rbac.RoleAssignmentIdentityObjectType -eq "User") {
-                if ($htUserTypes.($rbac.RoleAssignmentIdentityObjectId)) {
+                if ($htUserTypesGuest.($rbac.RoleAssignmentIdentityObjectId)) {
                     $objectTypeUserType = "Guest"
                 }
                 else {
@@ -7235,7 +7235,7 @@ function summary() {
                                 $grpMemberType = "User"
                                 $grpMemberUserType = ""
                                 if (-not $NoAADGuestUsers) {
-                                    if ($htUserTypes.($grpMemberId)) {
+                                    if ($htUserTypesGuest.($grpMemberId)) {
                                         $grpMemberUserType = "Guest"
                                     }
                                     else {
@@ -18576,7 +18576,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $htSubscriptionTagList = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
     $htPolicyAssignmentExemptions = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
     if (-not $NoAADGuestUsers) {
-        $htUserTypes = @{ }
+        $htUserTypesGuest = @{ }
     }
     $resourcesAll = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $resourcesIdsAll = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
@@ -19786,32 +19786,68 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 }
             }
             
+            $endguestuserscheck = Get-Date
+            Write-Host "  GuestUsers check duration: $((NEW-TIMESPAN -Start $startguestuserscheck -End $endguestuserscheck).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startguestuserscheck -End $endguestuserscheck).TotalSeconds) seconds)"
+
+            #determine the more efficient query (get all Guest users vs get userType for users that have a roleAssignment )
             $usersThatNeedToBeResolvedForUserTypeCount = $htUsersThatNeedToBeResolvedForUserType.Count
 
             if ($aadGuestUsersCountFromAPI -gt $usersThatNeedToBeResolvedForUserTypeCount) {
                 Write-Host "   guest count $aadGuestUsersCountFromAPI > usersToBeResolved count $usersThatNeedToBeResolvedForUserTypeCount"
+                #
+                #batching
+                $counterBatch = [PSCustomObject] @{ Value = 0 }
+                $batchSize = 100
+                $userObjectBatch = $htUsersThatNeedToBeResolvedForUserType.Keys | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
+                $userObjectBatchCount = ($userObjectBatch | Measure-Object).Count
+                $batchCnt = 0
+
+                $aadGuestUsers = [System.Collections.ArrayList]@()
+                foreach ($batch in $userObjectBatch){
+
+                    $batchCnt++
+                    Write-Host " processing Batch #$batchCnt/$($userObjectBatchCount) ($(($batch.Group).Count) Users)"
+                    $userIdentitiesToCheckIfGuest = '"{0}"' -f ($batch.Group -join '","')
+
+                    #Write-Host "    userIdentitiesToCheckIfGuest: $userIdentitiesToCheckIfGuest"
+            
+                    $currentTask = " Resolving User type Guest - Batch #$batchCnt/$($userObjectBatchCount) ($(($batch.Group).Count)"
+                    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/directoryObjects/getByIds?`$select=userType,id"
+                    $method = "POST"
+                    
+                    $body = @"
+                    {
+                        "ids":[$($userIdentitiesToCheckIfGuest)],
+                        "types":["user"]
+                    }
+"@
+                    $resolveUserTypeGuest = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask
+                    foreach ($guestUser in $resolveUserTypeGuest.where({$_.userType -eq "Guest"})){
+                        $null = $aadGuestUsers.Add($guestUser)
+                    }
+                }
+
+#
             }
             else {
                 Write-Host "   guest count $aadGuestUsersCountFromAPI < usersToBeResolved count $usersThatNeedToBeResolvedForUserTypeCount"
+
+                $currenttask = "Get AAD Guest Users"
+                $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/users?`$filter=userType eq 'Guest'"
+                $method = "GET"
+                $aadGuestUsers = AzAPICall -uri $uri -method $method -currentTask $currenttask -getGuests $true
+
+                $aadGuestUsersCount = ($aadGuestUsers | Measure-Object).Count
+                Write-Host " Collected $aadGuestUsersCount AAD Guest Users"
+
+
             }
-
-            $endguestuserscheck = Get-Date
-            Write-Host "  GuestUsers check duration: $((NEW-TIMESPAN -Start $startguestuserscheck -End $endguestuserscheck).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startguestuserscheck -End $endguestuserscheck).TotalSeconds) seconds)"
-
-
-        
-            $currenttask = "Get AAD Guest Users"
-            $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/users?`$filter=userType eq 'Guest'"
-            $method = "GET"
-            $aadGuestUsers = AzAPICall -uri $uri -method $method -currentTask $currenttask -getGuests $true
-
-            $aadGuestUsersCount = ($aadGuestUsers | Measure-Object).Count
-            Write-Host " Collected $aadGuestUsersCount AAD Guest Users"
         
             foreach ($aadGuestUser in $aadGuestUsers) {
-                $htUserTypes.($aadGuestUser.Id) = @{ }
-                $htUserTypes.($aadGuestUser.Id).userType = "Guest"
+                $htUserTypesGuest.($aadGuestUser.Id) = @{ }
+                $htUserTypesGuest.($aadGuestUser.Id).userType = "Guest"
             }
+
         }
 
         $endAADGuestUsers = Get-Date
@@ -21185,7 +21221,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 }
 #endregion BuildConsumptionCSV
 
-#$fileTimestamp = (get-date -format $FileTimeStampFormat)
+$fileTimestamp = (get-date -format $FileTimeStampFormat)
 #region BuildJSON
 if (-not $NoJsonExport) {
     #$fileName = get-date -format "yyyyMM-dd HHmmss"
@@ -21219,8 +21255,11 @@ if (-not $NoJsonExport) {
                 $subId = ($rgpa.Name).split("/")[0]
                 if (-not $htSubRGPolicyAssignments.($subId)) {
                     $htSubRGPolicyAssignments.($subId) = @{}
-                    $htSubRGPolicyAssignments.($subId).PolicyAssignments = $rgpa.group
                 }
+                if (-not $htSubRGPolicyAssignments.($subId).PolicyAssignments) {
+                    $htSubRGPolicyAssignments.($subId).PolicyAssignments = @()
+                }
+                $htSubRGPolicyAssignments.($subId).PolicyAssignments += $rgpa.group
             }
         }
     }
@@ -21402,22 +21441,38 @@ if (-not $NoJsonExport) {
                     }
                 }
 
+
                 if (-not $DoNotIncludeResourceGroupsOnPolicy) {
                     if (-not $JsonExportExcludeResourceGroups) {
-                        if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups) {
+                        $htTemp = @{}
+                        <#if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups) {
                             $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups = [ordered]@{}
                         }
+                        #>
+                        if (-not $htTemp.ResourceGroups) {
+                            $htTemp.ResourceGroups = @{}
+                        }
+                        
                         if ($htSubRGPolicyAssignments.($subscription.subscriptionId)) {
                             foreach ($rgpa in $htSubRGPolicyAssignments.($subscription.subscriptionId).PolicyAssignments) {
                                 $rgName = ($rgpa.AssignmentScopeId).split("/")[1]
                                 
+                                <#
                                 if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName)) {
                                     $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName) = [ordered]@{}
                                 }
                                 if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName).PolicyAssignments) {
                                     $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName).PolicyAssignments = [ordered]@{}
                                 }
-                                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName).PolicyAssignments.($rgpa.Assignment.id) = $rgpa.Assignment
+                                #>
+                                if (-not $htTemp.ResourceGroups.($rgName)) {
+                                    $htTemp.ResourceGroups.($rgName) = [ordered]@{}
+                                }
+                                if (-not $htTemp.ResourceGroups.($rgName).PolicyAssignments) {
+                                    $htTemp.ResourceGroups.($rgName).PolicyAssignments = [ordered]@{}
+                                }
+                                #$htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName).PolicyAssignments.($rgpa.Assignment.id) = $rgpa.Assignment
+                                $htTemp.ResourceGroups.($rgName).PolicyAssignments.($rgpa.Assignment.id) = $rgpa.Assignment
                             }
                         }
                     }
@@ -21425,13 +21480,19 @@ if (-not $NoJsonExport) {
 
                 if (-not $DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
                     if (-not $JsonExportExcludeResourceGroups) {
-                        if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups) {
+                        if (-not $htTemp){
+                            $htTemp = @{}
+                        }
+                        <#if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups) {
                             $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups = [ordered]@{}
+                        }#>
+                        if (-not $htTemp.ResourceGroups) {
+                            $htTemp.ResourceGroups = @{}
                         }
                         if ($htSubRGRoleAssignments.($subscription.subscriptionId)) {
                             foreach ($rgra in $htSubRGRoleAssignments.($subscription.subscriptionId).RoleAssignments) {
                                 $rgName = ($rgra.AssignmentScopeId).split("/")[1]
-                                
+                                <#
                                 if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName)) {
                                     $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName) = [ordered]@{}
                                 }
@@ -21439,18 +21500,30 @@ if (-not $NoJsonExport) {
                                     $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName).RoleAssignments = [ordered]@{}
                                 }
                                 $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rgName).RoleAssignments.($rgra.Assignment.RoleAssignmentId) = $rgra.Assignment
+                                #>
+                                if (-not $htTemp.ResourceGroups.($rgName)) {
+                                    $htTemp.ResourceGroups.($rgName) = [ordered]@{}
+                                }
+                                if (-not $htTemp.ResourceGroups.($rgName).RoleAssignments) {
+                                    $htTemp.ResourceGroups.($rgName).RoleAssignments = [ordered]@{}
+                                }
+                                $htTemp.ResourceGroups.($rgName).RoleAssignments.($rgra.Assignment.RoleAssignmentId) = $rgra.Assignment
                             }
                         }
                         #
                         if (-not $JsonExportExcludeResources) {
-                            if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups) {
+                            <#if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups) {
                                 $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups = [ordered]@{}
+                            }#>
+                            if (-not $htTemp.ResourceGroups) {
+                                $htTemp.ResourceGroups = @{}
                             }
                             if ($htSubResRoleAssignments.($subscription.subscriptionId)) {
                                 foreach ($rg in $htSubResRoleAssignments.($subscription.subscriptionId).keys) {
                                     foreach ($res in $htSubResRoleAssignments.($subscription.subscriptionId).($rg).Keys | Sort-Object) {
                                         $rgName = ($resra.AssignmentScopeId).split("/")[1]
                                     
+                                        <#
                                         if (-not $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rg)) {
                                             $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rg) = [ordered]@{}
                                         }
@@ -21464,11 +21537,35 @@ if (-not $NoJsonExport) {
                                             $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rg).Resources.($res).RoleAssignments = [ordered]@{}
                                         }
                                         $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups.($rg).Resources.($res).RoleAssignments = $htSubResRoleAssignments.($subscription.subscriptionId).($rg).($res).RoleAssignments
+                                        #>
+                                        if (-not $htTemp.ResourceGroups.($rg)) {
+                                            $htTemp.ResourceGroups.($rg) = [ordered]@{}
+                                        }
+                                        if (-not $htTemp.ResourceGroups.($rg).Resources) {
+                                            $htTemp.ResourceGroups.($rg).Resources = [ordered]@{}
+                                        }
+                                        if (-not $htTemp.ResourceGroups.($rg).Resources.($res)) {
+                                            $htTemp.ResourceGroups.($rg).Resources.($res) = [ordered]@{}
+                                        }
+                                        if (-not $htTemp.ResourceGroups.($rg).Resources.($res).RoleAssignments) {
+                                            $htTemp.ResourceGroups.($rg).Resources.($res).RoleAssignments = [ordered]@{}
+                                        }
+                                        $htTemp.ResourceGroups.($rg).Resources.($res).RoleAssignments = $htSubResRoleAssignments.($subscription.subscriptionId).($rg).($res).RoleAssignments
                                     }
                                 }
                             }
                         }
                     }
+                }
+
+                if ($htTemp){
+                    $sortedHt = [ordered]@{}
+                    foreach ($key in ($htTemp.ResourceGroups.keys | Sort-Object)){
+                        $sortedHt.($key) = $htTemp.ResourceGroups.($key)
+                    }
+                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups = $sortedHt
+                    $htTemp = $null
+                    $sortedHt = $null
                 }
             }
         }
@@ -21726,7 +21823,7 @@ if (-not $NoJsonExport) {
                         if (-not $DoNotIncludeResourceGroupsOnPolicy) {
                             if (-not $JsonExportExcludeResourceGroups) {
                                 if ($subCap -eq "ResourceGroups") {
-                                    foreach ($rg in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
+                                    foreach ($rg in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys | sort-object) {
                                         if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)")) {
                                             $null = new-item -Name $rg -ItemType directory -path "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)"
                                         }
@@ -21756,7 +21853,7 @@ if (-not $NoJsonExport) {
                         if (-not $DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
                             if (-not $JsonExportExcludeResourceGroups) {
                                 if ($subCap -eq "ResourceGroups") {
-                                    foreach ($rg in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
+                                    foreach ($rg in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys | sort-object) {
                                         if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)")) {
                                             $null = new-item -Name $rg -ItemType directory -path "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)"
                                         }
