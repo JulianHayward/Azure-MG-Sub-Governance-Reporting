@@ -62,6 +62,15 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## Release history
 
+__Changes__ (2021-July-28 / Major)
+
+* As demanded by the community reactivated parameters `-PolicyAtScopeOnly` and `-RBACAtScopeOnly`
+* New paramter `-AADGroupMembersLimit`. Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved 
+* New parameter `-JsonExportExcludeResourceGroups` - JSON Export will not include ResourceGroups (Policy & Role assignments)
+* New parameter `-JsonExportExcludeResources`- JSON Export will not include Resources (Role assignments)
+* Bugfixes
+* Performance optimization
+
 __Changes__ (2021-July-22 / Major)
 
 * Full blown JSON definition output. Leveraging Git with this new capability you can easily track any changes that occurred in between the previous and last AzGovViz run.  
@@ -69,7 +78,7 @@ __Changes__ (2021-July-22 / Major)
 _* a new BuiltIn RBAC Role definition was added_
 * Renamed parameter `-PolicyIncludeResourceGroups` to , `-DoNotIncludeResourceGroupsOnPolicy` (from now Policy assignments on ResourceGroups will be included by default)
 * Renamed parameter `-RBACIncludeResourceGroupsAndResources` to , `-DoNotIncludeResourceGroupsAndResourcesOnRBAC` (from now Role assignments on ResourceGroups and Resources will be included by default)
-* New parameter `-HtmlTableRowsLimit`. Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 40.000.
+* New parameter `-HtmlTableRowsLimit`. Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 40.000
 * Added NonCompliance Message for Policy assignments
 * Cosmetics
 * Bugfixes
@@ -398,38 +407,41 @@ This permission is <b>mandatory</b> in each and every scenario!
 
 ### Parameters
   * `-ManagementGroupId` Management Group Id (Root Management Group Id equals your Tenant Id)
-  * `-CsvDelimiter` the world is split into two kinds of delimiters - comma and semicolon - choose yours (default is semicolon ';')
-  * `-OutputPath`
-  * `-AzureDevOpsWikiAsCode`
-  * `-DoNotShowRoleAssignmentsUserData` scrub personally identifiable information (PII)
-  * `-LimitCriticalPercentage` limit warning level, default is 80%
-  * ~~`-HierarchyTreeOnly`~~ `-HierarchyMapOnly` output only the __HierarchyMap__ for Management Groups including linked Subscriptions
-  * `-SubscriptionQuotaIdWhitelist` process only Subscriptions with defined QuotaId(s)
-  * `-NoResourceProvidersDetailed` disables output for ResourceProvider states for all Subscriptions in the __TenantSummary__ section, in large Tenants this can become time consuming
-  * `-NoASCSecureScore` disables ASC Secure Score request for Subscriptions. The used API is in preview you may want to disable this
-  * ~~`-DisablePolicyComplianceStates`~~ `-NoPolicyComplianceStates` will not query policy compliance states. You may want to use this parameter to accellerate script execution or when receiving error 'ResponseTooLarge'. 
-  * `-NoResourceDiagnosticsPolicyLifecycle` disables Resource Diagnostics Policy Lifecycle recommendations
-  * `-NoAADGroupsResolveMembers` disables resolving Azure Active Directory Group memberships
-  * `-NoAADGuestUsers` disables resolving Azure Active Directory User type (Guest or Member)
-  * ~~`-NoServicePrincipalResolve`~~ `-NoAADServicePrincipalResolve` disables resolving ServicePrincipals
-  * ~~`-ServicePrincipalExpiryWarningDays`~~ `-AADServicePrincipalExpiryWarningDays` define warning period for Service Principal secret and certificate expiry; default is 14 days
-  * `-NoAzureConsumption` Azure Consumption data should not be collected/reported
-  * `-AzureConsumptionPeriod` define for which time period Azure Consumption data should be gathered; default is 1 day
-  * `-NoAzureConsumptionReportExportToCSV` Azure Consumption data should not be exported (CSV)
+  * `-CsvDelimiter` - The world is split into two kinds of delimiters - comma and semicolon - choose yours (default is semicolon ';')
+  * `-OutputPath` 
+  * `-AzureDevOpsWikiAsCode` - Only use in Azure DevOps Pipeline
+  * `-DoNotShowRoleAssignmentsUserData` - Scrub personally identifiable information (PII)
+  * `-LimitCriticalPercentage` - Limit warning level, default is 80%
+  * ~~`-HierarchyTreeOnly`~~ `-HierarchyMapOnly` - Output only the __HierarchyMap__ for Management Groups including linked Subscriptions
+  * `-SubscriptionQuotaIdWhitelist` - Process only Subscriptions with defined QuotaId(s)
+  * `-NoResourceProvidersDetailed` - Disables output for ResourceProvider states for all Subscriptions in the __TenantSummary__ section, in large Tenants this can become time consuming
+  * `-NoASCSecureScore` - Disables ASC Secure Score request for Subscriptions. The used API is in preview you may want to disable this
+  * ~~`-DisablePolicyComplianceStates`~~ `-NoPolicyComplianceStates` - Will not query policy compliance states. You may want to use this parameter to accellerate script execution or when receiving error 'ResponseTooLarge'. 
+  * `-NoResourceDiagnosticsPolicyLifecycle` - Disables Resource Diagnostics Policy Lifecycle recommendations
+  * `-NoAADGroupsResolveMembers` - Disables resolving Azure Active Directory Group memberships
+  * `-NoAADGuestUsers` - Disables resolving Azure Active Directory User type (Guest or Member)
+  * ~~`-NoServicePrincipalResolve`~~ `-NoAADServicePrincipalResolve` - Disables resolving ServicePrincipals
+  * ~~`-ServicePrincipalExpiryWarningDays`~~ `-AADServicePrincipalExpiryWarningDays` - Define warning period for Service Principal secret and certificate expiry; default is 14 days
+  * `-NoAzureConsumption` - Azure Consumption data should not be collected/reported
+  * `-AzureConsumptionPeriod` - Define for which time period Azure Consumption data should be gathered; default is 1 day
+  * `-NoAzureConsumptionReportExportToCSV` - Azure Consumption data should not be exported (CSV)
   * `-NoScopeInsights` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size). Use `-LargeTenant` to further reduce the output.
   * `-ThrottleLimit` - leveraging PowerShell´s parallel capability you can define the ThrottleLimit (default=5; &#x1F4A1; values from 5 up to 15 proved to perform best)
-  * `-DoTranscript` - log the console output
+  * `-DoTranscript` - Log the console output
   * `-SubscriptionId4AzContext` - Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
-  * ~~`-PolicyAtScopeOnly`~~ Use `-LargeTenant` - removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants
-  * ~~`-RBACAtScopeOnly`~~ Use `-LargeTenant` - removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants
-  * ~~`-CsvExport`~~ `-NoCsvExport` - do not export enriched data for 'Role assignments', 'Policy assignments' data and 'all resources' (subscriptionId,  managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
-  * ~~`-PolicyIncludeResourceGroups`~~ `-DoNotIncludeResourceGroupsOnPolicy` - do not include Policy assignments on ResourceGroups
-  * ~~`-RBACIncludeResourceGroupsAndResources`~~ `-DoNotIncludeResourceGroupsAndResourcesOnRBAC` - do not include Role assignments on ResourceGroups and Resources
-  * `-ChangeTrackingDays` - define the period for Change tracking on newly created and updated custom Policy, PolicySet and RBAC Role definitions and Policy/RBAC Role assignments (default is '14') 
-  * `-FileTimeStampFormat`- define the time format for the output files (default is `yyyyMMdd_HHmmss`)
-  * ~~`-JsonExport`~~ `-NoJsonExport` - do not enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON 
-  * `-LargeTenant` - a large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big, therefore will not create __ScopeInsights__ and will not show inheritance for Policy and Role assignments in the __TenantSummary__ (html) output
-  * `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 40.000. 
+  * `-PolicyAtScopeOnly` - Removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants. Note using parameter `-LargeTenant` will set `-PolicyAtScopeOnly $true`
+  * `-RBACAtScopeOnly` - Removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants. Note using parameter `-LargeTenant` will set `-RBACAtScopeOnly $true`
+  * ~~`-CsvExport`~~ `-NoCsvExport` - Do not export enriched data for 'Role assignments', 'Policy assignments' data and 'all resources' (subscriptionId,  managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
+  * ~~`-PolicyIncludeResourceGroups`~~ `-DoNotIncludeResourceGroupsOnPolicy` - Do not include Policy assignments on ResourceGroups
+  * ~~`-RBACIncludeResourceGroupsAndResources`~~ `-DoNotIncludeResourceGroupsAndResourcesOnRBAC` - Do not include Role assignments on ResourceGroups and Resources
+  * `-ChangeTrackingDays` - Define the period for Change tracking on newly created and updated custom Policy, PolicySet and RBAC Role definitions and Policy/RBAC Role assignments (default is '14') 
+  * `-FileTimeStampFormat`- Define the time format for the output files (default is `yyyyMMdd_HHmmss`)
+  * ~~`-JsonExport`~~ `-NoJsonExport` - Do not enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON 
+  * `-JsonExportExcludeResourceGroups` - JSON Export will not include ResourceGroups (Policy & Role assignments)
+  * `-JsonExportExcludeResources`- JSON Export will not include Resources (Role assignments)
+  * `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big. Using this parameter the following parameters will be set: -PolicyAtScopeOnly $true, -RBACAtScopeOnly $true, -NoResourceProvidersDetailed $true, -NoScopeInsights $true
+  * `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 40.000
+  * `-AADGroupMembersLimit` - Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved 
 
 * Passed tests: Powershell Core 7.1.2 on Windows
 * Passed tests: Powershell Core 7.1.3 Azure DevOps hosted ubuntu-18.04

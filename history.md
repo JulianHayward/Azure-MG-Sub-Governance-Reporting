@@ -4,6 +4,15 @@
 
 ### AzGovViz version 5
 
+__Changes__ (2021-July-28 / Major)
+
+* As demanded by the community reactivated parameters `-PolicyAtScopeOnly` and `-RBACAtScopeOnly`
+* New paramter `-AADGroupMembersLimit`. Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved 
+* New parameter `-JsonExportExcludeResourceGroups` - JSON Export will not include ResourceGroups (Policy & Role assignments)
+* New parameter `-JsonExportExcludeResources`- JSON Export will not include Resources (Role assignments)
+* Bugfixes
+* Performance optimization
+
 __Changes__ (2021-July-22 / Major)
 
 * Full blown JSON definition output. Leveraging Git with this new capability you can easily track any changes that occurred in between the previous and last AzGovViz run.  

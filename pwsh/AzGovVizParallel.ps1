@@ -98,8 +98,25 @@
 .PARAMETER NoJsonExport
     Enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
 
+.PARAMETER JsonExportExcludeResourceGroups
+    JSON Export will not include ResourceGroups (Policy & Role assignments)
+
+.PARAMETER JsonExportExcludeResources
+    JSON Export will not include Resources (Role assignments)
+
 .PARAMETER LargeTenant 
-    A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big, therefore will not create ScopeInsights and will not show inheritance for Policy and Role assignments in the TenantSummary (html) output
+    A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big.
+    If the parameter switch is true then the following parameters will be set:
+    -PolicyAtScopeOnly $true
+    -RBACAtScopeOnly $true
+    -NoResourceProvidersDetailed $true
+    -NoScopeInsights $true
+
+.PARAMETER PolicyAtScopeOnly 
+    Removing 'inherited' lines in the HTML file; use this parameter if you run against a larger tenants
+
+.PARAMETER RBACAtScopeOnly 
+    Removing 'inherited' lines in the HTML file; use this parameter if you run against a larger tenants
 
 .PARAMETER NoResourceProvidersDetailed
     Note if you use parameter -LargeTenant then parameter -NoResourceProvidersDetailed will be set to true
@@ -194,8 +211,27 @@
     Do not enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoJsonExport
 
-    A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big, therefore will not create ScopeInsights and will not show inheritance for Policy and Role assignments in the TenantSummary (html) output
+    JSON Export will not include ResourceGroups (Policy & Role assignments)
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -JsonExportExcludeResourceGroups
+
+    JSON Export will not include Resources (Role assignments)
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -JsonExportExcludeResources
+
+    A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big.
+    If the parameter switch is true then the following parameters will be set:
+    -PolicyAtScopeOnly $true
+    -RBACAtScopeOnly $true
+    -NoResourceProvidersDetailed $true
+    -NoScopeInsights $true
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -LargeTenant
+
+    Removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants
+    Note if you use parameter -LargeTenant then parameter -PolicyAtScopeOnly will be set to true
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -PolicyAtScopeOnly
+
+    Removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants
+    Note if you use parameter -LargeTenant then parameter -RBACAtScopeOnly will be set to true
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -RBACAtScopeOnly
 
     Define if a detailed summary on Resource Provider states per Subscription should be created in the TenantSummary section
     Note if you use parameter -LargeTenant then parameter -NoResourceProvidersDetailed will be set to true
@@ -220,7 +256,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210727_2",
+    [string]$AzGovVizVersion = "v5_major_20210728_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -259,6 +295,8 @@ Param
     [switch]$LargeTenant,
     [switch]$NoScopeInsights,
     [int]$AADGroupMembersLimit = 500,
+    [switch]$PolicyAtScopeOnly,
+    [switch]$RBACAtScopeOnly,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]$LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -342,7 +380,15 @@ if (-not $NoAzureConsumption) {
 }
 
 #region htParameters (all switch params used in foreach-object -parallel)
+if ($LargeTenant -eq $true) {
+    $NoScopeInsights = $true
+    $NoResourceProvidersDetailed = $true
+    $PolicyAtScopeOnly = $true
+    $RBACAtScopeOnly = $true
+}
+
 $htParameters = @{ }
+
 if ($AzureDevOpsWikiAsCode) {
     $htParameters.AzureDevOpsWikiAsCode = $true
 }
@@ -378,10 +424,20 @@ else {
     $htParameters.NoASCSecureScore = $false
 }
 
-if ($LargeTenant -eq $true) {
-    $NoScopeInsights = $true
-    $NoResourceProvidersDetailed = $true
+if ($PolicyAtScopeOnly){
+    $htParameters.PolicyAtScopeOnly = $true
 }
+else{
+    $htParameters.PolicyAtScopeOnly = $false
+}
+
+if ($RBACAtScopeOnly){
+    $htParameters.RBACAtScopeOnly = $true
+}
+else{
+    $htParameters.RBACAtScopeOnly = $false
+}
+
 if ($NoResourceProvidersDetailed) {
     $htParameters.NoResourceProvidersDetailed = $true
 }
@@ -1929,7 +1985,7 @@ function dataCollection($mgId) {
     
             #MgPolicyAssignments
             $currentTask = "Policy assignments '$($mgdetail.properties.displayName)' ('$($mgdetail.Name)')"
-            if ($htParameters.LargeTenant -eq $false) {
+            if ($htParameters.LargeTenant -eq $false -or $htParameters.PolicyAtScopeOnly -eq $false) {
                 $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atscope()&api-version=2020-09-01"
             }
             else {
@@ -2255,7 +2311,7 @@ function dataCollection($mgId) {
                 $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.RoleAssignments.($mgdetail.Name).AssignmentsCount = $L0mgmtGroupRoleAssignmentsLimitUtilization
             }
             
-            if ($htParameters.LargeTenant -eq $true) {
+            if ($htParameters.LargeTenant -eq $true -or $htParameters.RBACAtScopeOnly -eq $true) {
                 $L0mgmtGroupRoleAssignments = $L0mgmtGroupRoleAssignments | Where-Object { $_.Scope -eq "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" }
             }
             else {
@@ -3675,12 +3731,13 @@ function dataCollection($mgId) {
                         }
                     }
 
-                    if ($htParameters.LargeTenant -eq $false) {
+                    if ($htParameters.LargeTenant -eq $true -or $htParameters.RBACAtScopeOnly -eq $true) {
                         if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC -eq $false) {
                             $assignmentsScope = $L1mgmtGroupSubRoleAssignments
                         }
                         else {
-                            $assignmentsScope = $L1mgmtGroupSubRoleAssignments | Where-Object { $_.RoleAssignmentId -notmatch "/subscriptions/$($childMgSubId)/resourcegroups/" }
+                            #$assignmentsScope = $L1mgmtGroupSubRoleAssignments | Where-Object { $_.RoleAssignmentId -notmatch "/subscriptions/$($childMgSubId)/resourcegroups/" }
+                            $assignmentsScope = $L1mgmtGroupSubRoleAssignments | Where-Object { $_.Scope -eq "/subscriptions/$($childMgSubId)" }
                         }
                     }
                     else {
@@ -3688,7 +3745,8 @@ function dataCollection($mgId) {
                             $assignmentsScope = $L1mgmtGroupSubRoleAssignments
                         }
                         else {
-                            $assignmentsScope = $L1mgmtGroupSubRoleAssignments | Where-Object { $_.Scope -eq "/subscriptions/$($childMgSubId)" }
+                            #$assignmentsScope = $L1mgmtGroupSubRoleAssignments | Where-Object { $_.Scope -eq "/subscriptions/$($childMgSubId)" }
+                            $assignmentsScope = $L1mgmtGroupSubRoleAssignments | Where-Object { $_.RoleAssignmentId -notmatch "/subscriptions/$($childMgSubId)/resourcegroups/" }
                         }
                     }
 
@@ -9985,7 +10043,7 @@ extensions: [{ name: 'sort' }]
 
         $policyAssignmentsUniqueCount = ($arrayPolicyAssignmentsEnriched | Sort-Object -Property PolicyAssignmentId -Unique | measure-object).count
         
-        if ($LargeTenant) {
+        if ($LargeTenant -or $PolicyAtScopeOnly) {
             $policyAssignmentsCount = $policyAssignmentsUniqueCount
             $tfCount = $policyAssignmentsCount
         }
@@ -10077,7 +10135,7 @@ extensions: [{ name: 'sort' }]
         }
 
         $htmlSummaryPolicyAssignmentsAll = foreach ($policyAssignment in $arrayPolicyAssignmentsEnriched | sort-object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, PolicyAssignmentId) {
-            if ($LargeTenant) {
+            if ($LargeTenant -or $PolicyAtScopeOnly) {
                 if ($policyAssignment.Inheritance -like "inherited *" -and $policyAssignment.MgParentId -ne "'upperScopes'") {
                     continue
                 }
@@ -10780,7 +10838,7 @@ extensions: [{ name: 'sort' }]
 
     $startCreateRBACAllHTMLbeforeForeach = get-date
 
-    if ($LargeTenant) {
+    if ($LargeTenant -or $RBACAtScopeOnly) {
         $rbacAllAtScope = ($rbacAll.where( { ((-not [string]::IsNullOrEmpty($_.SubscriptionId) -and $_.scope -notlike "inherited *")) -or ([string]::IsNullOrEmpty($_.SubscriptionId)) }))
         $rbacAllCount = $rbacAllAtScope.Count
     }
@@ -10803,7 +10861,7 @@ extensions: [{ name: 'sort' }]
                 $csvFilename = "AzGovViz_$($AzGovVizVersion)_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)_RoleAssignments"
             }
             if ($CsvExportUseQuotesAsNeeded) {
-                if ($LargeTenant) {
+                if ($LargeTenant -or $RBACAtScopeOnly) {
                     $rbacAllAtScope | Sort-Object -Property Level, RoleAssignmentId, MgId, SubscriptionId, RoleClear, ObjectId | Select-Object -ExcludeProperty Role, RbacRelatedPolicyAssignment | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
                 }
                 else {
@@ -10811,7 +10869,7 @@ extensions: [{ name: 'sort' }]
                 }
             }
             else {
-                if ($LargeTenant) {
+                if ($LargeTenant -or $RBACAtScopeOnly) {
                     $rbacAllAtScope | Sort-Object -Property Level, RoleAssignmentId, MgId, SubscriptionId, RoleClear, ObjectId | Select-Object -ExcludeProperty Role, RbacRelatedPolicyAssignment | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
                 }
                 else {
@@ -10892,7 +10950,7 @@ extensions: [{ name: 'sort' }]
             Write-Host "   CreateRBACAll HTML before Foreach duration: $((NEW-TIMESPAN -Start $startCreateRBACAllHTMLbeforeForeach -End $endCreateRBACAllHTMLbeforeForeach).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startCreateRBACAllHTMLbeforeForeach -End $endCreateRBACAllHTMLbeforeForeach).TotalSeconds) seconds)"
         
             $startSortRBACAll = get-date
-            if ($LargeTenant) {
+            if ($LargeTenant -or $RBACAtScopeOnly) {
                 $rbacAllSorted = $rbacAllAtScope | sort-object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, Scope, Role, ObjectDisplayName, RoleAssignmentId     
             }
             else {
@@ -18144,6 +18202,41 @@ if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
 $arrayAPICallTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 $arrayAPICallTrackingCustomDataCollection = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 
+<#
+if ($accountType -eq "User") {
+    Write-Host "Checking least priviledge practice"
+    $currenttask = "Get permissions of executing identity $($accountId)"
+    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/me"
+    $method = "GET"
+    Write-Host " Getting ObjectId for '$($accountId)'"
+    $identity = AzAPICall -uri $uri -method $method -currentTask $currenttask -listenOn "Content"
+    Write-Host " Getting Role assignments for '$($identity.id)' on scope '$($ManagementGroupId)'"
+    $identityRoleAssignments = get-AzRoleAssignment -Scope "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" -ObjectId $identity.id
+    if ($identityRoleAssignments.Count -eq 1 -and $identityRoleAssignments.RoleDefinitionName -eq "Reader") {
+        $leastPriviledgePracticeCheck = "Passed"
+        Write-Host " Least priviledge practice check passed"
+        Write-Host " $($identityRoleAssignments.Count) Role assignment found ($($identityRoleAssignments.RoleDefinitionName)) - OK" -ForegroundColor Green
+    }
+    else {
+        $leastPriviledgePracticeCheck = "Failed - verify that only 'Reader' Role is assigned"
+        Write-Host " $($identityRoleAssignments.Count) Role assignments found:"
+        $cnt = 0
+        foreach ($identityRoleAssignment in $identityRoleAssignments) {
+            $cnt++
+            if ($identityRoleAssignment.RoleDefinitionName -eq "Reader") {
+                Write-Host "   $($cnt). '$($identityRoleAssignment.RoleDefinitionName)'" -ForegroundColor Green
+            }
+            else {
+                Write-Host "   $($cnt). '$($identityRoleAssignment.RoleDefinitionName)'" -ForegroundColor DarkYellow
+            }
+        }
+        Write-Host ""
+        Write-Host " Follow follow best practices by only applying a Reader Role assignment for '$($accountId)' (ObjId: $($identity.id))!" -ForegroundColor DarkYellow
+        pause
+    }
+}
+#>
+
 $userType = "n/a"
 if ($accountType -eq "User") {
     $currentTask = "Checking AAD UserType"
@@ -18308,6 +18401,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     }
     else {
         $paramsUsed += "ExecutedBy: $($accountId) ($($accountType), $($userType)) &#13;"
+        #$paramsUsed += "$($leastPriviledgePracticeCheck) &#13;"
     }
     $paramsUsed += "ManagementGroupId: $($ManagementGroupId) &#13;"
     $paramsUsed += "HierarchyMapOnly: false &#13;"
@@ -18342,15 +18436,6 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     else {
         Write-Host " ASC Secure Score for Subscriptions enabled - use parameter: '-NoASCSecureScore' to disable" -ForegroundColor Yellow
         $paramsUsed += "NoASCSecureScore: false &#13;"
-    }
-
-    if ($htParameters.NoResourceProvidersDetailed -eq $true) {
-        Write-Host " ResourceProvider Detailed for TenantSummary disabled (-NoResourceProvidersDetailed = $($htParameters.NoResourceProvidersDetailed))" -ForegroundColor Green
-        $paramsUsed += "NoResourceProvidersDetailed: true &#13;"
-    }
-    else {
-        Write-Host " ResourceProvider Detailed for TenantSummary enabled - use parameter: '-NoResourceProvidersDetailed' to disable" -ForegroundColor Yellow
-        $paramsUsed += "NoResourceProvidersDetailed: false &#13;"
     }
 
     if ($htParameters.DoNotShowRoleAssignmentsUserData -eq $true) {
@@ -18392,6 +18477,14 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     if (-not $NoAADGroupsResolveMembers) {
         Write-Host " AAD Groups resolve members enabled (honors parameter -DoNotShowRoleAssignmentsUserData) - use parameter: '-NoAADGroupsResolveMembers' to disable resolving AAD Group memberships" -ForegroundColor Yellow
         $paramsUsed += "NoAADGroupsResolveMembers: false &#13;"
+        if ($AADGroupMembersLimit -eq 500) {
+            Write-Host " AADGroupMembersLimit = $AADGroupMembersLimit" -ForegroundColor Yellow
+            $paramsUsed += "AADGroupMembersLimit: $AADGroupMembersLimit &#13;"
+        }
+        else {
+            Write-Host " AADGroupMembersLimit = $AADGroupMembersLimit" -ForegroundColor Green
+            $paramsUsed += "AADGroupMembersLimit: $AADGroupMembersLimit &#13;"
+        }
     }
     else {
         Write-Host " AAD Groups resolve members disabled (-NoAADGroupsResolveMembers = $($NoAADGroupsResolveMembers))" -ForegroundColor Green
@@ -18463,21 +18556,76 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         $paramsUsed += "NoAzureConsumption: true &#13;"
     }
 
-    if ($LargeTenant) {
-        Write-Host " TenantSummary Policy assignments and Role assignments will not include assignment information on scopes where assignment is inherited, ScopeInsights will not be created (-LargeTenant = $($LargeTenant))" -ForegroundColor Green
-        $paramsUsed += "LargeTenant: true &#13;"
+    if ($NoScopeInsights) {
+        Write-Host " ScopeInsights will not be created (-NoScopeInsights = $($NoScopeInsights))" -ForegroundColor Green
+        $paramsUsed += "NoScopeInsights: true &#13;"
     }
     else {
-        Write-Host " TenantSummary Policy assignments and Role assignments will include assignment information on scopes where assignment is inherited (-LargeTenant = $($LargeTenant)) Q: Why would you not want to show this information? A: In larger tenants showing the inheritance on each scope may blow up the html file (up to unusable due to html file size)" -ForegroundColor Yellow
-        $paramsUsed += "LargeTenant: false &#13;"
+        Write-Host " ScopeInsights will be created (-NoScopeInsights = $($NoScopeInsights)) Q: Why would you not want to show ScopeInsights? A: In larger tenants ScopeInsights may blow up the html file (up to unusable due to html file size)" -ForegroundColor Yellow
+        $paramsUsed += "NoScopeInsights: false &#13;"
+    }
 
-        if ($NoScopeInsights) {
-            Write-Host " ScopeInsights will not be created (-NoScopeInsights = $($NoScopeInsights))" -ForegroundColor Green
-            $paramsUsed += "NoScopeInsights: true &#13;"
+    if ($NoResourceProvidersDetailed -eq $true) {
+        Write-Host " ResourceProvider Detailed for TenantSummary disabled (-NoResourceProvidersDetailed = $($NoResourceProvidersDetailed))" -ForegroundColor Green
+        $paramsUsed += "NoResourceProvidersDetailed: $($NoResourceProvidersDetailed) &#13;"
+    }
+    else {
+        Write-Host " ResourceProvider Detailed for TenantSummary enabled - use parameter: '-NoResourceProvidersDetailed' to disable" -ForegroundColor Yellow
+        $paramsUsed += "NoResourceProvidersDetailed: $($NoResourceProvidersDetailed) &#13;"
+    }
+
+    if ($LargeTenant -or $PolicyAtScopeOnly -or $RBACAtScopeOnly) {
+        if ($LargeTenant){
+            Write-Host " TenantSummary Policy assignments and Role assignments will not include assignment information on scopes where assignment is inherited, ScopeInsights will not be created, ResourceProvidersDetailed will not be created (-LargeTenant = $($LargeTenant))" -ForegroundColor Green
+            $paramsUsed += "LargeTenant: $($LargeTenant) &#13;"
+            $paramsUsed += "LargeTenant -> PolicyAtScopeOnly: $($PolicyAtScopeOnly) &#13;"
+            $paramsUsed += "LargeTenant -> RBACAtScopeOnly: $($RBACAtScopeOnly) &#13;"
+            $paramsUsed += "LargeTenant -> NoScopeInsights: $($NoScopeInsights) &#13;"
+            $paramsUsed += "LargeTenant -> NoResourceProvidersDetailed: $($NoResourceProvidersDetailed) &#13;"
         }
-        else {
-            Write-Host " ScopeInsights will be created (-NoScopeInsights = $($NoScopeInsights)) Q: Why would you not want to show ScopeInsights? A: In larger tenants ScopeInsights may blow up the html file (up to unusable due to html file size)" -ForegroundColor Yellow
-            $paramsUsed += "NoScopeInsights: false &#13;"
+        else{
+            Write-Host " TenantSummary LargeTenant disabled (-LargeTenant = $($LargeTenant)) Q: Why would you not want to enable -LargeTenant? A: In larger tenants showing the inheritance on each scope may blow up the html file (up to unusable due to html file size)" -ForegroundColor Yellow
+            $paramsUsed += "LargeTenant: $($LargeTenant) &#13;"
+
+            if ($PolicyAtScopeOnly) {
+                Write-Host " TenantSummary Policy assignments will not include assignment information on scopes where assignment is inherited (PolicyAtScopeOnly = $($PolicyAtScopeOnly))" -ForegroundColor Green
+                $paramsUsed += "PolicyAtScopeOnly: $($PolicyAtScopeOnly) &#13;"
+            }
+            else{
+                Write-Host " TenantSummary Policy assignments will include assignment information on scopes where assignment is inherited (PolicyAtScopeOnly = $($PolicyAtScopeOnly))" -ForegroundColor Yellow
+                $paramsUsed += "PolicyAtScopeOnly: $($PolicyAtScopeOnly) &#13;"
+            }
+            
+            if ($RBACAtScopeOnly) {
+                Write-Host " TenantSummary Role assignments will not include assignment information on scopes where assignment is inherited (RBACAtScopeOnly = $($RBACAtScopeOnly))" -ForegroundColor Green
+                $paramsUsed += "RBACAtScopeOnly: $($RBACAtScopeOnly) &#13;"
+            }
+            else{
+                Write-Host " TenantSummary Role assignments will include assignment information on scopes where assignment is inherited (RBACAtScopeOnly = $($RBACAtScopeOnly))" -ForegroundColor Yellow
+                $paramsUsed += "RBACAtScopeOnly: $($RBACAtScopeOnly) &#13;"
+            }
+        }
+    }
+    else {
+        Write-Host " TenantSummary LargeTenant disabled (-LargeTenant = $($LargeTenant)) Q: Why would you not want to enable -LargeTenant? A: In larger tenants showing the inheritance on each scope may blow up the html file (up to unusable due to html file size)" -ForegroundColor Yellow
+        $paramsUsed += "LargeTenant: $($LargeTenant) &#13;"
+
+        if ($PolicyAtScopeOnly) {
+            Write-Host " TenantSummary Policy assignments will not include assignment information on scopes where assignment is inherited (PolicyAtScopeOnly = $($PolicyAtScopeOnly))" -ForegroundColor Green
+            $paramsUsed += "PolicyAtScopeOnly: $($PolicyAtScopeOnly) &#13;"
+        }
+        else{
+            Write-Host " TenantSummary Policy assignments will include assignment information on scopes where assignment is inherited (PolicyAtScopeOnly = $($PolicyAtScopeOnly))" -ForegroundColor Yellow
+            $paramsUsed += "PolicyAtScopeOnly: $($PolicyAtScopeOnly) &#13;"
+        }
+        
+        if ($RBACAtScopeOnly) {
+            Write-Host " TenantSummary Role assignments will not include assignment information on scopes where assignment is inherited (RBACAtScopeOnly = $($RBACAtScopeOnly))" -ForegroundColor Green
+            $paramsUsed += "RBACAtScopeOnly: $($RBACAtScopeOnly) &#13;"
+        }
+        else{
+            Write-Host " TenantSummary Role assignments will include assignment information on scopes where assignment is inherited (RBACAtScopeOnly = $($RBACAtScopeOnly))" -ForegroundColor Yellow
+            $paramsUsed += "RBACAtScopeOnly: $($RBACAtScopeOnly) &#13;"
         }
     }
 
@@ -18511,6 +18659,34 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     if (-not $NoJsonExport) {
         Write-Host " JSON Export enabled: export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON (-NoJsonExport = $($NoJsonExport))" -ForegroundColor Yellow
         $paramsUsed += "NoJsonExport: false &#13;"
+        if (-not $DoNotIncludeResourceGroupsOnPolicy) {
+            if (-not $JsonExportExcludeResourceGroups){
+                Write-Host " JSON Export will also include Policy assignments on ResourceGroups (JsonExportExcludeResourceGroups = $($JsonExportExcludeResourceGroups))" -ForegroundColor Yellow
+                $paramsUsed += "JsonExportExcludeResourceGroups: $($JsonExportExcludeResourceGroups) &#13;"
+            }
+            else{
+                Write-Host " JSON Export will not include Policy assignments on ResourceGroups (JsonExportExcludeResourceGroups = $($JsonExportExcludeResourceGroups))" -ForegroundColor Green
+                $paramsUsed += "JsonExportExcludeResourceGroups: $($JsonExportExcludeResourceGroups) &#13;"
+            }
+        }
+        if (-not $DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+            if (-not $JsonExportExcludeResourceGroups){
+                Write-Host " JSON Export will also include Role assignments on ResourceGroups (JsonExportExcludeResourceGroups = $($JsonExportExcludeResourceGroups))" -ForegroundColor Yellow
+                $paramsUsed += "JsonExportExcludeResourceGroups: $($JsonExportExcludeResourceGroups) &#13;"
+            }
+            else{
+                Write-Host " JSON Export will not include Role assignments on ResourceGroups (JsonExportExcludeResourceGroups = $($JsonExportExcludeResourceGroups))" -ForegroundColor Green
+                $paramsUsed += "JsonExportExcludeResourceGroups: $($JsonExportExcludeResourceGroups) &#13;"
+            }
+            if (-not $JsonExportExcludeResources){
+                Write-Host " JSON Export will also include Role assignments on Resources (JsonExportExcludeResources = $($JsonExportExcludeResources))" -ForegroundColor Yellow
+                $paramsUsed += "JsonExportExcludeResources: $($JsonExportExcludeResources) &#13;"
+            }
+            else{
+                Write-Host " JSON Export will not include Role assignments on Resources (JsonExportExcludeResources = $($JsonExportExcludeResources))" -ForegroundColor Green
+                $paramsUsed += "JsonExportExcludeResources: $($JsonExportExcludeResources) &#13;"
+            }
+        }
     }
     else {
         Write-Host " JSON Export disabled: export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON (-NoJsonExport = $($NoJsonExport))" -ForegroundColor Green
@@ -19143,8 +19319,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
     dataCollection -mgId $ManagementGroupId
 
-    if ($htParameters.LargeTenant -eq $false) {
-
+    if ($htParameters.LargeTenant -eq $false -or $htParameters.PolicyAtScopeOnly -eq $false -or $htParameters.RBACAtScopeOnly -eq $false) {
         if (($checkContext).Tenant.Id -ne $ManagementGroupId) {
             addRowToTable `
                 -level (($htManagementGroupsMgPath.($ManagementGroupId).ParentNameChain | Measure-Object).Count - 1) `
@@ -19155,7 +19330,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         }
     }
 
-    if ($htParameters.LargeTenant -eq $true) {
+    if ($htParameters.LargeTenant -eq $true -or $htParameters.PolicyAtScopeOnly -eq $true) {
         if (($checkContext).Tenant.Id -ne $ManagementGroupId) {
             $currentTask = "Policy assignments ('$($ManagementGroupId)')"
             #$uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($ManagementGroupId)/providers/Microsoft.Authorization/policyAssignments?`$filter=atScope()&api-version=2019-09-01"
@@ -19355,7 +19530,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         }
     }
     #
-    if ($htParameters.LargeTenant -eq $true) {
+    if ($htParameters.LargeTenant -eq $true -or $htParameters.RBACAtScopeOnly -eq $true) {
 
         #RoleAssignment API (system metadata e.g. createdOn)
         $currentTask = "Role assignments API '$($ManagementGroupId)'"
@@ -20997,7 +21172,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     </div><!--definitionInsightsprnt-->
 "@
 
-    if ((-not $LargeTenant) -or (-not $NoScopeInsights)) {
+    if (-not $NoScopeInsights) {
 
         $html += @"
     <div class="hierprnt" id="hierprnt">
@@ -21036,7 +21211,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $endAzGovVizHTML = get-date
     $AzGovVizHTMLDuration = (NEW-TIMESPAN -Start $startAzGovViz -End $endAzGovVizHTML).TotalMinutes
     $paramsUsed += "Creation duration: $AzGovVizHTMLDuration minutes &#13;"
-    if ((-not $LargeTenant) -or (-not $NoScopeInsights)) {
+    if (-not $NoScopeInsights) {
         $html += @"
         <abbr style="text-decoration:none" title="$($paramsUsed)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr> <button id="hierarchyTreeShowHide" onclick="toggleHierarchyTree()">Hide HierarchyMap</button> <button id="summaryShowHide" onclick="togglesummprnt()">Hide TenantSummary</button> <button id="definitionInsightsShowHide" onclick="toggledefinitioninsightsprnt()">Hide DefinitionInsights</button> <button id="hierprntShowHide" onclick="togglehierprnt()">Hide ScopeInsights</button>
         <hr>
