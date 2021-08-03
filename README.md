@@ -62,6 +62,13 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## Release history
 
+__Changes__ (2021-Aug-03 / Major)
+
+* Policy assignments add parameters 
+* CSP scenario error handling
+* Bugfixes
+* Performance optimization
+
 __Changes__ (2021-July-28 / Major)
 
 * As demanded by the community reactivated parameters `-PolicyAtScopeOnly` and `-RBACAtScopeOnly`
@@ -94,6 +101,12 @@ _* a new BuiltIn RBAC Role definition was added_
 
 [Demo (v5_major_20210721_1)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_202107021_1.html)  
 Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation
+
+__Media__
+* Microsoft Dev Radio (YouTube) [Get visibility into your environment with AzGovViz](https://www.youtube.com/watch?v=hZXvF5oypLE)  
+* Jack Tracey (Cloud Solution Architect Microsoft) [AzGovViz With Azure DevOps](https://jacktracey.co.uk/azgovviz-with-azure-devops/)
+
+
 
 <hr>
 
