@@ -256,7 +256,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210803_7",
+    [string]$AzGovVizVersion = "v5_major_20210804_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -1640,6 +1640,7 @@ function dataCollection($mgId) {
         #region UsingVARs
         #Parameters MG&Sub related
         $CsvDelimiter = $using:CsvDelimiter
+        $CsvDelimiterOpposite = $using:CsvDelimiterOpposite
         #fromOtherFunctions
         $arrayAzureManagementEndPointUrls = $using:arrayAzureManagementEndPointUrls
         $checkContext = $using:checkContext
@@ -2574,6 +2575,7 @@ function dataCollection($mgId) {
                 #region UsingVARs
                 #Parameters MG&Sub related
                 $CsvDelimiter = $using:CsvDelimiter
+                $CsvDelimiterOpposite = $using:CsvDelimiterOpposite
                 #Parameters Sub related
                 #fromOtherFunctions
                 $arrayAzureManagementEndPointUrls = $using:arrayAzureManagementEndPointUrls
