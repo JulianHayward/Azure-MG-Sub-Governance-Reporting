@@ -256,7 +256,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210804_1",
+    [string]$AzGovVizVersion = "v5_major_20210804_2",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -21577,8 +21577,6 @@ if (-not $NoJsonExport) {
         
     }
 
-    
-
     $bluePrintsAssignmentsAtScope = ($htCacheAssignments).blueprint.keys | Sort-Object
     $bluePrintDefinitions = ($htCacheDefinitions).blueprint.Keys | Sort-Object
     $subscriptions = ($newTable.Where( { -not [string]::IsNullOrEmpty($_.subscriptionId) })) | Select-Object mgId, Subscription* | Sort-Object -Property subscriptionId -Unique
@@ -21823,7 +21821,7 @@ if (-not $NoJsonExport) {
 
     if (($htCacheDefinitions).role.Keys.Count -gt 0) {
         foreach ($roleDefinition in ($htCacheDefinitions).role.Keys.Where( { ($htCacheDefinitions).role.($_).IsCustom }) | sort-object) {
-            $htJSON.RoleDefinitions.($roleDefinition) = ($htCacheDefinitions).role.($roleDefinition).Json
+            $htJSON.RoleDefinitions.($roleDefinition) = ($htCacheDefinitions).role.($roleDefinition).Json.properties
             $jsonConverted = ($htCacheDefinitions).role.($roleDefinition).Json.properties | ConvertTo-Json -Depth 99
             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionCustom)$($DirectorySeparatorChar)$(RemoveInvalidFileNameChars ($htCacheDefinitions).role.($roleDefinition).Name) ($(($htCacheDefinitions).role.($roleDefinition).Id)).json" -Encoding utf8
         }

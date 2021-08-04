@@ -148,6 +148,7 @@ __Media__
       * Policy/Resource Compliance (Policy: NonCompliant, Compliant; Resource: NonCompliant, Compliant, Conflicting)
       * Related RBAC Role assignments (if Policy effect is DeployIfNotExists (DINE))
       * System metadata 'createdOn, createdBy, updatedOn, updatedBy' ('createdBy', 'updatedBy' identity is fully resolved)
+      * Parameters used
 * __Role-Based Access Control (RBAC)__
   * Custom Role definitions
     * List assignable scopes
