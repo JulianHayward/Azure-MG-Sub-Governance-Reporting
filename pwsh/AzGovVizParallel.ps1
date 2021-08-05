@@ -256,7 +256,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210804_2",
+    [string]$AzGovVizVersion = "v5_major_20210805_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -758,7 +758,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
         catch {
             try {
                 $catchResultPlain = $_.ErrorDetails.Message
-                $catchResult = ($catchResultPlain | ConvertFrom-Json -ErrorAction SilentlyContinue) 
+                $catchResult = $catchResultPlain | ConvertFrom-Json #-ErrorAction SilentlyContinue
             }
             catch {
                 $catchResult = $catchResultPlain
@@ -1121,7 +1121,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType, $resourceId) 
         catch {
             try {
                 $catchResultPlain = $_.ErrorDetails.Message
-                $catchResult = ($catchResultPlain | ConvertFrom-Json -ErrorAction SilentlyContinue)
+                $catchResult = $catchResultPlain | ConvertFrom-Json #-ErrorAction SilentlyContinue
             }
             catch {
                 $catchResult = $catchResultPlain
@@ -1211,38 +1211,49 @@ function GetRoleAssignments($scope, $scopeDetails) {
     $retryCmdletCount = 0
     do {
         $errorOccurred = "no"
+        $sleepSec = @(0, 1, 2, 5, 10, 15, 20, 20, 20)[$retryCmdletCount]
         $retryCmdletCount++
         try {
-            $getRa = Get-AzRoleAssignment -scope "$($scope)" -IncludeClassicAdministrators -ErrorAction SilentlyContinue
+            $getRa = Get-AzRoleAssignment -scope "$($scope)" -IncludeClassicAdministrators
         }
         catch {
             $errorOccurred = "yes"
-            $return = $_
+            $errorReturn = $_
         }
         if ($errorOccurred -ne "no") {
-            if ($return -like "*Failed to list classic administrators of subscription*"){
-                $errorOccurred = "no"
-                $retryCmdletCount++
-                try {
-                    $getRa = Get-AzRoleAssignment -scope "$($scope)" -ErrorAction SilentlyContinue
+            if ($errorReturn -like "*Failed to list classic administrators of subscription*"){
+                do {
+                    $errorOccurred = "no"
+                    $sleepSec = @(0, 1, 2, 5, 10, 15, 20, 20, 20)[($retryCmdletCount - 1)]
+                    $retryCmdletCount++
+                    try {
+                        $getRa = Get-AzRoleAssignment -scope "$($scope)"
+                    }
+                    catch {
+                        $errorOccurred = "yes"
+                        $errorReturn = $_
+                    }
+                    if ($errorOccurred -ne "no") {
+                        if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "Getting roleAssignment '$($scopeDetails)' -> '$($scope)' -> $($errorReturn) try#$($retryCmdletCount) cmdlet Get-AzRoleAssignment '$($scope)' failed (no IncludeClassicAdministrators), retry in $($sleepSec) seconds" }
+                        start-sleep -Seconds $sleepSec
+                    }
                 }
-                catch {
-                    $errorOccurred = "yes"
-                    $return = $_
-                }
-                if ($errorOccurred -ne "no") {
-                    Write-Host "Getting roleAssignment '$($scopeDetails)' -> '$($scope)' -> $($return) try#$($retryCmdletCount) cmdlet Get-AzRoleAssignment '$($scope)' failed (no IncludeClassicAdministrators), retry in $($retryCmdletCount -1) seconds"
-                    start-sleep -Seconds $retryCmdletCount -1
-                }
+                until($errorOccurred -eq "no" -or $retryCmdletCount -gt 6)
             }
             else{
-                Write-Host "Getting roleAssignment '$($scopeDetails)' -> '$($scope)' -> $($return) try#$($retryCmdletCount) cmdlet Get-AzRoleAssignment '$($scope)' failed (IncludeClassicAdministrators), retry without parameter -IncludeClassicAdministrators in $($retryCmdletCount -1) seconds"
-                start-sleep -Seconds $retryCmdletCount -1
+                if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "Getting roleAssignment '$($scopeDetails)' -> '$($scope)' -> $($errorReturn) try#$($retryCmdletCount) cmdlet Get-AzRoleAssignment '$($scope)' failed (IncludeClassicAdministrators), retry in $($sleepSec) seconds" }
+                start-sleep -Seconds $sleepSec
             }
         }
     }
-    until($errorOccurred -eq "no")
-    return $getRa
+    until($errorOccurred -eq "no" -or $retryCmdletCount -gt 6)
+    if ($retryCmdletCount -gt 6){
+        Write-Host " $($scopeDetails) $($scope) #$($retryCmdletCount) 'Unexpected Error' occurred '$($errorReturn)' - Please report this error/exit"
+        Throw "Error - AzGovViz: check the last console output for details"
+    }
+    else{
+        return $getRa
+    }
 }
 $funcGetRoleAssignments = $function:GetRoleAssignments.ToString()
 #endregion getRoleAssignment
@@ -2345,7 +2356,7 @@ function dataCollection($mgId) {
                 }
             }
 
-            $L0mgmtGroupRoleAssignments = GetRoleAssignments -scope "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" -scopeDetails "CustomDataCollection Mg"
+            $L0mgmtGroupRoleAssignments = GetRoleAssignments -scope "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" -scopeDetails "getRoleAssignments CustomDataCollection Mg"
     
             $L0mgmtGroupRoleAssignmentsLimitUtilization = (($L0mgmtGroupRoleAssignments | Where-Object { $_.Scope -eq "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" }) | measure-object).count
             if (-not $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.RoleAssignments.($mgdetail.Name)) {
@@ -3760,7 +3771,7 @@ function dataCollection($mgId) {
                         }
                     }
                     
-                    $L1mgmtGroupSubRoleAssignments = GetRoleAssignments -scope "/subscriptions/$($childMgSubId)" -scopeDetails "CustomDataCollection Sub"
+                    $L1mgmtGroupSubRoleAssignments = GetRoleAssignments -scope "/subscriptions/$($childMgSubId)" -scopeDetails "getRoleAssignments CustomDataCollection Sub"
 
                     if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC -eq $true) {
                         foreach ($L1mgmtGroupSubRoleAssignmentOnRg in $L1mgmtGroupSubRoleAssignments | Where-Object { $_.RoleAssignmentId -match "/subscriptions/$($childMgSubId)/resourcegroups/" }) {
@@ -19632,7 +19643,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
             }
         }
 
-        $upperScopesRoleAssignments = GetRoleAssignments -Scope "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" -scopeDetails "upperScopesRoleAssignments"
+        $upperScopesRoleAssignments = GetRoleAssignments -Scope "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" -scopeDetails "getRoleAssignments upperScopes (Mg)"
         
         $upperScopesRoleAssignmentsLimitUtilization = (($L0mgmtGroupRoleAssignments | Where-Object { $_.Scope -eq "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" }) | measure-object).count
         #tenantLevelRoleAssignments
