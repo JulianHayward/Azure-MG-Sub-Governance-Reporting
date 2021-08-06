@@ -256,7 +256,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210805_1",
+    [string]$AzGovVizVersion = "v5_major_20210806_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -7014,6 +7014,7 @@ extensions: [{ name: 'sort' }]
 <th>Identity Type</th>
 <th>Applicability</th>
 <th>Applies through membership <abbr title="Note: the identity might not be a direct member of the group it could also be member of a nested group"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></th>
+<th>Group Details</th>
 <th>Role AssignmentId</th>
 <th>Related Policy Assignment $noteOrNot</th>
 <th>CreatedOn</th>
@@ -7037,6 +7038,7 @@ extensions: [{ name: 'sort' }]
 <td class="breakwordnone">$($roleAssignment.ObjectType)</td>
 <td>$($roleAssignment.AssignmentType)</td>
 <td>$($roleAssignment.AssignmentInheritFrom)</td>
+<td>$($roleAssignment.GroupMembersCount)</td>
 <td class="breakwordall">$($roleAssignment.RoleAssignmentId)</td>
 <td class="breakwordall">$($roleAssignment.rbacRelatedPolicyAssignment)</td>
 <td>$($roleAssignment.CreatedOn)</td>
@@ -7101,10 +7103,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+                'caseinsensitivestring',
                 'date',
                 'caseinsensitivestring'
             ],
-            watermark: ['', 'try owner||reader', '', '', '', '', '', '', '', '', '', '', '', ''],          
+            watermark: ['', 'try owner||reader', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],          
             extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
@@ -7296,7 +7299,8 @@ function summary() {
 
         if (-not $NoAADGroupsResolveMembers) {
             if ($rbac.RoleAssignmentIdentityObjectType -eq "Group") {
-                if ($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount -gt 0) {
+                $grpHlpr = $htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId)
+                if ($grpHlpr.MembersAllCount -gt 0) {
                     
                     $null = $script:rbacAll.Add([PSCustomObject]@{ 
                             Level                            = $rbac.Level
@@ -7319,7 +7323,8 @@ function summary() {
                             RoleType                         = $htRoleAssignmentRelatedPolicyAssignments.($rbac.RoleAssignmentId).roleType
                             RoleDataRelated                  = $roleManageData
                             AssignmentType                   = "direct"
-                            AssignmentInheritFrom            = "n/a"
+                            AssignmentInheritFrom            = ""
+                            GroupMembersCount                = "$($grpHlpr.MembersAllCount) (Usr: $($grpHlpr.MembersUsersCount)$($CsvDelimiterOpposite) Grp: $($grpHlpr.MembersGroupsCount)$($CsvDelimiterOpposite) SP: $($grpHlpr.MembersServicePrincipalsCount))"
                             ObjectDisplayName                = $rbac.RoleAssignmentIdentityDisplayname
                             ObjectSignInName                 = $rbac.RoleAssignmentIdentitySignInName
                             ObjectId                         = $rbac.RoleAssignmentIdentityObjectId
@@ -7330,6 +7335,7 @@ function summary() {
                             RoleSecurityCustomRoleOwner      = $rbac.RoleSecurityCustomRoleOwner
                             RoleSecurityOwnerAssignmentSP    = $rbac.RoleSecurityOwnerAssignmentSP 
                         })
+
                     if ($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount -le $AADGroupMembersLimit) {
 
                         foreach ($groupmember in $htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAll) {
@@ -7421,6 +7427,7 @@ function summary() {
                                     RoleDataRelated                  = $roleManageData
                                     AssignmentType                   = "indirect"
                                     AssignmentInheritFrom            = "$($rbac.RoleAssignmentIdentityDisplayname) ($($rbac.RoleAssignmentIdentityObjectId))"
+                                    GroupMembersCount                = "$($grpHlpr.MembersAllCount) (Usr: $($grpHlpr.MembersUsersCount)$($CsvDelimiterOpposite) Grp: $($grpHlpr.MembersGroupsCount)$($CsvDelimiterOpposite) SP: $($grpHlpr.MembersServicePrincipalsCount))"
                                     ObjectDisplayName                = $grpMemberDisplayName
                                     ObjectSignInName                 = $grpMemberSignInName
                                     ObjectId                         = $grpMemberId
@@ -7456,6 +7463,7 @@ function summary() {
                                 RoleDataRelated                  = $roleManageData
                                 AssignmentType                   = "indirect"
                                 AssignmentInheritFrom            = "$($rbac.RoleAssignmentIdentityDisplayname) ($($rbac.RoleAssignmentIdentityObjectId))"
+                                GroupMembersCount                = "$($grpHlpr.MembersAllCount) (Usr: $($grpHlpr.MembersUsersCount)$($CsvDelimiterOpposite) Grp: $($grpHlpr.MembersGroupsCount)$($CsvDelimiterOpposite) SP: $($grpHlpr.MembersServicePrincipalsCount))"
                                 ObjectDisplayName                = "AzGovViz:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
                                 ObjectSignInName                 = "AzGovViz:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
                                 ObjectId                         = "AzGovViz:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
@@ -7521,7 +7529,8 @@ function summary() {
                             RoleType                         = $htRoleAssignmentRelatedPolicyAssignments.($rbac.RoleAssignmentId).roleType
                             RoleDataRelated                  = $roleManageData
                             AssignmentType                   = "direct"
-                            AssignmentInheritFrom            = "n/a"
+                            AssignmentInheritFrom            = ""
+                            GroupMembersCount                = "$($grpHlpr.MembersAllCount) (Usr: $($grpHlpr.MembersUsersCount)$($CsvDelimiterOpposite) Grp: $($grpHlpr.MembersGroupsCount)$($CsvDelimiterOpposite) SP: $($grpHlpr.MembersServicePrincipalsCount))"
                             ObjectDisplayName                = $rbac.RoleAssignmentIdentityDisplayname
                             ObjectSignInName                 = $rbac.RoleAssignmentIdentitySignInName
                             ObjectId                         = $rbac.RoleAssignmentIdentityObjectId
@@ -7587,7 +7596,8 @@ function summary() {
                         RoleType                         = $htRoleAssignmentRelatedPolicyAssignments.($rbac.RoleAssignmentId).roleType
                         RoleDataRelated                  = $roleManageData
                         AssignmentType                   = "direct"
-                        AssignmentInheritFrom            = "n/a"
+                        AssignmentInheritFrom            = ""
+                        GroupMembersCount                = ""
                         ObjectDisplayName                = $rbac.RoleAssignmentIdentityDisplayname
                         ObjectSignInName                 = $rbac.RoleAssignmentIdentitySignInName
                         ObjectId                         = $rbac.RoleAssignmentIdentityObjectId
@@ -7653,7 +7663,8 @@ function summary() {
                     RoleType                         = $htRoleAssignmentRelatedPolicyAssignments.($rbac.RoleAssignmentId).roleType
                     RoleDataRelated                  = $roleManageData
                     AssignmentType                   = "direct"
-                    AssignmentInheritFrom            = "n/a"
+                    AssignmentInheritFrom            = ""
+                    GroupMembersCount                = ""
                     ObjectDisplayName                = $rbac.RoleAssignmentIdentityDisplayname
                     ObjectSignInName                 = $rbac.RoleAssignmentIdentitySignInName
                     ObjectId                         = $rbac.RoleAssignmentIdentityObjectId
@@ -10974,6 +10985,7 @@ extensions: [{ name: 'sort' }]
 <th>Identity Type</th>
 <th>Applicability</th>
 <th>Applies through membership <abbr title="Note: the identity might not be a direct member of the group it could also be member of a nested group"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></th>
+<th>Group Details</th>
 <th>Role AssignmentId</th>
 <th>Related Policy Assignment $noteOrNot</th>
 <th>CreatedOn</th>
@@ -11036,10 +11048,11 @@ extensions: [{ name: 'sort' }]
 <td class="breakwordnone">{13}</td>
 <td>{14}</td>
 <td>{15}</td>
-<td class="breakwordall">{16}</td>
+<td>{16}</td>
 <td class="breakwordall">{17}</td>
 <td class="breakwordall">{18}</td>
 <td class="breakwordall">{19}</td>
+<td class="breakwordall">{20}</td>
 </tr>
 '@, $roleAssignment.TenOrMgOrSubOrRGOrRes, 
                     $roleAssignment.MgId,
@@ -11057,6 +11070,7 @@ extensions: [{ name: 'sort' }]
                     $roleAssignment.ObjectType,
                     $roleAssignment.AssignmentType,
                     $roleAssignment.AssignmentInheritFrom,
+                    $roleAssignment.GroupMembersCount,
                     $roleAssignment.RoleAssignmentId,
                     $roleAssignment.RbacRelatedPolicyAssignment,
                     $roleAssignment.CreatedOn,
@@ -11137,10 +11151,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+                'caseinsensitivestring',
                 'date',
                 'caseinsensitivestring'
             ],
-            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', 'try owner||reader', '', '', '', '', '', '', ''],
+            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', 'try owner||reader', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
             extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
@@ -19976,6 +19991,9 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                         Write-Host "  Group exceeding limit ($($AADGroupMembersLimit)); memberCount: $aadGroupMembersCount; Group: $($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityDisplayname) ($($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)); Members will not be resolved adjust the limit using parameter -AADGroupMembersLimit"
                         $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
                         $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId).MembersAllCount = $aadGroupMembersCount
+                        $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId).MembersUsersCount = "n/a"
+                        $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId).MembersGroupsCount = "n/a"
+                        $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId).MembersServicePrincipalsCount = "n/a"
                     }
                     else {
                         GetGroupmembers -aadGroupId $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId -aadGroupDisplayName $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityDisplayname
