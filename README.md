@@ -5,7 +5,7 @@ AzGovViz is a PowerShell based script that iterates your Azure Tenant´s Managem
 
 You can run the script either for your Tenant Root Group or any other Management Group.
 
-## AzGovViz´s mission
+## Mission
 
 <table>
 <td>
@@ -27,7 +27,7 @@ __AzGovViz is intended to help you to get a holistic overview on your technical 
 </td>
 </table>
 
-## AzGovViz @ Microsoft Cloud Adoption Framework
+## Microsoft Cloud Adoption Framework - CAF
 
 <img align="left" height="80" src="img/caf.png"> Listed as tool for the Govern discipline in the Microsoft Cloud Adoption Framework!  
 https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-templates#govern
@@ -39,10 +39,11 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 ## Table of contents
 * [Release history](#release-history)
 * [Demo](#demo)
+  * [Media](#media)
+  * [Slideset](#slideset)
 * [Features](#features)
 * [Screenshots](#screenshots)
 * [Outputs](#outputs)
-* [Slideset](#slideset)
 * [Technical documentation](#technical-documentation)
   * [Permissions overview](#permissions-overview)
   * [Required permissions in Azure](#required-permissions-in-azure)
@@ -61,6 +62,15 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 <hr>
 
 ## Release history
+
+__Changes__ (2021-Aug-06 / Major)
+
+* Enriched Policy assignments with list of used parameters
+* Enriched Role assignments on Groups with Group member count
+* Optimize JSON outputs
+* CSP scenario error handling
+* Bugfixes
+* Performance optimization
 
 __Changes__ (2021-July-28 / Major)
 
@@ -94,6 +104,15 @@ _* a new BuiltIn RBAC Role definition was added_
 
 [Demo (v5_major_20210721_1)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_202107021_1.html)  
 Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation
+
+### Media
+
+* Microsoft Dev Radio (YouTube) [Get visibility into your environment with AzGovViz](https://www.youtube.com/watch?v=hZXvF5oypLE)  
+* Jack Tracey (Cloud Solution Architect Microsoft) [AzGovViz With Azure DevOps](https://jacktracey.co.uk/azgovviz-with-azure-devops/)
+
+### Slideset
+
+Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
 
 <hr>
 
@@ -135,6 +154,7 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
       * Policy/Resource Compliance (Policy: NonCompliant, Compliant; Resource: NonCompliant, Compliant, Conflicting)
       * Related RBAC Role assignments (if Policy effect is DeployIfNotExists (DINE))
       * System metadata 'createdOn, createdBy, updatedOn, updatedBy' ('createdBy', 'updatedBy' identity is fully resolved)
+      * Parameters used
 * __Role-Based Access Control (RBAC)__
   * Custom Role definitions
     * List assignable scopes
@@ -267,10 +287,6 @@ markdown in Azure DevOps Wiki as Code
   * JSON file of ManagementGroup Hierarchy including all Custom Policy/Set and RBAC definitions, Policy and Role assignments and some more relevant information 
   * Tenant tree including all Policy and Role assignments AND all Custom Policy/Set and Role definitions   
   ![alt text](img/jsonfolderfull450.jpg "JSONFolder")
-
-## Slideset
-
-Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
 
 ## Technical documentation
 
