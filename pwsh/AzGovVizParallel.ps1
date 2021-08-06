@@ -256,7 +256,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210806_1",
+    [string]$AzGovVizVersion = "v5_major_20210806_3",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode,
     [switch]$DebugAzAPICall,
@@ -21512,7 +21512,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
 #region BuildJSON
 if (-not $NoJsonExport) {
-    #$fileName = get-date -format "yyyyMM-dd HHmmss"
+    #$fileTimestamp  = get-date -format "yyyyMM-dd HHmmss"
     $startJSON = get-date
     $startBuildHt = get-date
 
@@ -21835,6 +21835,16 @@ if (-not $NoJsonExport) {
                 ValueFromPipelineByPropertyName = $true)]
             [String]$Name
         )
+        if ($Name -like '`[Deprecated`]:*'){
+            write-host "here"
+            $Name = $Name -replace "\[Deprecated\]\:", '[Deprecated]'
+        }
+        if ($Name -like '`[Preview`]:*'){
+            $Name = $Name -replace "\[Preview\]\:", '[Preview]'
+        }
+        if ($Name -like '`[ASC Private Preview`]:*'){
+            $Name = $Name -replace "\[ASC Private Preview\]\:", '[ASC Private Preview]'
+        }
         return ($Name -replace ":", "_" -replace "/", "_" -replace "\\", "_" -replace "<", "_" -replace ">", "_" -replace "\*", "_" -replace "\?", "_" -replace "\|", "_" -replace '"', "_")
     }
 

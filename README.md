@@ -63,10 +63,11 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## Release history
 
-__Changes__ (2021-Aug-03 / Major)
+__Changes__ (2021-Aug-06 / Major)
 
-* Policy assignments add parameters
-* Enriched Role assignments on Groups with Group member count 
+* Enriched Policy assignments with list of used parameters
+* Enriched Role assignments on Groups with Group member count
+* Optimize JSON outputs
 * CSP scenario error handling
 * Bugfixes
 * Performance optimization

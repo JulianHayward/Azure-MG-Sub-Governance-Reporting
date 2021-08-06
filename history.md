@@ -4,6 +4,15 @@
 
 ### AzGovViz version 5
 
+__Changes__ (2021-Aug-06 / Major)
+
+* Enriched Policy assignments with list of used parameters
+* Enriched Role assignments on Groups with Group member count
+* Optimize JSON outputs
+* CSP scenario error handling
+* Bugfixes
+* Performance optimization
+
 __Changes__ (2021-July-28 / Major)
 
 * As demanded by the community reactivated parameters `-PolicyAtScopeOnly` and `-RBACAtScopeOnly`
@@ -20,7 +29,7 @@ __Changes__ (2021-July-22 / Major)
 _* a new BuiltIn RBAC Role definition was added_
 * Renamed parameter `-PolicyIncludeResourceGroups` to , `-DoNotIncludeResourceGroupsOnPolicy` (from now Policy assignments on ResourceGroups will be included by default)
 * Renamed parameter `-RBACIncludeResourceGroupsAndResources` to , `-DoNotIncludeResourceGroupsAndResourcesOnRBAC` (from now Role assignments on ResourceGroups and Resources will be included by default)
-* New parameter `-HtmlTableRowsLimit`. Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 40.000.
+* New parameter `-HtmlTableRowsLimit`. Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 40.000
 * Added NonCompliance Message for Policy assignments
 * Cosmetics
 * Bugfixes
