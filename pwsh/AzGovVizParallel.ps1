@@ -256,7 +256,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210815_3",
+    [string]$AzGovVizVersion = "v5_major_20210815_4",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
     [switch]$DebugAzAPICall,
@@ -807,21 +807,21 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     $catchResult.error.code -eq "ResourceRequestsThrottled") {
                     #if ($catchResult.error.code -like "*ResponseTooLarge*") {
                     if ($getPolicyCompliance -and $catchResult.error.code -like "*ResponseTooLarge*") {
-                        Write-Host "Info: $currentTask - Response too large, skipping this scope."
+                        Write-Host "Info: $currentTask - (StatusCode: '$($azAPIRequest.StatusCode)') Response too large, skipping this scope."
                         #break
                         return "ResponseTooLarge"
                     }
                     if ($catchResult.error.message -like "*The offer MS-AZR-0110P is not supported*") {
-                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - seems we´re hitting a malicious endpoint .. try again in $tryCounter second(s)"
+                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - seems we´re hitting a malicious endpoint .. try again in $tryCounter second(s)"
                         Start-Sleep -Seconds $tryCounter
                     }
                     if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.code -like "*InternalServerError*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*UnknownError*" -or $catchResult.error.code -eq "500") {
-                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again in $tryCounter second(s)"
+                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again in $tryCounter second(s)"
                         Start-Sleep -Seconds $tryCounter
                     }
                     if ($catchResult.error.code -like "*AuthorizationFailed*") {
                         if ($retryAuthorizationFailedCounter -gt $retryAuthorizationFailed) {
-                            Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - $retryAuthorizationFailed retries failed - investigate that error!/exit"
+                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - $retryAuthorizationFailed retries failed - investigate that error!/exit"
                             if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
                                 Write-Error "Error"
                             }
@@ -836,12 +836,12 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             if ($retryAuthorizationFailedCounter -gt 3) {
                                 Start-Sleep -Seconds 10
                             }
-                            Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - not reasonable, retry #$retryAuthorizationFailedCounter of $retryAuthorizationFailed"
+                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - not reasonable, retry #$retryAuthorizationFailedCounter of $retryAuthorizationFailed"
                             $retryAuthorizationFailedCounter ++
                         }
                     }
                     if ($catchResult.error.code -like "*ExpiredAuthenticationToken*" -or $catchResult.error.code -like "*Authentication_ExpiredToken*" -or $catchResult.error.code -like "*InvalidAuthenticationToken*") {
-                        Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
+                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
                         createBearerToken -targetEndPoint $targetEndpoint
                     }
                     if (
@@ -852,45 +852,45 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "*The offer*is not supported*" -and $catchResult.error.message -notlike "*The offer MS-AZR-0110P is not supported*")
                     ) {
                         if ($getConsumption -and $catchResult.error.code -eq 404) {
-                            Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Subscriptions was created only recently - skipping"
+                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Subscriptions was created only recently - skipping"
                             return $apiCallResultsCollection
                         }
                         if ($getConsumption -and $catchResult.error.code -eq "AccountCostDisabled") {
-                            Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Access to cost data has been disabled for this Account - skipping CostManagement"
+                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Access to cost data has been disabled for this Account - skipping CostManagement"
                             return "AccountCostDisabled"
                         }
                         if ($getConsumption -and $catchResult.error.message -like "*does not have any valid subscriptions*"){
-                            Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems there are no valid Subscriptions present - skipping CostManagement"
+                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems there are no valid Subscriptions present - skipping CostManagement"
                             return "NoValidSubscriptions"
                         }
                         if ($getConsumption -and $catchResult.error.code -eq "Unauthorized"){
-                            Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
+                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
                             return "Unauthorized"
                         }
                         if ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "*The offer*is not supported*" -and $catchResult.error.message -notlike "*The offer MS-AZR-0110P is not supported*"){
-                            Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
+                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
                             return "OfferNotSupported"
                         }
                     }
                     if (($getGroup) -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
-                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain Group status - skipping for now :)"
+                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain Group status - skipping for now :)"
                         return "Request_ResourceNotFound"
                     }
                     if (($getGroupMembersCount) -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
-                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain Group status - skipping for now :)"
+                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain Group status - skipping for now :)"
                         return "Request_ResourceNotFound"
                     }
                     if (($getApp -or $getSp) -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
-                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain ServicePrincipal status - skipping for now :)"
+                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain ServicePrincipal status - skipping for now :)"
                         return "Request_ResourceNotFound"
                     }
                     if ($currentTask -eq "Checking AAD UserType" -and $catchResult.error.code -like "*Authorization_RequestDenied*") {
-                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) cannot get the executing user´s userType information (member/guest) - proceeding as 'unknown'"
+                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) cannot get the executing user´s userType information (member/guest) - proceeding as 'unknown'"
                         return "unknown"
                     }
                     if ((($getApp -or $getSp) -and $catchResult.error.code -like "*Authorization_RequestDenied*") -or ($getGuests -and $catchResult.error.code -like "*Authorization_RequestDenied*")) {
                         if ($userType -eq "Guest" -or $userType -eq "unknown") {
-                            Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult)"
+                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult)"
                             if ($userType -eq "Guest") {
                                 Write-Host " AzGovViz says: Your UserType is 'Guest' (member/guest/unknown) in the tenant therefore not enough permissions. You have the following options: [1. request membership to AAD Role 'Directory readers'.] [2. Use parameters '-NoAADGuestUsers' and '-NoAADServicePrincipalResolve'.] [3. Grant explicit Microsoft Graph API permission. Permissions reference Users: https://docs.microsoft.com/en-us/graph/api/user-list | Applications: https://docs.microsoft.com/en-us/graph/api/application-list]" -ForegroundColor Yellow
                             }
@@ -905,7 +905,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             }
                         }
                         else {
-                            Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) investigate that error!/exit"
+                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) investigate that error!/exit"
                             if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
                                 Write-Error "Error"
                             }
@@ -915,11 +915,11 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         }
                     }
                     if ($catchResult.error.code -like "*BlueprintNotFound*") {
-                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Blueprint definition is gone - skipping for now :)"
+                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Blueprint definition is gone - skipping for now :)"
                         return "BlueprintNotFound"
                     }
                     if ($catchResult.error.code -eq "ResourceRequestsThrottled") {
-                        Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - throttled! sleeping 11 seconds"
+                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - throttled! sleeping 11 seconds"
                         start-sleep -Seconds 11
                     }                    
                 }
@@ -930,12 +930,12 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         } 
                         else {
                             $sleepSec = @(3, 7, 12, 20, 30, 45)[$tryCounter]
-                            Write-Host " $currentTask - try #$tryCounter; returned: StatusCode: '$($azAPIRequest.StatusCode)' <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) try again in $sleepSec second(s)"
+                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) try again in $sleepSec second(s)"
                             Start-Sleep -Seconds $sleepSec
                         }
                     }
                     else {
-                        Write-Host " $currentTask - try #$tryCounter; returned: StatusCode: '$($azAPIRequest.StatusCode)' <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) investigate that error!/exit"
+                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) investigate that error!/exit"
                         if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
                             Write-Error "Error"
                         }
@@ -943,7 +943,6 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             Throw "Error - AzGovViz: check the last console output for details"
                         }
                     }
-
                 }
             }
             else {
@@ -974,7 +973,10 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                 else {       
                     if (($azAPIRequestConvertedFromJson).value) {
                         if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=default(value) value exists ($((($azAPIRequestConvertedFromJson).value | Measure-Object).count))" -ForegroundColor $debugForeGroundColor }
-                        $null = $apiCallResultsCollection.AddRange($azAPIRequestConvertedFromJson.value)
+                        foreach ($entry in $azAPIRequestConvertedFromJson.value){
+                            $null = $apiCallResultsCollection.Add($entry)
+                        }
+                        
                         if ($getGuests) {
                             $guestAccountsCount = ($apiCallResultsCollection).Count
                             if ($guestAccountsCount % 1000 -eq 0) {
@@ -19032,7 +19034,8 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
     #region ASCSecureScoreMGs
     if ($htParameters.NoASCSecureScore -eq $false) {
-        $currentTask = "ASC Secure Score MGs"
+        $currentTask = "Getting ASC Secure Score for Management Groups"
+        Write-Host $currentTask
         $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01"
         #$path = "/providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01"
         $method = "POST"
@@ -19067,7 +19070,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         $start = get-date
         $getMgAscSecureScore = AzAPICall -uri $uri -method "POST" -currentTask $currentTask -body $body -listenOn "Content"
         $end = get-date
-        Write-Host " Getting ManagementGroup SecureScores duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds" 
+        Write-Host " Getting ASC Secure Score for Management Groups duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds" 
         $htMgASCSecureScore = @{}
         if ($getMgAscSecureScore){
             foreach ($entry in $getMgAscSecureScore.data){
@@ -19165,7 +19168,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 $method = "POST"
                 
                 $counterBatch = [PSCustomObject] @{ Value = 0 }
-                $batchSize = 2
+                $batchSize = 100
                 $subscriptionsBatch = ($subsToProcessInCustomDataCollection | Sort-Object -Property subscriptionQuotaId) | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
                 $batchCnt = 0
                 $allConsumptionData = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
@@ -19234,7 +19237,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
                     <#test
                     #$mgConsumptionData = "OfferNotSupported"
-                    if ($batchCnt -eq 2){
+                    if ($batchCnt -eq 1){
                         $mgConsumptionData = "OfferNotSupported"
                     }    
                     #>
@@ -19334,24 +19337,27 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                                 Continue
                             }
                             else{
+                                Write-Host "   $($subConsumptionData.Count) Consumption data entries ((scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess))))"
                                 if ($subConsumptionData.Count -gt 0){
-                                    if ($subConsumptionData.Count -gt 1){
-                                        $null = $allConsumptionData.AddRange($subConsumptionData)
+                                    foreach($consumptionEntry in $subConsumptionData){
+                                        if ($consumptionEntry.PreTaxCost -ne 0){
+                                            $null = $allConsumptionData.Add($consumptionEntry)
+                                        }
                                     }
-                                    else{
-                                        $null = $allConsumptionData.Add($subConsumptionData)
-                                    }
+
                                 }
                             }
-                        }
+                        } -ThrottleLimit $ThrottleLimit
                         #endregion subScopewhitelisted
                     }
                     else{
-                        if ($mgConsumptionData.Count -gt 1){
-                            $null = $allConsumptionData.AddRange($mgConsumptionData)
-                        }
-                        else{
-                            $null = $allConsumptionData.Add($mgConsumptionData)
+                        Write-Host " $($mgConsumptionData.Count) Consumption data entries"
+                        if ($mgConsumptionData.Count -gt 0){
+                            foreach ($consumptionEntry in $mgConsumptionData){
+                                if ($consumptionEntry.PreTaxCost -ne 0){
+                                    $null = $allConsumptionData.Add($consumptionEntry)
+                                }
+                            }
                         }
                     }
                 }
@@ -19420,7 +19426,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 if ($allConsumptionData -eq "Unauthorized" -or $allConsumptionData -eq "OfferNotSupported"){
                     $script:htConsumptionExceptionLog.Mg.($ManagementGroupId) = @{}
                     $script:htConsumptionExceptionLog.Mg.($ManagementGroupId).Exception = $allConsumptionData
-                    Write-Host " Getting Consumption data using Management Group scope failed. Switching to 'foreach Subscription' mode"
+                    Write-Host " Switching to 'foreach Subscription' mode. Getting Consumption data using Management Group scope failed."
                     #region subScope
                     $body = @"
     {
@@ -19490,7 +19496,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                         $function:GetJWTDetails = $using:funcGetJWTDetails
                         #endregion UsingVARs
 
-                        $currentTask = "Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess))) for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
+                        $currentTask = "  Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess))) for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
                         #test
                         write-host $currentTask
                         #https://docs.microsoft.com/en-us/rest/api/cost-management/query/usage
@@ -19498,7 +19504,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                         $method = "POST"
                         $subConsumptionData = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask -listenOn "ContentProperties" -getConsumption $true
                         if ($subConsumptionData -eq "Unauthorized" -or $subConsumptionData -eq "OfferNotSupported"){
-                            Write-Host " Failed ($subConsumptionData) - Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
+                            Write-Host "   Failed ($subConsumptionData) - Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
                             $hlper = $htAllSubscriptionsFromAPI.($subIdToProcess).subDetails
                             $hlper2 = $htSubscriptionsMgPath.($subIdToProcess)
                             $script:htConsumptionExceptionLog.Sub.($subIdToProcess) = @{}
@@ -19511,17 +19517,20 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                             Continue
                         }
                         else{
+                            Write-Host "   $($subConsumptionData.Count) Consumption data entries (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
                             if ($subConsumptionData.Count -gt 0){
-                                if ($subConsumptionData.Count -gt 1){
-                                    $null = $allConsumptionData.AddRange($subConsumptionData)
-                                }
-                                else{
-                                    $null = $allConsumptionData.Add($subConsumptionData)
+                                foreach ($consumptionEntry in $subConsumptionData){
+                                    if ($consumptionEntry.PreTaxCost -ne 0){
+                                        $null = $allConsumptionData.Add($consumptionEntry)
+                                    }
                                 }
                             }
                         }
-                    }
+                    } -ThrottleLimit $ThrottleLimit
                     #endregion subScope
+                }
+                else{
+                    Write-Host " $($allConsumptionData.Count) Consumption data entries"
                 }
             }
             else{
@@ -19547,131 +19556,139 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
             $NoAzureConsumption = $true
         }
         else {
-            $allConsumptionDataCount = ($allConsumptionData | Measure-Object).Count
+            Write-Host " Checking returned Consumption data"
+            $allConsumptionDataCount = $allConsumptionData.Count
 
             if ($allConsumptionDataCount -gt 0) {
-                Write-Host " $allConsumptionDataCount consumption data entries"
 
                 $allConsumptionData = $allConsumptionData.where( { $_.PreTaxCost -ne 0 } )
+                $allConsumptionDataCount = $allConsumptionData.Count
 
-                $arrayTotalCostSummary = @()
-                $htManagementGroupsCost = @{ }
-                $arrayConsumptionData = [System.Collections.ArrayList]@()
-                $consumptionData = $allConsumptionData
-                $consumptionDataGroupedByCurrency = $consumptionData | group-object -property Currency
+                if ($allConsumptionDataCount -gt 0){
+                    Write-Host "  $($allConsumptionDataCount) relevant Consumption data entries"
 
-                foreach ($currency in $consumptionDataGroupedByCurrency) {
+                    $arrayTotalCostSummary = @()
+                    $htManagementGroupsCost = @{ }
+                    $arrayConsumptionData = [System.Collections.ArrayList]@()
+                    $consumptionData = $allConsumptionData
+                    $consumptionDataGroupedByCurrency = $consumptionData | group-object -property Currency
 
-                    #subscriptions
-                    $groupAllConsumptionDataPerCurrencyBySubscriptionId = $currency.group | Group-Object -Property SubscriptionId
-                    foreach ($subscriptionId in $groupAllConsumptionDataPerCurrencyBySubscriptionId) {
+                    foreach ($currency in $consumptionDataGroupedByCurrency) {
 
-                        $subTotalCost = ($subscriptionId.Group.PreTaxCost | Measure-Object -Sum).Sum
-                        $htAzureConsumptionSubscriptions.($subscriptionId.Name) = @{ }
-                        $htAzureConsumptionSubscriptions.($subscriptionId.Name).ConsumptionData = $subscriptionId.group
-                        $htAzureConsumptionSubscriptions.($subscriptionId.Name).TotalCost = $subTotalCost
-                        $htAzureConsumptionSubscriptions.($subscriptionId.Name).Currency = $currency.Name
-                        $resourceTypes = $subscriptionId.Group.ConsumedService | Sort-Object -Unique
+                        #subscriptions
+                        $groupAllConsumptionDataPerCurrencyBySubscriptionId = $currency.group | Group-Object -Property SubscriptionId
+                        foreach ($subscriptionId in $groupAllConsumptionDataPerCurrencyBySubscriptionId) {
 
-                        foreach ($parentMg in $htSubscriptionsMgPath.($subscriptionId.Name).ParentNameChain) {
+                            $subTotalCost = ($subscriptionId.Group.PreTaxCost | Measure-Object -Sum).Sum
+                            $htAzureConsumptionSubscriptions.($subscriptionId.Name) = @{ }
+                            $htAzureConsumptionSubscriptions.($subscriptionId.Name).ConsumptionData = $subscriptionId.group
+                            $htAzureConsumptionSubscriptions.($subscriptionId.Name).TotalCost = $subTotalCost
+                            $htAzureConsumptionSubscriptions.($subscriptionId.Name).Currency = $currency.Name
+                            $resourceTypes = $subscriptionId.Group.ConsumedService | Sort-Object -Unique
 
-                            if (-not $htManagementGroupsCost.($parentMg)) {
-                                $htManagementGroupsCost.($parentMg) = @{ }
-                                $htManagementGroupsCost.($parentMg).currencies = $currency.Name
-                                $htManagementGroupsCost.($parentMg)."mgTotalCost_$($currency.Name)" = [decimal]$subTotalCost
-                                $htManagementGroupsCost.($parentMg)."resourcesThatGeneratedCost_$($currency.Name)" = ($subscriptionId.Group.ResourceId | Sort-Object -Unique | Measure-Object).Count
-                                $htManagementGroupsCost.($parentMg).resourcesThatGeneratedCostCurrencyIndependent = ($subscriptionId.Group.ResourceId | Sort-Object -Unique | Measure-Object).Count
-                                $htManagementGroupsCost.($parentMg)."subscriptionsThatGeneratedCost_$($currency.Name)" = 1
-                                $htManagementGroupsCost.($parentMg).subscriptionsThatGeneratedCostCurrencyIndependent = 1
-                                $htManagementGroupsCost.($parentMg)."resourceTypesThatGeneratedCost_$($currency.Name)" = $resourceTypes
-                                $htManagementGroupsCost.($parentMg).resourceTypesThatGeneratedCostCurrencyIndependent = $resourceTypes
-                                $htManagementGroupsCost.($parentMg)."consumptionDataSubscriptions_$($currency.Name)" = $subscriptionId.group
-                                $htManagementGroupsCost.($parentMg).consumptionDataSubscriptions = $subscriptionId.group
+                            foreach ($parentMg in $htSubscriptionsMgPath.($subscriptionId.Name).ParentNameChain) {
+
+                                if (-not $htManagementGroupsCost.($parentMg)) {
+                                    $htManagementGroupsCost.($parentMg) = @{ }
+                                    $htManagementGroupsCost.($parentMg).currencies = $currency.Name
+                                    $htManagementGroupsCost.($parentMg)."mgTotalCost_$($currency.Name)" = [decimal]$subTotalCost
+                                    $htManagementGroupsCost.($parentMg)."resourcesThatGeneratedCost_$($currency.Name)" = ($subscriptionId.Group.ResourceId | Sort-Object -Unique | Measure-Object).Count
+                                    $htManagementGroupsCost.($parentMg).resourcesThatGeneratedCostCurrencyIndependent = ($subscriptionId.Group.ResourceId | Sort-Object -Unique | Measure-Object).Count
+                                    $htManagementGroupsCost.($parentMg)."subscriptionsThatGeneratedCost_$($currency.Name)" = 1
+                                    $htManagementGroupsCost.($parentMg).subscriptionsThatGeneratedCostCurrencyIndependent = 1
+                                    $htManagementGroupsCost.($parentMg)."resourceTypesThatGeneratedCost_$($currency.Name)" = $resourceTypes
+                                    $htManagementGroupsCost.($parentMg).resourceTypesThatGeneratedCostCurrencyIndependent = $resourceTypes
+                                    $htManagementGroupsCost.($parentMg)."consumptionDataSubscriptions_$($currency.Name)" = $subscriptionId.group
+                                    $htManagementGroupsCost.($parentMg).consumptionDataSubscriptions = $subscriptionId.group
+                                }
+                                else {
+                                    $newMgTotalCost = $htManagementGroupsCost.($parentMg)."mgTotalCost_$($currency.Name)" + [decimal]$subTotalCost
+                                    $htManagementGroupsCost.($parentMg)."mgTotalCost_$($currency.Name)" = [decimal]$newMgTotalCost
+
+                                    $currencies = [array]$htManagementGroupsCost.($parentMg).currencies
+                                    if ($currencies -notcontains $currency.Name) {
+                                        $currencies += $currency.Name
+                                        $htManagementGroupsCost.($parentMg).currencies = $currencies
+                                    }
+                                    
+                                    #currency based
+                                    $resourcesThatGeneratedCost = $htManagementGroupsCost.($parentMg)."resourcesThatGeneratedCost_$($currency.Name)" + ($subscriptionId.Group.ResourceId | Sort-Object -Unique | Measure-Object).Count
+                                    $htManagementGroupsCost.($parentMg)."resourcesThatGeneratedCost_$($currency.Name)" = $resourcesThatGeneratedCost
+
+                                    $subscriptionsThatGeneratedCost = $htManagementGroupsCost.($parentMg)."subscriptionsThatGeneratedCost_$($currency.Name)" + 1
+                                    $htManagementGroupsCost.($parentMg)."subscriptionsThatGeneratedCost_$($currency.Name)" = $subscriptionsThatGeneratedCost
+
+                                    $consumptionDataSubscriptions = $htManagementGroupsCost.($parentMg)."consumptionDataSubscriptions_$($currency.Name)" += $subscriptionId.group
+                                    $htManagementGroupsCost.($parentMg)."consumptionDataSubscriptions_$($currency.Name)" = $consumptionDataSubscriptions
+
+                                    $resourceTypesThatGeneratedCost = $htManagementGroupsCost.($parentMg)."resourceTypesThatGeneratedCost_$($currency.Name)"
+                                    foreach ($resourceType in $resourceTypes) {
+                                        if ($resourceTypesThatGeneratedCost -notcontains $resourceType) {
+                                            $resourceTypesThatGeneratedCost += $resourceType
+                                        }
+                                    }
+                                    $htManagementGroupsCost.($parentMg)."resourceTypesThatGeneratedCost_$($currency.Name)" = $resourceTypesThatGeneratedCost
+
+                                    #currencyIndependent
+                                    $resourcesThatGeneratedCostCurrencyIndependent = $htManagementGroupsCost.($parentMg).resourcesThatGeneratedCostCurrencyIndependent + ($subscriptionId.Group.ResourceId | Sort-Object -Unique | Measure-Object).Count
+                                    $htManagementGroupsCost.($parentMg).resourcesThatGeneratedCostCurrencyIndependent = $resourcesThatGeneratedCostCurrencyIndependent
+
+                                    $subscriptionsThatGeneratedCostCurrencyIndependent = $htManagementGroupsCost.($parentMg).subscriptionsThatGeneratedCostCurrencyIndependent + 1
+                                    $htManagementGroupsCost.($parentMg).subscriptionsThatGeneratedCostCurrencyIndependent = $subscriptionsThatGeneratedCostCurrencyIndependent
+
+                                    $consumptionDataSubscriptionsCurrencyIndependent = $htManagementGroupsCost.($parentMg).consumptionDataSubscriptions += $subscriptionId.group
+                                    $htManagementGroupsCost.($parentMg).consumptionDataSubscriptions = $consumptionDataSubscriptionsCurrencyIndependent
+
+                                    $resourceTypesThatGeneratedCostCurrencyIndependent = $htManagementGroupsCost.($parentMg).resourceTypesThatGeneratedCostCurrencyIndependent
+                                    foreach ($resourceType in $resourceTypes) {
+                                        if ($resourceTypesThatGeneratedCostCurrencyIndependent -notcontains $resourceType) {
+                                            $resourceTypesThatGeneratedCostCurrencyIndependent += $resourceType
+                                        }
+                                    }
+                                    $htManagementGroupsCost.($parentMg).resourceTypesThatGeneratedCostCurrencyIndependent = $resourceTypesThatGeneratedCostCurrencyIndependent          
+                                }
+                            }
+                        }
+
+                        $totalCost = 0
+                        $tenantSummaryConsumptionDataGrouped = $currency.group | group-object -property ConsumedService, ChargeType, MeterCategory
+                        $subsCount = ($tenantSummaryConsumptionDataGrouped.group.subscriptionId | Sort-Object -Unique | Measure-Object).Count
+                        $consumedServiceCount = ($tenantSummaryConsumptionDataGrouped.group.consumedService | Sort-Object -Unique | Measure-Object).Count
+                        $resourceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceId | Sort-Object -Unique | Measure-Object).Count
+                        foreach ($consumptionline in $tenantSummaryConsumptionDataGrouped) {
+
+                            $costConsumptionLine = ($consumptionline.group.PreTaxCost | Measure-Object -Sum).Sum
+                            if ([math]::Round($costConsumptionLine, 2) -eq 0) {
+                                $cost = $costConsumptionLine
                             }
                             else {
-                                $newMgTotalCost = $htManagementGroupsCost.($parentMg)."mgTotalCost_$($currency.Name)" + [decimal]$subTotalCost
-                                $htManagementGroupsCost.($parentMg)."mgTotalCost_$($currency.Name)" = [decimal]$newMgTotalCost
-
-                                $currencies = [array]$htManagementGroupsCost.($parentMg).currencies
-                                if ($currencies -notcontains $currency.Name) {
-                                    $currencies += $currency.Name
-                                    $htManagementGroupsCost.($parentMg).currencies = $currencies
-                                }
-                                
-                                #currency based
-                                $resourcesThatGeneratedCost = $htManagementGroupsCost.($parentMg)."resourcesThatGeneratedCost_$($currency.Name)" + ($subscriptionId.Group.ResourceId | Sort-Object -Unique | Measure-Object).Count
-                                $htManagementGroupsCost.($parentMg)."resourcesThatGeneratedCost_$($currency.Name)" = $resourcesThatGeneratedCost
-
-                                $subscriptionsThatGeneratedCost = $htManagementGroupsCost.($parentMg)."subscriptionsThatGeneratedCost_$($currency.Name)" + 1
-                                $htManagementGroupsCost.($parentMg)."subscriptionsThatGeneratedCost_$($currency.Name)" = $subscriptionsThatGeneratedCost
-
-                                $consumptionDataSubscriptions = $htManagementGroupsCost.($parentMg)."consumptionDataSubscriptions_$($currency.Name)" += $subscriptionId.group
-                                $htManagementGroupsCost.($parentMg)."consumptionDataSubscriptions_$($currency.Name)" = $consumptionDataSubscriptions
-
-                                $resourceTypesThatGeneratedCost = $htManagementGroupsCost.($parentMg)."resourceTypesThatGeneratedCost_$($currency.Name)"
-                                foreach ($resourceType in $resourceTypes) {
-                                    if ($resourceTypesThatGeneratedCost -notcontains $resourceType) {
-                                        $resourceTypesThatGeneratedCost += $resourceType
-                                    }
-                                }
-                                $htManagementGroupsCost.($parentMg)."resourceTypesThatGeneratedCost_$($currency.Name)" = $resourceTypesThatGeneratedCost
-
-                                #currencyIndependent
-                                $resourcesThatGeneratedCostCurrencyIndependent = $htManagementGroupsCost.($parentMg).resourcesThatGeneratedCostCurrencyIndependent + ($subscriptionId.Group.ResourceId | Sort-Object -Unique | Measure-Object).Count
-                                $htManagementGroupsCost.($parentMg).resourcesThatGeneratedCostCurrencyIndependent = $resourcesThatGeneratedCostCurrencyIndependent
-
-                                $subscriptionsThatGeneratedCostCurrencyIndependent = $htManagementGroupsCost.($parentMg).subscriptionsThatGeneratedCostCurrencyIndependent + 1
-                                $htManagementGroupsCost.($parentMg).subscriptionsThatGeneratedCostCurrencyIndependent = $subscriptionsThatGeneratedCostCurrencyIndependent
-
-                                $consumptionDataSubscriptionsCurrencyIndependent = $htManagementGroupsCost.($parentMg).consumptionDataSubscriptions += $subscriptionId.group
-                                $htManagementGroupsCost.($parentMg).consumptionDataSubscriptions = $consumptionDataSubscriptionsCurrencyIndependent
-
-                                $resourceTypesThatGeneratedCostCurrencyIndependent = $htManagementGroupsCost.($parentMg).resourceTypesThatGeneratedCostCurrencyIndependent
-                                foreach ($resourceType in $resourceTypes) {
-                                    if ($resourceTypesThatGeneratedCostCurrencyIndependent -notcontains $resourceType) {
-                                        $resourceTypesThatGeneratedCostCurrencyIndependent += $resourceType
-                                    }
-                                }
-                                $htManagementGroupsCost.($parentMg).resourceTypesThatGeneratedCostCurrencyIndependent = $resourceTypesThatGeneratedCostCurrencyIndependent          
+                                $cost = [math]::Round($costConsumptionLine, 2).ToString("0.00")
                             }
+                        
+                            $null = $arrayConsumptionData.Add([PSCustomObject]@{ 
+                                    ConsumedService              = ($consumptionline.name).split(", ")[0]
+                                    ConsumedServiceChargeType    = ($consumptionline.name).split(", ")[1]
+                                    ConsumedServiceCategory      = ($consumptionline.name).split(", ")[2]
+                                    ConsumedServiceInstanceCount = $consumptionline.Count
+                                    ConsumedServiceCost          = [decimal]$cost
+                                    ConsumedServiceSubscriptions = ($consumptionline.group.SubscriptionId | Sort-Object -Unique).Count
+                                    ConsumedServiceCurrency      = $currency.Name
+                                })
+                        
+                            $totalCost = $totalCost + $costConsumptionLine
+
                         }
-                    }
-
-                    $totalCost = 0
-                    $tenantSummaryConsumptionDataGrouped = $currency.group | group-object -property ConsumedService, ChargeType, MeterCategory
-                    $subsCount = ($tenantSummaryConsumptionDataGrouped.group.subscriptionId | Sort-Object -Unique | Measure-Object).Count
-                    $consumedServiceCount = ($tenantSummaryConsumptionDataGrouped.group.consumedService | Sort-Object -Unique | Measure-Object).Count
-                    $resourceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceId | Sort-Object -Unique | Measure-Object).Count
-                    foreach ($consumptionline in $tenantSummaryConsumptionDataGrouped) {
-
-                        $costConsumptionLine = ($consumptionline.group.PreTaxCost | Measure-Object -Sum).Sum
-                        if ([math]::Round($costConsumptionLine, 2) -eq 0) {
-                            $cost = $costConsumptionLine
+                        if ([math]::Round($totalCost, 2) -eq 0) {
+                            $totalCost = $totalCost
                         }
                         else {
-                            $cost = [math]::Round($costConsumptionLine, 2).ToString("0.00")
+                            $totalCost = [math]::Round($totalCost, 2).ToString("0.00")
                         }
-                    
-                        $null = $arrayConsumptionData.Add([PSCustomObject]@{ 
-                                ConsumedService              = ($consumptionline.name).split(", ")[0]
-                                ConsumedServiceChargeType    = ($consumptionline.name).split(", ")[1]
-                                ConsumedServiceCategory      = ($consumptionline.name).split(", ")[2]
-                                ConsumedServiceInstanceCount = $consumptionline.Count
-                                ConsumedServiceCost          = [decimal]$cost
-                                ConsumedServiceSubscriptions = ($consumptionline.group.SubscriptionId | Sort-Object -Unique).Count
-                                ConsumedServiceCurrency      = $currency.Name
-                            })
-                    
-                        $totalCost = $totalCost + $costConsumptionLine
-
+                        $arrayTotalCostSummary += "$([decimal]$totalCost) $($currency.Name) generated by $($resourceCount) Resources ($($consumedServiceCount) ResourceTypes) in $($subsCount) Subscriptions"
                     }
-                    if ([math]::Round($totalCost, 2) -eq 0) {
-                        $totalCost = $totalCost
-                    }
-                    else {
-                        $totalCost = [math]::Round($totalCost, 2).ToString("0.00")
-                    }
-                    $arrayTotalCostSummary += "$([decimal]$totalCost) $($currency.Name) generated by $($resourceCount) Resources ($($consumedServiceCount) ResourceTypes) in $($subsCount) Subscriptions"
+                }
+                else{
+                    Write-Host "  No relevant consumption data entries (0)"
                 }
             }
         }
