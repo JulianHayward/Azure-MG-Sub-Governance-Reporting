@@ -27,7 +27,7 @@ __AzGovViz is intended to help you to get a holistic overview on your technical 
 </td>
 </table>
 
-## Microsoft Cloud Adoption Framework - CAF
+## Microsoft Cloud Adoption Framework (CAF)
 
 <img align="left" height="80" src="img/caf.png"> Listed as tool for the Govern discipline in the Microsoft Cloud Adoption Framework!  
 https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-templates#govern
@@ -36,7 +36,7 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 <hr>
 
-## Table of contents
+## Content
 * [Release history](#release-history)
 * [Demo](#demo)
   * [Media](#media)
@@ -62,6 +62,16 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 <hr>
 
 ## Release history
+
+__Changes__ (2021-Aug-15 / Major)
+
+* ASC Secure Score for Management Groups
+* Bugfixes Consumption
+
+__Changes__ (2021-Aug-09 / Major)
+
+* Policy Compliance - if API returns 'ResponseTooLarge' then flag Policy Compliance entries with 'skipped' for given scope
+* Bugfixes
 
 __Changes__ (2021-Aug-06 / Major)
 
@@ -172,6 +182,7 @@ Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
     * Advanced information on Role assignments
       * Role assignment scope (at scope / inheritance)
       * For Role Assignments on Groups the AAD Group members are fully resolved. With this capability AzGovViz can ultimately provide holistic insights on permissions granted
+      * For Role Assignments on Groups the AAD Group members count (transitive) will be reported
       * For identity-type == 'ServicePrincipal' the type (Application/ManagedIdentity) will be reported
       * For identity-type == 'User' the userType (Member/Guest) will be reported
       * Related Policy assignments (Policy assignment of a Policy definition that uses the DeployIfNotExists (DINE) effect)
@@ -425,11 +436,11 @@ This permission is <b>mandatory</b> in each and every scenario!
   * `-ManagementGroupId` Management Group Id (Root Management Group Id equals your Tenant Id)
   * `-CsvDelimiter` - The world is split into two kinds of delimiters - comma and semicolon - choose yours (default is semicolon ';')
   * `-OutputPath` 
-  * `-AzureDevOpsWikiAsCode` - Only use in Azure DevOps Pipeline
+  * `-AzureDevOpsWikiAsCode` - Use this parameter only when running AzGovViz in a Azure DevOps Pipeline
   * `-DoNotShowRoleAssignmentsUserData` - Scrub personally identifiable information (PII)
   * `-LimitCriticalPercentage` - Limit warning level, default is 80%
   * ~~`-HierarchyTreeOnly`~~ `-HierarchyMapOnly` - Output only the __HierarchyMap__ for Management Groups including linked Subscriptions
-  * `-SubscriptionQuotaIdWhitelist` - Process only Subscriptions with defined QuotaId(s)
+  * `-SubscriptionQuotaIdWhitelist` - Process only Subscriptions with defined QuotaId(s). Example: .\AzGovVizParallel.ps1 `-SubscriptionQuotaIdWhitelist MSDN_,Enterprise_`
   * `-NoResourceProvidersDetailed` - Disables output for ResourceProvider states for all Subscriptions in the __TenantSummary__ section, in large Tenants this can become time consuming
   * `-NoASCSecureScore` - Disables ASC Secure Score request for Subscriptions. The used API is in preview you may want to disable this
   * ~~`-DisablePolicyComplianceStates`~~ `-NoPolicyComplianceStates` - Will not query policy compliance states. You may want to use this parameter to accellerate script execution or when receiving error 'ResponseTooLarge'. 
