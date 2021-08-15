@@ -9131,7 +9131,7 @@ extensions: [{ name: 'sort' }]
 
     $startcustpolsetdeprpol = get-date
     #region SUMMARYPolicySetsDeprecatedPolicy
-    Write-Host "  processing TenantSummary Custom PolicySet definitions using depracted Policy"
+    Write-Host "  processing TenantSummary Custom PolicySet definitions using deprected Policy"
     $policySetsDeprecated = [System.Collections.ArrayList]@()
     $customPolicySetsCount = ($customPolicySetsArrayFromHtValues | Measure-Object).count
     if ($customPolicySetsCount -gt 0) {
