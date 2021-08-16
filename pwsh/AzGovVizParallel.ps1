@@ -256,7 +256,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210816_1",
+    [string]$AzGovVizVersion = "v5_major_20210816_2",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
     [switch]$DebugAzAPICall,
@@ -792,7 +792,8 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         ($getConsumption -and $catchResult.error.message -like "*does not have any valid subscriptions*") -or 
                         ($getConsumption -and $catchResult.error.code -eq "Unauthorized") -or 
                         ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "*The offer*is not supported*" -and $catchResult.error.message -notlike "*The offer MS-AZR-0110P is not supported*") -or
-                        ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "Invalid query definition*")
+                        ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "Invalid query definition*") -or
+                        ($getConsumption -and $catchResult.error.code -eq "NotFound" -and $catchResult.error.message -like "*have valid WebDirect/AIRS offer type*")
                     ) -or 
                     $catchResult.error.message -like "*The offer MS-AZR-0110P is not supported*" -or
                     ($getSp -and $catchResult.error.code -like "*Request_ResourceNotFound*") -or 
@@ -876,6 +877,10 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         if ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "Invalid query definition*"){
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
                             return "InvalidQueryDefinition"
+                        }
+                        if ($getConsumption -and $catchResult.error.code -eq "NotFound" -and $catchResult.error.message -like "*have valid WebDirect/AIRS offer type*"){
+                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
+                            return "NonValidWebDirectAIRSOfferType"
                         }
                     }
                     if (($getGroup) -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
@@ -19330,7 +19335,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                             $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
                             $method = "POST"
                             $subConsumptionData = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask -listenOn "ContentProperties" -getConsumption $true
-                            if ($subConsumptionData -eq "Unauthorized" -or $subConsumptionData -eq "OfferNotSupported" -or $subConsumptionData -eq "InvalidQueryDefinition"){
+                            if ($subConsumptionData -eq "Unauthorized" -or $subConsumptionData -eq "OfferNotSupported" -or $subConsumptionData -eq "InvalidQueryDefinition" -or $subConsumptionData -eq "NonValidWebDirectAIRSOfferType"){
                                 Write-Host "   Failed ($subConsumptionData) - Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
                                 $hlper = $htAllSubscriptionsFromAPI.($subIdToProcess).subDetails
                                 $hlper2 = $htSubscriptionsMgPath.($subIdToProcess)
@@ -19510,7 +19515,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                         $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
                         $method = "POST"
                         $subConsumptionData = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask -listenOn "ContentProperties" -getConsumption $true
-                        if ($subConsumptionData -eq "Unauthorized" -or $subConsumptionData -eq "OfferNotSupported" -or $subConsumptionData -eq "InvalidQueryDefinition"){
+                        if ($subConsumptionData -eq "Unauthorized" -or $subConsumptionData -eq "OfferNotSupported" -or $subConsumptionData -eq "InvalidQueryDefinition" -or $subConsumptionData -eq "NonValidWebDirectAIRSOfferType"){
                             Write-Host "   Failed ($subConsumptionData) - Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
                             $hlper = $htAllSubscriptionsFromAPI.($subIdToProcess).subDetails
                             $hlper2 = $htSubscriptionsMgPath.($subIdToProcess)
