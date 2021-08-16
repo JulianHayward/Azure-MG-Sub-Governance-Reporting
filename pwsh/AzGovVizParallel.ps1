@@ -256,7 +256,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210816_2",
+    [string]$AzGovVizVersion = "v5_major_20210816_3",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
     [switch]$DebugAzAPICall,
@@ -19255,9 +19255,12 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                     #>
 
                     if ($mgConsumptionData -eq "Unauthorized" -or $mgConsumptionData -eq "OfferNotSupported"){
-                        $script:htConsumptionExceptionLog.Mg.($ManagementGroupId) = @{}
-                        $script:htConsumptionExceptionLog.Mg.($ManagementGroupId).Exception = $mgConsumptionData
-                        $script:htConsumptionExceptionLog.Mg.($ManagementGroupId).Subscriptions = ($batch.Group).subscriptionId
+                        if (-not $script:htConsumptionExceptionLog.Mg.($ManagementGroupId)){
+                            $script:htConsumptionExceptionLog.Mg.($ManagementGroupId) = @{}
+                        } 
+                        $script:htConsumptionExceptionLog.Mg.($ManagementGroupId).($batchCnt) = @{}
+                        $script:htConsumptionExceptionLog.Mg.($ManagementGroupId).($batchCnt).Exception = $mgConsumptionData
+                        $script:htConsumptionExceptionLog.Mg.($ManagementGroupId).($batchCnt).Subscriptions = ($batch.Group).subscriptionId
                         Write-Host " Switching to 'foreach Subscription' Subscription scope mode. Getting Consumption data #batch$($batchCnt) using Management Group scope failed."
                         #region subScopewhitelisted
                         $body = @"
