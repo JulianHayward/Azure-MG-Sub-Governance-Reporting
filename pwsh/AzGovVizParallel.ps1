@@ -28,7 +28,7 @@
     default is to query all Management groups and Subscription for Governance capabilities, if you use the parameter -HierarchyMapOnly then only the HierarchyMap will be created
 
 .PARAMETER NoASCSecureScore
-    default is to query all Subscriptions for Azure Security Center Secure Score. As the API is in preview you may want to disable it.
+    default is to query all Subscriptions for Azure Security Center Secure Score and summarize Secure Score for Management Groups.
 
 .PARAMETER AzureDevOpsWikiAsCode
     use this parameter when running AzGovViz in Azure DevOps (AzDO) pipeline
@@ -145,7 +145,7 @@
     Define if only the HierarchyMap output should be created. Will ignore the parameters 'LimitCriticalPercentage' and 'DoNotShowRoleAssignmentsUserData' (default queries for Governance capabilities such as policy-, role-, blueprints assignments and more)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -HierarchyMapOnly
 
-    Define if ASC SecureScore should be queried for Subscriptions
+    Define if ASC SecureScore should be queried for Subscriptions and Management Groups
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoASCSecureScore
 
     Define if the script runs in AzureDevOps.
@@ -256,7 +256,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210815_4",
+    [string]$AzGovVizVersion = "v5_major_20210816_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
     [switch]$DebugAzAPICall,
@@ -791,7 +791,8 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         ($getConsumption -and $catchResult.error.code -eq "AccountCostDisabled") -or 
                         ($getConsumption -and $catchResult.error.message -like "*does not have any valid subscriptions*") -or 
                         ($getConsumption -and $catchResult.error.code -eq "Unauthorized") -or 
-                        ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "*The offer*is not supported*" -and $catchResult.error.message -notlike "*The offer MS-AZR-0110P is not supported*")
+                        ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "*The offer*is not supported*" -and $catchResult.error.message -notlike "*The offer MS-AZR-0110P is not supported*") -or
+                        ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "Invalid query definition*")
                     ) -or 
                     $catchResult.error.message -like "*The offer MS-AZR-0110P is not supported*" -or
                     ($getSp -and $catchResult.error.code -like "*Request_ResourceNotFound*") -or 
@@ -849,7 +850,8 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         ($getConsumption -and $catchResult.error.code -eq "AccountCostDisabled") -or 
                         ($getConsumption -and $catchResult.error.message -like "*does not have any valid subscriptions*") -or 
                         ($getConsumption -and $catchResult.error.code -eq "Unauthorized") -or 
-                        ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "*The offer*is not supported*" -and $catchResult.error.message -notlike "*The offer MS-AZR-0110P is not supported*")
+                        ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "*The offer*is not supported*" -and $catchResult.error.message -notlike "*The offer MS-AZR-0110P is not supported*") -or
+                        ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "Invalid query definition*")
                     ) {
                         if ($getConsumption -and $catchResult.error.code -eq 404) {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Subscriptions was created only recently - skipping"
@@ -870,6 +872,10 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         if ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "*The offer*is not supported*" -and $catchResult.error.message -notlike "*The offer MS-AZR-0110P is not supported*"){
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
                             return "OfferNotSupported"
+                        }
+                        if ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "Invalid query definition*"){
+                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
+                            return "InvalidQueryDefinition"
                         }
                     }
                     if (($getGroup) -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
@@ -4533,7 +4539,7 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId) {
 <p>State: $subscriptionState</p>
 </td></tr>
 <tr><td class="detailstd"><p>QuotaId: $subscriptionQuotaId</p></td></tr>
-<tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> ASC Secure Score: $subscriptionASCPoints <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a></p></td></tr>
+<tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> ASC Secure Score: $subscriptionASCPoints <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://docs.microsoft.com/en-us/azure/security-center/secure-score-security-controls#how-your-secure-score-is-calculated" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p></td></tr>
 <tr><td class="detailstd">
 "@)
 
@@ -5239,7 +5245,7 @@ extensions: [{ name: 'sort' }]
         [void]$htmlScopeInsights.AppendLine(@"
 <tr><td class="detailstd"><p>$(($mgAllChildMgs | Measure-Object).count -1) ManagementGroups below this scope</p></td></tr>
 <tr><td class="detailstd"><p>$(($mgAllChildSubscriptions | Measure-Object).count) Subscriptions below this scope</p></td></tr>
-<tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> ASC Secure Score: $managementGroupASCPoints <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a></p></td></tr>
+<tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> ASC Secure Score: $managementGroupASCPoints <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://docs.microsoft.com/en-us/azure/security-center/secure-score-security-controls#how-your-secure-score-is-calculated" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p></td></tr>
 <tr><td class="detailstd">
 "@)
 
@@ -12518,7 +12524,7 @@ extensions: [{ name: 'sort' }]
 <button type="button" class="collapsible" id="buttonTenantSummary_Subs"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle">$($summarySubscriptionsCount) Subscriptions (state: enabled)</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <span class="info">Supported Microsoft Azure offers</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/cost-management-billing/costs/understand-cost-mgt-data#supported-microsoft-azure-offers" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
-<i class="padlxx fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <span class="info">Understand ASC Secure Score</span> <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlxx fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <span class="info">Understand ASC Secure Score</span> <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://docs.microsoft.com/en-us/azure/security-center/secure-score-security-controls#how-your-secure-score-is-calculated" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
 <thead>
@@ -18630,11 +18636,11 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     }
 
     if ($htParameters.NoASCSecureScore -eq $true) {
-        Write-Host " ASC Secure Score for Subscriptions disabled (-NoASCSecureScore = $($htParameters.NoASCSecureScore))" -ForegroundColor Green
+        Write-Host " ASC Secure Score disabled (-NoASCSecureScore = $($htParameters.NoASCSecureScore))" -ForegroundColor Green
         $paramsUsed += "NoASCSecureScore: true &#13;"
     }
     else {
-        Write-Host " ASC Secure Score for Subscriptions enabled - use parameter: '-NoASCSecureScore' to disable" -ForegroundColor Yellow
+        Write-Host " ASC Secure Score enabled - use parameter: '-NoASCSecureScore' to disable" -ForegroundColor Yellow
         $paramsUsed += "NoASCSecureScore: false &#13;"
     }
 
@@ -19036,6 +19042,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     if ($htParameters.NoASCSecureScore -eq $false) {
         $currentTask = "Getting ASC Secure Score for Management Groups"
         Write-Host $currentTask
+        #ref: https://docs.microsoft.com/en-us/azure/governance/management-groups/resource-graph-samples?tabs=azure-cli#secure-score-per-management-group
         $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01"
         #$path = "/providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01"
         $method = "POST"
@@ -19323,7 +19330,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                             $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
                             $method = "POST"
                             $subConsumptionData = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask -listenOn "ContentProperties" -getConsumption $true
-                            if ($subConsumptionData -eq "Unauthorized" -or $subConsumptionData -eq "OfferNotSupported"){
+                            if ($subConsumptionData -eq "Unauthorized" -or $subConsumptionData -eq "OfferNotSupported" -or $subConsumptionData -eq "InvalidQueryDefinition"){
                                 Write-Host "   Failed ($subConsumptionData) - Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
                                 $hlper = $htAllSubscriptionsFromAPI.($subIdToProcess).subDetails
                                 $hlper2 = $htSubscriptionsMgPath.($subIdToProcess)
@@ -19503,7 +19510,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                         $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
                         $method = "POST"
                         $subConsumptionData = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask -listenOn "ContentProperties" -getConsumption $true
-                        if ($subConsumptionData -eq "Unauthorized" -or $subConsumptionData -eq "OfferNotSupported"){
+                        if ($subConsumptionData -eq "Unauthorized" -or $subConsumptionData -eq "OfferNotSupported" -or $subConsumptionData -eq "InvalidQueryDefinition"){
                             Write-Host "   Failed ($subConsumptionData) - Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
                             $hlper = $htAllSubscriptionsFromAPI.($subIdToProcess).subDetails
                             $hlper2 = $htSubscriptionsMgPath.($subIdToProcess)

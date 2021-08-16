@@ -442,7 +442,7 @@ This permission is <b>mandatory</b> in each and every scenario!
   * ~~`-HierarchyTreeOnly`~~ `-HierarchyMapOnly` - Output only the __HierarchyMap__ for Management Groups including linked Subscriptions
   * `-SubscriptionQuotaIdWhitelist` - Process only Subscriptions with defined QuotaId(s). Example: .\AzGovVizParallel.ps1 `-SubscriptionQuotaIdWhitelist MSDN_,Enterprise_`
   * `-NoResourceProvidersDetailed` - Disables output for ResourceProvider states for all Subscriptions in the __TenantSummary__ section, in large Tenants this can become time consuming
-  * `-NoASCSecureScore` - Disables ASC Secure Score request for Subscriptions. The used API is in preview you may want to disable this
+  * `-NoASCSecureScore` - Disables ASC Secure Score request for Subscriptions and Management Groups.
   * ~~`-DisablePolicyComplianceStates`~~ `-NoPolicyComplianceStates` - Will not query policy compliance states. You may want to use this parameter to accellerate script execution or when receiving error 'ResponseTooLarge'. 
   * `-NoResourceDiagnosticsPolicyLifecycle` - Disables Resource Diagnostics Policy Lifecycle recommendations
   * `-NoAADGroupsResolveMembers` - Disables resolving Azure Active Directory Group memberships
