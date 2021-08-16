@@ -256,7 +256,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210816_3",
+    [string]$AzGovVizVersion = "v5_major_20210816_4",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
     [switch]$DebugAzAPICall,
@@ -19191,7 +19191,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                     #test
                     #write-host "processing: $subscriptionIdsOptimizedForBody"
                     $currenttask = "Getting Consumption data #batch$($batchCnt)/$(($subscriptionsBatch | Measure-Object).Count) (scope MG '$($ManagementGroupId)') for $(($batch.Group).Count) Subscriptions (QuotaId Whitelist: '$($SubscriptionQuotaIdWhitelist -join ", ")') for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
-                    Write-Host "$currentTask"
+                    Write-Host "$currentTask" -ForegroundColor Cyan
 
                     $body = @"
 {
