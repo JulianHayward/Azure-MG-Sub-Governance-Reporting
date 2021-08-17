@@ -256,7 +256,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210816_4",
+    [string]$AzGovVizVersion = "v5_major_20210817_3",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
     [switch]$DebugAzAPICall,
@@ -15340,6 +15340,7 @@ extensions: [{ name: 'sort' }]
 <button type="button" class="collapsible" id="tenantSummaryAAD"><hr class="hr-textAAD" data-content="Azure Active Directory" /></button>
 <div class="content TenantSummaryContent">
 <i class="padlx fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <span class="info">Demystifying Service Principals - Managed Identities</span> <a class="externallink" href="https://devblogs.microsoft.com/devops/demystifying-service-principals-managed-identities/" target="_blank">devBlogs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlx fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <span class="info">John Savill - Azure AD App Registrations, Enterprise Apps and Service Principals</span> <a class="externallink" href="https://www.youtube.com/watch?v=WVNvoiA_ktw" target="_blank">YouTube <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 "@)   
 
     #region AADSPNotFound
@@ -15584,11 +15585,11 @@ tf.init();
                         
                         if ($assignmentinfo.PolicyAssignmentId -like "/subscriptions/*/resourcegroups/*" -or $assignmentinfo.Id -like "/subscriptions/*/resourcegroups/*") {
             
-                            if ($assignmentInfo.PolicyDefinitionId -like "*/providers/Microsoft.Authorization/policyDefinitions/*") {
+                            if ($assignmentInfo.PolicyDefinitionId -like "*/providers/Microsoft.Authorization/policyDefinitions/*" -or $assignmentInfo.properties.PolicyDefinitionId -like "*/providers/Microsoft.Authorization/policyDefinitions/*") {
                                 $policyAssignmentsPolicyVariant = "Policy"
                                 $policyAssignmentsPolicyVariant4ht = "policy"
                             }
-                            if ($assignmentInfo.PolicyDefinitionId -like "*/providers/Microsoft.Authorization/policySetDefinitions/*") {
+                            if ($assignmentInfo.PolicyDefinitionId -like "*/providers/Microsoft.Authorization/policySetDefinitions/*" -or $assignmentInfo.properties.PolicyDefinitionId -like "*/providers/Microsoft.Authorization/policySetDefinitions/*") {
                                 $policyAssignmentsPolicyVariant = "PolicySet"
                                 $policyAssignmentsPolicyVariant4ht = "policySet"
                             }
@@ -15634,7 +15635,7 @@ tf.init();
                             }
                             else {
                                 $definitionInfo = "unknown"
-                            }                            
+                            }        
                         }
             
                         if ($definitionInfo -eq "unknown") {
@@ -22596,9 +22597,10 @@ if (-not $NoJsonExport) {
                                 if ($subCap -eq "ResourceGroups") {
                                     foreach ($rg in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys | sort-object) {
                                         if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)")) {
-                                            $null = new-item -Name $rg -ItemType directory -path "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)"
+                                            $null = new-item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)" -ItemType directory -path "$($outputPath)"
                                         }
                                         foreach ($pa in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).PolicyAssignments.keys) {
+                                            $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).PolicyAssignments.($pa)
                                             $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).PolicyAssignments.($pa)
                                             if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {                          
                                                 $displayName = "noDisplayNameGiven"
@@ -22625,7 +22627,7 @@ if (-not $NoJsonExport) {
                                 if ($subCap -eq "ResourceGroups") {
                                     foreach ($rg in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys | sort-object) {
                                         if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)")) {
-                                            $null = new-item -Name $rg -ItemType directory -path "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)"
+                                            $null = new-item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)" -ItemType directory -path "$($outputPath)"
                                         }
                                         foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).RoleAssignments.keys) {
                                             $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).RoleAssignments.($ra)
