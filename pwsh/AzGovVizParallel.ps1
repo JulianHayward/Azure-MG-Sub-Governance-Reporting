@@ -22600,7 +22600,6 @@ if (-not $NoJsonExport) {
                                             $null = new-item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)" -ItemType directory -path "$($outputPath)"
                                         }
                                         foreach ($pa in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).PolicyAssignments.keys) {
-                                            $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).PolicyAssignments.($pa)
                                             $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).PolicyAssignments.($pa)
                                             if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {                          
                                                 $displayName = "noDisplayNameGiven"
