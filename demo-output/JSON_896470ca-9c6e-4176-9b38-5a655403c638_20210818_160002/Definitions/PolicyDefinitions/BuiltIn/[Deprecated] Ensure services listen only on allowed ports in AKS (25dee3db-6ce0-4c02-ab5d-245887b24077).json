@@ -1,0 +1,49 @@
+{
+  "displayName": "[Deprecated]: Ensure services listen only on allowed ports in AKS",
+  "policyType": "BuiltIn",
+  "mode": "Microsoft.ContainerService.Data",
+  "description": "This policy enforces services to listen only on allowed ports in an Azure Kubernetes Service cluster. This policy is deprecated, please visit https://aka.ms/kubepolicydoc for instructions on using new Kubernetes policies.",
+  "metadata": {
+    "version": "1.0.1-deprecated",
+    "category": "Kubernetes service",
+    "deprecated": true
+  },
+  "parameters": {
+    "allowedServicePortsRegex": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Allowed service ports regex",
+        "description": "Regex representing service ports allowed in Kubernetes cluster. E.g. Regex for allowing ports 443,446 is ^(443|446)$"
+      }
+    },
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "EnforceRegoPolicy",
+        "Disabled"
+      ],
+      "defaultValue": "EnforceRegoPolicy"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "field": "type",
+      "equals": "Microsoft.ContainerService/managedClusters"
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "policyId": "ServiceAllowedPorts",
+        "policy": "https://raw.githubusercontent.com/Azure/azure-policy/master/built-in-references/KubernetesService/service-allowed-ports/limited-preview/gatekeeperpolicy.rego",
+        "policyParameters": {
+          "allowedServicePortsRegex": "[parameters('allowedServicePortsRegex')]"
+        }
+      }
+    }
+  }
+}
+

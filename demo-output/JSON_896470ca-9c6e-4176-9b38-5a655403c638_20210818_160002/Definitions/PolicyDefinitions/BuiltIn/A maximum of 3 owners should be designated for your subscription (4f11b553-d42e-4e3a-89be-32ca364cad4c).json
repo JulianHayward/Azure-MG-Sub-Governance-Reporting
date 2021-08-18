@@ -1,0 +1,45 @@
+{
+  "displayName": "A maximum of 3 owners should be designated for your subscription",
+  "policyType": "BuiltIn",
+  "mode": "All",
+  "description": "It is recommended to designate up to 3 subscription owners in order to reduce the potential for breach by a compromised owner.",
+  "metadata": {
+    "version": "3.0.0",
+    "category": "Security Center"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "field": "type",
+      "equals": "Microsoft.Resources/subscriptions"
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.Security/assessments",
+        "name": "6f90a6d6-d4d6-0794-0ec1-98fa77878c2e",
+        "existenceCondition": {
+          "field": "Microsoft.Security/assessments/status.code",
+          "in": [
+            "NotApplicable",
+            "Healthy"
+          ]
+        }
+      }
+    }
+  }
+}
+

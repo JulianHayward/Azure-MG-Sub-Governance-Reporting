@@ -1,0 +1,15 @@
+{
+  "RoleAssignmentId": "/providers/Microsoft.Management/managementGroups/ESJH-landingzones/providers/Microsoft.Authorization/roleAssignments/4f80e55d-446d-5743-a173-5d189d196345",
+  "Scope": "/providers/Microsoft.Management/managementGroups/ESJH-landingzones",
+  "DisplayName": "Deploy-AKS-Policy",
+  "SignInName": null,
+  "RoleDefinitionName": "Owner",
+  "RoleDefinitionId": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+  "ObjectId": "fb0a7498-393f-434d-aa93-2acd144f489f",
+  "ObjectType": "ServicePrincipal",
+  "CanDelegate": false,
+  "Description": null,
+  "ConditionVersion": null,
+  "Condition": null
+}
+

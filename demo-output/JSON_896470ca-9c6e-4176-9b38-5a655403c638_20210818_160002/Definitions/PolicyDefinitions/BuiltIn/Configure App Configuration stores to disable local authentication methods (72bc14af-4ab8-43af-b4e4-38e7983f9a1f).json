@@ -1,0 +1,56 @@
+{
+  "displayName": "Configure App Configuration stores to disable local authentication methods",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Disable local authentication methods so that your App Configuration stores require Azure Active Directory identities exclusively for authentication. Learn more at: https://go.microsoft.com/fwlink/?linkid=2161954.",
+  "metadata": {
+    "version": "1.0.0",
+    "category": "App Configuration"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "Modify",
+        "Disabled"
+      ],
+      "defaultValue": "Modify"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.AppConfiguration/configurationStores"
+        },
+        {
+          "field": "Microsoft.AppConfiguration/configurationStores/disableLocalAuth",
+          "notEquals": true
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "conflictEffect": "audit",
+        "roleDefinitionIds": [
+          "/providers/microsoft.authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
+        ],
+        "operations": [
+          {
+            "condition": "[greaterOrEquals(requestContext().apiVersion, '2021-03-01-preview')]",
+            "operation": "addOrReplace",
+            "field": "Microsoft.AppConfiguration/configurationStores/disableLocalAuth",
+            "value": true
+          }
+        ]
+      }
+    }
+  }
+}
+

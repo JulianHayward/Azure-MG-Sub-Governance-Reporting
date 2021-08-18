@@ -1,0 +1,47 @@
+{
+  "displayName": "Public network access should be disabled for CosmosDB",
+  "policyType": "Custom",
+  "mode": "All",
+  "description": "This policy denies that  Cosmos database accounts  are created with out public network access is disabled.",
+  "metadata": {
+    "version": "1.0.0",
+    "category": "SQL",
+    "createdBy": "b790b1e1-6f46-488b-8c5a-708b0db9a149",
+    "createdOn": "2021-01-10T20:57:38.8995781Z",
+    "updatedBy": "acf4c68f-7b15-4d70-935b-26116fc2426a",
+    "updatedOn": "2021-07-15T15:15:07.6208973Z"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of this policy"
+      },
+      "allowedValues": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ],
+      "defaultValue": "Deny"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.DocumentDB/databaseAccounts"
+        },
+        {
+          "field": "Microsoft.DocumentDB/databaseAccounts/publicNetworkAccess",
+          "notequals": "Disabled"
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]"
+    }
+  }
+}
+

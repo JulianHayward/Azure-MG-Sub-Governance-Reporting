@@ -1,0 +1,27 @@
+{
+  "roleName": "AcrQuarantineWriter",
+  "type": "BuiltInRole",
+  "description": "acr quarantine data writer",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.ContainerRegistry/registries/quarantine/read",
+        "Microsoft.ContainerRegistry/registries/quarantine/write"
+      ],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.ContainerRegistry/registries/quarantinedArtifacts/read",
+        "Microsoft.ContainerRegistry/registries/quarantinedArtifacts/write"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2018-03-16T00:26:37.587182Z",
+  "updatedOn": "2021-07-06T20:32:00.7263755Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

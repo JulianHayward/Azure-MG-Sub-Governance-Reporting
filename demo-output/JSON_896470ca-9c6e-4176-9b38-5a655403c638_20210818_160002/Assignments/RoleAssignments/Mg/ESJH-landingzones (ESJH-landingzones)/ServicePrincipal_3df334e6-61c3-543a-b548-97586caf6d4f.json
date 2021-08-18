@@ -1,0 +1,15 @@
+{
+  "RoleAssignmentId": "/providers/Microsoft.Management/managementGroups/ESJH-landingzones/providers/Microsoft.Authorization/roleAssignments/3df334e6-61c3-543a-b548-97586caf6d4f",
+  "Scope": "/providers/Microsoft.Management/managementGroups/ESJH-landingzones",
+  "DisplayName": "Enforce-SQL-Encryption",
+  "SignInName": null,
+  "RoleDefinitionName": "Owner",
+  "RoleDefinitionId": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+  "ObjectId": "34520a11-7b14-46a8-ac34-7d766959460a",
+  "ObjectType": "ServicePrincipal",
+  "CanDelegate": false,
+  "Description": null,
+  "ConditionVersion": null,
+  "Condition": null
+}
+

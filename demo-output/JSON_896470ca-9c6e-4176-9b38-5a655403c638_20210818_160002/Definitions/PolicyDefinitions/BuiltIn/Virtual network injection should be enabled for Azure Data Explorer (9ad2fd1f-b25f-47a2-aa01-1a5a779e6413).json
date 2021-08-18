@@ -1,0 +1,59 @@
+{
+  "displayName": "Virtual network injection should be enabled for Azure Data Explorer",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Secure your network perimeter with virtual network injection which allows you to enforce network security group rules, connect on-premises and secure your data connection sources with service endpoints.",
+  "metadata": {
+    "version": "1.0.0",
+    "category": "Azure Data Explorer"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.Kusto/Clusters"
+        },
+        {
+          "anyOf": [
+            {
+              "field": "Microsoft.Kusto/clusters/virtualNetworkConfiguration",
+              "exists": false
+            },
+            {
+              "field": "Microsoft.Kusto/clusters/virtualNetworkConfiguration.subnetId",
+              "exists": false
+            },
+            {
+              "field": "Microsoft.Kusto/clusters/virtualNetworkConfiguration.enginePublicIpId",
+              "exists": false
+            },
+            {
+              "field": "Microsoft.Kusto/clusters/virtualNetworkConfiguration.dataManagementPublicIpId",
+              "exists": false
+            }
+          ]
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]"
+    }
+  }
+}
+

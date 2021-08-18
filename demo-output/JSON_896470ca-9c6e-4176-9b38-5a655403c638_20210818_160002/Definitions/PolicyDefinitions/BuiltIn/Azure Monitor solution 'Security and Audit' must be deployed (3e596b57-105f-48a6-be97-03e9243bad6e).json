@@ -1,0 +1,49 @@
+{
+  "displayName": "Azure Monitor solution 'Security and Audit' must be deployed",
+  "policyType": "BuiltIn",
+  "mode": "All",
+  "description": "This policy ensures that Security and Audit is deployed.",
+  "metadata": {
+    "version": "1.0.0",
+    "category": "Monitoring"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "field": "type",
+      "equals": "Microsoft.Resources/subscriptions"
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.OperationsManagement/solutions",
+        "existenceCondition": {
+          "allOf": [
+            {
+              "field": "Microsoft.OperationsManagement/solutions/provisioningState",
+              "equals": "Succeeded"
+            },
+            {
+              "field": "name",
+              "like": "Security(*)"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+

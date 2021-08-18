@@ -1,0 +1,49 @@
+{
+  "displayName": "Azure SignalR Service should use private link",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Azure Private Link lets you connect your virtual network to Azure services without a public IP address at the source or destination. The private link platform handles the connectivity between the consumer and services over the Azure backbone network. By mapping private endpoints to your Azure SignalR Service resource instead of the entire service, you'll reduce your data leakage risks. Learn more about private links at: https://aka.ms/asrs/privatelink.",
+  "metadata": {
+    "version": "1.0.1",
+    "category": "SignalR"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.SignalRService/SignalR"
+        },
+        {
+          "count": {
+            "field": "Microsoft.SignalRService/SignalR/privateEndpointConnections[*]",
+            "where": {
+              "field": "Microsoft.SignalRService/SignalR/privateEndpointConnections[*].privateLinkServiceConnectionState.status",
+              "equals": "Approved"
+            }
+          },
+          "less": 1
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]"
+    }
+  }
+}
+

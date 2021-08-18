@@ -1,0 +1,15 @@
+{
+  "RoleAssignmentId": "/providers/Microsoft.Management/managementGroups/ESJH/providers/Microsoft.Authorization/roleAssignments/45afca7b-a696-5947-a47f-960081dd1dbc",
+  "Scope": "/providers/Microsoft.Management/managementGroups/ESJH",
+  "DisplayName": "Deploy-Resource-Diag",
+  "SignInName": null,
+  "RoleDefinitionName": "Owner",
+  "RoleDefinitionId": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+  "ObjectId": "e51576ad-748d-462b-9d70-cb3b03e6c2e6",
+  "ObjectType": "ServicePrincipal",
+  "CanDelegate": false,
+  "Description": null,
+  "ConditionVersion": null,
+  "Condition": null
+}
+

@@ -1,0 +1,43 @@
+{
+  "displayName": "Infrastructure encryption should be enabled for Azure Database for MySQL servers",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Enable infrastructure encryption for Azure Database for MySQL servers to have higher level of assurance that the data is secure. When infrastructure encryption is enabled, the data at rest is encrypted twice using FIPS 140-2 compliant Microsoft managed keys.",
+  "metadata": {
+    "version": "1.0.0",
+    "category": "SQL"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.DBforMySQL/servers"
+        },
+        {
+          "field": "Microsoft.DBforMySQL/servers/infrastructureEncryption",
+          "notEquals": "Enabled"
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]"
+    }
+  }
+}
+

@@ -1,0 +1,29 @@
+{
+  "displayName": "[Deprecated]: Allow resource creation if 'environment' tag value in allowed values",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Allows resource creation if the 'environment' tag is set to one of the following values: production, dev, test, staging",
+  "metadata": {
+    "version": "1.0.0-deprecated",
+    "category": "Tags",
+    "deprecated": true
+  },
+  "parameters": {},
+  "policyRule": {
+    "if": {
+      "not": {
+        "field": "tags['environment']",
+        "in": [
+          "production",
+          "dev",
+          "test",
+          "staging"
+        ]
+      }
+    },
+    "then": {
+      "effect": "Deny"
+    }
+  }
+}
+

@@ -1,0 +1,26 @@
+{
+  "roleName": "Microsoft.Kubernetes connected cluster role",
+  "type": "BuiltInRole",
+  "description": "Microsoft.Kubernetes connected cluster role.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Kubernetes/connectedClusters/read",
+        "Microsoft.Kubernetes/connectedClusters/write",
+        "Microsoft.Kubernetes/connectedClusters/delete",
+        "Microsoft.Kubernetes/registeredSubscriptions/read"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2021-01-07T23:57:10.9923232Z",
+  "updatedOn": "2021-01-07T23:57:10.9923232Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

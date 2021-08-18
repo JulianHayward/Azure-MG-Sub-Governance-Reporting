@@ -1,0 +1,381 @@
+**********************
+PowerShell transcript start
+Start time: 20210818160002
+Username: EUROPE\azgvz
+RunAs User: EUROPE\azgvz
+Configuration Name: 
+Machine: azfvz001 (Microsoft Windows NT 10.0.19043.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command Import-Module 'c:\Users\azgvz\.vscode\extensions\ms-vscode.powershell-2021.8.0\modules\PowerShellEditorServices\PowerShellEditorServices.psd1'; Start-EditorServices -HostName 'Visual Studio Code Host' -HostProfileId 'Microsoft.VSCode' -HostVersion '2021.8.0' -AdditionalModules @('PowerShellEditorServices.VSCode') -BundledModulesPath 'c:\Users\azgvz\.vscode\extensions\ms-vscode.powershell-2021.8.0\modules' -EnableConsoleRepl -StartupBanner '=====> PowerShell Integrated Console v2021.8.0 <=====
+' -LogLevel 'Normal' -LogPath 'c:\Users\azgvz\.vscode\extensions\ms-vscode.powershell-2021.8.0\logs\1629285815-c3f0831b-b7ce-4b35-aa61-9c72b87eafe31629285619099\EditorServices.log' -SessionDetailsPath 'c:\Users\azgvz\.vscode\extensions\ms-vscode.powershell-2021.8.0\sessions\PSES-VSCode-3360-873495' -FeatureFlags @() 
+Process ID: 32208
+PSVersion: 7.1.3
+PSEdition: Core
+GitCommitId: 7.1.3
+OS: Microsoft Windows 10.0.19043
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.10032.0, 6.0.0, 6.1.0, 6.2.0, 7.0.0, 7.1.3
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is C:\azgovviz_dev_v5_major_20210818_2\Azure-MG-Sub-Governance-Reporting\output\AzGovViz_v5_major_20210818_2_20210818_160002_Log.txt
+Start AzGovViz 18-Aug-2021 16:00:02 (#v5_major_20210818_2)
+Environment: AzureCloud
+Checking powershell edition and version
+ PS check passed : (Major[7]; Minor[1] gt 0); (minimum supported version '7.0.3')
+ PS Edition: Core
+ PS Version: 7.1.3
+AzAPICall debug disabled
+Testing required Az modules cmdlets
+ AzModule test passed: Az ps module supporting cmdlet Get-AzContext installed
+ AzModule test passed: Az ps module supporting cmdlet Get-AzRoleAssignment installed
+Collecting Az modules versions
+ Az Module Az.Accounts Version: 2.2.5
+ Az Module Az.Resources Version: 3.2.1
+Checking Az Context
+ Context AccountId: 'its.joe.dalton@azgovviz.net'
+ Context AccountType: 'User'
+ Context test passed: Context OK
++Processing new bearer token request (ManagementAPI)
++Bearer token (ManagementAPI): [tokenRequestProcessed: '08/18/2021 16:00:06']; [expiryDateTime: '08/18/2021 17:00:06']; [timeUntilExpiry: '00:59:59.2284177']
++Processing new bearer token request (MSGraphAPI)
++Bearer token (MSGraphAPI): [tokenRequestProcessed: '08/18/2021 16:00:07']; [expiryDateTime: '08/18/2021 17:00:06']; [timeUntilExpiry: '00:59:58.8962236']
+Please select a Management Group from the list below:
+
+ # Name                                 DisplayName         Id
+ - ----                                 -----------         --
+ 1 896470ca-9c6e-4176-9b38-5a655403c638 Tenant Root Group   /providers/Microsoft.Management/managementGroups/896470ca-9c6e-4176-9b38-5a655403c638
+ 2 CUST_T5                              CUST_T5 atz         /providers/Microsoft.Management/managementGroups/CUST_T5
+ 3 ESJH                                 ESJH                /providers/Microsoft.Management/managementGroups/ESJH
+ 4 ESJH-decommissioned                  ESJH-decommissioned /providers/Microsoft.Management/managementGroups/ESJH-decommissioned
+ 5 ESJHDEV                              ESJHDEV             /providers/Microsoft.Management/managementGroups/ESJHDEV
+ 6 ESJH-landingzones                    ESJH-landingzones   /providers/Microsoft.Management/managementGroups/ESJH-landingzones
+ 7 ESJH-management                      ESJH-management     /providers/Microsoft.Management/managementGroups/ESJH-management
+ 8 ESJH-online                          ESJH-online         /providers/Microsoft.Management/managementGroups/ESJH-online
+ 9 ESJH-platform                        ESJH-platform       /providers/Microsoft.Management/managementGroups/ESJH-platform
+10 ESJHQA                               ESJHQA              /providers/Microsoft.Management/managementGroups/ESJHQA
+11 ESJH-sandboxes                       ESJH-sandboxes      /providers/Microsoft.Management/managementGroups/ESJH-sandboxes
+
+If you don't see your ManagementGroupID try using the parameter -ManagementGroupID
+Selected Management Group: Tenant Root Group (Id: 896470ca-9c6e-4176-9b38-5a655403c638)
+_______________________________________
+Running AzGovViz for ManagementGroupId: '896470ca-9c6e-4176-9b38-5a655403c638'
+Checking permissions on ManagementGroup '896470ca-9c6e-4176-9b38-5a655403c638'
+ Permissions test passed: ManagementGroup permissions OK
+Checking AAD UserType
+AAD UserType: Member
+Getting Entities
+Getting Entities duration: 0.7059486 seconds
+Get Tenant details
+ Tenant DisplayName: AzureGovernanceVisualizer
+Get Default Management Group
+ default ManagementGroup Id: ESJH-online
+ requireAuthorizationForGroupCreation: False
+Run Info:
+ Creating HierarchyMap, TenantSummary, DefinitionInsights and ScopeInsights - use parameter: '-HierarchyMapOnly' to only create the HierarchyMap
+ Subscription Whitelist disabled - use parameter: '-SubscriptionQuotaIdWhitelist' to whitelist QuotaIds
+ ASC Secure Score enabled - use parameter: '-NoASCSecureScore' to disable
+ Scrub Identity information for identityType='User' disabled - use parameter: '-DoNotShowRoleAssignmentsUserData' to scrub information such as displayName and signInName (email) for identityType='User'
+ ARM Limits warning set to 80% (default) - use parameter: '-LimitCriticalPercentage' to set warning level accordingly
+ Policy States enabled - use parameter: '-NoPolicyComplianceStates' to disable Policy States
+ Resource Diagnostics Policy Lifecycle recommendations enabled - use parameter: '-NoResourceDiagnosticsPolicyLifecycle' to disable Resource Diagnostics Policy Lifecycle recommendations
+ AAD Groups resolve members enabled (honors parameter -DoNotShowRoleAssignmentsUserData) - use parameter: '-NoAADGroupsResolveMembers' to disable resolving AAD Group memberships
+ AADGroupMembersLimit = 500
+ AAD resolve User type (Guest or Member) enabled - use parameter: '-NoAADGuestUsers' to disable
+ AAD ServicePrincipal resolve enabled (Expiry warning: 14 days) - use parameter: '-AADServicePrincipalExpiryWarningDays' to define minimum lifetime in days for SP passwords/keys expiry warning (use parameter: '-NoAADServicePrincipalResolve' to disable resolving ServicePrincipals)
+ Azure Consumption reporting enabled: 1 days (default) (2021-08-17 - 2021-08-17) - use parameter: '-NoAzureConsumption' to disable; use parameter: '-AzureConsumptionPeriod' to define the period (days)
+ Azure Consumption report export to CSV enabled - use parameter: '-NoAzureConsumptionReportExportToCSV' to disable
+ ScopeInsights will be created (-NoScopeInsights = False) Q: Why would you not want to show ScopeInsights? A: In larger tenants ScopeInsights may blow up the html file (up to unusable due to html file size)
+ ResourceProvider Detailed for TenantSummary enabled - use parameter: '-NoResourceProvidersDetailed' to disable
+ TenantSummary LargeTenant disabled (-LargeTenant = False) Q: Why would you not want to enable -LargeTenant? A: In larger tenants showing the inheritance on each scope may blow up the html file (up to unusable due to html file size)
+ TenantSummary Policy assignments will include assignment information on scopes where assignment is inherited (PolicyAtScopeOnly = False)
+ TenantSummary Role assignments will include assignment information on scopes where assignment is inherited (RBACAtScopeOnly = False)
+ TenantSummary Policy assignments will also include assignments on ResourceGroups (DoNotIncludeResourceGroupsOnPolicy = False)
+ TenantSummary RBAC Role assignments will also include assignments on ResourceGroups and Resources (DoNotIncludeResourceGroupsAndResourcesOnRBAC = False)
+ CSV Export enabled: enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, mgPath, resourceType, id, name, location, tags, createdTime, changedTime) (-NoCsvExport = False)
+ JSON Export enabled: export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON (-NoJsonExport = False)
+ JSON Export will also include Policy assignments on ResourceGroups (JsonExportExcludeResourceGroups = False)
+ JSON Export will also include Role assignments on ResourceGroups (JsonExportExcludeResourceGroups = False)
+ JSON Export will also include Role assignments on Resources (JsonExportExcludeResources = False)
+ ThrottleLimit = 5
+ ChangeTrackingDays = 60
+Getting all Subscriptions
+Getting all Subscriptions duration: 0.8253311 seconds
+Current AzContext OK: landingZone; 4dfa3b56-55bf-4059-802a-24e44a4fb60f; QuotaId: PayAsYouGo_2014-09-01
+Getting ASC Secure Score for Management Groups
+ Getting ASC Secure Score for Management Groups duration: 0.6624582 seconds
+Getting Consumption data (scope MG '896470ca-9c6e-4176-9b38-5a655403c638') for period 1 days (2021-08-17 - 2021-08-17)
+ 6 Consumption data entries
+ Checking returned Consumption data
+  6 relevant Consumption data entries
+Getting Consumption data duration: 9.2870913 seconds
+Caching built-in Policy and RBAC Role definitions
+ Caching built-in Policy definitions
+ Caching built-in PolicySet definitions
+ Caching built-in Role definitions
+Caching built-in definitions duration: 7.940293 seconds
+Collecting custom data
+ CustomDataCollection ManagementGroups
+  1/11 ManagementGroups processed
+  2/11 ManagementGroups processed
+  3/11 ManagementGroups processed
+  4/11 ManagementGroups processed
+  5/11 ManagementGroups processed
+  6/11 ManagementGroups processed
+  7/11 ManagementGroups processed
+  8/11 ManagementGroups processed
+  9/11 ManagementGroups processed
+  10/11 ManagementGroups processed
+  11/11 ManagementGroups processed
+ CustomDataCollection ManagementGroups processing duration: 0.877933583333333 minutes (52.676015 seconds)
+ CustomDataCollection Subscriptions
+ CustomDataCollection Subscriptions will process 2 of 2
+ Subscriptions Batch size: 50
+ processing Batch #1/1 (2 Subscriptions)
+  1/2 Subscriptions processed
+  2/2 Subscriptions processed
+ Batch #1 processing duration: 0.371268231666667 minutes (22.2760939 seconds)
+ CustomDataCollection Subscriptions processing duration: 0.37165163 minutes (22.2990978 seconds)
+Collecting custom data duration: 1.24982213 minutes (74.9893278 seconds)
+Collecting custom data for 11 ManagementGroups Avg/Max/Min duration in seconds: Average: 20.3271; Maximum: 23.3434; Minimum: 13.6709
+Collecting custom data for 2 Subscriptions Avg/Max/Min duration in seconds: Average: 22.0113; Maximum: 22.1004; Minimum: 21.9223
+Collecting custom data total duration writing the subResourcesArray: 0.0008332 seconds
+Collecting custom data APICalls (Management) total count: 159 (39 retries; 0 nextLinkReset)
+Resolving AAD Groups (for which a RBAC Role assignment exists)
+ processing 5 AAD Groups with Role assignments (indicating progress in steps of 1)
+ 1 AAD Groups processed
+ 2 AAD Groups processed
+ 3 AAD Groups processed
+ 4 AAD Groups processed
+ 5 AAD Groups processed
+ Collected 5 AAD Groups
+Resolving AAD Groups duration: 0.019607555 minutes (1.1764533 seconds)
+Getting AAD Guest Users
+ Count of 1 AAD Guest Users received
+  GuestUsers check
+  GuestUsers check duration: 0.000502341666666667 minutes (0.0301405 seconds)
+   guest count 1 < usersToBeResolved count 11
+ Collected 1 AAD Guest Users
+Getting AAD Guest Users duration: 0.0103008383333333 minutes (0.6180503 seconds)
+Getting ServicePrincipals (for which a RBAC Role assignment exists)
+ 14 ServicePrincipals with Role assignment on MG/Sub
+ 0 ServicePrincipals with Role assignment on RG/Resource
+ processing 14 unique ServicePrincipals (indicating progress in steps of 5)
+ 5 ServicePrincipals processed
+ 10 ServicePrincipals processed
+Getting ServicePrincipals duration: 0.01614726 minutes (0.9688356 seconds)
+Creating TagList array
+ Total Number of ALL unique Tag Names: 9
+ Total Number of Subscription unique Tag Names: 4
+ Total Number of ResourceGroup unique Tag Names: 4
+ Total Number of Resource unique Tag Names: 9
+Creating TagList array duration: 0.00028819 minutes (0.0172914 seconds)
+Checking Resource Types Diagnostics capability
+ GroupResourceIdsByType processing duration: 0.000653 seconds)
+ 10 unique Resource Types to process
+  ResourceTypeNotSupported | The resource type 'microsoft.managedidentity/userassignedidentities' does not support diagnostic settings.
+  ResourceTypeSupported | The resource type 'microsoft.automation/automationaccounts' supports diagnostic settings.
+  ResourceTypeSupported | The resource type 'microsoft.keyvault/vaults' supports diagnostic settings.
+  ResourceTypeSupported | The resource type 'microsoft.network/networksecuritygroups' supports diagnostic settings.
+  ResourceTypeSupported | The resource type 'microsoft.network/virtualnetworks' supports diagnostic settings.
+  ResourceTypeNotSupported | The resource type 'microsoft.automation/automationaccounts/runbooks' does not support diagnostic settings.
+  ResourceTypeSupported | The resource type 'microsoft.operationalinsights/workspaces' supports diagnostic settings.
+  ResourceTypeSupported | The resource type 'microsoft.storage/storageaccounts' supports diagnostic settings.
+  ResourceTypeNotSupported | The resource type 'microsoft.operationsmanagement/solutions' does not support diagnostic settings.
+  ResourceTypeNotSupported | The resource type 'microsoft.network/networkwatchers' does not support diagnostic settings.
+Checking Resource Types Diagnostics capability duration: 0.0289963433333333 minutes (1.7397806 seconds)
+Create helper hash table
+Create helper hash table duration: 2.4941035 seconds
+Building HTML
+processing Helper Queries
+Exporting CSV
+Exporting CSV total duration: 0.00345663333333333 minutes (0.207398 seconds)
+ Building preQueries
+  Create ArrayListsRBAC duration: 2.3755E-05 minutes (0.0014253 seconds)
+ Pre Queries duration: 2.7214212 seconds
+Summary data collection
+ Total Management Groups: 11 (depth 3)
+ Total Subscriptions: 2 (2 included; 0 out-of-scope)
+ Total Custom Policy definitions: 96
+ Total Custom PolicySet definitions: 3
+ Total Policy assignments: 29
+ Total Policy assignments ManagementGroups 25
+ Total Policy assignments Subscriptions 4
+ Total Policy assignments ResourceGroups: 0
+ Total Custom Role definitions: 6
+ Total Role assignments: 41
+ Total Role assignments (ManagementGroups and Subscriptions): 41
+ Total Role assignments (ResourceGroups and Resources): 0
+ Total Blueprint definitions: 0
+ Total Blueprint assignments: 0
+ Total Resources:
+ Total Resource Types: 10
+ Summary data collection duration: 0.9114952 seconds
+ Building HierarchyMap
+  Building HierarchyMap for MG 'ESJH-decommissioned', 0 Subscriptions
+  Building HierarchyMap for MG 'ESJH-online', 1 Subscriptions
+  Building HierarchyMap for MG 'ESJH-landingzones', 0 Subscriptions
+  Building HierarchyMap for MG 'ESJH-management', 1 Subscriptions
+  Building HierarchyMap for MG 'ESJH-platform', 0 Subscriptions
+  Building HierarchyMap for MG 'CUST_T5', 0 Subscriptions
+  Building HierarchyMap for MG 'ESJH-sandboxes', 0 Subscriptions
+  Building HierarchyMap for MG 'ESJH', 0 Subscriptions
+  Building HierarchyMap for MG 'ESJHDEV', 0 Subscriptions
+  Building HierarchyMap for MG 'ESJHQA', 0 Subscriptions
+  Building HierarchyMap for MG '896470ca-9c6e-4176-9b38-5a655403c638', 0 Subscriptions
+ Building HierarchyMap duration: 0.00162982833333333 minutes (0.0977897 seconds)
+ Building TenantSummary
+  processing (pre) TenantSummary RoleAssignments (all 204)
+   RelatedPolicyAssignmentsAll duration: 0.00111919666666667 minutes (0.0671518 seconds)
+   Processing unresoved Identities (createdBy)
+    1 unresolved identities that created a RBAC Role assignment (createdBy)
+    1 unresolved identities that have a value
+    IdentitiesToCheck: "4870c99c-acfe-4210-9212-32949dc37c7a"
+    1 identities resolved
+   UnresolvedIdentities (createdBy) duration: 0.00624326 minutes (0.3745956 seconds)
+   RBACAll Grouping duration: 0.000400473333333333 minutes (0.0240284 seconds)
+   CreateRBACAll duration: 0.00772548666666667 minutes (0.4635292 seconds)
+  processing TenantSummary Custom Policy definitions
+   Custom Policy processing duration: 0.00533459666666667 minutes (0.3200758 seconds)
+  processing TenantSummary Custom Policy definitions orphaned
+   processing TenantSummary Custom Policy definitions orphaned duration: 0.0410662 seconds
+  processing TenantSummary Custom PolicySet definitions
+   Custom PolicySet processing duration: 0.00117725666666667 minutes (0.0706354 seconds)
+  processing TenantSummary Custom PolicySet definitions orphaned
+  processing TenantSummary Custom PolicySet definitions using deprected Policy
+   processing PolicySetsDeprecatedPolicy duration: 0.0079003 seconds
+  processing TenantSummary PolicyAssignments using deprecated Policy
+   processing PolicyAssignmentsDeprecatedPolicy duration: 0.1547892 seconds
+  processing TenantSummary Policy exemptions
+  processing TenantSummary PolicyAssignments (all 128)
+   processing duration: 0.0552968 seconds
+    Processing unresoved Identities (createdBy/updatedBy)
+    1 unresolved identities that created/updated a Policy assignment (createdBy/updatedBy)
+    1 unresolved identities that have a value
+    IdentitiesToCheck: "9ac4e379-ffb1-4e2c-ac89-3752d019abfd"
+    1 identities resolved
+    UnresolvedIdentities (createdBy/updatedBy) duration: 0.005313435 minutes (0.3188061 seconds)
+   processing duration: 0.3951015 seconds
+   loop duration: 0.0700188 seconds
+   append file duration: 0.012146 seconds
+   SummaryPolicyAssignmentsAll duration: 0.0105394116666667 minutes (0.6323647 seconds)
+  processing TenantSummary Custom Roles
+  processing TenantSummary Custom Roles orphaned
+   SUMMARYOrphanedCustomRoles duration: 0.000122641666666667 minutes (0.0073585 seconds)
+  processing TenantSummary RoleAssignments orphaned
+  processing TenantSummary RoleAssignments
+   CreateRBACAll CSV duration: 0.00108022833333333 minutes (0.0648137 seconds)
+   CreateRBACAll HTML before Foreach duration: 0.001340855 minutes (0.0804513 seconds)
+   Sort RBACAll duration: 0.000215293333333333 minutes (0.0129176 seconds)
+   CreateRBACAll HTML Foreach duration: 0.00124623333333333 minutes (0.074774 seconds)
+   SummaryRoleAssignmentsAll duration: 0.00296306166666667 minutes (0.1777837 seconds)
+  processing TenantSummary RoleAssignments Classic
+  processing TenantSummary Custom Roles security (owner permissions)
+  processing TenantSummary RoleAssignments security (owner SP)
+   TenantSummary RoleAssignments security (owner SP) duration: 0.00100506833333333 minutes (0.0603041 seconds)
+  processing TenantSummary RoleAssignments security (owner notGroup)
+   TenantSummary RoleAssignments security (owner notGroup) duration: 0.000926415 minutes (0.0555849 seconds)
+  processing TenantSummary RoleAssignments security (userAccessAdministrator notGroup)
+   TenantSummary RoleAssignments security (userAccessAdministrator notGroup) duration: 0.000290301666666667 minutes (0.0174181 seconds)
+  processing TenantSummary RoleAssignments security (high priviledged Guest User)
+   TenantSummary RoleAssignments security (high priviledged Guest User) duration: 0.000192581666666667 minutes (0.0115549 seconds)
+  processing TenantSummary Blueprints
+  processing TenantSummary BlueprintAssignments
+  processing TenantSummary Blueprint definitions orphaned
+  processing TenantSummary ManagementGroups
+   SUMMARYMGs duration: 0.000594801666666667 minutes (0.0356881 seconds)
+  processing TenantSummary ManagementGroups - default Management Group
+  processing TenantSummary ManagementGroups - requireAuthorizationForGroupCreation Management Group
+  processing TenantSummary Subscriptions
+  processing TenantSummary Subscriptions (out-of-scope)
+  processing TenantSummary TagsUsage
+  processing TenantSummary Subscriptions Resources
+   SUMMARY Resources processing duration: 0.000101025 minutes (0.0060615 seconds)
+  processing TenantSummary Subscriptions Resources by Location
+   SUMMARY Resources ByLocation processing duration: 0.000154013333333333 minutes (0.0092408 seconds)
+  processing TenantSummary Subscriptions Resource Providers
+   TenantSummary Subscriptions Resource Providers duration: 0.00889165833333333 minutes (0.5334995 seconds)
+  processing TenantSummary Subscriptions Resource Providers detailed
+   RP detailed processing duration: 0.000630211666666667 minutes (0.0378127 seconds)
+  processing TenantSummary Subscriptions Resource Locks
+   ResourceLocks processing duration: 0.000956598333333333 minutes (0.0573959 seconds)
+  processing TenantSummary Diagnostics Management Groups
+  processing TenantSummary Diagnostics Subscriptions
+  processing TenantSummary Diagnostics Resources Diagnostics Capable
+  processing TenantSummary Diagnostics Resource Diagnostics Policy Lifecycle
+   Resource Diagnostics Policy Lifecycle processing duration: 0.9624335 seconds
+  processing TenantSummary ManagementGroups Limit PolicyAssignments
+  processing TenantSummary ManagementGroups Limit PolicyScope
+  processing TenantSummary ManagementGroups Limit PolicySetScope
+  processing TenantSummary ManagementGroups Limit RoleAssignments
+  processing TenantSummary Subscriptions Limit Resource Groups
+  processing TenantSummary Subscriptions Limit Subscription Tags
+  processing TenantSummary Subscriptions Limit PolicyAssignments
+  processing TenantSummary Subscriptions Limit PolicyScope
+  processing TenantSummary Subscriptions Limit PolicySetScope
+  processing TenantSummary Subscriptions Limit RoleAssignments
+  processing TenantSummary AAD ServicePrincipals - not found
+  processing TenantSummary AAD Applications - not found
+  processing TenantSummary AAD SP Managed Identities
+   TenantSummary AAD SP Managed Identities processing duration: 0.00072183 minutes (0.0433098 seconds)
+  processing TenantSummary AAD SP Apps CredExpiry
+   TenantSummary AAD SP Apps CredExpiry processing duration: 0.000607445 minutes (0.0364467 seconds)
+  processing TenantSummary AAD External ServicePrincipals
+   TenantSummary AAD External ServicePrincipals processing duration: 0.00077973 minutes (0.0467838 seconds)
+  processing TenantSummary Consumption
+   TenantSummary Consumption processing duration: 4.92883333333333E-05 minutes (0.0029573 seconds)
+  processing TenantSummary ChangeTracking
+   processing Policy
+   processing PolicySet
+   processing Policy assignment
+   processing RBAC
+   processing RBAC Role definition created
+   processing RBAC Role definition updated
+   processing RBAC Role assignments
+   processing Resources
+   ChangeTracking duration: 0.00466597 minutes (0.2799582 seconds)
+ Building TenantSummary duration: 0.0819869366666667 minutes (4.9192162 seconds)
+ Building DefinitionInsights
+  processing DefinitionInsightsPolicyDefinitions
+   1000 Policy definitions processed
+   DefinitionInsightsPolicyDefinitions duration: 0.0238552466666667 minutes (1.4313148 seconds)
+  processing DefinitionInsightsPolicySetDefinitions
+   DefinitionInsightsPolicySetDefinitions duration: 0.0202895366666667 minutes (1.2173722 seconds)
+  processing DefinitionInsightsRoleDefinitions
+   DefinitionInsightsRoleDefinitions duration: 0.00676544 minutes (0.4059264 seconds)
+  DefinitionInsights processing duration: 0.0592394033333333 minutes (3.5543642 seconds)
+ Building ScopeInsights
+  Building ScopeInsights MG '896470ca-9c6e-4176-9b38-5a655403c638', 0 Subscriptions
+  Building ScopeInsights MG 'ESJH', 0 Subscriptions
+  Building ScopeInsights MG 'ESJH-decommissioned', 0 Subscriptions
+  Building ScopeInsights MG 'ESJH-landingzones', 0 Subscriptions
+  Building ScopeInsights MG 'ESJH-online', 1 Subscriptions
+  Building ScopeInsights MG 'ESJH-platform', 0 Subscriptions
+  Building ScopeInsights MG 'ESJH-management', 1 Subscriptions
+  Building ScopeInsights MG 'ESJH-sandboxes', 0 Subscriptions
+  Building ScopeInsights MG 'CUST_T5', 0 Subscriptions
+  Building ScopeInsights MG 'ESJHDEV', 0 Subscriptions
+  Building ScopeInsights MG 'ESJHQA', 0 Subscriptions
+ Building ScopeInsights duration: 0.021555495 minutes (1.2933297 seconds)
+Building HTML total duration: 0.238151315 minutes (14.2890789 seconds)
+Building Markdown
+Building Markdown total duration: 0.00208626333333333 minutes (0.1251758 seconds)
+Exporting Consumption CSV
+Exporting Consumption CSV total duration: 6.89966666666667E-05 minutes (0.207398 seconds)
+Create Hierarchy JSON
+ Create ht for JSON
+ Creating new state (JSON_896470ca-9c6e-4176-9b38-5a655403c638_20210818_160002) (local only))
+ ht for JSON creation duration: 6.9934322 seconds
+ Build JSON
+ Building JSON duration: 1.4509526 seconds
+Creating Hierarchy JSON duration: 8.449604 seconds
+AzGovViz APICalls total count: 225 (194 ManagementAPI; 31 MSGraphAPI; 42 retries; 0 nextLinkReset)
+AzGovViz duration: 2.43225041333333 minutes
+End AzGovViz 18-Aug-2021 16:02:28
+Checking for errors
+Error count is 0
+**********************
+PowerShell transcript end
+End time: 20210818160228
+**********************
+

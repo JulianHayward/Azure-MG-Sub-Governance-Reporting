@@ -1,0 +1,15 @@
+{
+  "RoleAssignmentId": "/providers/Microsoft.Management/managementGroups/ESJH/providers/Microsoft.Authorization/roleAssignments/2d361fa3-7bd4-5234-9b12-1f54afa65870",
+  "Scope": "/providers/Microsoft.Management/managementGroups/ESJH",
+  "DisplayName": "Deploy-VMSS-Monitoring",
+  "SignInName": null,
+  "RoleDefinitionName": "Owner",
+  "RoleDefinitionId": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+  "ObjectId": "a3a4908f-b068-455e-a3f5-38cc5e00448f",
+  "ObjectType": "ServicePrincipal",
+  "CanDelegate": false,
+  "Description": null,
+  "ConditionVersion": null,
+  "Condition": null
+}
+

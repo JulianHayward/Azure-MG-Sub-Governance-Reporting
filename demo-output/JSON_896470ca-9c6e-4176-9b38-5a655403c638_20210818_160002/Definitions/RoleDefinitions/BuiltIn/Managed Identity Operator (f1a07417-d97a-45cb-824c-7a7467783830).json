@@ -1,0 +1,29 @@
+{
+  "roleName": "Managed Identity Operator",
+  "type": "BuiltInRole",
+  "description": "Read and Assign User Assigned Identity",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.ManagedIdentity/userAssignedIdentities/*/read",
+        "Microsoft.ManagedIdentity/userAssignedIdentities/*/assign/action",
+        "Microsoft.Authorization/*/read",
+        "Microsoft.Insights/alertRules/*",
+        "Microsoft.Resources/subscriptions/resourceGroups/read",
+        "Microsoft.Resources/deployments/*",
+        "Microsoft.Support/*"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2017-12-14T19:52:04.3924594Z",
+  "updatedOn": "2017-12-14T22:16:00.1483256Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

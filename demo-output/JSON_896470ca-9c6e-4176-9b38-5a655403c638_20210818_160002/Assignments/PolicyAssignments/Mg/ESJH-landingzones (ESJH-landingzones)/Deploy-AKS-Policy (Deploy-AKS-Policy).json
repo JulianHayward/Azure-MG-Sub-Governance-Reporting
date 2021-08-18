@@ -1,0 +1,25 @@
+{
+  "identity": {
+    "principalId": "fb0a7498-393f-434d-aa93-2acd144f489f",
+    "tenantId": "896470ca-9c6e-4176-9b38-5a655403c638",
+    "type": "SystemAssigned"
+  },
+  "properties": {
+    "displayName": "Deploy-AKS-Policy",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/a8eff44f-8c92-45c3-a3fb-9880802d67a7",
+    "scope": "/providers/Microsoft.Management/managementGroups/ESJH-landingzones",
+    "description": "Deploy-AKS-Policy",
+    "metadata": {
+      "createdBy": "b790b1e1-6f46-488b-8c5a-708b0db9a149",
+      "createdOn": "2021-01-10T20:58:37.0610707Z",
+      "updatedBy": null,
+      "updatedOn": null
+    },
+    "enforcementMode": "Default"
+  },
+  "id": "/providers/Microsoft.Management/managementGroups/ESJH-landingzones/providers/Microsoft.Authorization/policyAssignments/Deploy-AKS-Policy",
+  "type": "Microsoft.Authorization/policyAssignments",
+  "name": "Deploy-AKS-Policy",
+  "location": "westeurope"
+}
+

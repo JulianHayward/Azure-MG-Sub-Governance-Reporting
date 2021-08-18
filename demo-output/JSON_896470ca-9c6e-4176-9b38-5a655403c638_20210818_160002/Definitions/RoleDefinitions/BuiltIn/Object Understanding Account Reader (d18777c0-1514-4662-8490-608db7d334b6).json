@@ -1,0 +1,23 @@
+{
+  "roleName": "Object Understanding Account Reader",
+  "type": "BuiltInRole",
+  "description": "Lets you read ingestion jobs for an object understanding account.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.MixedReality/ObjectUnderstandingAccounts/ingest/read"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2020-07-23T19:16:31.9929119Z",
+  "updatedOn": "2020-07-23T19:16:31.9929119Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

@@ -1,0 +1,1027 @@
+{
+  "displayName": "[Deprecated]: DoD Impact Level 4",
+  "policyType": "BuiltIn",
+  "description": "This initiative includes policies that address a subset of DoD Impact Level 4 (IL4) controls. Additional policies will be added in upcoming releases. For more information, visit https://aka.ms/dodil4-initiative.",
+  "metadata": {
+    "version": "6.1.1-deprecated",
+    "category": "Regulatory Compliance",
+    "deprecated": true
+  },
+  "parameters": {
+    "IncludeArcMachines": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Include Arc-connected servers when evaluating guest configuration policies",
+        "description": "By selecting 'true,' you agree to be charged monthly per Arc connected machine; for more information, visit https://aka.ms/policy-pricing"
+      },
+      "allowedValues": [
+        "true",
+        "false"
+      ],
+      "defaultValue": "false"
+    },
+    "listOfAllowedLocationsForResourcesAndResourceGroups": {
+      "type": "Array",
+      "metadata": {
+        "displayName": "[Deprecated]: Allowed locations for resources and resource groups",
+        "description": "To see a complete list of regions use Get-AzLocation",
+        "strongType": "location",
+        "deprecated": true
+      },
+      "defaultValue": [
+        "eastus"
+      ]
+    },
+    "membersToIncludeInAdministratorsLocalGroup": {
+      "type": "String",
+      "metadata": {
+        "displayName": "List of users that must be included in Windows VM Administrators group",
+        "description": "A semicolon-separated list of users that should be included in the Administrators local group; Ex: Administrator; myUser1; myUser2"
+      }
+    },
+    "membersToExcludeInAdministratorsLocalGroup": {
+      "type": "String",
+      "metadata": {
+        "displayName": "List of users excluded from Windows VM Administrators group",
+        "description": "A semicolon-separated list of users that should be excluded in the Administrators local group; Ex: Administrator; myUser1; myUser2"
+      }
+    },
+    "logAnalyticsWorkspaceIdForVMs": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Log Analytics workspace ID for VM agent reporting",
+        "description": "ID (GUID) of the Log Analytics workspace where VMs agents should report"
+      }
+    },
+    "listOfResourceTypes": {
+      "type": "Array",
+      "metadata": {
+        "displayName": "List of resource types that should have resource logs enabled"
+      },
+      "allowedValues": [
+        "Microsoft.AnalysisServices/servers",
+        "Microsoft.ApiManagement/service",
+        "Microsoft.Network/applicationGateways",
+        "Microsoft.Automation/automationAccounts",
+        "Microsoft.ContainerInstance/containerGroups",
+        "Microsoft.ContainerRegistry/registries",
+        "Microsoft.ContainerService/managedClusters",
+        "Microsoft.Batch/batchAccounts",
+        "Microsoft.Cdn/profiles/endpoints",
+        "Microsoft.CognitiveServices/accounts",
+        "Microsoft.DocumentDB/databaseAccounts",
+        "Microsoft.DataFactory/factories",
+        "Microsoft.DataLakeAnalytics/accounts",
+        "Microsoft.DataLakeStore/accounts",
+        "Microsoft.EventGrid/eventSubscriptions",
+        "Microsoft.EventGrid/topics",
+        "Microsoft.EventHub/namespaces",
+        "Microsoft.Network/expressRouteCircuits",
+        "Microsoft.Network/azureFirewalls",
+        "Microsoft.HDInsight/clusters",
+        "Microsoft.Devices/IotHubs",
+        "Microsoft.KeyVault/vaults",
+        "Microsoft.Network/loadBalancers",
+        "Microsoft.Logic/integrationAccounts",
+        "Microsoft.Logic/workflows",
+        "Microsoft.DBforMySQL/servers",
+        "Microsoft.Network/networkInterfaces",
+        "Microsoft.Network/networkSecurityGroups",
+        "Microsoft.DBforPostgreSQL/servers",
+        "Microsoft.PowerBIDedicated/capacities",
+        "Microsoft.Network/publicIPAddresses",
+        "Microsoft.RecoveryServices/vaults",
+        "Microsoft.Cache/redis",
+        "Microsoft.Relay/namespaces",
+        "Microsoft.Search/searchServices",
+        "Microsoft.ServiceBus/namespaces",
+        "Microsoft.SignalRService/SignalR",
+        "Microsoft.Sql/servers/databases",
+        "Microsoft.Sql/servers/elasticPools",
+        "Microsoft.StreamAnalytics/streamingjobs",
+        "Microsoft.TimeSeriesInsights/environments",
+        "Microsoft.Network/trafficManagerProfiles",
+        "Microsoft.Compute/virtualMachines",
+        "Microsoft.Compute/virtualMachineScaleSets",
+        "Microsoft.Network/virtualNetworks",
+        "Microsoft.Network/virtualNetworkGateways"
+      ],
+      "defaultValue": [
+        "Microsoft.AnalysisServices/servers",
+        "Microsoft.ApiManagement/service",
+        "Microsoft.Network/applicationGateways",
+        "Microsoft.Automation/automationAccounts",
+        "Microsoft.ContainerInstance/containerGroups",
+        "Microsoft.ContainerRegistry/registries",
+        "Microsoft.ContainerService/managedClusters",
+        "Microsoft.Batch/batchAccounts",
+        "Microsoft.Cdn/profiles/endpoints",
+        "Microsoft.CognitiveServices/accounts",
+        "Microsoft.DocumentDB/databaseAccounts",
+        "Microsoft.DataFactory/factories",
+        "Microsoft.DataLakeAnalytics/accounts",
+        "Microsoft.DataLakeStore/accounts",
+        "Microsoft.EventGrid/eventSubscriptions",
+        "Microsoft.EventGrid/topics",
+        "Microsoft.EventHub/namespaces",
+        "Microsoft.Network/expressRouteCircuits",
+        "Microsoft.Network/azureFirewalls",
+        "Microsoft.HDInsight/clusters",
+        "Microsoft.Devices/IotHubs",
+        "Microsoft.KeyVault/vaults",
+        "Microsoft.Network/loadBalancers",
+        "Microsoft.Logic/integrationAccounts",
+        "Microsoft.Logic/workflows",
+        "Microsoft.DBforMySQL/servers",
+        "Microsoft.Network/networkInterfaces",
+        "Microsoft.Network/networkSecurityGroups",
+        "Microsoft.DBforPostgreSQL/servers",
+        "Microsoft.PowerBIDedicated/capacities",
+        "Microsoft.Network/publicIPAddresses",
+        "Microsoft.RecoveryServices/vaults",
+        "Microsoft.Cache/redis",
+        "Microsoft.Relay/namespaces",
+        "Microsoft.Search/searchServices",
+        "Microsoft.ServiceBus/namespaces",
+        "Microsoft.SignalRService/SignalR",
+        "Microsoft.Sql/servers/databases",
+        "Microsoft.Sql/servers/elasticPools",
+        "Microsoft.StreamAnalytics/streamingjobs",
+        "Microsoft.TimeSeriesInsights/environments",
+        "Microsoft.Network/trafficManagerProfiles",
+        "Microsoft.Compute/virtualMachines",
+        "Microsoft.Compute/virtualMachineScaleSets",
+        "Microsoft.Network/virtualNetworks",
+        "Microsoft.Network/virtualNetworkGateways"
+      ]
+    },
+    "listOfLocations": {
+      "type": "Array",
+      "metadata": {
+        "displayName": "[Deprecated]: List of regions where Network Watcher should be enabled",
+        "description": "To see a complete list of regions use Get-AzLocation",
+        "strongType": "location",
+        "deprecated": true
+      },
+      "defaultValue": [
+        "eastus"
+      ]
+    },
+    "vulnerabilityAssessmentOnManagedInstanceMonitoringEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: Vulnerability assessment should be enabled on SQL Managed Instance",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    },
+    "vulnerabilityAssessmentOnServerMonitoringEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: Vulnerability assessment should be enabled on your SQL servers",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    },
+    "vulnerabilityAssessmentOnVirtualMachinesEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Vulnerability Assessment should be enabled on Virtual Machines",
+        "description": "Monitors vulnerabilities detected by Azure Security Center Vulnerability Assessment on Virtual Machines"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    },
+    "geoRedundancyEnabledForStorageAccountsEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: Geo-redundant storage should be enabled for Storage Accounts",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "Audit",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    },
+    "geoRedundancyEnabledForAzureDatabaseForMariaDBEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: Geo-redundant backup should be enabled for Azure Database for MariaDB",
+        "description": "Azure Policy effect for this policy; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "Audit",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    },
+    "geoRedundancyEnabledForAzureDatabaseForMySQLEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: Geo-redundant backup should be enabled for Azure Database for MySQL",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "Audit",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    },
+    "geoRedundancyEnabledForAzureDatabaseForPostgreSQLEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: Geo-redundant backup should be enabled for Azure Database for PostgreSQL",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "Audit",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    },
+    "adaptiveNetworkHardeningsMonitoringEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Adaptive network hardening recommendations should be applied on internet facing virtual machines",
+        "description": "Enable or disable the monitoring of Internet-facing virtual machines for Network Security Group traffic hardening recommendations"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    },
+    "webAppEnforceHttpsMonitoringEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: Web Application should only be accessible over HTTPS",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "Audit",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    },
+    "functionAppEnforceHttpsMonitoringEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: Function App should only be accessible over HTTPS",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "Audit",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    },
+    "identityRemoveExternalAccountWithWritePermissionsMonitoringEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: External accounts with write permissions should be removed from your subscription",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    },
+    "identityRemoveExternalAccountWithReadPermissionsMonitoringEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: External accounts with read permissions should be removed from your subscription",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    },
+    "identityRemoveExternalAccountWithOwnerPermissionsMonitoringEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: External accounts with owner permissions should be removed from your subscription",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    },
+    "identityRemoveDeprecatedAccountWithOwnerPermissionsMonitoringEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: Deprecated accounts with owner permissions should be removed from your subscription",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    },
+    "identityRemoveDeprecatedAccountMonitoringEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: Deprecated accounts should be removed from your subscription",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    },
+    "webAppRestrictCORSAccessMonitoringEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: CORS should not allow every resource to access your Web Applications",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    },
+    "vmssSystemUpdatesMonitoringEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: System updates on virtual machine scale sets should be installed",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    },
+    "identityEnableMFAForReadPermissionsMonitoringEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: MFA should be enabled on accounts with read permissions on your subscription",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    },
+    "identityEnableMFAForOwnerPermissionsMonitoringEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: MFA should be enabled on accounts with owner permissions on your subscription",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    },
+    "identityEnableMFAForWritePermissionsMonitoringEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: MFA should be enabled accounts with write permissions on your subscription",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    },
+    "longtermGeoRedundantBackupEnabledAzureSQLDatabasesEffect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect for policy: Long-term geo-redundant backup should be enabled for Azure SQL Databases",
+        "description": "The effect determines what happens when the policy rule is evaluated to match; for more information about effects, visit https://aka.ms/policyeffects"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    }
+  },
+  "policyDefinitions": [
+    {
+      "policyDefinitionReferenceId": "AuditWindowsWebServersThatAreNotUsingSecureCommunicationProtocols",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/5752e6d6-1206-46d8-8ab1-ecc2f71a8112",
+      "parameters": {
+        "IncludeArcMachines": {
+          "value": "[parameters('IncludeArcMachines')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "auditVirtualMachinesWithoutDisasterRecoveryConfigured",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0015ea4d-51ff-4ce3-8d8c-f3f8f0179a56",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "auditUsageOfCustomRBACRules",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/a451c1ef-c6ca-483d-87ed-f49761e3ffb5",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "serviceFabricClustersShouldOnlyUseAzureActiveDirectoryForClientAuthentication",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/b54ed75b-3e1a-44ac-a333-05ba39b99ff0",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "auditUnrestrictedNetworkAccessToStorageAccounts",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/34c877ad-507e-4c82-993e-3452a6e0ad3c",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "transparentDataEncryptionOnSqlDatabasesShouldBeEnabled",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/17k78e20-9358-41c9-923c-fb736d382a12",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "advancedDataSecurityShouldBeEnabledOnYourSqlServers",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/abfb4388-5bf4-4ad7-ba82-2cd2f41ceae9",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "auditSqlServerLevelAuditingSettings",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/a6fb4358-5bf4-4ad7-ba82-2cd2f41ce5e9",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "advancedDataSecurityShouldBeEnabledOnYourManagedInstances",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/abfb7388-5bf4-4ad7-ba99-2cd2f41cebb9",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "auditSecureTransferToStorageAccounts",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/404c3081-a854-4457-ae30-26a93ef643f9",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "anAzureActiveDirectoryAdministratorShouldBeProvisionedForSqlServers",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/1f314764-cb73-4fc9-b863-8eca98ac36e9",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "OnlySecureConnectionsToYourRedisCacheShouldBeEnabled",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/22bee202-a82f-4305-9a2a-6d7f44d4dedb",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "previewMonitorUnprotectedNetworkEndpointsInAzureSecurityCenter",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9daedab3-fb2d-461e-b861-71790eead4f6",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "diskEncryptionShouldBeAppliedOnVirtualMachines",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0961003e-5a0a-4549-abde-af6a37f2724d",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "vulnerabilitiesOnYourSqlDatabasesShouldBeRemediated",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/feedbf84-6b99-488c-acc2-71c829aa5ffc",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "justInTimeNetworkAccessControlShouldBeAppliedOnVirtualMachines",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/b0f33259-77d7-4c9e-aac6-3aabcfae693c",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "adaptiveApplicationControlsShouldBeEnabledOnVirtualMachines",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/47a6b606-51aa-4496-8bb7-64b11cf66adc",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "vulnerabilitiesInSecurityConfigurationOnYourMachinesShouldBeRemediated",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e1e5fd5d-3e4c-4ce1-8661-7d1873ae6b15",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "systemUpdatesShouldBeInstalledOnYourMachines",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/86b3d65f-7626-441e-b690-81a8b71cff60",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "monitorMissingEndpointProtectionInAzureSecurityCenter",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/af6cd1bd-1635-48cb-bde7-5b15693900b9",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "Prerequisite_AddSystemIdentityWhenNone",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/3cf2ab00-13f1-4d0c-8971-2ac904541a7e",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "Prerequisite_AddSystemIdentityWhenUser",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/497dff13-db2a-4c0f-8603-28fa3b331ab6",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "Prerequisite_DeployExtensionWindows",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/385f5831-96d4-41db-9a3c-cd3af78aaae6",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "Prerequisite_DeployExtensionLinux",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/331e8ea8-378a-410f-a2e5-ae22f38bb0da",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "previewAuditWindowsVmShouldNotStorePasswordsUsingReversibleEncryption",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/da0f98fe-a24b-4ad5-af69-bd0400233661",
+      "parameters": {
+        "IncludeArcMachines": {
+          "value": "[parameters('IncludeArcMachines')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "previewAuditWindowsVmPasswordsMustBeAtLeast14Characters",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/a2d0e922-65d0-40c4-8f87-ea6da2d307a2",
+      "parameters": {
+        "IncludeArcMachines": {
+          "value": "[parameters('IncludeArcMachines')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "previewAuditWindowsVmEnforcesPasswordComplexityRequirements",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/bf16e0bb-31e1-4646-8202-60a235cc7e74",
+      "parameters": {
+        "IncludeArcMachines": {
+          "value": "[parameters('IncludeArcMachines')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "previewAuditWindowsVmMinimumPasswordAge1Day",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/237b38db-ca4d-4259-9e47-7882441ca2c0",
+      "parameters": {
+        "IncludeArcMachines": {
+          "value": "[parameters('IncludeArcMachines')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "previewAuditWindowsVmMaximumPasswordAge70Days",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4ceb8dc2-559c-478b-a15b-733fbf1e3738",
+      "parameters": {
+        "IncludeArcMachines": {
+          "value": "[parameters('IncludeArcMachines')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "previewAuditWindowsVmShouldNotAllowPrevious24Passwords",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/5b054a0d-39e2-4d53-bea3-9734cad2c69b",
+      "parameters": {
+        "IncludeArcMachines": {
+          "value": "[parameters('IncludeArcMachines')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "previewAuditLinuxVmPasswdFilePermissions",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e6955644-301c-44b5-a4c4-528577de6861",
+      "parameters": {
+        "IncludeArcMachines": {
+          "value": "[parameters('IncludeArcMachines')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "previewAuditLinuxVmAccountsWithNoPasswords",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/f6ec09a3-78bf-4f8f-99dc-6c77182d0f99",
+      "parameters": {
+        "IncludeArcMachines": {
+          "value": "[parameters('IncludeArcMachines')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "PreviewAuditLinuxVmAllowingRemoteConnectionsFromAccountsWithNoPasswords",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/ea53dbee-c6c9-4f0e-9f9e-de0039b78023",
+      "parameters": {
+        "IncludeArcMachines": {
+          "value": "[parameters('IncludeArcMachines')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "endpointProtectionSolutionShouldBeInstalledOnVirtualMachineScaleSets",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/26a828e1-e88f-464e-bbb3-c134a282b9de",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "dDoSProtectionStandardShouldBeEnabled",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/a7aca53f-2ed4-4466-a25e-0b45ade68efd",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "remoteDebuggingShouldBeTurnedOffForApiApp",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e9c8d085-d9cc-4b17-9cdc-059f1f01f19e",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "remoteDebuggingShouldBeTurnedOffForWebApplication",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/cb510bfd-1cba-4d9f-a230-cb0976f4bb71",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "remoteDebuggingShouldBeTurnedOffForFunctionApp",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0e60b895-3786-45da-8377-9c6b4b6ac5f9",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "vulnerabilitiesInSecurityConfigurationOnYourVirtualMachineScaleSetsShouldBeRemediated",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/3c735d8a-a4ba-4a3a-b7cf-db7754cf57f4",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "thereShouldBeMoreThanOneOwnerAssignedToYourSubscription",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/09024ccc-0c5f-475e-9457-b7c0d9ed487b",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "aMaximumOf3OwnersShouldBeDesignatedForYourSubscription",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4f11b553-d42e-4e3a-89be-32ca364cad4c",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "previewAuditLogAnalyticsAgentDeploymentInVmssVmImageOsUnlisted",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/5c3bc7b8-a64c-4e08-a9cd-7ff0f31e1138",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "previewAuditLogAnalyticsAgentDeploymentVmImageOsUnlisted",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/32133ab0-ee4b-4b44-98d6-042180979d50",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "apiAppShouldOnlyBeAccessibleOverHttps",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/b7ddfbdc-1260-477d-91fd-98bd9be789a6",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "vulnerabilityAssessmentOnManagedInstanceMonitoring",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/1b7aa243-30e4-4c9e-bca8-d0d3022b634a",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('vulnerabilityAssessmentOnManagedInstanceMonitoringEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "vulnerabilityAssessmentOnServerMonitoring",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/ef2a8f2a-b3d9-49cd-a8a8-9a3aaaf647d9",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('vulnerabilityAssessmentOnServerMonitoringEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "VulnerabilityAssessmentshouldbeenabledonVirtualMachines",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/501541f7-f7e7-4cd6-868c-4190fdad3ac9",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('vulnerabilityAssessmentOnVirtualMachinesEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "geoRedundantStorageShouldBeEnabledForStorageAccounts",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/bf045164-79ba-4215-8f95-f8048dc1780b",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('geoRedundancyEnabledForStorageAccountsEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "geoRedundantBackupShouldBeEnabledForAzureDatabaseForMariaDB",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0ec47710-77ff-4a3d-9181-6aa50af424d0",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('geoRedundancyEnabledForAzureDatabaseForMariaDBEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "geoRedundantBackupShouldBeEnabledForAzureDatabaseForMySQL",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/82339799-d096-41ae-8538-b108becf0970",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('geoRedundancyEnabledForAzureDatabaseForMySQLEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "geoRedundantBackupShouldBeEnabledForAzureDatabaseForPostgreSQL",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/48af4db5-9b8b-401c-8e74-076be876a430",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('geoRedundancyEnabledForAzureDatabaseForPostgreSQLEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "TheAdministratorsGroupDoesNotContainAllOfTheSpecifiedMembers",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/30f71ea1-ac77-4f26-9fc5-2d926bbd4ba7",
+      "parameters": {
+        "IncludeArcMachines": {
+          "value": "[parameters('IncludeArcMachines')]"
+        },
+        "membersToInclude": {
+          "value": "[parameters('membersToIncludeInAdministratorsLocalGroup')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "AuditWindowsVMsInWhichTheAdministratorsGroupContainsAnyOfTheSpecifiedMembers",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/69bf4abd-ca1e-4cf6-8b5a-762d42e61d4f",
+      "parameters": {
+        "IncludeArcMachines": {
+          "value": "[parameters('IncludeArcMachines')]"
+        },
+        "membersToExclude": {
+          "value": "[parameters('membersToExcludeInAdministratorsLocalGroup')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "auditDiagnosticSetting",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/7f89b1eb-583c-429a-8828-af049802c1d9",
+      "parameters": {
+        "listOfResourceTypes": {
+          "value": "[parameters('listOfResourceTypes')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "adaptiveNetworkHardeningsMonitoring",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/08e6af2d-db70-460a-bfe9-d5bd474ba9d6",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('adaptiveNetworkHardeningsMonitoringEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "previewAuditLogAnalyticsWorkspaceForVmReportMismatch",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/f47b5582-33ec-4c5c-87c0-b010a6b2e917",
+      "parameters": {
+        "logAnalyticsWorkspaceId": {
+          "value": "[parameters('logAnalyticsWorkspaceIdForVMs')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "webAppEnforceHttpsMonitoring",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/a4af4a39-4135-47fb-b175-47fbdf85311d",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('webAppEnforceHttpsMonitoringEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "functionAppEnforceHttpsMonitoring",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/6d555dd1-86f2-4f1c-8ed7-5abae7c6cbab",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('functionAppEnforceHttpsMonitoringEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "identityRemoveExternalAccountWithWritePermissionsMonitoring",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/5c607a2e-c700-4744-8254-d77e7c9eb5e4",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('identityRemoveExternalAccountWithWritePermissionsMonitoringEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "identityRemoveExternalAccountWithReadPermissionsMonitoring",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/5f76cf89-fbf2-47fd-a3f4-b891fa780b60",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('identityRemoveExternalAccountWithReadPermissionsMonitoringEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "identityRemoveExternalAccountWithOwnerPermissionsMonitoring",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/f8456c1c-aa66-4dfb-861a-25d127b775c9",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('identityRemoveExternalAccountWithOwnerPermissionsMonitoringEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "identityRemoveDeprecatedAccountWithOwnerPermissionsMonitoring",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/ebb62a0c-3560-49e1-89ed-27e074e9f8ad",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('identityRemoveDeprecatedAccountWithOwnerPermissionsMonitoringEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "identityRemoveDeprecatedAccountMonitoring",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/6b1cbf55-e8b6-442f-ba4c-7246b6381474",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('identityRemoveDeprecatedAccountMonitoringEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "webAppRestrictCORSAccessMonitoring",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/5744710e-cc2f-4ee8-8809-3b11e89f4bc9",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('webAppRestrictCORSAccessMonitoringEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "vmssSystemUpdatesMonitoring",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/c3f317a7-a95c-4547-b7e7-11017ebdf2fe",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('vmssSystemUpdatesMonitoringEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "identityEnableMFAForWritePermissionsMonitoring",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9297c21d-2ed6-4474-b48f-163f75654ce3",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('identityEnableMFAForWritePermissionsMonitoringEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "identityEnableMFAForReadPermissionsMonitoring",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e3576e28-8b17-4677-84c3-db2990658d64",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('identityEnableMFAForReadPermissionsMonitoringEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "identityEnableMFAForOwnerPermissionsMonitoring",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/aa633080-8b72-40c4-a2d7-d00c03e80bed",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('identityEnableMFAForOwnerPermissionsMonitoringEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "longtermGeoRedundantBackupEnabledAzureSQLDatabases",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/d38fc420-0735-4ef3-ac11-c806f651a570",
+      "parameters": {
+        "effect": {
+          "value": "[parameters('longtermGeoRedundantBackupEnabledAzureSQLDatabasesEffect')]"
+        }
+      }
+    },
+    {
+      "policyDefinitionReferenceId": "vulnerabilitiesSecurityConfigurationsRemediated",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e8cbc669-f12d-49eb-93e7-9273119e9933",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "ensureHTTPVersionLatestForAPIApp",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/991310cd-e9f3-47bc-b7b6-f57b557d07db",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "ensureHTTPVersionLatestForFunctionApp",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e2c1c086-2d84-4019-bff3-c44ccd95113c",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "ensureHTTPVersionLatestForWebApp",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/8c122334-9d20-4eb8-89ea-ac9a705b74ae",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "ensureJavaVersionLatestForAPIApp",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/88999f4c-376a-45c8-bcb3-4058f713cf39",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "ensureJavaVersionLatestForFunctionApp",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9d0b6ea4-93e2-4578-bf2f-6bb17d22b4bc",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "ensureJavaVersionLatestForWebApp",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/496223c3-ad65-4ecd-878a-bae78737e9ed",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "ensurePHPVersionLatestForAPIApp",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/1bc1795e-d44a-4d48-9b3b-6fff0fd5f9ba",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "ensurePHPVersionLatestForWebApp",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/7261b898-8a84-4db8-9e04-18527132abb3",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "ensurePythonVersionLatestForAPIApp",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/74c3584d-afae-46f7-a20a-6f8adba71a16",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "ensurePythonVersionLatestForFunctionApp",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/7238174a-fd10-4ef0-817e-fc820a951d73",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "ensurePythonVersionLatestForWebApp",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/7008174a-fd10-4ef0-817e-fc820a951d73",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "ensureTLSVersionLatestForAPIApp",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/8cb6aa8b-9e41-4f4e-aa25-089a7ac2581e",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "ensureTLSVersionLatestForFunctionApp",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/f9d614c5-c173-4d56-95a7-b4437057d193",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "ensureTLSVersionLatestForWebApp",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/f0e6e85b-9b9f-4a4b-b67b-f730d42f1b0b",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "kubernetesServicesUpgradedToNonVulnerableKubernetesVersion",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/fb893a29-21bb-418c-a157-e99480ec364c",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "emailNotificationToSubscriptionOwnerHighSeverityAlertsEnabled",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0b15565f-aa9e-48ba-8619-45960f2c314d",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "securityContactEmailAddressForSubscription",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4f4f78b8-e367-4b10-a341-d9a4ad5cf1c7",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "logAnalyticsAgentUnstalledVMScaleSets",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/efbde977-ba53-4479-b8e9-10b957924fbf",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "logAnalyticsAgentUnstalledVMs",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/a70ca396-0a34-413a-88e1-b956c1e683be",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "microsftIaaSAntimalwareExtensionShouldBeDeployedOnWindowsServers",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9b597639-28e4-48eb-b506-56b05d366257",
+      "parameters": {}
+    },
+    {
+      "policyDefinitionReferenceId": "NetworkWatcherShouldBeEnabled",
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/b6e2945c-0b7b-40f5-9233-7a5323b5cdc6",
+      "parameters": {}
+    }
+  ]
+}
+

@@ -1,0 +1,25 @@
+{
+  "identity": {
+    "principalId": "bd1c4f32-24fc-4dab-9427-b84023210b29",
+    "tenantId": "896470ca-9c6e-4176-9b38-5a655403c638",
+    "type": "SystemAssigned"
+  },
+  "properties": {
+    "displayName": "ASC-Monitoring",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policySetDefinitions/1f3afdf9-d0c9-4c3d-847f-89da613e70a8",
+    "scope": "/providers/Microsoft.Management/managementGroups/ESJH",
+    "description": "ASC-Monitoring",
+    "metadata": {
+      "createdBy": "b790b1e1-6f46-488b-8c5a-708b0db9a149",
+      "createdOn": "2021-01-10T21:00:45.676203Z",
+      "updatedBy": null,
+      "updatedOn": null
+    },
+    "enforcementMode": "Default"
+  },
+  "id": "/providers/Microsoft.Management/managementGroups/ESJH/providers/Microsoft.Authorization/policyAssignments/Deploy-ASC-Monitoring",
+  "type": "Microsoft.Authorization/policyAssignments",
+  "name": "Deploy-ASC-Monitoring",
+  "location": "westeurope"
+}
+

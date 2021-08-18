@@ -1,0 +1,58 @@
+{
+  "roleName": "SQL DB Contributor",
+  "type": "BuiltInRole",
+  "description": "Lets you manage SQL databases, but not access to them. Also, you can't manage their security-related policies or their parent SQL servers.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Authorization/*/read",
+        "Microsoft.Insights/alertRules/*",
+        "Microsoft.ResourceHealth/availabilityStatuses/read",
+        "Microsoft.Resources/deployments/*",
+        "Microsoft.Resources/subscriptions/resourceGroups/read",
+        "Microsoft.Sql/locations/*/read",
+        "Microsoft.Sql/servers/databases/*",
+        "Microsoft.Sql/servers/read",
+        "Microsoft.Support/*",
+        "Microsoft.Insights/metrics/read",
+        "Microsoft.Insights/metricDefinitions/read"
+      ],
+      "notActions": [
+        "Microsoft.Sql/servers/databases/ledgerDigestUploads/write",
+        "Microsoft.Sql/servers/databases/ledgerDigestUploads/disable/action",
+        "Microsoft.Sql/managedInstances/databases/currentSensitivityLabels/*",
+        "Microsoft.Sql/managedInstances/databases/recommendedSensitivityLabels/*",
+        "Microsoft.Sql/managedInstances/databases/schemas/tables/columns/sensitivityLabels/*",
+        "Microsoft.Sql/managedInstances/databases/securityAlertPolicies/*",
+        "Microsoft.Sql/managedInstances/databases/sensitivityLabels/*",
+        "Microsoft.Sql/managedInstances/databases/vulnerabilityAssessments/*",
+        "Microsoft.Sql/managedInstances/securityAlertPolicies/*",
+        "Microsoft.Sql/managedInstances/vulnerabilityAssessments/*",
+        "Microsoft.Sql/servers/databases/auditingSettings/*",
+        "Microsoft.Sql/servers/databases/auditRecords/read",
+        "Microsoft.Sql/servers/databases/currentSensitivityLabels/*",
+        "Microsoft.Sql/servers/databases/dataMaskingPolicies/*",
+        "Microsoft.Sql/servers/databases/extendedAuditingSettings/*",
+        "Microsoft.Sql/servers/databases/recommendedSensitivityLabels/*",
+        "Microsoft.Sql/servers/databases/schemas/tables/columns/sensitivityLabels/*",
+        "Microsoft.Sql/servers/databases/securityAlertPolicies/*",
+        "Microsoft.Sql/servers/databases/securityMetrics/*",
+        "Microsoft.Sql/servers/databases/sensitivityLabels/*",
+        "Microsoft.Sql/servers/databases/vulnerabilityAssessments/*",
+        "Microsoft.Sql/servers/databases/vulnerabilityAssessmentScans/*",
+        "Microsoft.Sql/servers/databases/vulnerabilityAssessmentSettings/*",
+        "Microsoft.Sql/servers/vulnerabilityAssessments/*"
+      ],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2015-02-02T21:55:09.8806423Z",
+  "updatedOn": "2021-06-09T20:32:10.4467708Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

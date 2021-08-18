@@ -1,0 +1,25 @@
+{
+  "identity": {
+    "principalId": "4f3a2551-ea2f-43c6-9623-8950156d19b7",
+    "tenantId": "896470ca-9c6e-4176-9b38-5a655403c638",
+    "type": "SystemAssigned"
+  },
+  "properties": {
+    "displayName": "Deploy-SQL-Audit",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/a6fb4358-5bf4-4ad7-ba82-2cd2f41ce5e9",
+    "scope": "/providers/Microsoft.Management/managementGroups/ESJH-landingzones",
+    "description": "Deploy-SQL-Audit",
+    "metadata": {
+      "createdBy": "b790b1e1-6f46-488b-8c5a-708b0db9a149",
+      "createdOn": "2021-01-10T20:58:36.7738188Z",
+      "updatedBy": null,
+      "updatedOn": null
+    },
+    "enforcementMode": "Default"
+  },
+  "id": "/providers/Microsoft.Management/managementGroups/ESJH-landingzones/providers/Microsoft.Authorization/policyAssignments/Deploy-SQL-DB-Auditing",
+  "type": "Microsoft.Authorization/policyAssignments",
+  "name": "Deploy-SQL-DB-Auditing",
+  "location": "westeurope"
+}
+

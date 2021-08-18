@@ -1,0 +1,28 @@
+{
+  "roleName": "Spatial Anchors Account Contributor",
+  "type": "BuiltInRole",
+  "description": "Lets you manage spatial anchors in your account, but not delete them",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.MixedReality/SpatialAnchorsAccounts/create/action",
+        "Microsoft.MixedReality/SpatialAnchorsAccounts/discovery/read",
+        "Microsoft.MixedReality/SpatialAnchorsAccounts/properties/read",
+        "Microsoft.MixedReality/SpatialAnchorsAccounts/query/read",
+        "Microsoft.MixedReality/SpatialAnchorsAccounts/submitdiag/read",
+        "Microsoft.MixedReality/SpatialAnchorsAccounts/write"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2018-12-21T17:57:41.1420864Z",
+  "updatedOn": "2019-02-13T06:13:39.8686435Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

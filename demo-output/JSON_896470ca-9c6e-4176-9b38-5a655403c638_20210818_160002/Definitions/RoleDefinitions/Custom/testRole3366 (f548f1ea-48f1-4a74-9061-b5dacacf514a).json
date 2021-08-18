@@ -1,0 +1,27 @@
+{
+  "roleName": "testRole3366",
+  "type": "CustomRole",
+  "description": "test custom role requestId 3366",
+  "assignableScopes": [
+    "/subscriptions/4dfa3b56-55bf-4059-802a-24e44a4fb60f"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "*"
+      ],
+      "notActions": [
+        "Microsoft.Authorization/*/Write",
+        "Microsoft.Authorization/elevateAccess/Action",
+        "Microsoft.Blueprint/blueprintAssignments/write",
+        "Microsoft.Blueprint/blueprintAssignments/delete",
+        "Microsoft.Compute/galleries/share/action"
+      ]
+    }
+  ],
+  "createdOn": "2021-07-18T15:22:38.3553982Z",
+  "updatedOn": "2021-07-19T19:45:44.3902957Z",
+  "createdBy": "acf4c68f-7b15-4d70-935b-26116fc2426a",
+  "updatedBy": "c64d2776-a210-428f-b54f-a4a5dd7f8ef8"
+}
+

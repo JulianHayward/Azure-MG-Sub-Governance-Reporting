@@ -1,0 +1,31 @@
+{
+  "roleName": "Kubernetes Cluster - Azure Arc Onboarding",
+  "type": "BuiltInRole",
+  "description": "Role definition to authorize any user/service to create connectedClusters resource",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Authorization/*/read",
+        "Microsoft.Insights/alertRules/*",
+        "Microsoft.Resources/deployments/write",
+        "Microsoft.Resources/subscriptions/operationresults/read",
+        "Microsoft.Resources/subscriptions/read",
+        "Microsoft.Resources/subscriptions/resourceGroups/read",
+        "Microsoft.Kubernetes/connectedClusters/Write",
+        "Microsoft.Kubernetes/connectedClusters/read",
+        "Microsoft.Support/*"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2019-11-18T17:00:02.2087147Z",
+  "updatedOn": "2020-02-10T22:40:48.3317559Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

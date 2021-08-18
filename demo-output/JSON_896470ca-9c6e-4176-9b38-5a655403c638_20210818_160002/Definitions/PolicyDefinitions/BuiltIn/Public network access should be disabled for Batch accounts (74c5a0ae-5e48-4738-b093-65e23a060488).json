@@ -1,0 +1,43 @@
+{
+  "displayName": "Public network access should be disabled for Batch accounts",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Disabling public network access on a Batch account improves security by ensuring your Batch account can only be accessed from a private endpoint. Learn more about disabling public network access at https://docs.microsoft.com/azure/batch/private-connectivity.",
+  "metadata": {
+    "version": "1.0.0",
+    "category": "Batch"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "The desired effect of the policy"
+      },
+      "allowedValues": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.Batch/batchAccounts"
+        },
+        {
+          "field": "Microsoft.Batch/batchAccounts/publicNetworkAccess",
+          "notEquals": "Disabled"
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]"
+    }
+  }
+}
+

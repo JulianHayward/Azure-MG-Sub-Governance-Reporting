@@ -1,0 +1,32 @@
+{
+  "roleName": "Key Vault Contributor",
+  "type": "BuiltInRole",
+  "description": "Lets you manage key vaults, but not access to them.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Authorization/*/read",
+        "Microsoft.Insights/alertRules/*",
+        "Microsoft.KeyVault/*",
+        "Microsoft.Resources/deployments/*",
+        "Microsoft.Resources/subscriptions/resourceGroups/read",
+        "Microsoft.Support/*"
+      ],
+      "notActions": [
+        "Microsoft.KeyVault/locations/deletedVaults/purge/action",
+        "Microsoft.KeyVault/hsmPools/*",
+        "Microsoft.KeyVault/managedHsms/*"
+      ],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2016-02-25T17:08:28.5184971Z",
+  "updatedOn": "2020-09-17T00:42:51.7334302Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

@@ -1,0 +1,25 @@
+{
+  "roleName": "HDInsight Domain Services Contributor",
+  "type": "BuiltInRole",
+  "description": "Can Read, Create, Modify and Delete Domain Services related operations needed for HDInsight Enterprise Security Package",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.AAD/*/read",
+        "Microsoft.AAD/domainServices/*/read",
+        "Microsoft.AAD/domainServices/oucontainer/*"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2018-09-12T22:42:51.7451109Z",
+  "updatedOn": "2018-09-12T23:06:45.7641599Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

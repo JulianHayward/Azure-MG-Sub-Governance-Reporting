@@ -1,0 +1,15 @@
+{
+  "RoleAssignmentId": "/providers/Microsoft.Management/managementGroups/CUST_T5/providers/Microsoft.Authorization/roleAssignments/3c72bcce-6116-4d33-9f8a-927083beee40",
+  "Scope": "/providers/Microsoft.Management/managementGroups/CUST_T5",
+  "DisplayName": "ESDeploymentAccount",
+  "SignInName": "ESDeploymentAccount@AzGovViz.onmicrosoft.com",
+  "RoleDefinitionName": "Owner",
+  "RoleDefinitionId": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+  "ObjectId": "b790b1e1-6f46-488b-8c5a-708b0db9a149",
+  "ObjectType": "User",
+  "CanDelegate": false,
+  "Description": null,
+  "ConditionVersion": null,
+  "Condition": null
+}
+

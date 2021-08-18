@@ -1,0 +1,33 @@
+{
+  "roleName": "Media Services Streaming Endpoints Administrator",
+  "type": "BuiltInRole",
+  "description": "Create, read, modify, and delete Streaming Endpoints; read-only access to other Media Services resources.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Authorization/*/read",
+        "Microsoft.Insights/alertRules/*",
+        "Microsoft.Insights/metrics/read",
+        "Microsoft.Insights/metricDefinitions/read",
+        "Microsoft.Resources/deployments/*",
+        "Microsoft.Resources/subscriptions/resourceGroups/read",
+        "Microsoft.ResourceHealth/availabilityStatuses/read",
+        "Microsoft.Media/mediaservices/*/read",
+        "Microsoft.Media/mediaservices/assets/listStreamingLocators/action",
+        "Microsoft.Media/mediaservices/streamingLocators/listPaths/action",
+        "Microsoft.Media/mediaservices/streamingEndpoints/*"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2021-04-19T23:22:04.4594851Z",
+  "updatedOn": "2021-06-11T21:18:02.3864536Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

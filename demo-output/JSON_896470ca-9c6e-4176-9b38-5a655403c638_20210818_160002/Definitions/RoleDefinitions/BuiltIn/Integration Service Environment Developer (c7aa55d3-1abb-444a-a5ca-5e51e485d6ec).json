@@ -1,0 +1,26 @@
+{
+  "roleName": "Integration Service Environment Developer",
+  "type": "BuiltInRole",
+  "description": "Allows developers to create and update workflows, integration accounts and API connections in integration service environments.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Authorization/*/read",
+        "Microsoft.Support/*",
+        "Microsoft.Logic/integrationServiceEnvironments/read",
+        "Microsoft.Logic/integrationServiceEnvironments/*/join/action"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2020-02-20T21:09:00.5627875Z",
+  "updatedOn": "2020-12-13T02:18:15.6697797Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

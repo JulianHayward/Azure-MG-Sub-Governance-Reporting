@@ -1,0 +1,15 @@
+{
+  "RoleAssignmentId": "/subscriptions/4dfa3b56-55bf-4059-802a-24e44a4fb60f/providers/Microsoft.Authorization/roleAssignments/79041f69-fb87-4da7-8676-6431f7ad43a8",
+  "Scope": "/subscriptions/4dfa3b56-55bf-4059-802a-24e44a4fb60f",
+  "DisplayName": "Jolly Jumper",
+  "SignInName": "JollyJumper@AzGovViz.onmicrosoft.com",
+  "RoleDefinitionName": "Monitoring Reader",
+  "RoleDefinitionId": "43d0d8ad-25c7-4714-9337-8ba259a9fe05",
+  "ObjectId": "192ff2e5-52de-4c93-b220-f9ced74068b0",
+  "ObjectType": "User",
+  "CanDelegate": false,
+  "Description": null,
+  "ConditionVersion": null,
+  "Condition": null
+}
+

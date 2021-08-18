@@ -1,0 +1,45 @@
+{
+  "displayName": "Azure Backup should be enabled for Virtual Machines",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Ensure protection of your Azure Virtual Machines by enabling Azure Backup. Azure Backup is a secure and cost effective data protection solution for Azure.",
+  "metadata": {
+    "version": "2.0.0",
+    "category": "Backup"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.Compute/virtualMachines"
+        },
+        {
+          "field": "id",
+          "notContains": "/resourceGroups/databricks-rg-"
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.RecoveryServices/backupprotecteditems"
+      }
+    }
+  }
+}
+

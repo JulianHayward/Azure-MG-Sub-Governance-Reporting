@@ -1,0 +1,51 @@
+{
+  "displayName": "[Preview]: Secure Boot should be enabled on supported Windows virtual machines",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Enable Secure Boot on supported Windows virtual machines to mitigate against malicious and unauthorized changes to the boot chain. Once enabled, only trusted bootloaders, kernel and kernel drivers will be allowed to run. This assessment only applies to trusted launch enabled Windows virtual machines.",
+  "metadata": {
+    "category": "Security Center",
+    "version": "1.0.0-preview",
+    "preview": true
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "Audit",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.Compute/virtualMachines"
+        },
+        {
+          "field": "Microsoft.Compute/virtualMachines/storageProfile.imageReference.offer",
+          "like": "windows*"
+        },
+        {
+          "field": "Microsoft.Compute/virtualMachines/securityProfile.uefiSettings",
+          "exists": "true"
+        },
+        {
+          "field": "Microsoft.Compute/virtualMachines/securityProfile.uefiSettings.secureBootEnabled",
+          "notequals": "true"
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]"
+    }
+  }
+}
+

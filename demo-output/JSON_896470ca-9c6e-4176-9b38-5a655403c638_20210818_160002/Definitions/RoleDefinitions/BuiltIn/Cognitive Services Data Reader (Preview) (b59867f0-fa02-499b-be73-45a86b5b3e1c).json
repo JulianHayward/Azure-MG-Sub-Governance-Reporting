@@ -1,0 +1,23 @@
+{
+  "roleName": "Cognitive Services Data Reader (Preview)",
+  "type": "BuiltInRole",
+  "description": "Lets you read Cognitive Services data.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.CognitiveServices/*/read"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2019-02-13T20:02:12.6849986Z",
+  "updatedOn": "2019-02-13T22:53:55.167529Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

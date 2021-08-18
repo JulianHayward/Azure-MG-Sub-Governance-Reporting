@@ -1,0 +1,30 @@
+{
+  "roleName": "Storage Queue Data Contributor",
+  "type": "BuiltInRole",
+  "description": "Allows for read, write, and delete access to Azure Storage queues and queue messages",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Storage/storageAccounts/queueServices/queues/delete",
+        "Microsoft.Storage/storageAccounts/queueServices/queues/read",
+        "Microsoft.Storage/storageAccounts/queueServices/queues/write"
+      ],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.Storage/storageAccounts/queueServices/queues/messages/delete",
+        "Microsoft.Storage/storageAccounts/queueServices/queues/messages/read",
+        "Microsoft.Storage/storageAccounts/queueServices/queues/messages/write",
+        "Microsoft.Storage/storageAccounts/queueServices/queues/messages/process/action"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2017-12-21T00:01:24.7972312Z",
+  "updatedOn": "2021-01-25T01:32:24.1141692Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

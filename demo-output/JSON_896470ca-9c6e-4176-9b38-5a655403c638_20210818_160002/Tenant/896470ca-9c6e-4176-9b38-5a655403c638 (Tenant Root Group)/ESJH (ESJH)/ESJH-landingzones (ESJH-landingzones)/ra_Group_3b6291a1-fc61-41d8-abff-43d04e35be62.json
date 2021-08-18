@@ -1,0 +1,15 @@
+{
+  "RoleAssignmentId": "/providers/Microsoft.Management/managementGroups/ESJH-landingzones/providers/Microsoft.Authorization/roleAssignments/3b6291a1-fc61-41d8-abff-43d04e35be62",
+  "Scope": "/providers/Microsoft.Management/managementGroups/ESJH-landingzones",
+  "DisplayName": "3rdPartyStaff",
+  "SignInName": null,
+  "RoleDefinitionName": "Reader",
+  "RoleDefinitionId": "acdd72a7-3385-48ef-bd42-f606fba81ae7",
+  "ObjectId": "cb036073-f86b-46e1-9726-1eaccb62a678",
+  "ObjectType": "Group",
+  "CanDelegate": false,
+  "Description": null,
+  "ConditionVersion": null,
+  "Condition": null
+}
+

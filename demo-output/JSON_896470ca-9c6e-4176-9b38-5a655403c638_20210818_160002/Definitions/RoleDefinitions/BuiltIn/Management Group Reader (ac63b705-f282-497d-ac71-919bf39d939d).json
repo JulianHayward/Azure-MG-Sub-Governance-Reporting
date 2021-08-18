@@ -1,0 +1,24 @@
+{
+  "roleName": "Management Group Reader",
+  "type": "BuiltInRole",
+  "description": "Management Group Reader Role",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Management/managementGroups/read",
+        "Microsoft.Management/managementGroups/subscriptions/read"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2018-06-22T00:31:03.4295347Z",
+  "updatedOn": "2020-07-06T18:09:27.1441705Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

@@ -1,0 +1,25 @@
+{
+  "roleName": "Azure Maps Data Contributor",
+  "type": "BuiltInRole",
+  "description": "Grants access to read, write, and delete access to map related data from an Azure maps account.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.Maps/accounts/*/read",
+        "Microsoft.Maps/accounts/*/write",
+        "Microsoft.Maps/accounts/*/delete"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2020-05-07T20:55:05.064541Z",
+  "updatedOn": "2020-05-07T20:55:05.064541Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

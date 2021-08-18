@@ -1,0 +1,23 @@
+{
+  "roleName": "Search Index Data Contributor",
+  "type": "BuiltInRole",
+  "description": "Grants full access to Azure Cognitive Search index data.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.Search/searchServices/indexes/documents/*"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2021-06-01T22:15:16.5388472Z",
+  "updatedOn": "2021-06-02T18:55:58.1815252Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

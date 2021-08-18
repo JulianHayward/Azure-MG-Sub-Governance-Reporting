@@ -1,0 +1,36 @@
+{
+  "roleName": "Graph Owner",
+  "type": "BuiltInRole",
+  "description": "Create and manage all aspects of the Enterprise Graph - Ontology, Schema mapping, Conflation and Conversational AI and Ingestions",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.EnterpriseKnowledgeGraph/services/conflation/read",
+        "Microsoft.EnterpriseKnowledgeGraph/services/conflation/write",
+        "Microsoft.EnterpriseKnowledgeGraph/services/sourceschema/read",
+        "Microsoft.EnterpriseKnowledgeGraph/services/sourceschema/write",
+        "Microsoft.EnterpriseKnowledgeGraph/services/knowledge/read",
+        "Microsoft.EnterpriseKnowledgeGraph/services/knowledge/write",
+        "Microsoft.EnterpriseKnowledgeGraph/services/intentclassification/read",
+        "Microsoft.EnterpriseKnowledgeGraph/services/intentclassification/write",
+        "Microsoft.EnterpriseKnowledgeGraph/services/ingestion/read",
+        "Microsoft.EnterpriseKnowledgeGraph/services/ingestion/write",
+        "Microsoft.EnterpriseKnowledgeGraph/services/ontology/read",
+        "Microsoft.EnterpriseKnowledgeGraph/services/ontology/write",
+        "Microsoft.EnterpriseKnowledgeGraph/services/delete",
+        "Microsoft.EnterpriseKnowledgeGraph/operations/read"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2019-02-23T21:07:22.5844236Z",
+  "updatedOn": "2019-02-28T20:21:18.9318073Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

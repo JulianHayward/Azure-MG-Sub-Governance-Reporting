@@ -1,0 +1,76 @@
+{
+  "displayName": "Configure Azure Defender to be enabled on SQL managed instances",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Enable Azure Defender on your Azure SQL Managed Instances to detect anomalous activities indicating unusual and potentially harmful attempts to access or exploit databases.",
+  "metadata": {
+    "version": "1.0.0",
+    "category": "SQL"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "DeployIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "DeployIfNotExists"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "field": "type",
+      "equals": "Microsoft.Sql/managedInstances"
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.Sql/managedInstances/securityAlertPolicies",
+        "name": "Default",
+        "evaluationDelay": "AfterProvisioning",
+        "existenceCondition": {
+          "field": "Microsoft.Sql/securityAlertPolicies.state",
+          "equals": "Enabled"
+        },
+        "roleDefinitionIds": [
+          "/providers/microsoft.authorization/roleDefinitions/056cd41c-7e88-42e1-933e-88ba6a50c9c3"
+        ],
+        "deployment": {
+          "properties": {
+            "mode": "incremental",
+            "template": {
+              "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+              "contentVersion": "1.0.0.0",
+              "parameters": {
+                "instanceName": {
+                  "type": "string"
+                }
+              },
+              "variables": {},
+              "resources": [
+                {
+                  "name": "[concat(parameters('instanceName'), '/Default')]",
+                  "type": "Microsoft.Sql/managedInstances/securityAlertPolicies",
+                  "apiVersion": "2020-11-01-preview",
+                  "properties": {
+                    "state": "Enabled"
+                  }
+                }
+              ]
+            },
+            "parameters": {
+              "instanceName": {
+                "value": "[field('name')]"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+

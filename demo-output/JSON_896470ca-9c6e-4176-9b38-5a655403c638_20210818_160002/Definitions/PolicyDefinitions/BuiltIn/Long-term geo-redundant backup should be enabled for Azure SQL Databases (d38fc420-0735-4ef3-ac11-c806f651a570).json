@@ -1,0 +1,62 @@
+{
+  "displayName": "Long-term geo-redundant backup should be enabled for Azure SQL Databases",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "This policy audits any Azure SQL Database with long-term geo-redundant backup not enabled.",
+  "metadata": {
+    "version": "2.0.0",
+    "category": "SQL"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.Sql/servers/databases"
+        },
+        {
+          "field": "name",
+          "notEquals": "master"
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies",
+        "name": "default",
+        "existenceCondition": {
+          "anyOf": [
+            {
+              "field": "Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies/weeklyRetention",
+              "notEquals": "PT0S"
+            },
+            {
+              "field": "Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies/monthlyRetention",
+              "notEquals": "PT0S"
+            },
+            {
+              "field": "Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies/yearlyRetention",
+              "notEquals": "PT0S"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+

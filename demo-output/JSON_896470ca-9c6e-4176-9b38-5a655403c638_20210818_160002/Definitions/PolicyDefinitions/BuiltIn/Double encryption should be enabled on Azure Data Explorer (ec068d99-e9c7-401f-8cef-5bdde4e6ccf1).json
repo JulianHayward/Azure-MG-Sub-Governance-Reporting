@@ -1,0 +1,51 @@
+{
+  "displayName": "Double encryption should be enabled on Azure Data Explorer",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Enabling double encryption helps protect and safeguard your data to meet your organizational security and compliance commitments. When double encryption has been enabled, data in the storage account is encrypted twice, once at the service level and once at the infrastructure level, using two different encryption algorithms and two different keys.",
+  "metadata": {
+    "version": "2.0.0",
+    "category": "Azure Data Explorer"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.Kusto/Clusters"
+        },
+        {
+          "anyOf": [
+            {
+              "field": "Microsoft.Kusto/clusters/enableDoubleEncryption",
+              "exists": false
+            },
+            {
+              "field": "Microsoft.Kusto/clusters/enableDoubleEncryption",
+              "equals": false
+            }
+          ]
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]"
+    }
+  }
+}
+

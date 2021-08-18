@@ -1,0 +1,26 @@
+{
+  "identity": {
+    "principalId": "e2511ca5-bcb3-4dbd-9d91-c18590c2a9d2",
+    "tenantId": "896470ca-9c6e-4176-9b38-5a655403c638",
+    "type": "SystemAssigned"
+  },
+  "properties": {
+    "displayName": "Deploy-VM-Backup",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/98d0b9f8-fd90-49c9-88e2-d3baf3b0dd86",
+    "scope": "/providers/Microsoft.Management/managementGroups/ESJH-landingzones",
+    "parameters": {},
+    "description": "Deploy-VM-Backup",
+    "metadata": {
+      "createdBy": "b790b1e1-6f46-488b-8c5a-708b0db9a149",
+      "createdOn": "2021-01-10T20:58:34.0460087Z",
+      "updatedBy": null,
+      "updatedOn": null
+    },
+    "enforcementMode": "Default"
+  },
+  "id": "/providers/Microsoft.Management/managementGroups/ESJH-landingzones/providers/Microsoft.Authorization/policyAssignments/Deploy-VM-Backup",
+  "type": "Microsoft.Authorization/policyAssignments",
+  "name": "Deploy-VM-Backup",
+  "location": "westeurope"
+}
+

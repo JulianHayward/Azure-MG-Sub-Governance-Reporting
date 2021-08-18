@@ -1,0 +1,27 @@
+{
+  "roleName": "Azure Service Bus Data Receiver",
+  "type": "BuiltInRole",
+  "description": "Allows for receive access to Azure Service Bus resources.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.ServiceBus/*/queues/read",
+        "Microsoft.ServiceBus/*/topics/read",
+        "Microsoft.ServiceBus/*/topics/subscriptions/read"
+      ],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.ServiceBus/*/receive/action"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2019-05-10T06:43:01.6343849Z",
+  "updatedOn": "2019-08-21T22:55:24.3423558Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

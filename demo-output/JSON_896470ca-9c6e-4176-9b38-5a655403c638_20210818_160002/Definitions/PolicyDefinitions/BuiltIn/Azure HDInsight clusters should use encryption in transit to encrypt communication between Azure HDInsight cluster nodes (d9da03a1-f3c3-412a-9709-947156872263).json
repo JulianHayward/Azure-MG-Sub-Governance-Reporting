@@ -1,0 +1,51 @@
+{
+  "displayName": "Azure HDInsight clusters should use encryption in transit to encrypt communication between Azure HDInsight cluster nodes",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Data can be tampered with during transmission between Azure HDInsight cluster nodes. Enabling encryption in transit addresses problems of misuse and tampering during this transmission.",
+  "metadata": {
+    "version": "1.0.0",
+    "category": "HDInsight"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.HDInsight/clusters"
+        },
+        {
+          "anyOf": [
+            {
+              "field": "Microsoft.HDInsight/clusters/encryptionInTransitProperties.isEncryptionInTransitEnabled",
+              "exists": false
+            },
+            {
+              "field": "Microsoft.HDInsight/clusters/encryptionInTransitProperties.isEncryptionInTransitEnabled",
+              "equals": false
+            }
+          ]
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]"
+    }
+  }
+}
+

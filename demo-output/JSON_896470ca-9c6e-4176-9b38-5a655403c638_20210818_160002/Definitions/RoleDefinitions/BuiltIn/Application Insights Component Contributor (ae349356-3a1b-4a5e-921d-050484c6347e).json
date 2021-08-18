@@ -1,0 +1,35 @@
+{
+  "roleName": "Application Insights Component Contributor",
+  "type": "BuiltInRole",
+  "description": "Can manage Application Insights components",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Authorization/*/read",
+        "Microsoft.Insights/alertRules/*",
+        "Microsoft.Insights/generateLiveToken/read",
+        "Microsoft.Insights/metricAlerts/*",
+        "Microsoft.Insights/components/*",
+        "Microsoft.Insights/scheduledqueryrules/*",
+        "Microsoft.Insights/topology/read",
+        "Microsoft.Insights/transactions/read",
+        "Microsoft.Insights/webtests/*",
+        "Microsoft.ResourceHealth/availabilityStatuses/read",
+        "Microsoft.Resources/deployments/*",
+        "Microsoft.Resources/subscriptions/resourceGroups/read",
+        "Microsoft.Support/*"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2015-02-02T21:55:09.8806423Z",
+  "updatedOn": "2021-01-19T19:26:12.8117169Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

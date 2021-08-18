@@ -1,0 +1,27 @@
+{
+  "roleName": "Remote Rendering Client",
+  "type": "BuiltInRole",
+  "description": "Provides user with manage session, rendering and diagnostics capabilities for Azure Remote Rendering.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.MixedReality/RemoteRenderingAccounts/managesessions/read",
+        "Microsoft.MixedReality/RemoteRenderingAccounts/managesessions/action",
+        "Microsoft.MixedReality/RemoteRenderingAccounts/managesessions/delete",
+        "Microsoft.MixedReality/RemoteRenderingAccounts/render/read",
+        "Microsoft.MixedReality/RemoteRenderingAccounts/diagnostic/read"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2020-01-23T18:32:52.7069824Z",
+  "updatedOn": "2020-01-23T18:32:52.7069824Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+
