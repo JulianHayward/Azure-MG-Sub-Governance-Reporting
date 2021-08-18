@@ -256,7 +256,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210817_3",
+    [string]$AzGovVizVersion = "v5_major_20210818_2",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
     [switch]$DebugAzAPICall,
@@ -369,10 +369,11 @@ $startTime = get-date -format "dd-MMM-yyyy HH:mm:ss"
 $startTimeUTC = ((Get-Date).ToUniversalTime()).ToString("dd-MMM-yyyy HH:mm:ss")
 Write-Host "Start AzGovViz $($startTime) (#$($AzGovVizVersion))"
 
-#region specific
+
+$checkContext = Get-AzContext -ErrorAction Stop
+Write-Host "Environment: $($checkContext.Environment.Name)"
 if (-not $NoAzureConsumption) {
-    $checkContext = Get-AzContext -ErrorAction Stop
-    Write-Host "Environment: $($checkContext.Environment.Name)"
+    #cloudEnvironment specific
     if ($checkContext.Environment.Name -eq "AzureChinaCloud") {
         Write-Host "Azure Billing not supported in AzureChinaCloud, skipping Consumption.."
         $NoAzureConsumption = $true
@@ -388,6 +389,8 @@ if ($LargeTenant -eq $true) {
 }
 
 $htParameters = @{ }
+$htParameters.AzGovVizVersion = $AzGovVizVersion
+$htParameters.AzCloudEnv = $checkContext.Environment.Name
 
 if ($AzureDevOpsWikiAsCode) {
     $htParameters.AzureDevOpsWikiAsCode = $true
@@ -672,7 +675,7 @@ $htBearerAccessToken = @{}
 
 #API
 #region azapicall
-function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumption, $getGroup, $getGroupMembersCount, $getApp, $getSp, $getGuests, $caller, $consistencyLevel, $getCount, $getPolicyCompliance) {
+function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumption, $getGroup, $getGroupMembersCount, $getApp, $getSp, $getGuests, $caller, $consistencyLevel, $getCount, $getPolicyCompliance, $getMgAscSecureScore) {
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
     $retryAuthorizationFailed = 5
@@ -806,7 +809,8 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     $catchResult.error.code -like "*UnknownError*" -or
                     $catchResult.error.code -like "*BlueprintNotFound*" -or
                     $catchResult.error.code -eq "500" -or
-                    $catchResult.error.code -eq "ResourceRequestsThrottled") {
+                    $catchResult.error.code -eq "ResourceRequestsThrottled" -or
+                    ($getMgAscSecureScore -and $catchResult.error.code -eq "BadRequest")) {
                     #if ($catchResult.error.code -like "*ResponseTooLarge*") {
                     if ($getPolicyCompliance -and $catchResult.error.code -like "*ResponseTooLarge*") {
                         Write-Host "Info: $currentTask - (StatusCode: '$($azAPIRequest.StatusCode)') Response too large, skipping this scope."
@@ -823,7 +827,10 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     }
                     if ($catchResult.error.code -like "*AuthorizationFailed*") {
                         if ($retryAuthorizationFailedCounter -gt $retryAuthorizationFailed) {
-                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - $retryAuthorizationFailed retries failed - investigate that error!/exit"
+                            Write-Host "- - - - - - - - - - - - - - - - - - - - "
+                            Write-Host "!Please report at aka.ms/AzGovViz and provide the following dump" -ForegroundColor Yellow
+                            Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - $retryAuthorizationFailed retries failed - EXIT"
+                            $htParameters | format-table -autosize | Out-host
                             if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
                                 Write-Error "Error"
                             }
@@ -916,7 +923,10 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             }
                         }
                         else {
-                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) investigate that error!/exit"
+                            Write-Host "- - - - - - - - - - - - - - - - - - - - "
+                            Write-Host "!Please report at aka.ms/AzGovViz and provide the following dump" -ForegroundColor Yellow
+                            Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
+                            $htParameters | format-table -autosize | Out-host
                             if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
                                 Write-Error "Error"
                             }
@@ -932,7 +942,25 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     if ($catchResult.error.code -eq "ResourceRequestsThrottled") {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - throttled! sleeping 11 seconds"
                         start-sleep -Seconds 11
-                    }                    
+                    }    
+                    if ($getMgAscSecureScore -and $catchResult.error.code -eq "BadRequest"){
+                        $sleepSec = @(1, 1, 2, 3, 5, 7, 9, 10, 13, 15, 20, 25, 30, 45, 60, 60, 60)[$tryCounter]
+                        $maxTries = 15
+                        if ($tryCounter -gt $maxTries){
+                            Write-Host " $currentTask - capitulation after $maxTries attempts"
+                            return "capitulation"
+                            <#
+                            if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                                Write-Error "Error"
+                            }
+                            else {
+                                Throw "Error - AzGovViz: check the last console output for details"
+                            }
+                            #>
+                        }
+                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again (trying $maxTries times) in $sleepSec second(s)"
+                        Start-Sleep -Seconds $sleepSec
+                    }                
                 }
                 else {
                     if (-not $catchResult.code -and -not $catchResult.error.code -and -not $catchResult.message -and -not $catchResult.error.message -and -not $catchResult -and $tryCounter -lt 6) {
@@ -946,7 +974,10 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         }
                     }
                     else {
-                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) investigate that error!/exit"
+                        Write-Host "- - - - - - - - - - - - - - - - - - - - "
+                        Write-Host "!Please report at aka.ms/AzGovViz and provide the following dump" -ForegroundColor Yellow
+                        Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
+                        $htParameters | format-table -autosize | Out-host
                         if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
                             Write-Error "Error"
                         }
@@ -1336,7 +1367,6 @@ foreach ($azModule in $azModules) {
 
 #check AzContext
 #region checkAzContext
-$checkContext = Get-AzContext -ErrorAction Stop
 Write-Host "Checking Az Context"
 if (-not $checkContext) {
     Write-Host " Context test failed: No context found. Please connect to Azure (run: Connect-AzAccount) and re-run AzGovViz" -ForegroundColor Red
@@ -18985,6 +19015,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $htConsumptionExceptionLog = @{}
     $htConsumptionExceptionLog.Mg = @{}
     $htConsumptionExceptionLog.Sub = @{}
+
     #subscriptions
     $startGetSubscriptions = get-date
     $currentTask = "Getting all Subscriptions"
@@ -19081,20 +19112,25 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 "@
         
         $start = get-date
-        $getMgAscSecureScore = AzAPICall -uri $uri -method "POST" -currentTask $currentTask -body $body -listenOn "Content"
+        $getMgAscSecureScore = AzAPICall -uri $uri -method "POST" -currentTask $currentTask -body $body -listenOn "Content" -getMgAscSecureScore $true
         $end = get-date
         Write-Host " Getting ASC Secure Score for Management Groups duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds" 
         $htMgASCSecureScore = @{}
         if ($getMgAscSecureScore){
-            foreach ($entry in $getMgAscSecureScore.data){
-                $script:htMgASCSecureScore.($entry.mgId) = @{}
-                if ($entry.secureScore -eq 404){
-                    $script:htMgASCSecureScore.($entry.mgId).SecureScore = "n/a"
-                }
-                else{
-                    $script:htMgASCSecureScore.($entry.mgId).SecureScore = $entry.secureScore
-                }
-            } 
+            if ($getMgAscSecureScore -eq "capitulation"){
+                Write-Host "  ASC SecureScore for Management Groups will not be available" -ForegroundColor Yellow
+            }
+            else{
+                foreach ($entry in $getMgAscSecureScore.data){
+                    $script:htMgASCSecureScore.($entry.mgId) = @{}
+                    if ($entry.secureScore -eq 404){
+                        $script:htMgASCSecureScore.($entry.mgId).SecureScore = "n/a"
+                    }
+                    else{
+                        $script:htMgASCSecureScore.($entry.mgId).SecureScore = $entry.secureScore
+                    }
+                } 
+            }
         }
     }
     #endregion ASCSecureScoreMGs
@@ -19189,8 +19225,6 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 foreach ($batch in $subscriptionsBatch) { 
                     $batchCnt++
                     $subscriptionIdsOptimizedForBody = '"{0}"' -f (($batch.Group).subscriptionId -join '","')
-                    #test
-                    #write-host "processing: $subscriptionIdsOptimizedForBody"
                     $currenttask = "Getting Consumption data #batch$($batchCnt)/$(($subscriptionsBatch | Measure-Object).Count) (scope MG '$($ManagementGroupId)') for $(($batch.Group).Count) Subscriptions (QuotaId Whitelist: '$($SubscriptionQuotaIdWhitelist -join ", ")') for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
                     Write-Host "$currentTask" -ForegroundColor Cyan
 
@@ -19332,7 +19366,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                             $function:GetJWTDetails = $using:funcGetJWTDetails
                             #endregion UsingVARs
 
-                            $currentTask = "  Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess))) (QuotaId Whitelist: '$($SubscriptionQuotaIdWhitelist -join ", ")') for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
+                            $currentTask = "  Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
                             #test
                             write-host $currentTask
                             #https://docs.microsoft.com/en-us/rest/api/cost-management/query/usage
@@ -19512,7 +19546,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                         $function:GetJWTDetails = $using:funcGetJWTDetails
                         #endregion UsingVARs
 
-                        $currentTask = "  Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess))) for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
+                        $currentTask = "  Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
                         #test
                         write-host $currentTask
                         #https://docs.microsoft.com/en-us/rest/api/cost-management/query/usage
@@ -22743,8 +22777,15 @@ Write-Host "AzGovViz duration: $((NEW-TIMESPAN -Start $startAzGovViz -End $endAz
 $endTime = get-date -format "dd-MMM-yyyy HH:mm:ss"
 Write-Host "End AzGovViz $endTime"
 
-Write-Host "Dumping Error Messages" -ForegroundColor Yellow
-$Error | Out-host
+Write-Host "Checking for errors"
+if ($Error.Count -gt 0){
+    Write-Host "Dumping $($Error.Count) Errors (handled by AzGovViz):" -ForegroundColor Yellow
+    $Error | Out-host
+}
+else{
+    Write-Host "Error count is 0"
+}
+
 
 if ($DoTranscript) {
     Stop-Transcript
