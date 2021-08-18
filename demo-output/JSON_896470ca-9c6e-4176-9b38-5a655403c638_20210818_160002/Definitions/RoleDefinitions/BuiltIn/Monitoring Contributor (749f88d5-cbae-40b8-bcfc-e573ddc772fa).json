@@ -1,0 +1,54 @@
+{
+  "roleName": "Monitoring Contributor",
+  "type": "BuiltInRole",
+  "description": "Can read all monitoring data and update monitoring settings.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "*/read",
+        "Microsoft.AlertsManagement/alerts/*",
+        "Microsoft.AlertsManagement/alertsSummary/*",
+        "Microsoft.Insights/actiongroups/*",
+        "Microsoft.Insights/activityLogAlerts/*",
+        "Microsoft.Insights/AlertRules/*",
+        "Microsoft.Insights/components/*",
+        "Microsoft.Insights/dataCollectionRules/*",
+        "Microsoft.Insights/dataCollectionRuleAssociations/*",
+        "Microsoft.Insights/DiagnosticSettings/*",
+        "Microsoft.Insights/eventtypes/*",
+        "Microsoft.Insights/LogDefinitions/*",
+        "Microsoft.Insights/metricalerts/*",
+        "Microsoft.Insights/MetricDefinitions/*",
+        "Microsoft.Insights/Metrics/*",
+        "Microsoft.Insights/Register/Action",
+        "Microsoft.Insights/scheduledqueryrules/*",
+        "Microsoft.Insights/webtests/*",
+        "Microsoft.Insights/workbooks/*",
+        "Microsoft.Insights/privateLinkScopes/*",
+        "Microsoft.Insights/privateLinkScopeOperationStatuses/*",
+        "Microsoft.OperationalInsights/workspaces/write",
+        "Microsoft.OperationalInsights/workspaces/intelligencepacks/*",
+        "Microsoft.OperationalInsights/workspaces/savedSearches/*",
+        "Microsoft.OperationalInsights/workspaces/search/action",
+        "Microsoft.OperationalInsights/workspaces/sharedKeys/action",
+        "Microsoft.OperationalInsights/workspaces/storageinsightconfigs/*",
+        "Microsoft.Support/*",
+        "Microsoft.WorkloadMonitor/monitors/*",
+        "Microsoft.AlertsManagement/smartDetectorAlertRules/*",
+        "Microsoft.AlertsManagement/actionRules/*",
+        "Microsoft.AlertsManagement/smartGroups/*"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2016-09-21T19:21:08.4345976Z",
+  "updatedOn": "2020-11-18T00:02:00.4868141Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

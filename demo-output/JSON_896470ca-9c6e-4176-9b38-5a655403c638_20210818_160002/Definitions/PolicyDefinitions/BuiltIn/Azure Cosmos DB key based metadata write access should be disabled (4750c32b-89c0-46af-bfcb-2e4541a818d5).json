@@ -1,0 +1,35 @@
+{
+  "displayName": "Azure Cosmos DB key based metadata write access should be disabled",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "This policy enables you to ensure all Azure Cosmos DB accounts disable key based metadata write access.",
+  "metadata": {
+    "version": "1.0.0",
+    "category": "Cosmos DB"
+  },
+  "parameters": {},
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.DocumentDB/databaseAccounts"
+        },
+        {
+          "field": "Microsoft.DocumentDB/databaseAccounts/disableKeyBasedMetadataWriteAccess",
+          "notEquals": true
+        }
+      ]
+    },
+    "then": {
+      "effect": "append",
+      "details": [
+        {
+          "field": "Microsoft.DocumentDB/databaseAccounts/disableKeyBasedMetadataWriteAccess",
+          "value": true
+        }
+      ]
+    }
+  }
+}
+

@@ -1,0 +1,30 @@
+{
+  "roleName": "Security Detonation Chamber Submitter",
+  "type": "BuiltInRole",
+  "description": "Allowed to create submissions to Security Detonation Chamber",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.SecurityDetonation/chambers/submissions/delete",
+        "Microsoft.SecurityDetonation/chambers/submissions/write",
+        "Microsoft.SecurityDetonation/chambers/submissions/read",
+        "Microsoft.SecurityDetonation/chambers/submissions/files/read",
+        "Microsoft.SecurityDetonation/chambers/submissions/accesskeyview/read",
+        "Microsoft.SecurityDetonation/chambers/platforms/metadata/read",
+        "Microsoft.SecurityDetonation/chambers/workflows/metadata/read",
+        "Microsoft.SecurityDetonation/chambers/toolsets/metadata/read"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2020-10-01T08:55:21.3980274Z",
+  "updatedOn": "2021-05-23T13:37:59.3020751Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

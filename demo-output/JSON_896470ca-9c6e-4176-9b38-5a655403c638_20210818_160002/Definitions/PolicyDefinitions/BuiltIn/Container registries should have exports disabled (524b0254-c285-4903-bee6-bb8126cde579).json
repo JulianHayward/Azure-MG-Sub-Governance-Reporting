@@ -1,0 +1,51 @@
+{
+  "displayName": "Container registries should have exports disabled",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Disabling exports improves security by ensuring data in a registry is accessed solely via the dataplane ('docker pull'). Data cannot be moved out of the registry via 'acr import' or via 'acr transfer'. In order to disable exports, public network access must be disabled. Learn more at: https://aka.ms/acr/export-policy.",
+  "metadata": {
+    "version": "1.0.0",
+    "category": "Container Registry"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.ContainerRegistry/registries"
+        },
+        {
+          "anyOf": [
+            {
+              "field": "Microsoft.ContainerRegistry/registries/policies.exportPolicy.status",
+              "notEquals": "Disabled"
+            },
+            {
+              "field": "Microsoft.ContainerRegistry/registries/publicNetworkAccess",
+              "notEquals": "Disabled"
+            }
+          ]
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]"
+    }
+  }
+}
+

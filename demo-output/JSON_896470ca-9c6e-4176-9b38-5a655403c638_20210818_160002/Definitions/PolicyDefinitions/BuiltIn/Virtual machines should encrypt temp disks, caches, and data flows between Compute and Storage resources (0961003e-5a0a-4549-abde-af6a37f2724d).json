@@ -1,0 +1,48 @@
+{
+  "displayName": "Virtual machines should encrypt temp disks, caches, and data flows between Compute and Storage resources",
+  "policyType": "BuiltIn",
+  "mode": "All",
+  "description": "Virtual machines without an enabled disk encryption will be monitored by Azure Security Center as recommendations.",
+  "metadata": {
+    "version": "2.0.1",
+    "category": "Security Center"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "field": "type",
+      "in": [
+        "Microsoft.ClassicCompute/virtualMachines",
+        "Microsoft.Compute/virtualMachines"
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.Security/assessments",
+        "name": "d57a4221-a804-52ca-3dea-768284f06bb7",
+        "existenceCondition": {
+          "field": "Microsoft.Security/assessments/status.code",
+          "in": [
+            "NotApplicable",
+            "Healthy"
+          ]
+        }
+      }
+    }
+  }
+}
+

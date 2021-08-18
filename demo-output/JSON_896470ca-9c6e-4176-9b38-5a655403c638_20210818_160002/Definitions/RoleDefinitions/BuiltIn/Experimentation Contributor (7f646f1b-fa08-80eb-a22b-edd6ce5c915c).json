@@ -1,0 +1,33 @@
+{
+  "roleName": "Experimentation Contributor",
+  "type": "BuiltInRole",
+  "description": "Experimentation Contributor",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Resources/subscriptions/resourceGroups/read",
+        "Microsoft.Experimentation/experimentWorkspaces/read"
+      ],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.Experimentation/experimentWorkspaces/experimentationGroups/read",
+        "Microsoft.Experimentation/experimentWorkspaces/experimentationGroups/write",
+        "Microsoft.Experimentation/experimentWorkspaces/experimentationGroups/delete",
+        "Microsoft.Experimentation/experimentWorkspaces/experimentationGroups/experiment/action",
+        "Microsoft.Experimentation/experimentWorkspaces/experimentationGroups/emergencystop/action",
+        "Microsoft.Experimentation/experimentWorkspaces/read",
+        "Microsoft.Experimentation/experimentWorkspaces/write",
+        "Microsoft.Experimentation/experimentWorkspaces/delete"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2019-12-13T00:08:08.6679591Z",
+  "updatedOn": "2021-03-05T16:02:04.1620231Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

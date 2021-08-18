@@ -1,0 +1,15 @@
+{
+  "RoleAssignmentId": "/subscriptions/4dfa3b56-55bf-4059-802a-24e44a4fb60f/providers/Microsoft.Authorization/roleAssignments/06e10e98-b109-40c5-bf73-691605bf66e3",
+  "Scope": "/subscriptions/4dfa3b56-55bf-4059-802a-24e44a4fb60f",
+  "DisplayName": "group00",
+  "SignInName": null,
+  "RoleDefinitionName": "Reader",
+  "RoleDefinitionId": "acdd72a7-3385-48ef-bd42-f606fba81ae7",
+  "ObjectId": "c1916fdd-08d8-439e-a329-d540c6f002a8",
+  "ObjectType": "Group",
+  "CanDelegate": false,
+  "Description": null,
+  "ConditionVersion": null,
+  "Condition": null
+}
+

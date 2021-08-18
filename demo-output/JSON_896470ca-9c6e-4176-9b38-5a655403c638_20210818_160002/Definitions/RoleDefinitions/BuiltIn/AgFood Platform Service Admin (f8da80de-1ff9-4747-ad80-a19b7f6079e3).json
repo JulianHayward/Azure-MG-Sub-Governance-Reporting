@@ -1,0 +1,23 @@
+{
+  "roleName": "AgFood Platform Service Admin",
+  "type": "BuiltInRole",
+  "description": "Provides admin access to AgFood Platform Service",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.AgFoodPlatform/*"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2020-09-14T10:21:09.8039209Z",
+  "updatedOn": "2020-09-14T10:21:09.8039209Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

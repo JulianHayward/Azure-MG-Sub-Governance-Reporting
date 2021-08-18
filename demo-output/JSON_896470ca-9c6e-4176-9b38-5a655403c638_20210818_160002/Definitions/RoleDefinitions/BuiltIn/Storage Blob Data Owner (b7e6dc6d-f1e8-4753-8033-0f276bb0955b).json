@@ -1,0 +1,26 @@
+{
+  "roleName": "Storage Blob Data Owner",
+  "type": "BuiltInRole",
+  "description": "Allows for full access to Azure Storage blob containers and data, including assigning POSIX access control.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Storage/storageAccounts/blobServices/containers/*",
+        "Microsoft.Storage/storageAccounts/blobServices/generateUserDelegationKey/action"
+      ],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/*"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2018-12-04T07:02:58.2775257Z",
+  "updatedOn": "2019-07-16T21:30:33.7002563Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

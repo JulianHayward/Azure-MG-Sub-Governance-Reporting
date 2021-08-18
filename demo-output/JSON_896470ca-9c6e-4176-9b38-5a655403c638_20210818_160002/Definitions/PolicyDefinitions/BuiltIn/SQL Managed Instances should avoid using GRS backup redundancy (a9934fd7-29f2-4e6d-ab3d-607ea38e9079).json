@@ -1,0 +1,52 @@
+{
+  "displayName": "SQL Managed Instances should avoid using GRS backup redundancy",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Managed Instances should avoid using the default geo-redundant storage for backups, if data residency rules require data to stay within a specific region. Note: Azure Policy is not enforced when creating a database using T-SQL. If not explicitly specified, database with geo-redundant backup storage is created via T-SQL.",
+  "metadata": {
+    "version": "1.0.1",
+    "category": "SQL"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "Deny",
+        "Disabled"
+      ],
+      "defaultValue": "Deny"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.Sql/managedInstances"
+        },
+        {
+          "not": {
+            "anyOf": [
+              {
+                "field": "Microsoft.Sql/managedInstances/storageAccountType",
+                "equals": "LRS"
+              },
+              {
+                "field": "Microsoft.Sql/managedInstances/storageAccountType",
+                "equals": "ZRS"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]"
+    }
+  }
+}
+

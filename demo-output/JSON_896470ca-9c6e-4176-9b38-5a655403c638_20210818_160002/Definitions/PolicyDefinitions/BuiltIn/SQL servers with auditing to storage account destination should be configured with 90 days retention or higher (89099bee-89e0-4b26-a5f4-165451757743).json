@@ -1,0 +1,70 @@
+{
+  "displayName": "SQL servers with auditing to storage account destination should be configured with 90 days retention or higher",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "For incident investigation purposes, we recommend setting the data retention for your SQL Server' auditing to storage account destination to at least 90 days. Confirm that you are meeting the necessary retention rules for the regions in which you are operating. This is sometimes required for compliance with regulatory standards.",
+  "metadata": {
+    "version": "3.0.0",
+    "category": "SQL"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.Sql/servers"
+        },
+        {
+          "field": "kind",
+          "notContains": "analytics"
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.Sql/servers/auditingSettings",
+        "name": "default",
+        "existenceCondition": {
+          "anyOf": [
+            {
+              "allOf": [
+                {
+                  "field": "Microsoft.Sql/servers/auditingSettings/isAzureMonitorTargetEnabled",
+                  "equals": true
+                },
+                {
+                  "field": "Microsoft.Sql/servers/auditingSettings/storageEndpoint",
+                  "equals": ""
+                }
+              ]
+            },
+            {
+              "field": "Microsoft.Sql/servers/auditingSettings/retentionDays",
+              "equals": 0
+            },
+            {
+              "field": "Microsoft.Sql/servers/auditingSettings/retentionDays",
+              "greaterOrEquals": 90
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+

@@ -1,0 +1,15 @@
+{
+  "RoleAssignmentId": "/providers/Microsoft.Management/managementGroups/ESJH/providers/Microsoft.Authorization/roleAssignments/ddc0ff3c-a3d0-5d5b-ba19-116b6572acbf",
+  "Scope": "/providers/Microsoft.Management/managementGroups/ESJH",
+  "DisplayName": "Deploy-LX-Arc-Monitoring",
+  "SignInName": null,
+  "RoleDefinitionName": "Owner",
+  "RoleDefinitionId": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+  "ObjectId": "9ed01b2b-9311-41a8-8897-0a329047be49",
+  "ObjectType": "ServicePrincipal",
+  "CanDelegate": false,
+  "Description": null,
+  "ConditionVersion": null,
+  "Condition": null
+}
+

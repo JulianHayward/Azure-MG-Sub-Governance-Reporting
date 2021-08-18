@@ -1,0 +1,25 @@
+{
+  "roleName": "AcrImageSigner",
+  "type": "BuiltInRole",
+  "description": "acr image signer",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.ContainerRegistry/registries/sign/write"
+      ],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.ContainerRegistry/registries/trustedCollections/write"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2018-03-15T23:23:08.4038322Z",
+  "updatedOn": "2021-06-23T21:07:39.6776759Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

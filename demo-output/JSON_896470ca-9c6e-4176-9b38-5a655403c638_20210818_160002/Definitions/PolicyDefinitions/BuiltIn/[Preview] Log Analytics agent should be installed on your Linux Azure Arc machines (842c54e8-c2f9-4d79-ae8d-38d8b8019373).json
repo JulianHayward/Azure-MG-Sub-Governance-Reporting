@@ -1,0 +1,62 @@
+{
+  "displayName": "[Preview]: Log Analytics agent should be installed on your Linux Azure Arc machines",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "This policy audits Linux Azure Arc machines if the Log Analytics agent is not installed.",
+  "metadata": {
+    "version": "1.0.0-preview",
+    "category": "Monitoring",
+    "preview": true
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.HybridCompute/machines"
+        },
+        {
+          "field": "Microsoft.HybridCompute/imageOffer",
+          "like": "linux*"
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.HybridCompute/machines/extensions",
+        "existenceCondition": {
+          "allOf": [
+            {
+              "field": "Microsoft.HybridCompute/machines/extensions/type",
+              "equals": "OmsAgentForLinux"
+            },
+            {
+              "field": "Microsoft.HybridCompute/machines/extensions/publisher",
+              "equals": "Microsoft.EnterpriseCloud.Monitoring"
+            },
+            {
+              "field": "Microsoft.HybridCompute/machines/extensions/provisioningState",
+              "equals": "Succeeded"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+

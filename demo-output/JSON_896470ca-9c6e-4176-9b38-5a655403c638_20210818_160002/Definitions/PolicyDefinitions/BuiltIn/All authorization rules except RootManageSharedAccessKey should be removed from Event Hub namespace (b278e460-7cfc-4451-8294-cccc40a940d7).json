@@ -1,0 +1,43 @@
+{
+  "displayName": "All authorization rules except RootManageSharedAccessKey should be removed from Event Hub namespace",
+  "policyType": "BuiltIn",
+  "mode": "All",
+  "description": "Event Hub clients should not use a namespace level access policy that provides access to all queues and topics in a namespace. To align with the least privilege security model, you should create access policies at the entity level for queues and topics to provide access to only the specific entity",
+  "metadata": {
+    "version": "1.0.1",
+    "category": "Event Hub"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "The effect determines what happens when the policy rule is evaluated to match"
+      },
+      "allowedValues": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.EventHub/namespaces/authorizationRules"
+        },
+        {
+          "field": "name",
+          "notEquals": "RootManageSharedAccessKey"
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]"
+    }
+  }
+}
+

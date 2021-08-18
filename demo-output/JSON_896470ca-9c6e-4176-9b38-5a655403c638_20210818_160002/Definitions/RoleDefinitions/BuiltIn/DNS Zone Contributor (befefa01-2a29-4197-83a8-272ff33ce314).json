@@ -1,0 +1,29 @@
+{
+  "roleName": "DNS Zone Contributor",
+  "type": "BuiltInRole",
+  "description": "Lets you manage DNS zones and record sets in Azure DNS, but does not let you control who has access to them.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Authorization/*/read",
+        "Microsoft.Insights/alertRules/*",
+        "Microsoft.Network/dnsZones/*",
+        "Microsoft.ResourceHealth/availabilityStatuses/read",
+        "Microsoft.Resources/deployments/*",
+        "Microsoft.Resources/subscriptions/resourceGroups/read",
+        "Microsoft.Support/*"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2015-10-15T23:33:25.9730842Z",
+  "updatedOn": "2016-05-31T23:13:40.3710365Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

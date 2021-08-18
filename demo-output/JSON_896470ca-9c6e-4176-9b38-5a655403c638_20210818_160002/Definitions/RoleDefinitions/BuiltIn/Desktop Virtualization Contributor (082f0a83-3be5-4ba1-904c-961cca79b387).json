@@ -1,0 +1,28 @@
+{
+  "roleName": "Desktop Virtualization Contributor",
+  "type": "BuiltInRole",
+  "description": "Contributor of Desktop Virtualization.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.DesktopVirtualization/*",
+        "Microsoft.Resources/subscriptions/resourceGroups/read",
+        "Microsoft.Resources/deployments/*",
+        "Microsoft.Authorization/*/read",
+        "Microsoft.Insights/alertRules/*",
+        "Microsoft.Support/*"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2020-12-11T21:37:16.2910337Z",
+  "updatedOn": "2020-12-11T21:37:16.2910337Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

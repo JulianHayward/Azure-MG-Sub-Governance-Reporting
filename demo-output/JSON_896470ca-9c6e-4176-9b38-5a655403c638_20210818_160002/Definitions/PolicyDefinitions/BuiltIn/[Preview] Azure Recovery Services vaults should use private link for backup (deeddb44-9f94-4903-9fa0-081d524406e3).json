@@ -1,0 +1,61 @@
+{
+  "displayName": "[Preview]: Azure Recovery Services vaults should use private link for backup",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Azure Private Link lets you connect your virtual network to Azure services without a public IP address at the source or destination. The Private Link platform handles the connectivity between the consumer and services over the Azure backbone network. By mapping private endpoints to Azure Recovery Services vaults, data leakage risks are reduced. Learn more about private links at: https://aka.ms/AB-PrivateEndpoints.",
+  "metadata": {
+    "version": "2.0.0-preview",
+    "preview": true,
+    "category": "Backup"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "Audit",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.RecoveryServices/vaults"
+        },
+        {
+          "count": {
+            "field": "Microsoft.RecoveryServices/vaults/privateEndpointConnections[*]",
+            "where": {
+              "allOf": [
+                {
+                  "field": "Microsoft.RecoveryServices/vaults/privateEndpointConnections[*].privateLinkServiceConnectionState.status",
+                  "equals": "Approved"
+                },
+                {
+                  "field": "Microsoft.RecoveryServices/vaults/privateEndpointConnections[*].provisioningState",
+                  "equals": "Succeeded"
+                },
+                {
+                  "field": "Microsoft.RecoveryServices/vaults/privateEndpointConnections[*].id",
+                  "contains": ".backup"
+                }
+              ]
+            }
+          },
+          "less": 1
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]"
+    }
+  }
+}
+

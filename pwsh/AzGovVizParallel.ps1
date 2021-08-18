@@ -22437,7 +22437,7 @@ if (-not $NoJsonExport) {
     }
     if (($htCacheDefinitions).policy.Keys.Count -gt 0) {
         foreach ($policyDefinition in ($htCacheDefinitions).policy.Keys.Where( { ($htCacheDefinitions).policy.($_).Type -eq "BuiltIn" })) {
-            $jsonConverted = ($htCacheDefinitions).policy.($policyDefinition).Json | ConvertTo-Json -Depth 99 
+            $jsonConverted = ($htCacheDefinitions).policy.($policyDefinition).Json.properties | ConvertTo-Json -Depth 99 
             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicyDefinitionBuiltIn)$($DirectorySeparatorChar)$(RemoveInvalidFileNameChars ($htCacheDefinitions).policy.($policyDefinition).displayName) ($(($htCacheDefinitions).policy.($policyDefinition).Json.name)).json" -Encoding utf8
         }
     }
@@ -22450,7 +22450,7 @@ if (-not $NoJsonExport) {
     }
     if (($htCacheDefinitions).policySet.Keys.Count -gt 0) {
         foreach ($policySetDefinition in ($htCacheDefinitions).policySet.Keys.Where( { ($htCacheDefinitions).policySet.($_).Type -eq "BuiltIn" })) {
-            $jsonConverted = ($htCacheDefinitions).policySet.($policySetDefinition).Json | ConvertTo-Json -Depth 99 
+            $jsonConverted = ($htCacheDefinitions).policySet.($policySetDefinition).Json.properties | ConvertTo-Json -Depth 99 
             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicySetDefinitionBuiltIn)$($DirectorySeparatorChar)$(RemoveInvalidFileNameChars ($htCacheDefinitions).policySet.($policySetDefinition).displayName) ($(($htCacheDefinitions).policySet.($policySetDefinition).Json.name)).json" -Encoding utf8
         }
     }
@@ -22486,7 +22486,7 @@ if (-not $NoJsonExport) {
                     else {
                         $displayName = RemoveInvalidFileNameChars $hlp.properties.displayName
                     }
-                    $jsonConverted = $hlp | ConvertTo-Json -Depth 99
+                    $jsonConverted = $hlp.properties | ConvertTo-Json -Depth 99
                     $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($displayName) ($($hlp.name)).json" -Encoding utf8
                     $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicyDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
                     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
@@ -22505,7 +22505,7 @@ if (-not $NoJsonExport) {
                     else {
                         $displayName = RemoveInvalidFileNameChars $hlp.properties.displayName
                     }
-                    $jsonConverted = $hlp | ConvertTo-Json -Depth 99
+                    $jsonConverted = $hlp.properties | ConvertTo-Json -Depth 99
                     $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($displayName) ($($hlp.name)).json" -Encoding utf8
                     $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicySetDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
                     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
@@ -22564,7 +22564,7 @@ if (-not $NoJsonExport) {
                                 else {
                                     $displayName = RemoveInvalidFileNameChars $hlp.properties.displayName
                                 }
-                                $jsonConverted = $hlp | ConvertTo-Json -Depth 99
+                                $jsonConverted = $hlp.properties | ConvertTo-Json -Depth 99
                                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($displayName) ($($hlp.name)).json" -Encoding utf8
                                 $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicyDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
                                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
@@ -22583,7 +22583,7 @@ if (-not $NoJsonExport) {
                                 else {
                                     $displayName = RemoveInvalidFileNameChars $hlp.properties.displayName
                                 }
-                                $jsonConverted = $hlp | ConvertTo-Json -Depth 99
+                                $jsonConverted = $hlp.properties | ConvertTo-Json -Depth 99
                                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($displayName) ($($hlp.name)).json" -Encoding utf8
                                 $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicySetDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
                                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {

@@ -1,0 +1,46 @@
+{
+  "displayName": "Security Center standard pricing tier should be selected",
+  "policyType": "BuiltIn",
+  "mode": "All",
+  "description": "The standard pricing tier enables threat detection for networks and virtual machines, providing threat intelligence, anomaly detection, and behavior analytics in Azure Security Center",
+  "metadata": {
+    "version": "1.0.0",
+    "category": "Security Center"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "Audit",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.Security/pricings"
+        },
+        {
+          "field": "Microsoft.Security/pricings/pricingTier",
+          "exists": "true"
+        },
+        {
+          "field": "Microsoft.Security/pricings/pricingTier",
+          "notEquals": "Standard"
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]"
+    }
+  }
+}
+

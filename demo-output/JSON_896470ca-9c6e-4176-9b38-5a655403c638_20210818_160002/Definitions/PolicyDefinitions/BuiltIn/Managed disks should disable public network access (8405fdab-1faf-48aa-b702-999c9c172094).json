@@ -1,0 +1,45 @@
+{
+  "displayName": "Managed disks should disable public network access",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Disabling public network access improves security by ensuring that a managed disk isn't exposed on the public internet. Creating private endpoints can limit exposure of managed disks. Learn more at: https://aka.ms/disksprivatelinksdoc.",
+  "metadata": {
+    "version": "1.0.0",
+    "category": "Compute"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "The effect determines what happens when the policy rule is evaluated to match"
+      },
+      "allowedValues": [
+        "Audit",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.Compute/disks"
+        },
+        {
+          "field": "Microsoft.Compute/disks/networkAccessPolicy",
+          "notIn": [
+            "DenyAll",
+            "AllowPrivate"
+          ]
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]"
+    }
+  }
+}
+

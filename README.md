@@ -63,46 +63,12 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## Release history
 
-__Changes__ (2021-Aug-15 / Major)
+__Changes__ (2021-Aug-18 / Major)
 
-* ASC Secure Score for Management Groups
-* Bugfixes Consumption
-
-__Changes__ (2021-Aug-09 / Major)
-
+* Added ASC Secure Score for Management Groups
 * Policy Compliance - if API returns 'ResponseTooLarge' then flag Policy Compliance entries with 'skipped' for given scope
+* Added [demo-output](demo-output) folder containing all outputs (html, csv, md, json, log)
 * Bugfixes
-
-__Changes__ (2021-Aug-06 / Major)
-
-* Enriched Policy assignments with list of used parameters
-* Enriched Role assignments on Groups with Group member count
-* Optimize JSON outputs
-* CSP scenario error handling
-* Bugfixes
-* Performance optimization
-
-__Changes__ (2021-July-28 / Major)
-
-* As demanded by the community reactivated parameters `-PolicyAtScopeOnly` and `-RBACAtScopeOnly`
-* New paramter `-AADGroupMembersLimit`. Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved 
-* New parameter `-JsonExportExcludeResourceGroups` - JSON Export will not include ResourceGroups (Policy & Role assignments)
-* New parameter `-JsonExportExcludeResources`- JSON Export will not include Resources (Role assignments)
-* Bugfixes
-* Performance optimization
-
-__Changes__ (2021-July-22 / Major)
-
-* Full blown JSON definition output. Leveraging Git with this new capability you can easily track any changes that occurred in between the previous and last AzGovViz run.  
-![newBuiltInRoleDefinition](img/gitdiff600.jpg)  
-_* a new BuiltIn RBAC Role definition was added_
-* Renamed parameter `-PolicyIncludeResourceGroups` to , `-DoNotIncludeResourceGroupsOnPolicy` (from now Policy assignments on ResourceGroups will be included by default)
-* Renamed parameter `-RBACIncludeResourceGroupsAndResources` to , `-DoNotIncludeResourceGroupsAndResourcesOnRBAC` (from now Role assignments on ResourceGroups and Resources will be included by default)
-* New parameter `-HtmlTableRowsLimit`. Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 40.000
-* Added NonCompliance Message for Policy assignments
-* Cosmetics
-* Bugfixes
-* Performance optimization
 
 [Release history](history.md)
 
@@ -110,9 +76,9 @@ _* a new BuiltIn RBAC Role definition was added_
 
 ## Demo
 
-<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_202107021_1.html" target="_blank">![Demo](img/demo4_66.png)</a>
+<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210818_2.html" target="_blank">![Demo](img/demo4_66.png)</a>
 
-[Demo (v5_major_20210721_1)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_202107021_1.html)  
+[Demo (v5_major_20210818_2)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210818_2.html)  
 Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation
 
 ### Media
@@ -291,7 +257,7 @@ markdown in Azure DevOps Wiki as Code
   * Browsers tested: Edge, new Edge and Chrome
 * MD (Markdown) file
   * for use with Azure DevOps Wiki leveraging the [Mermaid](https://docs.microsoft.com/en-us/azure/devops/release-notes/2019/sprint-158-update#mermaid-diagram-support-in-wiki) plugin
-* JSON folder containing 
+* JSON folder ([demo-output](demo-output)) containing 
   * all Policy and Role assignments (Scopes: Tenant, Management Groups and Subscriptions)
   * all BuiltIn and Custom Policy/Set definitions (Scopes: Management Groups and Subscriptions)
   * all BuiltIn and Custom Role definitions
@@ -470,12 +436,12 @@ This permission is <b>mandatory</b> in each and every scenario!
   * `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 40.000
   * `-AADGroupMembersLimit` - Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved 
 
-* Passed tests: Powershell Core 7.1.2 on Windows
+* Passed tests: Powershell Core 7.1.3 on Windows
 * Passed tests: Powershell Core 7.1.3 Azure DevOps hosted ubuntu-18.04
 
 ## AzGovViz step by step
 
-Detailed __[Setup](setup.md) instructions__
+&#x1F4A1; Check the detailed __[Setup](setup.md)__ instructions
 
 ### AzGovViz in Azure DevOps
 

@@ -1,0 +1,24 @@
+{
+  "roleName": "Azure Connected SQL Server Onboarding",
+  "type": "BuiltInRole",
+  "description": "Microsoft.AzureArcData service role to access the resources of Microsoft.AzureArcData stored with RPSAAS.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.AzureArcData/sqlServerInstances/read",
+        "Microsoft.AzureArcData/sqlServerInstances/write"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2021-07-19T23:52:15.8885739Z",
+  "updatedOn": "2021-07-19T23:52:15.8885739Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

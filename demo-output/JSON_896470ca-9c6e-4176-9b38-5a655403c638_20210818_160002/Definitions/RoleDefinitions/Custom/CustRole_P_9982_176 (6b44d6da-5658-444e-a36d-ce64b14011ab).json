@@ -1,0 +1,26 @@
+{
+  "roleName": "CustRole_P_9982_176",
+  "type": "CustomRole",
+  "description": "Testing procedure 9982_176",
+  "assignableScopes": [
+    "/subscriptions/f28ba982-5ed0-4033-9bdf-e45e4b5df466"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "*"
+      ],
+      "notActions": [
+        "Microsoft.Authorization/*/Delete",
+        "Microsoft.Authorization/*/Write",
+        "Microsoft.Authorization/elevateAccess/Action",
+        "Microsoft.Blueprint/blueprintAssignments/delete"
+      ]
+    }
+  ],
+  "createdOn": "2021-05-18T18:03:13.3689603Z",
+  "updatedOn": "2021-05-18T18:23:40.930248Z",
+  "createdBy": "acf4c68f-7b15-4d70-935b-26116fc2426a",
+  "updatedBy": "b790b1e1-6f46-488b-8c5a-708b0db9a149"
+}
+

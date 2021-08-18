@@ -1,0 +1,15 @@
+{
+  "RoleAssignmentId": "/subscriptions/4dfa3b56-55bf-4059-802a-24e44a4fb60f/providers/Microsoft.Authorization/roleAssignments/70e14253-25d3-447f-9356-ac32985062a4",
+  "Scope": "/subscriptions/4dfa3b56-55bf-4059-802a-24e44a4fb60f",
+  "DisplayName": "Calamity Jane",
+  "SignInName": "Calamity_Jane_AzGovViz.net#EXT#@AzGovViz.onmicrosoft.com",
+  "RoleDefinitionName": "User Access Administrator",
+  "RoleDefinitionId": "18d7d88d-d35e-4fb5-a5c3-7773c20a72d9",
+  "ObjectId": "43b0f5e7-cb78-4e1a-b3da-1239647dfb74",
+  "ObjectType": "User",
+  "CanDelegate": false,
+  "Description": null,
+  "ConditionVersion": null,
+  "Condition": null
+}
+

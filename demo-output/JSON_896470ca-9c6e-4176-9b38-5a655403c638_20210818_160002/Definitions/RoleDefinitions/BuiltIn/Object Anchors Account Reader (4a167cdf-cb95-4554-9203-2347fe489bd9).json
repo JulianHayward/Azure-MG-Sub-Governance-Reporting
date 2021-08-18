@@ -1,0 +1,23 @@
+{
+  "roleName": "Object Anchors Account Reader",
+  "type": "BuiltInRole",
+  "description": "Lets you read ingestion jobs for an object anchors account.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.MixedReality/ObjectAnchorsAccounts/ingest/read"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2021-03-02T01:20:47.0279813Z",
+  "updatedOn": "2021-03-02T01:34:08.6743401Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

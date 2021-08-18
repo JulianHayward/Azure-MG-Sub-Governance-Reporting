@@ -1,0 +1,93 @@
+{
+  "displayName": "Resource logs in IoT Hub should be enabled",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Audit enabling of resource logs. This enables you to recreate activity trails to use for investigation purposes; when a security incident occurs or when your network is compromised",
+  "metadata": {
+    "version": "3.0.1",
+    "category": "Internet of Things"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    },
+    "requiredRetentionDays": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Required retention (days)",
+        "description": "The required resource logs retention in days"
+      },
+      "defaultValue": "365"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "field": "type",
+      "equals": "Microsoft.Devices/IotHubs"
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.Insights/diagnosticSettings",
+        "existenceCondition": {
+          "count": {
+            "field": "Microsoft.Insights/diagnosticSettings/logs[*]",
+            "where": {
+              "anyOf": [
+                {
+                  "allOf": [
+                    {
+                      "field": "Microsoft.Insights/diagnosticSettings/logs[*].retentionPolicy.enabled",
+                      "equals": "true"
+                    },
+                    {
+                      "anyOf": [
+                        {
+                          "field": "Microsoft.Insights/diagnosticSettings/logs[*].retentionPolicy.days",
+                          "equals": "0"
+                        },
+                        {
+                          "field": "Microsoft.Insights/diagnosticSettings/logs[*].retentionPolicy.days",
+                          "greaterOrEquals": "[parameters('requiredRetentionDays')]"
+                        }
+                      ]
+                    },
+                    {
+                      "field": "Microsoft.Insights/diagnosticSettings/logs.enabled",
+                      "equals": "true"
+                    }
+                  ]
+                },
+                {
+                  "allOf": [
+                    {
+                      "not": {
+                        "field": "Microsoft.Insights/diagnosticSettings/logs[*].retentionPolicy.enabled",
+                        "equals": "true"
+                      }
+                    },
+                    {
+                      "field": "Microsoft.Insights/diagnosticSettings/logs.enabled",
+                      "equals": "true"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "greaterOrEquals": 1
+        }
+      }
+    }
+  }
+}
+

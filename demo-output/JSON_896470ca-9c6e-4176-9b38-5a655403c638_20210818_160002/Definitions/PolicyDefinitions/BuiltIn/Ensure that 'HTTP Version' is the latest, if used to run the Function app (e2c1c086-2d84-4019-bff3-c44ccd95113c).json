@@ -1,0 +1,54 @@
+{
+  "displayName": "Ensure that 'HTTP Version' is the latest, if used to run the Function app",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Periodically, newer versions are released for HTTP either due to security flaws or to include additional functionality. Using the latest HTTP version for web apps to take advantage of security fixes, if any, and/or new functionalities of the newer version. Currently, this policy only applies to Linux web apps.",
+  "metadata": {
+    "version": "2.0.0",
+    "category": "App Service"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.Web/sites"
+        },
+        {
+          "field": "kind",
+          "like": "functionapp*"
+        },
+        {
+          "field": "kind",
+          "contains": "linux"
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.Web/sites/config",
+        "name": "web",
+        "existenceCondition": {
+          "field": "Microsoft.Web/sites/config/web.http20Enabled",
+          "equals": "true"
+        }
+      }
+    }
+  }
+}
+

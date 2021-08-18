@@ -1,0 +1,27 @@
+{
+  "roleName": "Automation Contributor",
+  "type": "BuiltInRole",
+  "description": "Manage azure automation resources and other resources using azure automation.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Automation/automationAccounts/*",
+        "Microsoft.Authorization/*/read",
+        "Microsoft.Resources/deployments/*",
+        "Microsoft.Resources/subscriptions/resourceGroups/read",
+        "Microsoft.Support/*"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2021-08-09T10:18:19.1054699Z",
+  "updatedOn": "2021-08-09T10:18:19.1054699Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

@@ -1,0 +1,51 @@
+{
+  "displayName": "Disk encryption should be enabled on Azure Data Explorer",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Enabling disk encryption helps protect and safeguard your data to meet your organizational security and compliance commitments.",
+  "metadata": {
+    "version": "2.0.0",
+    "category": "Azure Data Explorer"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.Kusto/Clusters"
+        },
+        {
+          "anyOf": [
+            {
+              "field": "Microsoft.Kusto/clusters/enableDiskEncryption",
+              "exists": false
+            },
+            {
+              "field": "Microsoft.Kusto/clusters/enableDiskEncryption",
+              "equals": false
+            }
+          ]
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]"
+    }
+  }
+}
+

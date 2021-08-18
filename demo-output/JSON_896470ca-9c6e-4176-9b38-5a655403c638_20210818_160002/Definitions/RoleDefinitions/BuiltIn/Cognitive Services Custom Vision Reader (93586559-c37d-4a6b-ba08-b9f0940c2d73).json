@@ -1,0 +1,28 @@
+{
+  "roleName": "Cognitive Services Custom Vision Reader",
+  "type": "BuiltInRole",
+  "description": "Read-only actions in the project. Readers can’t create or update the project.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.CognitiveServices/*/read"
+      ],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.CognitiveServices/accounts/CustomVision/*/read",
+        "Microsoft.CognitiveServices/accounts/CustomVision/projects/predictions/query/action"
+      ],
+      "notDataActions": [
+        "Microsoft.CognitiveServices/accounts/CustomVision/projects/export/read"
+      ]
+    }
+  ],
+  "createdOn": "2020-05-09T01:34:18.5328818Z",
+  "updatedOn": "2020-05-09T01:34:18.5328818Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

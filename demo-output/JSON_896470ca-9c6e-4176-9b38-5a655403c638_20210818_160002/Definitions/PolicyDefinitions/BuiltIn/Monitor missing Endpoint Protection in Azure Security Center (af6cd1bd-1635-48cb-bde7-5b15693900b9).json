@@ -1,0 +1,48 @@
+{
+  "displayName": "Monitor missing Endpoint Protection in Azure Security Center",
+  "policyType": "BuiltIn",
+  "mode": "All",
+  "description": "Servers without an installed Endpoint Protection agent will be monitored by Azure Security Center as recommendations",
+  "metadata": {
+    "version": "3.0.0",
+    "category": "Security Center"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "field": "type",
+      "in": [
+        "Microsoft.Compute/virtualMachines",
+        "Microsoft.ClassicCompute/virtualMachines"
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.Security/assessments",
+        "name": "3bcd234d-c9c7-c2a2-89e0-c01f419c1a8a",
+        "existenceCondition": {
+          "field": "Microsoft.Security/assessments/status.code",
+          "in": [
+            "NotApplicable",
+            "Healthy"
+          ]
+        }
+      }
+    }
+  }
+}
+

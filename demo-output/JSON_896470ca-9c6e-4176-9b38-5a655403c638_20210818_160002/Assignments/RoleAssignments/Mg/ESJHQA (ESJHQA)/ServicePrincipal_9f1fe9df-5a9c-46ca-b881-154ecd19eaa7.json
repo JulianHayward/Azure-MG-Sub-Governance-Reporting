@@ -1,0 +1,15 @@
+{
+  "RoleAssignmentId": "/providers/Microsoft.Management/managementGroups/ESJHQA/providers/Microsoft.Authorization/roleAssignments/9f1fe9df-5a9c-46ca-b881-154ecd19eaa7",
+  "Scope": "/providers/Microsoft.Management/managementGroups/ESJHQA",
+  "DisplayName": "AzOps",
+  "SignInName": null,
+  "RoleDefinitionName": "Owner",
+  "RoleDefinitionId": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+  "ObjectId": "c295384a-33d9-475e-abaf-d2fb0274299a",
+  "ObjectType": "ServicePrincipal",
+  "CanDelegate": false,
+  "Description": null,
+  "ConditionVersion": null,
+  "Condition": null
+}
+

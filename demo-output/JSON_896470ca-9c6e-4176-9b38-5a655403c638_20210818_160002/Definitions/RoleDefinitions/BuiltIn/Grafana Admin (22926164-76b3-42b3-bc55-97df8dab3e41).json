@@ -1,0 +1,23 @@
+{
+  "roleName": "Grafana Admin",
+  "type": "BuiltInRole",
+  "description": "Built-in Grafana admin role",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.Dashboard/grafana/ActAsGrafanaAdmin/action"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2021-07-15T21:32:35.380234Z",
+  "updatedOn": "2021-08-12T22:45:41.708387Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

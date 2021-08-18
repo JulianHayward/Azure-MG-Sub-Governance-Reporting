@@ -1,0 +1,32 @@
+{
+  "roleName": "Private DNS Zone Contributor",
+  "type": "BuiltInRole",
+  "description": "Lets you manage private DNS zone resources, but not the virtual networks they are linked to.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Insights/alertRules/*",
+        "Microsoft.Resources/deployments/*",
+        "Microsoft.Resources/subscriptions/resourceGroups/read",
+        "Microsoft.Support/*",
+        "Microsoft.Network/privateDnsZones/*",
+        "Microsoft.Network/privateDnsOperationResults/*",
+        "Microsoft.Network/privateDnsOperationStatuses/*",
+        "Microsoft.Network/virtualNetworks/read",
+        "Microsoft.Network/virtualNetworks/join/action",
+        "Microsoft.Authorization/*/read"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2019-07-10T19:31:15.5645518Z",
+  "updatedOn": "2019-07-11T21:12:01.7260648Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

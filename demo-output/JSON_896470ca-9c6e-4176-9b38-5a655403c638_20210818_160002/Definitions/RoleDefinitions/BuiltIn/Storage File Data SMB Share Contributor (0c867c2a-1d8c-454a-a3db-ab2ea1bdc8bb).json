@@ -1,0 +1,25 @@
+{
+  "roleName": "Storage File Data SMB Share Contributor",
+  "type": "BuiltInRole",
+  "description": "Allows for read, write, and delete access in Azure Storage file shares over SMB",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.Storage/storageAccounts/fileServices/fileshares/files/read",
+        "Microsoft.Storage/storageAccounts/fileServices/fileshares/files/write",
+        "Microsoft.Storage/storageAccounts/fileServices/fileshares/files/delete"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2019-07-01T20:54:35.483431Z",
+  "updatedOn": "2019-08-07T01:05:24.4309872Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

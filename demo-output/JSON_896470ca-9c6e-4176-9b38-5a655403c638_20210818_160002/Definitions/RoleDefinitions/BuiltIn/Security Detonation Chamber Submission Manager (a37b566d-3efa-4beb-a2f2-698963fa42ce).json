@@ -1,0 +1,33 @@
+{
+  "roleName": "Security Detonation Chamber Submission Manager",
+  "type": "BuiltInRole",
+  "description": "Allowed to create and manage submissions to Security Detonation Chamber",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.SecurityDetonation/chambers/submissions/delete",
+        "Microsoft.SecurityDetonation/chambers/submissions/write",
+        "Microsoft.SecurityDetonation/chambers/submissions/read",
+        "Microsoft.SecurityDetonation/chambers/submissions/files/read",
+        "Microsoft.SecurityDetonation/chambers/submissions/accesskeyview/read",
+        "Microsoft.SecurityDetonation/chambers/submissions/adminview/read",
+        "Microsoft.SecurityDetonation/chambers/submissions/analystview/read",
+        "Microsoft.SecurityDetonation/chambers/submissions/publicview/read",
+        "Microsoft.SecurityDetonation/chambers/platforms/metadata/read",
+        "Microsoft.SecurityDetonation/chambers/workflows/metadata/read",
+        "Microsoft.SecurityDetonation/chambers/toolsets/metadata/read"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2021-01-18T09:35:36.5739297Z",
+  "updatedOn": "2021-05-23T13:38:47.4627306Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

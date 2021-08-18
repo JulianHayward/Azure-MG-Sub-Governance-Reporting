@@ -1,0 +1,53 @@
+{
+  "roleName": "Site Recovery Reader",
+  "type": "BuiltInRole",
+  "description": "Lets you view Site Recovery status but not perform other management operations",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Authorization/*/read",
+        "Microsoft.RecoveryServices/locations/allocatedStamp/read",
+        "Microsoft.RecoveryServices/Vaults/extendedInformation/read",
+        "Microsoft.RecoveryServices/Vaults/monitoringAlerts/read",
+        "Microsoft.RecoveryServices/Vaults/monitoringConfigurations/notificationConfiguration/read",
+        "Microsoft.RecoveryServices/Vaults/read",
+        "Microsoft.RecoveryServices/Vaults/refreshContainers/read",
+        "Microsoft.RecoveryServices/Vaults/registeredIdentities/operationResults/read",
+        "Microsoft.RecoveryServices/Vaults/registeredIdentities/read",
+        "Microsoft.RecoveryServices/vaults/replicationAlertSettings/read",
+        "Microsoft.RecoveryServices/vaults/replicationEvents/read",
+        "Microsoft.RecoveryServices/vaults/replicationFabrics/read",
+        "Microsoft.RecoveryServices/vaults/replicationFabrics/replicationNetworks/read",
+        "Microsoft.RecoveryServices/vaults/replicationFabrics/replicationNetworks/replicationNetworkMappings/read",
+        "Microsoft.RecoveryServices/vaults/replicationFabrics/replicationProtectionContainers/read",
+        "Microsoft.RecoveryServices/vaults/replicationFabrics/replicationProtectionContainers/replicationProtectableItems/read",
+        "Microsoft.RecoveryServices/vaults/replicationFabrics/replicationProtectionContainers/replicationProtectedItems/read",
+        "Microsoft.RecoveryServices/vaults/replicationFabrics/replicationProtectionContainers/replicationProtectedItems/recoveryPoints/read",
+        "Microsoft.RecoveryServices/vaults/replicationFabrics/replicationProtectionContainers/replicationProtectionContainerMappings/read",
+        "Microsoft.RecoveryServices/vaults/replicationFabrics/replicationRecoveryServicesProviders/read",
+        "Microsoft.RecoveryServices/vaults/replicationFabrics/replicationStorageClassifications/read",
+        "Microsoft.RecoveryServices/vaults/replicationFabrics/replicationStorageClassifications/replicationStorageClassificationMappings/read",
+        "Microsoft.RecoveryServices/vaults/replicationFabrics/replicationvCenters/read",
+        "Microsoft.RecoveryServices/vaults/replicationJobs/read",
+        "Microsoft.RecoveryServices/vaults/replicationPolicies/read",
+        "Microsoft.RecoveryServices/vaults/replicationRecoveryPlans/read",
+        "Microsoft.RecoveryServices/Vaults/storageConfig/read",
+        "Microsoft.RecoveryServices/Vaults/tokenInfo/read",
+        "Microsoft.RecoveryServices/Vaults/usages/read",
+        "Microsoft.RecoveryServices/Vaults/vaultTokens/read",
+        "Microsoft.Support/*"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2017-05-19T13:35:40.0093634Z",
+  "updatedOn": "2017-05-26T19:54:51.393325Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

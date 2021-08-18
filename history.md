@@ -4,6 +4,13 @@
 
 ### AzGovViz version 5
 
+__Changes__ (2021-Aug-18 / Major)
+
+* Added ASC Secure Score for Management Groups
+* Policy Compliance - if API returns 'ResponseTooLarge' then flag Policy Compliance entries with 'skipped' for given scope
+* Added [demo-output](demo-output) folder containing all outputs (html, csv, md, json, log)
+* Bugfixes
+
 __Changes__ (2021-Aug-06 / Major)
 
 * Enriched Policy assignments with list of used parameters

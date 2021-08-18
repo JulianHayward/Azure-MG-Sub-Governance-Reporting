@@ -1,0 +1,25 @@
+{
+  "roleName": "SignalR Service Reader (Preview)",
+  "type": "BuiltInRole",
+  "description": "Read-only access to Azure SignalR Service REST APIs",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.SignalRService/SignalR/group/read",
+        "Microsoft.SignalRService/SignalR/clientConnection/read",
+        "Microsoft.SignalRService/SignalR/user/read"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2020-10-13T09:19:05.6463616Z",
+  "updatedOn": "2020-10-23T08:25:22.892813Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

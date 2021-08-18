@@ -1,0 +1,55 @@
+{
+  "displayName": "Configure Machine Learning computes to disable local authentication methods",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Disable location authentication methods so that your Machine Learning computes require Azure Active Directory identities exclusively for authentication. Learn more at: https://aka.ms/azure-ml-aad-policy.",
+  "metadata": {
+    "version": "1.0.0",
+    "category": "Machine Learning"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "Modify",
+        "Disabled"
+      ],
+      "defaultValue": "Modify"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.MachineLearningServices/workspaces/computes"
+        },
+        {
+          "field": "Microsoft.MachineLearningServices/workspaces/computes/disableLocalAuth",
+          "notEquals": true
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "conflictEffect": "audit",
+        "roleDefinitionIds": [
+          "/providers/microsoft.authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
+        ],
+        "operations": [
+          {
+            "operation": "addOrReplace",
+            "field": "Microsoft.MachineLearningServices/workspaces/computes/disableLocalAuth",
+            "value": true
+          }
+        ]
+      }
+    }
+  }
+}
+

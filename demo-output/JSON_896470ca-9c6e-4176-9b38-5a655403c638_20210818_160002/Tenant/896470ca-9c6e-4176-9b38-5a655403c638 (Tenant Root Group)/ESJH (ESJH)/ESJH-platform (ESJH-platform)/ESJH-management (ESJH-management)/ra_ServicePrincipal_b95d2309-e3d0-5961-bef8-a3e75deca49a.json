@@ -1,0 +1,15 @@
+{
+  "RoleAssignmentId": "/providers/Microsoft.Management/managementGroups/ESJH-management/providers/Microsoft.Authorization/roleAssignments/b95d2309-e3d0-5961-bef8-a3e75deca49a",
+  "Scope": "/providers/Microsoft.Management/managementGroups/ESJH-management",
+  "DisplayName": "Deploy-Log-Analytics",
+  "SignInName": null,
+  "RoleDefinitionName": "Owner",
+  "RoleDefinitionId": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+  "ObjectId": "2f3b9d0b-e8eb-4197-9cdf-ca6bde5dd3e5",
+  "ObjectType": "ServicePrincipal",
+  "CanDelegate": false,
+  "Description": null,
+  "ConditionVersion": null,
+  "Condition": null
+}
+

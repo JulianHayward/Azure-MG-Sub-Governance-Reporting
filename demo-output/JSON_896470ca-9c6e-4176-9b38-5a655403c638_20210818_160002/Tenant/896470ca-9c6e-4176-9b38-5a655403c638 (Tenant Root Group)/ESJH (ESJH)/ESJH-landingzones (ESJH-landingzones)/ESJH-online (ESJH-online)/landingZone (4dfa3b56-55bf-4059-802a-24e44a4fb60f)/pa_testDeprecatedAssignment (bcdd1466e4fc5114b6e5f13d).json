@@ -1,0 +1,21 @@
+{
+  "properties": {
+    "displayName": "testDeprecatedAssignment",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/5df82f4f-773a-4a2d-97a2-422a806f1a55",
+    "scope": "/subscriptions/4dfa3b56-55bf-4059-802a-24e44a4fb60f",
+    "notScopes": [],
+    "parameters": {},
+    "metadata": {
+      "createdBy": "c295384a-33d9-475e-abaf-d2fb0274299a",
+      "createdOn": "2021-07-18T15:09:28.7142586Z",
+      "updatedBy": null,
+      "updatedOn": null
+    },
+    "enforcementMode": "Default",
+    "nonComplianceMessages": []
+  },
+  "id": "/subscriptions/4dfa3b56-55bf-4059-802a-24e44a4fb60f/providers/Microsoft.Authorization/policyAssignments/bcdd1466e4fc5114b6e5f13d",
+  "type": "Microsoft.Authorization/policyAssignments",
+  "name": "bcdd1466e4fc5114b6e5f13d"
+}
+

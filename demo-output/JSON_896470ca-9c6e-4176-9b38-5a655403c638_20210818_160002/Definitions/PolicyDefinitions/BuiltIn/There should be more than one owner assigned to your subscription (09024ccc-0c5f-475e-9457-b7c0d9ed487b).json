@@ -1,0 +1,45 @@
+{
+  "displayName": "There should be more than one owner assigned to your subscription",
+  "policyType": "BuiltIn",
+  "mode": "All",
+  "description": "It is recommended to designate more than one subscription owner in order to have administrator access redundancy.",
+  "metadata": {
+    "version": "3.0.0",
+    "category": "Security Center"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "field": "type",
+      "equals": "Microsoft.Resources/subscriptions"
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.Security/assessments",
+        "name": "2c79b4af-f830-b61e-92b9-63dfa30f16e4",
+        "existenceCondition": {
+          "field": "Microsoft.Security/assessments/status.code",
+          "in": [
+            "NotApplicable",
+            "Healthy"
+          ]
+        }
+      }
+    }
+  }
+}
+

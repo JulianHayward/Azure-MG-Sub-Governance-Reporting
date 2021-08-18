@@ -1,0 +1,52 @@
+{
+  "displayName": "Virtual machines should be connected to an approved virtual network",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "This policy audits any virtual machine connected to a virtual network that is not approved.",
+  "metadata": {
+    "version": "1.0.0",
+    "category": "Network"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "The effect determines what happens when the policy rule is evaluated to match"
+      },
+      "allowedValues": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ],
+      "defaultValue": "Audit"
+    },
+    "virtualNetworkId": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Virtual network Id",
+        "description": "Resource Id of the virtual network. Example: /subscriptions/YourSubscriptionId/resourceGroups/YourResourceGroupName/providers/Microsoft.Network/virtualNetworks/Name"
+      }
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.Network/networkInterfaces"
+        },
+        {
+          "not": {
+            "field": "Microsoft.Network/networkInterfaces/ipconfigurations[*].subnet.id",
+            "like": "[concat(parameters('virtualNetworkId'),'/*')]"
+          }
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]"
+    }
+  }
+}
+

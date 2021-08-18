@@ -1,0 +1,47 @@
+{
+  "displayName": "Subnets should have a Network Security Group ",
+  "policyType": "Custom",
+  "mode": "All",
+  "description": "This policy denies the creation of a subsnet with out an Network Security Group. NSG help to protect traffic across subnet-level.",
+  "metadata": {
+    "version": "1.0.0",
+    "category": "Network",
+    "createdBy": "b790b1e1-6f46-488b-8c5a-708b0db9a149",
+    "createdOn": "2021-01-10T20:57:38.4698877Z",
+    "updatedBy": null,
+    "updatedOn": null
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ],
+      "defaultValue": "Deny"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.Network/virtualNetworks/subnets"
+        },
+        {
+          "field": "Microsoft.Network/virtualNetworks/subnets/networkSecurityGroup.id",
+          "exists": "false"
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]"
+    }
+  }
+}
+

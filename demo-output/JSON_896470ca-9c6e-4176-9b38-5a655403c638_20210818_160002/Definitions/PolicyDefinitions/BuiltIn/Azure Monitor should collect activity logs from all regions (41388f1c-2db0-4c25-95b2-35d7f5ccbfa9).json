@@ -1,0 +1,305 @@
+{
+  "displayName": "Azure Monitor should collect activity logs from all regions",
+  "policyType": "BuiltIn",
+  "mode": "All",
+  "description": "This policy audits the Azure Monitor log profile which does not export activities from all Azure supported regions including global.",
+  "metadata": {
+    "version": "2.0.0",
+    "category": "Monitoring"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "field": "type",
+      "equals": "Microsoft.Resources/subscriptions"
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.Insights/logProfiles",
+        "existenceCondition": {
+          "allOf": [
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "australiacentral"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "australiacentral2"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "australiaeast"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "australiasoutheast"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "brazilsouth"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "brazilsoutheast"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "canadacentral"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "canadaeast"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "centralindia"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "centralus"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "eastasia"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "eastus"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "eastus2"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "francecentral"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "francesouth"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "germanynorth"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "germanywestcentral"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "japaneast"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "japanwest"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "jioindiawest"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "koreacentral"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "koreasouth"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "northcentralus"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "northeurope"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "norwayeast"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "norwaywest"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "southafricanorth"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "southafricawest"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "southcentralus"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "southeastasia"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "southindia"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "switzerlandnorth"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "switzerlandwest"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "uaecentral"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "uaenorth"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "uksouth"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "ukwest"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "westcentralus"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "westeurope"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "westindia"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "westus"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "westus2"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "westus3"
+              }
+            },
+            {
+              "not": {
+                "field": "Microsoft.Insights/logProfiles/locations[*]",
+                "notEquals": "global"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+

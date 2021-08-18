@@ -1,0 +1,15 @@
+{
+  "RoleAssignmentId": "/providers/Microsoft.Management/managementGroups/896470ca-9c6e-4176-9b38-5a655403c638/providers/Microsoft.Authorization/roleAssignments/d7973c31-e58a-4af7-bbcb-a4bac69ba141",
+  "Scope": "/providers/Microsoft.Management/managementGroups/896470ca-9c6e-4176-9b38-5a655403c638",
+  "DisplayName": "azgovvizwwcsecurity",
+  "SignInName": null,
+  "RoleDefinitionName": "Reader",
+  "RoleDefinitionId": "acdd72a7-3385-48ef-bd42-f606fba81ae7",
+  "ObjectId": "e261446e-77d2-4cf5-a32a-0fbef8ee1333",
+  "ObjectType": "ServicePrincipal",
+  "CanDelegate": false,
+  "Description": null,
+  "ConditionVersion": null,
+  "Condition": null
+}
+

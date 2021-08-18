@@ -1,0 +1,39 @@
+{
+  "roleName": "Classic Virtual Machine Contributor",
+  "type": "BuiltInRole",
+  "description": "Lets you manage classic virtual machines, but not access to them, and not the virtual network or storage account they’re connected to.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Authorization/*/read",
+        "Microsoft.ClassicCompute/domainNames/*",
+        "Microsoft.ClassicCompute/virtualMachines/*",
+        "Microsoft.ClassicNetwork/networkSecurityGroups/join/action",
+        "Microsoft.ClassicNetwork/reservedIps/link/action",
+        "Microsoft.ClassicNetwork/reservedIps/read",
+        "Microsoft.ClassicNetwork/virtualNetworks/join/action",
+        "Microsoft.ClassicNetwork/virtualNetworks/read",
+        "Microsoft.ClassicStorage/storageAccounts/disks/read",
+        "Microsoft.ClassicStorage/storageAccounts/images/read",
+        "Microsoft.ClassicStorage/storageAccounts/listKeys/action",
+        "Microsoft.ClassicStorage/storageAccounts/read",
+        "Microsoft.Insights/alertRules/*",
+        "Microsoft.ResourceHealth/availabilityStatuses/read",
+        "Microsoft.Resources/deployments/*",
+        "Microsoft.Resources/subscriptions/resourceGroups/read",
+        "Microsoft.Support/*"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2015-04-25T00:37:56.5416086Z",
+  "updatedOn": "2019-02-05T21:24:43.0770473Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

@@ -1,0 +1,27 @@
+{
+  "roleName": "Monitoring Metrics Publisher",
+  "type": "BuiltInRole",
+  "description": "Enables publishing metrics against Azure resources",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Insights/Register/Action",
+        "Microsoft.Support/*",
+        "Microsoft.Resources/subscriptions/resourceGroups/read"
+      ],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.Insights/Metrics/Write"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2018-08-14T00:36:16.5610279Z",
+  "updatedOn": "2018-08-14T00:37:18.1465065Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

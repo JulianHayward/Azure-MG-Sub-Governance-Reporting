@@ -1,0 +1,28 @@
+{
+  "displayName": "[Deprecated]: Allow resource creation only in India data centers",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Allows resource creation in the following locations only: West India, South India, Central India",
+  "metadata": {
+    "version": "1.0.0-deprecated",
+    "category": "General",
+    "deprecated": true
+  },
+  "parameters": {},
+  "policyRule": {
+    "if": {
+      "not": {
+        "field": "location",
+        "in": [
+          "westindia",
+          "southindia",
+          "centralindia"
+        ]
+      }
+    },
+    "then": {
+      "effect": "Deny"
+    }
+  }
+}
+

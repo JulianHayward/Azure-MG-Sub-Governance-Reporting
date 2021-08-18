@@ -1,0 +1,15 @@
+{
+  "RoleAssignmentId": "/providers/Microsoft.Management/managementGroups/ESJHQA/providers/Microsoft.Authorization/roleAssignments/e010f291-49a9-4d4b-be4d-55c6aeb164cd",
+  "Scope": "/providers/Microsoft.Management/managementGroups/ESJHQA",
+  "DisplayName": "group04NoMembers",
+  "SignInName": null,
+  "RoleDefinitionName": "Security Reader",
+  "RoleDefinitionId": "39bc4728-0917-49c7-9d2c-d95423bc2eb4",
+  "ObjectId": "5f90ced2-7d5e-493b-9db6-862b9332e20a",
+  "ObjectType": "Group",
+  "CanDelegate": false,
+  "Description": null,
+  "ConditionVersion": null,
+  "Condition": null
+}
+

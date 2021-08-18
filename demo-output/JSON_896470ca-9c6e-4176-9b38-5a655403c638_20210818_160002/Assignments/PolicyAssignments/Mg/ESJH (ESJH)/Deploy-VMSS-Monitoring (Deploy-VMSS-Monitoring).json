@@ -1,0 +1,30 @@
+{
+  "identity": {
+    "principalId": "a3a4908f-b068-455e-a3f5-38cc5e00448f",
+    "tenantId": "896470ca-9c6e-4176-9b38-5a655403c638",
+    "type": "SystemAssigned"
+  },
+  "properties": {
+    "displayName": "Deploy-VMSS-Monitoring",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policySetDefinitions/75714362-cae7-409e-9b99-a8e5075b7fad",
+    "scope": "/providers/Microsoft.Management/managementGroups/ESJH",
+    "parameters": {
+      "logAnalytics_1": {
+        "value": "/subscriptions/f28ba982-5ed0-4033-9bdf-e45e4b5df466/resourcegroups/esjh-mgmt/providers/microsoft.operationalinsights/workspaces/esjh-la-f28ba982-5ed0-4033-9bdf-e45e4b5df466"
+      }
+    },
+    "description": "Deploy-VMSS-Monitoring",
+    "metadata": {
+      "createdBy": "b790b1e1-6f46-488b-8c5a-708b0db9a149",
+      "createdOn": "2021-01-10T21:00:47.3376784Z",
+      "updatedBy": null,
+      "updatedOn": null
+    },
+    "enforcementMode": "Default"
+  },
+  "id": "/providers/Microsoft.Management/managementGroups/ESJH/providers/Microsoft.Authorization/policyAssignments/Deploy-VMSS-Monitoring",
+  "type": "Microsoft.Authorization/policyAssignments",
+  "name": "Deploy-VMSS-Monitoring",
+  "location": "westeurope"
+}
+

@@ -1,0 +1,43 @@
+{
+  "displayName": "[Deprecated]: Advanced Threat Protection types should be set to 'All' in SQL server Advanced Data Security settings",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "It is recommended to enable all Advanced Threat Protection types on your SQL servers. Enabling all types protects against SQL injection, database vulnerabilities, and any other anomalous activities.",
+  "metadata": {
+    "version": "1.0.0-deprecated",
+    "category": "SQL",
+    "deprecated": true
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "Disabled"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "field": "type",
+      "equals": "Microsoft.Sql/servers"
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.Sql/servers/securityAlertPolicies",
+        "name": "default",
+        "existenceCondition": {
+          "field": "Microsoft.Sql/servers/securityAlertPolicies/disabledAlerts[*]",
+          "equals": ""
+        }
+      }
+    }
+  }
+}
+

@@ -1,0 +1,28 @@
+{
+  "roleName": "EventGrid EventSubscription Reader",
+  "type": "BuiltInRole",
+  "description": "Lets you read EventGrid event subscriptions.",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "Microsoft.Authorization/*/read",
+        "Microsoft.EventGrid/eventSubscriptions/read",
+        "Microsoft.EventGrid/topicTypes/eventSubscriptions/read",
+        "Microsoft.EventGrid/locations/eventSubscriptions/read",
+        "Microsoft.EventGrid/locations/topicTypes/eventSubscriptions/read",
+        "Microsoft.Resources/subscriptions/resourceGroups/read"
+      ],
+      "notActions": [],
+      "dataActions": [],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2018-10-09T17:29:28.1417894Z",
+  "updatedOn": "2019-01-08T00:05:40.2884365Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+

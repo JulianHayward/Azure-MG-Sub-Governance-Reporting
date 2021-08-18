@@ -1,0 +1,30 @@
+{
+  "identity": {
+    "principalId": "065dde0b-5eab-4fce-80ee-ec956e94c498",
+    "tenantId": "896470ca-9c6e-4176-9b38-5a655403c638",
+    "type": "SystemAssigned"
+  },
+  "properties": {
+    "displayName": "Deploy-VM-Monitoring",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policySetDefinitions/55f3eceb-5573-4f18-9695-226972c6d74a",
+    "scope": "/providers/Microsoft.Management/managementGroups/ESJH",
+    "parameters": {
+      "logAnalytics_1": {
+        "value": "/subscriptions/f28ba982-5ed0-4033-9bdf-e45e4b5df466/resourcegroups/esjh-mgmt/providers/microsoft.operationalinsights/workspaces/esjh-la-f28ba982-5ed0-4033-9bdf-e45e4b5df466"
+      }
+    },
+    "description": "Deploy-VM-Monitoring v2",
+    "metadata": {
+      "createdBy": "b790b1e1-6f46-488b-8c5a-708b0db9a149",
+      "createdOn": "2021-01-10T21:00:44.6165779Z",
+      "updatedBy": "c295384a-33d9-475e-abaf-d2fb0274299a",
+      "updatedOn": "2021-07-09T16:04:52.2554549Z"
+    },
+    "enforcementMode": "Default"
+  },
+  "id": "/providers/Microsoft.Management/managementGroups/ESJH/providers/Microsoft.Authorization/policyAssignments/Deploy-VM-Monitoring",
+  "type": "Microsoft.Authorization/policyAssignments",
+  "name": "Deploy-VM-Monitoring",
+  "location": "westeurope"
+}
+

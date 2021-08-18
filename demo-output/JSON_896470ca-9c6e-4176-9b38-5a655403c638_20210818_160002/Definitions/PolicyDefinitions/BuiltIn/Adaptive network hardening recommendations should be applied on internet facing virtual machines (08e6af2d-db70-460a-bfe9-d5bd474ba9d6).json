@@ -1,0 +1,45 @@
+{
+  "displayName": "Adaptive network hardening recommendations should be applied on internet facing virtual machines",
+  "policyType": "BuiltIn",
+  "mode": "Indexed",
+  "description": "Azure Security Center analyzes the traffic patterns of Internet facing virtual machines and provides Network Security Group rule recommendations that reduce the potential attack surface",
+  "metadata": {
+    "version": "3.0.0",
+    "category": "Security Center"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "field": "type",
+      "equals": "Microsoft.Compute/virtualMachines"
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.Security/assessments",
+        "name": "f9f0eed0-f143-47bf-b856-671ea2eeed62",
+        "existenceCondition": {
+          "field": "Microsoft.Security/assessments/status.code",
+          "in": [
+            "NotApplicable",
+            "Healthy"
+          ]
+        }
+      }
+    }
+  }
+}
+

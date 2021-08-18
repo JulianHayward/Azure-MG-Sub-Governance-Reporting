@@ -1,0 +1,48 @@
+{
+  "displayName": "Management ports should be closed on your virtual machines",
+  "policyType": "BuiltIn",
+  "mode": "All",
+  "description": "Open remote management ports are exposing your VM to a high level of risk from Internet-based attacks. These attacks attempt to brute force credentials to gain admin access to the machine.",
+  "metadata": {
+    "version": "3.0.0",
+    "category": "Security Center"
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": [
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "defaultValue": "AuditIfNotExists"
+    }
+  },
+  "policyRule": {
+    "if": {
+      "field": "type",
+      "in": [
+        "Microsoft.Compute/virtualMachines",
+        "Microsoft.ClassicCompute/virtualMachines"
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.Security/assessments",
+        "name": "bc303248-3d14-44c2-96a0-55f5c326b5fe",
+        "existenceCondition": {
+          "field": "Microsoft.Security/assessments/status.code",
+          "in": [
+            "NotApplicable",
+            "Healthy"
+          ]
+        }
+      }
+    }
+  }
+}
+

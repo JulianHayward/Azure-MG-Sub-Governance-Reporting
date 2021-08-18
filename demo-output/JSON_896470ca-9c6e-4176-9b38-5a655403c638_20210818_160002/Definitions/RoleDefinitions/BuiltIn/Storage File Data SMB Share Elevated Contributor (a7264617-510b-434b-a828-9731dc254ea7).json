@@ -1,0 +1,26 @@
+{
+  "roleName": "Storage File Data SMB Share Elevated Contributor",
+  "type": "BuiltInRole",
+  "description": "Allows for read, write, delete and modify NTFS permission access in Azure Storage file shares over SMB",
+  "assignableScopes": [
+    "/"
+  ],
+  "permissions": [
+    {
+      "actions": [],
+      "notActions": [],
+      "dataActions": [
+        "Microsoft.Storage/storageAccounts/fileServices/fileshares/files/read",
+        "Microsoft.Storage/storageAccounts/fileServices/fileshares/files/write",
+        "Microsoft.Storage/storageAccounts/fileServices/fileshares/files/delete",
+        "Microsoft.Storage/storageAccounts/fileServices/fileshares/files/modifypermissions/action"
+      ],
+      "notDataActions": []
+    }
+  ],
+  "createdOn": "2019-08-07T01:35:36.9935457Z",
+  "updatedOn": "2019-08-07T01:35:36.9935457Z",
+  "createdBy": null,
+  "updatedBy": null
+}
+
