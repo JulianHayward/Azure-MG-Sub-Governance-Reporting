@@ -256,7 +256,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210818_2",
+    [string]$AzGovVizVersion = "v5_major_20210820_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
     [switch]$DebugAzAPICall,
@@ -4516,7 +4516,12 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId) {
         $arrayPolicyAssignmentsEnrichedForThisManagementGroupVariantPolicySet = ($arrayPolicyAssignmentsEnrichedForThisManagementGroupGroupedByPolicyVariant | where-Object { $_.name -eq "PolicySet" }).group
         
         if ($htParameters.NoASCSecureScore -eq $false) {
-            $managementGroupASCPoints = ($htMgASCSecureScore).($mgChild).SecureScore
+            if ([string]::IsNullOrEmpty(($htMgASCSecureScore).($mgChild).SecureScore) -or [string]::IsNullOrWhiteSpace(($htMgASCSecureScore).($mgChild).SecureScore)){
+                $managementGroupASCPoints = "n/a"
+            }
+            else{
+                $managementGroupASCPoints = ($htMgASCSecureScore).($mgChild).SecureScore
+            }
         }
         else{
             $managementGroupASCPoints = "excluded (-NoASCSecureScore $($htParameters.NoASCSecureScore))"
@@ -12419,8 +12424,17 @@ extensions: [{ name: 'sort' }]
                 $mgAllChildSubscriptionsCountTotal = (($mgAllChildSubscriptions | Measure-Object).Count)
                 $mgAllChildSubscriptionsCountDirect = (($mgDirectChildSubscriptions | Measure-Object).Count)
 
-                $mgSecureScore = $htMgASCSecureScore.($summaryManagementGroup.mgId).SecureScore
-                    
+                if ($htMgASCSecureScore.($summaryManagementGroup.mgId).SecureScore){
+                    if ([string]::IsNullOrEmpty($htMgASCSecureScore.($summaryManagementGroup.mgId).SecureScore) -or [string]::IsNullOrWhiteSpace($htMgASCSecureScore.($summaryManagementGroup.mgId).SecureScore)){
+                        $mgSecureScore = "n/a"
+                    }
+                    else{
+                        $mgSecureScore = $htMgASCSecureScore.($summaryManagementGroup.mgId).SecureScore
+                    }
+                }
+                else{
+                    $mgSecureScore = "n/a"
+                }
             }
 
             @"
