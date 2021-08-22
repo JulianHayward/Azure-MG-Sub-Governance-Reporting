@@ -256,7 +256,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210820_1",
+    [string]$AzGovVizVersion = "v5_major_20210822_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
     [switch]$DebugAzAPICall,
@@ -20439,7 +20439,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 $script:htAADGroupsDetails.$aadGroupId = @{}
                 $script:htAADGroupsDetails.($aadGroupId).Id = $aadGroupId
                 $script:htAADGroupsDetails.($aadGroupId).displayname = $aadGroupDisplayName
-                $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/groups/$($aadGroupId)/transitiveMembers"
+                $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/beta/groups/$($aadGroupId)/transitiveMembers"
                 $method = "GET"
                 $aadGroupMembers = AzAPICall -uri $uri -method $method -currentTask "getGroupMembers $($aadGroupId)" -getGroup $true
 
@@ -20545,7 +20545,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 $rndom = Get-Random -Minimum 10 -Maximum 750
                 start-sleep -Millisecond $rndom
 
-                $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/groups/$($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)/transitiveMembers/`$count"
+                $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/beta/groups/$($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)/transitiveMembers/`$count"
                 $method = "GET"
                 $aadGroupMembersCount = AzAPICall -uri $uri -method $method -currentTask "getGroupMembersCount $($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)" -listenOn "Content" -consistencyLevel "eventual" -getGroupMembersCount $True
                 
