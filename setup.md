@@ -169,13 +169,6 @@ Note if not using the `-OutputPath` parameter, all outputs will be created in th
 c:\Git\Azure-MG-Sub-Governance-Reporting\pwsh\AzGovVizParallel.ps1 -ManagementGroupId <target Management Group Id> -OutPath "c:\AzGovViz-Output"
 ```
 
-The following example will provide you with the maximum available data collected
-
-* PowerShell
-```powershell
-c:\Git\Azure-MG-Sub-Governance-Reporting\pwsh\AzGovVizParallel.ps1 -ManagementGroupId <target Management Group Id> -CsvExport -JsonExport -DoTranscript
-```
-
 # AzGovViz in Azure DevOps
 
 ## Create AzDO Project
