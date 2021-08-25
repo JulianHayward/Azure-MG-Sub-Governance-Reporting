@@ -63,6 +63,10 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## Release history
 
+__Changes__ (2021-Aug-25 / Major)
+
+* Resource diagnostics capability for logs and metrics will only be checked for 1st party (Microsoft) Resource types
+
 __Changes__ (2021-Aug-22 / Major)
 
 * Bugfix - indirect Role assignments (applied through AAD group membership); switched to Graph beta endpoint as v1.0 only resolves users and groups, whilst we´re also interested in Service Principals - [List group transitive members](https://docs.microsoft.com/en-us/graph/api/group-list-transitivemembers)
@@ -189,7 +193,7 @@ Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
     * Management Group, Diagnostic setting name, target type (LA, SA, EH), target Id, Log Category status
   * Subscriptions Diagnostic settings report
     * Subscription, Diagnostic setting name, target type (LA, SA, EH), target Id, Log Category status
-  * Resources Diagnostic capabilty report
+  * Resources Diagnostic capabilty report (1st party Resource types only)
     * ResourceType capability for Resource Diagnostics including
       * ResourceType count and information if capable for logs including list of available og categories
       * ResourceType count and information if capable for metrics

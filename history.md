@@ -4,6 +4,10 @@
 
 ### AzGovViz version 5
 
+__Changes__ (2021-Aug-25 / Major)
+
+* Resource diagnostics capability for logs and metrics will only be checked for 1st party (Microsoft) Resource types
+
 __Changes__ (2021-Aug-22 / Major)
 
 * Bugfix - indirect Role assignments (applied through AAD group membership); switched to Graph beta endpoint as v1.0 only resolves users and groups, whilst we´re also interested in Service Principals - [List group transitive members](https://docs.microsoft.com/en-us/graph/api/group-list-transitivemembers)
