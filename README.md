@@ -34,8 +34,6 @@ https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-
 
 Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template.
 
-<hr>
-
 ## Content
 * [Release history](#release-history)
 * [Demo](#demo)
@@ -59,8 +57,6 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 * [AzAdvertizer](#azadvertizer)
 * [Final note](#final-note)
 
-<hr>
-
 ## Release history
 
 __Changes__ (2021-Aug-30 / Major)
@@ -71,8 +67,6 @@ __Changes__ (2021-Aug-30 / Major)
 * Performance optimization
 
 [Release history](history.md)
-
-<hr>
 
 ## Demo
 
@@ -89,8 +83,6 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
 ### Slideset
 
 Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
-
-<hr>
 
 ## Features
 
@@ -226,8 +218,6 @@ Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
     * Created Role assignments (system metadata 'createdOn, createdBy)
   * Resources
     * Aggregated insights on Created/Changed Resources
-
-<hr>
 
 ## Screenshots
 
