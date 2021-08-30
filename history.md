@@ -4,6 +4,13 @@
 
 ### AzGovViz version 5
 
+__Changes__ (2021-Aug-30 / Major)
+
+* Adding feature for RBAC Role assignments: determine 'standing' from PIM (Priviledged Identity Mangement) managed Role assignments
+* New parameter `-NoResources` - this will speed up the processing time but information like Resource diagnostics capability and resource type stats will not be made available (featured for large tenants)
+* Integrate AzGovViz with AzOps (after 'AzOps - Push' run AzGovViz) - (line 77 AzGovViz.yml). Checkout [AzOps Accellerator](https://github.com/Azure/AzOps-Accelerator)
+* Performance optimization
+
 __Changes__ (2021-Aug-25 / Major)
 
 * Resource diagnostics capability for logs and metrics will only be checked for 1st party (Microsoft) Resource types

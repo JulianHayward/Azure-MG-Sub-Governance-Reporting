@@ -1,11 +1,11 @@
-# AzGovViz v5_major_20210728_1
+# AzGovViz v5_major_20210830_1
 # First things first: 
-# 1. edit line 59 and line 60 
-# 2. check line 74 and 85 if branch 'master' is applicable 
+# 1. edit line 60 and line 61 
+# 2. check line 75 and 86 if branch 'master' is applicable 
 # Documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 # Also check https://www.azadvertizer.net - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
 # 
-# Parameters reference (use in line 110)
+# Parameters reference (use in line 111)
 # LimitCriticalPercentage | default is '80' | example: -LimitCriticalPercentage 90  | WhatDoesItDo? marks capabilities that approch limits e.g. limit 100, usage 80 will mark with warning
 # SubscriptionQuotaIdWhitelist | default is 'undefined' | example: -SubscriptionQuotaIdWhitelist MSDN_, EnterpriseAgreement_ | WhatDoesItDo? processes only Subscriptions that startWith the given QuotaIds
 # HierarchyMapOnly | switch | example: -HierarchyMapOnly | WhatDoesItDo? only creates the Hierarchy Tree
@@ -40,6 +40,7 @@
 # NoScopeInsights | example: -NoScopeInsights | WhatDoesItDo? and why would you want to do this? In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size). To further reduce the output use parameter -LargeTenant
 # HtmlTableRowsLimit | example: -HtmlTableRowsLimit | WhatDoesItDo? Although the parameter -LargeTenant was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 40.000
 # AADGroupMembersLimit | example: -AADGroupMembersLimit 333 | WhatDoesItDo? Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved
+# NoResources | example: -NoResources | WhatDoesItDo? Will speed up the processing time but information like Resource diagnostics capability and resource type stats (featured for large tenants)
 
 trigger: none
 
