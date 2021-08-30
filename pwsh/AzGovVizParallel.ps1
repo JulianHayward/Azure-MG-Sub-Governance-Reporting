@@ -262,7 +262,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210830_1",
+    [string]$AzGovVizVersion = "v5_major_20210830_2",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
     [switch]$DebugAzAPICall,
@@ -1498,66 +1498,6 @@ if ($CsvDelimiter -eq ",") {
     $CsvDelimiterOpposite = ";"
 }
 #endregion helper
-
-#ManagementGroup helper
-#region managementGroupHelper
-#thx @Jim Britt https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts Create-AzDiagPolicy.ps1
-if (-not $ManagementGroupId) {
-    $catchResult = "letscheck"
-    try {
-        $getAzManagementGroups = Get-AzManagementGroup -ErrorAction Stop
-    }
-    catch {
-        $catchResult = $_.Exception.Message
-    }
-    if ($catchResult -ne "letscheck") {
-        Write-Host "$catchResult"
-        Throw "Error - AzGovViz: check the last console output for details"
-    }
-
-    [array]$MgtGroupArray = Add-IndexNumberToArray ($getAzManagementGroups)
-    if (-not $MgtGroupArray) {
-        Write-Host "Seems you do not have access to any Management Group. Please make sure you have the required RBAC role [Reader] assigned on at least one Management Group" -ForegroundColor Red
-        Throw "Error - AzGovViz: check the last console output for details"
-    }
-    function selectMg() {
-        Write-Host "Please select a Management Group from the list below:"
-        $MgtGroupArray | Select-Object "#", Name, DisplayName, Id | Format-Table
-        Write-Host "If you don't see your ManagementGroupID try using the parameter -ManagementGroupID" -ForegroundColor Yellow
-        if ($msg) {
-            Write-Host $msg -ForegroundColor Red
-        }
-        
-        $script:SelectedMG = Read-Host "Please enter a selection from 1 to $(($MgtGroupArray | measure-object).count)"
-
-        function IsNumeric ($Value) {
-            return $Value -match "^[\d\.]+$"
-        }
-        if (IsNumeric $SelectedMG) {
-            if ([int]$SelectedMG -lt 1 -or [int]$SelectedMG -gt ($MgtGroupArray | measure-object).count) {
-                $msg = "last input '$SelectedMG' is out of range, enter a number from the selection!"
-                selectMg
-            }
-        }
-        else {
-            $msg = "last input '$SelectedMG' is not numeric, enter a number from the selection!"
-            selectMg
-        }
-    }
-    selectMg
-
-    if ($($MgtGroupArray[$SelectedMG - 1].Name)) {
-        $ManagementGroupID = $($MgtGroupArray[$SelectedMG - 1].Name)
-        $ManagementGroupName = $($MgtGroupArray[$SelectedMG - 1].DisplayName)
-    }
-    else {
-        Write-Host "s.th. unexpected happened" -ForegroundColor Red
-        return
-    }
-    Write-Host "Selected Management Group: $ManagementGroupName (Id: $ManagementGroupId)" -ForegroundColor Green
-    Write-Host "_______________________________________"
-}
-#endregion managementGroupHelper
 
 #region Function
 function addRowToTable() {
@@ -18552,6 +18492,74 @@ $mgInLevel(`"$mgNameId`") --> SubsoosOf$mgInLevel(`"$(($subsoosUnderMg | measure
 #region dataCollection
 
 #run
+
+$arrayAPICallTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+$arrayAPICallTrackingCustomDataCollection = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+
+#ManagementGroup helper
+#region managementGroupHelper
+#thx @Jim Britt https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts Create-AzDiagPolicy.ps1
+if (-not $ManagementGroupId) {
+    $catchResult = "letscheck"
+    $currentTask = "Get all Management Groups"
+    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups?api-version=2020-05-01"
+    $method = "GET"
+    try {
+        #$getAzManagementGroups = Get-AzManagementGroup -ErrorAction Stop
+        $getAzManagementGroups = AzAPICall -uri $uri -method $method -currentTask $currentTask
+    }
+    catch {
+        $catchResult = $_.Exception.Message
+    }
+    if ($catchResult -ne "letscheck") {
+        Write-Host "$catchResult"
+        Throw "Error - AzGovViz: check the last console output for details"
+    }
+
+    [array]$MgtGroupArray = Add-IndexNumberToArray ($getAzManagementGroups)
+    if (-not $MgtGroupArray) {
+        Write-Host "Seems you do not have access to any Management Group. Please make sure you have the required RBAC role [Reader] assigned on at least one Management Group" -ForegroundColor Red
+        Throw "Error - AzGovViz: check the last console output for details"
+    }
+    function selectMg() {
+        Write-Host "Please select a Management Group from the list below:"
+        $MgtGroupArray | Select-Object "#", Name, DisplayName, Id | Format-Table
+        Write-Host "If you don't see your ManagementGroupID try using the parameter -ManagementGroupID" -ForegroundColor Yellow
+        if ($msg) {
+            Write-Host $msg -ForegroundColor Red
+        }
+        
+        $script:SelectedMG = Read-Host "Please enter a selection from 1 to $(($MgtGroupArray | measure-object).count)"
+
+        function IsNumeric ($Value) {
+            return $Value -match "^[\d\.]+$"
+        }
+        if (IsNumeric $SelectedMG) {
+            if ([int]$SelectedMG -lt 1 -or [int]$SelectedMG -gt ($MgtGroupArray | measure-object).count) {
+                $msg = "last input '$SelectedMG' is out of range, enter a number from the selection!"
+                selectMg
+            }
+        }
+        else {
+            $msg = "last input '$SelectedMG' is not numeric, enter a number from the selection!"
+            selectMg
+        }
+    }
+    selectMg
+
+    if ($($MgtGroupArray[$SelectedMG - 1].Name)) {
+        $ManagementGroupId = $($MgtGroupArray[$SelectedMG - 1].Name)
+        $ManagementGroupName = $($MgtGroupArray[$SelectedMG - 1].DisplayName)
+    }
+    else {
+        Write-Host "s.th. unexpected happened" -ForegroundColor Red
+        return
+    }
+    Write-Host "Selected Management Group: $ManagementGroupName (Id: $ManagementGroupId)" -ForegroundColor Green
+    Write-Host "_______________________________________"
+}
+#endregion managementGroupHelper
+
 Write-Host "Running AzGovViz for ManagementGroupId: '$ManagementGroupId'" -ForegroundColor Yellow
 
 <#insights
@@ -18587,8 +18595,12 @@ Write-Host "$($runId)_$($hash)_$($checkContext.Environment.Name)_$($platform)_$(
 #validation / check ManagementGroup Access
 Write-Host "Checking permissions on ManagementGroup '$ManagementGroupId'"
 $testMGReadAccessResult = "letscheck"
+$currentTask = "Get Management Group '$ManagementGroupId'"
+$uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$($ManagementGroupId)?api-version=2020-05-01"
+$method = "GET"
 try {
-    $selectedManagementGroupId = Get-AzManagementGroup -GroupName $ManagementGroupId -ErrorAction Stop
+    #$selectedManagementGroupId = Get-AzManagementGroup -GroupName $ManagementGroupId -ErrorAction Stop
+    $selectedManagementGroupId = AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn "Content"
 }
 catch {
     $testMGReadAccessResult = $_.Exception.Message
@@ -18605,7 +18617,15 @@ if ($testMGReadAccessResult -ne "letscheck") {
     }
 }
 else {
-    Write-Host " Permissions test passed: ManagementGroup permissions OK"
+    $managementGroupIdReturned = ($selectedManagementGroupId).name
+    if ($managementGroupIdReturned -eq $ManagementGroupId){
+        Write-Host " Permissions test passed: ManagementGroup permissions OK"
+    }
+    else{
+        Write-Host "API returned: $managementGroupIdReturned"
+        Write-Host " Permissions test failed: Your Account '$($checkContext.Account.Id)' seems to lack ManagementGroup Read permissions (RBAC Role: Reader) or the ManagementGroupId '$ManagementGroupId' does not exist. Please check the documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#required-permissions-in-azure"
+        Throw "Error - AzGovViz: check the last console output for details"
+    }
 }
 
 #validation / check 'Azure Active Directory API' Access
@@ -18613,7 +18633,7 @@ if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
     Write-Host "Checking AzDO ServiceConnection permissions"
     $testSCSPAPIReadAccessResult = "letscheck"
     try {
-        $null = Get-AzRoleAssignment -scope "/providers/Microsoft.Management/managementGroups/$($selectedManagementGroupId.Name)"
+        $null = Get-AzRoleAssignment -scope "/providers/Microsoft.Management/managementGroups/$($managementGroupIdReturned)"
     }
     catch {
         $testSCSPAPIReadAccessResult = $_.Exception.Message
@@ -18626,9 +18646,6 @@ if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
         Write-Host " Permissions test passed: 'Azure Active Directory API' permissions OK"
     }
 }
-
-$arrayAPICallTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-$arrayAPICallTrackingCustomDataCollection = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 
 <#
 if ($accountType -eq "User") {
