@@ -34,8 +34,6 @@ https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-
 
 Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template.
 
-<hr>
-
 ## Content
 * [Release history](#release-history)
 * [Demo](#demo)
@@ -59,28 +57,16 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 * [AzAdvertizer](#azadvertizer)
 * [Final note](#final-note)
 
-<hr>
-
 ## Release history
 
-__Changes__ (2021-Aug-25 / Major)
+__Changes__ (2021-Aug-30 / Major)
 
-* Resource diagnostics capability for logs and metrics will only be checked for 1st party (Microsoft) Resource types
-
-__Changes__ (2021-Aug-22 / Major)
-
-* Bugfix - indirect Role assignments (applied through AAD group membership); switched to Graph beta endpoint as v1.0 only resolves users and groups, whilst we´re also interested in Service Principals - [List group transitive members](https://docs.microsoft.com/en-us/graph/api/group-list-transitivemembers)
-
-__Changes__ (2021-Aug-18 / Major)
-
-* Added ASC Secure Score for Management Groups
-* Policy Compliance - if API returns 'ResponseTooLarge' then flag Policy Compliance entries with 'skipped' for given scope
-* Added [demo-output](demo-output) folder containing all outputs (html, csv, md, json, log)
-* Bugfixes
+* Adding feature for RBAC Role assignments: determine 'standing' from PIM (Priviledged Identity Mangement) managed Role assignments
+* New parameter `-NoResources` - this will speed up the processing time but information like Resource diagnostics capability and resource type stats will not be made available (featured for large tenants)
+* Integrate AzGovViz with AzOps (after 'AzOps - Push' run AzGovViz) - (line 77 AzGovViz.yml). Checkout [AzOps Accellerator](https://github.com/Azure/AzOps-Accelerator)
+* Performance optimization
 
 [Release history](history.md)
-
-<hr>
 
 ## Demo
 
@@ -97,8 +83,6 @@ Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/
 ### Slideset
 
 Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
-
-<hr>
 
 ## Features
 
@@ -161,6 +145,7 @@ Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
       * For identity-type == 'User' the userType (Member/Guest) will be reported
       * Related Policy assignments (Policy assignment of a Policy definition that uses the DeployIfNotExists (DINE) effect)
       * System metadata 'createdOn, createdBy' ('createdBy' identity is fully resolved)
+      * Determine if the Role assignment is 'standing' or PIM managed
   * Role assignments ClassicAdministrators
   * Security & Best practice analysis
     * Existence of custom Role definition that reflect 'Owner' permissions
@@ -233,8 +218,6 @@ Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
     * Created Role assignments (system metadata 'createdOn, createdBy)
   * Resources
     * Aggregated insights on Created/Changed Resources
-
-<hr>
 
 ## Screenshots
 
@@ -443,6 +426,7 @@ This permission is <b>mandatory</b> in each and every scenario!
   * `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big. Using this parameter the following parameters will be set: -PolicyAtScopeOnly $true, -RBACAtScopeOnly $true, -NoResourceProvidersDetailed $true, -NoScopeInsights $true
   * `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 40.000
   * `-AADGroupMembersLimit` - Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved 
+  * `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability and resource type stats (featured for large tenants)
 
 * Passed tests: Powershell Core 7.1.3 on Windows
 * Passed tests: Powershell Core 7.1.3 Azure DevOps hosted ubuntu-18.04
