@@ -59,6 +59,10 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## Release history
 
+__Changes__ (2021-Sep-01 / Major)
+
+* Update AzAPICall CostManagement return
+
 __Changes__ (2021-Aug-30 / Major)
 
 * Adding feature for RBAC Role assignments: determine 'standing' from PIM (Priviledged Identity Mangement) managed Role assignments
