@@ -59,6 +59,10 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## Release history
 
+__Changes__ (2021-Sep-03 / Major)
+
+* AzAPICall enhanced error handling
+
 __Changes__ (2021-Sep-01 / Major)
 
 * Update AzAPICall CostManagement return
