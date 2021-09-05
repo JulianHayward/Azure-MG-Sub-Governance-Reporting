@@ -262,7 +262,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210901_1",
+    [string]$AzGovVizVersion = "v5_major_20210903_2",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
     [switch]$DebugAzAPICall,
@@ -689,7 +689,7 @@ $htBearerAccessToken = @{}
 
 #API
 #region azapicall
-function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumption, $getGroup, $getGroupMembersCount, $getApp, $getSp, $getGuests, $caller, $consistencyLevel, $getCount, $getPolicyCompliance, $getMgAscSecureScore, $getRoleAssignmentSchedules) {
+function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumption, $getGroup, $getGroupMembersCount, $getApp, $getSp, $getGuests, $caller, $consistencyLevel, $getCount, $getPolicyCompliance, $getMgAscSecureScore, $getRoleAssignmentSchedules, $getDiagnosticSettingsMg) {
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
     $retryAuthorizationFailed = 5
@@ -827,12 +827,13 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     $catchResult.error.code -eq "ResourceRequestsThrottled" -or
                     ($getMgAscSecureScore -and $catchResult.error.code -eq "BadRequest") -or
                     ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "ResourceNotOnboarded") -or
-                    ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "TenantNotOnboarded")
+                    ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "TenantNotOnboarded") -or
+                    ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "InvalidResourceType") -or
+                    ($getDiagnosticSettingsMg -and $catchResult.error.code -eq "InvalidResourceType") -or
+                    ($catchResult.error.code -eq "InsufficientPermissions")
                 ) {
-                    #if ($catchResult.error.code -like "*ResponseTooLarge*") {
                     if ($getPolicyCompliance -and $catchResult.error.code -like "*ResponseTooLarge*") {
                         Write-Host "Info: $currentTask - (StatusCode: '$($azAPIRequest.StatusCode)') Response too large, skipping this scope."
-                        #break
                         return "ResponseTooLarge"
                     }
                     if ($catchResult.error.message -like "*The offer MS-AZR-0110P is not supported*") {
@@ -951,7 +952,11 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             Write-Host "- - - - - - - - - - - - - - - - - - - - "
                             Write-Host "!Please report at aka.ms/AzGovViz and provide the following dump" -ForegroundColor Yellow
                             Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
-                            $htParameters | format-table -autosize | Out-host
+                            Write-Host ""
+                            Write-Host "Parameters:"
+                            foreach ($parameter in $htParameters.Keys | Sort-Object){
+                                Write-Host "$($parameter):$($htParameters.($parameter))"
+                            }
                             if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
                                 Write-Error "Error"
                             }
@@ -974,27 +979,38 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         if ($tryCounter -gt $maxTries) {
                             Write-Host " $currentTask - capitulation after $maxTries attempts"
                             return "capitulation"
-                            <#
-                            if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
-                                Write-Error "Error"
-                            }
-                            else {
-                                Throw "Error - AzGovViz: check the last console output for details"
-                            }
-                            #>
                         }
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again (trying $maxTries times) in $sleepSec second(s)"
                         Start-Sleep -Seconds $sleepSec
                     }
-                    
-                    if (($getRoleAssignmentSchedules -and $catchResult.error.code -eq "ResourceNotOnboarded") -or ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "TenantNotOnboarded")) {
+                    if (($getRoleAssignmentSchedules -and $catchResult.error.code -eq "ResourceNotOnboarded") -or ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "TenantNotOnboarded") -or ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "InvalidResourceType")) {
                         if ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "ResourceNotOnboarded") {
                             return "ResourceNotOnboarded"
                         }
                         if ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "TenantNotOnboarded") {
                             return "TenantNotOnboarded"
                         }
-                        
+                        if ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "InvalidResourceType"){
+                            return "InvalidResourceType"
+                        }
+                    }
+                    if ($getDiagnosticSettingsMg -and $catchResult.error.code -eq "InvalidResourceType"){
+                        return "InvalidResourceType"
+                    }
+                    if ($catchResult.error.code -eq "InsufficientPermissions"){
+                        $maxTries = 5
+                        $sleepSec = @(1, 3, 5, 7, 10, 12, 20, 30)[$tryCounter]
+                        if ($tryCounter -gt $maxTries) {
+                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - exit"
+                            if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                                Write-Error "Error"
+                            }
+                            else {
+                                Throw "Error - AzGovViz: check the last console output for details"
+                            }
+                        }
+                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' sleeping $($sleepSec) seconds"
+                        start-sleep -Seconds $sleepSec
                     }
                 }
                 else {
@@ -1012,7 +1028,11 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         Write-Host "- - - - - - - - - - - - - - - - - - - - "
                         Write-Host "!Please report at aka.ms/AzGovViz and provide the following dump" -ForegroundColor Yellow
                         Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
-                        $htParameters | format-table -autosize | Out-host
+                        Write-Host ""
+                        Write-Host "Parameters:"
+                        foreach ($parameter in $htParameters.Keys | Sort-Object){
+                            Write-Host "$($parameter):$($htParameters.($parameter))"
+                        }
                         if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
                             Write-Error "Error"
                         }
@@ -1778,86 +1798,90 @@ function dataCollection($mgId) {
             $currentTask = "getDiagnosticSettingsMg '$($mgdetail.properties.displayName)' ('$($mgdetail.Name)')"
             $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/providers/microsoft.insights/diagnosticSettings?api-version=2020-01-01-preview"
             $method = "GET"
-            $getDiagnosticSettingsMg = AzAPICall -uri $uri -method $method -currentTask $currentTask
-
-            if ($getDiagnosticSettingsMg.Count -eq 0) {
-                $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
-                        Scope              = "Mg"
-                        ScopeName          = $mgdetail.properties.displayName
-                        ScopeId            = $mgdetail.Name
-                        ScopeMgPath        = $mgPath
-                        DiagnosticsPresent = "false"
-                    })
+            $getDiagnosticSettingsMg = AzAPICall -uri $uri -method $method -currentTask $currentTask -getDiagnosticSettingsMg $true
+            if ($getDiagnosticSettingsMg -eq "InvalidResourceType"){
+                #skipping until supported
             }
-            else {           
-                foreach ($diagnosticSetting in $getDiagnosticSettingsMg) {
-                    $arrayLogs = [System.Collections.ArrayList]@()
-                    if ($diagnosticSetting.Properties.logs) {
-                        foreach ($logCategory in $diagnosticSetting.properties.logs) {
-                            $null = $arrayLogs.Add([PSCustomObject]@{
-                                    Category = $logCategory.category
-                                    Enabled  = $logCategory.enabled
+            else{
+                if ($getDiagnosticSettingsMg.Count -eq 0) {
+                    $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                            Scope              = "Mg"
+                            ScopeName          = $mgdetail.properties.displayName
+                            ScopeId            = $mgdetail.Name
+                            ScopeMgPath        = $mgPath
+                            DiagnosticsPresent = "false"
+                        })
+                }
+                else {           
+                    foreach ($diagnosticSetting in $getDiagnosticSettingsMg) {
+                        $arrayLogs = [System.Collections.ArrayList]@()
+                        if ($diagnosticSetting.Properties.logs) {
+                            foreach ($logCategory in $diagnosticSetting.properties.logs) {
+                                $null = $arrayLogs.Add([PSCustomObject]@{
+                                        Category = $logCategory.category
+                                        Enabled  = $logCategory.enabled
+                                    })
+                            }
+                        }
+
+                        $htLogs = @{}
+                        if ($diagnosticSetting.Properties.logs) {
+                            foreach ($logCategory in $diagnosticSetting.properties.logs) {
+                                if ($logCategory.enabled) {
+                                    $htLogs.($logCategory.category) = "true"
+                                }
+                                else {
+                                    $htLogs.($logCategory.category) = "false"
+                                }
+                            }
+                        }
+
+                        if ($diagnosticSetting.Properties.workspaceId) {
+                            $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                                    Scope                  = "Mg"
+                                    ScopeName              = $mgdetail.properties.displayName
+                                    ScopeId                = $mgdetail.Name
+                                    ScopeMgPath            = $mgPath
+                                    DiagnosticsPresent     = "true"
+                                    DiagnosticSettingName  = $diagnosticSetting.name
+                                    DiagnosticTargetType   = "LA"
+                                    DiagnosticTargetId     = $diagnosticSetting.Properties.workspaceId
+                                    DiagnosticCategories   = $arrayLogs
+                                    DiagnosticCategoriesHt = $htLogs
+                                })
+                        }
+                        if ($diagnosticSetting.Properties.storageAccountId) {
+                            $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                                    Scope                  = "Mg"
+                                    ScopeName              = $mgdetail.properties.displayName
+                                    ScopeId                = $mgdetail.Name
+                                    ScopeMgPath            = $mgPath
+                                    DiagnosticsPresent     = "true"
+                                    DiagnosticSettingName  = $diagnosticSetting.name
+                                    DiagnosticTargetType   = "SA"
+                                    DiagnosticTargetId     = $diagnosticSetting.Properties.storageAccountId
+                                    DiagnosticCategories   = $arrayLogs
+                                    DiagnosticCategoriesHt = $htLogs
+                                })
+                        }
+                        if ($diagnosticSetting.Properties.eventHubAuthorizationRuleId) {
+                            $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
+                                    Scope                  = "Mg"
+                                    ScopeName              = $mgdetail.properties.displayName
+                                    ScopeId                = $mgdetail.Name
+                                    ScopeMgPath            = $mgPath
+                                    DiagnosticsPresent     = "true"
+                                    DiagnosticSettingName  = $diagnosticSetting.name
+                                    DiagnosticTargetType   = "EH"
+                                    DiagnosticTargetId     = $diagnosticSetting.Properties.eventHubAuthorizationRuleId
+                                    DiagnosticCategories   = $arrayLogs
+                                    DiagnosticCategoriesHt = $htLogs
                                 })
                         }
                     }
-
-                    $htLogs = @{}
-                    if ($diagnosticSetting.Properties.logs) {
-                        foreach ($logCategory in $diagnosticSetting.properties.logs) {
-                            if ($logCategory.enabled) {
-                                $htLogs.($logCategory.category) = "true"
-                            }
-                            else {
-                                $htLogs.($logCategory.category) = "false"
-                            }
-                        }
-                    }
-
-                    if ($diagnosticSetting.Properties.workspaceId) {
-                        $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
-                                Scope                  = "Mg"
-                                ScopeName              = $mgdetail.properties.displayName
-                                ScopeId                = $mgdetail.Name
-                                ScopeMgPath            = $mgPath
-                                DiagnosticsPresent     = "true"
-                                DiagnosticSettingName  = $diagnosticSetting.name
-                                DiagnosticTargetType   = "LA"
-                                DiagnosticTargetId     = $diagnosticSetting.Properties.workspaceId
-                                DiagnosticCategories   = $arrayLogs
-                                DiagnosticCategoriesHt = $htLogs
-                            })
-                    }
-                    if ($diagnosticSetting.Properties.storageAccountId) {
-                        $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
-                                Scope                  = "Mg"
-                                ScopeName              = $mgdetail.properties.displayName
-                                ScopeId                = $mgdetail.Name
-                                ScopeMgPath            = $mgPath
-                                DiagnosticsPresent     = "true"
-                                DiagnosticSettingName  = $diagnosticSetting.name
-                                DiagnosticTargetType   = "SA"
-                                DiagnosticTargetId     = $diagnosticSetting.Properties.storageAccountId
-                                DiagnosticCategories   = $arrayLogs
-                                DiagnosticCategoriesHt = $htLogs
-                            })
-                    }
-                    if ($diagnosticSetting.Properties.eventHubAuthorizationRuleId) {
-                        $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
-                                Scope                  = "Mg"
-                                ScopeName              = $mgdetail.properties.displayName
-                                ScopeId                = $mgdetail.Name
-                                ScopeMgPath            = $mgPath
-                                DiagnosticsPresent     = "true"
-                                DiagnosticSettingName  = $diagnosticSetting.name
-                                DiagnosticTargetType   = "EH"
-                                DiagnosticTargetId     = $diagnosticSetting.Properties.eventHubAuthorizationRuleId
-                                DiagnosticCategories   = $arrayLogs
-                                DiagnosticCategoriesHt = $htLogs
-                            })
-                    }
                 }
             }
-
+            
             if ($htParameters.NoPolicyComplianceStates -eq $false) {
                 #MGPolicyCompliance
                 $currentTask = "Policy Compliance '$($mgdetail.properties.displayName)' ('$($mgdetail.Name)')"
@@ -2418,7 +2442,7 @@ function dataCollection($mgId) {
             $method = "GET"
             $roleAssignmentSchedulesFromAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection" -getRoleAssignmentSchedules $true))
             
-            if ($roleAssignmentSchedulesFromAPI -eq "ResourceNotOnboarded" -or $roleAssignmentSchedulesFromAPI -eq "TenantNotOnboarded") {
+            if ($roleAssignmentSchedulesFromAPI -eq "ResourceNotOnboarded" -or $roleAssignmentSchedulesFromAPI -eq "TenantNotOnboarded" -or $roleAssignmentSchedulesFromAPI -eq "InvalidResourceType") {
                 #Write-Host "Scope '$($childMgSubDisplayName)' ('$childMgSubId') not onboarded in PIM"
             }
             else {
@@ -3894,7 +3918,7 @@ function dataCollection($mgId) {
                     #$path = "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/providers/Microsoft.Authorization/roleAssignmentSchedules?api-version=2020-10-01-preview"
                     $method = "GET"
                     $roleAssignmentSchedulesFromAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection" -getRoleAssignmentSchedules $true))
-                    if ($roleAssignmentSchedulesFromAPI -eq "ResourceNotOnboarded" -or $roleAssignmentSchedulesFromAPI -eq "TenantNotOnboarded") {
+                    if ($roleAssignmentSchedulesFromAPI -eq "ResourceNotOnboarded" -or $roleAssignmentSchedulesFromAPI -eq "TenantNotOnboarded" -or $roleAssignmentSchedulesFromAPI -eq "InvalidResourceType") {
                         #Write-Host "Scope '$($childMgSubDisplayName)' ('$childMgSubId') not onboarded in PIM"
                     }
                     else {

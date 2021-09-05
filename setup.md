@@ -303,7 +303,7 @@ Assign the AAD Role 'Directory Reader' for the AzDO Service Connection´s Servic
 When the AzDO pipeline executes the AzGovViz script the outputs should be pushed back to the AzGovViz AzDO repository, in order to do this we need to grant the AzDO Project´s Build Service account with 'Contribute' permissions on the repository
 
 * Grant permissions on the AzGovViz AzDO repository
-    * In AzDO, under 'Repos' open the 'Repositories' page from the project settings page
+    * In AzDO click on 'Project settings' (located on the bottom left), under 'Repos' open the 'Repositories' page
     * Click on the AzGovViz AzDO Repository and select the tab 'Security'
     * On the right side search for the Build Service account  
      __%Project name% Build Service (%Organization name%)__ and grant it with 'Contribute' permissions by selecting 'Allow' (no save button available)
