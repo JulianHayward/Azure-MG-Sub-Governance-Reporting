@@ -42,14 +42,13 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 * [Features](#features)
 * [Screenshots](#screenshots)
 * [Outputs](#outputs)
+* __[AzGovViz Setup Guide](#azgovviz-setup-guide)__
 * [Technical documentation](#technical-documentation)
   * [Permissions overview](#permissions-overview)
   * [Required permissions in Azure](#required-permissions-in-azure)
   * [Required permissions in Azure Active Directory](#required-permissions-in-azure-active-directory)
   * [PowerShell](#powershell)
   * [Parameters](#parameters)
-* [AzGovViz step by step](#azgovviz-step-by-step)
-  * [AzGovViz in Azure DevOps](#azgovviz-in-azure-devops)
 * [Integrate with AzOps](#integrate-with-azops)
 * [Security](#security)
 * [Facts](#facts)
@@ -82,6 +81,8 @@ __Changes__ (2021-Aug-30 / Major)
 
 [Demo (v5_major_20210818_2)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210818_2.html)  
 Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation
+
+More [demo output](https://github.com/JulianHayward/AzGovViz)
 
 ### Media
 
@@ -256,13 +257,17 @@ markdown in Azure DevOps Wiki as Code
   * Browsers tested: Edge, new Edge and Chrome
 * MD (Markdown) file
   * for use with Azure DevOps Wiki leveraging the [Mermaid](https://docs.microsoft.com/en-us/azure/devops/release-notes/2019/sprint-158-update#mermaid-diagram-support-in-wiki) plugin
-* JSON folder ([demo-output](demo-output)) containing 
+* JSON folder ([demo-output](https://github.com/JulianHayward/AzGovViz)) containing 
   * all Policy and Role assignments (Scopes: Tenant, Management Groups and Subscriptions)
   * all BuiltIn and Custom Policy/Set definitions (Scopes: Management Groups and Subscriptions)
   * all BuiltIn and Custom Role definitions
   * JSON file of ManagementGroup Hierarchy including all Custom Policy/Set and RBAC definitions, Policy and Role assignments and some more relevant information 
   * Tenant tree including all Policy and Role assignments AND all Custom Policy/Set and Role definitions   
   ![alt text](img/jsonfolderfull450.jpg "JSONFolder")
+
+## AzGovViz Setup Guide
+
+&#x1F4A1; Detailed __[Setup Guide](setup.md)__
 
 ## Technical documentation
 
@@ -439,28 +444,10 @@ This permission is <b>mandatory</b> in each and every scenario!
 * Passed tests: Powershell Core 7.1.3 on Windows
 * Passed tests: Powershell Core 7.1.3 Azure DevOps hosted ubuntu-18.04
 
-## AzGovViz step by step
-
-&#x1F4A1; Check the detailed __[Setup](setup.md)__ instructions
-
-### AzGovViz in Azure DevOps
-
-The provided example Pipeline is configured to run based on a [schedule](https://docs.microsoft.com/en-us/azure/devops/pipelines/process/scheduled-triggers) (every 12 hours). It will push the AzGovViz markdown output file to the 'wiki' folder in the 'Azure-MG-Sub-Governance-Reporting' Repository which will feed your Wiki.
-
-1. In Azure DevOps make sure to [enable](https://docs.microsoft.com/en-us/azure/devops/project/navigation/preview-features?view=azure-devops&tabs=new-account-enabled) the Multistage Pipelines feature <https://docs.microsoft.com/en-us/azure/devops/pipelines/get-started/multi-stage-pipelines-experience?view=azure-devops>
-2. Clone the AzGovViz Repo
-3. Create Pipeline, configure your pipeline selecting __Existing Azure Pipelines YAML file__, select the AzGovViz YAML from the AzGovViz (Azure-MG-Sub-Governance-Reporting) Repo
-4. Grant Repository permissions: In order to allow the pipeline to push files back to our 'wiki' folder in the 'Azure-MG-Sub-Governance-Reporting' Repository the __Build Service__ Account ('%ProjectName% Build Service (%OrgName%)') must be granted with __Contribute__ permission  
-![alt text](img/AzDO_Repo-Permissions.png "example output")
-5. Run the Pipeline
-6. Create Wiki by choosing [Publish Code as Wiki](https://docs.microsoft.com/en-us/azure/devops/project/wiki/publish-repo-to-wiki?view=azure-devops&tabs=browser), define the folder 'wiki' from the 'Azure-MG-Sub-Governance-Reporting' Repository as source
-
-> Make sure your Service Connection´s Service Principal has been granted with the required permissions (see [__Required permissions in Azure Active Directory__](#required-permissions-in-azure-active-directory)).
-
 ## Integrate with AzOps
 
-Did you know you can run AzOps from Azure DevOps? Check [AzOps Accellerator](https://github.com/Azure/AzOps-Accelerator).
-You can integrate AzGovViz (same project as AzOps) by adding the following code to the AzGovViz pipeline (yml).
+Did you know you can run AzOps from Azure DevOps? Check [AzOps Accellerator](https://github.com/Azure/AzOps-Accelerator).  
+You can integrate AzGovViz (same project as AzOps).
 
 ```yaml
   pipelines:
