@@ -4,6 +4,10 @@
 
 ### AzGovViz version 5
 
+__Changes__ (2021-Sep-07 / Major)
+
+* Update AzAPICall CostManagement return
+
 __Changes__ (2021-Sep-03 / Major)
 
 * AzAPICall enhanced error handling

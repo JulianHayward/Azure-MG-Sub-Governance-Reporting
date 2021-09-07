@@ -262,7 +262,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210903_2",
+    [string]$AzGovVizVersion = "v5_major_20210907_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
     [switch]$DebugAzAPICall,
@@ -811,7 +811,8 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "*The offer*is not supported*" -and $catchResult.error.message -notlike "*The offer MS-AZR-0110P is not supported*") -or
                         ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "Invalid query definition*") -or
                         ($getConsumption -and $catchResult.error.code -eq "NotFound" -and $catchResult.error.message -like "*have valid WebDirect/AIRS offer type*") -or
-                        ($getConsumption -and $catchResult.error.code -eq "NotFound" -and $catchResult.error.message -like "Cost management data is not supported for subscription(s)*")
+                        ($getConsumption -and $catchResult.error.code -eq "NotFound" -and $catchResult.error.message -like "Cost management data is not supported for subscription(s)*") -or
+                        ($getConsumption -and $catchResult.error.code -eq "IndirectCostDisabled")
                     ) -or 
                     $catchResult.error.message -like "*The offer MS-AZR-0110P is not supported*" -or
                     ($getSp -and $catchResult.error.code -like "*Request_ResourceNotFound*") -or 
@@ -851,8 +852,8 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - $retryAuthorizationFailed retries failed - EXIT"
                             Write-Host ""
                             Write-Host "Parameters:"
-                            foreach ($parameter in $htParameters.Keys | Sort-Object){
-                                Write-Host "$($parameter):$($htParameters.($parameter))"
+                            foreach ($htParameter in ($htParameters.Keys | Sort-Object)){
+                                Write-Host "$($htParameter):$($htParameters.($htParameter))"
                             }
                             if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
                                 Write-Error "Error"
@@ -915,6 +916,10 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         if ($getConsumption -and $catchResult.error.code -eq "NotFound" -and $catchResult.error.message -like "Cost management data is not supported for subscription(s)*"){
                             return "NotFoundNotSupported"
                         }
+
+                        if ($getConsumption -and $catchResult.error.code -eq "IndirectCostDisabled"){
+                            return "IndirectCostDisabled"
+                        }
                     }
                     if (($getGroup) -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain Group status - skipping for now :)"
@@ -954,8 +959,8 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
                             Write-Host ""
                             Write-Host "Parameters:"
-                            foreach ($parameter in $htParameters.Keys | Sort-Object){
-                                Write-Host "$($parameter):$($htParameters.($parameter))"
+                            foreach ($htParameter in ($htParameters.Keys | Sort-Object)){
+                                Write-Host "$($htParameter):$($htParameters.($htParameter))"
                             }
                             if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
                                 Write-Error "Error"
@@ -1030,8 +1035,11 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
                         Write-Host ""
                         Write-Host "Parameters:"
-                        foreach ($parameter in $htParameters.Keys | Sort-Object){
-                            Write-Host "$($parameter):$($htParameters.($parameter))"
+                        foreach ($htParameter in ($htParameters.Keys | Sort-Object)){
+                            Write-Host "$($htParameter):$($htParameters.($htParameter))"
+                        }
+                        if ($getConsumption){
+                            Write-Host "If Consumption data is not that important for you, please try parameter: -NoAzureConsumption (however, please still report the issue - thank you)"
                         }
                         if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
                             Write-Error "Error"
@@ -19616,7 +19624,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                             $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
                             $method = "POST"
                             $subConsumptionData = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask -listenOn "ContentProperties" -getConsumption $true
-                            if ($subConsumptionData -eq "Unauthorized" -or $subConsumptionData -eq "OfferNotSupported" -or $subConsumptionData -eq "InvalidQueryDefinition" -or $subConsumptionData -eq "NonValidWebDirectAIRSOfferType" -or $subConsumptionData -eq "NotFoundNotSupported") {
+                            if ($subConsumptionData -eq "Unauthorized" -or $subConsumptionData -eq "OfferNotSupported" -or $subConsumptionData -eq "InvalidQueryDefinition" -or $subConsumptionData -eq "NonValidWebDirectAIRSOfferType" -or $subConsumptionData -eq "NotFoundNotSupported" -or $subConsumptionData -eq "IndirectCostDisabled") {
                                 Write-Host "   Failed ($subConsumptionData) - Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)) (whitelist))"
                                 $hlper = $htAllSubscriptionsFromAPI.($subIdToProcess).subDetails
                                 $hlper2 = $htSubscriptionsMgPath.($subIdToProcess)
@@ -19796,7 +19804,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                         $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
                         $method = "POST"
                         $subConsumptionData = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask -listenOn "ContentProperties" -getConsumption $true
-                        if ($subConsumptionData -eq "Unauthorized" -or $subConsumptionData -eq "OfferNotSupported" -or $subConsumptionData -eq "InvalidQueryDefinition" -or $subConsumptionData -eq "NonValidWebDirectAIRSOfferType" -or $subConsumptionData -eq "NotFoundNotSupported") {
+                        if ($subConsumptionData -eq "Unauthorized" -or $subConsumptionData -eq "OfferNotSupported" -or $subConsumptionData -eq "InvalidQueryDefinition" -or $subConsumptionData -eq "NonValidWebDirectAIRSOfferType" -or $subConsumptionData -eq "NotFoundNotSupported" -or $subConsumptionData -eq "IndirectCostDisabled") {
                             Write-Host "   Failed ($subConsumptionData) - Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
                             $hlper = $htAllSubscriptionsFromAPI.($subIdToProcess).subDetails
                             $hlper2 = $htSubscriptionsMgPath.($subIdToProcess)

@@ -58,6 +58,10 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## Release history
 
+__Changes__ (2021-Sep-07 / Major)
+
+* Update AzAPICall CostManagement return
+
 __Changes__ (2021-Sep-03 / Major)
 
 * AzAPICall enhanced error handling
@@ -349,7 +353,7 @@ This permission is <b>mandatory</b> in each and every scenario!
       </td>
     </tr>
     <tr>
-      <td><b>D</b><br>Azure DevOps Pipeline | ServicePrincipal (ServiceConnection)</td>
+      <td><b>D</b><br>Azure DevOps Pipeline | ServicePrincipal (Service Connection)</td>
       <td>
         <b>Option 1</b> (simple setup but more read permissions than required)<br>
         Add assignment for the Azure DevOps Service Connection's Service Principal to AAD Role <b>Directory readers</b><br>&#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/roles/permissions-reference.md#directory-readers" target="_blank">Directory readers</a><br><br>
@@ -387,6 +391,9 @@ This permission is <b>mandatory</b> in each and every scenario!
     </tr>
   </tbody>
 </table>
+
+Permissions in Azure Active Directory for App registration:  
+![alt text](img/aadpermportal.jpg "Permissions in Azure Active Directory")
 
 ### PowerShell
 

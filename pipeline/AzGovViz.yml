@@ -1,4 +1,4 @@
-# AzGovViz v5_major_20210830_1
+# AzGovViz v5_major_20210907_1
 # First things first: 
 # 1. edit line 60 and line 61 
 # 2. check line 75 and 86 if branch 'master' is applicable 
@@ -72,7 +72,7 @@ schedules:
   always: true
   branches:
     include:
-    - master
+    - master #CHECK: branch 'master' is applicable? - delete me :)
 
 #Running AzOps? Run AzGovViz after 'AzOps - Push' ..
 #AzOps Accellerator https://github.com/Azure/AzOps-Accelerator
@@ -83,7 +83,7 @@ schedules:
 #      trigger:
 #        branches:
 #          include:
-#            - master
+#            - master #CHECK: branch 'master' is applicable? - delete me :)
 
 jobs:
 - job: AzGovViz  

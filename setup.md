@@ -289,6 +289,10 @@ Grant API permissions for the Application that we created earlier
     * Back in the main 'API permissions' menu you will find the 4 permissions with status 'Not granted for...'. Click on 'Grant admin consent for _TenantName_' and confirm by click on 'Yes'
     * Now you will find the 4 permissions with status 'Granted for _TenantName_'
 
+Permissions in Azure Active Directory for App registration:  
+![alt text](img/aadpermportal.jpg "Permissions in Azure Active Directory")
+
+
 ### Grant permissions in AAD - Option 2 - AAD Role
 
 * Requirements
