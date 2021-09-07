@@ -393,7 +393,7 @@ This permission is <b>mandatory</b> in each and every scenario!
 </table>
 
 Permissions in Azure Active Directory for App registration:  
-![alt text](img/aadpermportal.jpg "Permissions in Azure Active Directory")
+![alt text](img/aadpermissionsportal.jpg "Permissions in Azure Active Directory")
 
 ### PowerShell
 

@@ -290,7 +290,7 @@ Grant API permissions for the Application that we created earlier
     * Now you will find the 4 permissions with status 'Granted for _TenantName_'
 
 Permissions in Azure Active Directory for App registration:  
-![alt text](img/aadpermportal.jpg "Permissions in Azure Active Directory")
+![alt text](img/aadpermissionsportal.jpg "Permissions in Azure Active Directory")
 
 
 ### Grant permissions in AAD - Option 2 - AAD Role
