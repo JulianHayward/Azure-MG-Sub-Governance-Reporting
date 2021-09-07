@@ -58,9 +58,10 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## Release history
 
-__Changes__ (2021-Sep-07 / Major)
+__Changes__ (2021-Sep-07 / Minor)
 
 * Update AzAPICall CostManagement return
+* Fix markdown output (Management Group Hierarchy leveraging Mermaid plugin); hierarchy broken when not executing against Tenant Root Group but child Management Group
 
 __Changes__ (2021-Sep-03 / Major)
 

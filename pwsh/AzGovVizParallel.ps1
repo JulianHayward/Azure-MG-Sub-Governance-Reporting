@@ -262,7 +262,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_major_20210907_1",
+    [string]$AzGovVizVersion = "v5_minor_20210907_2",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
     [switch]$DebugAzAPICall,
@@ -18440,7 +18440,11 @@ tf.init();}}
 
 #region markdown4wiki
 function diagramMermaid() {
+    if ($ManagementGroupId -ne $checkContext.Tenant.Id){
+        $optimizedTableForPathQueryMg = $optimizedTableForPathQueryMg.where({$_.mgParentId -ne "'upperScopes'"})
+    }
     $mgLevels = ($optimizedTableForPathQueryMg | Sort-Object -Property Level -Unique).Level
+    
     foreach ($mgLevel in $mgLevels) {
         $mgsInLevel = ($optimizedTableForPathQueryMg.where( { $_.Level -eq $mgLevel } )).MgId | Get-Unique
         $script:arrayMgs += foreach ($mgInLevel in $mgsInLevel) { 
