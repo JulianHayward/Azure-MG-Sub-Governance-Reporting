@@ -4,11 +4,14 @@
 
 ### AzGovViz version 5
 
+__Changes__ (2021-Sep-08 / Major)
+
+* Update AzAPICall handle variants of throttled requests
+
 __Changes__ (2021-Sep-07 / Minor)
 
 * Update AzAPICall CostManagement return
 * Fix markdown output (Management Group Hierarchy leveraging Mermaid plugin); hierarchy broken when not executing against Tenant Root Group but child Management Group
-
 
 __Changes__ (2021-Sep-03 / Major)
 

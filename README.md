@@ -58,6 +58,10 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## Release history
 
+__Changes__ (2021-Sep-08 / Major)
+
+* Update AzAPICall handle variants of throttled requests
+
 __Changes__ (2021-Sep-07 / Minor)
 
 * Update AzAPICall CostManagement return

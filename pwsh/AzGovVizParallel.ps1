@@ -262,7 +262,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_minor_20210907_2",
+    [string]$AzGovVizVersion = "v5_minor_20210908_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
     [switch]$DebugAzAPICall,
@@ -826,6 +826,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     $catchResult.error.code -like "*BlueprintNotFound*" -or
                     $catchResult.error.code -eq "500" -or
                     $catchResult.error.code -eq "ResourceRequestsThrottled" -or
+                    $catchResult.error.code -eq "429" -or
                     ($getMgAscSecureScore -and $catchResult.error.code -eq "BadRequest") -or
                     ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "ResourceNotOnboarded") -or
                     ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "TenantNotOnboarded") -or
@@ -974,9 +975,20 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Blueprint definition is gone - skipping for now :)"
                         return "BlueprintNotFound"
                     }
-                    if ($catchResult.error.code -eq "ResourceRequestsThrottled") {
-                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - throttled! sleeping 11 seconds"
-                        start-sleep -Seconds 11
+                    if ($catchResult.error.code -eq "ResourceRequestsThrottled" -or $catchResult.error.code -eq "429") {
+                        $sleepSeconds = 11
+                        if ($catchResult.error.code -eq "ResourceRequestsThrottled"){
+                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - throttled! sleeping $sleepSeconds seconds"
+                            start-sleep -Seconds $sleepSeconds
+                        }
+                        if ($catchResult.error.code -eq "429"){
+                            if ($catchResult.error.message -like "*60 seconds*"){
+                                $sleepSeconds = 60
+                            }
+                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - throttled! sleeping $sleepSeconds seconds"
+                            start-sleep -Seconds $sleepSeconds
+                        }
+
                     }    
                     if ($getMgAscSecureScore -and $catchResult.error.code -eq "BadRequest") {
                         $sleepSec = @(1, 1, 2, 3, 5, 7, 9, 10, 13, 15, 20, 25, 30, 45, 60, 60, 60)[$tryCounter]
