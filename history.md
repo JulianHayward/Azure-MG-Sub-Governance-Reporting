@@ -4,6 +4,11 @@
 
 ### AzGovViz version 5
 
+__Changes__ (2021-Sep-13 / Major)
+
+* Fix Issue #58
+* Add Windows invalid character usage (Management Group, Subscription, Policy/Set definition, Rolicy assignment, Role definition)
+
 __Changes__ (2021-Sep-08 / Major)
 
 * Update AzAPICall handle variants of throttled requests
