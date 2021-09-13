@@ -1,14 +1,14 @@
-param repositoryUrl string = 'https://dev.azure.com/shaneneff0440/MS-AzGovViz/_git'
+param repositoryUrl string = <repository URL>
 param repositoryBranch string = 'main'
 
-param location string = 'eastus2'
-param skuName string = 'Free'
-param skuTier string = 'Free'
+param location string = '<location>'
+param skuName string = '<skuName>'
+param skuTier string = '<sku tier>'
 
-param appName string = 'shanetest3'
+param appName string = '<app Name>'
 
 resource staticWebApp 'Microsoft.Web/staticSites@2020-12-01' = {
-  name: 'shanestest3'
+  name: 'name of site>'
   location: location
   sku: {
     name: skuName
@@ -16,8 +16,8 @@ resource staticWebApp 'Microsoft.Web/staticSites@2020-12-01' = {
   }
   properties: {
     provider: 'DevOps'
-    repositoryUrl: 'https://dev.azure.com/shaneneff0440/MS-AzGovViz/_git'
-    branch: 'main'
+    repositoryUrl: repositoryUrl
+    branch: repositoryBranch
     buildProperties: {
       skipGithubActionWorkflowGeneration: true
     }

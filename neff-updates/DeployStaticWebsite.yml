@@ -11,10 +11,10 @@ stages:
       submodules: true  
     - task: AzureCLI@2
       inputs:
-        azureSubscription: 'SC-MS-AzGovViz'
+        azureSubscription: '<name of your service connection>'
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
-        inlineScript: 'az staticwebapp disconnect -n shanestest3'
+        inlineScript: 'az staticwebapp disconnect -n <name of your app>'
         
     - bash: az bicep build --file infra/static-web-app/main.bicep
       displayName: "Compile Bicep to ARM"
@@ -24,10 +24,10 @@ stages:
       displayName: Deploy Static Web App infra
       inputs:
         deploymentScope: Resource Group
-        azureResourceManagerConnection: SC-MS-AzGovViz
-        subscriptionId: 805b1035-89ad-44e4-9f1d-d27d67305a2b
+        azureResourceManagerConnection: <name of service connection>
+        subscriptionId: <your subscriptionId>
         action: Create Or Update Resource Group
-        resourceGroupName: staticwebsite2
+        resourceGroupName: <name of your resource group>
         location: $(location)
         templateLocation: Linked artifact
         csmFile: 'infra/static-web-app/main.json' # created by bash script

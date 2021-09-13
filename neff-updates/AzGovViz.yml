@@ -2,7 +2,7 @@
 # First things first: 
 # 1. edit line 59 and line 60 
 # 2. check line 74 and 85 if branch 'main' is applicable 
-# Documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
+# Documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governgit cance-Reporting
 # Also check https://www.azadvertizer.net - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
 # 
 # Parameters reference (use in line 110)
@@ -56,8 +56,8 @@ parameters:
     - undefined
 
 variables:
-  ServiceConnection: SC-MS-AzGovViz
-  ManagementGroupId: e3aa35c9-3846-4032-89d8-8e486a2eb6d4
+  ServiceConnection: <your service connection>
+  ManagementGroupId: <your management group ID>
   SubscriptionQuotaIdWhitelist: ${{ join(',',parameters.subscriptionQuotaIdWhitelistParameters) }}
   ExludedResourceTypesDiagnosticsCapable: ${{ join(',',parameters.exludedResourceTypesDiagnosticsCapableParameters) }}
   Output: output
@@ -72,17 +72,6 @@ schedules:
   branches:
     include:
     - main
-
-#Running AzOps? Run AzGovViz after 'AzOps - Push' ..
-#AzOps Accellerator https://github.com/Azure/AzOps-Accelerator
-#resources:
-#  pipelines:
-#    - pipeline: 'Push'
-#      source: 'AzOps - Push'
-#      trigger:
-#        branches:
-#          include:
-#            - main
 
 jobs:
 - job: AzGovViz  
@@ -130,16 +119,9 @@ jobs:
       git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" push origin HEAD:$(Build.SourceBranchName)
     displayName: 'Push AzGovViz v5 output to repository'
 
-#    - task: AzureCLI@2
-#      inputs:
-#        azureSubscription: 'SC-MS-AzGovViz'
-#        scriptType: 'bash'
-#        scriptLocation: 'inlineScript'
-#        inlineScript: 'az staticwebapp disconnect -n shanestest3'
-
   - task: AzureCLI@2
     inputs:
-      azureSubscription: 'SC-MS-AzGovViz'
+      azureSubscription: '<your service connection>
       scriptType: 'bash'
       scriptLocation: 'inlineScript'
-      inlineScript: 'az staticwebapp disconnect -n shanestest3'
+      inlineScript: 'az staticwebapp disconnect -n <name of your app>'
