@@ -262,7 +262,7 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_minor_20210913_2",
+    [string]$AzGovVizVersion = "v5_minor_20210916_1",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
     [switch]$DebugAzAPICall,
@@ -2601,12 +2601,12 @@ function dataCollection($mgId) {
             if ($roleAssignmentsFromAPI.Count -gt 0) {
                 foreach ($roleAssignmentFromAPI in $roleAssignmentsFromAPI) {
                     if (-not ($htCacheAssignments).roleFromAPI.($roleAssignmentFromAPI.id)) {
-                        ($htCacheAssignments).roleFromAPI.($roleAssignmentFromAPI.id) = @{}
-                        ($htCacheAssignments).roleFromAPI.($roleAssignmentFromAPI.id).assignment = $roleAssignmentFromAPI
+                        ($script:htCacheAssignments).roleFromAPI.($roleAssignmentFromAPI.id) = @{}
+                        ($script:htCacheAssignments).roleFromAPI.($roleAssignmentFromAPI.id).assignment = $roleAssignmentFromAPI
                     }
                     $keyName = "$($roleAssignmentFromAPI.properties.scope)-$($roleAssignmentFromAPI.properties.principalId)-$($roleAssignmentFromAPI.properties.roleDefinitionId)"
                     if ($htRoleAssignmentsPIM.($keyName)) {
-                        ($htCacheAssignments).roleFromAPI.($roleAssignmentFromAPI.id).assignmentPIMDetails = $htRoleAssignmentsPIM.($keyName)
+                        ($script:htCacheAssignments).roleFromAPI.($roleAssignmentFromAPI.id).assignmentPIMDetails = $htRoleAssignmentsPIM.($keyName)
                     }
                     if (-not $htRoleAssignmentsFromAPIInheritancePrevention.($roleAssignmentFromAPI.id -replace ".*/")) {
                         $htRoleAssignmentsFromAPIInheritancePrevention.($roleAssignmentFromAPI.id -replace ".*/") = @{}
@@ -2637,23 +2637,23 @@ function dataCollection($mgId) {
             foreach ($L0mgmtGroupRoleAssignment in $L0mgmtGroupRoleAssignments) {
                 if (-not $L0mgmtGroupRoleAssignment.RoleAssignmentId) {
                     if (-not $($htCacheAssignments).roleClassic.("$($L0mgmtGroupRoleAssignment.RoleDefinitionName)_$($L0mgmtGroupRoleAssignment.Scope)_$($L0mgmtGroupRoleAssignment.SignInName)")) {
-                        $($script:htCacheAssignments).roleClassic.("$($L0mgmtGroupRoleAssignment.RoleDefinitionName)_$($L0mgmtGroupRoleAssignment.Scope)_$($L0mgmtGroupRoleAssignment.SignInName)") = @{}
-                        $($script:htCacheAssignments).roleClassic.("$($L0mgmtGroupRoleAssignment.RoleDefinitionName)_$($L0mgmtGroupRoleAssignment.Scope)_$($L0mgmtGroupRoleAssignment.SignInName)") = $L0mgmtGroupRoleAssignment
+                        ($script:htCacheAssignments).roleClassic.("$($L0mgmtGroupRoleAssignment.RoleDefinitionName)_$($L0mgmtGroupRoleAssignment.Scope)_$($L0mgmtGroupRoleAssignment.SignInName)") = @{}
+                        ($script:htCacheAssignments).roleClassic.("$($L0mgmtGroupRoleAssignment.RoleDefinitionName)_$($L0mgmtGroupRoleAssignment.Scope)_$($L0mgmtGroupRoleAssignment.SignInName)") = $L0mgmtGroupRoleAssignment
                     }
                     continue
                 }
                 
                 if (-not $($htCacheAssignments).role.($L0mgmtGroupRoleAssignment.RoleAssignmentId)) {
-                    $($script:htCacheAssignments).role.$($L0mgmtGroupRoleAssignment.RoleAssignmentId) = @{}
+                    ($script:htCacheAssignments).role.$($L0mgmtGroupRoleAssignment.RoleAssignmentId) = @{}
                     $splitAssignment = ($L0mgmtGroupRoleAssignment.RoleAssignmentId).Split('/')
-                    $($script:htCacheAssignments).role.$($L0mgmtGroupRoleAssignment.RoleAssignmentId).Assignment = $L0mgmtGroupRoleAssignment
+                    ($script:htCacheAssignments).role.$($L0mgmtGroupRoleAssignment.RoleAssignmentId).Assignment = $L0mgmtGroupRoleAssignment
                     if ($L0mgmtGroupRoleAssignment.RoleAssignmentId -like "/providers/Microsoft.Authorization/roleAssignments/*") {
-                        $($script:htCacheAssignments).role.$($L0mgmtGroupRoleAssignment.RoleAssignmentId).AssignmentScopeTenMgSubRgRes = "Tenant"
-                        $($script:htCacheAssignments).role.$($L0mgmtGroupRoleAssignment.RoleAssignmentId).AssignmentScopeId = "Tenant"
+                        ($script:htCacheAssignments).role.$($L0mgmtGroupRoleAssignment.RoleAssignmentId).AssignmentScopeTenMgSubRgRes = "Tenant"
+                        ($script:htCacheAssignments).role.$($L0mgmtGroupRoleAssignment.RoleAssignmentId).AssignmentScopeId = "Tenant"
                     }
                     else {
-                        $($script:htCacheAssignments).role.$($L0mgmtGroupRoleAssignment.RoleAssignmentId).AssignmentScopeTenMgSubRgRes = "Mg"
-                        $($script:htCacheAssignments).role.$($L0mgmtGroupRoleAssignment.RoleAssignmentId).AssignmentScopeId = [string]$splitAssignment[4]
+                        ($script:htCacheAssignments).role.$($L0mgmtGroupRoleAssignment.RoleAssignmentId).AssignmentScopeTenMgSubRgRes = "Mg"
+                        ($script:htCacheAssignments).role.$($L0mgmtGroupRoleAssignment.RoleAssignmentId).AssignmentScopeId = [string]$splitAssignment[4]
                     }
                 }  
     
@@ -3377,7 +3377,7 @@ function dataCollection($mgId) {
                         foreach ($blueprint in $subBlueprintDefinitionResult) {
 
                             if (-not $($htCacheDefinitions).blueprint[$blueprint.Id]) {
-                                $($script:htCacheDefinitions).blueprint.$($blueprint.Id) = @{}
+                                ($script:htCacheDefinitions).blueprint.$($blueprint.Id) = @{}
                             }  
 
                             $blueprintName = $blueprint.name
@@ -3574,7 +3574,7 @@ function dataCollection($mgId) {
                                     ($script:htCacheDefinitions).policy.(($subPolicyDefinition.Id).ToLower()).effectAllowedValue = "n/a"
                                 }
                             }
-                            $($script:htCacheDefinitions).policy.(($subPolicyDefinition.Id).ToLower()).Json = $subPolicyDefinition
+                            ($script:htCacheDefinitions).policy.(($subPolicyDefinition.Id).ToLower()).Json = $subPolicyDefinition
 
                             if (-not [string]::IsNullOrEmpty($subPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
                                 ($script:htCacheDefinitions).policy.(($subPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $subPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
@@ -3641,8 +3641,8 @@ function dataCollection($mgId) {
                             else {
                                 $policySetDefinitionDescription = $subPolicySetDefinition.Properties.description
                             }
-                            $($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()) = @{}
-                            $($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).Id = ($subPolicySetDefinition.Id).ToLower()
+                            ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()) = @{}
+                            ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).Id = ($subPolicySetDefinition.Id).ToLower()
                             if ($subPolicySetDefinition.Id -like "/providers/Microsoft.Management/managementGroups/*") {
                                 ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).Scope = (($subPolicySetDefinition.Id) -split "\/")[0..4] -join "/"
                                 ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).ScopeMgSub = "Mg"
@@ -3653,17 +3653,17 @@ function dataCollection($mgId) {
                                 ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).ScopeMgSub = "Sub"
                                 ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).ScopeId = (($subPolicySetDefinition.Id) -split "\/")[2]
                             }
-                            $($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).DisplayName = $($subPolicySetDefinition.Properties.displayname)
-                            $($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).Description = $($policySetDefinitionDescription)
-                            $($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).Type = $($subPolicySetDefinition.Properties.policyType)
-                            $($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).Category = $($subPolicySetDefinition.Properties.metadata.category)
-                            $($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).PolicyDefinitionId = ($subPolicySetDefinition.Id).ToLower()
+                            ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).DisplayName = $($subPolicySetDefinition.Properties.displayname)
+                            ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).Description = $($policySetDefinitionDescription)
+                            ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).Type = $($subPolicySetDefinition.Properties.policyType)
+                            ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).Category = $($subPolicySetDefinition.Properties.metadata.category)
+                            ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).PolicyDefinitionId = ($subPolicySetDefinition.Id).ToLower()
                             $arrayPolicySetPolicyIdsToLower = @()
                             $arrayPolicySetPolicyIdsToLower = foreach ($policySetPolicy in $subPolicySetDefinition.properties.policydefinitions.policyDefinitionId) {
                                 ($policySetPolicy).ToLower()
                             }
-                            $($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
-                            $($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).Json = $subPolicySetDefinition
+                            ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
+                            ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).Json = $subPolicySetDefinition
                             if ($subPolicySetDefinition.Properties.metadata.deprecated -eq $true -or $subPolicySetDefinition.Properties.displayname -like "``[Deprecated``]*") {
                                 ($script:htCacheDefinitions).policySet.(($subPolicySetDefinition.Id).ToLower()).Deprecated = $subPolicySetDefinition.Properties.metadata.deprecated
                             }
@@ -4170,12 +4170,12 @@ function dataCollection($mgId) {
                         foreach ($roleAssignmentFromAPI in $roleAssignmentsFromAPI) {
                             if (-not $htRoleAssignmentsFromAPIInheritancePrevention.($roleAssignmentFromAPI.id -replace ".*/")) {
                                 if (-not ($htCacheAssignments).roleFromAPI.($roleAssignmentFromAPI.id)) {
-                                    ($htCacheAssignments).roleFromAPI.($roleAssignmentFromAPI.id) = @{}
-                                    ($htCacheAssignments).roleFromAPI.($roleAssignmentFromAPI.id).assignment = $roleAssignmentFromAPI
+                                    ($script:htCacheAssignments).roleFromAPI.($roleAssignmentFromAPI.id) = @{}
+                                    ($script:htCacheAssignments).roleFromAPI.($roleAssignmentFromAPI.id).assignment = $roleAssignmentFromAPI
 
                                     $keyName = "$($roleAssignmentFromAPI.properties.scope)-$($roleAssignmentFromAPI.properties.principalId)-$($roleAssignmentFromAPI.properties.roleDefinitionId)"
                                     if ($htRoleAssignmentsPIM.($keyName)) {
-                                        ($htCacheAssignments).roleFromAPI.($roleAssignmentFromAPI.id).assignmentPIMDetails = $htRoleAssignmentsPIM.($keyName)
+                                        ($script:htCacheAssignments).roleFromAPI.($roleAssignmentFromAPI.id).assignmentPIMDetails = $htRoleAssignmentsPIM.($keyName)
                                     }
                                 }
                             }
@@ -4213,8 +4213,8 @@ function dataCollection($mgId) {
 
                         if (-not $L1mgmtGroupSubRoleAssignment.RoleAssignmentId) {
                             if (-not $($htCacheAssignments).roleClassic.("$($L1mgmtGroupSubRoleAssignment.RoleDefinitionName)_$($L1mgmtGroupSubRoleAssignment.Scope)_$($L1mgmtGroupSubRoleAssignment.SignInName)")) {
-                                $($script:htCacheAssignments).roleClassic.("$($L1mgmtGroupSubRoleAssignment.RoleDefinitionName)_$($L1mgmtGroupSubRoleAssignment.Scope)_$($L1mgmtGroupSubRoleAssignment.SignInName)") = @{}
-                                $($script:htCacheAssignments).roleClassic.("$($L1mgmtGroupSubRoleAssignment.RoleDefinitionName)_$($L1mgmtGroupSubRoleAssignment.Scope)_$($L1mgmtGroupSubRoleAssignment.SignInName)") = $L1mgmtGroupSubRoleAssignment
+                                ($script:htCacheAssignments).roleClassic.("$($L1mgmtGroupSubRoleAssignment.RoleDefinitionName)_$($L1mgmtGroupSubRoleAssignment.Scope)_$($L1mgmtGroupSubRoleAssignment.SignInName)") = @{}
+                                ($script:htCacheAssignments).roleClassic.("$($L1mgmtGroupSubRoleAssignment.RoleDefinitionName)_$($L1mgmtGroupSubRoleAssignment.Scope)_$($L1mgmtGroupSubRoleAssignment.SignInName)") = $L1mgmtGroupSubRoleAssignment
                             }
                             continue
                         }
@@ -4277,20 +4277,20 @@ function dataCollection($mgId) {
                         }
 
                         if (-not $($htCacheAssignments).role.($L1mgmtGroupSubRoleAssignment.RoleAssignmentId)) {
-                            $($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId) = @{}
+                            ($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId) = @{}
                             
                             $splitAssignment = ($L1mgmtGroupSubRoleAssignment.RoleAssignmentId).Split('/')
-                            $($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId).Assignment = $L1mgmtGroupSubRoleAssignment
-                            $($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId).AssignmentScopeTenMgSubRgRes = $RoleAssignmentScopeType
+                            ($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId).Assignment = $L1mgmtGroupSubRoleAssignment
+                            ($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId).AssignmentScopeTenMgSubRgRes = $RoleAssignmentScopeType
                             if ($RoleAssignmentScopeType -eq "Sub") {
-                                $($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId).AssignmentScopeId = [string]$splitAssignment[2]
+                                ($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId).AssignmentScopeId = [string]$splitAssignment[2]
                             }
                             if ($RoleAssignmentScopeType -eq "RG") {
-                                $($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId).AssignmentScopeId = "$($splitAssignment[2])/$($splitAssignment[4])"
+                                ($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId).AssignmentScopeId = "$($splitAssignment[2])/$($splitAssignment[4])"
                             }
                             if ($RoleAssignmentScopeType -eq "Res") {
-                                $($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId).AssignmentScopeId = "$($splitAssignment[2])/$($splitAssignment[4])/$($splitAssignment[8])"
-                                $($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId).ResourceType = "$($splitAssignment[6])-$($splitAssignment[7])"
+                                ($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId).AssignmentScopeId = "$($splitAssignment[2])/$($splitAssignment[4])/$($splitAssignment[8])"
+                                ($script:htCacheAssignments).role.$($L1mgmtGroupSubRoleAssignment.RoleAssignmentId).ResourceType = "$($splitAssignment[6])-$($splitAssignment[7])"
                             }
                         }  
 
@@ -21362,7 +21362,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
             }
         }
     }
-    #
+    
     if ($htParameters.LargeTenant -eq $true -or $htParameters.RBACAtScopeOnly -eq $true) {
 
         #RoleAssignment API (system metadata e.g. createdOn)
@@ -21395,8 +21395,8 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
             if (-not $upperScopesRoleAssignment.RoleAssignmentId) {
                 if (-not $($htCacheAssignments).roleClassic.("$($upperScopesRoleAssignment.RoleDefinitionName)_$($upperScopesRoleAssignment.Scope)_$($upperScopesRoleAssignment.SignInName)")) {
-                    $($script:htCacheAssignments).roleClassic.("$($upperScopesRoleAssignment.RoleDefinitionName)_$($upperScopesRoleAssignment.Scope)_$($upperScopesRoleAssignment.SignInName)") = @{}
-                    $($script:htCacheAssignments).roleClassic.("$($upperScopesRoleAssignment.RoleDefinitionName)_$($upperScopesRoleAssignment.Scope)_$($upperScopesRoleAssignment.SignInName)") = $upperScopesRoleAssignment
+                    ($script:htCacheAssignments).roleClassic.("$($upperScopesRoleAssignment.RoleDefinitionName)_$($upperScopesRoleAssignment.Scope)_$($upperScopesRoleAssignment.SignInName)") = @{}
+                    ($script:htCacheAssignments).roleClassic.("$($upperScopesRoleAssignment.RoleDefinitionName)_$($upperScopesRoleAssignment.Scope)_$($upperScopesRoleAssignment.SignInName)") = $upperScopesRoleAssignment
                 }
                 continue
             }
