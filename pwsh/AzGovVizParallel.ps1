@@ -23861,7 +23861,7 @@ if (-not $NoJsonExport) {
 
                                             foreach ($res in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).Resources.keys) {
                                                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)")) {
-                                                    $null = new-item -Name $res -ItemType directory -path "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)"
+                                                    $null = new-item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)" -ItemType directory -path "$($outputPath)"
                                                 }
                                                 foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.keys) {
 
