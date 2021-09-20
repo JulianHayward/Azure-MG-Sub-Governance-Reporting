@@ -58,34 +58,18 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## Release history
 
+__Changes__ (2021-Sep-19 / Major)
+
+* Fix Issue #60
+* Fix JSON file creation / path containing brackets
+* AzAPICall enhanced error handling (ClientCertificateValidationFailure)
+* Minor performance optimization
+* Bugfixes
+
 __Changes__ (2021-Sep-13 / Major)
 
 * Fix Issue #58
 * Add Windows invalid character usage (Management Group, Subscription, Policy/Set definition, Rolicy assignment, Role definition)
-
-__Changes__ (2021-Sep-08 / Major)
-
-* Update AzAPICall handle variants of throttled requests
-
-__Changes__ (2021-Sep-07 / Minor)
-
-* Update AzAPICall CostManagement return
-* Fix markdown output (Management Group Hierarchy leveraging Mermaid plugin); hierarchy broken when not executing against Tenant Root Group but child Management Group
-
-__Changes__ (2021-Sep-03 / Major)
-
-* AzAPICall enhanced error handling
-
-__Changes__ (2021-Sep-01 / Major)
-
-* Update AzAPICall CostManagement return
-
-__Changes__ (2021-Aug-30 / Major)
-
-* Adding feature for RBAC Role assignments: determine 'standing' from PIM (Priviledged Identity Mangement) managed Role assignments
-* New parameter `-NoResources` - this will speed up the processing time but information like Resource diagnostics capability and resource type stats will not be made available (featured for large tenants)
-* Integrate AzGovViz with AzOps (after 'AzOps - Push' run AzGovViz) - (line 77 AzGovViz.yml). Checkout [AzOps Accellerator](https://github.com/Azure/AzOps-Accelerator)
-* Performance optimization
 
 [Release history](history.md)
 

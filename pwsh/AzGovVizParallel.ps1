@@ -262,7 +262,8 @@
 [CmdletBinding()]
 Param
 (
-    [string]$AzGovVizVersion = "v5_minor_20210916_1",
+    [string]$AzGovVizVersion = "v5_major_20210919_1",
+    [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
     [switch]$DebugAzAPICall,
@@ -398,6 +399,7 @@ if ($LargeTenant -eq $true) {
 $htParameters = @{ }
 $htParameters.AzGovVizVersion = $AzGovVizVersion
 $htParameters.AzCloudEnv = $checkContext.Environment.Name
+$htParameters.GithubRepository = $GithubRepository
 
 if ($AzureDevOpsWikiAsCode) {
     $htParameters.AzureDevOpsWikiAsCode = $true
@@ -855,7 +857,8 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "TenantNotOnboarded") -or
                     ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "InvalidResourceType") -or
                     ($getDiagnosticSettingsMg -and $catchResult.error.code -eq "InvalidResourceType") -or
-                    ($catchResult.error.code -eq "InsufficientPermissions")
+                    ($catchResult.error.code -eq "InsufficientPermissions") -or
+                    $catchResult.error.code -eq "ClientCertificateValidationFailure"
                 ) {
                     if ($getPolicyCompliance -and $catchResult.error.code -like "*ResponseTooLarge*") {
                         Write-Host "Info: $currentTask - (StatusCode: '$($azAPIRequest.StatusCode)') Response too large, skipping this scope."
@@ -872,11 +875,11 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     if ($catchResult.error.code -like "*AuthorizationFailed*") {
                         if ($retryAuthorizationFailedCounter -gt $retryAuthorizationFailed) {
                             Write-Host "- - - - - - - - - - - - - - - - - - - - "
-                            Write-Host "!Please report at aka.ms/AzGovViz and provide the following dump" -ForegroundColor Yellow
+                            Write-Host "!Please report at $($htParameters.GithubRepository) and provide the following dump" -ForegroundColor Yellow
                             Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - $retryAuthorizationFailed retries failed - EXIT"
                             Write-Host ""
                             Write-Host "Parameters:"
-                            foreach ($htParameter in ($htParameters.Keys | Sort-Object)){
+                            foreach ($htParameter in ($htParameters.Keys | Sort-Object)) {
                                 Write-Host "$($htParameter):$($htParameters.($htParameter))"
                             }
                             if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
@@ -937,11 +940,11 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
                             return "NonValidWebDirectAIRSOfferType"
                         }
-                        if ($getConsumption -and $catchResult.error.code -eq "NotFound" -and $catchResult.error.message -like "Cost management data is not supported for subscription(s)*"){
+                        if ($getConsumption -and $catchResult.error.code -eq "NotFound" -and $catchResult.error.message -like "Cost management data is not supported for subscription(s)*") {
                             return "NotFoundNotSupported"
                         }
 
-                        if ($getConsumption -and $catchResult.error.code -eq "IndirectCostDisabled"){
+                        if ($getConsumption -and $catchResult.error.code -eq "IndirectCostDisabled") {
                             return "IndirectCostDisabled"
                         }
                     }
@@ -979,11 +982,11 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         }
                         else {
                             Write-Host "- - - - - - - - - - - - - - - - - - - - "
-                            Write-Host "!Please report at aka.ms/AzGovViz and provide the following dump" -ForegroundColor Yellow
+                            Write-Host "!Please report at $($htParameters.GithubRepository) and provide the following dump" -ForegroundColor Yellow
                             Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
                             Write-Host ""
                             Write-Host "Parameters:"
-                            foreach ($htParameter in ($htParameters.Keys | Sort-Object)){
+                            foreach ($htParameter in ($htParameters.Keys | Sort-Object)) {
                                 Write-Host "$($htParameter):$($htParameters.($htParameter))"
                             }
                             if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
@@ -1000,12 +1003,12 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     }
                     if ($catchResult.error.code -eq "ResourceRequestsThrottled" -or $catchResult.error.code -eq "429") {
                         $sleepSeconds = 11
-                        if ($catchResult.error.code -eq "ResourceRequestsThrottled"){
+                        if ($catchResult.error.code -eq "ResourceRequestsThrottled") {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - throttled! sleeping $sleepSeconds seconds"
                             start-sleep -Seconds $sleepSeconds
                         }
-                        if ($catchResult.error.code -eq "429"){
-                            if ($catchResult.error.message -like "*60 seconds*"){
+                        if ($catchResult.error.code -eq "429") {
+                            if ($catchResult.error.message -like "*60 seconds*") {
                                 $sleepSeconds = 60
                             }
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - throttled! sleeping $sleepSeconds seconds"
@@ -1023,6 +1026,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again (trying $maxTries times) in $sleepSec second(s)"
                         Start-Sleep -Seconds $sleepSec
                     }
+
                     if (($getRoleAssignmentSchedules -and $catchResult.error.code -eq "ResourceNotOnboarded") -or ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "TenantNotOnboarded") -or ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "InvalidResourceType")) {
                         if ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "ResourceNotOnboarded") {
                             return "ResourceNotOnboarded"
@@ -1030,14 +1034,16 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         if ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "TenantNotOnboarded") {
                             return "TenantNotOnboarded"
                         }
-                        if ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "InvalidResourceType"){
+                        if ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "InvalidResourceType") {
                             return "InvalidResourceType"
                         }
                     }
-                    if ($getDiagnosticSettingsMg -and $catchResult.error.code -eq "InvalidResourceType"){
+
+                    if ($getDiagnosticSettingsMg -and $catchResult.error.code -eq "InvalidResourceType") {
                         return "InvalidResourceType"
                     }
-                    if ($catchResult.error.code -eq "InsufficientPermissions"){
+
+                    if ($catchResult.error.code -eq "InsufficientPermissions" -or $catchResult.error.code -eq "ClientCertificateValidationFailure") {
                         $maxTries = 5
                         $sleepSec = @(1, 3, 5, 7, 10, 12, 20, 30)[$tryCounter]
                         if ($tryCounter -gt $maxTries) {
@@ -1052,6 +1058,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' sleeping $($sleepSec) seconds"
                         start-sleep -Seconds $sleepSec
                     }
+
                 }
                 else {
                     if (-not $catchResult.code -and -not $catchResult.error.code -and -not $catchResult.message -and -not $catchResult.error.message -and -not $catchResult -and $tryCounter -lt 6) {
@@ -1066,14 +1073,14 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     }
                     else {
                         Write-Host "- - - - - - - - - - - - - - - - - - - - "
-                        Write-Host "!Please report at aka.ms/AzGovViz and provide the following dump" -ForegroundColor Yellow
+                        Write-Host "!Please report at $($htParameters.GithubRepository) and provide the following dump" -ForegroundColor Yellow
                         Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
                         Write-Host ""
                         Write-Host "Parameters:"
-                        foreach ($htParameter in ($htParameters.Keys | Sort-Object)){
+                        foreach ($htParameter in ($htParameters.Keys | Sort-Object)) {
                             Write-Host "$($htParameter):$($htParameters.($htParameter))"
                         }
-                        if ($getConsumption){
+                        if ($getConsumption) {
                             Write-Host "If Consumption data is not that important for you, please try parameter: -NoAzureConsumption (however, please still report the issue - thank you)"
                         }
                         if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
@@ -1828,9 +1835,9 @@ function dataCollection($mgId) {
         if ($htParameters.HierarchyMapOnly -eq $false) {
 
             #namingValidation
-            if (-not [string]::IsNullOrEmpty($mgdetail.properties.displayName)){
+            if (-not [string]::IsNullOrEmpty($mgdetail.properties.displayName)) {
                 $namingValidationResult = namingValidation -toCheck $mgdetail.properties.displayName
-                if ($namingValidationResult.Count -gt 0){
+                if ($namingValidationResult.Count -gt 0) {
                     $script:htNamingValidation.ManagementGroup.($mgdetail.Name) = @{}
                     $script:htNamingValidation.ManagementGroup.($mgdetail.Name).nameInvalidChars = ($namingValidationResult -join "")
                     $script:htNamingValidation.ManagementGroup.($mgdetail.Name).name = $mgdetail.properties.displayName
@@ -1854,10 +1861,10 @@ function dataCollection($mgId) {
             $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/providers/microsoft.insights/diagnosticSettings?api-version=2020-01-01-preview"
             $method = "GET"
             $getDiagnosticSettingsMg = AzAPICall -uri $uri -method $method -currentTask $currentTask -getDiagnosticSettingsMg $true
-            if ($getDiagnosticSettingsMg -eq "InvalidResourceType"){
+            if ($getDiagnosticSettingsMg -eq "InvalidResourceType") {
                 #skipping until supported
             }
-            else{
+            else {
                 if ($getDiagnosticSettingsMg.Count -eq 0) {
                     $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
                             Scope              = "Mg"
@@ -2124,22 +2131,22 @@ function dataCollection($mgId) {
                     }    
                     
                     #namingValidation
-                    if (-not [string]::IsNullOrEmpty($mgPolicyDefinition.Properties.displayname)){
+                    if (-not [string]::IsNullOrEmpty($mgPolicyDefinition.Properties.displayname)) {
                         $namingValidationResult = namingValidation -toCheck $mgPolicyDefinition.Properties.displayname
-                        if ($namingValidationResult.Count -gt 0){
+                        if ($namingValidationResult.Count -gt 0) {
                             
-                            if (-not $script:htNamingValidation.Policy.($mgPolicyDefinition.Id)){
+                            if (-not $script:htNamingValidation.Policy.($mgPolicyDefinition.Id)) {
                                 $script:htNamingValidation.Policy.($mgPolicyDefinition.Id) = @{}
                             }
                             $script:htNamingValidation.Policy.($mgPolicyDefinition.Id).displayNameInvalidChars = ($namingValidationResult -join "")
                             $script:htNamingValidation.Policy.($mgPolicyDefinition.Id).displayName = $mgPolicyDefinition.Properties.displayname
                         }
                     }
-                    if (-not [string]::IsNullOrEmpty($mgPolicyDefinition.Name)){
+                    if (-not [string]::IsNullOrEmpty($mgPolicyDefinition.Name)) {
                         $namingValidationResult = namingValidation -toCheck $mgPolicyDefinition.Name
-                        if ($namingValidationResult.Count -gt 0){
+                        if ($namingValidationResult.Count -gt 0) {
                             
-                            if (-not $script:htNamingValidation.Policy.($mgPolicyDefinition.Id)){
+                            if (-not $script:htNamingValidation.Policy.($mgPolicyDefinition.Id)) {
                                 $script:htNamingValidation.Policy.($mgPolicyDefinition.Id) = @{}
                             }
                             $script:htNamingValidation.Policy.($mgPolicyDefinition.Id).nameInvalidChars = ($namingValidationResult -join "")
@@ -2195,22 +2202,22 @@ function dataCollection($mgId) {
                     }
 
                     #namingValidation
-                    if (-not [string]::IsNullOrEmpty($mgPolicySetDefinition.Properties.displayname)){
+                    if (-not [string]::IsNullOrEmpty($mgPolicySetDefinition.Properties.displayname)) {
                         $namingValidationResult = namingValidation -toCheck $mgPolicySetDefinition.Properties.displayname
-                        if ($namingValidationResult.Count -gt 0){
+                        if ($namingValidationResult.Count -gt 0) {
                             
-                            if (-not $script:htNamingValidation.PolicySet.($mgPolicySetDefinition.Id)){
+                            if (-not $script:htNamingValidation.PolicySet.($mgPolicySetDefinition.Id)) {
                                 $script:htNamingValidation.PolicySet.($mgPolicySetDefinition.Id) = @{}
                             }
                             $script:htNamingValidation.PolicySet.($mgPolicySetDefinition.Id).displayNameInvalidChars = ($namingValidationResult -join "")
                             $script:htNamingValidation.PolicySet.($mgPolicySetDefinition.Id).displayName = $mgPolicySetDefinition.Properties.displayname
                         }
                     }
-                    if (-not [string]::IsNullOrEmpty($mgPolicySetDefinition.Name)){
+                    if (-not [string]::IsNullOrEmpty($mgPolicySetDefinition.Name)) {
                         $namingValidationResult = namingValidation -toCheck $mgPolicySetDefinition.Name
-                        if ($namingValidationResult.Count -gt 0){
+                        if ($namingValidationResult.Count -gt 0) {
                             
-                            if (-not $script:htNamingValidation.PolicySet.($mgPolicySetDefinition.Id)){
+                            if (-not $script:htNamingValidation.PolicySet.($mgPolicySetDefinition.Id)) {
                                 $script:htNamingValidation.PolicySet.($mgPolicySetDefinition.Id) = @{}
                             }
                             $script:htNamingValidation.PolicySet.($mgPolicySetDefinition.Id).nameInvalidChars = ($namingValidationResult -join "")
@@ -2261,22 +2268,22 @@ function dataCollection($mgId) {
                 }
 
                 #namingValidation
-                if (-not [string]::IsNullOrEmpty($L0mgmtGroupPolicyAssignment.Properties.DisplayName)){
+                if (-not [string]::IsNullOrEmpty($L0mgmtGroupPolicyAssignment.Properties.DisplayName)) {
                     $namingValidationResult = namingValidation -toCheck $L0mgmtGroupPolicyAssignment.Properties.DisplayName
-                    if ($namingValidationResult.Count -gt 0){
+                    if ($namingValidationResult.Count -gt 0) {
                         
-                        if (-not $script:htNamingValidation.PolicyAssignment.($L0mgmtGroupPolicyAssignment.Id)){
+                        if (-not $script:htNamingValidation.PolicyAssignment.($L0mgmtGroupPolicyAssignment.Id)) {
                             $script:htNamingValidation.PolicyAssignment.($L0mgmtGroupPolicyAssignment.Id) = @{}
                         }
                         $script:htNamingValidation.PolicyAssignment.($L0mgmtGroupPolicyAssignment.Id).displayNameInvalidChars = ($namingValidationResult -join "")
                         $script:htNamingValidation.PolicyAssignment.($L0mgmtGroupPolicyAssignment.Id).displayName = $L0mgmtGroupPolicyAssignment.Properties.DisplayName
                     }
                 }
-                if (-not [string]::IsNullOrEmpty($L0mgmtGroupPolicyAssignment.Name)){
+                if (-not [string]::IsNullOrEmpty($L0mgmtGroupPolicyAssignment.Name)) {
                     $namingValidationResult = namingValidation -toCheck $L0mgmtGroupPolicyAssignment.Name
-                    if ($namingValidationResult.Count -gt 0){
+                    if ($namingValidationResult.Count -gt 0) {
                         
-                        if (-not $script:htNamingValidation.PolicyAssignment.($L0mgmtGroupPolicyAssignment.Id)){
+                        if (-not $script:htNamingValidation.PolicyAssignment.($L0mgmtGroupPolicyAssignment.Id)) {
                             $script:htNamingValidation.PolicyAssignment.($L0mgmtGroupPolicyAssignment.Id) = @{}
                         }
                         $script:htNamingValidation.PolicyAssignment.($L0mgmtGroupPolicyAssignment.Id).nameInvalidChars = ($namingValidationResult -join "")
@@ -2558,9 +2565,9 @@ function dataCollection($mgId) {
                     ($script:htCacheDefinitions).role.$($mgCustomRoleDefinition.name).Json = $mgCustomRoleDefinition
 
                     #namingValidation
-                    if (-not [string]::IsNullOrEmpty($mgCustomRoleDefinition.properties.roleName)){
+                    if (-not [string]::IsNullOrEmpty($mgCustomRoleDefinition.properties.roleName)) {
                         $namingValidationResult = namingValidation -toCheck $mgCustomRoleDefinition.properties.roleName
-                        if ($namingValidationResult.Count -gt 0){
+                        if ($namingValidationResult.Count -gt 0) {
                             $script:htNamingValidation.Role.($mgCustomRoleDefinition.name) = @{}
                             $script:htNamingValidation.Role.($mgCustomRoleDefinition.name).roleNameInvalidChars = ($namingValidationResult -join "")
                             $script:htNamingValidation.Role.($mgCustomRoleDefinition.name).roleName = $mgCustomRoleDefinition.properties.roleName
@@ -2660,12 +2667,22 @@ function dataCollection($mgId) {
                 $Id = $L0mgmtGroupRoleAssignment.RoleDefinitionId
                 $definitiontype = "role"
     
+                <#
                 if (($L0mgmtGroupRoleAssignment.RoleDefinitionName).length -eq 0) {
                     $RoleDefinitionName = "'This roleDefinition likely was deleted although a roleAssignment existed'" 
                 }
                 else {
                     $RoleDefinitionName = $L0mgmtGroupRoleAssignment.RoleDefinitionName
                 }
+                #>
+
+                if (-not $htCacheDefinitions.Role.($Id)) {
+                    $roleDefinitionName = "'This roleDefinition likely was deleted although a roleAssignment existed'" 
+                }
+                else {
+                    $roleDefinitionName = $htCacheDefinitions.Role.($Id).Name
+                }
+
                 if (($L0mgmtGroupRoleAssignment.DisplayName).length -eq 0) {
                     $RoleAssignmentIdentityDisplayname = "n/a" 
                 }
@@ -2744,7 +2761,7 @@ function dataCollection($mgId) {
                     -mgParentId $mgParentId `
                     -mgParentName $mgParentName `
                     -mgASCSecureScore $mgAscSecureScoreResult `
-                    -RoleDefinitionId ($htCacheDefinitions).$definitiontype.$($Id).Id `
+                    -RoleDefinitionId $Id `
                     -RoleDefinitionName $RoleDefinitionName `
                     -RoleIsCustom ($htCacheDefinitions).$definitiontype.$($Id).IsCustom `
                     -RoleAssignableScopes (($htCacheDefinitions).$definitiontype.$($Id).AssignableScopes -join "$CsvDelimiterOpposite ") `
@@ -2915,9 +2932,9 @@ function dataCollection($mgId) {
                 $childMgParentName = $htManagementGroupsMgPath.($childMgParentInfo.Parent).DisplayName
 
                 #namingValidation
-                if (-not [string]::IsNullOrEmpty($childMgSubDisplayName)){
+                if (-not [string]::IsNullOrEmpty($childMgSubDisplayName)) {
                     $namingValidationResult = namingValidation -toCheck $childMgSubDisplayName
-                    if ($namingValidationResult.Count -gt 0){
+                    if ($namingValidationResult.Count -gt 0) {
                         
                         $script:htNamingValidation.Subscription.($childMgSubId) = @{}
                         $script:htNamingValidation.Subscription.($childMgSubId).displayNameInvalidChars = ($namingValidationResult -join "")
@@ -3599,29 +3616,29 @@ function dataCollection($mgId) {
                                 ($script:htCacheDefinitions).policy.(($subPolicyDefinition.Id).ToLower()).RoleDefinitionIds = "n/a"
                             }
 
-                    #namingValidation
-                    if (-not [string]::IsNullOrEmpty($subPolicyDefinition.Properties.displayname)){
-                        $namingValidationResult = namingValidation -toCheck $subPolicyDefinition.Properties.displayname
-                        if ($namingValidationResult.Count -gt 0){
+                            #namingValidation
+                            if (-not [string]::IsNullOrEmpty($subPolicyDefinition.Properties.displayname)) {
+                                $namingValidationResult = namingValidation -toCheck $subPolicyDefinition.Properties.displayname
+                                if ($namingValidationResult.Count -gt 0) {
                             
-                            if (-not $script:htNamingValidation.Policy.($subPolicyDefinition.Id)){
-                                $script:htNamingValidation.Policy.($subPolicyDefinition.Id) = @{}
+                                    if (-not $script:htNamingValidation.Policy.($subPolicyDefinition.Id)) {
+                                        $script:htNamingValidation.Policy.($subPolicyDefinition.Id) = @{}
+                                    }
+                                    $script:htNamingValidation.Policy.($subPolicyDefinition.Id).displayNameInvalidChars = ($namingValidationResult -join "")
+                                    $script:htNamingValidation.Policy.($subPolicyDefinition.Id).displayName = $subPolicyDefinition.Properties.displayname
+                                }
                             }
-                            $script:htNamingValidation.Policy.($subPolicyDefinition.Id).displayNameInvalidChars = ($namingValidationResult -join "")
-                            $script:htNamingValidation.Policy.($subPolicyDefinition.Id).displayName = $subPolicyDefinition.Properties.displayname
-                        }
-                    }
-                    if (-not [string]::IsNullOrEmpty($subPolicyDefinition.Name)){
-                        $namingValidationResult = namingValidation -toCheck $subPolicyDefinition.Name
-                        if ($namingValidationResult.Count -gt 0){
+                            if (-not [string]::IsNullOrEmpty($subPolicyDefinition.Name)) {
+                                $namingValidationResult = namingValidation -toCheck $subPolicyDefinition.Name
+                                if ($namingValidationResult.Count -gt 0) {
                             
-                            if (-not $script:htNamingValidation.Policy.($subPolicyDefinition.Id)){
-                                $script:htNamingValidation.Policy.($subPolicyDefinition.Id) = @{}
+                                    if (-not $script:htNamingValidation.Policy.($subPolicyDefinition.Id)) {
+                                        $script:htNamingValidation.Policy.($subPolicyDefinition.Id) = @{}
+                                    }
+                                    $script:htNamingValidation.Policy.($subPolicyDefinition.Id).nameInvalidChars = ($namingValidationResult -join "")
+                                    $script:htNamingValidation.Policy.($subPolicyDefinition.Id).name = $subPolicyDefinition.Name
+                                }
                             }
-                            $script:htNamingValidation.Policy.($subPolicyDefinition.Id).nameInvalidChars = ($namingValidationResult -join "")
-                            $script:htNamingValidation.Policy.($subPolicyDefinition.Id).name = $subPolicyDefinition.Name
-                        }
-                    }
                         }  
                     }
 
@@ -3678,22 +3695,22 @@ function dataCollection($mgId) {
                             }
 
                             #namingValidation
-                            if (-not [string]::IsNullOrEmpty($subPolicySetDefinition.Properties.displayname)){
+                            if (-not [string]::IsNullOrEmpty($subPolicySetDefinition.Properties.displayname)) {
                                 $namingValidationResult = namingValidation -toCheck $subPolicySetDefinition.Properties.displayname
-                                if ($namingValidationResult.Count -gt 0){
+                                if ($namingValidationResult.Count -gt 0) {
                                     
-                                    if (-not $script:htNamingValidation.PolicySet.($subPolicySetDefinition.Id)){
+                                    if (-not $script:htNamingValidation.PolicySet.($subPolicySetDefinition.Id)) {
                                         $script:htNamingValidation.PolicySet.($subPolicySetDefinition.Id) = @{}
                                     }
                                     $script:htNamingValidation.PolicySet.($subPolicySetDefinition.Id).displayNameInvalidChars = ($namingValidationResult -join "")
                                     $script:htNamingValidation.PolicySet.($subPolicySetDefinition.Id).displayName = $subPolicySetDefinition.Properties.displayname
                                 }
                             }
-                            if (-not [string]::IsNullOrEmpty($subPolicySetDefinition.Name)){
+                            if (-not [string]::IsNullOrEmpty($subPolicySetDefinition.Name)) {
                                 $namingValidationResult = namingValidation -toCheck $subPolicySetDefinition.Name
-                                if ($namingValidationResult.Count -gt 0){
+                                if ($namingValidationResult.Count -gt 0) {
                                     
-                                    if (-not $script:htNamingValidation.PolicySet.($subPolicySetDefinition.Id)){
+                                    if (-not $script:htNamingValidation.PolicySet.($subPolicySetDefinition.Id)) {
                                         $script:htNamingValidation.PolicySet.($subPolicySetDefinition.Id) = @{}
                                     }
                                     $script:htNamingValidation.PolicySet.($subPolicySetDefinition.Id).nameInvalidChars = ($namingValidationResult -join "")
@@ -3752,22 +3769,22 @@ function dataCollection($mgId) {
                         }
 
                         #namingValidation
-                        if (-not [string]::IsNullOrEmpty($L1mgmtGroupSubPolicyAssignment.Properties.DisplayName)){
+                        if (-not [string]::IsNullOrEmpty($L1mgmtGroupSubPolicyAssignment.Properties.DisplayName)) {
                             $namingValidationResult = namingValidation -toCheck $L1mgmtGroupSubPolicyAssignment.Properties.DisplayName
-                            if ($namingValidationResult.Count -gt 0){
+                            if ($namingValidationResult.Count -gt 0) {
                                 
-                                if (-not $script:htNamingValidation.PolicyAssignment.($L1mgmtGroupSubPolicyAssignment.Id)){
+                                if (-not $script:htNamingValidation.PolicyAssignment.($L1mgmtGroupSubPolicyAssignment.Id)) {
                                     $script:htNamingValidation.PolicyAssignment.($L1mgmtGroupSubPolicyAssignment.Id) = @{}
                                 }
                                 $script:htNamingValidation.PolicyAssignment.($L1mgmtGroupSubPolicyAssignment.Id).displayNameInvalidChars = ($namingValidationResult -join "")
                                 $script:htNamingValidation.PolicyAssignment.($L1mgmtGroupSubPolicyAssignment.Id).displayName = $L1mgmtGroupSubPolicyAssignment.Properties.DisplayName
                             }
                         }
-                        if (-not [string]::IsNullOrEmpty($L1mgmtGroupSubPolicyAssignment.Name)){
+                        if (-not [string]::IsNullOrEmpty($L1mgmtGroupSubPolicyAssignment.Name)) {
                             $namingValidationResult = namingValidation -toCheck $L1mgmtGroupSubPolicyAssignment.Name
-                            if ($namingValidationResult.Count -gt 0){
+                            if ($namingValidationResult.Count -gt 0) {
                                 
-                                if (-not $script:htNamingValidation.PolicyAssignment.($L1mgmtGroupSubPolicyAssignment.Id)){
+                                if (-not $script:htNamingValidation.PolicyAssignment.($L1mgmtGroupSubPolicyAssignment.Id)) {
                                     $script:htNamingValidation.PolicyAssignment.($L1mgmtGroupSubPolicyAssignment.Id) = @{}
                                 }
                                 $script:htNamingValidation.PolicyAssignment.($L1mgmtGroupSubPolicyAssignment.Id).nameInvalidChars = ($namingValidationResult -join "")
@@ -4119,9 +4136,9 @@ function dataCollection($mgId) {
                             ($script:htCacheDefinitions).role.$($subCustomRoleDefinition.name).Json = $subCustomRoleDefinition
                         
                             #namingValidation
-                            if (-not [string]::IsNullOrEmpty($subCustomRoleDefinition.properties.roleName)){
+                            if (-not [string]::IsNullOrEmpty($subCustomRoleDefinition.properties.roleName)) {
                                 $namingValidationResult = namingValidation -toCheck $subCustomRoleDefinition.properties.roleName
-                                if ($namingValidationResult.Count -gt 0){
+                                if ($namingValidationResult.Count -gt 0) {
                                     $script:htNamingValidation.Role.($subCustomRoleDefinition.name) = @{}
                                     $script:htNamingValidation.Role.($subCustomRoleDefinition.name).roleNameInvalidChars = ($namingValidationResult -join "")
                                     $script:htNamingValidation.Role.($subCustomRoleDefinition.name).roleName = $subCustomRoleDefinition.properties.roleName
@@ -4222,12 +4239,22 @@ function dataCollection($mgId) {
                         $Id = $L1mgmtGroupSubRoleAssignment.RoleDefinitionId
                         $definitiontype = "role"
 
+                        <#
                         if (($L1mgmtGroupSubRoleAssignment.RoleDefinitionName).length -eq 0) {
                             $RoleDefinitionName = "'This roleDefinition likely was deleted although a roleAssignment existed'" 
                         }
                         else {
                             $RoleDefinitionName = $L1mgmtGroupSubRoleAssignment.RoleDefinitionName
                         }
+                        #>
+
+                        if (-not $htCacheDefinitions.Role.($Id)) {
+                            $roleDefinitionName = "'This roleDefinition likely was deleted although a roleAssignment existed'" 
+                        }
+                        else {
+                            $roleDefinitionName = $htCacheDefinitions.Role.($Id).Name
+                        }
+
                         if (($L1mgmtGroupSubRoleAssignment.DisplayName).length -eq 0) {
                             $RoleAssignmentIdentityDisplayname = "n/a" 
                         }
@@ -4340,7 +4367,7 @@ function dataCollection($mgId) {
                             -SubscriptionASCSecureScore $subscriptionASCSecureScore `
                             -SubscriptionTags $subscriptionTags `
                             -SubscriptionTagsCount $subscriptionTagsCount `
-                            -RoleDefinitionId ($htCacheDefinitions).$definitiontype.$($Id).Id `
+                            -RoleDefinitionId $Id `
                             -RoleDefinitionName $RoleDefinitionName `
                             -RoleIsCustom ($htCacheDefinitions).$definitiontype.$($Id).IsCustom `
                             -RoleAssignableScopes (($htCacheDefinitions).$definitiontype.$($Id).AssignableScopes -join "$CsvDelimiterOpposite ") `
@@ -6449,10 +6476,10 @@ extensions: [{ name: 'sort' }]
         $htmlScopeInsightsPolicyAssignments = $null
         $htmlScopeInsightsPolicyAssignments = foreach ($policyAssignment in $policiesAssigned | sort-object @{Expression = { $_.Level } }, @{Expression = { $_.MgName } }, @{Expression = { $_.MgId } }, @{Expression = { $_.SubscriptionName } }, @{Expression = { $_.SubscriptionId } }, @{Expression = { $_.PolicyAssignmentId } }) {
             
-            if ($policyAssignment.PolicyType -eq "Custom"){
+            if ($policyAssignment.PolicyType -eq "Custom") {
                 $policyName = ($policyAssignment.PolicyName -replace "<", "&lt;" -replace ">", "&gt;")
             }
-            else{
+            else {
                 $policyName = $policyAssignment.PolicyName
             }
             @"
@@ -6701,10 +6728,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 "@)
         $htmlScopeInsightsPolicySetAssignments = $null
         $htmlScopeInsightsPolicySetAssignments = foreach ($policyAssignment in $policySetsAssigned | sort-object -Property Level, PolicyAssignmentId) {
-            if ($policyAssignment.PolicyType -eq "Custom"){
-                $policyName = ($policyAssignment.PolicyName  -replace "<", "&lt;" -replace ">", "&gt;")
+            if ($policyAssignment.PolicyType -eq "Custom") {
+                $policyName = ($policyAssignment.PolicyName -replace "<", "&lt;" -replace ">", "&gt;")
             }
-            else{
+            else {
                 $policyName = $policyAssignment.PolicyName
             }
             @"
@@ -7470,7 +7497,7 @@ extensions: [{ name: 'sort' }]
 <tbody>
 "@)
         $htmlScopeInsightsRoleAssignments = $null
-        $htmlScopeInsightsRoleAssignments = foreach ($roleAssignment in ($rolesAssigned | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, Scope, Role, ObjectDisplayName, RoleAssignmentId)) {
+        $htmlScopeInsightsRoleAssignments = foreach ($roleAssignment in ($rolesAssigned | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, Scope, Role, RoleId, ObjectId, RoleAssignmentId)) {
             @"
 <tr>
 <td>$($roleAssignment.Scope)</td>
@@ -8222,95 +8249,97 @@ function summary() {
         }
         $arrayUnresolvedIdentitiesCount = $arrayUnresolvedIdentities.Count
         Write-Host "    $arrayUnresolvedIdentitiesCount unresolved identities that have a value"
-        $nonResolvedIdentitiesToCheck = '"{0}"' -f ($arrayUnresolvedIdentities -join '","')
+        if ($arrayUnresolvedIdentitiesCount -gt 0) {
+            $nonResolvedIdentitiesToCheck = '"{0}"' -f ($arrayUnresolvedIdentities -join '","')
         
-        Write-Host "    IdentitiesToCheck: $nonResolvedIdentitiesToCheck"
+            Write-Host "    IdentitiesToCheck: $nonResolvedIdentitiesToCheck"
 
         
-        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/directoryObjects/getByIds"
-        $method = "POST"
+            $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/directoryObjects/getByIds"
+            $method = "POST"
 
-        $body = @"
+            $body = @"
         {
             "ids":[$($nonResolvedIdentitiesToCheck)]
         }
 "@
 
-        $script:htResolvedIdentities = @{}
-        function resolveIdentitiesRBAC($currentTask) {
-            $resolvedIdentities = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask
-            $resolvedIdentitiesCount = $resolvedIdentities.Count
-            Write-Host "    $resolvedIdentitiesCount identities resolved"
-            if ($resolvedIdentitiesCount -gt 0) {
+            $script:htResolvedIdentities = @{}
+            function resolveIdentitiesRBAC($currentTask) {
+                $resolvedIdentities = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask
+                $resolvedIdentitiesCount = $resolvedIdentities.Count
+                Write-Host "    $resolvedIdentitiesCount identities resolved"
+                if ($resolvedIdentitiesCount -gt 0) {
 
-                foreach ($resolvedIdentity in $resolvedIdentities) {
+                    foreach ($resolvedIdentity in $resolvedIdentities) {
 
-                    if (-not $htResolvedIdentities.($resolvedIdentity.id)) {
+                        if (-not $htResolvedIdentities.($resolvedIdentity.id)) {
 
-                        $script:htResolvedIdentities.($resolvedIdentity.id) = @{}
-                        if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.servicePrincipal" -or $resolvedIdentity."@odata.type" -eq "#microsoft.graph.user") {
-                            if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.servicePrincipal") {
-                                if ($resolvedIdentity.servicePrincipalType -eq "ManagedIdentity") {
-                                    $sptype = "MI"
-                                    $custObjectType = "ObjectType: SP $sptype, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
-                                }
-                                else {
-                                    if ($resolvedIdentity.servicePrincipalType -eq "Application") {
-                                        $sptype = "App"
-                                        if ($resolvedIdentity.appOwnerOrganizationId -eq $checkContext.Tenant.Id) {
-                                            $custObjectType = "ObjectType: SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
-                                        }
-                                        else {
-                                            $custObjectType = "ObjectType: SP $sptype EXT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
-                                        }
+                            $script:htResolvedIdentities.($resolvedIdentity.id) = @{}
+                            if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.servicePrincipal" -or $resolvedIdentity."@odata.type" -eq "#microsoft.graph.user") {
+                                if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.servicePrincipal") {
+                                    if ($resolvedIdentity.servicePrincipalType -eq "ManagedIdentity") {
+                                        $sptype = "MI"
+                                        $custObjectType = "ObjectType: SP $sptype, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
                                     }
                                     else {
-                                        Write-Host "* * * Unexpected IdentityType $($resolvedIdentity.servicePrincipalType)"
+                                        if ($resolvedIdentity.servicePrincipalType -eq "Application") {
+                                            $sptype = "App"
+                                            if ($resolvedIdentity.appOwnerOrganizationId -eq $checkContext.Tenant.Id) {
+                                                $custObjectType = "ObjectType: SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
+                                            }
+                                            else {
+                                                $custObjectType = "ObjectType: SP $sptype EXT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
+                                            }
+                                        }
+                                        else {
+                                            Write-Host "* * * Unexpected IdentityType $($resolvedIdentity.servicePrincipalType)"
+                                        }
                                     }
+                                    $script:htResolvedIdentities.($resolvedIdentity.id).custObjectType = $custObjectType
+                                    $script:htResolvedIdentities.($resolvedIdentity.id).obj = $resolvedIdentity
                                 }
-                                $script:htResolvedIdentities.($resolvedIdentity.id).custObjectType = $custObjectType
-                                $script:htResolvedIdentities.($resolvedIdentity.id).obj = $resolvedIdentity
-                            }
 
-                            if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.user") {
-                                if ($DoNotShowRoleAssignmentsUserData) {
-                                    $hlpObjectDisplayName = "scrubbed"
-                                    $hlpObjectSigninName = "scrubbed"
-                                }
-                                else {
-                                    $hlpObjectDisplayName = $resolvedIdentity.displayName
-                                    $hlpObjectSigninName = $resolvedIdentity.userPrincipalName
-                                }
-                                $custObjectType = "ObjectType: User ObjectDisplayName: $hlpObjectDisplayName, ObjectSignInName: $hlpObjectSigninName, ObjectId: $($resolvedIdentity.id) (r)"
+                                if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.user") {
+                                    if ($DoNotShowRoleAssignmentsUserData) {
+                                        $hlpObjectDisplayName = "scrubbed"
+                                        $hlpObjectSigninName = "scrubbed"
+                                    }
+                                    else {
+                                        $hlpObjectDisplayName = $resolvedIdentity.displayName
+                                        $hlpObjectSigninName = $resolvedIdentity.userPrincipalName
+                                    }
+                                    $custObjectType = "ObjectType: User ObjectDisplayName: $hlpObjectDisplayName, ObjectSignInName: $hlpObjectSigninName, ObjectId: $($resolvedIdentity.id) (r)"
                                 
-                                $script:htResolvedIdentities.($resolvedIdentity.id).custObjectType = $custObjectType
-                                $script:htResolvedIdentities.($resolvedIdentity.id).obj = $resolvedIdentity
+                                    $script:htResolvedIdentities.($resolvedIdentity.id).custObjectType = $custObjectType
+                                    $script:htResolvedIdentities.($resolvedIdentity.id).obj = $resolvedIdentity
+                                }
+                                if (-not $htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id)) {
+                                    $script:htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id) = @{}
+                                    $script:htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id).details = $custObjectType
+                                }
                             }
-                            if (-not $htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id)) {
-                                $script:htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id) = @{}
-                                $script:htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id).details = $custObjectType
-                            }
-                        }
 
-                        if ($resolvedIdentity."@odata.type" -ne "#microsoft.graph.user" -and $resolvedIdentity."@odata.type" -ne "#microsoft.graph.servicePrincipal") {
-                            Write-Host "!!! * * * IdentityType '$($resolvedIdentity."@odata.type")' was not considered by AzGovViz - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
+                            if ($resolvedIdentity."@odata.type" -ne "#microsoft.graph.user" -and $resolvedIdentity."@odata.type" -ne "#microsoft.graph.servicePrincipal") {
+                                Write-Host "!!! * * * IdentityType '$($resolvedIdentity."@odata.type")' was not considered by AzGovViz - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
+                            }
                         }
                     }
                 }
             }
-        }
-        resolveIdentitiesRBAC -currentTask "    resolveObjectbyId RoleAssignment"
+            resolveIdentitiesRBAC -currentTask "    resolveObjectbyId RoleAssignment"
  
-        foreach ($rbac in $rbacAll.where( { $_.CreatedBy -notlike "ObjectType*" })) {
-            if ($htResolvedIdentities.($rbac.CreatedBy)) {
-                $rbac.CreatedBy = $htResolvedIdentities.($rbac.CreatedBy).custObjectType
-            }
-            else {
-                if ([string]::IsNullOrEmpty($rbac.CreatedBy)) {
-                    $rbac.CreatedBy = "IsNullOrEmpty"
+            foreach ($rbac in $rbacAll.where( { $_.CreatedBy -notlike "ObjectType*" })) {
+                if ($htResolvedIdentities.($rbac.CreatedBy)) {
+                    $rbac.CreatedBy = $htResolvedIdentities.($rbac.CreatedBy).custObjectType
                 }
                 else {
-                    $rbac.CreatedBy = "$($rbac.CreatedBy)"
+                    if ([string]::IsNullOrEmpty($rbac.CreatedBy)) {
+                        $rbac.CreatedBy = "IsNullOrEmpty"
+                    }
+                    else {
+                        $rbac.CreatedBy = "$($rbac.CreatedBy)"
+                    }
                 }
             }
         }
@@ -8994,28 +9023,28 @@ extensions: [{ name: 'sort' }]
                     $null = $policySetPoliciesArray.Add("$($hlpPolicyDef.LinkToAzAdvertizer) ($policyPolicySet)")
                 }
                 else {
-                    if ($hlpPolicyDef.DisplayName){
-                        if ([string]::IsNullOrEmpty($hlpPolicyDef.DisplayName)){
+                    if ($hlpPolicyDef.DisplayName) {
+                        if ([string]::IsNullOrEmpty($hlpPolicyDef.DisplayName)) {
                             $displayName = "noDisplayNameGiven"
                         }
-                        else{
+                        else {
                             $displayName = $hlpPolicyDef.DisplayName
                         }
                     }
-                    else{
+                    else {
                         $displayName = "noDisplayNameGiven"
                     }
                     $null = $policySetPoliciesArray.Add("<b>$($displayName -replace "<", "&lt;" -replace ">", "&gt;")</b> ($policyPolicySet)")
                 }
-                if ($hlpPolicyDef.DisplayName){
-                    if ([string]::IsNullOrEmpty($hlpPolicyDef.DisplayName)){
+                if ($hlpPolicyDef.DisplayName) {
+                    if ([string]::IsNullOrEmpty($hlpPolicyDef.DisplayName)) {
                         $displayName = "noDisplayNameGiven"
                     }
-                    else{
+                    else {
                         $displayName = $hlpPolicyDef.DisplayName
                     }
                 }
-                else{
+                else {
                     $displayName = "noDisplayNameGiven"
                 }
                 $null = $policySetPoliciesArrayClean.Add("$($displayName) ($policyPolicySet)")
@@ -10553,86 +10582,89 @@ extensions: [{ name: 'sort' }]
         }
         $arrayUnresolvedIdentitiesCount = $arrayUnresolvedIdentities.Count
         Write-Host "    $arrayUnresolvedIdentitiesCount unresolved identities that have a value"
-        $nonResolvedIdentitiesToCheck = '"{0}"' -f ($arrayUnresolvedIdentities -join '","')
+        if ($arrayUnresolvedIdentitiesCount.Count -gt 0) {
+
+            $nonResolvedIdentitiesToCheck = '"{0}"' -f ($arrayUnresolvedIdentities -join '","')
         
-        Write-Host "    IdentitiesToCheck: $nonResolvedIdentitiesToCheck"
+            Write-Host "    IdentitiesToCheck: $nonResolvedIdentitiesToCheck"
 
-        $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/directoryObjects/getByIds"
-        $method = "POST"
+            $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/directoryObjects/getByIds"
+            $method = "POST"
 
-        $body = @"
+            $body = @"
         {
             "ids":[$($nonResolvedIdentitiesToCheck)]
         }
 "@
 
-        $script:htResolvedIdentitiesPolicy = @{}
+            $script:htResolvedIdentitiesPolicy = @{}
 
-        function resolveIdentitiesPolicy($currentTask) {
-            $resolvedIdentities = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask
-            $resolvedIdentitiesCount = $resolvedIdentities.Count
-            Write-Host "    $resolvedIdentitiesCount identities resolved"
-            if ($resolvedIdentitiesCount -gt 0) {
-                foreach ($resolvedIdentity in $resolvedIdentities) {
-                    if (-not $htResolvedIdentitiesPolicy.($resolvedIdentity.id)) {
-                        $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id) = @{}
-                        if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.servicePrincipal") {
-                            if ($resolvedIdentity.servicePrincipalType -eq "ManagedIdentity") {
-                                $sptype = "MI"
-                                $custObjectType = "ObjectType: SP $sptype, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (rp)"
-                            }
-                            else {
-                                if ($resolvedIdentity.servicePrincipalType -eq "Application") {
-                                    $sptype = "App"
-                                    if ($resolvedIdentity.appOwnerOrganizationId -eq $checkContext.Tenant.Id) {
-                                        $custObjectType = "ObjectType: SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (rp)"
-                                    }
-                                    else {
-                                        $custObjectType = "ObjectType: SP $sptype EXT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (rp)"
-                                    }
+            function resolveIdentitiesPolicy($currentTask) {
+                $resolvedIdentities = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask
+                $resolvedIdentitiesCount = $resolvedIdentities.Count
+                Write-Host "    $resolvedIdentitiesCount identities resolved"
+                if ($resolvedIdentitiesCount -gt 0) {
+                    foreach ($resolvedIdentity in $resolvedIdentities) {
+                        if (-not $htResolvedIdentitiesPolicy.($resolvedIdentity.id)) {
+                            $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id) = @{}
+                            if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.servicePrincipal") {
+                                if ($resolvedIdentity.servicePrincipalType -eq "ManagedIdentity") {
+                                    $sptype = "MI"
+                                    $custObjectType = "ObjectType: SP $sptype, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (rp)"
                                 }
                                 else {
-                                    Write-Host "* * * Unexpected IdentityType $($resolvedIdentity.servicePrincipalType)"
+                                    if ($resolvedIdentity.servicePrincipalType -eq "Application") {
+                                        $sptype = "App"
+                                        if ($resolvedIdentity.appOwnerOrganizationId -eq $checkContext.Tenant.Id) {
+                                            $custObjectType = "ObjectType: SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (rp)"
+                                        }
+                                        else {
+                                            $custObjectType = "ObjectType: SP $sptype EXT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (rp)"
+                                        }
+                                    }
+                                    else {
+                                        Write-Host "* * * Unexpected IdentityType $($resolvedIdentity.servicePrincipalType)"
+                                    }
                                 }
+                                $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).custObjectType = $custObjectType
+                                $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).obj = $resolvedIdentity
                             }
-                            $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).custObjectType = $custObjectType
-                            $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).obj = $resolvedIdentity
-                        }
 
-                        if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.user") {
+                            if ($resolvedIdentity."@odata.type" -eq "#microsoft.graph.user") {
 
-                            if ($DoNotShowRoleAssignmentsUserData) {
-                                $hlpObjectDisplayName = "scrubbed"
-                                $hlpObjectSigninName = "scrubbed"
-                            }
-                            else {
-                                $hlpObjectDisplayName = $resolvedIdentity.displayName
-                                $hlpObjectSigninName = $resolvedIdentity.userPrincipalName
-                            }
-                            $custObjectType = "ObjectType: User ObjectDisplayName: $hlpObjectDisplayName, ObjectSignInName: $hlpObjectSigninName, ObjectId: $($resolvedIdentity.id) (rp)"
+                                if ($DoNotShowRoleAssignmentsUserData) {
+                                    $hlpObjectDisplayName = "scrubbed"
+                                    $hlpObjectSigninName = "scrubbed"
+                                }
+                                else {
+                                    $hlpObjectDisplayName = $resolvedIdentity.displayName
+                                    $hlpObjectSigninName = $resolvedIdentity.userPrincipalName
+                                }
+                                $custObjectType = "ObjectType: User ObjectDisplayName: $hlpObjectDisplayName, ObjectSignInName: $hlpObjectSigninName, ObjectId: $($resolvedIdentity.id) (rp)"
                             
-                            $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).custObjectType = $custObjectType
-                            $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).obj = $resolvedIdentity
-                        }
+                                $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).custObjectType = $custObjectType
+                                $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).obj = $resolvedIdentity
+                            }
 
-                        if ($resolvedIdentity."@odata.type" -ne "#microsoft.graph.user" -and $resolvedIdentity."@odata.type" -ne "#microsoft.graph.servicePrincipal") {
-                            Write-Host "!!! * * * IdentityType '$($resolvedIdentity."@odata.type")' was not considered by AzGovViz - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
+                            if ($resolvedIdentity."@odata.type" -ne "#microsoft.graph.user" -and $resolvedIdentity."@odata.type" -ne "#microsoft.graph.servicePrincipal") {
+                                Write-Host "!!! * * * IdentityType '$($resolvedIdentity."@odata.type")' was not considered by AzGovViz - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
+                            }
                         }
                     }
                 }
             }
-        }
-        resolveIdentitiesPolicy -currentTask "resolveObjectbyId PolicyAssignment #1"
+            resolveIdentitiesPolicy -currentTask "resolveObjectbyId PolicyAssignment #1"
 
-        foreach ($policyAssignment in $script:arrayPolicyAssignmentsEnriched.where( { -not [string]::IsNullOrEmpty($_.CreatedBy) -and $_.CreatedBy -notlike "ObjectType*" })) {
-            if ($htResolvedIdentitiesPolicy.($policyAssignment.CreatedBy)) {
-                $policyAssignment.CreatedBy = $htResolvedIdentitiesPolicy.($policyAssignment.CreatedBy).custObjectType
+            foreach ($policyAssignment in $script:arrayPolicyAssignmentsEnriched.where( { -not [string]::IsNullOrEmpty($_.CreatedBy) -and $_.CreatedBy -notlike "ObjectType*" })) {
+                if ($htResolvedIdentitiesPolicy.($policyAssignment.CreatedBy)) {
+                    $policyAssignment.CreatedBy = $htResolvedIdentitiesPolicy.($policyAssignment.CreatedBy).custObjectType
+                }
             }
-        }
 
-        foreach ($policyAssignment in $script:arrayPolicyAssignmentsEnriched.where( { -not [string]::IsNullOrEmpty($_.UpdatedBy) -and $_.UpdatedBy -notlike "ObjectType*" })) {
-            if ($htResolvedIdentitiesPolicy.($policyAssignment.UpdatedBy)) {
-                $policyAssignment.UpdatedBy = $htResolvedIdentitiesPolicy.($policyAssignment.UpdatedBy).custObjectType
+            foreach ($policyAssignment in $script:arrayPolicyAssignmentsEnriched.where( { -not [string]::IsNullOrEmpty($_.UpdatedBy) -and $_.UpdatedBy -notlike "ObjectType*" })) {
+                if ($htResolvedIdentitiesPolicy.($policyAssignment.UpdatedBy)) {
+                    $policyAssignment.UpdatedBy = $htResolvedIdentitiesPolicy.($policyAssignment.UpdatedBy).custObjectType
+                }
             }
         }
     }
@@ -10749,10 +10781,10 @@ extensions: [{ name: 'sort' }]
                     continue
                 }
             }
-            if ($policyAssignment.PolicyType -eq "Custom"){
-                $policyName = ($policyAssignment.PolicyName  -replace "<", "&lt;" -replace ">", "&gt;")
+            if ($policyAssignment.PolicyType -eq "Custom") {
+                $policyName = ($policyAssignment.PolicyName -replace "<", "&lt;" -replace ">", "&gt;")
             }
-            else{
+            else {
                 $policyName = $policyAssignment.PolicyName
             }
             @"
@@ -11373,9 +11405,9 @@ extensions: [{ name: 'sort' }]
 
     if (($roleAssignmentsOrphanedUnique | measure-object).count -gt 0) {
         $tfCount = ($roleAssignmentsOrphanedUnique | measure-object).count
-        $htmlTableId = "TenantSummary_roleAssignmnetsOrphaned"
+        $htmlTableId = "TenantSummary_roleAssignmentsOrphaned"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_roleAssignmnetsOrphaned"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOrphanedUnique | measure-object).count) Orphaned Role assignments ($scopeNamingSummary) <abbr title="Role definition was deleted although and assignment existed &#13;OR &#13;Target identity (User, Group, ServicePrincipal) was deleted &#13;OR &#13;Target Resource was moved"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+<button type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsOrphaned"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOrphanedUnique | measure-object).count) Orphaned Role assignments ($scopeNamingSummary) <abbr title="Role definition was deleted although and assignment existed &#13;OR &#13;Target identity (User, Group, ServicePrincipal) was deleted &#13;OR &#13;Target Resource was moved"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -11583,10 +11615,10 @@ extensions: [{ name: 'sort' }]
         
             $startSortRBACAll = get-date
             if ($LargeTenant -or $RBACAtScopeOnly) {
-                $rbacAllSorted = $rbacAllAtScope | sort-object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, Scope, Role, ObjectDisplayName, RoleAssignmentId     
+                $rbacAllSorted = $rbacAllAtScope | sort-object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, Scope, Role, RoleId, ObjectId, RoleAssignmentId     
             }
             else {
-                $rbacAllSorted = $rbacAll | sort-object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, Scope, Role, ObjectDisplayName, RoleAssignmentId     
+                $rbacAllSorted = $rbacAll | sort-object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, Scope, Role, RoleId, ObjectId, RoleAssignmentId     
             }
         
             $endSortRBACAll = get-date
@@ -11608,10 +11640,10 @@ extensions: [{ name: 'sort' }]
                     }
                 }
 
-                if ($roleAssignment.RoleType -eq "Custom"){
+                if ($roleAssignment.RoleType -eq "Custom") {
                     $roleName = ($roleAssignment.Role -replace "<", "&lt;" -replace ">", "&gt;")
                 }
-                else{
+                else {
                     $roleName = $roleAssignment.Role
                 }
 
@@ -17236,10 +17268,10 @@ tf.init();
                 $createOnUpdatedOn = "Created&Updated"
             }
 
-            if ($policyAssignment.PolicyType -eq "Custom"){
-                $policyName = ($policyAssignment.PolicyName  -replace "<", "&lt;" -replace ">", "&gt;")
+            if ($policyAssignment.PolicyType -eq "Custom") {
+                $policyName = ($policyAssignment.PolicyName -replace "<", "&lt;" -replace ">", "&gt;")
             }
-            else{
+            else {
                 $policyName = $policyAssignment.PolicyName
             }
 
@@ -17616,10 +17648,10 @@ tf.init();
         $htmlSUMMARYChangeTrackingRoleAssignments = $null
         $htmlSUMMARYChangeTrackingRoleAssignments = [System.Text.StringBuilder]::new()
         foreach ($entry in $roleAssignmentsCreated) {
-            if ($entry.RoleType -eq "Custom"){
+            if ($entry.RoleType -eq "Custom") {
                 $roleName = ($entry.Role -replace "<", "&lt;" -replace ">", "&gt;")
             }
-            else{
+            else {
                 $roleName = $entry.Role
             }
             [void]$htmlSUMMARYChangeTrackingRoleAssignments.AppendFormat( 
@@ -17877,15 +17909,15 @@ tf.init();
     <div class="content TenantSummaryContent">
 "@)
 
-$startSUMMARYNaming = get-date
-Write-Host "  processing TenantSummary Findings"
+    $startSUMMARYNaming = get-date
+    Write-Host "  processing TenantSummary Findings"
     
 
-$namingPolicyCount = $htNamingValidation.Policy.values.count
-if ($namingPolicyCount -gt 0) {
-    $tfCount = $namingPolicyCount
-    $htmlTableId = "TenantSummary_NamingPolicy"
-    [void]$htmlTenantSummary.AppendLine(@"
+    $namingPolicyCount = $htNamingValidation.Policy.values.count
+    if ($namingPolicyCount -gt 0) {
+        $tfCount = $namingPolicyCount
+        $htmlTableId = "TenantSummary_NamingPolicy"
+        [void]$htmlTenantSummary.AppendLine(@"
 <button type="button" class="collapsible" id="buttonTenantSummary_NamingPolicy"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/policydefinition.svg"> <span class="valignMiddle"><b>Policy</b> $($namingPolicyCount) Naming findings</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -17901,30 +17933,30 @@ if ($namingPolicyCount -gt 0) {
 </thead>
 <tbody>
 "@)
-    $htmlSUMMARYNamingPolicy = $null
-    $cnter = 0
-    $htmlSUMMARYNamingPolicy = foreach ($key in $htNamingValidation.Policy.Keys) {
-        $id = $key -replace "<", "&lt;" -replace ">", "&gt;"
-        if ($htNamingValidation.Policy.($key).name){
-            $name = $htNamingValidation.Policy.($key).name -replace "<", "&lt;" -replace ">", "&gt;"
-            $nameInvalidChars = $htNamingValidation.Policy.($key).nameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
-        }
-        else{
-            $name = ""
-            $nameInvalidChars = ""
-        }
+        $htmlSUMMARYNamingPolicy = $null
+        $cnter = 0
+        $htmlSUMMARYNamingPolicy = foreach ($key in $htNamingValidation.Policy.Keys) {
+            $id = $key -replace "<", "&lt;" -replace ">", "&gt;"
+            if ($htNamingValidation.Policy.($key).name) {
+                $name = $htNamingValidation.Policy.($key).name -replace "<", "&lt;" -replace ">", "&gt;"
+                $nameInvalidChars = $htNamingValidation.Policy.($key).nameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
+            }
+            else {
+                $name = ""
+                $nameInvalidChars = ""
+            }
 
-        if ($htNamingValidation.Policy.($key).displayName){
-            $displayName = $htNamingValidation.Policy.($key).displayName -replace "<", "&lt;" -replace ">", "&gt;"
-            $displayNameInvalidChars = $htNamingValidation.Policy.($key).displayNameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
-        }
-        else{
-            $displayName = ""
-            $displayNameInvalidChars = ""
-        }
+            if ($htNamingValidation.Policy.($key).displayName) {
+                $displayName = $htNamingValidation.Policy.($key).displayName -replace "<", "&lt;" -replace ">", "&gt;"
+                $displayNameInvalidChars = $htNamingValidation.Policy.($key).displayNameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
+            }
+            else {
+                $displayName = ""
+                $displayNameInvalidChars = ""
+            }
 
 
-        @"
+            @"
 <tr>
 <td>$($id)</td>
 <td>$($name)</td>
@@ -17933,9 +17965,9 @@ if ($namingPolicyCount -gt 0) {
 <td>$($displayNameInvalidChars)</td>
 </tr>
 "@
-    }
-    [void]$htmlTenantSummary.AppendLine($htmlSUMMARYNamingPolicy)
-    [void]$htmlTenantSummary.AppendLine(@"
+        }
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYNamingPolicy)
+        [void]$htmlTenantSummary.AppendLine(@"
         </tbody>
     </table>
 </div>
@@ -17943,31 +17975,31 @@ if ($namingPolicyCount -gt 0) {
     var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
-    if ($tfCount -gt 10) {
-        $spectrum = "10, $tfCount"
-        if ($tfCount -gt 50) {
-            $spectrum = "10, 25, 50, $tfCount"
-        }        
-        if ($tfCount -gt 100) {
-            $spectrum = "10, 30, 50, 100, $tfCount"
-        }
-        if ($tfCount -gt 500) {
-            $spectrum = "10, 30, 50, 100, 250, $tfCount"
-        }
-        if ($tfCount -gt 1000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-        }
-        if ($tfCount -gt 2000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-        }
-        if ($tfCount -gt 3000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-        }
-        [void]$htmlTenantSummary.AppendLine(@"
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
 paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
 "@)   
-    }
-    [void]$htmlTenantSummary.AppendLine(@"
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
         col_0: 'select',            
         col_types: [
@@ -17983,18 +18015,18 @@ extensions: [{ name: 'sort' }]
 </script>
 
 "@)
-}
-else {
-    [void]$htmlTenantSummary.AppendLine(@"
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
 <p><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/policydefinition.svg"> <span class="valignMiddle">Policy $($namingPolicyCount) Naming findings</span></p>
 "@)
-}
+    }
 
-$namingPolicySetCount = $htNamingValidation.PolicySet.values.count
-if ($namingPolicySetCount -gt 0) {
-    $tfCount = $namingPolicySetCount
-    $htmlTableId = "TenantSummary_NamingPolicySet"
-    [void]$htmlTenantSummary.AppendLine(@"
+    $namingPolicySetCount = $htNamingValidation.PolicySet.values.count
+    if ($namingPolicySetCount -gt 0) {
+        $tfCount = $namingPolicySetCount
+        $htmlTableId = "TenantSummary_NamingPolicySet"
+        [void]$htmlTenantSummary.AppendLine(@"
 <button type="button" class="collapsible" id="buttonTenantSummary_NamingPolicySet"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/policysetdefinition.svg"> <span class="valignMiddle"><b>PolicySet</b> $($namingPolicySetCount) Naming findings</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -18010,30 +18042,30 @@ if ($namingPolicySetCount -gt 0) {
 </thead>
 <tbody>
 "@)
-    $htmlSUMMARYNamingPolicySet = $null
-    $cnter = 0
-    $htmlSUMMARYNamingPolicySet = foreach ($key in $htNamingValidation.PolicySet.Keys) {
-        $id = $key -replace "<", "&lt;" -replace ">", "&gt;"
-        if ($htNamingValidation.PolicySet.($key).name){
-            $name = $htNamingValidation.PolicySet.($key).name -replace "<", "&lt;" -replace ">", "&gt;"
-            $nameInvalidChars = $htNamingValidation.PolicySet.($key).nameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
-        }
-        else{
-            $name = ""
-            $nameInvalidChars = ""
-        }
+        $htmlSUMMARYNamingPolicySet = $null
+        $cnter = 0
+        $htmlSUMMARYNamingPolicySet = foreach ($key in $htNamingValidation.PolicySet.Keys) {
+            $id = $key -replace "<", "&lt;" -replace ">", "&gt;"
+            if ($htNamingValidation.PolicySet.($key).name) {
+                $name = $htNamingValidation.PolicySet.($key).name -replace "<", "&lt;" -replace ">", "&gt;"
+                $nameInvalidChars = $htNamingValidation.PolicySet.($key).nameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
+            }
+            else {
+                $name = ""
+                $nameInvalidChars = ""
+            }
 
-        if ($htNamingValidation.PolicySet.($key).displayName){
-            $displayName = $htNamingValidation.PolicySet.($key).displayName -replace "<", "&lt;" -replace ">", "&gt;"
-            $displayNameInvalidChars = $htNamingValidation.PolicySet.($key).displayNameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
-        }
-        else{
-            $displayName = ""
-            $displayNameInvalidChars = ""
-        }
+            if ($htNamingValidation.PolicySet.($key).displayName) {
+                $displayName = $htNamingValidation.PolicySet.($key).displayName -replace "<", "&lt;" -replace ">", "&gt;"
+                $displayNameInvalidChars = $htNamingValidation.PolicySet.($key).displayNameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
+            }
+            else {
+                $displayName = ""
+                $displayNameInvalidChars = ""
+            }
 
 
-        @"
+            @"
 <tr>
 <td>$($id)</td>
 <td>$($name)</td>
@@ -18042,9 +18074,9 @@ if ($namingPolicySetCount -gt 0) {
 <td>$($displayNameInvalidChars)</td>
 </tr>
 "@
-    }
-    [void]$htmlTenantSummary.AppendLine($htmlSUMMARYNamingPolicySet)
-    [void]$htmlTenantSummary.AppendLine(@"
+        }
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYNamingPolicySet)
+        [void]$htmlTenantSummary.AppendLine(@"
         </tbody>
     </table>
 </div>
@@ -18052,31 +18084,31 @@ if ($namingPolicySetCount -gt 0) {
     var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
-    if ($tfCount -gt 10) {
-        $spectrum = "10, $tfCount"
-        if ($tfCount -gt 50) {
-            $spectrum = "10, 25, 50, $tfCount"
-        }        
-        if ($tfCount -gt 100) {
-            $spectrum = "10, 30, 50, 100, $tfCount"
-        }
-        if ($tfCount -gt 500) {
-            $spectrum = "10, 30, 50, 100, 250, $tfCount"
-        }
-        if ($tfCount -gt 1000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-        }
-        if ($tfCount -gt 2000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-        }
-        if ($tfCount -gt 3000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-        }
-        [void]$htmlTenantSummary.AppendLine(@"
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
 paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
 "@)   
-    }
-    [void]$htmlTenantSummary.AppendLine(@"
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,          
         col_types: [
             'caseinsensitivestring',
@@ -18092,18 +18124,18 @@ extensions: [{ name: 'sort' }]
 </script>
 
 "@)
-}
-else {
-    [void]$htmlTenantSummary.AppendLine(@"
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
 <p><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/policysetdefinition.svg"> <span class="valignMiddle">PolicySet $($namingPolicySetCount) Naming findings</span></p>
 "@)
-}
+    }
 
-$namingPolicyAssignmentCount = $htNamingValidation.PolicyAssignment.values.count
-if ($namingPolicyAssignmentCount -gt 0) {
-    $tfCount = $namingPolicyAssignmentCount
-    $htmlTableId = "TenantSummary_NamingPolicyAssignment"
-    [void]$htmlTenantSummary.AppendLine(@"
+    $namingPolicyAssignmentCount = $htNamingValidation.PolicyAssignment.values.count
+    if ($namingPolicyAssignmentCount -gt 0) {
+        $tfCount = $namingPolicyAssignmentCount
+        $htmlTableId = "TenantSummary_NamingPolicyAssignment"
+        [void]$htmlTenantSummary.AppendLine(@"
 <button type="button" class="collapsible" id="buttonTenantSummary_NamingPolicyAssignment"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/policyassignment.svg"> <span class="valignMiddle"><b>Policy assignment</b> $($namingPolicyAssignmentCount) Naming findings</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -18119,30 +18151,30 @@ if ($namingPolicyAssignmentCount -gt 0) {
 </thead>
 <tbody>
 "@)
-    $htmlSUMMARYNamingPolicyAssignment = $null
-    $cnter = 0
-    $htmlSUMMARYNamingPolicyAssignment = foreach ($key in $htNamingValidation.PolicyAssignment.Keys) {
-        $id = $key -replace "<", "&lt;" -replace ">", "&gt;"
-        if ($htNamingValidation.PolicyAssignment.($key).name){
-            $name = $htNamingValidation.PolicyAssignment.($key).name -replace "<", "&lt;" -replace ">", "&gt;"
-            $nameInvalidChars = $htNamingValidation.PolicyAssignment.($key).nameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
-        }
-        else{
-            $name = ""
-            $nameInvalidChars = ""
-        }
+        $htmlSUMMARYNamingPolicyAssignment = $null
+        $cnter = 0
+        $htmlSUMMARYNamingPolicyAssignment = foreach ($key in $htNamingValidation.PolicyAssignment.Keys) {
+            $id = $key -replace "<", "&lt;" -replace ">", "&gt;"
+            if ($htNamingValidation.PolicyAssignment.($key).name) {
+                $name = $htNamingValidation.PolicyAssignment.($key).name -replace "<", "&lt;" -replace ">", "&gt;"
+                $nameInvalidChars = $htNamingValidation.PolicyAssignment.($key).nameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
+            }
+            else {
+                $name = ""
+                $nameInvalidChars = ""
+            }
 
-        if ($htNamingValidation.PolicyAssignment.($key).displayName){
-            $displayName = $htNamingValidation.PolicyAssignment.($key).displayName -replace "<", "&lt;" -replace ">", "&gt;"
-            $displayNameInvalidChars = $htNamingValidation.PolicyAssignment.($key).displayNameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
-        }
-        else{
-            $displayName = ""
-            $displayNameInvalidChars = ""
-        }
+            if ($htNamingValidation.PolicyAssignment.($key).displayName) {
+                $displayName = $htNamingValidation.PolicyAssignment.($key).displayName -replace "<", "&lt;" -replace ">", "&gt;"
+                $displayNameInvalidChars = $htNamingValidation.PolicyAssignment.($key).displayNameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
+            }
+            else {
+                $displayName = ""
+                $displayNameInvalidChars = ""
+            }
 
 
-        @"
+            @"
 <tr>
 <td>$($id)</td>
 <td>$($name)</td>
@@ -18151,9 +18183,9 @@ if ($namingPolicyAssignmentCount -gt 0) {
 <td>$($displayNameInvalidChars)</td>
 </tr>
 "@
-    }
-    [void]$htmlTenantSummary.AppendLine($htmlSUMMARYNamingPolicyAssignment)
-    [void]$htmlTenantSummary.AppendLine(@"
+        }
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYNamingPolicyAssignment)
+        [void]$htmlTenantSummary.AppendLine(@"
         </tbody>
     </table>
 </div>
@@ -18161,31 +18193,31 @@ if ($namingPolicyAssignmentCount -gt 0) {
     var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
-    if ($tfCount -gt 10) {
-        $spectrum = "10, $tfCount"
-        if ($tfCount -gt 50) {
-            $spectrum = "10, 25, 50, $tfCount"
-        }        
-        if ($tfCount -gt 100) {
-            $spectrum = "10, 30, 50, 100, $tfCount"
-        }
-        if ($tfCount -gt 500) {
-            $spectrum = "10, 30, 50, 100, 250, $tfCount"
-        }
-        if ($tfCount -gt 1000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-        }
-        if ($tfCount -gt 2000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-        }
-        if ($tfCount -gt 3000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-        }
-        [void]$htmlTenantSummary.AppendLine(@"
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
 paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
 "@)   
-    }
-    [void]$htmlTenantSummary.AppendLine(@"
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,         
         col_types: [
             'caseinsensitivestring',
@@ -18201,18 +18233,18 @@ extensions: [{ name: 'sort' }]
 </script>
 
 "@)
-}
-else {
-    [void]$htmlTenantSummary.AppendLine(@"
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
 <p><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/policyassignment.svg"> <span class="valignMiddle">Policy assignment $($namingPolicyAssignmentCount) Naming findings</span></p>
 "@)
-}
+    }
 
-$namingManagementGroupCount = $htNamingValidation.ManagementGroup.values.count
-if ($namingManagementGroupCount -gt 0) {
-    $tfCount = $namingManagementGroupCount
-    $htmlTableId = "TenantSummary_NamingManagementGroup"
-    [void]$htmlTenantSummary.AppendLine(@"
+    $namingManagementGroupCount = $htNamingValidation.ManagementGroup.values.count
+    if ($namingManagementGroupCount -gt 0) {
+        $tfCount = $namingManagementGroupCount
+        $htmlTableId = "TenantSummary_NamingManagementGroup"
+        [void]$htmlTenantSummary.AppendLine(@"
 <button type="button" class="collapsible" id="buttonTenantSummary_NamingManagementGroup"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle"><b>Management Group</b> $($namingManagementGroupCount) Naming findings</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -18226,29 +18258,29 @@ if ($namingManagementGroupCount -gt 0) {
 </thead>
 <tbody>
 "@)
-    $htmlSUMMARYNamingManagementGroup = $null
-    $cnter = 0
-    $htmlSUMMARYNamingManagementGroup = foreach ($key in $htNamingValidation.ManagementGroup.Keys) {
-        $id = $key -replace "<", "&lt;" -replace ">", "&gt;"
-        if ($htNamingValidation.ManagementGroup.($key).name){
-            $name = $htNamingValidation.ManagementGroup.($key).name -replace "<", "&lt;" -replace ">", "&gt;"
-            $nameInvalidChars = $htNamingValidation.ManagementGroup.($key).nameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
-        }
-        else{
-            $name = ""
-            $nameInvalidChars = ""
-        }
+        $htmlSUMMARYNamingManagementGroup = $null
+        $cnter = 0
+        $htmlSUMMARYNamingManagementGroup = foreach ($key in $htNamingValidation.ManagementGroup.Keys) {
+            $id = $key -replace "<", "&lt;" -replace ">", "&gt;"
+            if ($htNamingValidation.ManagementGroup.($key).name) {
+                $name = $htNamingValidation.ManagementGroup.($key).name -replace "<", "&lt;" -replace ">", "&gt;"
+                $nameInvalidChars = $htNamingValidation.ManagementGroup.($key).nameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
+            }
+            else {
+                $name = ""
+                $nameInvalidChars = ""
+            }
 
-        @"
+            @"
 <tr>
 <td>$($id)</td>
 <td>$($name)</td>
 <td>$($nameInvalidChars)</td>
 </tr>
 "@
-    }
-    [void]$htmlTenantSummary.AppendLine($htmlSUMMARYNamingManagementGroup)
-    [void]$htmlTenantSummary.AppendLine(@"
+        }
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYNamingManagementGroup)
+        [void]$htmlTenantSummary.AppendLine(@"
         </tbody>
     </table>
 </div>
@@ -18256,31 +18288,31 @@ if ($namingManagementGroupCount -gt 0) {
     var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
-    if ($tfCount -gt 10) {
-        $spectrum = "10, $tfCount"
-        if ($tfCount -gt 50) {
-            $spectrum = "10, 25, 50, $tfCount"
-        }        
-        if ($tfCount -gt 100) {
-            $spectrum = "10, 30, 50, 100, $tfCount"
-        }
-        if ($tfCount -gt 500) {
-            $spectrum = "10, 30, 50, 100, 250, $tfCount"
-        }
-        if ($tfCount -gt 1000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-        }
-        if ($tfCount -gt 2000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-        }
-        if ($tfCount -gt 3000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-        }
-        [void]$htmlTenantSummary.AppendLine(@"
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
 paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
 "@)   
-    }
-    [void]$htmlTenantSummary.AppendLine(@"
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,          
         col_types: [
             'caseinsensitivestring',
@@ -18294,19 +18326,19 @@ extensions: [{ name: 'sort' }]
 </script>
 
 "@)
-}
-else {
-    [void]$htmlTenantSummary.AppendLine(@"
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
 <p><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle">Management Group $($namingManagementGroupCount) Naming findings</span></p>
 "@)
-}
+    }
 
 
-$namingSubscriptionCount = $htNamingValidation.Subscription.values.count
-if ($namingSubscriptionCount -gt 0) {
-    $tfCount = $namingSubscriptionCount
-    $htmlTableId = "TenantSummary_NamingSubscription"
-    [void]$htmlTenantSummary.AppendLine(@"
+    $namingSubscriptionCount = $htNamingValidation.Subscription.values.count
+    if ($namingSubscriptionCount -gt 0) {
+        $tfCount = $namingSubscriptionCount
+        $htmlTableId = "TenantSummary_NamingSubscription"
+        [void]$htmlTenantSummary.AppendLine(@"
 <button type="button" class="collapsible" id="buttonTenantSummary_NamingSubscription"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle"><b>Subscription</b> $($namingSubscriptionCount) Naming findings</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -18320,29 +18352,29 @@ if ($namingSubscriptionCount -gt 0) {
 </thead>
 <tbody>
 "@)
-    $htmlSUMMARYNamingSubscription = $null
-    $htmlSUMMARYNamingSubscription = foreach ($key in $htNamingValidation.Subscription.Keys) {
+        $htmlSUMMARYNamingSubscription = $null
+        $htmlSUMMARYNamingSubscription = foreach ($key in $htNamingValidation.Subscription.Keys) {
 
-        if ($htNamingValidation.Subscription.($key).displayName){
-            $displayName = $htNamingValidation.Subscription.($key).displayName -replace "<", "&lt;" -replace ">", "&gt;"
-            $displayNameInvalidChars = $htNamingValidation.Subscription.($key).displayNameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
-        }
-        else{
-            $displayName = ""
-            $displayNameInvalidChars = ""
-        }
+            if ($htNamingValidation.Subscription.($key).displayName) {
+                $displayName = $htNamingValidation.Subscription.($key).displayName -replace "<", "&lt;" -replace ">", "&gt;"
+                $displayNameInvalidChars = $htNamingValidation.Subscription.($key).displayNameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
+            }
+            else {
+                $displayName = ""
+                $displayNameInvalidChars = ""
+            }
 
 
-        @"
+            @"
 <tr>
 <td>$($key)</td>
 <td>$($displayName)</td>
 <td>$($displayNameInvalidChars)</td>
 </tr>
 "@
-    }
-    [void]$htmlTenantSummary.AppendLine($htmlSUMMARYNamingSubscription)
-    [void]$htmlTenantSummary.AppendLine(@"
+        }
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYNamingSubscription)
+        [void]$htmlTenantSummary.AppendLine(@"
         </tbody>
     </table>
 </div>
@@ -18350,31 +18382,31 @@ if ($namingSubscriptionCount -gt 0) {
     var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
-    if ($tfCount -gt 10) {
-        $spectrum = "10, $tfCount"
-        if ($tfCount -gt 50) {
-            $spectrum = "10, 25, 50, $tfCount"
-        }        
-        if ($tfCount -gt 100) {
-            $spectrum = "10, 30, 50, 100, $tfCount"
-        }
-        if ($tfCount -gt 500) {
-            $spectrum = "10, 30, 50, 100, 250, $tfCount"
-        }
-        if ($tfCount -gt 1000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-        }
-        if ($tfCount -gt 2000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-        }
-        if ($tfCount -gt 3000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-        }
-        [void]$htmlTenantSummary.AppendLine(@"
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
 paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
 "@)   
-    }
-    [void]$htmlTenantSummary.AppendLine(@"
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,        
         col_types: [
             'caseinsensitivestring',
@@ -18388,19 +18420,19 @@ extensions: [{ name: 'sort' }]
 </script>
 
 "@)
-}
-else {
-    [void]$htmlTenantSummary.AppendLine(@"
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
 <p><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle">Subscription $($namingSubscriptionCount) Naming findings</span></p>
 "@)
-}
+    }
 
 
-$namingRoleCount = $htNamingValidation.Role.values.count
-if ($namingRoleCount -gt 0) {
-    $tfCount = $namingRoleCount
-    $htmlTableId = "TenantSummary_NamingRole"
-    [void]$htmlTenantSummary.AppendLine(@"
+    $namingRoleCount = $htNamingValidation.Role.values.count
+    if ($namingRoleCount -gt 0) {
+        $tfCount = $namingRoleCount
+        $htmlTableId = "TenantSummary_NamingRole"
+        [void]$htmlTenantSummary.AppendLine(@"
 <button type="button" class="collapsible" id="buttonTenantSummary_NamingRole"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/rbacrole.svg"> <span class="valignMiddle"><b>RBAC</b> $($namingRoleCount) Naming findings</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -18414,28 +18446,28 @@ if ($namingRoleCount -gt 0) {
 </thead>
 <tbody>
 "@)
-    $htmlSUMMARYNamingRole = $null
-    $htmlSUMMARYNamingRole = foreach ($key in $htNamingValidation.Role.Keys) {
+        $htmlSUMMARYNamingRole = $null
+        $htmlSUMMARYNamingRole = foreach ($key in $htNamingValidation.Role.Keys) {
 
-        if ($htNamingValidation.Role.($key).roleName){
-            $roleName = $htNamingValidation.Role.($key).roleName -replace "<", "&lt;" -replace ">", "&gt;"
-            $roleNameInvalidChars = $htNamingValidation.Role.($key).roleNameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
-        }
-        else{
-            $roleName = ""
-            $roleNameInvalidChars = ""
-        }
+            if ($htNamingValidation.Role.($key).roleName) {
+                $roleName = $htNamingValidation.Role.($key).roleName -replace "<", "&lt;" -replace ">", "&gt;"
+                $roleNameInvalidChars = $htNamingValidation.Role.($key).roleNameInvalidChars -replace "<", "&lt;" -replace ">", "&gt;"
+            }
+            else {
+                $roleName = ""
+                $roleNameInvalidChars = ""
+            }
 
-        @"
+            @"
 <tr>
 <td>$($key)</td>
 <td>$($roleName)</td>
 <td>$($roleNameInvalidChars)</td>
 </tr>
 "@
-    }
-    [void]$htmlTenantSummary.AppendLine($htmlSUMMARYNamingRole)
-    [void]$htmlTenantSummary.AppendLine(@"
+        }
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYNamingRole)
+        [void]$htmlTenantSummary.AppendLine(@"
         </tbody>
     </table>
 </div>
@@ -18443,31 +18475,31 @@ if ($namingRoleCount -gt 0) {
     var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
-    if ($tfCount -gt 10) {
-        $spectrum = "10, $tfCount"
-        if ($tfCount -gt 50) {
-            $spectrum = "10, 25, 50, $tfCount"
-        }        
-        if ($tfCount -gt 100) {
-            $spectrum = "10, 30, 50, 100, $tfCount"
-        }
-        if ($tfCount -gt 500) {
-            $spectrum = "10, 30, 50, 100, 250, $tfCount"
-        }
-        if ($tfCount -gt 1000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-        }
-        if ($tfCount -gt 2000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-        }
-        if ($tfCount -gt 3000) {
-            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-        }
-        [void]$htmlTenantSummary.AppendLine(@"
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
 paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
 "@)   
-    }
-    [void]$htmlTenantSummary.AppendLine(@"
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,        
         col_types: [
             'caseinsensitivestring',
@@ -18481,17 +18513,17 @@ extensions: [{ name: 'sort' }]
 </script>
 
 "@)
-}
-else {
-    [void]$htmlTenantSummary.AppendLine(@"
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
 <p><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/rbacrole.svg"> <span class="valignMiddle">RBAC $($namingRoleCount) Naming Findings</span></p>
 "@)
-}
+    }
 
-$endSUMMARYNaming = get-date
-Write-Host "   SUMMARYMGs duration: $((NEW-TIMESPAN -Start $startSUMMARYNaming -End $endSUMMARYNaming).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYNaming -End $endSUMMARYNaming).TotalSeconds) seconds)"
+    $endSUMMARYNaming = get-date
+    Write-Host "   SUMMARYMGs duration: $((NEW-TIMESPAN -Start $startSUMMARYNaming -End $endSUMMARYNaming).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYNaming -End $endSUMMARYNaming).TotalSeconds) seconds)"
 
-[void]$htmlTenantSummary.AppendLine(@"
+    [void]$htmlTenantSummary.AppendLine(@"
 </div>
 "@)
     #endregion tenantSummaryNaming
@@ -19352,8 +19384,8 @@ tf.init();}}
 
 #region markdown4wiki
 function diagramMermaid() {
-    if ($ManagementGroupId -ne $checkContext.Tenant.Id){
-        $optimizedTableForPathQueryMg = $optimizedTableForPathQueryMg.where({$_.mgParentId -ne "'upperScopes'"})
+    if ($ManagementGroupId -ne $checkContext.Tenant.Id) {
+        $optimizedTableForPathQueryMg = $optimizedTableForPathQueryMg.where({ $_.mgParentId -ne "'upperScopes'" })
     }
     $mgLevels = ($optimizedTableForPathQueryMg | Sort-Object -Property Level -Unique).Level
     
@@ -19574,10 +19606,10 @@ if ($testMGReadAccessResult -ne "letscheck") {
 }
 else {
     $managementGroupIdReturned = ($selectedManagementGroupId).name
-    if ($managementGroupIdReturned -eq $ManagementGroupId){
+    if ($managementGroupIdReturned -eq $ManagementGroupId) {
         Write-Host " Permissions test passed: ManagementGroup permissions OK"
     }
-    else{
+    else {
         Write-Host "API returned: $managementGroupIdReturned"
         Write-Host " Permissions test failed: Your Account '$($checkContext.Account.Id)' seems to lack ManagementGroup Read permissions (RBAC Role: Reader) or the ManagementGroupId '$ManagementGroupId' does not exist. Please check the documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#required-permissions-in-azure"
         Throw "Error - AzGovViz: check the last console output for details"
@@ -21405,12 +21437,22 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 $Id = $upperScopesRoleAssignment.RoleDefinitionId
                 $definitiontype = "role"
         
+                <#
                 if (($upperScopesRoleAssignment.RoleDefinitionName).length -eq 0) {
                     $RoleDefinitionName = "'This roleDefinition likely was deleted although a roleAssignment existed'" 
                 }
                 else {
                     $RoleDefinitionName = $upperScopesRoleAssignment.RoleDefinitionName
                 }
+                #>
+
+                if (-not $htCacheDefinitions.Role.($Id)) {
+                    $roleDefinitionName = "'This roleDefinition likely was deleted although a roleAssignment existed'" 
+                }
+                else {
+                    $roleDefinitionName = $htCacheDefinitions.Role.($Id).Name
+                }
+
                 if (($upperScopesRoleAssignment.DisplayName).length -eq 0) {
                     $RoleAssignmentIdentityDisplayname = "n/a" 
                 }
@@ -21506,7 +21548,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                     -mgParentId $toUseAsmgParentId `
                     -mgParentName $toUseAsmgParentName `
                     -mgASCSecureScore $mgAscSecureScoreResult `
-                    -RoleDefinitionId ($htCacheDefinitions).$definitiontype.$($Id).Id `
+                    -RoleDefinitionId $Id `
                     -RoleDefinitionName $RoleDefinitionName `
                     -RoleIsCustom ($htCacheDefinitions).$definitiontype.$($Id).IsCustom `
                     -RoleAssignableScopes (($htCacheDefinitions).$definitiontype.$($Id).AssignableScopes -join "$CsvDelimiterOpposite ") `
@@ -21570,7 +21612,7 @@ $durationSUBAverageMaxMin = ($durationDataSUB.DurationSec | Measure-Object -Aver
 Write-Host "Collecting custom data for $($arrayEntitiesFromAPIManagementGroupsCount) ManagementGroups Avg/Max/Min duration in seconds: Average: $([math]::Round($durationMGAverageMaxMin.Average,4)); Maximum: $([math]::Round($durationMGAverageMaxMin.Maximum,4)); Minimum: $([math]::Round($durationMGAverageMaxMin.Minimum,4))"
 Write-Host "Collecting custom data for $($arrayEntitiesFromAPISubscriptionsCount) Subscriptions Avg/Max/Min duration in seconds: Average: $([math]::Round($durationSUBAverageMaxMin.Average,4)); Maximum: $([math]::Round($durationSUBAverageMaxMin.Maximum,4)); Minimum: $([math]::Round($durationSUBAverageMaxMin.Minimum,4))"
 
-if ($htParameters.NoResources -eq $false){
+if ($htParameters.NoResources -eq $false) {
     $totaldurationSubResourcesAddArray = ($arraySubResourcesAddArrayDuration.DurationSec | Measure-Object -sum).Sum
     Write-Host "Collecting custom data total duration writing the subResourcesArray: $totaldurationSubResourcesAddArray seconds"
 }
@@ -21578,14 +21620,21 @@ if ($htParameters.NoResources -eq $false){
 
 #APITracking
 $APICallTrackingCount = ($arrayAPICallTrackingCustomDataCollection | Measure-Object).Count
-$APICallTrackingRetriesCount = ($arrayAPICallTrackingCustomDataCollection | Where-Object { $_.TryCounter -gt 0 } | Measure-Object).Count
-$APICallTrackingRestartDueToDuplicateNextlinkCounterCount = ($arrayAPICallTrackingCustomDataCollection | Where-Object { $_.RestartDueToDuplicateNextlinkCounter -gt 0 } | Measure-Object).Count
+#$APICallTrackingRetriesCount = ($arrayAPICallTrackingCustomDataCollection | Where-Object { $_.TryCounter -gt 0 } | Measure-Object).Count
+$APICallTrackingRetriesCount = ($arrayAPICallTrackingCustomDataCollection.where( { $_.TryCounter -gt 0 } ) | Measure-Object).Count
+#$APICallTrackingRestartDueToDuplicateNextlinkCounterCount = ($arrayAPICallTrackingCustomDataCollection | Where-Object { $_.RestartDueToDuplicateNextlinkCounter -gt 0 } | Measure-Object).Count
+$APICallTrackingRestartDueToDuplicateNextlinkCounterCount = ($arrayAPICallTrackingCustomDataCollection.where( { $_.RestartDueToDuplicateNextlinkCounter -gt 0 } ) | Measure-Object).Count
 Write-Host "Collecting custom data APICalls (Management) total count: $APICallTrackingCount ($APICallTrackingRetriesCount retries; $APICallTrackingRestartDueToDuplicateNextlinkCounterCount nextLinkReset)"
 
+Write-Host "Preparing Arrays"
+$startPreparingArrays = Get-Date
 $optimizedTableForPathQuery = ($newTable | Select-Object -Property level, mg*, subscription*) | sort-object -Property level, mgid, subscriptionId -Unique
-$optimizedTableForPathQueryMgAndSub = ($optimizedTableForPathQuery.where( { -not [String]::IsNullOrEmpty($_.SubscriptionId) } ) | Select-Object -Property level, mg*, subscription*) | sort-object -Property level, mgid, mgname, mgparentId, mgparentName, subscriptionId, subscription -Unique
+$hlperOptimizedTableForPathQuery = $optimizedTableForPathQuery.where( { -not [String]::IsNullOrEmpty($_.SubscriptionId) } )
+$optimizedTableForPathQueryMgAndSub = ($hlperOptimizedTableForPathQuery | Select-Object -Property level, mg*, subscription*) | sort-object -Property level, mgid, mgname, mgparentId, mgparentName, subscriptionId, subscription -Unique
 $optimizedTableForPathQueryMg = ($optimizedTableForPathQuery.where( { [String]::IsNullOrEmpty($_.SubscriptionId) } ) | Select-Object -Property level, mgid, mgName, mgparentid, mgparentName) | sort-object -Property level, mgid, mgname, mgparentId, mgparentName -Unique
-$optimizedTableForPathQuerySub = ($optimizedTableForPathQuery.where( { -not [String]::IsNullOrEmpty($_.SubscriptionId) } ) | Select-Object -Property subscription*) | sort-object -Property subscriptionId -Unique
+$optimizedTableForPathQuerySub = ($hlperOptimizedTableForPathQuery | Select-Object -Property subscription*) | sort-object -Property subscriptionId -Unique
+$endPreparingArrays = Get-Date
+Write-Host "Preparing Arrays duration: $((NEW-TIMESPAN -Start $startPreparingArrays -End $endPreparingArrays).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPreparingArrays -End $endPreparingArrays).TotalSeconds) seconds)"
 
 if ($htParameters.HierarchyMapOnly -eq $false) {
 
@@ -22102,7 +22151,8 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
         $htManagedIdentityForPolicyAssignment = @{ }
         $htPolicyAssignmentManagedIdentity = @{ }
-        $servicePrincipalsOfTypeManagedIdentity = $htServicePrincipalsDetails.Keys | Where-Object { $htServicePrincipalsDetails.($_).servicePrincipalType -eq "ManagedIdentity" }
+                #$servicePrincipalsOfTypeManagedIdentity = $htServicePrincipalsDetails.Keys | Where-Object { $htServicePrincipalsDetails.($_).servicePrincipalType -eq "ManagedIdentity" }
+                $servicePrincipalsOfTypeManagedIdentity = ($htServicePrincipalsDetails.Keys).where( { $htServicePrincipalsDetails.($_).servicePrincipalType -eq "ManagedIdentity" } )
         $servicePrincipalsOfTypeManagedIdentityCount = ($servicePrincipalsOfTypeManagedIdentity | Measure-Object).Count
         if ($servicePrincipalsOfTypeManagedIdentityCount -gt 0) {
             foreach ($servicePrincipalOfTypeManagedIdentity in $servicePrincipalsOfTypeManagedIdentity) {
@@ -22446,7 +22496,8 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     #region create array Policy definitions
     $tenantAllPolicies = ($htCacheDefinitions).policy.keys
     $tenantAllPoliciesCount = ($tenantAllPolicies | measure-object).count
-    $tenantCustomPolicies = ($htCacheDefinitions).policy.keys | Where-Object { ($htCacheDefinitions).policy.($_).Type -eq "Custom" }
+       #$tenantCustomPolicies = ($htCacheDefinitions).policy.keys | Where-Object { ($htCacheDefinitions).policy.($_).Type -eq "Custom" }
+       $tenantCustomPolicies = (($htCacheDefinitions).policy.keys).where( { ($htCacheDefinitions).policy.($_).Type -eq "Custom" } )
     $tenantCustomPoliciesCount = ($tenantCustomPolicies | measure-object).count
     if ($tenantAllPoliciesCount -gt 0) {
         $allPoliciesArrayFromHTValues = ($htCacheDefinitions).policy.Values
@@ -22457,7 +22508,8 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     #region create array PolicySet definitions
     $tenantAllPolicySets = ($htCacheDefinitions).policySet.keys
     $tenantAllPolicySetsCount = ($tenantAllPolicySets | measure-object).count
-    $tenantCustomPolicySets = ($htCacheDefinitions).policySet.keys | Where-Object { ($htCacheDefinitions).policySet.($_).Type -eq "Custom" }
+#$tenantCustomPolicySets = ($htCacheDefinitions).policySet.keys | Where-Object { ($htCacheDefinitions).policySet.($_).Type -eq "Custom" }
+$tenantCustomPolicySets = (($htCacheDefinitions).policySet.keys).where( { ($htCacheDefinitions).policySet.($_).Type -eq "Custom" } )
     $tenantCustompolicySetsCount = ($tenantCustomPolicySets | measure-object).count
     if ($tenantAllPolicySetsCount -gt 0) {
         $allPolicySetsArrayFromHTValues = ($htCacheDefinitions).policySet.Values
@@ -22493,9 +22545,10 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     }
     #endregion assignmentRgRes
 
-    $tenantAllRoles = $($htCacheDefinitions).role.keys
+    $tenantAllRoles = ($htCacheDefinitions).role.keys
     $tenantAllRolesCount = ($tenantAllRoles | Measure-Object).Count
-    $tenantCustomRoles = $($htCacheDefinitions).role.keys | Where-Object { ($htCacheDefinitions).role.($_).IsCustom -eq $True }
+    #$tenantCustomRoles = $($htCacheDefinitions).role.keys | Where-Object { ($htCacheDefinitions).role.($_).IsCustom -eq $True }
+    $tenantCustomRoles = (($htCacheDefinitions).role.keys).where( { ($htCacheDefinitions).role.($_).IsCustom -eq $True } )
     $tenantCustomRolesCount = ($tenantCustomRoles | Measure-Object).Count
     $tenantCustomRolesArray = [System.Collections.ArrayList]@()
     $tenantAllRolesArray = [System.Collections.ArrayList]@()
@@ -22566,7 +22619,8 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         }
     }
     $endHelperQueries = get-date
-    Write-Host " Pre Queries duration: $((NEW-TIMESPAN -Start $startHelperQueries -End $endHelperQueries).TotalSeconds) seconds"
+    Write-Host " Pre Queries duration: $((NEW-TIMESPAN -Start $startHelperQueries -End $endHelperQueries).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startHelperQueries -End $endHelperQueries).TotalSeconds) seconds)"
+
     #endregion preQueries
 
     #region summarizeDataCollectionResults

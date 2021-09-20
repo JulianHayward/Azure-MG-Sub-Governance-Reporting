@@ -4,6 +4,14 @@
 
 ### AzGovViz version 5
 
+__Changes__ (2021-Sep-19 / Major)
+
+* Fix Issue #60
+* Fix JSON file creation / path containing brackets
+* AzAPICall enhanced error handling (ClientCertificateValidationFailure)
+* Minor performance optimization
+* Bugfixes
+
 __Changes__ (2021-Sep-13 / Major)
 
 * Fix Issue #58
