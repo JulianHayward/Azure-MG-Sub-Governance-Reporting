@@ -58,18 +58,18 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## Release history
 
-__Changes__ (2021-Sep-19 / Major)
+__Pre-Release v6__
 
-* Fix Issue #60
-* Fix JSON file creation / path containing brackets
-* AzAPICall enhanced error handling (ClientCertificateValidationFailure)
-* Minor performance optimization
+Version 6 has been pre-released!  
+Branch: [v6_major_20211011_1](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/tree/v6_major_20211011_1)
+
+* Removed usage of Azure PowerShell cmdlet 'Get-AzRoleAssignment' / pereparational task for upcoming deprecation of 'Azure Active Directory Graph' API ([announcement](https://azure.microsoft.com/en-us/updates/update-your-apps-to-use-microsoft-graph-before-30-june-2022/))
+* Management Group diagnostic setting - reflect inheritance of diagnostic settings from upper Management Group scopes
+* Removed __TenantSummary__ RBAC Classic Role assignments
+* Improved AzAPICall error handling and output
+* Azure DevOps pipeline (yml) updated prerequisites to include Repository 'contribute' permission check 
+* Performance optimization
 * Bugfixes
-
-__Changes__ (2021-Sep-13 / Major)
-
-* Fix Issue #58
-* Add Windows invalid character usage (Management Group, Subscription, Policy/Set definition, Rolicy assignment, Role definition)
 
 [Release history](history.md)
 
