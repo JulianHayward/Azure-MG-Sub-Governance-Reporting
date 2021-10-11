@@ -63,7 +63,7 @@ __Pre-Release v6__
 Version 6 has been pre-released!  
 Branch: [v6_major_20211011_1](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/tree/v6_major_20211011_1)
 
-* Removed usage of Azure PowerShell cmdlet 'Get-AzRoleAssignment' / pereparational task for upcoming deprecation of 'Azure Active Directory Graph' API ([announcement](https://azure.microsoft.com/en-us/updates/update-your-apps-to-use-microsoft-graph-before-30-june-2022/))
+* Removed usage of Azure PowerShell cmdlet 'Get-AzRoleAssignment' / preparing for upcoming deprecation of 'Azure Active Directory Graph' API ([announcement](https://azure.microsoft.com/en-us/updates/update-your-apps-to-use-microsoft-graph-before-30-june-2022/))
 * Management Group diagnostic setting - reflect inheritance of diagnostic settings from upper Management Group scopes
 * Removed __TenantSummary__ RBAC Classic Role assignments
 * Improved AzAPICall error handling and output
