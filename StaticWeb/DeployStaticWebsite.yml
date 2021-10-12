@@ -1,0 +1,70 @@
+stages:
+- stage: build
+  displayName: build
+  pool:
+    vmImage: 'ubuntu-latest'
+  jobs:
+  - job: BuildAndDeploy
+    displayName: 'Build and Deploy'
+    steps:
+    - checkout: self
+      submodules: true  
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: '<service connection name>'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az staticwebapp disconnect -n <app name>'
+        
+    - bash: az bicep build --file infra/static-web-app/main.bicep
+      displayName: "Compile Bicep to ARM"
+
+    - task: AzureResourceManagerTemplateDeployment@3
+      name: DeployStaticWebAppInfra
+      displayName: Deploy Static Web App infra
+      inputs:
+        deploymentScope: Resource Group
+        azureResourceManagerConnection: <service connection name>
+        subscriptionId: <subscription ID>
+        action: Create Or Update Resource Group
+        resourceGroupName: <resource group name>
+        location: $(location)
+        templateLocation: Linked artifact
+        csmFile: 'infra/static-web-app/main.json' # created by bash script
+        overrideParameters: >-
+          -repositoryUrl $(repo)
+          -repositoryBranch $(Build.SourceBranchName)
+          -appName $(staticWebAppName)
+        deploymentMode: Incremental
+        deploymentOutputs: deploymentOutputs
+
+    - task: PowerShell@2
+      name: 'SetDeploymentOutputVariables'
+      displayName: "Set Deployment Output Variables"
+      inputs:
+        targetType: inline
+        script: |
+          $armOutputObj = '$(deploymentOutputs)' | ConvertFrom-Json
+          $armOutputObj.PSObject.Properties | ForEach-Object {
+            $keyname = $_.Name
+            $value = $_.Value.value
+
+            # Creates a standard pipeline variable
+            Write-Output "##vso[task.setvariable variable=$keyName;]$value"
+
+            # Creates an output variable
+            Write-Output "##vso[task.setvariable variable=$keyName;issecret=true;isOutput=true]$value"
+
+            # Display keys in pipeline
+            Write-Output "output variable: $keyName"
+          }
+        pwsh: true
+
+    - task: AzureStaticWebApp@0
+      name: DeployStaticWebApp
+      displayName: Deploy Static Web App
+      inputs:
+        app_location: 'app'
+        # api_location: 'api'
+        output_location: 'build'
+        azure_static_web_apps_api_token: $(deployment_token) # captured from deploymentOutputs
