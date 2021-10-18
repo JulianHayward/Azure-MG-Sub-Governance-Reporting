@@ -282,10 +282,6 @@ Grant API permissions for the Application that we created earlier
         * Group / Group.Read.All
         * User / User.Read.All
     * Click on 'Add a permissions'
-    * Click on '__Azure Active Directory Graph__'
-    * Click on 'Application permissions'
-    * Select the following set of permissions and click 'Add permissions'
-        * Directory / Read.All
     * Back in the main 'API permissions' menu you will find the 4 permissions with status 'Not granted for...'. Click on 'Grant admin consent for _TenantName_' and confirm by click on 'Yes'
     * Now you will find the 4 permissions with status 'Granted for _TenantName_'
 

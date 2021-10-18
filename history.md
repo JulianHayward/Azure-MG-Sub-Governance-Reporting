@@ -2,6 +2,20 @@
 
 ## AzGovViz version history
 
+### AzGovViz version 6
+
+__Release v6 Changes__
+
+* Removed usage of Azure PowerShell cmdlet 'Get-AzRoleAssignment' / preparing for upcoming deprecation of 'Azure Active Directory Graph' API ([announcement](https://azure.microsoft.com/en-us/updates/update-your-apps-to-use-microsoft-graph-before-30-june-2022/))
+* Management Group diagnostic setting - reflect inheritance of diagnostic settings from upper Management Group scopes
+* __TenantSummary__ Policy assignments - resolve Managed Identity (if Policy assignment effect is DeployIfNotExists (DINE) or Modify)
+* Removed __TenantSummary__ RBAC Classic Role assignments
+* Improved AzAPICall error handling and output
+* Azure DevOps pipeline (yml) updated prerequisites to include Repository 'contribute' permission check
+* Added Application Insights [stats](#stats)
+* Performance optimization
+* Bugfixes
+
 ### AzGovViz version 5
 
 __Changes__ (2021-Sep-19 / Major)
