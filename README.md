@@ -7,9 +7,6 @@ You can run the script either for your Tenant Root Group or any other Management
 
 ## Mission
 
-<table>
-<td>
-
 "_Governance can be a complex thing_.."
 
 Challenges:
@@ -17,22 +14,21 @@ Challenges:
  * Holistic overview on governance implementation  
  * Connecting the dots
 
-__AzGovViz is intended to help you to get a holistic overview on your technical Azure Governance implementation by connecting the dots__
+AzGovViz is intended to help you to get a holistic overview on your technical Azure Governance implementation by __connecting the dots__
 
-</td>
-<td>
+![ConnectingDot](img/AzGovVizConnectingDots_v4.2.png)
 
-<img src="img/AzGovVizConnectingDots_v4.2.png">
+## AzGovViz @ Microsoft CAF & WAF
 
-</td>
-</table>
+### Microsoft Cloud Adoption Framework (CAF)
 
-## Microsoft Cloud Adoption Framework (CAF)
+Listed as [tool](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-templates#govern) for the Govern discipline in the Microsoft Cloud Adoption Framework  
 
-<img align="left" height="80" src="img/caf.png"> Listed as tool for the Govern discipline in the Microsoft Cloud Adoption Framework!  
-https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-templates#govern
+Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template
 
-Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template.
+### Microsoft Well Architected Framework (WAF)
+
+Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/architecture/framework/security/monitor-tools) in the Microsoft Well Architected Framework
 
 ## Content
 * [Release history](#release-history)
@@ -50,7 +46,9 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
   * [PowerShell](#powershell)
   * [Parameters](#parameters)
 * [Integrate with AzOps](#integrate-with-azops)
+* [Stats](#stats)
 * [Security](#security)
+* [Known issues](#known-issues)
 * [Facts](#facts)
 * [Contributions](#contributions)
 * [AzAdvertizer](#azadvertizer)
@@ -58,18 +56,20 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 ## Release history
 
-__Pre-Release v6__
-
-Version 6 has been pre-released!  
-Branch: [v6_major_20211011_1](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/tree/v6_major_20211011_1)
+__Release v6 Changes__
 
 * Removed usage of Azure PowerShell cmdlet 'Get-AzRoleAssignment' / preparing for upcoming deprecation of 'Azure Active Directory Graph' API ([announcement](https://azure.microsoft.com/en-us/updates/update-your-apps-to-use-microsoft-graph-before-30-june-2022/))
 * Management Group diagnostic setting - reflect inheritance of diagnostic settings from upper Management Group scopes
+* __TenantSummary__ Policy assignments - resolve Managed Identity (if Policy assignment effect is DeployIfNotExists (DINE) or Modify)
 * Removed __TenantSummary__ RBAC Classic Role assignments
 * Improved AzAPICall error handling and output
-* Azure DevOps pipeline (yml) updated prerequisites to include Repository 'contribute' permission check 
+* Azure DevOps pipeline (yml) updated prerequisites to include Repository 'contribute' permission check
+* Added Application Insights [stats](#stats)
 * Performance optimization
 * Bugfixes
+
+Passed tests: Powershell Core 7.1.3 on Windows  
+Passed tests: Powershell Core 7.1.4 Azure DevOps hosted agent ubuntu-18.04
 
 [Release history](history.md)
 
@@ -89,7 +89,7 @@ More [demo output](https://github.com/JulianHayward/AzGovViz)
 
 ### Slideset
 
-Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
+Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
 
 ## Features
 
@@ -127,7 +127,8 @@ Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
       * Indicates if scope is excluded from Policy assignment 
       * Indicates if Exemption applies for scope 
       * Policy/Resource Compliance (Policy: NonCompliant, Compliant; Resource: NonCompliant, Compliant, Conflicting)
-      * Related RBAC Role assignments (if Policy effect is DeployIfNotExists (DINE))
+      * Related RBAC Role assignments (if Policy effect is DeployIfNotExists (DINE) or Modify)
+      * Resolved Managed Identity (if Policy effect is DeployIfNotExists (DINE) or Modify)
       * System metadata 'createdOn, createdBy, updatedOn, updatedBy' ('createdBy', 'updatedBy' identity is fully resolved)
       * Parameters used
 * __Role-Based Access Control (RBAC)__
@@ -153,7 +154,7 @@ Short presentation on AzGovViz [Download](slides/AzGovViz_intro.pdf)
       * Related Policy assignments (Policy assignment of a Policy definition that uses the DeployIfNotExists (DINE) effect)
       * System metadata 'createdOn, createdBy' ('createdBy' identity is fully resolved)
       * Determine if the Role assignment is 'standing' or PIM managed
-  * Role assignments ClassicAdministrators
+  * ~~Role assignments ClassicAdministrators~~
   * Security & Best practice analysis
     * Existence of custom Role definition that reflect 'Owner' permissions
     * Role assignments for 'Owner' permissions on identity-type == 'ServicePrincipal' 
@@ -265,7 +266,7 @@ markdown in Azure DevOps Wiki as Code
 
 ## AzGovViz Setup Guide
 
-&#x1F4A1; Detailed __[Setup Guide](setup.md)__
+&#x1F4A1; Although 30 minutes of troubleshooting can save you 5 minutes reading the documentation :) ..  check the detailed __[Setup Guide](setup.md)__
 
 ## Technical documentation
 
@@ -305,7 +306,7 @@ This permission is <b>mandatory</b> in each and every scenario!
     </tr>
     <tr>
       <td><b>B</b><br>Console | Guest user account</td>
-      <td>Add assignment for the Guest user to AAD Role <b>Directory readers</b><br>OR<br>Use parameters:<br>&nbsp;-NoAADGuestUsers<br>&nbsp;-NoAADGroupsResolveMembers<br>&nbsp;-NoAADServicePrincipalResolve<br>
+      <td>Add assignment for the Guest user to AAD Role <b>Directory readers</b><br>OR<br>Use parameters:<br>&nbsp;-NoAADGroupsResolveMembers<br>
       &#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/fundamentals/users-default-permissions.md#compare-member-and-guest-default-permissions" target="_blank">Compare member and guest default permissions</a>
       </td>
     </tr>
@@ -323,14 +324,9 @@ This permission is <b>mandatory</b> in each and every scenario!
               <th>Parameter</th>
             </tr>
             <tr>
-              <td>Get identity<br>Role assignments</td>
-              <td>Service Principal's <b>App registration</b><br>grant with <b>Azure Active Directory Graph</b> permissions:<br>Application permissions / Directory / Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/previous-versions/azure/ad/graph/howto/azure-ad-graph-api-permission-scopes#permission-scope-details-" target="_blank">Read directory data</a></td>
-              <td>n/a</td>
-            </tr>
-            <tr>
               <td>Get AAD<br>Guest Users</td>
               <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / User / User.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/user-get#permissions" target="_blank">Get user</a></td>
-              <td>NoAADGuestUsers</td>
+              <td>n/a</td>
             </tr>
             <tr>
               <td>Get AAD<br>Groups</td>
@@ -340,7 +336,7 @@ This permission is <b>mandatory</b> in each and every scenario!
             <tr>
               <td>Get AAD<br>SP/App</td>
               <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a></td>
-              <td>NoAADServicePrincipalResolve</td>
+              <td>n/a</td>
             </tr>
           </tbody>
         </table>
@@ -360,14 +356,9 @@ This permission is <b>mandatory</b> in each and every scenario!
               <th>Parameter</th>
             </tr>
             <tr>
-              <td>Get identity<br>Role assignments</td>
-              <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Azure Active Directory Graph</b> permissions:<br>Application permissions / Directory / Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/previous-versions/azure/ad/graph/howto/azure-ad-graph-api-permission-scopes#permission-scope-details-" target="_blank">Read directory data</a></td>
-              <td>n/a</td>
-            </tr>
-            <tr>
               <td>Get AAD<br>Guest Users</td>
               <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / User / User.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/user-get#permissions" target="_blank">Get user</a></td>
-              <td>NoAADGuestUsers</td>
+              <td>n/a</td>
             </tr>
             <tr>
               <td>Get AAD<br>Groups</td>
@@ -377,7 +368,7 @@ This permission is <b>mandatory</b> in each and every scenario!
             <tr>
               <td>Get AAD<br>SP/App</td>
               <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a></td>
-              <td>NoAADServicePrincipalResolve</td>
+              <td>n/a</td>
             </tr>
           </tbody>
         </table>
@@ -386,7 +377,7 @@ This permission is <b>mandatory</b> in each and every scenario!
   </tbody>
 </table>
 
-Permissions in Azure Active Directory for App registration:  
+Screenshot Azure Portal    
 ![alt text](img/aadpermissionsportal.jpg "Permissions in Azure Active Directory")
 
 ### PowerShell
@@ -397,7 +388,7 @@ Permissions in Azure Active Directory for App registration:
   * [Installing PowerShell on Linux](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-linux)
 * Requires PowerShell Az Modules
   * Az.Accounts
-  * Az.Resources
+  * ~~Az.Resources~~
   * ~~Az.ResourceGraph~~
   * [Install the Azure Az PowerShell module](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps)
 * Usage/command
@@ -417,8 +408,8 @@ Permissions in Azure Active Directory for App registration:
   * ~~`-DisablePolicyComplianceStates`~~ `-NoPolicyComplianceStates` - Will not query policy compliance states. You may want to use this parameter to accellerate script execution or when receiving error 'ResponseTooLarge'. 
   * `-NoResourceDiagnosticsPolicyLifecycle` - Disables Resource Diagnostics Policy Lifecycle recommendations
   * `-NoAADGroupsResolveMembers` - Disables resolving Azure Active Directory Group memberships
-  * `-NoAADGuestUsers` - Disables resolving Azure Active Directory User type (Guest or Member)
-  * ~~`-NoServicePrincipalResolve`~~ `-NoAADServicePrincipalResolve` - Disables resolving ServicePrincipals
+  * ~~`-NoAADGuestUsers` - Disables resolving Azure Active Directory User type (Guest or Member)~~
+  * ~~`-NoServicePrincipalResolve` `-NoAADServicePrincipalResolve` - Disables resolving ServicePrincipals~~
   * ~~`-ServicePrincipalExpiryWarningDays`~~ `-AADServicePrincipalExpiryWarningDays` - Define warning period for Service Principal secret and certificate expiry; default is 14 days
   * `-NoAzureConsumption` - Azure Consumption data should not be collected/reported
   * `-AzureConsumptionPeriod` - Define for which time period Azure Consumption data should be gathered; default is 1 day
@@ -440,10 +431,8 @@ Permissions in Azure Active Directory for App registration:
   * `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big. Using this parameter the following parameters will be set: -PolicyAtScopeOnly $true, -RBACAtScopeOnly $true, -NoResourceProvidersDetailed $true, -NoScopeInsights $true
   * `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 40.000
   * `-AADGroupMembersLimit` - Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved 
-  * `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability and resource type stats (featured for large tenants)
-
-* Passed tests: Powershell Core 7.1.3 on Windows
-* Passed tests: Powershell Core 7.1.3 Azure DevOps hosted ubuntu-18.04
+  * `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability and resource type statistic (featured for large tenants)
+  * `-StatsOptOut` - Opt out sending [stats](#stats)
 
 ## Integrate with AzOps
 
@@ -460,28 +449,107 @@ You can integrate AzGovViz (same project as AzOps).
             - master
 ```
 
+## Stats
+
+In order to better understand the AzGovViz usage and to optimize the product accordingly some stats will be ingested to Azure Application Insights. Results of stats analysis may be shared at a later stage. 
+
+### How/What?
+
+If the script is run in Azure DevOps then the Repository Id and executing principal´s object Id will be used to create an unique identifier.  
+If the script is not run in Azure DevOps then the Tenant Id and executing principal´s object Id will be used to create an unique identifier.
+
+SHA384/512 hashed combination of 
+* portion of the repositoryId/tenantId 
+  * if repositoryId/tenantId startsWith a letter then use characters 3-8 (6 characters) of the first GUID´s block, combine them with the third GUID`s block of the principal´s objectId (4 characters), SHA512 hash them as identifier0
+  * if repositoryId/tenantId startsWith a number then use characters 7-12 (6 characters) of the last GUID`s block, combine them with the second GUID´s block of the principal´s objectId (4 characters), SHA384 hash them as identifier0
+* portion of the executing principal´s objectId 
+  * if objectId startsWith a letter then use characters 3-8 (6 characters) of the first GUID´ block, combine them with the third GUID´ block of the repositoryId/tenantId (4 characters), SHA512 hash them as identifier1
+  * if objectId startsWith a number then use characters 7-12 (6 characters) of the last GUID´ block, combine them with the second GUID´ block of the repositoryId/tenantId (4 characters), SHA384 hash them as identifier1
+
+Combine identifier0 and identifier1
+  * if objectId startsWith a letter then combine identifiers -> 'identifier0 + identifier1', SHA512 hash them as final identifier and remove dashes (string of 128 characters)
+  * if objectId startsWith a number then combine identifiers -> 'identifier1 + identifier0', SHA512 hash them as final identifier and remove dashes (string of 128 characters)
+
+To conclude the approach: taking 6 or 4 characters from tenantId/respositoryId and objectId of the executing principal to create a unique identifier, which may not be backward resolveable.
+
+![alt text](img/identifier.jpg "identifier")
+
+The following data will be ingested to Azure Application Insights:
+
+```
+    "accType": "ServicePrincipal / User (member) / User (Guest)",
+    "azCloud": "Azure environment e.g. AzureCloud, ChinaCloud, etc.",
+    "identifier": "8c62a7..53d08c0 (string of 128 characters)",
+    "platform": "Console / AzureDevOps",
+    "productVersion": "used AzGovViz version",
+    "psAzAccountsVersion": "used Az.Accounts PS module version",
+    "psVersion": "used PowerShell version",
+    "scopeUsage": "childManagementGroup / rootManagementGroup",
+    "statsCountErrors": "count of encountered errors",
+    "statsCountSubscriptions": "less than 100 / more than 100 (no exact numbers)",
+    "statsParametersDoNotIncludeResourceGroupsAndResourcesOnRBAC": "true / false",
+    "statsParametersDoNotIncludeResourceGroupsOnPolicy": "true / false",
+    "statsParametersDoNotShowRoleAssignmentsUserData": "true / false",
+    "statsParametersHierarchyMapOnly": "true / false",
+    "statsParametersLargeTenant": "true / false",
+    "statsParametersNoASCSecureScore" "true / false",
+    "statsParametersNoAzureConsumption": "true / false",
+    "statsParametersNoJsonExport": "true / false",
+    "statsParametersNoPolicyComplianceStates": "true / false",
+    "statsParametersNoResourceProvidersDetailed": "true / false",
+    "statsParametersNoResources": "true / false",
+    "statsParametersPolicyAtScopeOnly": "true / false",
+    "statsParametersRBACAtScopeOnly": "true / false",
+    "statsTry": "count of try sending to Application Insights"
+```
+
+Azure Application Insights data:  
+
+![alt text](img/stats.jpg "Stats")
+
+If you do not want to contribute to stats for AzGovViz then you can use the parameter:  
+`-StatsOptOut` 
+
+If you have any concerns or see a risk sending stats please file an issue.
+
+Thank you for your support!
+
 ## Security
 
 AzGovViz creates very detailed information about your Azure Governance setup. In your organization's best interest the __outputs should be protected from not authorized access!__
 
+## Known issues
+
+Working with Git and Windows cloning from your AzDO repository you may experience the following error:
+
+```
+fatal: cannot create directory at 'output/JSON_...': Filename too long
+```
+
+To work around that issue you may want to enable longpaths support.  
+__Note the [caveats](https://github.com/desktop/desktop/issues/8023)!__
+
+```
+git config --system core.longpaths true
+```
+
 ## Facts
 
-Disabled Subscriptions and Subscriptions where Quota Id starts with with "AAD_" are being skipped, all others are queried. More info on Quota Id / Offer numbers: <a href="https://docs.microsoft.com/en-us/azure/cost-management-billing/costs/understand-cost-mgt-data#supported-microsoft-azure-offers" target="_blank">Supported Microsoft Azure offers</a> 
-.  
+Disabled Subscriptions and Subscriptions where Quota Id starts with with "AAD_" are being skipped, all others are queried. More information on Subscription Quota Id / Offer numbers: [Supported Microsoft Azure offers](https://docs.microsoft.com/en-us/azure/cost-management-billing/costs/understand-cost-mgt-data#supported-microsoft-azure-offers).  
 
-ARM Limits are not acquired programmatically, they are hardcoded. The links used to check related Limits are commented in the param section of the script.
+ARM Limits are not acquired programmatically, these are hardcoded. The links used to check related limits are commented in the param section of the script.
 
 ## Contributions
 
 Please feel free to contribute. Thanks to so many supporters - testing, giving feedback, making suggestions, presenting use-case, posting/blogging articles, refactoring code - THANK YOU!
 
-Thanks Stefan Stranger (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale. Make sure you read Stefan´s Blog Article: <a href="https://stefanstranger.github.io/2020/08/28/EnterpriseScalePolicyDrivenGovernance/" target="_blank">Enterprise-Scale - Policy Driven Governance</a> 
+Thanks Stefan Stranger (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale. Make sure you read Stefan´s Blog Article: [Enterprise-Scale - Policy Driven Governance](https://stefanstranger.github.io/2020/08/28/EnterpriseScalePolicyDrivenGovernance)
 
 Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale.
 
 Special thanks to Tim Wanierke, Brooks Vaughn and Friedrich Weinmann (Microsoft).
 
-Kudos to the <a href="https://www.tablefilter.com/" target="_blank">TableFilter</a> Project Team!
+Kudos to the [TableFilter](https://www.tablefilter.com) Project Team!
 
 ## AzAdvertizer
 
