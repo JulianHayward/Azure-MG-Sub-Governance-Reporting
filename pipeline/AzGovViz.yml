@@ -107,7 +107,7 @@ jobs:
       scriptPath: '$(System.DefaultWorkingDirectory)/$(ScriptDir)/$(Script)'
       scriptArguments: '-ManagementGroupId $(ManagementGroupId) -OutputPath $(WikiDir) -CsvDelimiter "$(CsvDelimiter)" -AzureDevOpsWikiAsCode -SubscriptionQuotaIdWhitelist $(SubscriptionQuotaIdWhitelist) -ExludedResourceTypesDiagnosticsCapable $(ExludedResourceTypesDiagnosticsCapable)'
       azurePowerShellVersion: latestVersion
-    displayName: 'Run AzGovViz v5'
+    displayName: 'Run AzGovViz v6'
   - powershell: |
       write-host "#################################"
       write-host "Push AzGovViz output to repository"
@@ -121,4 +121,4 @@ jobs:
       git add --all
       git commit -m "wiki $executionDateTimeInternationalReadable ($currentTimeZone)"
       git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" push origin HEAD:$(Build.SourceBranchName)
-    displayName: 'Push AzGovViz v5 output to repository'
+    displayName: 'Push AzGovViz v6 output to repository'
