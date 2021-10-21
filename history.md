@@ -4,6 +4,10 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2021-Oct-21 / Major)
+
+* AzAPICall enhanced error handling (GatewayAuthenticationFailed; roleAssignment schedules)
+
 __Release v6 Changes__
 
 * Removed usage of Azure PowerShell cmdlet 'Get-AzRoleAssignment' / preparing for upcoming deprecation of 'Azure Active Directory Graph' API ([announcement](https://azure.microsoft.com/en-us/updates/update-your-apps-to-use-microsoft-graph-before-30-june-2022/))
