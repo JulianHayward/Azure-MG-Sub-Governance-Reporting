@@ -257,7 +257,7 @@
 Param
 (
     [string]$Product = "AzGovViz",
-    [string]$ProductVersion = "v6_major_20211021_1",
+    [string]$ProductVersion = "v6_major_20211025_1",
     [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
@@ -1156,7 +1156,8 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     ($catchResult.error.code -eq "InsufficientPermissions") -or
                     $catchResult.error.code -eq "ClientCertificateValidationFailure" -or
                     ($validateAccess -and $catchResult.error.code -eq "Authorization_RequestDenied") -or
-                    $catchResult.error.code -eq "GatewayAuthenticationFailed"
+                    $catchResult.error.code -eq "GatewayAuthenticationFailed" -or
+                    $catchResult.message -eq "An error has occurred."
                 ) {
                     if (($getPolicyCompliance -and $catchResult.error.code -like "*ResponseTooLarge*") -or ($getPolicyCompliance -and -not $catchResult.error.code)) {
                         if ($getPolicyCompliance -and $catchResult.error.code -like "*ResponseTooLarge*") {
@@ -1356,9 +1357,9 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         return "InvalidResourceType"
                     }
 
-                    if ($catchResult.error.code -eq "InsufficientPermissions" -or $catchResult.error.code -eq "ClientCertificateValidationFailure" -or $catchResult.error.code -eq "GatewayAuthenticationFailed") {
-                        $maxTries = 5
-                        $sleepSec = @(1, 3, 5, 7, 10, 12, 20, 30)[$tryCounter]
+                    if ($catchResult.error.code -eq "InsufficientPermissions" -or $catchResult.error.code -eq "ClientCertificateValidationFailure" -or $catchResult.error.code -eq "GatewayAuthenticationFailed" -or $catchResult.message -eq "An error has occurred.") {
+                        $maxTries = 7
+                        $sleepSec = @(1, 3, 5, 7, 10, 12, 20, 30, 40, 45)[$tryCounter]
                         if ($tryCounter -gt $maxTries) {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - exit"
                             if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {

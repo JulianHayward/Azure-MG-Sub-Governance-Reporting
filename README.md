@@ -56,6 +56,10 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
+__Changes__ (2021-Oct-25 / Major)
+
+* AzAPICall enhanced error handling (general error 'An error has occurred.' ; roleAssignment schedules)
+
 __Changes__ (2021-Oct-21 / Major)
 
 * AzAPICall enhanced error handling (GatewayAuthenticationFailed; roleAssignment schedules)
