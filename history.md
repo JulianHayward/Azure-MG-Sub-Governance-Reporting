@@ -4,6 +4,13 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2021-Nov-01 / Major)
+
+* New output - Feature request to create __Scope Insights__ output per Subscription has been implement. With this new feature you can share Subscription __Scope Insights__ with Subscription responsible staff. Use parameter `-NoSingleSubscriptionOutput` to disable the feature
+* Update [Required permissions in Azure Active Directory](#required-permissions-in-azure-active-directory) for the scenario of a Guest User executing the script
+* Add 'daily summary' output (CSV) to easily track your Tenant´s Governance evolution over time - Tim will hopefully create a PR for how he leverages AzGovViz historical data for Azure Log Analytics based dashboards
+* Improved permission related error handling 
+
 __Changes__ (2021-Oct-25 / Major)
 
 * AzAPICall enhanced error handling (general error 'An error has occurred.' ; roleAssignment schedules)

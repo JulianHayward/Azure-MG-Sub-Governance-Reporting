@@ -1,6 +1,6 @@
 # AzGovViz - Azure Governance Visualizer - Setup
 
-This guide will help you to setup and run AzGovViz.
+This guide will help you to setup and run AzGovViz
 * Abbreviations:
     * Azure Active Directory - AAD
     * Azure DevOps - AzDO
@@ -8,18 +8,13 @@ This guide will help you to setup and run AzGovViz.
 ## Table of contents
 * [__AzGovViz from Console__](#azgovviz-from-console)
     * Grant permissions in Azure
+    * Execution options
+      * Option 1 - Execute as a Tenant Member User
+      * Option 2 - Execute as a Tenant Guest User
+      * Option 3 - Execute as Service Principal
     * Clone the AzGovViz repository
-    * Option 1 - Execute as a Tenant Member User
-        * Run AzGovViz
-    * Option 2 - Execute as a Tenant Guest User
-        * Grant permissions in AAD
-        * Run AzGovViz
-    * Option 3 - Execute as Service Principal
-        * Grant permissions in AAD
-            * Option 1 - API permissions
-            * Option 2 - AAD Role
-        * Run AzGovViz
-    
+    * Run AzGovViz
+
 * [__AzGovViz in Azure DevOps (AzDO)__](#azgovviz-in-azure-devops)
     * Create AzDO Project
     * Import AzGovViz Github repository
@@ -28,8 +23,6 @@ This guide will help you to setup and run AzGovViz.
       * Option 2 - Create Service Connection´s Service Principal in the Azure Portal
     * Grant permissions in Azure
     * Grant permissions in AAD
-      * Option 1 - API permissions
-      * Option 2 - AAD Role
     * Grant permissions on AzGovViz AzDO repository
     * Edit AzDO YAML file
     * Create AzDO Pipeline
@@ -41,9 +34,9 @@ This guide will help you to setup and run AzGovViz.
 ## Grant permissions in Azure
 
 * Requirements
-    * To assign roles, you must have Microsoft.Authorization/roleAssignments/write permissions, such as RBAC Role 'User Access Administrator' or 'Owner' on the target Management Group scope
+    * To assign roles, you must have '__Microsoft.Authorization/roleAssignments/write__' permissions on the target Management Group scope (such as the built-in RBAC Role '__User Access Administrator__' or '__Owner__')
 
-Create a 'Reader' RBAC Role assignment on the target Management Group scope for the identity that shall run AzGovViz
+Create a '__Reader__' RBAC Role assignment on the target Management Group scope for the identity that shall run AzGovViz
 
 * PowerShell
 ```powershell
@@ -60,63 +53,71 @@ New-AzRoleAssignment `
 * Azure Portal  
 [Assign Azure roles using the Azure portal](https://docs.microsoft.com/en-us/azure/role-based-access-control/role-assignments-portal)
 
+## Execution options
+
+### Option 1 - Execute as a Tenant Member User
+
+Proceed with step [__Clone the AzGovViz repository__](#clone-the-azgovviz-repository)
+
+### Option 2 - Execute as a Tenant Guest User
+
+If the tenant is hardened (AAD External Identities / Guest user access = most restrictive) then Guest User must be assigned the AAD Role '__Directory readers__'
+
+&#x1F4A1; [Compare member and guest default permissions](https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/fundamentals/users-default-permissions.md#compare-member-and-guest-default-permissions)  
+&#x1F4A1; [Restrict Guest permissions](https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions)
+
+#### Assign AAD Role - Directory readers
+
+* Requirements
+    * To assign roles, you must have '__Privileged Role Administrator__' or '__Global Administrator__' role assigned [Assign Azure AD roles to users](https://docs.microsoft.com/en-us/azure/active-directory/roles/manage-roles-portal)
+
+Assign the AAD Role '__Directory Reader__' for the Guest User that shall run AzGovViz (work with the Guest User´s display name)  
+* Azure Portal
+    * [Assign a role](https://docs.microsoft.com/en-us/azure/active-directory/roles/manage-roles-portal#assign-a-role)
+
+Proceed with step [__Clone the AzGovViz repository__](#clone-the-azgovviz-repository)
+
+### Option 3 - Execute as Service Principal
+
+A Service Principal by default has no read permissions on Users, Groups and Service Principals, therefore we need to grant additional permissions in AAD
+
+#### Grant API permissions
+
+* Requirements
+    * To grant API permissions and grant admin consent for the directory, you must have '__Privileged Role Administrator__' or '__Global Administrator__' role assigned [Assign Azure AD roles to users](https://docs.microsoft.com/en-us/azure/active-directory/roles/manage-roles-portal)
+
+Grant API permissions for the Service Principal´s Application
+* Navigate to 'Azure Active Directory'
+* Click on '__App registrations__'
+* Search for the Application that we created earlier and click on it
+* Under '__Manage__' click on '__API permissions__'
+    * Click on '__Add a permissions__'
+    * Click on '__Microsoft Graph__'
+    * Click on '__Application permissions__'
+    * Select the following set of permissions and click '__Add permissions__'
+        * __Application / Application.Read.All__
+        * __Group / Group.Read.All__
+        * __User / User.Read.All__
+    * Click on 'Add a permissions'
+    * Back in the main '__API permissions__' menu you will find the 4 permissions with status 'Not granted for...'. Click on '__Grant admin consent for _TenantName___' and confirm by click on '__Yes__'
+    * Now you will find the 4 permissions with status '__Granted for _TenantName___'
+
+Permissions in Azure Active Directory for App registration:  
+![alt text](img/aadpermissionsportal.jpg "Permissions in Azure Active Directory")
+
+Proceed with step [__Clone the AzGovViz repository__](#clone-the-azgovviz-repository)
+
 ## Clone the AzGovViz repository
 
 * Requirements
-    * To clone the AzGovViz Github repository you need to have GIT installed
-    * Install Git: https://git-scm.com/download/win
+  * To clone the AzGovViz Github repository you need to have GIT installed
+  * Install Git: https://git-scm.com/download/win
 
 * PowerShell
 ```powershell 
 Set-Location "c:\Git"  
 git clone "https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting.git"
 ```
-
-## Option 1 - Execute as a Tenant Member User
-
-Proceed with step [__Run AzGovViz from Console__](#run-azgovviz-from-console)
-
-## Option 2 - Execute as a Tenant Guest User
-
-A Tenant Guest User by default has less permissions in AAD than a Tenant Member User ([Compare member and guest default permissions](https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/fundamentals/users-default-permissions.md#compare-member-and-guest-default-permissions)), therefore we need to grant additional permissions in AAD by assigning AAD Role 'Directory Reader' for the Guest User.
-
-### Option 2 - Execute as a Tenant Guest User - Grant permissions in AAD
-
-* Requirements
-    * To assign roles, you must have 'Privileged Role Administrator' or 'Global Administrator' role assigned [Assign Azure AD roles to users](https://docs.microsoft.com/en-us/azure/active-directory/roles/manage-roles-portal)
-
-Assign the AAD Role 'Directory Reader' for the Guest User that shall run AzGovViz (work with the Guest User´s display name)  
-* Azure Portal
-    * [Assign a role](https://docs.microsoft.com/en-us/azure/active-directory/roles/manage-roles-portal#assign-a-role)
-
-Proceed with step [__Run AzGovViz from Console__](#run-azgovviz-from-console)
-
-## Option 3 - Execute as Service Principal
-
-A Service Principal by default has no read permissions on Identities, Groups and other Service Principals (Applications, Managed Identities), therefore we need to grant additional permissions in AAD.
-
-### Option 3 - Execute as Service Principal - Grant permissions in AAD
-
-There are two options to grant the Service Principal the required permissions
-* Options
-    * __Option 1__ API permissions (recommended)
-    * __Option 2__ AAD Role
-
-#### Option 3 - Execute as Service Principal - Grant permissions in AAD - Option 1 - API permissions
-
-* Requirements
-    * To grant API permissions and grant admin consent for the directory, you must have 'Privileged Role Administrator' or 'Global Administrator' role assigned [Assign Azure AD roles to users](https://docs.microsoft.com/en-us/azure/active-directory/roles/manage-roles-portal)
-
-Proceed with step [__Run AzGovViz from Console__](#run-azgovviz-from-console)
-
-#### Option 3 - Execute as Service Principal - Grant permissions in AAD - Option 2 - AAD Role
-
-* Requirements
-    * To assign roles, you must have 'Privileged Role Administrator' or 'Global Administrator' role assigned [Assign Azure AD roles to users](https://docs.microsoft.com/en-us/azure/active-directory/roles/manage-roles-portal)
-
-Assign the AAD Role 'Directory Reader' for the Service Principal that shall run AzGovViz (work with the Service Principal´s display name)  
-* Azure Portal
-    * [Assign a role](https://docs.microsoft.com/en-us/azure/active-directory/roles/manage-roles-portal#assign-a-role)
 
 Proceed with step [__Run AzGovViz from Console__](#run-azgovviz-from-console)
 
@@ -131,7 +132,7 @@ Proceed with step [__Run AzGovViz from Console__](#run-azgovviz-from-console)
         * [Installing PowerShell on Linux](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-linux)
     * Requires PowerShell Az Modules
         * Az.Accounts
-        * Az.Resources
+        * ~~Az.Resources~~
         * [Install the Azure Az PowerShell module](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps)
 
 ### Connecting to Azure as User (Member or Guest)
@@ -143,14 +144,14 @@ Connect-AzAccount -TenantId <TenantId> -UseDeviceAuthentication
 
 ### Connecting to Azure using Service Principal
 
-Have the 'Application (client) ID' of the App registration OR 'Application ID' of the Service Principal (Enterprise Application) and the secret of the App registration at hand.
+Have the '__Application (client) ID__' of the App registration OR '__Application ID__' of the Service Principal (Enterprise Application) and the secret of the App registration at hand
 
 * PowerShell
 ```powershell 
 $pscredential = Get-Credential    
 Connect-AzAccount -ServicePrincipal -TenantId <TenantId> -Credential $pscredential
 ```
-User: Enter 'Application (client) ID' of the App registration OR 'Application ID' of the Service Principal (Enterprise Application)  
+User: Enter '__Application (client) ID__' of the App registration OR '__Application ID__' of the Service Principal (Enterprise Application)  
 Password for user \<Id\>: Enter App registration´s secret 
 
 ### Run AzGovViz
@@ -185,60 +186,61 @@ Note: the AzGovViz GitHub repository is public - no authorization required
 
 ## Create AzDO Service Connection
 
-For the pipeline to authenticate and connect to Azure we need to create an AzDO Service Connection which basically is a Service Principal (Application).  
-There are two options to create the Service Connection.
+For the pipeline to authenticate and connect to Azure we need to create an AzDO Service Connection which basically is a Service Principal (Application)  
+There are two options to create the Service Connection:
 
 * Options
-    * __Option 1__ Create Service Connection´s Service Principal in the Azure Portal (recommended)
+    * __Option 1__ Create Service Connection´s Service Principal in the Azure Portal
     * __Option 2__ Create Service Connection in AzDO
 
 ### Create AzDO Service Connection - Option 1 - Create Service Connection´s Service Principal in the Azure Portal
 
-Azure Portal
+#### Azure Portal
 * Navigate to 'Azure Active Directory'
-* Click on 'App registrations'
-* Click on 'New registration'
+* Click on '__App registrations__'
+* Click on '__New registration__'
 * Name your application (e.g. 'AzGovViz_SC')
-* Click 'Register'
-* Your App registration has been created, in the 'Overview' copy the 'Application (client) ID' as we will need it later to setup the Service Connection in AzDO
-* Under 'Manage' click on 'Certificates & Secrets'
-* Click on 'New client secret'
-* Provide a good description and choose the expiry time based on your need and click 'Add'
+* Click '__Register__'
+* Your App registration has been created, in the '__Overview__' copy the '__Application (client) ID__' as we will need it later to setup the Service Connection in AzDO
+* Under '__Manage__' click on '__Certificates & Secrets__'
+* Click on '__New client secret__'
+* Provide a good description and choose the expiry time based on your need and click '__Add__'
 * A new client secret has been created, copy the secret´s value as we will need it later to setup the Service Connection in AzDO
 
-Azure DevOps (AzDO)
-* Click on 'Project settings' (located on the bottom left)
-* Under 'Pipelines' click on 'Service Connections'
-* Click on 'New service connection' and select the connection/service type 'Azure Resource Manager' and click Next
-* For the authentication method select 'Service principal (manual)' and click Next
-* For the 'Scope level' select 'Management Group'
-    * In the field 'Management Group Id' enter the target Management Group Id 
-    * In the field 'Management Group Name' enter the target Management Group Name
-* Under 'Authentication' in the field 'Service Principal Id' enter the 'Application (client) ID' that you copied earlier
-* For the 'Credential' select 'Service principal key', in the field 'Service principal key' enter the secret that you copied earlier
-* For 'Tenant ID' enter your Tenant Id
-* Click on 'Verify'
-* Under 'Details' provide your Service Connection with a name and copy the name as we will need that later when editing the Pipeline YAML file
-* For 'Security' leave the 'Grant access permissions to all pipelines' option checked
-* Click on 'Verify and save'
+#### Azure DevOps
+* Click on '__Project settings__' (located on the bottom left)
+* Under '__Pipelines__' click on '__Service Connections__'
+* Click on '__New service connection__' and select the connection/service type '__Azure Resource Manager__' and click '__Next__'
+* For the authentication method select '__Service principal (manual)__' and click '__Next__'
+* For the '__Scope level__' select '__Management Group__'
+    * In the field '__Management Group Id__' enter the target Management Group Id 
+    * In the field '__Management Group Name__' enter the target Management Group Name
+* Under '__Authentication__' in the field '__Service Principal Id__' enter the '__Application (client) ID__' that you copied away earlier
+* For the '__Credential__' select '__Service principal key__', in the field '__Service principal key__' enter the secret that you copied away earlier
+* For '__Tenant ID__' enter your Tenant Id
+* Click on '__Verify__'
+* Under '__Details__' provide your Service Connection with a name and copy away the name as we will need that later when editing the Pipeline YAML file
+* For '__Security__' leave the 'Grant access permissions to all pipelines' option checked (optional)
+* Click on '__Verify and save__'
 
 ### Create AzDO Service Connection - Option 2 - Create Service Connection in AzDO
 
-* Click on 'Project settings' (located on the bottom left)
-* Under 'Pipelines' click on 'Service connections'
-* Click on 'New service connection' and select the connection/service type 'Azure Resource Manager' and click Next
-* For the authentication method select 'Service principal (automatic)' and click Next
-* For the 'Scope level' select 'Management Group', in the Management Group dropdown select the target Management Group (here the Management Group´s display names will be shown), in the 'Details' section apply a Service Connection name and optional give it a description and click Save
+* Click on '__Project settings__' (located on the bottom left)
+* Under '__Pipelines__' click on '__Service connections__'
+* Click on '__New service connection__' and select the connection/service type '__Azure Resource Manager__' and click '__Next__'
+* For the authentication method select '__Service principal (automatic)__' and click '__Next__'
+* For the '__Scope level__' select '__Management Group__', in the Management Group dropdown select the target Management Group (here the Management Group´s display names will be shown), in the '__Details__' section apply a Service Connection name and optional give it a description and click '__Save__'
 * A new window will open, authenticate with your administrative account
-* Now the Service Connection has been created 
-* __Important!__ In Azure on the target Management Group scope a 'Owner' RBAC Role assignment for the Service Connection´s Service Principal has been created automatically (we do however only require a 'Reader' RBAC Role assignment! we will take corrective action in the next steps)
+* Now the Service Connection has been created
+
+__Important!__ In Azure on the target Management Group scope an '__Owner__' RBAC Role assignment for the Service Connection´s Service Principal has been created automatically (we do however only require a '__Reader__' RBAC Role assignment! we will take corrective action in the next steps)
 
 ## Grant permissions in Azure
 
 * Requirements
-    * To assign roles, you must have Microsoft.Authorization/roleAssignments/write permissions, such as RBAC Role 'User Access Administrator' or 'Owner' on the target Management Group scope
+    * To assign roles, you must have '__Microsoft.Authorization/roleAssignments/write__' permissions on the target Management Group scope (such as the built-in RBAC Role '__User Access Administrator__' or '__Owner__')
 
-Create a 'Reader' RBAC Role assignment on the target Management Group scope for the AzDO Service Connection´s Service Principal
+Create a '__Reader__' RBAC Role assignment on the target Management Group scope for the AzDO Service Connection´s Service Principal
 
 * PowerShell
 ```powershell
@@ -255,93 +257,78 @@ New-AzRoleAssignment `
 * Azure Portal  
 [Assign Azure roles using the Azure portal](https://docs.microsoft.com/en-us/azure/role-based-access-control/role-assignments-portal)
 
-__Important!__ If you have created the AzDO Service Connection in AzDO (Option 2) then you SHOULD remove the automatically created 'Owner' RBAC Role assignment for the AzDO Service Connection´s Service Principal from the target Management Group
+__Important!__ If you have created the AzDO Service Connection in AzDO (Option 2) then you SHOULD remove the automatically created '__Owner__' RBAC Role assignment for the AzDO Service Connection´s Service Principal from the target Management Group
 
 ## Grant permissions in AAD
 
-There are two options to grant the AzDO Service Connection´s Service Principal the required permissions
-* Options
-    * __Option 1__ API permissions (recommended)
-    * __Option 2__ AAD Role
-
-### Grant permissions in AAD - Option 1 - API permissions
+### API permissions
 
 * Requirements
-    * To grant API permissions and grant admin consent for the directory, you must have 'Privileged Role Administrator' or 'Global Administrator' role assigned ([Assign Azure AD roles to users](https://docs.microsoft.com/en-us/azure/active-directory/roles/manage-roles-portal))
+    * To grant API permissions and grant admin consent for the directory, you must have '__Privileged Role Administrator__' or '__Global Administrator__' role assigned ([Assign Azure AD roles to users](https://docs.microsoft.com/en-us/azure/active-directory/roles/manage-roles-portal))
 
-Grant API permissions for the Application that we created earlier
+Grant API permissions for the Service Principal´s Application that we created earlier
 * Navigate to 'Azure Active Directory'
-* Click on 'App registrations'
+* Click on '__App registrations__'
 * Search for the Application that we created earlier and click on it
-* Under 'Manage' click on 'API permissions'
-    * Click on 'Add a permissions'
+* Under '__Manage__' click on '__API permissions__'
+    * Click on '__Add a permissions__'
     * Click on '__Microsoft Graph__'
-    * Click on 'Application permissions'
-    * Select the following set of permissions and click 'Add permissions'
-        * Application / Application.Read.All
-        * Group / Group.Read.All
-        * User / User.Read.All
+    * Click on '__Application permissions__'
+    * Select the following set of permissions and click '__Add permissions__'
+        * __Application / Application.Read.All__
+        * __Group / Group.Read.All__
+        * __User / User.Read.All__
     * Click on 'Add a permissions'
-    * Back in the main 'API permissions' menu you will find the 4 permissions with status 'Not granted for...'. Click on 'Grant admin consent for _TenantName_' and confirm by click on 'Yes'
-    * Now you will find the 4 permissions with status 'Granted for _TenantName_'
+    * Back in the main '__API permissions__' menu you will find the 4 permissions with status 'Not granted for...'. Click on '__Grant admin consent for _TenantName___' and confirm by click on '__Yes__'
+    * Now you will find the 4 permissions with status '__Granted for _TenantName___'
 
 Permissions in Azure Active Directory for App registration:  
 ![alt text](img/aadpermissionsportal.jpg "Permissions in Azure Active Directory")
-
-
-### Grant permissions in AAD - Option 2 - AAD Role
-
-* Requirements
-    * To assign roles, you must have 'Privileged Role Administrator' or 'Global Administrator' role assigned ([Assign Azure AD roles to users](https://docs.microsoft.com/en-us/azure/active-directory/roles/manage-roles-portal))
-
-Assign the AAD Role 'Directory Reader' for the AzDO Service Connection´s Service Principal (work with the Service Principal´s display name)  
-* Azure Portal
-    * [Assign AAD role](https://docs.microsoft.com/en-us/azure/active-directory/roles/manage-roles-portal#assign-a-role)
 
 ## Grant permissions on AzGovViz AzDO repository
 
 When the AzDO pipeline executes the AzGovViz script the outputs should be pushed back to the AzGovViz AzDO repository, in order to do this we need to grant the AzDO Project´s Build Service account with 'Contribute' permissions on the repository
 
 * Grant permissions on the AzGovViz AzDO repository
-    * In AzDO click on 'Project settings' (located on the bottom left), under 'Repos' open the 'Repositories' page
-    * Click on the AzGovViz AzDO Repository and select the tab 'Security'
+    * In AzDO click on '__Project settings__' (located on the bottom left), under '__Repos__' open the '__Repositories__' page
+    * Click on the AzGovViz AzDO Repository and select the tab '__Security__'
     * On the right side search for the Build Service account  
-     __%Project name% Build Service (%Organization name%)__ and grant it with 'Contribute' permissions by selecting 'Allow' (no save button available)
+     __%Project name% Build Service (%Organization name%)__ and grant it with '__Contribute__' permissions by selecting '__Allow__' (no save button available)
 
 ## Edit AzDO YAML file
 
-* Click on 'Repos'
+* Click on '__Repos__'
 * Navigate to the AzGovViz Repository
-* In the folder 'pipeline' click on 'AzGovViz.yml' and click 'Edit'
+* In the folder '__pipeline__' click on '__AzGovViz.yml__' and click '__Edit__'
 * Under the variables section 
     * Enter the Service Connection name that you copied earlier (ServiceConnection)
     * Enter the Management Group Id (ManagementGroupId)
-* Click 'Commit'
+* Click '__Commit__'
 
 ## Create AzDO Pipeline
 
-* Click on 'Pipelines'
-* Click on 'New pipeline'
-* Select 'Azure Repos Git'
+* Click on '__Pipelines__'
+* Click on '__New pipeline__'
+* Select '__Azure Repos Git__'
 * Select the AzGovViz repository
-* Click on 'Existing Azure Pipelines YAML file'
-* Under 'Path' select '/pipeline/AzGovViz.yml' (the YAML file we edited earlier)
-* Click ' Continue'
+* Click on '__Existing Azure Pipelines YAML file__'
+* Under '__Path__' select '__/pipeline/AzGovViz.yml__' (the YAML file we edited earlier)
+* Click ' __Continue__'
 
 ## Run the AzDO Pipeline
 
-* Click on 'Pipelines'
+* Click on '__Pipelines__'
 * Select the AzGovViz pipeline
-* Click 'Run pipeline'
+* Click '__Run pipeline__'
 
 ## Create AzDO Wiki (WikiAsCode)
 
 Once the pipeline has executed successfully we can setup our Wiki (WikiAsCode)
 
-* Click on 'Overview'
-* Click on 'Wiki'
-* Click on 'Publish code as wiki'
+* Click on '__Overview__'
+* Click on '__Wiki__'
+* Click on '__Publish code as wiki__'
 * Select the AzGovViz repository
-* Select the folder 'wiki' and click 'OK'
+* Select the folder '__wiki__' and click '__OK__'
 * Enter a name for the Wiki
-* Click 'Publish'
+* Click '__Publish__'
