@@ -24493,7 +24493,7 @@ if (-not $StatsOptOut) {
                 "statsParametersNoASCSecureScore": "$($htParameters.NoASCSecureScore)",
                 "statsParametersNoAzureConsumption": "$($htParameters.NoAzureConsumption)",
                 "statsParametersNoJsonExport": "$($htParameters.NoJsonExport)",
-                "statsParametersNoScopeInsights": "$($htParameters.NoScopeInsights)",
+                "statsParametersNoScopeInsights": "$($NoScopeInsights)",
                 "statsParametersNoSingleSubscriptionOutput": "$($NoSingleSubscriptionOutput)",
                 "statsParametersNoPolicyComplianceStates": "$($htParameters.NoPolicyComplianceStates)",
                 "statsParametersNoResourceProvidersDetailed": "$($htParameters.NoResourceProvidersDetailed)",
