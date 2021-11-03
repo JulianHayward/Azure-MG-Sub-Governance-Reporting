@@ -56,6 +56,13 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
+__Changes__ (2021-Nov-01 / Major)
+
+* New output - Feature request to create __Scope Insights__ output per Subscription has been implement. With this new feature you can share Subscription __Scope Insights__ with Subscription responsible staff. Use parameter `-NoSingleSubscriptionOutput` to disable the feature
+* Update [Required permissions in Azure Active Directory](#required-permissions-in-azure-active-directory) for the scenario of a Guest User executing the script
+* Add 'daily summary' output (CSV) to easily track your Tenant´s Governance evolution over time - Tim will hopefully create a PR for how he leverages AzGovViz historical data for Azure Log Analytics based dashboards
+* Improved permission related error handling 
+
 __Changes__ (2021-Oct-25 / Major)
 
 * AzAPICall enhanced error handling (general error 'An error has occurred.' ; roleAssignment schedules)
@@ -274,7 +281,8 @@ markdown in Azure DevOps Wiki as Code
 
 ## AzGovViz Setup Guide
 
-&#x1F4A1; Although 30 minutes of troubleshooting can save you 5 minutes reading the documentation :) ..  check the detailed __[Setup Guide](setup.md)__
+&#x1F4A1; Although 30 minutes of troubleshooting can save you 5 minutes reading the documentation :) ..  
+Check the detailed __[Setup Guide](setup.md)__
 
 ## Technical documentation
 
@@ -314,37 +322,31 @@ This permission is <b>mandatory</b> in each and every scenario!
     </tr>
     <tr>
       <td><b>B</b><br>Console | Guest user account</td>
-      <td>Add assignment for the Guest user to AAD Role <b>Directory readers</b><br>OR<br>Use parameters:<br>&nbsp;-NoAADGroupsResolveMembers<br>
-      &#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/fundamentals/users-default-permissions.md#compare-member-and-guest-default-permissions" target="_blank">Compare member and guest default permissions</a>
+      <td>If the tenant is hardened (AAD External Identities / Guest user access = most restrictive) then Guest User must be assigned the AAD Role 'Directory readers'<br>
+      &#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/fundamentals/users-default-permissions.md#compare-member-and-guest-default-permissions" target="_blank">Compare member and guest default permissions</a><br>
+      &#x1F4A1; <a href="https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions" target="_blank">Restrict Guest permissions</a>
       </td>
     </tr>
     <tr>
       <td><b>C</b><br>Console | Service Principal</td>
       <td>
-        <b>Option 1</b> (simple setup but more read permissions than required)<br>
-        Add assignment for the Service Principal to AAD Role <b>Directory readers</b><br>&#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/roles/permissions-reference.md#directory-readers" target="_blank">Directory readers</a><br><br>
-        <b>Option 2</b> (explicit permission model)
         <table>
           <tbody>
             <tr>
               <th>Feature</th>
               <th>Permissions</th>
-              <th>Parameter</th>
             </tr>
             <tr>
-              <td>Get AAD<br>Guest Users</td>
+              <td>Get AAD<br>Users</td>
               <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / User / User.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/user-get#permissions" target="_blank">Get user</a></td>
-              <td>n/a</td>
             </tr>
             <tr>
               <td>Get AAD<br>Groups</td>
               <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Group / Group.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/group-get#permissions" target="_blank">Get group</a></td>
-              <td>NoAADGroupsResolveMembers</td>
             </tr>
             <tr>
               <td>Get AAD<br>SP/App</td>
               <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a></td>
-              <td>n/a</td>
             </tr>
           </tbody>
         </table>
@@ -353,30 +355,23 @@ This permission is <b>mandatory</b> in each and every scenario!
     <tr>
       <td><b>D</b><br>Azure DevOps Pipeline | ServicePrincipal (Service Connection)</td>
       <td>
-        <b>Option 1</b> (simple setup but more read permissions than required)<br>
-        Add assignment for the Azure DevOps Service Connection's Service Principal to AAD Role <b>Directory readers</b><br>&#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/roles/permissions-reference.md#directory-readers" target="_blank">Directory readers</a><br><br>
-        <b>Option 2</b> (explicit permission model)
         <table>
           <tbody>
             <tr>
               <th>Feature</th>
               <th>Permissions</th>
-              <th>Parameter</th>
             </tr>
             <tr>
-              <td>Get AAD<br>Guest Users</td>
+              <td>Get AAD<br>Users</td>
               <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / User / User.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/user-get#permissions" target="_blank">Get user</a></td>
-              <td>n/a</td>
             </tr>
             <tr>
               <td>Get AAD<br>Groups</td>
               <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Group / Group.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/group-get#permissions" target="_blank">Get group</a></td>
-              <td>NoAADGroupsResolveMembers</td>
             </tr>
             <tr>
               <td>Get AAD<br>SP/App</td>
               <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a></td>
-              <td>n/a</td>
             </tr>
           </tbody>
         </table>
@@ -441,6 +436,7 @@ Screenshot Azure Portal
   * `-AADGroupMembersLimit` - Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved 
   * `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability and resource type statistic (featured for large tenants)
   * `-StatsOptOut` - Opt out sending [stats](#stats)
+  * `-NoSingleSubscriptionOutput` - Single __Scope Insights__ output per Subscription should not be created
 
 ## Integrate with AzOps
 
