@@ -6,8 +6,8 @@
 
 __Changes__ (2021-Nov-14 / Major)
 
-* Add Microsoft Defender for Cloud (MDfC) Defender Plans reporting (__TenantSummary__ -> Subscriptions, Resources & Defender; __ScopeInsights__ -> Defender Plans)
-* Adopt to new naming Azure Security Center (ASC) / Microsoft Defender for Cloud (MDfC). Renamed parameter `-NoASCSecureScore` to `-NoMDfCSecureScore` (old parameter will still work)
+* Add Microsoft Defender for Cloud 'Defender Plans' reporting (__TenantSummary__ -> Subscriptions, Resources & Defender; __ScopeInsights__ -> Defender Plans)
+* Adopt to new naming Azure Security Center (ASC) / Microsoft Defender for Cloud. Renamed parameter `-NoASCSecureScore` to `-NoMDfCSecureScore` (old parameter will still work)
 * Update policyAssignment API version '2020-09-01' to '2021-06-01'
 * Update *_RoleAssignments.csv output (add column for scope ResourceGroup name; add column for scope Resource name)
 * Fix __ScopeInsights__ Tags usage 

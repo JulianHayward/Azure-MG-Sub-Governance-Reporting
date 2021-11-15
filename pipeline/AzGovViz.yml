@@ -10,7 +10,7 @@
 # SubscriptionQuotaIdWhitelist | default is 'undefined' | example: -SubscriptionQuotaIdWhitelist MSDN_, EnterpriseAgreement_ | WhatDoesItDo? processes only Subscriptions that startWith the given QuotaIds
 # HierarchyMapOnly | switch | example: -HierarchyMapOnly | WhatDoesItDo? only creates the Hierarchy Tree
 # DoNotShowRoleAssignmentsUserData | switch | example: -DoNotShowRoleAssignmentsUserData | WhatDoesItDo? scrub user information
-# NoMDfCSecureScore | switch | example: -NoMDfCSecureScore | WhatDoesItDo? disables Microsoft Defender for Cloud (MDfC) Secure Score request for Subscriptions and Management Groups
+# NoMDfCSecureScore | switch | example: -NoMDfCSecureScore | WhatDoesItDo? disables Microsoft Defender for Cloud Secure Score request for Subscriptions and Management Groups
 # CsvDelimiter | example: -CsvDelimiter "," | WhatDoesItDo? the world is split into two kind of delimiters - comma and semicolon - choose yours
 # NoPolicyComplianceStates | example: -NoPolicyComplianceStates | WhatDoesItDo? will not query policy compliance states
 # NoResourceDiagnosticsPolicyLifecycle | example: -NoResourceDiagnosticsPolicyLifecycle | WhatDoesItDo? will not create Resource Diagnostics Policy Lifecycle recommendations
