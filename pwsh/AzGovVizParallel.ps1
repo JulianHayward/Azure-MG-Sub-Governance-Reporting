@@ -27,8 +27,8 @@
 .PARAMETER HierarchyMapOnly
     default is to query all Management groups and Subscription for Governance capabilities, if you use the parameter -HierarchyMapOnly then only the HierarchyMap will be created
 
-.PARAMETER NoASCSecureScore
-    default is to query all Subscriptions for Azure Security Center Secure Score and summarize Secure Score for Management Groups.
+.PARAMETER NoMDfCSecureScore
+    default is to query all Subscriptions for Azure Microsoft Defender for Cloud Secure Score and summarize Secure Score for Management Groups.
 
 .PARAMETER AzureDevOpsWikiAsCode
     use this parameter when running AzGovViz in Azure DevOps (AzDO) pipeline
@@ -148,8 +148,8 @@
     Define if only the HierarchyMap output should be created. Will ignore the parameters 'LimitCriticalPercentage' and 'DoNotShowRoleAssignmentsUserData' (default queries for Governance capabilities such as policy-, role-, blueprints assignments and more)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -HierarchyMapOnly
 
-    Define if ASC SecureScore should be queried for Subscriptions and Management Groups
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoASCSecureScore
+    Define if Microsoft Defender for Cloud SecureScore should be queried for Subscriptions and Management Groups
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoMDfCSecureScore
 
     Define if the script runs in AzureDevOps.
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -AzureDevOpsWikiAsCode
@@ -263,7 +263,7 @@
 Param
 (
     [string]$Product = "AzGovViz",
-    [string]$ProductVersion = "v6_major_20211101_1",
+    [string]$ProductVersion = "v6_major_20211114_3",
     [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
@@ -275,6 +275,7 @@ Param
     [switch]$DoNotShowRoleAssignmentsUserData,
     [switch]$HierarchyMapOnly,
     [switch]$NoASCSecureScore,
+    [switch]$NoMDfCSecureScore,
     [switch]$NoResourceProvidersDetailed,
     [int]$LimitCriticalPercentage = 80,
     [array]$SubscriptionQuotaIdWhitelist = @("undefined"),
@@ -437,11 +438,11 @@ else {
     $htParameters.HierarchyMapOnly = $false
 }
 
-if ($NoASCSecureScore) {
-    $htParameters.NoASCSecureScore = $true
+if ($NoASCSecureScore -or $NoMDfCSecureScore) {
+    $htParameters.NoMDfCSecureScore = $true
 }
 else {
-    $htParameters.NoASCSecureScore = $false
+    $htParameters.NoMDfCSecureScore = $false
 }
 
 if ($PolicyAtScopeOnly) {
@@ -999,7 +1000,7 @@ $funcResolveObjectIds = $function:ResolveObjectIds.ToString()
 
 #API
 #region azapicall
-function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumption, $getGroup, $getGroupMembersCount, $getApp, $caller, $consistencyLevel, $getCount, $getPolicyCompliance, $getMgAscSecureScore, $getRoleAssignmentSchedules, $getDiagnosticSettingsMg, $validateAccess) {
+function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumption, $getGroup, $getGroupMembersCount, $getApp, $caller, $consistencyLevel, $getCount, $getPolicyCompliance, $getMgAscSecureScore, $getRoleAssignmentSchedules, $getDiagnosticSettingsMg, $validateAccess, $getMDfC) {
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
     $retryAuthorizationFailed = 5
@@ -1161,7 +1162,8 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     $catchResult.error.code -eq "ClientCertificateValidationFailure" -or
                     ($validateAccess -and $catchResult.error.code -eq "Authorization_RequestDenied") -or
                     $catchResult.error.code -eq "GatewayAuthenticationFailed" -or
-                    $catchResult.message -eq "An error has occurred."
+                    $catchResult.message -eq "An error has occurred." -or
+                    ($getMDfC -and $catchResult.error.code -eq "Subscription Not Registered")
                 ) {
                     if (($getPolicyCompliance -and $catchResult.error.code -like "*ResponseTooLarge*") -or ($getPolicyCompliance -and -not $catchResult.error.code)) {
                         if ($getPolicyCompliance -and $catchResult.error.code -like "*ResponseTooLarge*") {
@@ -1174,14 +1176,17 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             return "ResponseTooLarge"
                         }
                     }
+
                     if ($catchResult.error.message -like "*The offer MS-AZR-0110P is not supported*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - seems we´re hitting a malicious endpoint .. try again in $tryCounter second(s)"
                         Start-Sleep -Seconds $tryCounter
                     }
+
                     if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.code -like "*InternalServerError*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*UnknownError*" -or $catchResult.error.code -eq "500") {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again in $tryCounter second(s)"
                         Start-Sleep -Seconds $tryCounter
                     }
+              
                     if ($catchResult.error.code -like "*AuthorizationFailed*") {
                         if ($validateAccess) {
                             #Write-Host "$currentTask failed ('$($catchResult.error.code)' | '$($catchResult.error.message)')" -ForegroundColor DarkRed
@@ -1217,10 +1222,12 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         }
 
                     }
+
                     if ($catchResult.error.code -like "*ExpiredAuthenticationToken*" -or $catchResult.error.code -like "*Authentication_ExpiredToken*" -or $catchResult.error.code -like "*InvalidAuthenticationToken*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
                         createBearerToken -targetEndPoint $targetEndpoint
                     }
+
                     if (
                         ($getConsumption -and $catchResult.error.code -eq 404) -or 
                         ($getConsumption -and $catchResult.error.code -eq "AccountCostDisabled") -or 
@@ -1233,30 +1240,37 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Subscriptions was created only recently - skipping"
                             return $apiCallResultsCollection
                         }
+
                         if ($getConsumption -and $catchResult.error.code -eq "AccountCostDisabled") {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Access to cost data has been disabled for this Account - skipping CostManagement"
                             return "AccountCostDisabled"
                         }
+
                         if ($getConsumption -and $catchResult.error.message -like "*does not have any valid subscriptions*") {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems there are no valid Subscriptions present - skipping CostManagement"
                             return "NoValidSubscriptions"
                         }
+                       
                         if ($getConsumption -and $catchResult.error.code -eq "Unauthorized") {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
                             return "Unauthorized"
                         }
+                       
                         if ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "*The offer*is not supported*" -and $catchResult.error.message -notlike "*The offer MS-AZR-0110P is not supported*") {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
                             return "OfferNotSupported"
                         }
+
                         if ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "Invalid query definition*") {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
                             return "InvalidQueryDefinition"
                         }
+
                         if ($getConsumption -and $catchResult.error.code -eq "NotFound" -and $catchResult.error.message -like "*have valid WebDirect/AIRS offer type*") {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
                             return "NonValidWebDirectAIRSOfferType"
                         }
+
                         if ($getConsumption -and $catchResult.error.code -eq "NotFound" -and $catchResult.error.message -like "Cost management data is not supported for subscription(s)*") {
                             return "NotFoundNotSupported"
                         }
@@ -1265,22 +1279,27 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             return "IndirectCostDisabled"
                         }
                     }
+
                     if (($getGroup) -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain Group status - skipping for now :)"
                         return "Request_ResourceNotFound"
                     }
+
                     if (($getGroupMembersCount) -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain Group status - skipping for now :)"
                         return "Request_ResourceNotFound"
                     }
+
                     if ($getApp -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain ServicePrincipal status - skipping for now :)"
                         return "Request_ResourceNotFound"
                     }
+
                     if ($currentTask -eq "Checking AAD UserType" -and $catchResult.error.code -like "*Authorization_RequestDenied*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) cannot get the executing user´s userType information (member/guest) - proceeding as 'unknown'"
                         return "unknown"
                     }
+
                     if ($getApp -and $catchResult.error.code -like "*Authorization_RequestDenied*") {
                         if ($htParameters.userType -eq "Guest") {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - skip Application (Secrets & Certificates)"
@@ -1303,6 +1322,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             }
                         }
                     }
+
                     if ($catchResult.error.code -like "*BlueprintNotFound*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Blueprint definition is gone - skipping for now :)"
                         return "BlueprintNotFound"
@@ -1377,6 +1397,11 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         Write-Host "Tenant seems hardened (AAD External Identities / Guest user access = most restrictive) -> https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions"
                         Write-Host "AAD Role 'Directory readers' is required for your Guest User Account!"
                         Throw "Error - AzGovViz: check the last console output for details"
+                    }
+
+                    if ($getMDfC -and $catchResult.error.code -eq "Subscription Not Registered"){
+                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' skipping Subscription"
+                        return "SubScriptionNotRegistered"
                     }
 
                 }
@@ -1662,7 +1687,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType, $resourceId) 
         }
         if ($unexpectedError -eq $false) {
             if ($azAPIRequest.StatusCode -ne 200) {
-                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.code -like "*InternalServerError*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.code -like "*NotSupported*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*" -or $catchResult.error.code -like "*Authentication_ExpiredToken*" -or $catchResult.error.code -like "*ResourceNotFound*" -or $catchResult.error.code -like "*UnknownError*" -or $catchResult.error.code -eq "500") {
+                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.code -like "*InternalServerError*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.code -like "*NotSupported*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*" -or $catchResult.error.code -like "*Authentication_ExpiredToken*" -or $catchResult.error.code -like "*ResourceNotFound*" -or $catchResult.code -like "*ResourceNotFound*" -or $catchResult.error.code -like "*UnknownError*" -or $catchResult.error.code -eq "500") {
                     if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.code -like "*InternalServerError*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*UnknownError*" -or $catchResult.error.code -eq "500") {
                         Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again in $tryCounter second(s)"
                         Start-Sleep -Seconds $tryCounter
@@ -1695,7 +1720,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType, $resourceId) 
                         Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token"
                         createBearerToken -targetEndPoint $targetEndpoint
                     }
-                    if ($catchResult.error.code -like "*ResourceNotFound*") {
+                    if ($catchResult.error.code -like "*ResourceNotFound*" -or $catchResult.code -like "*ResourceNotFound*") {
                         Write-Host "  ResourceGone | The resourceId '$($resourceId)' seems meanwhile deleted."
                         $script:responseJSON = "meanwhile_deleted"
                     }
@@ -1814,6 +1839,8 @@ function addRowToTable() {
         [string]$RoleAssignmentId = "", 
         [string]$RoleAssignmentScope = "",
         [string]$RoleAssignmentScopeName = "", 
+        [string]$RoleAssignmentScopeRG = "", 
+        [string]$RoleAssignmentScopeRes = "", 
         [string]$RoleAssignmentScopeType = "",
         [string]$RoleAssignmentCreatedBy = "",
         [string]$RoleAssignmentCreatedOn = "",
@@ -1907,6 +1934,8 @@ function addRowToTable() {
             RoleAssignmentId                         = $RoleAssignmentId 
             RoleAssignmentScope                      = $RoleAssignmentScope 
             RoleAssignmentScopeName                  = $RoleAssignmentScopeName
+            RoleAssignmentScopeRG                    = $RoleAssignmentScopeRG
+            RoleAssignmentScopeRes                   = $RoleAssignmentScopeRes
             RoleAssignmentScopeType                  = $RoleAssignmentScopeType
             RoleIsCustom                             = $RoleIsCustom 
             RoleAssignableScopes                     = $RoleAssignableScopes 
@@ -1971,9 +2000,11 @@ function dataCollection($mgId) {
         $htCacheDefinitionsRole = $using:htCacheDefinitionsRole
         $htCacheDefinitionsBlueprint = $using:htCacheDefinitionsBlueprint
         $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
-        $htCachePolicyCompliance = $using:htCachePolicyCompliance
-        $htCachePolicyComplianceResponseTooLarge = $using:htCachePolicyComplianceResponseTooLarge
-        $htCacheAssignments = $using:htCacheAssignments
+        $htCachePolicyComplianceMG = $using:htCachePolicyComplianceMG
+        $htCachePolicyComplianceResponseTooLargeMG = $using:htCachePolicyComplianceResponseTooLargeMG
+        $htCacheAssignmentsRole = $using:htCacheAssignmentsRole
+        $htCacheAssignmentsRBACOnResourceGroupsAndResources = $using:htCacheAssignmentsRBACOnResourceGroupsAndResources
+        $htCacheAssignmentsBlueprint = $using:htCacheAssignmentsBlueprint
         $htCacheAssignmentsPolicy = $using:htCacheAssignmentsPolicy
         $htPolicyAssignmentExemptions = $using:htPolicyAssignmentExemptions
         $htManagementGroupsMgPath = $using:htManagementGroupsMgPath
@@ -2039,7 +2070,7 @@ function dataCollection($mgId) {
 
             #ManagementGroupASCSecureScore
             $mgAscSecureScoreResult = ""
-            if ($htParameters.NoASCSecureScore -eq $false) {
+            if ($htParameters.NoMDfCSecureScore -eq $false) {
                 if ($htMgASCSecureScore.($mgdetail.Name)) {
                     $mgAscSecureScoreResult = $htMgASCSecureScore.($mgdetail.Name).SecureScore
                 }
@@ -2153,31 +2184,31 @@ function dataCollection($mgId) {
                 $mgPolicyComplianceResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection" -getPolicyCompliance $true
 
                 if ($mgPolicyComplianceResult -eq "ResponseTooLarge") {
-                    ($script:htCachePolicyComplianceResponseTooLarge).mg.($mgdetail.Name) = @{}
+                    ($script:htCachePolicyComplianceResponseTooLargeMG).($mgdetail.Name) = @{}
                 }
                 else {
-                    ($script:htCachePolicyCompliance).mg.($mgdetail.Name) = @{}
+                    ($script:htCachePolicyComplianceMG).($mgdetail.Name) = @{}
                     foreach ($policyAssignment in ($mgPolicyComplianceResult).policyassignments | sort-object -Property policyAssignmentId) {
                         $policyAssignmentIdToLower = ($policyAssignment.policyAssignmentId).ToLower()
-                        ($script:htCachePolicyCompliance).mg.($mgdetail.Name).($policyAssignmentIdToLower) = @{}
+                        ($script:htCachePolicyComplianceMG).($mgdetail.Name).($policyAssignmentIdToLower) = @{}
                         foreach ($policyComplianceState in $policyAssignment.results.policydetails) {
                             if ($policyComplianceState.ComplianceState -eq "compliant") {
-                                ($script:htCachePolicyCompliance).mg.($mgdetail.Name).($policyAssignmentIdToLower).CompliantPolicies = $policyComplianceState.count
+                                ($script:htCachePolicyComplianceMG).($mgdetail.Name).($policyAssignmentIdToLower).CompliantPolicies = $policyComplianceState.count
                             }
                             if ($policyComplianceState.ComplianceState -eq "noncompliant") {
-                                ($script:htCachePolicyCompliance).mg.($mgdetail.Name).($policyAssignmentIdToLower).NonCompliantPolicies = $policyComplianceState.count
+                                ($script:htCachePolicyComplianceMG).($mgdetail.Name).($policyAssignmentIdToLower).NonCompliantPolicies = $policyComplianceState.count
                             }
                         }
         
                         foreach ($resourceComplianceState in $policyAssignment.results.resourcedetails) {
                             if ($resourceComplianceState.ComplianceState -eq "compliant") {
-                                ($script:htCachePolicyCompliance).mg.($mgdetail.Name).($policyAssignmentIdToLower).CompliantResources = $resourceComplianceState.count
+                                ($script:htCachePolicyComplianceMG).($mgdetail.Name).($policyAssignmentIdToLower).CompliantResources = $resourceComplianceState.count
                             }
                             if ($resourceComplianceState.ComplianceState -eq "nonCompliant") {
-                                ($script:htCachePolicyCompliance).mg.($mgdetail.Name).($policyAssignmentIdToLower).NonCompliantResources = $resourceComplianceState.count
+                                ($script:htCachePolicyComplianceMG).($mgdetail.Name).($policyAssignmentIdToLower).NonCompliantResources = $resourceComplianceState.count
                             }
                             if ($resourceComplianceState.ComplianceState -eq "conflict") {
-                                ($script:htCachePolicyCompliance).mg.($mgdetail.Name).($policyAssignmentIdToLower).ConflictingResources = $resourceComplianceState.count
+                                ($script:htCachePolicyComplianceMG).($mgdetail.Name).($policyAssignmentIdToLower).ConflictingResources = $resourceComplianceState.count
                             }
                         }
                     }
@@ -2462,10 +2493,10 @@ function dataCollection($mgId) {
             #MgPolicyAssignments
             $currentTask = "Policy assignments '$($mgdetail.properties.displayName)' ('$($mgdetail.Name)')"
             if ($htParameters.LargeTenant -eq $false -or $htParameters.PolicyAtScopeOnly -eq $false) {
-                $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atscope()&api-version=2020-09-01"
+                $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atscope()&api-version=2021-06-01"
             }
             else {
-                $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atExactScope()&api-version=2020-09-01"
+                $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($mgdetail.Name)/providers/Microsoft.Authorization/policyAssignments?`$filter=atExactScope()&api-version=2021-06-01"
             }
             $method = "GET"
             $L0mgmtGroupPolicyAssignments = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"
@@ -2924,14 +2955,9 @@ function dataCollection($mgId) {
             }
             foreach ($L0mgmtGroupRoleAssignment in $L0mgmtGroupRoleAssignments) {
                 $roleAssignmentId = ($L0mgmtGroupRoleAssignment.id).ToLower()
-                if (-not ($htCacheAssignments).roleFromAPI.($roleAssignmentId)) {
-                    ($script:htCacheAssignments).roleFromAPI.($roleAssignmentId) = @{}
-                    ($script:htCacheAssignments).roleFromAPI.($roleAssignmentId).assignment = $roleAssignmentFromAPI
-                }
                 $keyName = "$($L0mgmtGroupRoleAssignment.properties.scope)-$($L0mgmtGroupRoleAssignment.properties.principalId)-$($L0mgmtGroupRoleAssignment.properties.roleDefinitionId)"
                 if ($htRoleAssignmentsPIM.($keyName)) {
                     $hlperPim = $htRoleAssignmentsPIM.($keyName)
-                    ($script:htCacheAssignments).roleFromAPI.($roleAssignmentId).assignmentPIMDetails = $hlperPim
                     $pim = "true"
                     $pimAssignmentType = $hlperPim.assignmentType
                     $pimSlotStart = $($hlperPim.startDateTime).ToString("yyyy-MM-dd HH:mm:ss")
@@ -2963,8 +2989,8 @@ function dataCollection($mgId) {
                     $roleDefinitionName = ($htCacheDefinitionsRole).($roleDefinitionIdGuid).Name
                 }
 
-                if (-not $($htCacheAssignments).role.($roleAssignmentId)) {
-                    ($script:htCacheAssignments).role.$($roleAssignmentId) = @{}
+                if (-not $($htCacheAssignmentsRole).($roleAssignmentId)) {
+                    ($script:htCacheAssignmentsRole).$($roleAssignmentId) = @{}
                     $splitAssignment = ($roleAssignmentId).Split('/')
 
                     #assignment
@@ -2979,15 +3005,15 @@ function dataCollection($mgId) {
                             ObjectId           = $L0mgmtGroupRoleAssignment.properties.principalId
                             ObjectType         = $htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).type
                         })
-                    ($script:htCacheAssignments).role.($roleAssignmentId).Assignment = $arrayRoleAssignment
+                    ($script:htCacheAssignmentsRole).($roleAssignmentId).Assignment = $arrayRoleAssignment
 
                     if ($roleAssignmentId -like "/providers/Microsoft.Authorization/roleAssignments/*") {
-                        ($script:htCacheAssignments).role.($roleAssignmentId).AssignmentScopeTenMgSubRgRes = "Tenant"
-                        ($script:htCacheAssignments).role.($roleAssignmentId).AssignmentScopeId = "Tenant"
+                        ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeTenMgSubRgRes = "Tenant"
+                        ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeId = "Tenant"
                     }
                     else {
-                        ($script:htCacheAssignments).role.($roleAssignmentId).AssignmentScopeTenMgSubRgRes = "Mg"
-                        ($script:htCacheAssignments).role.($roleAssignmentId).AssignmentScopeId = [string]$splitAssignment[4]
+                        ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeTenMgSubRgRes = "Mg"
+                        ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeId = [string]$splitAssignment[4]
                     }
                 }               
 
@@ -3206,9 +3232,12 @@ function dataCollection($mgId) {
                 $htCacheDefinitionsRole = $using:htCacheDefinitionsRole
                 $htCacheDefinitionsBlueprint = $using:htCacheDefinitionsBlueprint
                 $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
-                $htCachePolicyCompliance = $using:htCachePolicyCompliance
-                $htCachePolicyComplianceResponseTooLarge = $using:htCachePolicyComplianceResponseTooLarge
-                $htCacheAssignments = $using:htCacheAssignments
+                $htCachePolicyComplianceSUB = $using:htCachePolicyComplianceSUB
+                $htCachePolicyComplianceResponseTooLargeSUB = $using:htCachePolicyComplianceResponseTooLargeSUB
+                $htCacheAssignmentsRole = $using:htCacheAssignmentsRole
+                $htCacheAssignmentsRBACOnResourceGroupsAndResources = $using:htCacheAssignmentsRBACOnResourceGroupsAndResources
+                $htCacheAssignmentsBlueprint = $using:htCacheAssignmentsBlueprint
+                $htCacheAssignmentsPolicyOnResourceGroupsAndResources = $using:htCacheAssignmentsPolicyOnResourceGroupsAndResources
                 $htCacheAssignmentsPolicy = $using:htCacheAssignmentsPolicy
                 $htPolicyAssignmentExemptions = $using:htPolicyAssignmentExemptions
                 $htResourceLocks = $using:htResourceLocks
@@ -3231,6 +3260,9 @@ function dataCollection($mgId) {
                 $htPrincipals = $using:htPrincipals
                 $htServicePrincipals = $using:htServicePrincipals
                 $htUserTypesGuest = $using:htUserTypesGuest
+                #$htDefenderPlans = $using:htDefenderPlans
+                $arrayDefenderPlans = $using:arrayDefenderPlans
+                $arrayDefenderPlansSubscriptionNotRegistered = $using:arrayDefenderPlansSubscriptionNotRegistered
                 #Functions
                 $function:AzAPICall = $using:funcAzAPICall
                 $function:createBearerToken = $using:funcCreateBearerToken
@@ -3274,7 +3306,7 @@ function dataCollection($mgId) {
                     
                     #mgSecureScore
                     $mgAscSecureScoreResult = ""
-                    if ($htParameters.NoASCSecureScore -eq $false) {
+                    if ($htParameters.NoMDfCSecureScore -eq $false) {
                         if ($htMgASCSecureScore.($childMgId)) {
                             $mgAscSecureScoreResult = $htMgASCSecureScore.($childMgId).SecureScore
                         }
@@ -3282,6 +3314,38 @@ function dataCollection($mgId) {
                             $mgAscSecureScoreResult = "isNullOrEmpty"
                         }
                     }
+
+                    #defenderPlans
+                    #($script:htDefenderPlans).($childMgSubId) = @{}
+                    $currentTask = "Getting Microsoft Defender for Cloud plans for SubscriptionId: '$($childMgSubId)'"
+                    #https://docs.microsoft.com/en-us/rest/api/securitycenter/pricings
+                    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/providers/Microsoft.Security/pricings?api-version=2018-06-01"
+                    $method = "GET"
+                    $defenderPlansResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection" -getMDfC $true
+
+                    if ($defenderPlansResult -eq "SubScriptionNotRegistered"){
+                        #Subscription skipped for MDfC
+                        $null = $script:arrayDefenderPlansSubscriptionNotRegistered.Add([PSCustomObject]@{
+                            subscriptionId = $childMgSubId
+                            subscriptionName = $childMgSubDisplayName
+                            subscriptionMgPath = $childMgMgPath
+                        })
+                    }
+                    else{
+                        if ($defenderPlansResult.Count -gt 0){
+                            foreach ($defenderPlanResult in $defenderPlansResult){
+                                #($script:htDefenderPlans).($childMgSubId).($defenderPlanResult.name) = $defenderPlanResult.properties.pricingTier
+                                $null = $script:arrayDefenderPlans.Add([PSCustomObject]@{
+                                    subscriptionId = $childMgSubId
+                                    subscriptionName = $childMgSubDisplayName
+                                    subscriptionMgPath = $childMgMgPath
+                                    defenderPlan = $defenderPlanResult.name
+                                    defenderPlanTier = $defenderPlanResult.properties.pricingTier
+                                })
+                            }
+                        } 
+                    }
+               
 
                     #diagSub
                     $currentTask = "getDiagnosticSettingsSub for SubscriptionId: '$($childMgSubId)'"
@@ -3649,31 +3713,31 @@ function dataCollection($mgId) {
                             
                         $subPolicyComplianceResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection" -getPolicyCompliance $true
                         if ($subPolicyComplianceResult -eq "ResponseTooLarge") {
-                            ($script:htCachePolicyComplianceResponseTooLarge).sub.($childMgSubId) = @{}
+                            ($script:htCachePolicyComplianceResponseTooLargeSUB).($childMgSubId) = @{}
                         }
                         else {
-                            ($script:htCachePolicyCompliance).sub.($childMgSubId) = @{}
+                            ($script:htCachePolicyComplianceSUB).($childMgSubId) = @{}
                             foreach ($policyAssignment in $subPolicyComplianceResult.policyassignments | sort-object -Property policyAssignmentId) {
                                 $policyAssignmentIdToLower = ($policyAssignment.policyAssignmentId).ToLower()
-                                ($script:htCachePolicyCompliance).sub.($childMgSubId).($policyAssignmentIdToLower) = @{}
+                                ($script:htCachePolicyComplianceSUB).($childMgSubId).($policyAssignmentIdToLower) = @{}
                                 foreach ($policyComplianceState in $policyAssignment.results.policydetails) {
                                     if ($policyComplianceState.ComplianceState -eq "compliant") {
-                                        ($script:htCachePolicyCompliance).sub.($childMgSubId).($policyAssignmentIdToLower).CompliantPolicies = $policyComplianceState.count
+                                        ($script:htCachePolicyComplianceSUB).($childMgSubId).($policyAssignmentIdToLower).CompliantPolicies = $policyComplianceState.count
                                     }
                                     if ($policyComplianceState.ComplianceState -eq "noncompliant") {
-                                        ($script:htCachePolicyCompliance).sub.($childMgSubId).($policyAssignmentIdToLower).NonCompliantPolicies = $policyComplianceState.count
+                                        ($script:htCachePolicyComplianceSUB).($childMgSubId).($policyAssignmentIdToLower).NonCompliantPolicies = $policyComplianceState.count
                                     }
                                 }
 
                                 foreach ($resourceComplianceState in $policyAssignment.results.resourcedetails) {
                                     if ($resourceComplianceState.ComplianceState -eq "compliant") {
-                                        ($script:htCachePolicyCompliance).sub.($childMgSubId).($policyAssignmentIdToLower).CompliantResources = $resourceComplianceState.count
+                                        ($script:htCachePolicyComplianceSUB).($childMgSubId).($policyAssignmentIdToLower).CompliantResources = $resourceComplianceState.count
                                     }
                                     if ($resourceComplianceState.ComplianceState -eq "nonCompliant") {
-                                        ($script:htCachePolicyCompliance).sub.($childMgSubId).($policyAssignmentIdToLower).NonCompliantResources = $resourceComplianceState.count
+                                        ($script:htCachePolicyComplianceSUB).($childMgSubId).($policyAssignmentIdToLower).NonCompliantResources = $resourceComplianceState.count
                                     }
                                     if ($resourceComplianceState.ComplianceState -eq "conflict") {
-                                        ($script:htCachePolicyCompliance).sub.($childMgSubId).($policyAssignmentIdToLower).ConflictingResources = $resourceComplianceState.count
+                                        ($script:htCachePolicyComplianceSUB).($childMgSubId).($policyAssignmentIdToLower).ConflictingResources = $resourceComplianceState.count
                                     }
                                 }
                             }
@@ -3681,8 +3745,8 @@ function dataCollection($mgId) {
                     }
 
                     #SubscriptionASCSecureScore
-                    if ($htParameters.NoASCSecureScore -eq $false) {
-                        $currentTask = "ASC Secure Score Sub: '$($childMgSubDisplayName)' ('$childMgSubId')"
+                    if ($htParameters.NoMDfCSecureScore -eq $false) {
+                        $currentTask = "Microsoft Defender for Cloud Secure Score Sub: '$($childMgSubDisplayName)' ('$childMgSubId')"
                         $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$childMgSubId/providers/Microsoft.Security/securescores?api-version=2020-01-01"
                         $method = "GET"
                         $subASCSecureScoreResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"
@@ -3695,7 +3759,7 @@ function dataCollection($mgId) {
                         }
                     }
                     else {
-                        $subscriptionASCSecureScore = "excluded (-NoASCSecureScore $($htParameters.NoASCSecureScore))"
+                        $subscriptionASCSecureScore = "excluded (-NoMDfCSecureScore $($htParameters.NoMDfCSecureScore))"
                     }
 
                     #SubscriptionBlueprint
@@ -3749,9 +3813,9 @@ function dataCollection($mgId) {
                     if (($subscriptionBlueprintAssignmentsResult | measure-object).count -gt 0) {
                         foreach ($subscriptionBlueprintAssignment in $subscriptionBlueprintAssignmentsResult) {
 
-                            if (-not ($htCacheAssignments).blueprint.($subscriptionBlueprintAssignment.Id)) {
-                                ($script:htCacheAssignments).blueprint.($subscriptionBlueprintAssignment.Id) = @{}
-                                ($script:htCacheAssignments).blueprint.($subscriptionBlueprintAssignment.Id) = $subscriptionBlueprintAssignment
+                            if (-not ($htCacheAssignmentsBlueprint).($subscriptionBlueprintAssignment.Id)) {
+                                ($script:htCacheAssignmentsBlueprint).($subscriptionBlueprintAssignment.Id) = @{}
+                                ($script:htCacheAssignmentsBlueprint).($subscriptionBlueprintAssignment.Id) = $subscriptionBlueprintAssignment
                             }  
 
                             if (($subscriptionBlueprintAssignment.properties.blueprintId) -like "/subscriptions/*") {
@@ -4035,7 +4099,7 @@ function dataCollection($mgId) {
 
                     #SubscriptionPolicyAssignments
                     $currentTask = "Policy assignments '$($childMgSubDisplayName)' ('$childMgSubId')"
-                    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyAssignments?api-version=2020-09-01"
+                    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($childMgSubId)/providers/Microsoft.Authorization/policyAssignments?api-version=2021-06-01"
                     $method = "GET"
                     
                     if ($htParameters.DoNotIncludeResourceGroupsOnPolicy -eq $false) {
@@ -4057,7 +4121,7 @@ function dataCollection($mgId) {
                         $L1mgmtGroupSubPolicyAssignmentsPolicySetAtScopeCount = (($L1mgmtGroupSubPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.Id -match "/subscriptions/$($childMgSubId)" -and $_.Id -notmatch "/subscriptions/$($childMgSubId)/resourceGroups" }) | measure-object).count
                     
                         foreach ($L1mgmtGroupSubPolicyAssignment in $L1mgmtGroupSubPolicyAssignments | Where-Object { $_.Id -match "/subscriptions/$($childMgSubId)/resourceGroups" } ) {
-                            ($script:htCacheAssignments).policyOnResourceGroupsAndResources.(($L1mgmtGroupSubPolicyAssignment.Id).ToLower()) = $L1mgmtGroupSubPolicyAssignment
+                            ($script:htCacheAssignmentsPolicyOnResourceGroupsAndResources).(($L1mgmtGroupSubPolicyAssignment.Id).ToLower()) = $L1mgmtGroupSubPolicyAssignment
                         }
                         $L1mgmtGroupSubPolicyAssignmentsQuery = $L1mgmtGroupSubPolicyAssignments | Where-Object { $_.Id -notmatch "/subscriptions/$($childMgSubId)/resourceGroups" }
                     }
@@ -4537,7 +4601,7 @@ function dataCollection($mgId) {
                     
                     if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC -eq $true) {
                         foreach ($L1mgmtGroupSubRoleAssignmentOnRg in $L1mgmtGroupSubRoleAssignments | Where-Object { $_.id -match "/subscriptions/$($childMgSubId)/resourcegroups/" }) {
-                            if (-not ($htCacheAssignments).rbacOnResourceGroupsAndResources.($L1mgmtGroupSubRoleAssignmentOnRg.id)) {
+                            if (-not ($htCacheAssignmentsRBACOnResourceGroupsAndResources).($L1mgmtGroupSubRoleAssignmentOnRg.id)) {
                             
                                 $roleDefinitionId = $L1mgmtGroupSubRoleAssignmentOnRg.properties.roleDefinitionId
                                 $roleDefinitionIdGuid = $roleDefinitionId -replace ".*/"
@@ -4562,7 +4626,7 @@ function dataCollection($mgId) {
                                         #ObjectType = $htPrincipals.($L1mgmtGroupSubRoleAssignmentOnRg.properties.principalId).type
                                     })
                                 
-                                ($script:htCacheAssignments).rbacOnResourceGroupsAndResources.($L1mgmtGroupSubRoleAssignmentOnRg.id) = $arrayRoleAssignment
+                                ($script:htCacheAssignmentsRBACOnResourceGroupsAndResources).($L1mgmtGroupSubRoleAssignmentOnRg.id) = $arrayRoleAssignment
                             }
                         }
                     }
@@ -4587,14 +4651,47 @@ function dataCollection($mgId) {
                     foreach ($L1mgmtGroupSubRoleAssignment in $assignmentsScope) {
 
                         $roleAssignmentId = ($L1mgmtGroupSubRoleAssignment.id).ToLower()
-                        if (-not ($htCacheAssignments).roleFromAPI.($roleAssignmentId)) {
-                                ($script:htCacheAssignments).roleFromAPI.($roleAssignmentId) = @{}
-                                ($script:htCacheAssignments).roleFromAPI.($roleAssignmentId).assignment = $L1mgmtGroupSubRoleAssignment
+                        $roleDefinitionId = $L1mgmtGroupSubRoleAssignment.properties.roleDefinitionId
+                        $roleDefinitionIdGuid = $roleDefinitionId -replace ".*/"
 
+                        if (-not ($htCacheDefinitionsRole).($roleDefinitionIdGuid)) {
+                            $roleDefinitionName = "'This roleDefinition likely was deleted although a roleAssignment existed'" 
+                        }
+                        else {
+                            $roleDefinitionName = ($htCacheDefinitionsRole).($roleDefinitionIdGuid).Name
+                        }
+
+                        $roleAssignmentIdentityObjectId = $L1mgmtGroupSubRoleAssignment.properties.principalId
+                        $roleAssignmentIdentityObjectType = $htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).type
+                        $roleAssignmentScope = $L1mgmtGroupSubRoleAssignment.properties.scope
+                        $roleAssignmentScopeName = $roleAssignmentScope -replace '.*/'
+                        
+                        if ($roleAssignmentScope -like "/subscriptions/*" -and $roleAssignmentScope -notlike "/subscriptions/*/resourcegroups/*") {
+                            $roleAssignmentScopeType = "Sub"
+                            $roleAssignmentScopeRG = ""
+                            $roleAssignmentScopeRes = ""
+                        }
+                        if ($roleAssignmentScope -like "/subscriptions/*/resourcegroups/*" -and $roleAssignmentScope -notlike "/subscriptions/*/resourcegroups/*/providers*") {
+                            $roleAssignmentScopeType = "RG"
+                            $roleAssignmentScopeSplit = $roleAssignmentScope.Split('/')
+                            $roleAssignmentScopeRG = $roleAssignmentScopeSplit[4]
+                            $roleAssignmentScopeRes = ""
+                        }
+                        if ($roleAssignmentScope -like "/subscriptions/*/resourcegroups/*/providers*") {
+                            $roleAssignmentScopeType = "Res"
+                            $roleAssignmentScopeSplit = $roleAssignmentScope.Split('/')
+                            $roleAssignmentScopeRG = $roleAssignmentScopeSplit[4]
+                            $roleAssignmentScopeRes = $roleAssignmentScopeSplit[8]
+                        }
+
+                        if (-not $($htCacheAssignmentsRole).($roleAssignmentId)) {
+                            ($script:htCacheAssignmentsRole).$($roleAssignmentId) = @{}
+
+
+                            #
                             $keyName = "$($L1mgmtGroupSubRoleAssignment.properties.scope)-$($L1mgmtGroupSubRoleAssignment.properties.principalId)-$($L1mgmtGroupSubRoleAssignment.properties.roleDefinitionId)"
                             if ($htRoleAssignmentsPIM.($keyName)) {
                                 $hlperPim = $htRoleAssignmentsPIM.($keyName)
-                                    ($script:htCacheAssignments).roleFromAPI.($roleAssignmentId).assignmentPIMDetails = $hlperPim
                                 $pim = "true"
                                 $pimAssignmentType = $hlperPim.assignmentType
                                 $pimSlotStart = $($hlperPim.startDateTime).ToString("yyyy-MM-dd HH:mm:ss")
@@ -4611,34 +4708,8 @@ function dataCollection($mgId) {
                                 $pimSlotStart = ""
                                 $pimSlotEnd = ""
                             }
-                        }
+                            #
 
-                        $roleDefinitionId = $L1mgmtGroupSubRoleAssignment.properties.roleDefinitionId
-                        $roleDefinitionIdGuid = $roleDefinitionId -replace ".*/"
-
-                        if (-not ($htCacheDefinitionsRole).($roleDefinitionIdGuid)) {
-                            $roleDefinitionName = "'This roleDefinition likely was deleted although a roleAssignment existed'" 
-                        }
-                        else {
-                            $roleDefinitionName = ($htCacheDefinitionsRole).($roleDefinitionIdGuid).Name
-                        }
-
-                        $roleAssignmentIdentityObjectId = $L1mgmtGroupSubRoleAssignment.properties.principalId
-                        $roleAssignmentIdentityObjectType = $htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).type
-                        $roleAssignmentScope = $L1mgmtGroupSubRoleAssignment.properties.scope
-                        $roleAssignmentScopeName = $roleAssignmentScope -replace '.*/'
-                        if ($roleAssignmentScope -like "/subscriptions/*" -and $roleAssignmentScope -notlike "/subscriptions/*/resourcegroups/*") {
-                            $roleAssignmentScopeType = "Sub"
-                        }
-                        if ($roleAssignmentScope -like "/subscriptions/*/resourcegroups/*" -and $roleAssignmentScope -notlike "/subscriptions/*/resourcegroups/*/providers*") {
-                            $roleAssignmentScopeType = "RG"
-                        }
-                        if ($roleAssignmentScope -like "/subscriptions/*/resourcegroups/*/providers*") {
-                            $roleAssignmentScopeType = "Res"
-                        }
-
-                        if (-not $($htCacheAssignments).role.($roleAssignmentId)) {
-                            ($script:htCacheAssignments).role.$($roleAssignmentId) = @{}
                             $splitAssignment = ($roleAssignmentId).Split('/')
 
                             #assignment
@@ -4653,18 +4724,18 @@ function dataCollection($mgId) {
                                     ObjectId           = $L1mgmtGroupSubRoleAssignment.properties.principalId
                                     ObjectType         = $htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).type
                                 })
-                            ($script:htCacheAssignments).role.($roleAssignmentId).Assignment = $arrayRoleAssignment
+                            ($script:htCacheAssignmentsRole).($roleAssignmentId).Assignment = $arrayRoleAssignment
 
-                            ($script:htCacheAssignments).role.$($roleAssignmentId).AssignmentScopeTenMgSubRgRes = $roleAssignmentScopeType
+                            ($script:htCacheAssignmentsRole).$($roleAssignmentId).AssignmentScopeTenMgSubRgRes = $roleAssignmentScopeType
                             if ($roleAssignmentScopeType -eq "Sub") {
-                                ($script:htCacheAssignments).role.$($roleAssignmentId).AssignmentScopeId = [string]$splitAssignment[2]
+                                ($script:htCacheAssignmentsRole).$($roleAssignmentId).AssignmentScopeId = [string]$splitAssignment[2]
                             }
                             if ($roleAssignmentScopeType -eq "RG") {
-                                ($script:htCacheAssignments).role.$($roleAssignmentId).AssignmentScopeId = "$($splitAssignment[2])/$($splitAssignment[4])"
+                                ($script:htCacheAssignmentsRole).$($roleAssignmentId).AssignmentScopeId = "$($splitAssignment[2])/$($splitAssignment[4])"
                             }
                             if ($roleAssignmentScopeType -eq "Res") {
-                                ($script:htCacheAssignments).role.$($roleAssignmentId).AssignmentScopeId = "$($splitAssignment[2])/$($splitAssignment[4])/$($splitAssignment[8])"
-                                ($script:htCacheAssignments).role.$($roleAssignmentId).ResourceType = "$($splitAssignment[6])-$($splitAssignment[7])"
+                                ($script:htCacheAssignmentsRole).$($roleAssignmentId).AssignmentScopeId = "$($splitAssignment[2])/$($splitAssignment[4])/$($splitAssignment[8])"
+                                ($script:htCacheAssignmentsRole).$($roleAssignmentId).ResourceType = "$($splitAssignment[6])-$($splitAssignment[7])"
                             }
                         }  
 
@@ -4701,10 +4772,6 @@ function dataCollection($mgId) {
                             }
                         }
                             
-
-
-
-
                         $roleSecurityCustomRoleOwner = 0
                         if (($htCacheDefinitionsRole).$($roleDefinitionIdGuid).Actions -eq '*' -and ((($htCacheDefinitionsRole).$($roleDefinitionIdGuid).NotActions)).length -eq 0 -and ($htCacheDefinitionsRole).$($roleDefinitionIdGuid).IsCustom -eq $True) {
                             $roleSecurityCustomRoleOwner = 1
@@ -4764,6 +4831,8 @@ function dataCollection($mgId) {
                             -RoleAssignmentId $roleAssignmentId `
                             -RoleAssignmentScope $roleAssignmentScope `
                             -RoleAssignmentScopeName $roleAssignmentScopeName `
+                            -RoleAssignmentScopeRG $roleAssignmentScopeRG `
+                            -RoleAssignmentScopeRes $roleAssignmentScopeRes `
                             -RoleAssignmentScopeType $roleAssignmentScopeType `
                             -RoleAssignmentCreatedBy $createdBy `
                             -RoleAssignmentCreatedOn $createdOn `
@@ -5049,13 +5118,13 @@ function tableMgHTML($mgChild, $mgChildOf) {
         }
 
         switch ($mgLevel) {
-            "0" { $levelSpacing = "| &nbsp;" }
-            "1" { $levelSpacing = "| -&nbsp;" }
-            "2" { $levelSpacing = "| - -&nbsp;" }
-            "3" { $levelSpacing = "| - - -&nbsp;" }
-            "4" { $levelSpacing = "| - - - -&nbsp;" }
-            "5" { $levelSpacing = "|- - - - -&nbsp;" }
-            "6" { $levelSpacing = "|- - - - - -&nbsp;" }
+            "0" { $levelSpacing = "| L0 &ndash;&nbsp;" }
+            "1" { $levelSpacing = "| &nbsp;&nbsp;&nbsp;&nbsp;&ndash; L1 &ndash;&nbsp;" }
+            "2" { $levelSpacing = "| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&ndash; &ndash; L2 &ndash;&nbsp;" }
+            "3" { $levelSpacing = "| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&ndash; &ndash; &ndash; L3 &ndash;&nbsp;" }
+            "4" { $levelSpacing = "| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&ndash; &ndash; &ndash; &ndash; L4 &ndash;&nbsp;" }
+            "5" { $levelSpacing = "| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&ndash; &ndash; &ndash; &ndash; &ndash; L5 &ndash;&nbsp;" }
+            "6" { $levelSpacing = "| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&ndash; &ndash; &ndash; &ndash; &ndash; &ndash; L6 &ndash;&nbsp;" }
         }
 
         $mgPath = $htManagementGroupsMgPath.($mgChild).pathDelimited
@@ -5259,7 +5328,7 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId, $subscriptio
         $arrayPolicyAssignmentsEnrichedForThisManagementGroupVariantPolicy = ($arrayPolicyAssignmentsEnrichedForThisManagementGroupGroupedByPolicyVariant | where-Object { $_.name -eq "Policy" }).group
         $arrayPolicyAssignmentsEnrichedForThisManagementGroupVariantPolicySet = ($arrayPolicyAssignmentsEnrichedForThisManagementGroupGroupedByPolicyVariant | where-Object { $_.name -eq "PolicySet" }).group
         
-        if ($htParameters.NoASCSecureScore -eq $false) {
+        if ($htParameters.NoMDfCSecureScore -eq $false) {
             if ([string]::IsNullOrEmpty(($htMgASCSecureScore).($mgChild).SecureScore) -or [string]::IsNullOrWhiteSpace(($htMgASCSecureScore).($mgChild).SecureScore)) {
                 $managementGroupASCPoints = "n/a"
             }
@@ -5268,7 +5337,7 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId, $subscriptio
             }
         }
         else {
-            $managementGroupASCPoints = "excluded (-NoASCSecureScore $($htParameters.NoASCSecureScore))"
+            $managementGroupASCPoints = "excluded (-NoMDfCSecureScore $($htParameters.NoMDfCSecureScore))"
         }
 
         $cssClass = "mgDetailsTable"
@@ -5306,14 +5375,16 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId, $subscriptio
         
             $resourcesSubscriptionTotal = 0
             $resourcesSubscription.count_ | ForEach-Object { $resourcesSubscriptionTotal += $_ }
-            $resourcesSubscriptionResourceTypeCount = (($resourcesSubscription | sort-object -Property type -Unique) | measure-object).count
-            $resourcesSubscriptionLocationCount = (($resourcesSubscription | sort-object -Property location -Unique) | measure-object).count
+            $resourcesSubscriptionResourceTypeCount = (($resourcesSubscription | sort-object -Property type -Unique)).count
+            $resourcesSubscriptionLocationCount = (($resourcesSubscription | sort-object -Property location -Unique)).count
         }
 
         $arrayPolicyAssignmentsEnrichedForThisSubscription = ($arrayPolicyAssignmentsEnrichedGroupedBySubscription | where-Object { $_.name -eq $subscriptionId }).group
         $arrayPolicyAssignmentsEnrichedForThisSubscriptionGroupedByPolicyVariant = $arrayPolicyAssignmentsEnrichedForThisSubscription | Group-Object -Property PolicyVariant
         $arrayPolicyAssignmentsEnrichedForThisSubscriptionVariantPolicy = ($arrayPolicyAssignmentsEnrichedForThisSubscriptionGroupedByPolicyVariant | where-Object { $_.name -eq "Policy" }).group
         $arrayPolicyAssignmentsEnrichedForThisSubscriptionVariantPolicySet = ($arrayPolicyAssignmentsEnrichedForThisSubscriptionGroupedByPolicyVariant | where-Object { $_.name -eq "PolicySet" }).group
+
+        $arrayDefenderPlansSubscription = $defenderPlansGroupedBySub.where( { $_.Name -like "*$($subscriptionId)*" } )
 
         $cssClass = "subDetailsTable"
 
@@ -5329,9 +5400,123 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId, $subscriptio
 <tr><td class="detailstd"><p>Subscription Path: $subPath</p></td></tr>
 <tr><td class="detailstd"><p>State: $subscriptionState</p></td></tr>
 <tr><td class="detailstd"><p>QuotaId: $subscriptionQuotaId</p></td></tr>
-<tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> ASC Secure Score: $subscriptionASCPoints <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://docs.microsoft.com/en-us/azure/security-center/secure-score-security-controls#how-your-secure-score-is-calculated" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p></td></tr>
+<tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud Secure Score: $subscriptionASCPoints <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://docs.microsoft.com/en-us/azure/security-center/secure-score-security-controls#how-your-secure-score-is-calculated" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p></td></tr>
 <tr><td class="detailstd">
 "@)
+
+        #region ScopeInsightsDefenderPlans
+        if ($arrayDefenderPlansSubscription) {
+            $defenderCapabilitiesSubscription = ($arrayDefenderPlansSubscription.group.defenderPlan | Sort-Object -Unique)
+            $tfCount = 1
+            $htmlTableId = "ScopeInsights_DefenderPlans_$($subscriptionId -replace '-','_')"
+            $randomFunctionName = "func_$htmlTableId"
+            [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud plans <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p></button>
+<div class="content">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="$cssClass">
+<thead>
+<tr>
+<th>Plan</th>
+<th>Tier</th>
+</tr>
+</thead>
+<tbody>
+
+"@)
+
+            foreach ($plan in $arrayDefenderPlansSubscription.Group | Sort-Object -Property defenderPlan){
+                [void]$htmlScopeInsights.AppendLine(@"
+                    <tr>
+                    <td>$($plan.defenderPlan)</td>
+                    <td>$($plan.defenderPlanTier)</td>
+                    </tr>
+"@)
+            }
+            [void]$htmlScopeInsights.AppendLine(@"
+
+</tbody>
+</table>
+<script>
+function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) { 
+window.helpertfConfig4$htmlTableId =1;
+var tfConfig4$htmlTableId = {
+base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }        
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlScopeInsights.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)  
+            }
+            [void]$htmlScopeInsights.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+col_1: 'select',
+col_types: [
+    'caseinsensitivestring',
+    'caseinsensitivestring',
+    'caseinsensitivestring',
+"@)
+            $cnt = 0
+            foreach ($defenderCapability in $defenderCapabilitiesSubscription){
+                $cnt++
+                if ($defenderCapabilitiesSubscription.Count -eq $cnt) {
+                    [void]$htmlScopeInsights.AppendLine(@"
+    'caseinsensitivestring'
+"@)
+                }
+                else {
+                    [void]$htmlScopeInsights.AppendLine(@"
+    'caseinsensitivestring',
+"@)          
+                }
+            }
+            [void]$htmlScopeInsights.AppendLine(@"
+],
+extensions: [{ name: 'sort' }]
+};
+var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+tf.init();}}
+</script>
+</div>
+"@)
+        }
+        else {
+            $subscriptionNotregisteredMDfC = $arrayDefenderPlansSubscriptionNotRegistered.where( { $_.subscriptionId -eq $subscriptionId} )
+            if ($subscriptionNotregisteredMDfC.Count-gt 0){
+                [void]$htmlScopeInsights.AppendLine(@"
+<p><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud plans - Subscription not registered (ResourceProvider: Microsoft.Security) <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+"@)
+            }
+            else{
+                [void]$htmlScopeInsights.AppendLine(@"
+<p><i class="fa fa-shield" aria-hidden="true"></i> No Microsoft Defender for Cloud plans <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+"@)
+            }
+        }
+        [void]$htmlScopeInsights.AppendLine(@"
+</td></tr>
+<tr><!--y--><td class="detailstd"><!--y-->
+"@)
+        #endregion ScopeInsightsDefenderPlans
 
         #region ScopeInsightsDiganosticsSubscription
         if (($htDiagnosticSettingsMgSub).sub.($subscriptionId)) {
@@ -5567,20 +5752,20 @@ extensions: [{ name: 'sort' }]
         #region ScopeInsightsTagNameUsage
         $arrayTagListSubscription = [System.Collections.ArrayList]@()
         foreach ($tagScope in $htSubscriptionTagList.($subscriptionId).keys) {
-            foreach ($tagScopeTagName in $htSubscriptionTagList.($subscriptionId).$tagScope.Keys) {
+            foreach ($tagScopeTagName in $htSubscriptionTagList.($subscriptionId).$tagScope.keys) {
                 $null = $arrayTagListSubscription.Add([PSCustomObject]@{ 
                         Scope    = $tagScope
                         TagName  = ($tagScopeTagName)
-                        TagCount = $htAllTagList.($tagScope).($tagScopeTagName)
+                        TagCount = $htSubscriptionTagList.($subscriptionId).($tagScope).($tagScopeTagName)
                     })
             }
         }
-        $tagsUsageCount = ($arrayTagListSubscription | Measure-Object).Count
+        $tagsUsageCount = ($arrayTagListSubscription).Count
 
         if ($tagsUsageCount -gt 0) {
-            $tagNamesUniqueCount = ($arrayTagListSubscription | Sort-Object -Property TagName -Unique | Measure-Object).Count
+            $tagNamesUniqueCount = ($arrayTagListSubscription | Sort-Object -Property TagName -Unique).Count
             $tagNamesUsedInScopes = ($arrayTagListSubscription | Sort-Object -Property Scope -Unique).scope -join "$($CsvDelimiterOpposite) "
-            $tfCount = $arrayTagListSubscriptionUniqueTagsCount
+            $tfCount = $tagsUsageCount
             $htmlTableId = "ScopeInsights_TagNameUsage_$($subscriptionId -replace '-','_')"
             $randomFunctionName = "func_$htmlTableId"
             [void]$htmlScopeInsights.AppendLine(@"
@@ -5692,7 +5877,7 @@ extensions: [{ name: 'sort' }]
         
                     $costConsumptionLine = ($consumptionline.group.PreTaxCost | Measure-Object -Sum).Sum
                     if ([math]::Round($costConsumptionLine, 2) -eq 0) {
-                        $cost = $costConsumptionLine
+                        $cost = $costConsumptionLine.ToString("0.0000")
                     }
                     else {
                         $cost = [math]::Round($costConsumptionLine, 2).ToString("0.00")
@@ -5703,7 +5888,7 @@ extensions: [{ name: 'sort' }]
                             ConsumedServiceChargeType    = ($consumptionline.name).split(", ")[1]
                             ConsumedServiceCategory      = ($consumptionline.name).split(", ")[2]
                             ConsumedServiceInstanceCount = $consumptionline.Count
-                            ConsumedServiceCost          = [decimal]$cost
+                            ConsumedServiceCost          = $cost #[decimal]$cost
                             ConsumedServiceCurrency      = $currency
                         })
                         
@@ -5716,7 +5901,7 @@ extensions: [{ name: 'sort' }]
                 else {
                     $totalCost = [math]::Round($totalCost, 2).ToString("0.00")
                 }
-                $arrayTotalCostSummarySub += "$([decimal]$totalCost) $($currency) generated by $($resourceCount) Resources ($($consumedServiceCount) ResourceTypes)"
+                $arrayTotalCostSummarySub += "$($totalCost) $($currency) generated by $($resourceCount) Resources ($($consumedServiceCount) ResourceTypes)"
 
                 $tfCount = ($arrayConsumptionData | Measure-Object).Count
                 $htmlTableId = "ScopeInsights_Consumption_$($subscriptionId -replace '-','_')"
@@ -6035,7 +6220,7 @@ extensions: [{ name: 'sort' }]
         [void]$htmlScopeInsights.AppendLine(@"
 <tr><td class="detailstd"><p>$(($mgAllChildMgs | Measure-Object).count -1) ManagementGroups below this scope</p></td></tr>
 <tr><td class="detailstd"><p>$(($mgAllChildSubscriptions | Measure-Object).count) Subscriptions below this scope</p></td></tr>
-<tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> ASC Secure Score: $managementGroupASCPoints <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://docs.microsoft.com/en-us/azure/security-center/secure-score-security-controls#how-your-secure-score-is-calculated" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p></td></tr>
+<tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud Secure Score: $managementGroupASCPoints <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://docs.microsoft.com/en-us/azure/security-center/secure-score-security-controls#how-your-secure-score-is-calculated" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p></td></tr>
 <tr><td class="detailstd">
 "@)
 
@@ -6194,14 +6379,14 @@ extensions: [{ name: 'sort' }]
                     foreach ($currency in $consumptionDataGroupedByCurrency) {
                         $totalCost = 0
                         $tenantSummaryConsumptionDataGrouped = $currency.group | group-object -property ConsumedService, ChargeType, MeterCategory
-                        $subsCount = ($tenantSummaryConsumptionDataGrouped.group.subscriptionId | Sort-Object -Unique | Measure-Object).Count
-                        $consumedServiceCount = ($tenantSummaryConsumptionDataGrouped.group.consumedService | Sort-Object -Unique | Measure-Object).Count
-                        $resourceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceId | Sort-Object -Unique | Measure-Object).Count
+                        $subsCount = ($tenantSummaryConsumptionDataGrouped.group.subscriptionId | Sort-Object -Unique).Count
+                        $consumedServiceCount = ($tenantSummaryConsumptionDataGrouped.group.consumedService | Sort-Object -Unique).Count
+                        $resourceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceId | Sort-Object -Unique).Count
                         foreach ($consumptionline in $tenantSummaryConsumptionDataGrouped) {
     
                             $costConsumptionLine = ($consumptionline.group.PreTaxCost | Measure-Object -Sum).Sum
                             if ([math]::Round($costConsumptionLine, 2) -eq 0) {
-                                $cost = $costConsumptionLine
+                                $cost = $costConsumptionLine.ToString("0.0000")
                             }
                             else {
                                 $cost = [math]::Round($costConsumptionLine, 2).ToString("0.00")
@@ -6212,7 +6397,7 @@ extensions: [{ name: 'sort' }]
                                     ConsumedServiceChargeType    = ($consumptionline.name).split(", ")[1]
                                     ConsumedServiceCategory      = ($consumptionline.name).split(", ")[2]
                                     ConsumedServiceInstanceCount = $consumptionline.Count
-                                    ConsumedServiceCost          = [decimal]$cost
+                                    ConsumedServiceCost          = $cost #[decimal]$cost
                                     ConsumedServiceSubscriptions = ($consumptionline.group.SubscriptionId | Sort-Object -Unique).Count
                                     ConsumedServiceCurrency      = $currency.Name
                                 })
@@ -6220,15 +6405,15 @@ extensions: [{ name: 'sort' }]
                             $totalCost = $totalCost + $costConsumptionLine
                         }
                         if ([math]::Round($totalCost, 2) -eq 0) {
-                            $totalCost = $totalCost
+                            $totalCost = $totalCost.ToString("0.0000")
                         }
                         else {
                             $totalCost = [math]::Round($totalCost, 2).ToString("0.00")
                         }
-                        $arrayTotalCostSummaryMg += "$([decimal]$totalCost) $($currency.Name) generated by $($resourceCount) Resources ($($consumedServiceCount) ResourceTypes) in $($subsCount) Subscriptions"
+                        $arrayTotalCostSummaryMg += "$($totalCost) $($currency.Name) generated by $($resourceCount) Resources ($($consumedServiceCount) ResourceTypes) in $($subsCount) Subscriptions"
                     }
 
-                    $tfCount = ($arrayConsumptionData | Measure-Object).Count
+                    $tfCount = ($arrayConsumptionData).Count
                     $htmlTableId = "ScopeInsights_Consumption_$($mgChild -replace '-','_')"
                     $randomFunctionName = "func_$htmlTableId"
                     [void]$htmlScopeInsights.AppendLine(@"
@@ -8074,7 +8259,7 @@ function summary() {
             $hlpPolicyAssignmentId = ($htManagedIdentityForPolicyAssignment.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId).policyAssignmentId).ToLower()
             if (-not $htCacheAssignmentsPolicy.($hlpPolicyAssignmentId)) {
                 if ($DoNotIncludeResourceGroupsOnPolicy) {
-                    if (-not ($htCacheAssignments).policyOnResourceGroupsAndResources.($hlpPolicyAssignmentId)) {
+                    if (-not ($htCacheAssignmentsPolicyOnResourceGroupsAndResources).($hlpPolicyAssignmentId)) {
                         Write-Host "   !Relict detected: SP MI: $($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId) - PolicyAssignmentId: $hlpPolicyAssignmentId"
                     }
                 }
@@ -8240,6 +8425,8 @@ function summary() {
                         RoleAssignmentPIMAssignmentSlotStart = $pimSlotStart
                         RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
                         RoleAssignmentScopeName              = $rbac.RoleAssignmentScopeName
+                        RoleAssignmentScopeRG                = $rbac.RoleAssignmentScopeRG
+                        RoleAssignmentScopeRes               = $rbac.RoleAssignmentScopeRes
                         CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                         CreatedOn                            = $rbac.RoleAssignmentCreatedOn
                         #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
@@ -8324,6 +8511,8 @@ function summary() {
                                     RoleAssignmentPIMAssignmentSlotStart = $pimSlotStart
                                     RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
                                     RoleAssignmentScopeName              = $rbac.RoleAssignmentScopeName
+                                    RoleAssignmentScopeRG                = $rbac.RoleAssignmentScopeRG
+                                    RoleAssignmentScopeRes               = $rbac.RoleAssignmentScopeRes
                                     CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                                     CreatedOn                            = $rbac.RoleAssignmentCreatedOn
                                     #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
@@ -8364,6 +8553,8 @@ function summary() {
                                 RoleAssignmentPIMAssignmentSlotStart = $pimSlotStart
                                 RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
                                 RoleAssignmentScopeName              = $rbac.RoleAssignmentScopeName
+                                RoleAssignmentScopeRG                = $rbac.RoleAssignmentScopeRG
+                                RoleAssignmentScopeRes               = $rbac.RoleAssignmentScopeRes
                                 CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                                 CreatedOn                            = $rbac.RoleAssignmentCreatedOn
                                 #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
@@ -8421,6 +8612,8 @@ function summary() {
                         RoleAssignmentPIMAssignmentSlotStart = $pimSlotStart
                         RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
                         RoleAssignmentScopeName              = $rbac.RoleAssignmentScopeName
+                        RoleAssignmentScopeRG                = $rbac.RoleAssignmentScopeRG
+                        RoleAssignmentScopeRes               = $rbac.RoleAssignmentScopeRes
                         CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                         CreatedOn                            = $rbac.RoleAssignmentCreatedOn
                         #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
@@ -8480,6 +8673,8 @@ function summary() {
                     RoleAssignmentPIMAssignmentSlotStart = $pimSlotStart
                     RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
                     RoleAssignmentScopeName              = $rbac.RoleAssignmentScopeName
+                    RoleAssignmentScopeRG                = $rbac.RoleAssignmentScopeRG
+                    RoleAssignmentScopeRes               = $rbac.RoleAssignmentScopeRes
                     CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                     CreatedOn                            = $rbac.RoleAssignmentCreatedOn
                     #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
@@ -9122,7 +9317,7 @@ extensions: [{ name: 'sort' }]
         #rgchange
         $arrayCustomPoliciesOrphanedFinalIncludingResourceGroups = [System.Collections.ArrayList]@()
         foreach ($customPolicyOrphanedFinal in $arrayCustomPoliciesOrphanedFinal) {
-            if (($htCacheAssignments).policyOnResourceGroupsAndResources.values.properties.PolicyDefinitionId -notcontains $customPolicyOrphanedFinal.PolicyDefinitionId) {
+            if (($htCacheAssignmentsPolicyOnResourceGroupsAndResources).values.properties.PolicyDefinitionId -notcontains $customPolicyOrphanedFinal.PolicyDefinitionId) {
                 $null = $arrayCustomPoliciesOrphanedFinalIncludingResourceGroups.Add($customPolicyOrphanedFinal)
             }
         }
@@ -9244,7 +9439,7 @@ extensions: [{ name: 'sort' }]
 
         $arrayCustomPoliciesOrphanedFinalIncludingResourceGroups = [System.Collections.ArrayList]@()
         foreach ($customPolicyOrphanedFinal in $arrayCustomPoliciesOrphanedFinal) {
-            if (($htCacheAssignments).policyOnResourceGroupsAndResources.values.properties.PolicyDefinitionId -notcontains $customPolicyOrphanedFinal.PolicyDefinitionId) {
+            if (($htCacheAssignmentsPolicyOnResourceGroupsAndResources).values.properties.PolicyDefinitionId -notcontains $customPolicyOrphanedFinal.PolicyDefinitionId) {
                 $null = $arrayCustomPoliciesOrphanedFinalIncludingResourceGroups.Add($customPolicyOrphanedFinal)
             }
         }
@@ -9718,7 +9913,7 @@ extensions: [{ name: 'sort' }]
 
         $arraycustompolicySetSetsOrphanedFinalIncludingResourceGroups = [System.Collections.ArrayList]@()
         foreach ($customPolicySetOrphaned in $custompolicySetSetsOrphaned) {
-            if (($htCacheAssignments).policyOnResourceGroupsAndResources.values.properties.PolicyDefinitionId -notcontains $customPolicySetOrphaned.PolicyDefinitionId) {
+            if (($htCacheAssignmentsPolicyOnResourceGroupsAndResources).values.properties.PolicyDefinitionId -notcontains $customPolicySetOrphaned.PolicyDefinitionId) {
                 $null = $arraycustompolicySetSetsOrphanedFinalIncludingResourceGroups.Add($customPolicySetOrphaned)
             }
         }
@@ -9833,7 +10028,7 @@ extensions: [{ name: 'sort' }]
                 }
 
                 if ($isInScope -eq "inScope") {
-                    if (($htCacheAssignments).policyOnResourceGroupsAndResources.values.properties.PolicyDefinitionId -notcontains $custompolicySetAll.PolicyDefinitionId) {
+                    if (($htCacheAssignmentsPolicyOnResourceGroupsAndResources).values.properties.PolicyDefinitionId -notcontains $custompolicySetAll.PolicyDefinitionId) {
                         $null = $arraycustompolicySetsOrphanedFinalIncludingResourceGroups.Add($custompolicySetAll)
                     }
                 }
@@ -10384,8 +10579,8 @@ extensions: [{ name: 'sort' }]
 
     $script:htPolicyAssignmentRoleAssignmentMapping = @{}
     $script:htPolicyAssignmentMiRoleAssignmentMappingAll = @{}
-    foreach ($roleassignmentId in ($htCacheAssignments).role.keys | Sort-Object) {
-        $roleAssignment = ($htCacheAssignments).role.($roleassignmentId).Assignment
+    foreach ($roleassignmentId in ($htCacheAssignmentsRole).keys | Sort-Object) {
+        $roleAssignment = ($htCacheAssignmentsRole).($roleassignmentId).Assignment
 
         if ($htManagedIdentityForPolicyAssignment.($roleAssignment.ObjectId)) {
             $mi = $htManagedIdentityForPolicyAssignment.($roleAssignment.ObjectId)
@@ -10432,8 +10627,8 @@ extensions: [{ name: 'sort' }]
     }
 
     if ($DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
-        foreach ($roleassignmentId in ($htCacheAssignments).rbacOnResourceGroupsAndResources.keys | Sort-Object) {
-            $roleAssignment = ($htCacheAssignments).rbacOnResourceGroupsAndResources.($roleassignmentId)
+        foreach ($roleassignmentId in ($htCacheAssignmentsRBACOnResourceGroupsAndResources).keys | Sort-Object) {
+            $roleAssignment = ($htCacheAssignmentsRBACOnResourceGroupsAndResources).($roleassignmentId)
     
             if ($htManagedIdentityForPolicyAssignment.($roleAssignment.ObjectId)) {
                 $mi = $htManagedIdentityForPolicyAssignment.($roleAssignment.ObjectId)
@@ -10745,7 +10940,7 @@ extensions: [{ name: 'sort' }]
 
             #mg
             if ([String]::IsNullOrEmpty($policyAssignmentAll.subscriptionId)) {
-                if ($htCachePolicyComplianceResponseTooLarge.mg.($policyAssignmentAll.MgId)) {
+                if (($htCachePolicyComplianceResponseTooLargeMG).($policyAssignmentAll.MgId)) {
                     $NonCompliantPolicies = "skipped"
                     $CompliantPolicies = "skipped"
                     $NonCompliantResources = "skipped"
@@ -10753,7 +10948,7 @@ extensions: [{ name: 'sort' }]
                     $ConflictingResources = "skipped"
                 }
                 else {
-                    $compliance = ($htCachePolicyCompliance).mg.($policyAssignmentAll.MgId).($policyAssignmentIdToLower)
+                    $compliance = ($htCachePolicyComplianceMG).($policyAssignmentAll.MgId).($policyAssignmentIdToLower)
                     $NonCompliantPolicies = $compliance.NonCompliantPolicies
                     $CompliantPolicies = $compliance.CompliantPolicies
                     $NonCompliantResources = $compliance.NonCompliantResources
@@ -10780,7 +10975,7 @@ extensions: [{ name: 'sort' }]
 
             #sub/rg
             if (-not [String]::IsNullOrEmpty($policyAssignmentAll.subscriptionId)) {
-                if ($htCachePolicyComplianceResponseTooLarge.sub.($policyAssignmentAll.SubscriptionId)) {
+                if (($htCachePolicyComplianceResponseTooLargeSUB).($policyAssignmentAll.SubscriptionId)) {
                     $NonCompliantPolicies = "skipped"
                     $CompliantPolicies = "skipped"
                     $NonCompliantResources = "skipped"
@@ -10788,7 +10983,7 @@ extensions: [{ name: 'sort' }]
                     $ConflictingResources = "skipped"
                 }
                 else {
-                    $compliance = ($htCachePolicyCompliance).sub.($policyAssignmentAll.SubscriptionId).($policyAssignmentIdToLower)
+                    $compliance = ($htCachePolicyComplianceSUB).($policyAssignmentAll.SubscriptionId).($policyAssignmentIdToLower)
                     $NonCompliantPolicies = $compliance.NonCompliantPolicies
                     $CompliantPolicies = $compliance.CompliantPolicies
                     $NonCompliantResources = $compliance.NonCompliantResources
@@ -13016,9 +13211,9 @@ extensions: [{ name: 'sort' }]
 <th>Sub children (total)</th>
 <th>Sub children (direct)</th>
 "@)
-        if ($htParameters.NoASCSecureScore -eq $false) {
+        if ($htParameters.NoMDfCSecureScore -eq $false) {
             [void]$htmlTenantSummary.AppendLine(@"
-<th>MG ASC Score</th>
+<th>MG MDfC Score</th>
 "@)
         }
         if ($htParameters.NoAzureConsumption -eq $false) {
@@ -13057,7 +13252,7 @@ extensions: [{ name: 'sort' }]
                                 $hlper = $htManagementGroupsCost.($summaryManagementGroup.mgid)
                                 $totalCost = $hlper."mgTotalCost_$($currency)"
                                 if ([math]::Round($totalCost, 2) -eq 0) {
-                                    $totalCost = $totalCost
+                                    $totalCost = $totalCost.ToString("0.0000")
                                 }
                                 else {
                                     $totalCost = [math]::Round($totalCost, 2).ToString("0.00")
@@ -13125,7 +13320,7 @@ extensions: [{ name: 'sort' }]
 <td>$($mgAllChildSubscriptionsCountTotal)</td>
 <td>$($mgAllChildSubscriptionsCountDirect)</td>
 "@
-            if ($htParameters.NoASCSecureScore -eq $false) {
+            if ($htParameters.NoMDfCSecureScore -eq $false) {
                 @"
 <td>$($mgSecureScore)</td>
 "@
@@ -13185,7 +13380,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'number',
                 'number',
 "@)
-        if ($htParameters.NoASCSecureScore -eq $false) {
+        if ($htParameters.NoMDfCSecureScore -eq $false) {
             [void]$htmlTenantSummary.AppendLine(@"
                 'caseinsensitivestring',
 "@)
@@ -13236,7 +13431,7 @@ extensions: [{ name: 'sort' }]
 
     #region tenantSummarySubscriptions
     [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="tenantSummarySubscriptions"><hr class="hr-textSubscriptions" data-content="Subscriptions & Resources" /></button>
+<button type="button" class="collapsible" id="tenantSummarySubscriptions"><hr class="hr-textSubscriptions" data-content="Subscriptions, Resources & Defender" /></button>
 <div class="content TenantSummaryContent">
 "@)
 
@@ -13251,7 +13446,7 @@ extensions: [{ name: 'sort' }]
 <button type="button" class="collapsible" id="buttonTenantSummary_Subs"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle">$($summarySubscriptionsCount) Subscriptions (state: enabled)</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <span class="info">Supported Microsoft Azure offers</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/cost-management-billing/costs/understand-cost-mgt-data#supported-microsoft-azure-offers" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
-<i class="padlxx fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <span class="info">Understand ASC Secure Score</span> <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://docs.microsoft.com/en-us/azure/security-center/secure-score-security-controls#how-your-secure-score-is-calculated" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlxx fa fa-lightbulb-o" aria-hidden="true" style="color:#FFB100;"></i> <span class="info">Understand Microsoft Defender for Cloud Secure Score</span> <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://docs.microsoft.com/en-us/azure/security-center/secure-score-security-controls#how-your-secure-score-is-calculated" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
 <thead>
@@ -13260,7 +13455,7 @@ extensions: [{ name: 'sort' }]
 <th>SubscriptionId</th>
 <th>QuotaId</th>
 <th>Tags</th>
-<th>ASC Score</th>
+<th>Sub MDfC Score</th>
 "@)
         if ($htParameters.NoAzureConsumption -eq $false) {
             [void]$htmlTenantSummary.AppendLine(@"
@@ -13285,10 +13480,10 @@ extensions: [{ name: 'sort' }]
             if ($htParameters.NoAzureConsumption -eq $false) {
                 if ($htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId)) {
                     if ([math]::Round($htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId).TotalCost, 2) -eq 0) {
-                        $totalCost = [decimal]$htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId).TotalCost
+                        $totalCost = $htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId).TotalCost.ToString("0.0000")
                     }
                     else {
-                        $totalCost = ([decimal]([math]::Round($htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId).TotalCost, 2))).ToString("0.00")
+                        $totalCost = (([math]::Round($htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId).TotalCost, 2))).ToString("0.00")
                     }
                     $currency = $htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId).Currency
                 }
@@ -14135,6 +14330,286 @@ extensions: [{ name: 'sort' }]
     $endResourceLocks = get-date
     Write-Host "   ResourceLocks processing duration: $((NEW-TIMESPAN -Start $startResourceLocks -End $endResourceLocks).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startResourceLocks -End $endResourceLocks).TotalSeconds) seconds)"
     #endregion SUMMARYSubResourceLocks
+
+    if ($arrayDefenderPlansSubscriptionNotRegistered.Count -gt 0) {
+        #region SUMMARYSubDefenderPlansSubscriptionNotRegistered
+        Write-Host "  processing TenantSummary Subscriptions Microsoft Defender for Cloud plans SubscriptionNotRegistered"
+
+        $tfCount = $defenderPlansGroupedByPlanCount
+        $startDefenderPlans = get-date
+
+        $htmlTableId = "TenantSummary_DefenderPlansSubscriptionNotRegistered"        
+        
+        [void]$htmlTenantSummary.AppendLine(@"
+<button type="button" class="collapsible" id="buttonTenantSummary_DefenderPlansSubscriptionNotRegistered"><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans - Subscriptions not registered</span></button>
+<div class="content TenantSummary">
+<span class="padlxx info">Register Resource Provider 'Microsoft.Security'</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<span class="padlxx info">Microsoft Defender for Cloud's enhanced security features</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Subscription Name</th>
+<th>Subscription Id</th>
+<th>Subscription MG path</th>
+</tr>
+</thead>
+<tbody>
+"@) 
+
+        foreach ($subscription in $arrayDefenderPlansSubscriptionNotRegistered | Sort-Object -Property subscriptionName) {
+            [void]$htmlTenantSummary.AppendLine(@"
+                <tr>
+                <td>$($subscription.subscriptionName)</td>
+                <td>$($subscription.subscriptionId)</td>
+                <td>$($subscription.subscriptionMgPath)</td>
+                </tr>
+"@)
+        }
+
+        [void]$htmlTenantSummary.AppendLine(@"
+</tbody>
+</table>
+<script>
+        var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@) 
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@) 
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+            btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+            extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();
+    </script>
+</div>
+"@)
+
+        $endDefenderPlans = get-date
+        Write-Host "   Microsoft Defender for Cloud plans by plan processing duration: $((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalSeconds) seconds)"
+        #endregion SUMMARYSubDefenderPlansSubscriptionNotRegistered
+    }
+
+    #region SUMMARYSubDefenderPlansByPlan
+    Write-Host "  processing TenantSummary Subscriptions Microsoft Defender for Cloud plans by plan"
+
+    $tfCount = $defenderPlansGroupedByPlanCount
+    $startDefenderPlans = get-date
+
+    if ($defenderPlansGroupedByPlanCount -gt 0) {
+        $htmlTableId = "TenantSummary_DefenderPlans"        
+        
+        [void]$htmlTenantSummary.AppendLine(@"
+<button type="button" class="collapsible" id="buttonTenantSummary_DefenderPlans"><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans (by plan)</span></button>
+<div class="content TenantSummary">
+<span class="padlxx info">Microsoft Defender for Cloud's enhanced security features</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Plan/Tier</th>
+<th>Subscription Count</th>
+</tr>
+</thead>
+<tbody>
+"@) 
+
+        foreach ($defenderCapabilityAndTier in $defenderPlansGroupedByPlan | Sort-Object -Property Name){
+            [void]$htmlTenantSummary.AppendLine(@"
+                <tr>
+                <td>$($defenderCapabilityAndTier.Name)</td>
+                <td>$($defenderCapabilityAndTier.Count)</td>
+                </tr>
+"@)
+        }
+
+[void]$htmlTenantSummary.AppendLine(@"
+</tbody>
+</table>
+<script>
+        var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+            btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_types: [
+                'caseinsensitivestring',
+                'number'
+            ],
+            extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();
+    </script>
+</div>
+"@)
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No Microsoft Defender for Cloud plans at all <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources#considerations-before-applying-locks" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></span></p>
+"@)
+    }
+    $endDefenderPlans = get-date
+    Write-Host "   Microsoft Defender for Cloud plans by plan processing duration: $((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalSeconds) seconds)"
+    #endregion SUMMARYSubDefenderPlansByPlan
+
+    #region SUMMARYSubDefenderPlansBySubscription
+    Write-Host "  processing TenantSummary Subscriptions Microsoft Defender for Cloud plans by Subscription"
+    $tfCount = $subsDefenderPlansCount
+    $startDefenderPlans = get-date
+
+    if (($arrayDefenderPlans).Count -gt 0) {
+        $htmlTableId = "TenantSummary_DefenderPlansBySubscription"        
+        
+        [void]$htmlTenantSummary.AppendLine(@"
+<button type="button" class="collapsible" id="buttonTenantSummary_DefenderPlansBySubscription"><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans (by Subscription)</span></button>
+<div class="content TenantSummary">
+<span class="padlxx info">Microsoft Defender for Cloud's enhanced security features</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Subscription</th>
+<th>SubscriptionId</th>
+<th>Subscription MG path</th>
+"@)   
+
+    foreach ($defenderCapability in $defenderCapabilities){
+        [void]$htmlTenantSummary.AppendLine(@"
+            <th>$($defenderCapability)</th>
+"@)   
+
+    }
+
+[void]$htmlTenantSummary.AppendLine(@"
+</tr>
+</thead>
+<tbody>
+"@) 
+
+    foreach ($sub in $defenderPlansGroupedBySub){
+        $nameSplit = $sub.Name.split(', ')
+        [void]$htmlTenantSummary.AppendLine(@"
+            <tr>
+            <td>$($nameSplit[0])</td>
+            <td>$($nameSplit[1])</td>
+            <td>$($nameSplit[2])</td>
+
+"@)
+
+        foreach ($plan in $sub.Group | Sort-Object -Property defenderPlan){
+            [void]$htmlTenantSummary.AppendLine(@"
+                <td>$($plan.defenderPlanTier)</td>
+"@)
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+            </tr>
+"@)
+    }
+[void]$htmlTenantSummary.AppendLine(@"
+</tbody>
+</table>
+<script>
+        var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)      
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }        
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@) 
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            linked_filters: true,
+"@) 
+            $cnt = 2
+            foreach ($defenderCapability in $defenderCapabilities){
+                $cnt++
+                [void]$htmlTenantSummary.AppendLine(@"
+                    col_$($cnt): 'select',
+"@)
+            }
+[void]$htmlTenantSummary.AppendLine(@"
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+"@) 
+        $cnt = 0
+        foreach ($defenderCapability in $defenderCapabilities){
+            $cnt++
+            if ($cnt -ne $defenderCapabilitiesCount){
+                [void]$htmlTenantSummary.AppendLine(@"
+                'caseinsensitivestring',
+"@)
+            }
+            else{
+                [void]$htmlTenantSummary.AppendLine(@"
+                'caseinsensitivestring'
+"@)
+            }
+
+}
+[void]$htmlTenantSummary.AppendLine(@"
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();
+    </script>
+</div>
+"@)
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No Microsoft Defender for Cloud plans at all <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources#considerations-before-applying-locks" target="_blank">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></span></p>
+"@)
+    }
+    $endDefenderPlans = get-date
+    Write-Host "   Microsoft Defender for Cloud plans by Subscription processing duration: $((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalSeconds) seconds)"
+    #endregion SUMMARYSubDefenderPlansBySubscription
 
     [void]$htmlTenantSummary.AppendLine(@"
     </div>
@@ -16308,11 +16783,11 @@ tf.init();
                     else {
                         #rg
                         if ($DoNotIncludeResourceGroupsOnPolicy) {
-                            if (-not ($htCacheAssignments).policyOnResourceGroupsAndResources.($policyAssignmentId)) {
+                            if (-not ($htCacheAssignmentsPolicyOnResourceGroupsAndResources).($policyAssignmentId)) {
                                 $assignmentInfo = "n/a"
                             }
                             else {
-                                $assignmentInfo = ($htCacheAssignments).policyOnResourceGroupsAndResources.($policyAssignmentId)
+                                $assignmentInfo = ($htCacheAssignmentsPolicyOnResourceGroupsAndResources).($policyAssignmentId)
                             }
                         }
                         else {
@@ -16718,7 +17193,7 @@ tf.init();
     }
 
     $htRoleAssignmentsForServicePrincipalsRgRes = @{}
-    $roleAssignmentsForServicePrincipalsRgRes = (((($htCacheAssignments).rbacOnResourceGroupsAndResources.values).where( { $_.ObjectType -eq "ServicePrincipal" })) | sort-object -Property RoleAssignmentId -Unique)
+    $roleAssignmentsForServicePrincipalsRgRes = (((($htCacheAssignmentsRBACOnResourceGroupsAndResources).values).where( { $_.ObjectType -eq "ServicePrincipal" })) | sort-object -Property RoleAssignmentId -Unique)
     foreach ($spWithRoleAssignment in $roleAssignmentsForServicePrincipalsRgRes | Group-Object -Property ObjectId) {
         if (-not $htRoleAssignmentsForServicePrincipalsRgRes.($spWithRoleAssignment.Name)) {
             $htRoleAssignmentsForServicePrincipalsRgRes.($spWithRoleAssignment.Name) = @{}
@@ -20182,13 +20657,13 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         $paramsUsed += "SubscriptionQuotaIdWhitelist: $($SubscriptionQuotaIdWhitelist -join ", ") &#13;"
     }
 
-    if ($htParameters.NoASCSecureScore -eq $true) {
-        Write-Host " ASC Secure Score disabled (-NoASCSecureScore = $($htParameters.NoASCSecureScore))" -ForegroundColor Green
-        $paramsUsed += "NoASCSecureScore: true &#13;"
+    if ($htParameters.NoMDfCSecureScore -eq $true) {
+        Write-Host " Microsoft Defender for Cloud Secure Score disabled (-NoMDfCSecureScore = $($htParameters.NoMDfCSecureScore))" -ForegroundColor Green
+        $paramsUsed += "NoMDfCSecureScore: true &#13;"
     }
     else {
-        Write-Host " ASC Secure Score enabled - use parameter: '-NoASCSecureScore' to disable" -ForegroundColor Yellow
-        $paramsUsed += "NoASCSecureScore: false &#13;"
+        Write-Host " Microsoft Defender for Cloud Secure Score enabled - use parameter: '-NoMDfCSecureScore' to disable" -ForegroundColor Yellow
+        $paramsUsed += "NoMDfCSecureScore: false &#13;"
     }
 
     if ($htParameters.DoNotShowRoleAssignmentsUserData -eq $true) {
@@ -20475,20 +20950,15 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $htRoleDefinitionIdsUsedInPolicy = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htPoliciesUsedInPolicySets = @{}
     $htSubscriptionTags = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-    $htCacheAssignments = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-    ($htCacheAssignments).policyOnResourceGroupsAndResources = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-    ($htCacheAssignments).role = @{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-    ($htCacheAssignments).roleFromAPI = @{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-    ($htCacheAssignments).roleClassic = @{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-    ($htCacheAssignments).rbacOnResourceGroupsAndResources = @{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-    ($htCacheAssignments).blueprint = @{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-    ($htCacheAssignmentsPolicy) = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-    $htCachePolicyCompliance = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-    ($htCachePolicyCompliance).mg = @{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-    ($htCachePolicyCompliance).sub = @{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-    $htCachePolicyComplianceResponseTooLarge = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-    $htCachePolicyComplianceResponseTooLarge.mg = @{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-    $htCachePolicyComplianceResponseTooLarge.sub = @{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $htCacheAssignmentsPolicyOnResourceGroupsAndResources = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $htCacheAssignmentsRole = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $htCacheAssignmentsRBACOnResourceGroupsAndResources = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $htCacheAssignmentsBlueprint = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $htCacheAssignmentsPolicy = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $htCachePolicyComplianceMG = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $htCachePolicyComplianceSUB = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $htCachePolicyComplianceResponseTooLargeMG = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $htCachePolicyComplianceResponseTooLargeSUB = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $outOfScopeSubscriptions = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htAllSubscriptionsFromAPI = @{}
     if ($htParameters.NoAzureConsumption -eq $false) {
@@ -20536,7 +21006,9 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $htPrincipals = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htServicePrincipals = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htDailySummary = @{}
-
+    #$htDefenderPlans = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $arrayDefenderPlans = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayDefenderPlansSubscriptionNotRegistered = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     #subscriptions
     $startGetSubscriptions = get-date
     $currentTask = "Getting all Subscriptions"
@@ -20597,8 +21069,8 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $script:subsToProcessInCustomDataCollection = [System.Collections.ArrayList]@()
 
     #region ASCSecureScoreMGs
-    if ($htParameters.NoASCSecureScore -eq $false) {
-        $currentTask = "Getting ASC Secure Score for Management Groups"
+    if ($htParameters.NoMDfCSecureScore -eq $false) {
+        $currentTask = "Getting MDfC Secure Score for Management Groups"
         Write-Host $currentTask
         #ref: https://docs.microsoft.com/en-us/azure/governance/management-groups/resource-graph-samples?tabs=azure-cli#secure-score-per-management-group
         $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01"
@@ -20634,11 +21106,11 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         $start = get-date
         $getMgAscSecureScore = AzAPICall -uri $uri -method "POST" -currentTask $currentTask -body $body -listenOn "Content" -getMgAscSecureScore $true
         $end = get-date
-        Write-Host " Getting ASC Secure Score for Management Groups duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds" 
+        Write-Host " Getting Microsoft Defender for Cloud Secure Score for Management Groups duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds" 
         $htMgASCSecureScore = @{}
         if ($getMgAscSecureScore) {
             if ($getMgAscSecureScore -eq "capitulation") {
-                Write-Host "  ASC SecureScore for Management Groups will not be available" -ForegroundColor Yellow
+                Write-Host "  Microsoft Defender for Cloud SecureScore for Management Groups will not be available" -ForegroundColor Yellow
             }
             else {
                 foreach ($entry in $getMgAscSecureScore.data) {
@@ -21163,7 +21635,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                                 if (-not $htManagementGroupsCost.($parentMg)) {
                                     $htManagementGroupsCost.($parentMg) = @{}
                                     $htManagementGroupsCost.($parentMg).currencies = $currency.Name
-                                    $htManagementGroupsCost.($parentMg)."mgTotalCost_$($currency.Name)" = [decimal]$subTotalCost
+                                    $htManagementGroupsCost.($parentMg)."mgTotalCost_$($currency.Name)" = $subTotalCost #[decimal]$subTotalCost
                                     $htManagementGroupsCost.($parentMg)."resourcesThatGeneratedCost_$($currency.Name)" = ($subscriptionId.Group.ResourceId | Sort-Object -Unique | Measure-Object).Count
                                     $htManagementGroupsCost.($parentMg).resourcesThatGeneratedCostCurrencyIndependent = ($subscriptionId.Group.ResourceId | Sort-Object -Unique | Measure-Object).Count
                                     $htManagementGroupsCost.($parentMg)."subscriptionsThatGeneratedCost_$($currency.Name)" = 1
@@ -21174,8 +21646,8 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                                     $htManagementGroupsCost.($parentMg).consumptionDataSubscriptions = $subscriptionId.group
                                 }
                                 else {
-                                    $newMgTotalCost = $htManagementGroupsCost.($parentMg)."mgTotalCost_$($currency.Name)" + [decimal]$subTotalCost
-                                    $htManagementGroupsCost.($parentMg)."mgTotalCost_$($currency.Name)" = [decimal]$newMgTotalCost
+                                    $newMgTotalCost = $htManagementGroupsCost.($parentMg)."mgTotalCost_$($currency.Name)" + $subTotalCost #[decimal]$subTotalCost
+                                    $htManagementGroupsCost.($parentMg)."mgTotalCost_$($currency.Name)" = $newMgTotalCost #[decimal]$newMgTotalCost
 
                                     $currencies = [array]$htManagementGroupsCost.($parentMg).currencies
                                     if ($currencies -notcontains $currency.Name) {
@@ -21230,19 +21702,20 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                         foreach ($consumptionline in $tenantSummaryConsumptionDataGrouped) {
 
                             $costConsumptionLine = ($consumptionline.group.PreTaxCost | Measure-Object -Sum).Sum
+
                             if ([math]::Round($costConsumptionLine, 2) -eq 0) {
-                                $cost = $costConsumptionLine
+                                $cost = $costConsumptionLine.ToString("0.0000")
                             }
                             else {
                                 $cost = [math]::Round($costConsumptionLine, 2).ToString("0.00")
                             }
-                        
+
                             $null = $arrayConsumptionData.Add([PSCustomObject]@{ 
                                     ConsumedService              = ($consumptionline.name).split(", ")[0]
                                     ConsumedServiceChargeType    = ($consumptionline.name).split(", ")[1]
                                     ConsumedServiceCategory      = ($consumptionline.name).split(", ")[2]
                                     ConsumedServiceInstanceCount = $consumptionline.Count
-                                    ConsumedServiceCost          = [decimal]$cost
+                                    ConsumedServiceCost          = $cost #[decimal]$cost
                                     ConsumedServiceSubscriptions = ($consumptionline.group.SubscriptionId | Sort-Object -Unique).Count
                                     ConsumedServiceCurrency      = $currency.Name
                                 })
@@ -21256,7 +21729,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                         else {
                             $totalCost = [math]::Round($totalCost, 2).ToString("0.00")
                         }
-                        $arrayTotalCostSummary += "$([decimal]$totalCost) $($currency.Name) generated by $($resourceCount) Resources ($($consumedServiceCount) ResourceTypes) in $($subsCount) Subscriptions"
+                        $arrayTotalCostSummary += "$($totalCost) $($currency.Name) generated by $($resourceCount) Resources ($($consumedServiceCount) ResourceTypes) in $($subsCount) Subscriptions"
                     }
                 }
                 else {
@@ -21447,7 +21920,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     if ($htParameters.LargeTenant -eq $true -or $htParameters.PolicyAtScopeOnly -eq $true) {
         if (($checkContext).Tenant.Id -ne $ManagementGroupId) {
             $currentTask = "Policy assignments ('$($ManagementGroupId)')"
-            $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($ManagementGroupId)/providers/Microsoft.Authorization/policyAssignments?`$filter=atScope()&api-version=2020-09-01"
+            $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementgroups/$($ManagementGroupId)/providers/Microsoft.Authorization/policyAssignments?`$filter=atScope()&api-version=2021-06-01"
             $method = "GET"
             $upperScopesPolicyAssignments = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"
 
@@ -21720,16 +22193,6 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.Authorization/roleAssignments?api-version=2015-07-01"
         $method = "GET"
         $roleAssignmentsFromAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask
-
-        if ($roleAssignmentsFromAPI.Count -gt 0) {
-            foreach ($roleAssignmentFromAPI in $roleAssignmentsFromAPI) {
-                $roleAssignmentId = ($roleAssignmentFromAPI.id).ToLower()
-                if (-not ($htCacheAssignments).roleFromAPI.($roleAssignmentId)) {
-                    ($htCacheAssignments).roleFromAPI.($roleAssignmentId) = @{}
-                    ($htCacheAssignments).roleFromAPI.($roleAssignmentId).assignment = $roleAssignmentFromAPI
-                }
-            }
-        }
 
         if ($roleAssignmentsFromAPI.Count -gt 0) {
             $principalsToResolve = @()
@@ -22404,10 +22867,10 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $startTagListArray = Get-Date
     Write-Host "Creating TagList array"
 
-    $tagsSubRgResCount = ($htAllTagList."AllScopes".Keys | Measure-Object).Count
-    $tagsSubsriptionCount = ($htAllTagList."Subscription".Keys | Measure-Object).Count
-    $tagsResourceGroupCount = ($htAllTagList."ResourceGroup".Keys | Measure-Object).Count
-    $tagsResourceCount = ($htAllTagList."Resource".Keys | Measure-Object).Count
+    $tagsSubRgResCount = ($htAllTagList."AllScopes".Keys).Count
+    $tagsSubsriptionCount = ($htAllTagList."Subscription".Keys).Count
+    $tagsResourceGroupCount = ($htAllTagList."ResourceGroup".Keys).Count
+    $tagsResourceCount = ($htAllTagList."Resource".Keys).Count
     Write-Host " Total Number of ALL unique Tag Names: $tagsSubRgResCount"
     Write-Host " Total Number of Subscription unique Tag Names: $tagsSubsriptionCount"
     Write-Host " Total Number of ResourceGroup unique Tag Names: $tagsResourceGroupCount"
@@ -22585,7 +23048,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
 #region BuildHTML
 #testhelper
-$fileTimestamp = (get-date -format $FileTimeStampFormat)
+#$fileTimestamp = (get-date -format $FileTimeStampFormat)
 
 $startBuildHTML = get-date
 Write-Host "Building HTML"
@@ -22703,7 +23166,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     
     #region assignmentRgRes
     $htPoliciesWithAssignmentOnRgRes = @{}
-    foreach ($policyAssignmentRgRes in ($htCacheAssignments).policyOnResourceGroupsAndResources.values | Sort-Object -Property id -Unique) {
+    foreach ($policyAssignmentRgRes in ($htCacheAssignmentsPolicyOnResourceGroupsAndResources).values | Sort-Object -Property id -Unique) {
         $hlperPolDefId = (($policyAssignmentRgRes.properties.policyDefinitionId).ToLower())
         if (-not $htPoliciesWithAssignmentOnRgRes.($hlperPolDefId)) {
             $pscustomObj = [System.Collections.ArrayList]@()
@@ -22733,9 +23196,9 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $tenantCustomRoles = $tenantAllRoles.where( { $_.IsCustom -eq $True } )
     $tenantCustomRolesCount = ($tenantCustomRoles).Count
 
-    $mgSubRoleAssignmentsArrayFromHTValues = ($htCacheAssignments).role.Values.Assignment
+    $mgSubRoleAssignmentsArrayFromHTValues = ($htCacheAssignmentsRole).Values.Assignment
     if ($DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
-        $rgResRoleAssignmentsArrayFromHTValues = ($htCacheAssignments).rbacOnResourceGroupsAndResources.Values
+        $rgResRoleAssignmentsArrayFromHTValues = ($htCacheAssignmentsRBACOnResourceGroupsAndResources).Values
     }
   
     #region diagnostics Mg/Sub
@@ -22834,6 +23297,15 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     }
     #endregion diagnostics Mg/Sub
 
+    #region DefenderPlans
+    $defenderPlansGroupedBySub = $arrayDefenderPlans | Sort-Object -Property subscriptionName | Group-Object -Property subscriptionName, subscriptionId, subscriptionMgPath
+    $subsDefenderPlansCount = ($defenderPlansGroupedBySub | Measure-Object).Count
+    $defenderCapabilities = ($arrayDefenderPlans.defenderPlan | Sort-Object -Unique)
+    $defenderCapabilitiesCount = $defenderCapabilities.Count
+    $defenderPlansGroupedByPlan = $arrayDefenderPlans | Group-Object -Property defenderPlan, defenderPlanTier
+    $defenderPlansGroupedByPlanCount = ($defenderPlansGroupedByPlan | Measure-Object).Count
+    #endregion DefenderPlans
+
     $endHelperQueries = get-date
     Write-Host " Pre Queries duration: $((NEW-TIMESPAN -Start $startHelperQueries -End $endHelperQueries).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startHelperQueries -End $endHelperQueries).TotalSeconds) seconds)"
     
@@ -22861,27 +23333,27 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         $totalPolicyAssignmentsCountRg = (($htCacheAssignmentsPolicy).Values.where( { $_.AssignmentScopeMgSubRg -eq "Rg" -or $_.AssignmentScopeMgSubRg -eq "Res" } )).count
     }
     else {
-        $totalPolicyAssignmentsCountRg = (($htCacheAssignments).policyOnResourceGroupsAndResources.values).count
+        $totalPolicyAssignmentsCountRg = (($htCacheAssignmentsPolicyOnResourceGroupsAndResources).values).count
         $totalPolicyAssignmentsCount = $totalPolicyAssignmentsCount + $totalPolicyAssignmentsCountRg
     }
 
-    $totalRoleAssignmentsCount = (($htCacheAssignments).role.keys).count
-    $totalRoleAssignmentsCountTen = (($htCacheAssignments).role.keys.where( { ($htCacheAssignments).role.($_).AssignmentScopeTenMgSubRgRes -eq "Tenant" } )).count
-    $totalRoleAssignmentsCountMG = (($htCacheAssignments).role.keys.where( { ($htCacheAssignments).role.($_).AssignmentScopeTenMgSubRgRes -eq "MG" } )).count
-    $totalRoleAssignmentsCountSub = (($htCacheAssignments).role.keys.where( { ($htCacheAssignments).role.($_).AssignmentScopeTenMgSubRgRes -eq "Sub" } )).count
+    $totalRoleAssignmentsCount = (($htCacheAssignmentsRole).keys).count
+    $totalRoleAssignmentsCountTen = (($htCacheAssignmentsRole).keys.where( { ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq "Tenant" } )).count
+    $totalRoleAssignmentsCountMG = (($htCacheAssignmentsRole).keys.where( { ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq "MG" } )).count
+    $totalRoleAssignmentsCountSub = (($htCacheAssignmentsRole).keys.where( { ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq "Sub" } )).count
     if (-not $DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
-        $totalRoleAssignmentsCountRG = (($htCacheAssignments).role.keys.where( { ($htCacheAssignments).role.($_).AssignmentScopeTenMgSubRgRes -eq "RG" } )).count
-        $totalRoleAssignmentsCountRes = (($htCacheAssignments).role.keys.where( { ($htCacheAssignments).role.($_).AssignmentScopeTenMgSubRgRes -eq "Res" } )).count
+        $totalRoleAssignmentsCountRG = (($htCacheAssignmentsRole).keys.where( { ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq "RG" } )).count
+        $totalRoleAssignmentsCountRes = (($htCacheAssignmentsRole).keys.where( { ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq "Res" } )).count
         $totalRoleAssignmentsResourceGroupsAndResourcesCount = $totalRoleAssignmentsCountRG + $totalRoleAssignmentsCountRes
     }
     else {
-        $totalRoleAssignmentsResourceGroupsAndResourcesCount = (($htCacheAssignments).rbacOnResourceGroupsAndResources.values).count
+        $totalRoleAssignmentsResourceGroupsAndResourcesCount = (($htCacheAssignmentsRBACOnResourceGroupsAndResources).values).count
         $totalRoleAssignmentsCount = $totalRoleAssignmentsCount + $totalRoleAssignmentsResourceGroupsAndResourcesCount 
     }
 
     $totalRoleDefinitionsCustomCount = ((($htCacheDefinitionsRole).keys.where( { ($htCacheDefinitionsRole).($_).IsCustom -eq $True } ))).count
     $totalBlueprintDefinitionsCount = ((($htCacheDefinitionsBlueprint).keys)).count
-    $totalBlueprintAssignmentsCount = (($htCacheAssignments).blueprint.keys).count
+    $totalBlueprintAssignmentsCount = (($htCacheAssignmentsBlueprint).keys).count
     $totalResourceTypesCount = ($resourceTypesDiagnosticsArray).Count
 
     Write-Host " Total Management Groups: $totalMgCount (depth $mgDepth)"
@@ -23265,7 +23737,7 @@ else {
 
     $policiesMgScoped = ($htCacheDefinitionsPolicy).values.where( { $_.ScopeMgSub -eq "Mg" })
     $policySetsMgScoped = ($htCacheDefinitionsPolicySet).values.where( { $_.ScopeMgSub -eq "Mg" })
-    $roleAssignmentsMg = (($htCacheAssignments).role.values.where( { $_.AssignmentScopeTenMgSubRgRes -eq "Mg" }))
+    $roleAssignmentsMg = (($htCacheAssignmentsRole).values.where( { $_.AssignmentScopeTenMgSubRgRes -eq "Mg" }))
 
     foreach ($parentMgId in $htManagementGroupsMgPath.($ManagementGroupId).ParentNameChain) {
         if ($parentMgId -eq $defaultManagementGroupId) {
@@ -23702,7 +24174,7 @@ if (-not $NoJsonExport) {
         }
     }
 
-    $grpScopeRoleAssignments = ($htCacheAssignments).role.values | Group-Object -Property AssignmentScopeTenMgSubRgRes
+    $grpScopeRoleAssignments = ($htCacheAssignmentsRole).values | Group-Object -Property AssignmentScopeTenMgSubRgRes
     $grpTenantScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq "Tenant" }).Group | Group-Object -Property AssignmentScopeId
     $grpMgScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq "Mg" }).Group | sort-object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId
     $grpSubScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq "Sub" }).Group | sort-object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId
@@ -23756,7 +24228,7 @@ if (-not $NoJsonExport) {
         
     }
 
-    $bluePrintsAssignmentsAtScope = ($htCacheAssignments).blueprint.keys | Sort-Object
+    $bluePrintsAssignmentsAtScope = ($htCacheAssignmentsBlueprint).keys | Sort-Object
     $bluePrintDefinitions = ($htCacheDefinitionsBlueprint).Keys | Sort-Object
     $subscriptions = ($optimizedTableForPathQuery.Where( { -not [string]::IsNullOrEmpty($_.subscriptionId) })) | Select-Object mgId, Subscription* | Sort-Object -Property subscriptionId -Unique
     foreach ($mg in $MgIds) {
@@ -24490,7 +24962,7 @@ if (-not $StatsOptOut) {
                 "statsParametersDoNotShowRoleAssignmentsUserData": "$($htParameters.DoNotShowRoleAssignmentsUserData)",
                 "statsParametersHierarchyMapOnly": "$($htParameters.HierarchyMapOnly)",
                 "statsParametersLargeTenant": "$($htParameters.LargeTenant)",
-                "statsParametersNoASCSecureScore": "$($htParameters.NoASCSecureScore)",
+                "statsParametersNoASCSecureScore": "$($htParameters.NoMDfCSecureScore)",
                 "statsParametersNoAzureConsumption": "$($htParameters.NoAzureConsumption)",
                 "statsParametersNoJsonExport": "$($htParameters.NoJsonExport)",
                 "statsParametersNoScopeInsights": "$($NoScopeInsights)",

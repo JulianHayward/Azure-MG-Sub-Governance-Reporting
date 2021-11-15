@@ -99,8 +99,8 @@ Grant API permissions for the Service Principal´s Application
         * __Group / Group.Read.All__
         * __User / User.Read.All__
     * Click on 'Add a permissions'
-    * Back in the main '__API permissions__' menu you will find the 4 permissions with status 'Not granted for...'. Click on '__Grant admin consent for _TenantName___' and confirm by click on '__Yes__'
-    * Now you will find the 4 permissions with status '__Granted for _TenantName___'
+    * Back in the main '__API permissions__' menu you will find 3 permissions with status 'Not granted for...'. Click on '__Grant admin consent for _TenantName___' and confirm by click on '__Yes__'
+    * Now you will find the 3 permissions with status '__Granted for _TenantName___'
 
 Permissions in Azure Active Directory for App registration:  
 ![alt text](img/aadpermissionsportal.jpg "Permissions in Azure Active Directory")
@@ -313,7 +313,7 @@ When the AzDO pipeline executes the AzGovViz script the outputs should be pushed
 * Select the AzGovViz repository
 * Click on '__Existing Azure Pipelines YAML file__'
 * Under '__Path__' select '__/pipeline/AzGovViz.yml__' (the YAML file we edited earlier)
-* Click ' __Continue__'
+* Click ' __Save__'
 
 ## Run the AzDO Pipeline
 

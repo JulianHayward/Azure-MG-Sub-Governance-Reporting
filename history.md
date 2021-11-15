@@ -4,6 +4,16 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2021-Nov-14 / Major)
+
+* Add Microsoft Defender for Cloud (MDfC) Defender Plans reporting (__TenantSummary__ -> Subscriptions, Resources & Defender; __ScopeInsights__ -> Defender Plans)
+* Adopt to new naming Azure Security Center (ASC) / Microsoft Defender for Cloud (MDfC). Renamed parameter `-NoASCSecureScore` to `-NoMDfCSecureScore` (old parameter will still work)
+* Update policyAssignment API version '2020-09-01' to '2021-06-01'
+* Update *_RoleAssignments.csv output (add column for scope ResourceGroup name; add column for scope Resource name)
+* Fix __ScopeInsights__ Tags usage 
+* AzAPICall update error handing resource diagnostic settings
+* Script optimization
+
 __Changes__ (2021-Nov-01 / Major)
 
 * New output - Feature request to create __Scope Insights__ output per Subscription has been implement. With this new feature you can share Subscription __Scope Insights__ with Subscription responsible staff. Use parameter `-NoSingleSubscriptionOutput` to disable the feature
