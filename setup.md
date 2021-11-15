@@ -279,8 +279,8 @@ Grant API permissions for the Service Principal´s Application that we created e
         * __Group / Group.Read.All__
         * __User / User.Read.All__
     * Click on 'Add a permissions'
-    * Back in the main '__API permissions__' menu you will find the 4 permissions with status 'Not granted for...'. Click on '__Grant admin consent for _TenantName___' and confirm by click on '__Yes__'
-    * Now you will find the 4 permissions with status '__Granted for _TenantName___'
+    * Back in the main '__API permissions__' menu you will find the 3 permissions with status 'Not granted for...'. Click on '__Grant admin consent for _TenantName___' and confirm by click on '__Yes__'
+    * Now you will find the 3 permissions with status '__Granted for _TenantName___'
 
 Permissions in Azure Active Directory for App registration:  
 ![alt text](img/aadpermissionsportal.jpg "Permissions in Azure Active Directory")
