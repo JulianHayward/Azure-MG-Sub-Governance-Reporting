@@ -193,7 +193,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
   * Management Group count, level/depth, MG children, Sub children
   * Hierarchy Settings | Default Management Group Id
   * Hierarchy Settings | Require authorization for Management Group creation
-* __Subscriptions, Resources__
+* __Subscriptions, Resources & Defender__
   * Subscription insights
     * QuotaId, State, Tags, Microsoft Defender for Cloud Secure Score, Cost, Management Group path
   * Tag Name usage
@@ -206,6 +206,9 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
         * Explicit Resource Provider state per Subscription
       * Resource Locks
         * Aggregated insights for Lock and respective Lock-type usage on Subscriptions, ResourceGroups and Resources
+  * Microsoft Defender for Cloud
+    * Summary of Microsoft Defender for Cloud coverage by plan (count of Subscription per plan/tier)
+    * Summary of Microsoft Defender for Cloud plans coverage by Subscription (plan/tier)
 * __Diagnostics__
   * Management Groups Diagnostic settings report
     * Management Group, Diagnostic setting name, target type (LA, SA, EH), target Id, Log Category status
