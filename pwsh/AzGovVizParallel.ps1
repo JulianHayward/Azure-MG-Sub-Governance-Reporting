@@ -263,7 +263,7 @@
 Param
 (
     [string]$Product = "AzGovViz",
-    [string]$ProductVersion = "v6_major_20211114_3",
+    [string]$ProductVersion = "v6_major_20211116_2",
     [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
@@ -1450,13 +1450,13 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                 $azAPIRequestConvertedFromJson = ($azAPIRequest.Content | ConvertFrom-Json)
                 if ($listenOn -eq "Content") {        
                     if ($htParameters.DebugAzAPICall -eq $true -or $tryCounter -gt 3) { 
-                        if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=content ($((($azAPIRequestConvertedFromJson) | Measure-Object).count))" -ForegroundColor $debugForeGroundColor }
-                        if ($htParameters.DebugAzAPICall -eq $false -and $tryCounter -gt 3) { Write-Host "   Forced DEBUG: listenOn=content ($((($azAPIRequestConvertedFromJson) | Measure-Object).count))" }
+                        if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=content ($((($azAPIRequestConvertedFromJson)).count))" -ForegroundColor $debugForeGroundColor }
+                        if ($htParameters.DebugAzAPICall -eq $false -and $tryCounter -gt 3) { Write-Host "   Forced DEBUG: listenOn=content ($((($azAPIRequestConvertedFromJson)).count))" }
                     }    
                     $null = $apiCallResultsCollection.Add($azAPIRequestConvertedFromJson)
                 }
                 elseif ($listenOn -eq "ContentProperties") {
-                    if (($azAPIRequestConvertedFromJson.properties.rows | Measure-Object).Count -gt 0) {
+                    if (($azAPIRequestConvertedFromJson.properties.rows).Count -gt 0) {
                         foreach ($consumptionline in $azAPIRequestConvertedFromJson.properties.rows) {
                             $hlper = $htSubscriptionsMgPath.($consumptionline[1])
                             $null = $apiCallResultsCollection.Add([PSCustomObject]@{ 
@@ -1476,8 +1476,8 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                 else {       
                     if (($azAPIRequestConvertedFromJson).value) {
                         if ($htParameters.DebugAzAPICall -eq $true -or $tryCounter -gt 3) { 
-                            if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=default(value) value exists ($((($azAPIRequestConvertedFromJson).value | Measure-Object).count))" -ForegroundColor $debugForeGroundColor }
-                            if ($htParameters.DebugAzAPICall -eq $false -and $tryCounter -gt 3) { Write-Host "   Forced DEBUG: listenOn=default(value) value exists ($((($azAPIRequestConvertedFromJson).value | Measure-Object).count))" }
+                            if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=default(value) value exists ($((($azAPIRequestConvertedFromJson).value).count))" -ForegroundColor $debugForeGroundColor }
+                            if ($htParameters.DebugAzAPICall -eq $false -and $tryCounter -gt 3) { Write-Host "   Forced DEBUG: listenOn=default(value) value exists ($((($azAPIRequestConvertedFromJson).value).count))" }
                         }  
                         foreach ($entry in $azAPIRequestConvertedFromJson.value) {
                             $null = $apiCallResultsCollection.Add($entry)
@@ -1766,7 +1766,7 @@ function AddIndexNumberToArray (
     [Parameter(Mandatory = $True)]
     [array]$array
 ) {
-    for ($i = 0; $i -lt ($array | measure-object).count; $i++) { 
+    for ($i = 0; $i -lt ($array).count; $i++) { 
         Add-Member -InputObject $array[$i] -Name "#" -Value ($i + 1) -MemberType NoteProperty 
     }
     $array
@@ -1974,7 +1974,7 @@ function dataCollection($mgId) {
     $startMgLoop = get-date
     
     $allManagementGroupsFromEntitiesChildOfRequestedMg = $arrayEntitiesFromAPI.where( { $_.type -eq "Microsoft.Management/managementGroups" -and ($_.Name -eq $mgId -or $_.properties.parentNameChain -contains $mgId) })
-    $allManagementGroupsFromEntitiesChildOfRequestedMgCount = ($allManagementGroupsFromEntitiesChildOfRequestedMg | Measure-Object).Count
+    $allManagementGroupsFromEntitiesChildOfRequestedMgCount = ($allManagementGroupsFromEntitiesChildOfRequestedMg).Count
 
     $allManagementGroupsFromEntitiesChildOfRequestedMg | ForEach-Object -Parallel {
         $mgdetail = $_
@@ -2040,8 +2040,7 @@ function dataCollection($mgId) {
 
         $addRowToTableDone = $false
 
-        #$MgParentId = ($allManagementGroupsFromEntitiesChildOfRequestedMg.where( { $_.Name -eq $mgdetail.Name })).properties.parent.Id -replace ".*/"
-        $MgParentId = ($allManagementGroupsFromEntitiesChildOfRequestedMg | Where-Object { $_.Name -eq $mgdetail.Name } ).properties.parent.Id -replace ".*/"
+        $MgParentId = ($allManagementGroupsFromEntitiesChildOfRequestedMg.where( { $_.Name -eq $mgdetail.Name } )).properties.parent.Id -replace ".*/"
         if ([string]::IsNullOrEmpty($MgParentId)) {
             $MgParentId = "TenantRoot"
             $MgParentName = "TenantRoot"
@@ -2049,8 +2048,7 @@ function dataCollection($mgId) {
         else {
             $MgParentName = $htManagementGroupsMgPath.($MgParentId).DisplayName
         }
-        #$hierarchyLevel = (($allManagementGroupsFromEntitiesChildOfRequestedMg.where( { $_.Name -eq $mgdetail.Name })).properties.parentNameChain | Measure-Object).Count
-        $hierarchyLevel = (($allManagementGroupsFromEntitiesChildOfRequestedMg | Where-Object { $_.Name -eq $mgdetail.Name }).properties.parentNameChain | Measure-Object).Count
+        $hierarchyLevel = (($allManagementGroupsFromEntitiesChildOfRequestedMg.where( { $_.Name -eq $mgdetail.Name } )).properties.parentNameChain).Count
 
         $rndom = Get-Random -Minimum 10 -Maximum 750
         start-sleep -Millisecond $rndom
@@ -2222,7 +2220,7 @@ function dataCollection($mgId) {
             $mgBlueprintDefinitionResult = ""
             $mgBlueprintDefinitionResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"
     
-            if (($mgBlueprintDefinitionResult | measure-object).count -gt 0) {
+            if (($mgBlueprintDefinitionResult).count -gt 0) {
                 foreach ($blueprint in $mgBlueprintDefinitionResult) {
     
                     if (-not ($htCacheDefinitionsBlueprint).($blueprint.Id)) {
@@ -2271,8 +2269,8 @@ function dataCollection($mgId) {
             $method = "GET"
             $requestPolicyDefinitionAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"
 
-            $mgPolicyDefinitions = $requestPolicyDefinitionAPI | Where-Object { $_.properties.policyType -eq "custom" } #.where( { $_.properties.policyType -eq "custom" } )
-            $PolicyDefinitionsScopedCount = (($mgPolicyDefinitions | Where-Object { ($_.id) -like "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/*" })).count
+            $mgPolicyDefinitions = $requestPolicyDefinitionAPI.where( { $_.properties.policyType -eq "custom" } )
+            $PolicyDefinitionsScopedCount = (($mgPolicyDefinitions.where( { ($_.id) -like "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/*" } ))).count
             #Write-Host "   $($mgdetail.Name) Policy Custom:$($mgPolicyDefinitions.Count) CustomAtScope:$($PolicyDefinitionsScopedCount)"
             foreach ($mgPolicyDefinition in $mgPolicyDefinitions) {
                 $hlpMgPolicyDefinitionId = ($mgPolicyDefinition.id).ToLower()
@@ -2409,8 +2407,8 @@ function dataCollection($mgId) {
             $method = "GET"
             $requestPolicySetDefinitionAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"
 
-            $mgPolicySetDefinitions = $requestPolicySetDefinitionAPI | Where-Object { $_.properties.policyType -eq "custom" } #.where( { $_.properties.policyType -eq "custom" } )
-            $PolicySetDefinitionsScopedCount = (($mgPolicySetDefinitions | Where-Object { ($_.Id) -like "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/*" }) | measure-object).count
+            $mgPolicySetDefinitions = $requestPolicySetDefinitionAPI.where( { $_.properties.policyType -eq "custom" } )
+            $PolicySetDefinitionsScopedCount = (($mgPolicySetDefinitions.where( { ($_.Id) -like "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/*" } ))).count
             #Write-Host "   $($mgdetail.Name) PolicySet Custom:$($mgPolicySetDefinitions.Count) CustomAtScope:$($PolicySetDefinitionsScopedCount)"
             foreach ($mgPolicySetDefinition in $mgPolicySetDefinitions) {
                 $hlpmgPolicySetDefinitionId = ($mgPolicySetDefinition.Id).ToLower()
@@ -2501,10 +2499,10 @@ function dataCollection($mgId) {
             $method = "GET"
             $L0mgmtGroupPolicyAssignments = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"
 
-            $L0mgmtGroupPolicyAssignmentsPolicyCount = (($L0mgmtGroupPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" }) | measure-object).count
-            $L0mgmtGroupPolicyAssignmentsPolicySetCount = (($L0mgmtGroupPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" }) | measure-object).count
-            $L0mgmtGroupPolicyAssignmentsPolicyAtScopeCount = (($L0mgmtGroupPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.Id -match "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" }) | measure-object).count
-            $L0mgmtGroupPolicyAssignmentsPolicySetAtScopeCount = (($L0mgmtGroupPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.Id -match "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" }) | measure-object).count
+            $L0mgmtGroupPolicyAssignmentsPolicyCount = (($L0mgmtGroupPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" } ))).count
+            $L0mgmtGroupPolicyAssignmentsPolicySetCount = (($L0mgmtGroupPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" } ))).count
+            $L0mgmtGroupPolicyAssignmentsPolicyAtScopeCount = (($L0mgmtGroupPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.Id -match "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" } ))).count
+            $L0mgmtGroupPolicyAssignmentsPolicySetAtScopeCount = (($L0mgmtGroupPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.Id -match "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" } ))).count
             $L0mgmtGroupPolicyAssignmentsPolicyAndPolicySetAtScopeCount = ($L0mgmtGroupPolicyAssignmentsPolicyAtScopeCount + $L0mgmtGroupPolicyAssignmentsPolicySetAtScopeCount)
             
             if (-not $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.PolicyAssignments.($mgdetail.Name)) {
@@ -2790,8 +2788,8 @@ function dataCollection($mgId) {
                             }
                         }
 
-                        if (($L0mgmtGroupPolicyAssignment.Properties.nonComplianceMessages | Where-Object { -not $_.policyDefinitionReferenceId }).Message) {
-                            $nonComplianceMessage = ($L0mgmtGroupPolicyAssignment.Properties.nonComplianceMessages | Where-Object { -not $_.policyDefinitionReferenceId }).Message
+                        if (($L0mgmtGroupPolicyAssignment.Properties.nonComplianceMessages.where( { -not $_.policyDefinitionReferenceId } )).Message) {
+                            $nonComplianceMessage = ($L0mgmtGroupPolicyAssignment.Properties.nonComplianceMessages.where( { -not $_.policyDefinitionReferenceId } )).Message
                         }
                         else {
                             $nonComplianceMessage = ""
@@ -2936,19 +2934,19 @@ function dataCollection($mgId) {
 
             $L0mgmtGroupRoleAssignments = $roleAssignmentsFromAPI
 
-            $L0mgmtGroupRoleAssignmentsLimitUtilization = (($L0mgmtGroupRoleAssignments.properties | Where-Object { $_.scope -eq "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" }) | measure-object).count
+            $L0mgmtGroupRoleAssignmentsLimitUtilization = (($L0mgmtGroupRoleAssignments.properties.where( { $_.scope -eq "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" } ))).count
             if (-not $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.RoleAssignments.($mgdetail.Name)) {
                 $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.RoleAssignments.($mgdetail.Name) = @{}
                 $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.RoleAssignments.($mgdetail.Name).AssignmentsCount = $L0mgmtGroupRoleAssignmentsLimitUtilization
             }
             
             if ($htParameters.LargeTenant -eq $true -or $htParameters.RBACAtScopeOnly -eq $true) {
-                $L0mgmtGroupRoleAssignments = $L0mgmtGroupRoleAssignments | Where-Object { $_.properties.scope -eq "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" }
+                $L0mgmtGroupRoleAssignments = $L0mgmtGroupRoleAssignments.where( { $_.properties.scope -eq "/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)" } )
             }
             else {
                 #tenantLevelRoleAssignments
                 if (-not $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.RoleAssignments."tenantLevelRoleAssignments") {
-                    $tenantLevelRoleAssignmentsCount = (($L0mgmtGroupRoleAssignments | Where-Object { $_.id -like "/providers/Microsoft.Authorization/roleAssignments/*" }) | measure-object).count
+                    $tenantLevelRoleAssignmentsCount = (($L0mgmtGroupRoleAssignments.where( { $_.id -like "/providers/Microsoft.Authorization/roleAssignments/*" } ))).count
                     $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.RoleAssignments."tenantLevelRoleAssignments" = @{}
                     $htMgAtScopePolicyAssignmentsAndPoliciesScopedAndRoleAssignments.RoleAssignments."tenantLevelRoleAssignments".AssignmentsCount = $tenantLevelRoleAssignmentsCount
                 }
@@ -3162,8 +3160,8 @@ function dataCollection($mgId) {
     Write-Host " CustomDataCollection ManagementGroups processing duration: $((NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalSeconds) seconds)"
 
     #test
-    if ($builtInPolicyDefinitionsCount -ne ($($htCacheDefinitionsPolicy).Values.where({ $_.Type -eq "BuiltIn" }).Count) -or $builtInPolicyDefinitionsCount -ne ((($htCacheDefinitionsPolicy).Values | Where-Object { $_.Type -eq "BuiltIn" }).Count)) {
-        Write-Host "$builtInPolicyDefinitionsCount -ne $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq "BuiltIn"}).Count) OR $builtInPolicyDefinitionsCount -ne $((($htCacheDefinitionsPolicy).Values | Where-Object {$_.Type -eq "BuiltIn"}).Count)"
+    if ($builtInPolicyDefinitionsCount -ne ($($htCacheDefinitionsPolicy).Values.where({ $_.Type -eq "BuiltIn" }).Count) -or $builtInPolicyDefinitionsCount -ne ((($htCacheDefinitionsPolicy).Values.where( { $_.Type -eq "BuiltIn" } )).Count)) {
+        Write-Host "$builtInPolicyDefinitionsCount -ne $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq "BuiltIn"}).Count) OR $builtInPolicyDefinitionsCount -ne $((($htCacheDefinitionsPolicy).Values.where( {$_.Type -eq "BuiltIn"} )).Count)"
         Write-Host "Listing all PolicyDefinitions:"
         foreach ($tmpPolicyDefinitionId in ($($htCacheDefinitionsPolicy).Keys | Sort-Object)) {
             Write-Host $tmpPolicyDefinitionId
@@ -3172,8 +3170,8 @@ function dataCollection($mgId) {
     #SUBSCRIPTION
 
     Write-Host " CustomDataCollection Subscriptions"
-    $subsExcludedStateCount = ($outOfScopeSubscriptions | where-object { $_.outOfScopeReason -like "State*" } | Measure-Object).Count
-    $subsExcludedWhitelistCount = ($outOfScopeSubscriptions | where-object { $_.outOfScopeReason -like "QuotaId*" } | Measure-Object).Count
+    $subsExcludedStateCount = ($outOfScopeSubscriptions.where( { $_.outOfScopeReason -like "State*" } )).Count
+    $subsExcludedWhitelistCount = ($outOfScopeSubscriptions.where( { $_.outOfScopeReason -like "QuotaId*" } )).Count
     if ($subsExcludedStateCount -gt 0) {
         Write-Host "  CustomDataCollection $($subsExcludedStateCount) Subscriptions excluded (State != enabled)"
     }
@@ -3482,7 +3480,7 @@ function dataCollection($mgId) {
                         #resourceTags
                         $script:htSubscriptionTagList.($childMgSubId) = @{}
                         $script:htSubscriptionTagList.($childMgSubId).Resource = @{}
-                        ForEach ($tags in ($resourcesSubscriptionResult | Where-Object { $_.Tags -and -not [String]::IsNullOrWhiteSpace($_.Tags) }).Tags) {
+                        ForEach ($tags in ($resourcesSubscriptionResult.where( { $_.Tags -and -not [String]::IsNullOrWhiteSpace($_.Tags) } )).Tags) {
                             ForEach ($tagName in $tags.PSObject.Properties.Name) {
                                 #resource
                                 If ($htSubscriptionTagList.($childMgSubId).Resource.ContainsKey($tagName)) {
@@ -3528,7 +3526,7 @@ function dataCollection($mgId) {
                     }
                     
                     $script:htSubscriptionTagList.($childMgSubId).ResourceGroup = @{}
-                    ForEach ($tags in ($resourceGroupsSubscriptionResult | Where-Object { $_.Tags -and -not [String]::IsNullOrWhiteSpace($_.Tags) }).Tags) {
+                    ForEach ($tags in ($resourceGroupsSubscriptionResult.where( { $_.Tags -and -not [String]::IsNullOrWhiteSpace($_.Tags) } )).Tags) {
                         ForEach ($tagName in $tags.PSObject.Properties.Name) {
                                 
                             #resource
@@ -3898,8 +3896,8 @@ function dataCollection($mgId) {
                     $method = "GET"
                     $requestPolicyDefinitionAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"
 
-                    $subPolicyDefinitions = $requestPolicyDefinitionAPI | Where-Object { $_.properties.policyType -eq "custom" } #.where( { $_.properties.policyType -eq "custom" } )
-                    $PolicyDefinitionsScopedCount = (($subPolicyDefinitions | Where-Object { ($_.Id) -like "/subscriptions/$($childMgSubId)/*" })).count
+                    $subPolicyDefinitions = $requestPolicyDefinitionAPI.where( { $_.properties.policyType -eq "custom" } )
+                    $PolicyDefinitionsScopedCount = (($subPolicyDefinitions.where( { ($_.Id) -like "/subscriptions/$($childMgSubId)/*" } ))).count
                     foreach ($subPolicyDefinition in $subPolicyDefinitions) {
 
                         $hlpSubPolicyDefinitionId = ($subPolicyDefinition.Id).ToLower()
@@ -4025,8 +4023,8 @@ function dataCollection($mgId) {
                     $method = "GET"  
                     $requestPolicySetDefinitionAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"
 
-                    $subPolicySetDefinitions = $requestPolicySetDefinitionAPI | Where-Object { $_.properties.policyType -eq "custom" } #.where( { $_.properties.policyType -eq "custom" } )
-                    $PolicySetDefinitionsScopedCount = (($subPolicySetDefinitions | Where-Object { ($_.Id) -like "/subscriptions/$childMgSubId/*" }) | measure-object).count
+                    $subPolicySetDefinitions = $requestPolicySetDefinitionAPI.where( { $_.properties.policyType -eq "custom" } )
+                    $PolicySetDefinitionsScopedCount = ($subPolicySetDefinitions.where( { ($_.Id) -like "/subscriptions/$childMgSubId/*" } )).count
                     foreach ($subPolicySetDefinition in $subPolicySetDefinitions) {
                         if (-not $($htCacheDefinitionsPolicySet).(($subPolicySetDefinition.Id).ToLower())) {
                             if (($subPolicySetDefinition.Properties.description).length -eq 0) {
@@ -4105,25 +4103,25 @@ function dataCollection($mgId) {
                     if ($htParameters.DoNotIncludeResourceGroupsOnPolicy -eq $false) {
                         $L1mgmtGroupSubPolicyAssignments = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"
 
-                        $L1mgmtGroupSubPolicyAssignmentsPolicyCount = (($L1mgmtGroupSubPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" }) | measure-object).count
-                        $L1mgmtGroupSubPolicyAssignmentsPolicySetCount = (($L1mgmtGroupSubPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" }) | measure-object).count
-                        $L1mgmtGroupSubPolicyAssignmentsPolicyAtScopeCount = (($L1mgmtGroupSubPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.Id -match "/subscriptions/$($childMgSubId)" }) | measure-object).count
-                        $L1mgmtGroupSubPolicyAssignmentsPolicySetAtScopeCount = (($L1mgmtGroupSubPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.Id -match "/subscriptions/$($childMgSubId)" }) | measure-object).count
+                        $L1mgmtGroupSubPolicyAssignmentsPolicyCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" } )).count
+                        $L1mgmtGroupSubPolicyAssignmentsPolicySetCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" } )).count
+                        $L1mgmtGroupSubPolicyAssignmentsPolicyAtScopeCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.Id -match "/subscriptions/$($childMgSubId)" } )).count
+                        $L1mgmtGroupSubPolicyAssignmentsPolicySetAtScopeCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.Id -match "/subscriptions/$($childMgSubId)" } )).count
                         
                         $L1mgmtGroupSubPolicyAssignmentsQuery = $L1mgmtGroupSubPolicyAssignments
                     }
                     else {
                         $L1mgmtGroupSubPolicyAssignments = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"
 
-                        $L1mgmtGroupSubPolicyAssignmentsPolicyCount = (($L1mgmtGroupSubPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.Id -notmatch "/subscriptions/$($childMgSubId)/resourceGroups" }) | measure-object).count
-                        $L1mgmtGroupSubPolicyAssignmentsPolicySetCount = (($L1mgmtGroupSubPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.Id -notmatch "/subscriptions/$($childMgSubId)/resourceGroups" }) | measure-object).count
-                        $L1mgmtGroupSubPolicyAssignmentsPolicyAtScopeCount = (($L1mgmtGroupSubPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.Id -match "/subscriptions/$($childMgSubId)" -and $_.Id -notmatch "/subscriptions/$($childMgSubId)/resourceGroups" }) | measure-object).count
-                        $L1mgmtGroupSubPolicyAssignmentsPolicySetAtScopeCount = (($L1mgmtGroupSubPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.Id -match "/subscriptions/$($childMgSubId)" -and $_.Id -notmatch "/subscriptions/$($childMgSubId)/resourceGroups" }) | measure-object).count
+                        $L1mgmtGroupSubPolicyAssignmentsPolicyCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.Id -notmatch "/subscriptions/$($childMgSubId)/resourceGroups" } )).count
+                        $L1mgmtGroupSubPolicyAssignmentsPolicySetCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.Id -notmatch "/subscriptions/$($childMgSubId)/resourceGroups" } )).count
+                        $L1mgmtGroupSubPolicyAssignmentsPolicyAtScopeCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.Id -match "/subscriptions/$($childMgSubId)" -and $_.Id -notmatch "/subscriptions/$($childMgSubId)/resourceGroups" } )).count
+                        $L1mgmtGroupSubPolicyAssignmentsPolicySetAtScopeCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.Id -match "/subscriptions/$($childMgSubId)" -and $_.Id -notmatch "/subscriptions/$($childMgSubId)/resourceGroups" } )).count
                     
-                        foreach ($L1mgmtGroupSubPolicyAssignment in $L1mgmtGroupSubPolicyAssignments | Where-Object { $_.Id -match "/subscriptions/$($childMgSubId)/resourceGroups" } ) {
+                        foreach ($L1mgmtGroupSubPolicyAssignment in $L1mgmtGroupSubPolicyAssignments.where( { $_.Id -match "/subscriptions/$($childMgSubId)/resourceGroups" } )) {
                             ($script:htCacheAssignmentsPolicyOnResourceGroupsAndResources).(($L1mgmtGroupSubPolicyAssignment.Id).ToLower()) = $L1mgmtGroupSubPolicyAssignment
                         }
-                        $L1mgmtGroupSubPolicyAssignmentsQuery = $L1mgmtGroupSubPolicyAssignments | Where-Object { $_.Id -notmatch "/subscriptions/$($childMgSubId)/resourceGroups" }
+                        $L1mgmtGroupSubPolicyAssignmentsQuery = $L1mgmtGroupSubPolicyAssignments.where( { $_.Id -notmatch "/subscriptions/$($childMgSubId)/resourceGroups" } )
                     }
 
                     $L1mgmtGroupSubPolicyAssignmentsPolicyAndPolicySetAtScopeCount = ($L1mgmtGroupSubPolicyAssignmentsPolicyAtScopeCount + $L1mgmtGroupSubPolicyAssignmentsPolicySetAtScopeCount)
@@ -4578,7 +4576,7 @@ function dataCollection($mgId) {
                     }
                     
                     if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC -eq $true) {
-                        $relevantRAs = $baseRoleAssignments | Where-Object { $_.id -notmatch "/subscriptions/$($childMgSubId)/resourcegroups/" }
+                        $relevantRAs = $baseRoleAssignments.where( { $_.id -notmatch "/subscriptions/$($childMgSubId)/resourcegroups/" } )
                     }
                     else {
                         $relevantRAs = $baseRoleAssignments
@@ -4600,7 +4598,7 @@ function dataCollection($mgId) {
                     $L1mgmtGroupSubRoleAssignments = $baseRoleAssignments
                     
                     if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC -eq $true) {
-                        foreach ($L1mgmtGroupSubRoleAssignmentOnRg in $L1mgmtGroupSubRoleAssignments | Where-Object { $_.id -match "/subscriptions/$($childMgSubId)/resourcegroups/" }) {
+                        foreach ($L1mgmtGroupSubRoleAssignmentOnRg in $L1mgmtGroupSubRoleAssignments.where( { $_.id -match "/subscriptions/$($childMgSubId)/resourcegroups/" } )) {
                             if (-not ($htCacheAssignmentsRBACOnResourceGroupsAndResources).($L1mgmtGroupSubRoleAssignmentOnRg.id)) {
                             
                                 $roleDefinitionId = $L1mgmtGroupSubRoleAssignmentOnRg.properties.roleDefinitionId
@@ -4636,7 +4634,7 @@ function dataCollection($mgId) {
                             $assignmentsScope = $L1mgmtGroupSubRoleAssignments
                         }
                         else {
-                            $assignmentsScope = $L1mgmtGroupSubRoleAssignments | Where-Object { $_.properties.Scope -eq "/subscriptions/$($childMgSubId)" }
+                            $assignmentsScope = $L1mgmtGroupSubRoleAssignments.where( { $_.properties.Scope -eq "/subscriptions/$($childMgSubId)" } )
                         }
                     }
                     else {
@@ -4644,7 +4642,7 @@ function dataCollection($mgId) {
                             $assignmentsScope = $L1mgmtGroupSubRoleAssignments
                         }
                         else {
-                            $assignmentsScope = $L1mgmtGroupSubRoleAssignments | Where-Object { $_.id -notmatch "/subscriptions/$($childMgSubId)/resourcegroups/" }
+                            $assignmentsScope = $L1mgmtGroupSubRoleAssignments.where( { $_.id -notmatch "/subscriptions/$($childMgSubId)/resourcegroups/" } )
                         }
                     }
 
@@ -4907,8 +4905,6 @@ function dataCollection($mgId) {
 
 #region hierarchyMgHTML
 function hierarchyMgHTML($mgChild) { 
-    #$mgChild = "emeA"
-    #$mgDetails = ($optimizedTableForPathQueryMg | Where-Object { $_.MgId -eq "$mgChild" }) | Get-Unique
     $mgDetails = $htMgDetails.($mgChild).details
     $mgName = $mgDetails.mgName
     $mgId = $mgDetails.MgId
@@ -5019,8 +5015,6 @@ function hierarchyMgHTML($mgChild) {
                             </div>
                         </a>
 "@
-    #$mgId = "emea"
-    #$childMgs = ($optimizedTableForPathQueryMg | Where-Object { $_.mgParentId -eq "$mgId" }).MgId | Sort-Object -Unique
     $childMgs = $htMgDetails.($mgId).mgChildren
     if (($childMgs).count -gt 0) {
         $script:html += @"
@@ -5046,8 +5040,6 @@ function hierarchyMgHTML($mgChild) {
 
 #region hierarchySubForMgHTML
 function hierarchySubForMgHTML($mgChild) {
-    #$mgChild = "emea"
-    #$subscriptions = ($optimizedTableForPathQueryMgAndSub | Where-Object { $_.MgId -eq $mgChild }).SubscriptionId | Get-Unique
     $subscriptions = $htMgDetails.($mgChild).Subscriptions.SubScriptionId
     $subscriptionsCnt = ($subscriptions).count
     $subscriptionsOutOfScopelinked = $outOfScopeSubscriptions.where( { $_.ManagementGroupId -eq $mgChild } )
@@ -5075,7 +5067,6 @@ function hierarchySubForMgHTML($mgChild) {
 
 #region hierarchySubForMgUlHTML
 function hierarchySubForMgUlHTML($mgChild) {
-    #$subscriptions = ($optimizedTableForPathQueryMgAndSub | Where-Object { $_.MgId -eq $mgChild }).SubscriptionId | Get-Unique
     $subscriptions = $htMgDetails.($mgChild).Subscriptions.SubScriptionId
     $subscriptionsCnt = ($subscriptions).count
     $subscriptionsOutOfScopelinked = $outOfScopeSubscriptions.where( { $_.ManagementGroupId -eq $mgChild } )
@@ -5103,7 +5094,6 @@ function hierarchySubForMgUlHTML($mgChild) {
 
 #region tableMgHTML
 function tableMgHTML($mgChild, $mgChildOf) {
-    #$mgDetails = ($optimizedTableForPathQueryMg | Where-Object { $_.MgId -eq "$mgChild" }) | Get-Unique
     $mgDetails = $htMgDetails.($mgChild).details
     $mgName = $mgDetails.mgName
     $mgLevel = $mgDetails.Level
@@ -5129,8 +5119,8 @@ function tableMgHTML($mgChild, $mgChildOf) {
 
         $mgPath = $htManagementGroupsMgPath.($mgChild).pathDelimited
 
-        $mgLinkedSubsCount = ((($optimizedTableForPathQuery | Where-Object { $_.MgId -eq $mgChild -and -not [String]::IsNullOrEmpty($_.SubscriptionId) }).SubscriptionId | Get-Unique) | measure-object).count
-        $subscriptionsOutOfScopelinkedCount = ($outOfScopeSubscriptions | Where-Object { $_.ManagementGroupId -eq $mgChild } | Measure-Object).count
+        $mgLinkedSubsCount = ((($optimizedTableForPathQuery.where( { $_.MgId -eq $mgChild -and -not [String]::IsNullOrEmpty($_.SubscriptionId) } )).SubscriptionId | Get-Unique)).count
+        $subscriptionsOutOfScopelinkedCount = ($outOfScopeSubscriptions.where( { $_.ManagementGroupId -eq $mgChild } )).count
         if ($mgLinkedSubsCount -gt 0 -and $subscriptionsOutOfScopelinkedCount -eq 0) {
             $subInfo = "<img class=`"imgSub`" src=`"https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg`">$mgLinkedSubsCount"
         }
@@ -5170,7 +5160,6 @@ function tableMgHTML($mgChild, $mgChildOf) {
     }
     tableMgSubDetailsHTML -mgOrSub "mg" -mgchild $mgId
     tableSubForMgHTML -mgChild $mgId
-    #$childMgs = ($optimizedTableForPathQueryMg | Where-Object { $_.mgParentId -eq "$mgId" }).MgId | sort-object -Unique
     $childMgs = $htMgDetails.($mgId).mgChildren
     if (($childMgs).count -gt 0) {
         foreach ($childMg in $childMgs) {
@@ -5182,7 +5171,6 @@ function tableMgHTML($mgChild, $mgChildOf) {
 
 #region tableSubForMgHTML
 function tableSubForMgHTML($mgChild) { 
-    #$subscriptions = ($optimizedTableForPathQueryMgAndSub | Where-Object { $_.MgId -eq $mgChild })
     $subscriptions = $htMgDetails.($mgChild).Subscriptions
     $subscriptionLinkedCount = ($subscriptions).count
     $subscriptionsOutOfScopelinked = $outOfScopeSubscriptions.where( { $_.ManagementGroupId -eq $mgChild } )
@@ -5281,9 +5269,9 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId, $subscriptio
     if ($mgOrSub -eq "mg") {
         #$startScopeInsightsPreQueryMg = get-date
         #BLUEPRINT
-        $blueprintReleatedQuery = $blueprintBaseQuery | Where-Object { $_.MgId -eq $mgChild -and [String]::IsNullOrEmpty($_.SubscriptionId) -and [String]::IsNullOrEmpty($_.BlueprintAssignmentId) }
+        $blueprintReleatedQuery = $blueprintBaseQuery.where( { $_.MgId -eq $mgChild -and [String]::IsNullOrEmpty($_.SubscriptionId) -and [String]::IsNullOrEmpty($_.BlueprintAssignmentId) } )
         $blueprintsScoped = $blueprintReleatedQuery
-        $blueprintsScopedCount = ($blueprintsScoped | measure-object).count
+        $blueprintsScopedCount = ($blueprintsScoped).count
         #Resources
         $mgAllChildSubscriptions = [System.Collections.ArrayList]@()
         $mgAllChildSubscriptions = foreach ($entry in $htSubscriptionsMgPath.keys) {
@@ -5294,7 +5282,7 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId, $subscriptio
         if ($htParameters.NoResources -eq $false) {
             $resourcesAllChildSubscriptions = [System.Collections.ArrayList]@()
             foreach ($mgAllChildSubscription in $mgAllChildSubscriptions) {
-                foreach ($resource in ($resourcesAllGroupedBySubcriptionId | where-object { $_.name -eq $mgAllChildSubscription }).group | Sort-Object -Property type, location) {
+                foreach ($resource in ($resourcesAllGroupedBySubcriptionId.where( { $_.name -eq $mgAllChildSubscription } )).group | Sort-Object -Property type, location) {
                     $null = $resourcesAllChildSubscriptions.Add($resource)
                 }
 
@@ -5323,10 +5311,10 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId, $subscriptio
             }
         }
     
-        $arrayPolicyAssignmentsEnrichedForThisManagementGroup = ($arrayPolicyAssignmentsEnrichedGroupedByManagementGroup | where-Object { $_.name -eq $mgChild }).group
+        $arrayPolicyAssignmentsEnrichedForThisManagementGroup = ($arrayPolicyAssignmentsEnrichedGroupedByManagementGroup.where( { $_.name -eq $mgChild } )).group
         $arrayPolicyAssignmentsEnrichedForThisManagementGroupGroupedByPolicyVariant = $arrayPolicyAssignmentsEnrichedForThisManagementGroup | Group-Object -Property PolicyVariant
-        $arrayPolicyAssignmentsEnrichedForThisManagementGroupVariantPolicy = ($arrayPolicyAssignmentsEnrichedForThisManagementGroupGroupedByPolicyVariant | where-Object { $_.name -eq "Policy" }).group
-        $arrayPolicyAssignmentsEnrichedForThisManagementGroupVariantPolicySet = ($arrayPolicyAssignmentsEnrichedForThisManagementGroupGroupedByPolicyVariant | where-Object { $_.name -eq "PolicySet" }).group
+        $arrayPolicyAssignmentsEnrichedForThisManagementGroupVariantPolicy = ($arrayPolicyAssignmentsEnrichedForThisManagementGroupGroupedByPolicyVariant.where( { $_.name -eq "Policy" } )).group
+        $arrayPolicyAssignmentsEnrichedForThisManagementGroupVariantPolicySet = ($arrayPolicyAssignmentsEnrichedForThisManagementGroupGroupedByPolicyVariant.where( { $_.name -eq "PolicySet" } )).group
         
         if ($htParameters.NoMDfCSecureScore -eq $false) {
             if ([string]::IsNullOrEmpty(($htMgASCSecureScore).($mgChild).SecureScore) -or [string]::IsNullOrWhiteSpace(($htMgASCSecureScore).($mgChild).SecureScore)) {
@@ -5348,19 +5336,17 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId, $subscriptio
     if ($mgOrSub -eq "sub") {
         #$startScopeInsightsPreQuerySub = get-date
         #BLUEPRINT
-        $blueprintReleatedQuery = $blueprintBaseQuery | Where-Object { $_.SubscriptionId -eq $subscriptionId -and -not [String]::IsNullOrEmpty($_.BlueprintName) }
-        $blueprintsAssigned = $blueprintReleatedQuery | Where-Object { -not [String]::IsNullOrEmpty($_.BlueprintAssignmentId) }
-        $blueprintsAssignedCount = ($blueprintsAssigned | measure-object).count
-        $blueprintsScoped = $blueprintReleatedQuery | Where-Object { $_.BlueprintScoped -eq "/subscriptions/$subscriptionId" -and [String]::IsNullOrEmpty($_.BlueprintAssignmentId) }
-        $blueprintsScopedCount = ($blueprintsScoped | measure-object).count
+        $blueprintReleatedQuery = $blueprintBaseQuery.where( { $_.SubscriptionId -eq $subscriptionId -and -not [String]::IsNullOrEmpty($_.BlueprintName) } )
+        $blueprintsAssigned = $blueprintReleatedQuery.where( { -not [String]::IsNullOrEmpty($_.BlueprintAssignmentId) } )
+        $blueprintsAssignedCount = ($blueprintsAssigned).count
+        $blueprintsScoped = $blueprintReleatedQuery.where( { $_.BlueprintScoped -eq "/subscriptions/$subscriptionId" -and [String]::IsNullOrEmpty($_.BlueprintAssignmentId) } )
+        $blueprintsScopedCount = ($blueprintsScoped).count
         #SubscriptionDetails
-        #$subscriptionId = "b2ac7057-8edf-4617-a1f7-5ed6b44ef2c8"
-        #$subscriptionDetailsReleatedQuery = $optimizedTableForPathQuerySub | Where-Object { $_.SubscriptionId -eq $subscriptionId }
         $subPath = $htSubscriptionsMgPath.($subscriptionId).pathDelimited
         $subscriptionDetailsReleatedQuery = $htSubDetails.($subscriptionId).details
         $subscriptionState = ($subscriptionDetailsReleatedQuery).SubscriptionState
         $subscriptionQuotaId = ($subscriptionDetailsReleatedQuery).SubscriptionQuotaId    
-        $subscriptionResourceGroupsCount = ($resourceGroupsAll | Where-Object { $_.subscriptionId -eq $subscriptionId }).count_
+        $subscriptionResourceGroupsCount = ($resourceGroupsAll.where( { $_.subscriptionId -eq $subscriptionId } )).count_
         if (-not $subscriptionResourceGroupsCount) {
             $subscriptionResourceGroupsCount = 0
         }
@@ -5369,7 +5355,7 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId, $subscriptio
         if ($htParameters.NoResources -eq $false) {
             #Resources
             $resourcesSubscription = [System.Collections.ArrayList]@()      
-            foreach ($resource in ($resourcesAllGroupedBySubcriptionId | where-object { $_.name -eq $subscriptionId }).group | Sort-Object -Property type, location) {
+            foreach ($resource in ($resourcesAllGroupedBySubcriptionId.where( { $_.name -eq $subscriptionId } )).group | Sort-Object -Property type, location) {
                 $null = $resourcesSubscription.Add($resource)
             }
         
@@ -5379,10 +5365,10 @@ function tableMgSubDetailsHTML($mgOrSub, $mgChild, $subscriptionId, $subscriptio
             $resourcesSubscriptionLocationCount = (($resourcesSubscription | sort-object -Property location -Unique)).count
         }
 
-        $arrayPolicyAssignmentsEnrichedForThisSubscription = ($arrayPolicyAssignmentsEnrichedGroupedBySubscription | where-Object { $_.name -eq $subscriptionId }).group
+        $arrayPolicyAssignmentsEnrichedForThisSubscription = ($arrayPolicyAssignmentsEnrichedGroupedBySubscription.where( { $_.name -eq $subscriptionId } )).group
         $arrayPolicyAssignmentsEnrichedForThisSubscriptionGroupedByPolicyVariant = $arrayPolicyAssignmentsEnrichedForThisSubscription | Group-Object -Property PolicyVariant
-        $arrayPolicyAssignmentsEnrichedForThisSubscriptionVariantPolicy = ($arrayPolicyAssignmentsEnrichedForThisSubscriptionGroupedByPolicyVariant | where-Object { $_.name -eq "Policy" }).group
-        $arrayPolicyAssignmentsEnrichedForThisSubscriptionVariantPolicySet = ($arrayPolicyAssignmentsEnrichedForThisSubscriptionGroupedByPolicyVariant | where-Object { $_.name -eq "PolicySet" }).group
+        $arrayPolicyAssignmentsEnrichedForThisSubscriptionVariantPolicy = ($arrayPolicyAssignmentsEnrichedForThisSubscriptionGroupedByPolicyVariant.where( { $_.name -eq "Policy" } )).group
+        $arrayPolicyAssignmentsEnrichedForThisSubscriptionVariantPolicySet = ($arrayPolicyAssignmentsEnrichedForThisSubscriptionGroupedByPolicyVariant.where( { $_.name -eq "PolicySet" } )).group
 
         $arrayDefenderPlansSubscription = $defenderPlansGroupedBySub.where( { $_.Name -like "*$($subscriptionId)*" } )
 
@@ -6724,8 +6710,8 @@ extensions: [{ name: 'sort' }]
             $resourceTypesSummarizedArray = [System.Collections.ArrayList]@()
             foreach ($resourceTypeUnique in $resourceTypesUnique) {
                 $resourcesTypeCountTotal = 0
-                ($resourcesAllChildSubscriptions | Where-Object { $_.type -eq $resourceTypeUnique }).count_ | ForEach-Object { $resourcesTypeCountTotal += $_ }
-                $dataFromResourceTypesDiagnosticsArray = $resourceTypesDiagnosticsArray | Where-Object { $_.ResourceType -eq $resourceTypeUnique }
+                ($resourcesAllChildSubscriptions.where( { $_.type -eq $resourceTypeUnique } )).count_ | ForEach-Object { $resourcesTypeCountTotal += $_ }
+                $dataFromResourceTypesDiagnosticsArray = $resourceTypesDiagnosticsArray.where( { $_.ResourceType -eq $resourceTypeUnique } )
                 if ($dataFromResourceTypesDiagnosticsArray.Metrics -eq $true -or $dataFromResourceTypesDiagnosticsArray.Logs -eq $true) {
                     $resourceDiagnosticscapable = $true
                 }
@@ -6741,9 +6727,9 @@ extensions: [{ name: 'sort' }]
                         LogCategories      = ($dataFromResourceTypesDiagnosticsArray.LogCategories -join "$CsvDelimiterOpposite ") 
                     })
             }
-            $subscriptionResourceTypesDiagnosticsCapableMetricsCount = ($resourceTypesSummarizedArray | Where-Object { $_.Metrics -eq $true } | Measure-Object).count
-            $subscriptionResourceTypesDiagnosticsCapableLogsCount = ($resourceTypesSummarizedArray | Where-Object { $_.Logs -eq $true } | Measure-Object).count
-            $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount = ($resourceTypesSummarizedArray | Where-Object { $_.Metrics -eq $true -or $_.Logs -eq $true } | Measure-Object).count
+            $subscriptionResourceTypesDiagnosticsCapableMetricsCount = ($resourceTypesSummarizedArray.where( { $_.Metrics -eq $true } )).count
+            $subscriptionResourceTypesDiagnosticsCapableLogsCount = ($resourceTypesSummarizedArray.where( { $_.Logs -eq $true } )).count
+            $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount = ($resourceTypesSummarizedArray.where( { $_.Metrics -eq $true -or $_.Logs -eq $true } )).count
     
             if ($resourcesAllChildSubscriptionResourceTypeCount -gt 0) {
                 $tfCount = $resourcesAllChildSubscriptionResourceTypeCount
@@ -6851,8 +6837,8 @@ extensions: [{ name: 'sort' }]
             $resourceTypesSummarizedArray = [System.Collections.ArrayList]@()
             foreach ($resourceTypeUnique in $resourceTypesUnique) {
                 $resourcesTypeCountTotal = 0
-                ($resourcesSubscription | Where-Object { $_.type -eq $resourceTypeUnique }).count_ | ForEach-Object { $resourcesTypeCountTotal += $_ }
-                $dataFromResourceTypesDiagnosticsArray = $resourceTypesDiagnosticsArray | Where-Object { $_.ResourceType -eq $resourceTypeUnique }
+                ($resourcesSubscription.where( { $_.type -eq $resourceTypeUnique } )).count_ | ForEach-Object { $resourcesTypeCountTotal += $_ }
+                $dataFromResourceTypesDiagnosticsArray = $resourceTypesDiagnosticsArray.where( { $_.ResourceType -eq $resourceTypeUnique } )
                 if ($dataFromResourceTypesDiagnosticsArray.Metrics -eq $true -or $dataFromResourceTypesDiagnosticsArray.Logs -eq $true) {
                     $resourceDiagnosticscapable = $true
                 }
@@ -6869,9 +6855,9 @@ extensions: [{ name: 'sort' }]
                     })
             }
 
-            $subscriptionResourceTypesDiagnosticsCapableMetricsCount = ($resourceTypesSummarizedArray | Where-Object { $_.Metrics -eq $true } | Measure-Object).count
-            $subscriptionResourceTypesDiagnosticsCapableLogsCount = ($resourceTypesSummarizedArray | Where-Object { $_.Logs -eq $true } | Measure-Object).count
-            $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount = ($resourceTypesSummarizedArray | Where-Object { $_.Metrics -eq $true -or $_.Logs -eq $true } | Measure-Object).count
+            $subscriptionResourceTypesDiagnosticsCapableMetricsCount = ($resourceTypesSummarizedArray.where( { $_.Metrics -eq $true } )).count
+            $subscriptionResourceTypesDiagnosticsCapableLogsCount = ($resourceTypesSummarizedArray.where( { $_.Logs -eq $true } )).count
+            $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount = ($resourceTypesSummarizedArray.where( { $_.Metrics -eq $true -or $_.Logs -eq $true } )).count
 
             if ($resourcesSubscriptionResourceTypeCount -gt 0) {
                 $tfCount = $resourcesSubscriptionResourceTypeCount
@@ -7488,10 +7474,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     }
     else {
         if ($mgOrSub -eq "mg") {
-            $scopePolicyAssignmentsLimit = $policyPolicyBaseQueryScopeInsights | Where-Object { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.MgId -eq $mgChild }
+            $scopePolicyAssignmentsLimit = $policyPolicyBaseQueryScopeInsights.where( { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.MgId -eq $mgChild } )
         }
         if ($mgOrSub -eq "sub") {
-            $scopePolicyAssignmentsLimit = $policyPolicyBaseQueryScopeInsights | Where-Object { $_.SubscriptionId -eq $subscriptionId }
+            $scopePolicyAssignmentsLimit = $policyPolicyBaseQueryScopeInsights.where( { $_.SubscriptionId -eq $subscriptionId } )
         }
 
         if ($scopePolicyAssignmentsLimit.PolicyAndPolicySetAssignmentAtScopeCount -gt (($limit) * $LimitCriticalPercentage / 100)) {
@@ -10387,7 +10373,7 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYPolicyExemptions
     Write-Host "  processing TenantSummary Policy exemptions"
-    $policyExemptionsCount = ($htPolicyAssignmentExemptions.Keys | Measure-Object).Count
+    $policyExemptionsCount = ($htPolicyAssignmentExemptions.Keys).Count
 
     if ($policyExemptionsCount -gt 0) {
         $tfCount = $policyExemptionsCount
@@ -14246,14 +14232,14 @@ extensions: [{ name: 'sort' }]
     if (($htResourceLocks.keys | Measure-Object).Count -gt 0) {
         $htmlTableId = "TenantSummary_ResourceLocks"        
         
-        $subscriptionLocksCannotDeleteCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).SubscriptionLocksCannotDeleteCount -gt 0 } | Measure-Object).Count
-        $subscriptionLocksReadOnlyCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).SubscriptionLocksReadOnlyCount -gt 0 } | Measure-Object).Count
+        $subscriptionLocksCannotDeleteCount = ($htResourceLocks.Keys.where( { $htResourceLocks.($_).SubscriptionLocksCannotDeleteCount -gt 0 } )).Count
+        $subscriptionLocksReadOnlyCount = ($htResourceLocks.Keys.where( { $htResourceLocks.($_).SubscriptionLocksReadOnlyCount -gt 0 } )).Count
 
-        $resourceGroupsLocksCannotDeleteCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).ResourceGroupsLocksCannotDeleteCount -gt 0 } | Measure-Object).Count
-        $resourceGroupsLocksReadOnlyCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).ResourceGroupsLocksReadOnlyCount -gt 0 } | Measure-Object).Count
+        $resourceGroupsLocksCannotDeleteCount = ($htResourceLocks.Keys.where( { $htResourceLocks.($_).ResourceGroupsLocksCannotDeleteCount -gt 0 } )).Count
+        $resourceGroupsLocksReadOnlyCount = ($htResourceLocks.Keys.where({ $htResourceLocks.($_).ResourceGroupsLocksReadOnlyCount -gt 0 } )).Count
 
-        $resourcesLocksCannotDeleteCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).ResourcesLocksCannotDeleteCount -gt 0 } | Measure-Object).Count
-        $resourcesLocksReadOnlyCount = ($htResourceLocks.Keys | Where-Object { $htResourceLocks.($_).ResourcesLocksReadOnlyCount -gt 0 } | Measure-Object).Count
+        $resourcesLocksCannotDeleteCount = ($htResourceLocks.Keys.where( { $htResourceLocks.($_).ResourcesLocksCannotDeleteCount -gt 0 } )).Count
+        $resourcesLocksReadOnlyCount = ($htResourceLocks.Keys.where( { $htResourceLocks.($_).ResourcesLocksReadOnlyCount -gt 0 } )).Count
         
         [void]$htmlTenantSummary.AppendLine(@"
 <button type="button" class="collapsible" id="buttonTenantSummary_ResourceLocks"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Locks</span></button>
@@ -16734,11 +16720,7 @@ tf.init();
 <tbody>
 "@)
         $htmlSUMMARYAADSPManagedIdentities = $null
-        $htmlSUMMARYAADSPManagedIdentities = foreach ($serviceprincipalMI in $servicePrincipalsOfTypeManagedIdentity | Sort-Object) {
-
-            #foreach ($serviceprincipalMI in $servicePrincipalsOfTypeManagedIdentity | where {$_ -eq "0f6c4bbd-f667-425f-aee9-63e4db4a4126"}) {
-            
-
+        $htmlSUMMARYAADSPManagedIdentities = foreach ($serviceprincipalMI in $servicePrincipalsOfTypeManagedIdentity | Sort-Object) {      
 
             $serviceprincipalMIDetailed = $htServicePrincipals.($serviceprincipalMI)
             $miRoleAssignments = "n/a"
@@ -16927,7 +16909,6 @@ tf.init();
                 }
                 $miRoleAssignments = "$(($arrayMiRoleAssignments | Measure-Object).Count) ($($arrayMiRoleAssignments -join ", "))"
             }
-            #}
                 
             @"
 <tr>
@@ -17011,16 +16992,16 @@ tf.init();
         $startAADSPCredExpiryLoop = get-date
         Write-Host "  processing TenantSummary AAD SP Apps CredExpiry"
     
-        $servicePrincipalsOfTypeApplicationCount = ($servicePrincipalsOfTypeApplication | Measure-Object).Count
+        $servicePrincipalsOfTypeApplicationCount = ($servicePrincipalsOfTypeApplication).Count
 
         if ($servicePrincipalsOfTypeApplicationCount -gt 0) {
             $tfCount = $servicePrincipalsOfTypeApplicationCount
             $htmlTableId = "TenantSummary_AADSPCredExpiry"
 
-            $servicePrincipalsOfTypeApplicationSecretsExpiring = $servicePrincipalsOfTypeApplication | Where-Object { $htAppDetails.($_).appPasswordCredentialsGracePeriodExpiryCount -gt 0 }
-            $servicePrincipalsOfTypeApplicationSecretsExpiringCount = ($servicePrincipalsOfTypeApplicationSecretsExpiring | Measure-Object).Count
-            $servicePrincipalsOfTypeApplicationCertificatesExpiring = $servicePrincipalsOfTypeApplication | Where-Object { $htAppDetails.($_).appKeyCredentialsGracePeriodExpiryCount -gt 0 }
-            $servicePrincipalsOfTypeApplicationCertificatesExpiringCount = ($servicePrincipalsOfTypeApplicationCertificatesExpiring | Measure-Object).Count
+            $servicePrincipalsOfTypeApplicationSecretsExpiring = $servicePrincipalsOfTypeApplication.where( { $htAppDetails.($_).appPasswordCredentialsGracePeriodExpiryCount -gt 0 } )
+            $servicePrincipalsOfTypeApplicationSecretsExpiringCount = ($servicePrincipalsOfTypeApplicationSecretsExpiring).Count
+            $servicePrincipalsOfTypeApplicationCertificatesExpiring = $servicePrincipalsOfTypeApplication.where( { $htAppDetails.($_).appKeyCredentialsGracePeriodExpiryCount -gt 0 } )
+            $servicePrincipalsOfTypeApplicationCertificatesExpiringCount = ($servicePrincipalsOfTypeApplicationCertificatesExpiring).Count
             if ($servicePrincipalsOfTypeApplicationSecretsExpiringCount -gt 0 -or $servicePrincipalsOfTypeApplicationCertificatesExpiringCount -gt 0) {
                 $warningOrNot = "<i class=`"padlx fa fa-exclamation-triangle yellow`" aria-hidden=`"true`"></i>"
             }
@@ -17201,8 +17182,8 @@ tf.init();
         }
     }
 
-    $appsWithOtherOrgId = $htServicePrincipals.Keys | Where-Object { $htServicePrincipals.($_).servicePrincipalType -eq "Application" -and $htServicePrincipals.($_).appOwnerOrganizationId -ne $checkContext.Tenant.Id }
-    $appsWithOtherOrgIdCount = ($appsWithOtherOrgId | Measure-Object).Count
+    $appsWithOtherOrgId = $htServicePrincipals.Keys.where( { $htServicePrincipals.($_).servicePrincipalType -eq "Application" -and $htServicePrincipals.($_).appOwnerOrganizationId -ne $checkContext.Tenant.Id } )
+    $appsWithOtherOrgIdCount = ($appsWithOtherOrgId).Count
 
     if ($appsWithOtherOrgIdCount -gt 0) {     
         $tfCount = $appsWithOtherOrgIdCount
@@ -21897,8 +21878,8 @@ else {
     Write-Host " Creating HierarchyMap only" -ForegroundColor Green
 }
 
-$arrayEntitiesFromAPISubscriptionsCount = ($arrayEntitiesFromAPI | Where-Object { $_.type -eq "/subscriptions" -and $_.properties.parentNameChain -contains $ManagementGroupId } | Sort-Object -Property id -Unique | Measure-Object).count
-$arrayEntitiesFromAPIManagementGroupsCount = ($arrayEntitiesFromAPI | Where-Object { $_.type -eq "Microsoft.Management/managementGroups" -and $_.properties.parentNameChain -contains $ManagementGroupId }  | Sort-Object -Property id -Unique | Measure-Object).count + 1
+$arrayEntitiesFromAPISubscriptionsCount = ($arrayEntitiesFromAPI.where( { $_.type -eq "/subscriptions" -and $_.properties.parentNameChain -contains $ManagementGroupId } ) | Sort-Object -Property id -Unique).count
+$arrayEntitiesFromAPIManagementGroupsCount = ($arrayEntitiesFromAPI.where( { $_.type -eq "Microsoft.Management/managementGroups" -and $_.properties.parentNameChain -contains $ManagementGroupId } )  | Sort-Object -Property id -Unique).count + 1
 
 if ($htParameters.HierarchyMapOnly -eq $false) {
     Write-Host "Collecting custom data"
