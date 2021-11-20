@@ -4,13 +4,18 @@
 
 ### AzGovViz version 6
 
-__Changes__ (2021-Nov-14 / Major)
+__Changes__ (2021-Nov-20 / Major)
 
 * Add Microsoft Defender for Cloud 'Defender Plans' reporting (__TenantSummary__ -> Subscriptions, Resources & Defender; __ScopeInsights__ -> Defender Plans)
 * Adopt to new naming Azure Security Center (ASC) / Microsoft Defender for Cloud. Renamed parameter `-NoASCSecureScore` to `-NoMDfCSecureScore` (old parameter will still work)
 * Update policyAssignment API version '2020-09-01' to '2021-06-01'
 * Update *_RoleAssignments.csv output (add column for scope ResourceGroup name; add column for scope Resource name)
 * Fix __ScopeInsights__ Tags usage 
+* Optimize *_PolicyDefinitions.csv and *_PolicySetDefinitions.csv file content / add BuiltIn definitions
+* Fix dateTime formatting / use default format (createdOn/updatedOn)
+* Export CSV for ResourceProvidersDetailed (all Resource Providers and their states for all Subscriptions)
+* Consumption feature has potential to fail. Changed Azure Consumption feature default = disabled; introducing new parameter `-DoAzureConsumption`
+* Changed `-HtmlTableRowsLimit`default from 40.000 to 20.000
 * AzAPICall update error handing resource diagnostic settings
 * Script optimization
 

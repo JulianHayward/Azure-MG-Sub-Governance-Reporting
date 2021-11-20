@@ -56,13 +56,18 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2021-Nov-14 / Major)
+__Changes__ (2021-Nov-20 / Major)
 
 * Add Microsoft Defender for Cloud 'Defender Plans' reporting (__TenantSummary__ -> Subscriptions, Resources & Defender; __ScopeInsights__ -> Defender Plans)
 * Adopt to new naming Azure Security Center (ASC) / Microsoft Defender for Cloud. Renamed parameter `-NoASCSecureScore` to `-NoMDfCSecureScore` (old parameter will still work)
 * Update policyAssignment API version '2020-09-01' to '2021-06-01'
 * Update *_RoleAssignments.csv output (add column for scope ResourceGroup name; add column for scope Resource name)
 * Fix __ScopeInsights__ Tags usage 
+* Optimize *_PolicyDefinitions.csv and *_PolicySetDefinitions.csv file content / add BuiltIn definitions
+* Fix dateTime formatting / use default format (createdOn/updatedOn)
+* Export CSV for ResourceProvidersDetailed (all Resource Providers and their states for all Subscriptions)
+* Consumption feature has potential to fail. Changed Azure Consumption feature default = disabled; introducing new parameter `-DoAzureConsumption`
+* Changed `-HtmlTableRowsLimit`default from 40.000 to 20.000
 * AzAPICall update error handing resource diagnostic settings
 * Script optimization
 
@@ -174,8 +179,8 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
       * Role assignment scope (at scope / inheritance)
       * For Role Assignments on Groups the AAD Group members are fully resolved. With this capability AzGovViz can ultimately provide holistic insights on permissions granted
       * For Role Assignments on Groups the AAD Group members count (transitive) will be reported
-      * For identity-type == 'ServicePrincipal' the type (Application/ManagedIdentity) will be reported
-      * For identity-type == 'User' the userType (Member/Guest) will be reported
+      * For identity-type == 'ServicePrincipal' the type (Application / ManagedIdentity (System assigned/User assigned)) will be revealed
+      * For identity-type == 'User' the userType (Member/Guest) will be revealed
       * Related Policy assignments (Policy assignment of a Policy definition that uses the DeployIfNotExists (DINE) effect)
       * System metadata 'createdOn, createdBy' ('createdBy' identity is fully resolved)
       * Determine if the Role assignment is 'standing' or PIM managed
@@ -445,7 +450,7 @@ Screenshot Azure Portal
   * `-JsonExportExcludeResourceGroups` - JSON Export will not include ResourceGroups (Policy & Role assignments)
   * `-JsonExportExcludeResources`- JSON Export will not include Resources (Role assignments)
   * `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big. Using this parameter the following parameters will be set: -PolicyAtScopeOnly $true, -RBACAtScopeOnly $true, -NoResourceProvidersDetailed $true, -NoScopeInsights $true
-  * `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 40.000
+  * `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
   * `-AADGroupMembersLimit` - Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved 
   * `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability and resource type statistic (featured for large tenants)
   * `-StatsOptOut` - Opt out sending [stats](#stats)
