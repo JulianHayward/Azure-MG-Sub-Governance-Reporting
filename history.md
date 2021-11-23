@@ -4,6 +4,23 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2021-Nov-23 / Major)
+
+* Add Microsoft Defender for Cloud 'Defender Plans' reporting (__TenantSummary__ -> Subscriptions, Resources & Defender; __ScopeInsights__ -> Defender Plans)
+* Adopt to new naming Azure Security Center (ASC) / Microsoft Defender for Cloud. Renamed parameter `-NoASCSecureScore` to `-NoMDfCSecureScore` (old parameter will still work)
+* Update policyAssignment API version '2020-09-01' to '2021-06-01'
+* Fix __ScopeInsights__ Tags usage
+* Fix dateTime formatting / use default format (createdOn/updatedOn)
+* Consumption feature has potential to fail. Changed Azure Consumption feature default = disabled; introducing new parameter `-DoAzureConsumption`
+* Changed `-HtmlTableRowsLimit`default from 40.000 to 20.000 
+* CSV output related changes
+  * Update *_RoleAssignments.csv output (add column for scope ResourceGroup name; add column for scope Resource name)
+  * Optimize *_PolicyDefinitions.csv and *_PolicySetDefinitions.csv file content / add BuiltIn definitions
+  * Add CSV export *_ResourceProviders.csv (all Resource Providers and their states for all Subscriptions)
+  * Add CSV export *_RoleDefinitions.csv (BuiltIn and Custom including some enriched information)
+* AzAPICall update error handing for 'Resource diagnostic settings' and 'AAD groups transitive members count'
+* Script optimization
+
 __Changes__ (2021-Nov-01 / Major)
 
 * New output - Feature request to create __Scope Insights__ output per Subscription has been implement. With this new feature you can share Subscription __Scope Insights__ with Subscription responsible staff. Use parameter `-NoSingleSubscriptionOutput` to disable the feature

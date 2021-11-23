@@ -56,6 +56,23 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
+__Changes__ (2021-Nov-23 / Major)
+
+* Add Microsoft Defender for Cloud 'Defender Plans' reporting (__TenantSummary__ -> Subscriptions, Resources & Defender; __ScopeInsights__ -> Defender Plans)
+* Adopt to new naming Azure Security Center (ASC) / Microsoft Defender for Cloud. Renamed parameter `-NoASCSecureScore` to `-NoMDfCSecureScore` (old parameter will still work)
+* Update policyAssignment API version '2020-09-01' to '2021-06-01'
+* Fix __ScopeInsights__ Tags usage
+* Fix dateTime formatting / use default format (createdOn/updatedOn)
+* Consumption feature has potential to fail. Changed Azure Consumption feature default = disabled; introducing new parameter `-DoAzureConsumption`
+* Changed `-HtmlTableRowsLimit`default from 40.000 to 20.000 
+* CSV output related changes
+  * Update *_RoleAssignments.csv output (add column for scope ResourceGroup name; add column for scope Resource name)
+  * Optimize *_PolicyDefinitions.csv and *_PolicySetDefinitions.csv file content / add BuiltIn definitions
+  * Add CSV export *_ResourceProviders.csv (all Resource Providers and their states for all Subscriptions)
+  * Add CSV export *_RoleDefinitions.csv (BuiltIn and Custom including some enriched information)
+* AzAPICall update error handing for 'Resource diagnostic settings' and 'AAD groups transitive members count'
+* Script optimization
+
 __Changes__ (2021-Nov-01 / Major)
 
 * New output - Feature request to create __Scope Insights__ output per Subscription has been implement. With this new feature you can share Subscription __Scope Insights__ with Subscription responsible staff. Use parameter `-NoSingleSubscriptionOutput` to disable the feature
@@ -164,11 +181,11 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
       * Role assignment scope (at scope / inheritance)
       * For Role Assignments on Groups the AAD Group members are fully resolved. With this capability AzGovViz can ultimately provide holistic insights on permissions granted
       * For Role Assignments on Groups the AAD Group members count (transitive) will be reported
-      * For identity-type == 'ServicePrincipal' the type (Application/ManagedIdentity) will be reported
-      * For identity-type == 'User' the userType (Member/Guest) will be reported
-      * Related Policy assignments (Policy assignment of a Policy definition that uses the DeployIfNotExists (DINE) effect)
+      * For identity-type == 'ServicePrincipal' the type (Application (internal/external) / ManagedIdentity (System assigned/User assigned)) will be revealed
+      * For identity-type == 'User' the userType (Member/Guest) will be revealed
+      * Related Policy assignments (Policy assignment that leverages the DeployIfNotExists (DINE) or Modify effect)
       * System metadata 'createdOn, createdBy' ('createdBy' identity is fully resolved)
-      * Determine if the Role assignment is 'standing' or PIM managed
+      * Determine if the Role assignment is 'standing' or PIM (Privileged Identity Management) managed
   * ~~Role assignments ClassicAdministrators~~
   * Security & Best practice analysis
     * Existence of custom Role definition that reflect 'Owner' permissions
@@ -183,9 +200,9 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
   * Management Group count, level/depth, MG children, Sub children
   * Hierarchy Settings | Default Management Group Id
   * Hierarchy Settings | Require authorization for Management Group creation
-* __Subscriptions, Resources__
+* __Subscriptions, Resources & Defender__
   * Subscription insights
-    * QuotaId, State, Tags, Azure Security Center Secure Score, Cost, Management Group path
+    * QuotaId, State, Tags, Microsoft Defender for Cloud Secure Score, Cost, Management Group path
   * Tag Name usage
     * Insights on usage of Tag Names on Subscriptions, ResourceGroups and Resources
   * Resources
@@ -196,6 +213,9 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
         * Explicit Resource Provider state per Subscription
       * Resource Locks
         * Aggregated insights for Lock and respective Lock-type usage on Subscriptions, ResourceGroups and Resources
+  * Microsoft Defender for Cloud
+    * Summary of Microsoft Defender for Cloud coverage by plan (count of Subscription per plan/tier)
+    * Summary of Microsoft Defender for Cloud plans coverage by Subscription (plan/tier)
 * __Diagnostics__
   * Management Groups Diagnostic settings report
     * Management Group, Diagnostic setting name, target type (LA, SA, EH), target Id, Log Category status
@@ -407,18 +427,19 @@ Screenshot Azure Portal
   * ~~`-HierarchyTreeOnly`~~ `-HierarchyMapOnly` - Output only the __HierarchyMap__ for Management Groups including linked Subscriptions
   * `-SubscriptionQuotaIdWhitelist` - Process only Subscriptions with defined QuotaId(s). Example: .\AzGovVizParallel.ps1 `-SubscriptionQuotaIdWhitelist MSDN_,Enterprise_`
   * `-NoResourceProvidersDetailed` - Disables output for ResourceProvider states for all Subscriptions in the __TenantSummary__ section, in large Tenants this can become time consuming
-  * `-NoASCSecureScore` - Disables ASC Secure Score request for Subscriptions and Management Groups.
+  * `-NoMDfCSecureScore` - Disables Microsoft Defender for Cloud Secure Score request for Subscriptions and Management Groups.
   * ~~`-DisablePolicyComplianceStates`~~ `-NoPolicyComplianceStates` - Will not query policy compliance states. You may want to use this parameter to accellerate script execution or when receiving error 'ResponseTooLarge'. 
   * `-NoResourceDiagnosticsPolicyLifecycle` - Disables Resource Diagnostics Policy Lifecycle recommendations
   * `-NoAADGroupsResolveMembers` - Disables resolving Azure Active Directory Group memberships
   * ~~`-NoAADGuestUsers` - Disables resolving Azure Active Directory User type (Guest or Member)~~
   * ~~`-NoServicePrincipalResolve` `-NoAADServicePrincipalResolve` - Disables resolving ServicePrincipals~~
   * ~~`-ServicePrincipalExpiryWarningDays`~~ `-AADServicePrincipalExpiryWarningDays` - Define warning period for Service Principal secret and certificate expiry; default is 14 days
-  * `-NoAzureConsumption` - Azure Consumption data should not be collected/reported
+  * ~~`-NoAzureConsumption`~~ - Azure Consumption data should not be collected/reported
+  * `-DoAzureConsumption` - Azure Consumption data should be collected/reported
   * `-AzureConsumptionPeriod` - Define for which time period Azure Consumption data should be gathered; default is 1 day
   * `-NoAzureConsumptionReportExportToCSV` - Azure Consumption data should not be exported (CSV)
   * `-NoScopeInsights` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size). Use `-LargeTenant` to further reduce the output.
-  * `-ThrottleLimit` - leveraging PowerShell´s parallel capability you can define the ThrottleLimit (default=5; &#x1F4A1; values from 5 up to 15 proved to perform best)
+  * `-ThrottleLimit` - leveraging PowerShell´s parallel capability you can define the ThrottleLimit (default=5)
   * `-DoTranscript` - Log the console output
   * `-SubscriptionId4AzContext` - Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
   * `-PolicyAtScopeOnly` - Removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants. Note using parameter `-LargeTenant` will set `-PolicyAtScopeOnly $true`
@@ -432,7 +453,7 @@ Screenshot Azure Portal
   * `-JsonExportExcludeResourceGroups` - JSON Export will not include ResourceGroups (Policy & Role assignments)
   * `-JsonExportExcludeResources`- JSON Export will not include Resources (Role assignments)
   * `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big. Using this parameter the following parameters will be set: -PolicyAtScopeOnly $true, -RBACAtScopeOnly $true, -NoResourceProvidersDetailed $true, -NoScopeInsights $true
-  * `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 40.000
+  * `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
   * `-AADGroupMembersLimit` - Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved 
   * `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability and resource type statistic (featured for large tenants)
   * `-StatsOptOut` - Opt out sending [stats](#stats)

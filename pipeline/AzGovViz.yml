@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20211101_1
+# AzGovViz v6_major_20211123_2
 # First things first: 
 # 1. edit line 60 and line 61 
 # 2. check line 75 and 86 if branch 'master' is applicable 
@@ -10,7 +10,7 @@
 # SubscriptionQuotaIdWhitelist | default is 'undefined' | example: -SubscriptionQuotaIdWhitelist MSDN_, EnterpriseAgreement_ | WhatDoesItDo? processes only Subscriptions that startWith the given QuotaIds
 # HierarchyMapOnly | switch | example: -HierarchyMapOnly | WhatDoesItDo? only creates the Hierarchy Tree
 # DoNotShowRoleAssignmentsUserData | switch | example: -DoNotShowRoleAssignmentsUserData | WhatDoesItDo? scrub user information
-# NoASCSecureScore | switch | example: -NoASCSecureScore | WhatDoesItDo? disables ASC Secure Score request for Subscriptions and Management Groups
+# NoMDfCSecureScore | switch | example: -NoMDfCSecureScore | WhatDoesItDo? disables Microsoft Defender for Cloud Secure Score request for Subscriptions and Management Groups
 # CsvDelimiter | example: -CsvDelimiter "," | WhatDoesItDo? the world is split into two kind of delimiters - comma and semicolon - choose yours
 # NoPolicyComplianceStates | example: -NoPolicyComplianceStates | WhatDoesItDo? will not query policy compliance states
 # NoResourceDiagnosticsPolicyLifecycle | example: -NoResourceDiagnosticsPolicyLifecycle | WhatDoesItDo? will not create Resource Diagnostics Policy Lifecycle recommendations
@@ -36,7 +36,7 @@
 # RBACAtScopeOnly | example: -RBACAtScopeOnly | WhatDoesItDo? Removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants
 # NoResourceProvidersDetailed | switch | example: -NoResourceProvidersDetailed | WhatDoesItDo? disables 'ResourceProvider Detailed' output for TenantSummary (compute intensive)
 # NoScopeInsights | example: -NoScopeInsights | WhatDoesItDo? and why would you want to do this? In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size). To further reduce the output use parameter -LargeTenant
-# HtmlTableRowsLimit | example: -HtmlTableRowsLimit | WhatDoesItDo? Although the parameter -LargeTenant was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 40.000
+# HtmlTableRowsLimit | example: -HtmlTableRowsLimit | WhatDoesItDo? Although the parameter -LargeTenant was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
 # AADGroupMembersLimit | example: -AADGroupMembersLimit 333 | WhatDoesItDo? Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved
 # NoResources | example: -NoResources | WhatDoesItDo? Will speed up the processing time but information like Resource diagnostics capability and resource type stats (featured for large tenants)
 # StatsOptOut | example: -StatsOptOut | WhatDoesItDo? Will opt-out sending stats
@@ -115,11 +115,17 @@ jobs:
       write-host "#################################"
       $executionDateTimeInternationalReadable = get-date -format "dd-MMM-yyyy HH:mm:ss"
       $currentTimeZone = (Get-TimeZone).Id
+      write-host "dbg: git config --global user.email"
       git config --global user.email "AzGovVizPipeline@azdo.com"
       $PipelineInfo = "Pipeline: '$(Build.DefinitionName)' 'rev $(Build.BuildNumber)' (Project: $([uri]::EscapeDataString("$(System.TeamProject)")); Repository: $(Build.Repository.Name); Branch: $(Build.SourceBranchName) Commit: $(Build.SourceVersion))"
+      write-host "dbg: git config --global user.name PipelineInfo"
       git config --global user.name "$PipelineInfo"
+      write-host "dbg: git config pull.rebase false"
       git config pull.rebase false
+      write-host "dbg: git add --all"
       git add --all
+      write-host "dbg: git commit -m 'wiki $executionDateTimeInternationalReadable ($currentTimeZone)'"
       git commit -m "wiki $executionDateTimeInternationalReadable ($currentTimeZone)"
+      write-host "dbg: git -c http.extraheader='AUTHORIZATION: bearer System.AccessToken' push origin HEAD:$(Build.SourceBranchName)"
       git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" push origin HEAD:$(Build.SourceBranchName)
     displayName: 'Push AzGovViz v6 output to repository'
