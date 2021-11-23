@@ -276,7 +276,7 @@
 Param
 (
     [string]$Product = "AzGovViz",
-    [string]$ProductVersion = "v6_major_20211120_1",
+    [string]$ProductVersion = "v6_major_20211123_2",
     [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
@@ -1162,6 +1162,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     ($getApp -and $catchResult.error.code -like "*Authorization_RequestDenied*") -or 
                     ($getGroup -and $catchResult.error.code -like "*Request_ResourceNotFound*") -or 
                     ($getGroupMembersCount -and $catchResult.error.code -like "*Request_ResourceNotFound*") -or
+                    ($getGroupMembersCount -and $catchResult.error.message -like "*count is not currently supported*") -or
                     $catchResult.error.code -like "*UnknownError*" -or
                     $catchResult.error.code -like "*BlueprintNotFound*" -or
                     $catchResult.error.code -eq "500" -or
@@ -1302,6 +1303,22 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     if (($getGroupMembersCount) -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain Group status - skipping for now :)"
                         return "Request_ResourceNotFound"
+                    }
+
+                    if ($getGroupMembersCount -and $catchResult.error.message -like "*count is not currently supported*"){
+                        $maxTries = 7
+                        $sleepSec = @(1, 3, 5, 7, 10, 12, 20, 30, 40, 45)[$tryCounter]
+                        if ($tryCounter -gt $maxTries) {
+                            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - exit"
+                            if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                                Write-Error "Error"
+                            }
+                            else {
+                                Throw "Error - AzGovViz: check the last console output for details"
+                            }
+                        }
+                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' sleeping $($sleepSec) seconds"
+                        start-sleep -Seconds $sleepSec
                     }
 
                     if ($getApp -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
@@ -14244,7 +14261,7 @@ extensions: [{ name: 'sort' }]
             $startResProvDetailed = get-date
             $htmlSUMMARYSubResourceProvidersDetailed = $null
 
-            $arrayResourceProvidersDetailed = [System.Collections.ArrayList]@()
+            $arrayResourceProvidersDetailedForCSVExport = [System.Collections.ArrayList]@()
             $htmlSUMMARYSubResourceProvidersDetailed = foreach ($subscriptionResProv in (($htResourceProvidersAll).Keys | sort-object)) {
                 $subscriptionResProvDetails = $htSubscriptionsMgPath.($subscriptionResProv)
                 foreach ($provider in ($htResourceProvidersAll).($subscriptionResProv).Providers | sort-object @{Expression = { $_.namespace } }) {
@@ -14253,13 +14270,18 @@ extensions: [{ name: 'sort' }]
                         $etappeResProvDetailed = get-date
                         Write-Host "   $cnter ResProv processed; $((NEW-TIMESPAN -Start $startResProvDetailed -End $etappeResProvDetailed).TotalSeconds) seconds"  
                     }
-                    $null = $arrayResourceProvidersDetailed.Add([PSCustomObject]@{ 
-                            Subscription       = $subscriptionResProvDetails.DisplayName
-                            SubscriptionId     = $subscriptionResProv
-                            SubscriptionMGpath = $subscriptionResProvDetails.pathDelimited
-                            Provider           = $provider.namespace
-                            State              = $provider.registrationState
-                        })
+
+                    #array for exportCSV
+                    if (-not $NoCsvExport) {
+                        $null = $arrayResourceProvidersDetailedForCSVExport.Add([PSCustomObject]@{ 
+                                Subscription       = $subscriptionResProvDetails.DisplayName
+                                SubscriptionId     = $subscriptionResProv
+                                SubscriptionMGpath = $subscriptionResProvDetails.pathDelimited
+                                Provider           = $provider.namespace
+                                State              = $provider.registrationState
+                            })
+                    }
+
                     @"
 <tr>
 <td>$($subscriptionResProvDetails.DisplayName)</td>
@@ -14280,7 +14302,8 @@ extensions: [{ name: 'sort' }]
                 else {
                     $csvFilename = "AzGovViz_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)_ResourceProviders"
                 }
-                $arrayResourceProvidersDetailed | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+                $arrayResourceProvidersDetailedForCSVExport | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+                $arrayResourceProvidersDetailedForCSVExport = $null
             }
             #endregion exportCSV
 
@@ -14340,7 +14363,7 @@ extensions: [{ name: 'sort' }]
                 [void]$htmlTenantSummary.AppendLine(@"
             <button type="button" class="collapsible" id="buttonTenantSummary_SubResourceProvidersDetailed"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
                 <div class="content TenantSummary padlxx">
-                    <i class="fa fa-exclamation-triangle orange" aria-hidden="true"></i><span style="color:#ff0000"> Output of $tfCount lines would exceed the html rows limit of $HtmlTableRowsLimit (html file potentially would become unresponsive). Work with the CSV file <i>$($csvFilename).csv</i></span><br>
+                    <i class="fa fa-exclamation-triangle orange" aria-hidden="true"></i><span style="color:#ff0000"> Output of $tfCount lines would exceed the html rows limit of $HtmlTableRowsLimit (html file potentially would become unresponsive). Work with the CSV file <i>$($csvFilename).csv</i> | Note: the CSV file will only exist if you did NOT use parameter <i>-NoCsvExport</i></span><br>
                     <span style="color:#ff0000">You can adjust the html row limit by using parameter <i>-HtmlTableRowsLimit</i></span><br>
                     <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank">AzGovViz docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
                 </div>
@@ -20085,13 +20108,24 @@ tf.init();}}
 </thead>
 <tbody>
 "@)
+    $arrayRoleDefinitionsForCSVExport = [System.Collections.ArrayList]@()
     $htmlDefinitionInsightshlp = $null
     $htmlDefinitionInsightshlp = foreach ($role in ($tenantAllRoles | Sort-Object @{Expression = { $_.Name } })) {
         if ($role.IsCustom -eq $true) {
             $roleType = "Custom"
+            $AssignableScopesCount = $role.AssignableScopes.Count
+            if ($role.AssignableScopes -like "*/providers/microsoft.management/managementgroups/*"){
+                $AssignableScopesMG = $true
+            }
+            else{
+                $AssignableScopesMG = $false
+            }
+            
         }
         else {
             $roleType = "Builtin"
+            $AssignableScopesCount = ""
+            $AssignableScopesMG = ""
         }
         if (-not [string]::IsNullOrEmpty($role.DataActions) -or -not [string]::IsNullOrEmpty($role.NotDataActions)) {
             $roleManageData = "true"
@@ -20106,7 +20140,7 @@ tf.init();}}
         if (($htRoleWithAssignments).($role.Id)) {
             $hasAssignments = "true"
             $assignments = ($htRoleWithAssignments).($role.Id).Assignments
-            $assignmentsCount = ($assignments | Measure-Object).Count            
+            $assignmentsCount = ($assignments).Count            
             if ($assignmentsCount -gt 0) {
                 $arrayAssignmentDetails = @()
                 $arrayAssignmentDetails = foreach ($assignment in $assignments) {
@@ -20117,6 +20151,25 @@ tf.init();}}
         }
 
         $json = $role.Json | convertto-json -depth 99
+
+        #array for exportCSV
+        if (-not $NoCsvExport) {
+            $null = $arrayRoleDefinitionsForCSVExport.Add([PSCustomObject]@{ 
+                    Name             = $role.Name
+                    Id               = $role.Id
+                    Description      = $role.Json.description
+                    Type             = $roleType
+                    AssignmentsCount = $assignmentsCount
+                    AssignableScopesCount = $AssignableScopesCount
+                    AssignableScopesMG = $AssignableScopesMG
+                    AssignableScopes = ($role.AssignableScopes | Sort-Object) -join "$CsvDelimiterOpposite "
+                    DataRelated      = $roleManageData
+                    Actions          = $role.Actions -join "$CsvDelimiterOpposite "
+                    NotActions       = $role.NotActions -join "$CsvDelimiterOpposite "
+                    DataActions      = $role.DataActions -join "$CsvDelimiterOpposite "
+                    NotDataActions   = $role.NotDataActions -join "$CsvDelimiterOpposite "
+                })
+        }
 
         @"
 <tr>
@@ -20129,6 +20182,20 @@ tf.init();}}
 </tr>
 "@ 
     }
+
+    #region exportCSV
+    if (-not $NoCsvExport) {
+        if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+            $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_RoleDefinitions"
+        }
+        else {
+            $csvFilename = "AzGovViz_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)_RoleDefinitions"
+        }
+        $arrayRoleDefinitionsForCSVExport | Sort-Object -Property Type, Name, Id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+        $arrayRoleDefinitionsForCSVExport = $null
+    }
+    #endregion exportCSV
+
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
     $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
     $htmlDefinitionInsights = [System.Text.StringBuilder]::new()

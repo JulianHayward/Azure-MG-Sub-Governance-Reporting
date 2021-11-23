@@ -56,19 +56,21 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2021-Nov-20 / Major)
+__Changes__ (2021-Nov-23 / Major)
 
 * Add Microsoft Defender for Cloud 'Defender Plans' reporting (__TenantSummary__ -> Subscriptions, Resources & Defender; __ScopeInsights__ -> Defender Plans)
 * Adopt to new naming Azure Security Center (ASC) / Microsoft Defender for Cloud. Renamed parameter `-NoASCSecureScore` to `-NoMDfCSecureScore` (old parameter will still work)
 * Update policyAssignment API version '2020-09-01' to '2021-06-01'
-* Update *_RoleAssignments.csv output (add column for scope ResourceGroup name; add column for scope Resource name)
-* Fix __ScopeInsights__ Tags usage 
-* Optimize *_PolicyDefinitions.csv and *_PolicySetDefinitions.csv file content / add BuiltIn definitions
+* Fix __ScopeInsights__ Tags usage
 * Fix dateTime formatting / use default format (createdOn/updatedOn)
-* Export CSV for ResourceProvidersDetailed (all Resource Providers and their states for all Subscriptions)
 * Consumption feature has potential to fail. Changed Azure Consumption feature default = disabled; introducing new parameter `-DoAzureConsumption`
-* Changed `-HtmlTableRowsLimit`default from 40.000 to 20.000
-* AzAPICall update error handing resource diagnostic settings
+* Changed `-HtmlTableRowsLimit`default from 40.000 to 20.000 
+* CSV output related changes
+  * Update *_RoleAssignments.csv output (add column for scope ResourceGroup name; add column for scope Resource name)
+  * Optimize *_PolicyDefinitions.csv and *_PolicySetDefinitions.csv file content / add BuiltIn definitions
+  * Add CSV export *_ResourceProviders.csv (all Resource Providers and their states for all Subscriptions)
+  * Add CSV export *_RoleDefinitions.csv (BuiltIn and Custom including some enriched information)
+* AzAPICall update error handing for 'Resource diagnostic settings' and 'AAD groups transitive members count'
 * Script optimization
 
 __Changes__ (2021-Nov-01 / Major)
@@ -179,11 +181,11 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
       * Role assignment scope (at scope / inheritance)
       * For Role Assignments on Groups the AAD Group members are fully resolved. With this capability AzGovViz can ultimately provide holistic insights on permissions granted
       * For Role Assignments on Groups the AAD Group members count (transitive) will be reported
-      * For identity-type == 'ServicePrincipal' the type (Application / ManagedIdentity (System assigned/User assigned)) will be revealed
+      * For identity-type == 'ServicePrincipal' the type (Application (internal/external) / ManagedIdentity (System assigned/User assigned)) will be revealed
       * For identity-type == 'User' the userType (Member/Guest) will be revealed
-      * Related Policy assignments (Policy assignment of a Policy definition that uses the DeployIfNotExists (DINE) effect)
+      * Related Policy assignments (Policy assignment that leverages the DeployIfNotExists (DINE) or Modify effect)
       * System metadata 'createdOn, createdBy' ('createdBy' identity is fully resolved)
-      * Determine if the Role assignment is 'standing' or PIM managed
+      * Determine if the Role assignment is 'standing' or PIM (Privileged Identity Management) managed
   * ~~Role assignments ClassicAdministrators~~
   * Security & Best practice analysis
     * Existence of custom Role definition that reflect 'Owner' permissions
@@ -432,11 +434,12 @@ Screenshot Azure Portal
   * ~~`-NoAADGuestUsers` - Disables resolving Azure Active Directory User type (Guest or Member)~~
   * ~~`-NoServicePrincipalResolve` `-NoAADServicePrincipalResolve` - Disables resolving ServicePrincipals~~
   * ~~`-ServicePrincipalExpiryWarningDays`~~ `-AADServicePrincipalExpiryWarningDays` - Define warning period for Service Principal secret and certificate expiry; default is 14 days
-  * `-NoAzureConsumption` - Azure Consumption data should not be collected/reported
+  * ~~`-NoAzureConsumption`~~ - Azure Consumption data should not be collected/reported
+  * `-DoAzureConsumption` - Azure Consumption data should be collected/reported
   * `-AzureConsumptionPeriod` - Define for which time period Azure Consumption data should be gathered; default is 1 day
   * `-NoAzureConsumptionReportExportToCSV` - Azure Consumption data should not be exported (CSV)
   * `-NoScopeInsights` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size). Use `-LargeTenant` to further reduce the output.
-  * `-ThrottleLimit` - leveraging PowerShell´s parallel capability you can define the ThrottleLimit (default=5; &#x1F4A1; values from 5 up to 15 proved to perform best)
+  * `-ThrottleLimit` - leveraging PowerShell´s parallel capability you can define the ThrottleLimit (default=5)
   * `-DoTranscript` - Log the console output
   * `-SubscriptionId4AzContext` - Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
   * `-PolicyAtScopeOnly` - Removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants. Note using parameter `-LargeTenant` will set `-PolicyAtScopeOnly $true`
