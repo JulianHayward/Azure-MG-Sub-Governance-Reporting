@@ -58,12 +58,12 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 __Changes__ (2021-Dec-09 / Minor)
 
-* [Run AzGovViz in GitHub CodeSpaces](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/setup.md#azgovviz-github-codespaces) - __thanks!__ Carlos Mendible (Microsoft Cloud Solution Architect - Spain)
+* [Run AzGovViz in GitHub Codespaces](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/setup.md#azgovviz-github-codespaces) - __thanks!__ Carlos Mendible (Microsoft Cloud Solution Architect - Spain)
 * JSON output update -> filenames will indicate if Role assignment is PIM (Priviliged Identity Management) based
 
 Passed tests: Powershell Core 7.2.0 on Windows  
 Passed tests: Powershell Core 7.2.0 Azure DevOps hosted agent ubuntu-18.04  
-Passed tests: Powershell Core 7.2.0 GitHub CodeSpaces mcr.microsoft.com/powershell:latest
+Passed tests: Powershell Core 7.2.0 GitHub Codespaces mcr.microsoft.com/powershell:latest
 
 [Release history](history.md)
 
