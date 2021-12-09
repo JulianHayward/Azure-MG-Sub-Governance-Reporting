@@ -4,6 +4,11 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2021-Dec-09 / Minor)
+
+* Run AzGovViz in GitHub CodeSpaces - __thanks!__ Carlos Mendible (Microsoft Cloud Solution Architect - Spain)
+* JSON output update -> filenames will indicate if Role assignment is PIM (Priviliged Identity Management) based
+
 __Changes__ (2021-Nov-23 / Major)
 
 * Add Microsoft Defender for Cloud 'Defender Plans' reporting (__TenantSummary__ -> Subscriptions, Resources & Defender; __ScopeInsights__ -> Defender Plans)

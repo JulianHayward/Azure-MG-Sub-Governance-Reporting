@@ -276,7 +276,7 @@
 Param
 (
     [string]$Product = "AzGovViz",
-    [string]$ProductVersion = "v6_major_20211123_2",
+    [string]$ProductVersion = "v6_minor_20211209_1",
     [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
@@ -3033,6 +3033,7 @@ function dataCollection($mgId) {
                             RoleDefinitionId   = $L0mgmtGroupRoleAssignment.properties.roleDefinitionId -replace ".*/"
                             ObjectId           = $L0mgmtGroupRoleAssignment.properties.principalId
                             ObjectType         = $htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).type
+                            PIM                = $pim
                         })
                     ($script:htCacheAssignmentsRole).($roleAssignmentId).Assignment = $arrayRoleAssignment
 
@@ -4752,6 +4753,7 @@ function dataCollection($mgId) {
                                     RoleDefinitionId   = $L1mgmtGroupSubRoleAssignment.properties.roleDefinitionId -replace ".*/"
                                     ObjectId           = $L1mgmtGroupSubRoleAssignment.properties.principalId
                                     ObjectType         = $htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).type
+                                    PIM                = $pim
                                 })
                             ($script:htCacheAssignmentsRole).($roleAssignmentId).Assignment = $arrayRoleAssignment
 
@@ -8275,13 +8277,15 @@ function summary() {
         if ($htManagedIdentityForPolicyAssignment.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId)) {
             $hlpPolicyAssignmentId = ($htManagedIdentityForPolicyAssignment.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId).policyAssignmentId).ToLower()
             if (-not $htCacheAssignmentsPolicy.($hlpPolicyAssignmentId)) {
-                if ($DoNotIncludeResourceGroupsOnPolicy) {
-                    if (-not ($htCacheAssignmentsPolicyOnResourceGroupsAndResources).($hlpPolicyAssignmentId)) {
+                if ($ManagementGroupId -eq $checkContext.Tenant.Id){
+                    if ($DoNotIncludeResourceGroupsOnPolicy) {
+                        if (-not ($htCacheAssignmentsPolicyOnResourceGroupsAndResources).($hlpPolicyAssignmentId)) {
+                            Write-Host "   !Relict detected: SP MI: $($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId) - PolicyAssignmentId: $hlpPolicyAssignmentId"
+                        }
+                    }
+                    else {
                         Write-Host "   !Relict detected: SP MI: $($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId) - PolicyAssignmentId: $hlpPolicyAssignmentId"
                     }
-                }
-                else {
-                    Write-Host "   !Relict detected: SP MI: $($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId) - PolicyAssignmentId: $hlpPolicyAssignmentId"
                 }
             }
             else {
@@ -24787,13 +24791,19 @@ if (-not $NoJsonExport) {
                 $mgCapShort = "ra"
                 foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys) {
                     $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($ra)
-                    $jsonConverted = $hlp | ConvertTo-Json -Depth 99
-                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                    if ($hlp.PIM -eq "true"){
+                        $pim = "PIM_"
+                    }
+                    else{
+                        $pim = ""
+                    }
+                    $jsonConverted = ($hlp | Select-Object -ExcludeProperty PIM) | ConvertTo-Json -Depth 99
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
                     $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($mgCap)$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
                     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                         $null = new-item -Name $path -ItemType directory -path $outputPath
                     }
-                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
                 }
             }
 
@@ -24865,13 +24875,19 @@ if (-not $NoJsonExport) {
                             $subCapShort = "ra"
                             foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
                                 $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($ra)
-                                $jsonConverted = $hlp | ConvertTo-Json -Depth 99
-                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                                if ($hlp.PIM -eq "true"){
+                                    $pim = "PIM_"
+                                }
+                                else{
+                                    $pim = ""
+                                }
+                                $jsonConverted = ($hlp | Select-Object -ExcludeProperty PIM) | ConvertTo-Json -Depth 99
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($pim)$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
                                 $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($subCap)$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
                                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                                     $null = new-item -Name $path -ItemType directory -path $outputPath
                                 }
-                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
                             }
                         }
 
@@ -24915,13 +24931,19 @@ if (-not $NoJsonExport) {
                                         }
                                         foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).RoleAssignments.keys) {
                                             $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).RoleAssignments.($ra)
-                                            $jsonConverted = $hlp | ConvertTo-Json -Depth 99
-                                            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)ra_$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                                            if ($hlp.PIM -eq "true"){
+                                                $pim = "PIM_"
+                                            }
+                                            else{
+                                                $pim = ""
+                                            }
+                                            $jsonConverted = ($hlp | Select-Object -ExcludeProperty PIM) | ConvertTo-Json -Depth 99
+                                            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)ra_$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
                                             $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)RoleAssignments$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))$($DirectorySeparatorChar)$($rg)"
                                             if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                                                 $null = new-item -Name $path -ItemType directory -path $outputPath
                                             }
-                                            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                                            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
                                         }
                                         #res
                                         if (-not $JsonExportExcludeResources) {
@@ -24931,17 +24953,20 @@ if (-not $NoJsonExport) {
                                                     $null = new-item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)" -ItemType directory -path "$($outputPath)"
                                                 }
                                                 foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.keys) {
-
                                                     $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.($ra)
-                                                    
-                                                    $jsonConverted = $hlp | ConvertTo-Json -Depth 99
-
-                                                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)$($DirectorySeparatorChar)ra_$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                                                    if ($hlp.PIM -eq "true"){
+                                                        $pim = "PIM_"
+                                                    }
+                                                    else{
+                                                        $pim = ""
+                                                    }
+                                                    $jsonConverted = ($hlp | Select-Object -ExcludeProperty PIM) | ConvertTo-Json -Depth 99
+                                                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)$($DirectorySeparatorChar)ra_$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
                                                     $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)RoleAssignments$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)"
                                                     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                                                         $null = new-item -Name $path -ItemType directory -path $outputPath
                                                     }
-                                                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+                                                    $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace ".*/").json" -Encoding utf8
                                                 }
                                             }
                                         }
@@ -24973,15 +24998,21 @@ if (-not $NoJsonExport) {
     foreach ($RoleAssignment in ($grpTenantScopeRoleAssignments).Group | sort-object @{Expression = { $_.Assignment.RoleAssignmentId } }) {
 
         $htTree.Tenant.RoleAssignments.$($RoleAssignment.Assignment.RoleAssignmentId) = [ordered]@{}
-        $htTree.Tenant.RoleAssignments.$($RoleAssignment.Assignment.RoleAssignmentId) = $RoleAssignment.Assignment
+        $htTree.Tenant.RoleAssignments.$($RoleAssignment.Assignment.RoleAssignmentId) = $RoleAssignment.Assignment    
 
-        $jsonConverted = $RoleAssignment.Assignment | ConvertTo-Json -Depth 99
-        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)Tenant$($DirectorySeparatorChar)ra_$($RoleAssignment.Assignment.ObjectType)_$($RoleAssignment.Assignment.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+        if ($RoleAssignment.Assignment.PIM -eq "true"){
+            $pim = "PIM_"
+        }
+        else{
+            $pim = ""
+        }
+        $jsonConverted = ($RoleAssignment.Assignment | Select-Object -ExcludeProperty PIM) | ConvertTo-Json -Depth 99
+        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)Tenant$($DirectorySeparatorChar)ra_$($RoleAssignment.Assignment.ObjectType)_$($pim)$($RoleAssignment.Assignment.RoleAssignmentId -replace ".*/").json" -Encoding utf8
         $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)RoleAssignments$($DirectorySeparatorChar)Tenant"
         if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
             $null = new-item -Name $path -ItemType directory -path $outputPath
         }
-        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($RoleAssignment.Assignment.ObjectType)_$($RoleAssignment.Assignment.RoleAssignmentId -replace ".*/").json" -Encoding utf8
+        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($RoleAssignment.Assignment.ObjectType)_$($pim)$($RoleAssignment.Assignment.RoleAssignmentId -replace ".*/").json" -Encoding utf8
     }
 
     $htTree."Tenant"."ManagementGroups" = [ordered] @{}

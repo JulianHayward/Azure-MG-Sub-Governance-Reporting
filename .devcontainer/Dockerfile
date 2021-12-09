@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/powershell:lts-debian-11
+FROM mcr.microsoft.com/powershell:latest
 
 RUN apt-get update \
     && apt-get -y install --no-install-recommends git \
@@ -6,4 +6,4 @@ RUN apt-get update \
 
 RUN pwsh -c 'Install-Module -Name Az.Accounts -Scope AllUsers -Repository PSGallery -Force'
 
-RUN apt-get update && export DEBIAN_FRONTEND=noninteractive
+RUN apt-get update

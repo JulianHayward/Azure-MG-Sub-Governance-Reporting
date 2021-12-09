@@ -56,52 +56,14 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2021-Nov-23 / Major)
+__Changes__ (2021-Dec-09 / Minor)
 
-* Add Microsoft Defender for Cloud 'Defender Plans' reporting (__TenantSummary__ -> Subscriptions, Resources & Defender; __ScopeInsights__ -> Defender Plans)
-* Adopt to new naming Azure Security Center (ASC) / Microsoft Defender for Cloud. Renamed parameter `-NoASCSecureScore` to `-NoMDfCSecureScore` (old parameter will still work)
-* Update policyAssignment API version '2020-09-01' to '2021-06-01'
-* Fix __ScopeInsights__ Tags usage
-* Fix dateTime formatting / use default format (createdOn/updatedOn)
-* Consumption feature has potential to fail. Changed Azure Consumption feature default = disabled; introducing new parameter `-DoAzureConsumption`
-* Changed `-HtmlTableRowsLimit`default from 40.000 to 20.000 
-* CSV output related changes
-  * Update *_RoleAssignments.csv output (add column for scope ResourceGroup name; add column for scope Resource name)
-  * Optimize *_PolicyDefinitions.csv and *_PolicySetDefinitions.csv file content / add BuiltIn definitions
-  * Add CSV export *_ResourceProviders.csv (all Resource Providers and their states for all Subscriptions)
-  * Add CSV export *_RoleDefinitions.csv (BuiltIn and Custom including some enriched information)
-* AzAPICall update error handing for 'Resource diagnostic settings' and 'AAD groups transitive members count'
-* Script optimization
+* Run AzGovViz in GitHub CodeSpaces - __thanks!__ Carlos Mendible (Microsoft Cloud Solution Architect - Spain)
+* JSON output update -> filenames will indicate if Role assignment is PIM (Priviliged Identity Management) based
 
-__Changes__ (2021-Nov-01 / Major)
-
-* New output - Feature request to create __Scope Insights__ output per Subscription has been implement. With this new feature you can share Subscription __Scope Insights__ with Subscription responsible staff. Use parameter `-NoSingleSubscriptionOutput` to disable the feature
-* Update [Required permissions in Azure Active Directory](#required-permissions-in-azure-active-directory) for the scenario of a Guest User executing the script
-* Add 'daily summary' output (CSV) to easily track your Tenant´s Governance evolution over time - Tim will hopefully create a PR for how he leverages AzGovViz historical data for Azure Log Analytics based dashboards
-* Improved permission related error handling 
-
-__Changes__ (2021-Oct-25 / Major)
-
-* AzAPICall enhanced error handling (general error 'An error has occurred.' ; roleAssignment schedules)
-
-__Changes__ (2021-Oct-21 / Major)
-
-* AzAPICall enhanced error handling (GatewayAuthenticationFailed; roleAssignment schedules)
-
-__Release v6 Changes__
-
-* Removed usage of Azure PowerShell cmdlet 'Get-AzRoleAssignment' / preparing for upcoming deprecation of 'Azure Active Directory Graph' API ([announcement](https://azure.microsoft.com/en-us/updates/update-your-apps-to-use-microsoft-graph-before-30-june-2022/))
-* Management Group diagnostic setting - reflect inheritance of diagnostic settings from upper Management Group scopes
-* __TenantSummary__ Policy assignments - resolve Managed Identity (if Policy assignment effect is DeployIfNotExists (DINE) or Modify)
-* Removed __TenantSummary__ RBAC Classic Role assignments
-* Improved AzAPICall error handling and output
-* Azure DevOps pipeline (yml) updated prerequisites to include Repository 'contribute' permission check
-* Added Application Insights [stats](#stats)
-* Performance optimization
-* Bugfixes
-
-Passed tests: Powershell Core 7.1.3 on Windows  
-Passed tests: Powershell Core 7.1.4 Azure DevOps hosted agent ubuntu-18.04
+Passed tests: Powershell Core 7.2.0 on Windows  
+Passed tests: Powershell Core 7.2.0 Azure DevOps hosted agent ubuntu-18.04
+Passed tests: Powershell Core 7.2.0 GitHub CodeSpaces mcr.microsoft.com/powershell:latest
 
 [Release history](history.md)
 

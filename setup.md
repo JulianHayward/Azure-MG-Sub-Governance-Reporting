@@ -6,6 +6,9 @@ This guide will help you to setup and run AzGovViz
     * Azure DevOps - AzDO
 
 ## Table of contents
+* [__AzGovViz GitHub CodeSpaces__](#azgovviz-github-codespaces)
+    * wip
+
 * [__AzGovViz from Console__](#azgovviz-from-console)
     * Grant permissions in Azure
     * Execution options
@@ -28,6 +31,12 @@ This guide will help you to setup and run AzGovViz
     * Create AzDO Pipeline
     * Run the AzDO Pipeline
     * Create AzDO Wiki - WikiAsCode
+
+# AzGovViz GitHub CodeSpaces
+
+Note: Codespaces is available for organizations using GitHub Team or GitHub Enterprise Cloud. [Quickstart for CodeSpaces](https://docs.github.com/en/codespaces/getting-started/quickstart)
+
+
 
 # AzGovViz from Console
 
