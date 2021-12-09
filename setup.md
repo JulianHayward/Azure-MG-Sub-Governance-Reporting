@@ -339,8 +339,8 @@ Once the pipeline has executed successfully we can setup our Wiki (WikiAsCode)
 
 Note: Codespaces is available for organizations using GitHub Team or GitHub Enterprise Cloud. [Quickstart for CodeSpaces](https://docs.github.com/en/codespaces/getting-started/quickstart)
 
-![alt text](img/codespaces0.png "AzGovViz GitHub CodeSpaces") 
-![alt text](img/codespaces1.png "AzGovViz GitHub CodeSpaces") 
-![alt text](img/codespaces2.png "AzGovViz GitHub CodeSpaces") 
-![alt text](img/codespaces3.png "AzGovViz GitHub CodeSpaces") 
+![alt text](img/codespaces0.png "AzGovViz GitHub CodeSpaces")  
+![alt text](img/codespaces1.png "AzGovViz GitHub CodeSpaces")  
+![alt text](img/codespaces2.png "AzGovViz GitHub CodeSpaces")  
+![alt text](img/codespaces3.png "AzGovViz GitHub CodeSpaces")  
 ![alt text](img/codespaces4.png "AzGovViz GitHub CodeSpaces")

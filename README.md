@@ -62,7 +62,7 @@ __Changes__ (2021-Dec-09 / Minor)
 * JSON output update -> filenames will indicate if Role assignment is PIM (Priviliged Identity Management) based
 
 Passed tests: Powershell Core 7.2.0 on Windows  
-Passed tests: Powershell Core 7.2.0 Azure DevOps hosted agent ubuntu-18.04 
+Passed tests: Powershell Core 7.2.0 Azure DevOps hosted agent ubuntu-18.04  
 Passed tests: Powershell Core 7.2.0 GitHub CodeSpaces mcr.microsoft.com/powershell:latest
 
 [Release history](history.md)
