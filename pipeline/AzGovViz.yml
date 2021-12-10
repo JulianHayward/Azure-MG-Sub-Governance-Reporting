@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20211123_2
+# AzGovViz v6_major_20211210_1
 # First things first: 
 # 1. edit line 60 and line 61 
 # 2. check line 75 and 86 if branch 'master' is applicable 
@@ -106,7 +106,7 @@ jobs:
       scriptType: filePath
       pwsh: true
       scriptPath: '$(System.DefaultWorkingDirectory)/$(ScriptDir)/$(Script)'
-      scriptArguments: '-ManagementGroupId $(ManagementGroupId) -OutputPath $(WikiDir) -CsvDelimiter "$(CsvDelimiter)" -AzureDevOpsWikiAsCode -SubscriptionQuotaIdWhitelist $(SubscriptionQuotaIdWhitelist) -ExludedResourceTypesDiagnosticsCapable $(ExludedResourceTypesDiagnosticsCapable)'
+      scriptArguments: '-ManagementGroupId $(ManagementGroupId) -OutputPath $(WikiDir) -CsvDelimiter "$(CsvDelimiter)" -SubscriptionQuotaIdWhitelist $(SubscriptionQuotaIdWhitelist) -ExludedResourceTypesDiagnosticsCapable $(ExludedResourceTypesDiagnosticsCapable)'
       azurePowerShellVersion: latestVersion
     displayName: 'Run AzGovViz v6'
   - powershell: |

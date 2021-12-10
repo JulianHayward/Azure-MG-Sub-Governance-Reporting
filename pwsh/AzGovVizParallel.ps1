@@ -30,11 +30,6 @@
 .PARAMETER NoMDfCSecureScore
     default is to query all Subscriptions for Azure Microsoft Defender for Cloud Secure Score and summarize Secure Score for Management Groups.
 
-.PARAMETER AzureDevOpsWikiAsCode
-    use this parameter when running AzGovViz in Azure DevOps (AzDO) pipeline
-    default is to Throw at error, whilst in AzDO we will Write-Error "Error"
-    default is to add timestamp to the outputs filename, in AzDO the outputs filenames will not have a filestamp added as we have a GIT history (the files will only be pushed to Wiki Repo in case the files differ)
-
 .PARAMETER LimitCriticalPercentage
     default is 80%, this parameter defines the warning level for approaching Limits (e.g. 80% of Role Assignment limit reached) change as per your preference
 
@@ -157,9 +152,6 @@
 
     Define if Microsoft Defender for Cloud SecureScore should be queried for Subscriptions and Management Groups
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoMDfCSecureScore
-
-    Define if the script runs in AzureDevOps.
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -AzureDevOpsWikiAsCode
     
     Define when limits should be highlighted as warning (default is 80 percent)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -LimitCriticalPercentage 90
@@ -276,10 +268,10 @@
 Param
 (
     [string]$Product = "AzGovViz",
-    [string]$ProductVersion = "v6_minor_20211209_1",
+    [string]$ProductVersion = "v6_minor_20211210_1",
     [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
-    [switch]$AzureDevOpsWikiAsCode, #Use this parameter only when running AzGovViz in a Azure DevOps Pipeline!
+    [switch]$AzureDevOpsWikiAsCode, #deprecated - Based on environment variables the script will detect the code run platform
     [switch]$DebugAzAPICall,
     [switch]$NoCsvExport,
     [string]$CsvDelimiter = ";",
@@ -302,7 +294,7 @@ Param
     [switch]$NoAzureConsumptionReportExportToCSV,
     [switch]$DoTranscript,
     [int]$HtmlTableRowsLimit = 20000, #HTML TenantSummary may become unresponsive depending on client device performance. A recommendation will be shown to use the CSV file instead of opening the TF table
-    [int]$ThrottleLimit = 5, 
+    [int]$ThrottleLimit = 10, 
     [array]$ExludedResourceTypesDiagnosticsCapable = @("microsoft.web/certificates"),
     [switch]$DoNotIncludeResourceGroupsOnPolicy,
     [switch]$DoNotIncludeResourceGroupsAndResourcesOnRBAC,
@@ -410,6 +402,34 @@ if ($DoAzureConsumption) {
 #endregion ChinaBilling
 
 #region htParameters (all switch params used in foreach-object -parallel)
+
+if ($env:GITHUB_SERVER_URL -and $env:CODESPACES) {
+    #GitHub Codespaces
+    Write-Host "CheckCodeRunPlatform: running in GitHub Codespaces"
+    $checkCodeRunPlatform = "GitHubCodespaces"
+    #Write-Host "GITHUB_SERVER_URL" $env:GITHUB_SERVER_URL
+    #Write-Host "CODESPACES" $env:CODESPACES
+}
+elseif ($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) {
+    #Azure DevOps
+    Write-Host "CheckCodeRunPlatform: running in Azure DevOps"
+    $checkCodeRunPlatform = "AzureDevOps"
+    #Write-Host "BUILD_REPOSITORY_ID" $env:BUILD_REPOSITORY_ID
+    #Write-Host "SYSTEM_TEAMPROJECTID" $env:SYSTEM_TEAMPROJECTID
+    $onAzureDevOps = $true
+}
+elseif ($PSPrivateMetadata) {
+    #Azure Automation
+    Write-Output "CheckCodeRunPlatform: running in Azure Automation"
+    $checkCodeRunPlatform = "AzureAutomation"
+    #Write-Output "PSPrivateMetadata:" $PSPrivateMetadata
+}
+else {
+    #Other Console
+    Write-Host "CheckCodeRunPlatform: not Codespaces, not Azure DevOps, not Azure Automation - likely local console"
+    $checkCodeRunPlatform = "Console"
+}
+
 if ($LargeTenant -eq $true) {
     $NoScopeInsights = $true
     $NoResourceProvidersDetailed = $true
@@ -422,11 +442,11 @@ $htParameters.ProductVersion = $ProductVersion
 $htParameters.AzCloudEnv = $checkContext.Environment.Name
 $htParameters.GithubRepository = $GithubRepository
 
-if ($AzureDevOpsWikiAsCode) {
-    $htParameters.AzureDevOpsWikiAsCode = $true
+if ($onAzureDevOps) {
+    $htParameters.onAzureDevOps = $true
 }
 else {
-    $htParameters.AzureDevOpsWikiAsCode = $false
+    $htParameters.onAzureDevOps = $false
 }
 
 if ($DebugAzAPICall) {
@@ -579,7 +599,7 @@ else {
     Write-Host " Get Powershell: https://github.com/PowerShell/PowerShell#get-powershell"
     Write-Host " Installing PowerShell on Windows: https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-windows"
     Write-Host " Installing PowerShell on Linux: https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-linux"
-    if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+    if ($htParameters.onAzureDevOps -eq $true) {
         Write-Error "Error"
     }
     else {
@@ -598,7 +618,7 @@ $azModules = @('Az.Accounts')
 Write-Host "Testing required Az modules cmdlets"
 foreach ($testCommand in $testCommands) {
     if (-not (Get-Command $testCommand -ErrorAction Ignore)) {
-        if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+        if ($htParameters.onAzureDevOps -eq $true) {
             Write-Error "AzModule test failed: cmdlet $testCommand not available - make sure the modules $($azModules -join ", ") are installed"
             Write-Error "Error"
         }
@@ -631,7 +651,7 @@ foreach ($azModule in $azModules) {
 Write-Host "Checking Az Context"
 if (-not $checkContext) {
     Write-Host " Context test failed: No context found. Please connect to Azure (run: Connect-AzAccount) and re-run AzGovViz" -ForegroundColor Red
-    if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+    if ($htParameters.onAzureDevOps -eq $true) {
         Write-Error "Error"
     }
     else {
@@ -651,7 +671,7 @@ else {
                 $null = Set-AzContext -SubscriptionId $SubscriptionId4AzContext -ErrorAction Stop
             }
             catch {
-                if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                if ($htParameters.onAzureDevOps -eq $true) {
                     Write-Error "Error"
                 }
                 else {
@@ -671,7 +691,7 @@ else {
         $checkContext
         Write-Host " Context test failed: Context is not set to any Subscription. Set your context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run AzGovViz" -ForegroundColor Red
         
-        if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+        if ($htParameters.onAzureDevOps -eq $true) {
             Write-host " If this error occurs you may want to leverage parameter 'SubscriptionId4AzContext' (AzGovVizParallel.ps1 -SubscriptionId4AzContext '<SubscriptionId>')"
             Write-Error "Error"
         }
@@ -1217,7 +1237,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                                 foreach ($htParameter in ($htParameters.Keys | Sort-Object)) {
                                     Write-Host "$($htParameter):$($htParameters.($htParameter))"
                                 }
-                                if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                                if ($htParameters.onAzureDevOps -eq $true) {
                                     Write-Error "Error"
                                 }
                                 else {
@@ -1310,7 +1330,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         $sleepSec = @(1, 3, 5, 7, 10, 12, 20, 30, 40, 45)[$tryCounter]
                         if ($tryCounter -gt $maxTries) {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - exit"
-                            if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                            if ($htParameters.onAzureDevOps -eq $true) {
                                 Write-Error "Error"
                             }
                             else {
@@ -1345,7 +1365,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             foreach ($htParameter in ($htParameters.Keys | Sort-Object)) {
                                 Write-Host "$($htParameter):$($htParameters.($htParameter))"
                             }
-                            if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                            if ($htParameters.onAzureDevOps -eq $true) {
                                 Write-Error "Error"
                             }
                             else {
@@ -1406,7 +1426,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         $sleepSec = @(1, 3, 5, 7, 10, 12, 20, 30, 40, 45)[$tryCounter]
                         if ($tryCounter -gt $maxTries) {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - exit"
-                            if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                            if ($htParameters.onAzureDevOps -eq $true) {
                                 Write-Error "Error"
                             }
                             else {
@@ -1464,7 +1484,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         if ($getConsumption) {
                             Write-Host "If Consumption data is not that important for you, do not use parameter: -DoAzureConsumption (however, please still report the issue - thank you)"
                         }
-                        if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                        if ($htParameters.onAzureDevOps -eq $true) {
                             Write-Error "Error"
                         }
                         else {
@@ -1536,7 +1556,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         if ($uri -eq $azAPIRequestConvertedFromJson.nextLink) {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                                 Write-Host " $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
-                                if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                                if ($htParameters.onAzureDevOps -eq $true) {
                                     Write-Error "Error"
                                 }
                                 else {
@@ -1569,7 +1589,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         if ($uri -eq $azAPIRequestConvertedFromJson."@odata.nextLink") {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                                 Write-Host " $currentTask restartDueToDuplicate@odataNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
-                                if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                                if ($htParameters.onAzureDevOps -eq $true) {
                                     Write-Error "Error"
                                 }
                                 else {
@@ -1602,7 +1622,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         if ($uri -eq $azAPIRequestConvertedFromJson.properties.nextLink) {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                                 Write-Host " $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
-                                if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                                if ($htParameters.onAzureDevOps -eq $true) {
                                     Write-Error "Error"
                                 }
                                 else {
@@ -1652,7 +1672,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
             }
             else {
                 Write-Host " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (tried 5 times)/exit"
-                if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                if ($htParameters.onAzureDevOps -eq $true) {
                     Write-Error "Error"
                 }
                 else {
@@ -1729,7 +1749,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType, $resourceId) 
                     if ($catchResult.error.code -like "*AuthorizationFailed*") {
                         if ($retryAuthorizationFailedCounter -gt $retryAuthorizationFailed) {
                             Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - $retryAuthorizationFailed retries failed - investigate that error!"
-                            if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                            if ($htParameters.onAzureDevOps -eq $true) {
                                 Write-Error "Error"
                             }
                             else {
@@ -1758,7 +1778,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType, $resourceId) 
                 }
                 else {
                     Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - investigate that error!"
-                    if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                    if ($htParameters.onAzureDevOps -eq $true) {
                         Write-Error "Error"
                     }
                     else {
@@ -1778,7 +1798,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType, $resourceId) 
                 Start-Sleep -Seconds $tryCounterUnexpectedError
             }
             else {
-                if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                if ($htParameters.onAzureDevOps -eq $true) {
                     Write-Error "Error"
                 }
                 else {
@@ -2608,7 +2628,7 @@ function dataCollection($mgId) {
                             foreach ($tmpPolicyDefinitionId in ($($htCacheDefinitionsPolicy).Keys | Sort-Object)) {
                                 Write-Host $tmpPolicyDefinitionId
                             }
-                            if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                            if ($htParameters.onAzureDevOps -eq $true) {
                                 Write-Error "Error"
                             }
                             else {
@@ -2759,7 +2779,7 @@ function dataCollection($mgId) {
                             Write-Host "Scope: $($mgdetail.Name) PolicySet / Custom:$($mgPolicySetDefinitions.Count) CustomAtScope:$($PolicySetDefinitionsScopedCount)"
                             Write-Host "BuiltIn PolicySetDefinitions: $($($htCacheDefinitionsPolicySet).Values.where({$_.Type -eq "BuiltIn"}).Count)"
                             Write-Host "Custom PolicySetDefinitions: $($($htCacheDefinitionsPolicySet).Values.where({$_.Type -eq "Custom"}).Count)"
-                            if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                            if ($htParameters.onAzureDevOps -eq $true) {
                                 Write-Error "Error"
                             }
                             else {
@@ -8361,9 +8381,9 @@ function summary() {
         if ($cnter % 1000 -eq 0) {
             $etappeRoleAssignmentsAll = get-date
             Write-Host "   $cnter of $roleAssignmentsallCount RoleAssignments processed; $((NEW-TIMESPAN -Start $startRoleAssignmentsAllPre -End $etappeRoleAssignmentsAll).TotalSeconds) seconds"
-            if ($cnter % 5000 -eq 0) {
+            #if ($cnter % 5000 -eq 0) {
                 #[System.GC]::Collect()
-            }
+            #}
         }
         $scope = $null
 
@@ -9067,7 +9087,7 @@ function summary() {
     }
 
     if (-not $NoCsvExport) {
-        if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+        if ($htParameters.onAzureDevOps -eq $true) {
             $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_PolicyDefinitions"
         }
         else {
@@ -9749,7 +9769,7 @@ extensions: [{ name: 'sort' }]
     }
 
     if (-not $NoCsvExport) {
-        if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+        if ($htParameters.onAzureDevOps -eq $true) {
             $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_PolicySetDefinitions"
         }
         else {
@@ -10845,9 +10865,9 @@ extensions: [{ name: 'sort' }]
         if ($cnter % 1000 -eq 0) {
             $etappeSummaryPolicyAssignmentsAll = get-date
             Write-Host "   $cnter of $allPolicyAssignments PolicyAssignments processed: $((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAll -End $etappeSummaryPolicyAssignmentsAll).TotalSeconds) seconds"
-            if ($cnter % 5000 -eq 0) {
+            #if ($cnter % 5000 -eq 0) {
                 #[System.GC]::Collect()
-            }
+            #}
         }
 
         #region AzAdvertizerLinkOrNot
@@ -11413,7 +11433,7 @@ extensions: [{ name: 'sort' }]
         $startloop = get-date 
 
         if (-not $NoCsvExport) {
-            if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+            if ($htParameters.onAzureDevOps -eq $true) {
                 $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_PolicyAssignments"
             }
             else {
@@ -12163,7 +12183,7 @@ extensions: [{ name: 'sort' }]
         if (-not $NoCsvExport) {
             $startCreateRBACAllCSV = get-date
 
-            if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+            if ($htParameters.onAzureDevOps -eq $true) {
                 $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_RoleAssignments"
             }
             else {
@@ -14300,7 +14320,7 @@ extensions: [{ name: 'sort' }]
             
             #region exportCSV
             if (-not $NoCsvExport) {
-                if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                if ($htParameters.onAzureDevOps -eq $true) {
                     $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_ResourceProviders"
                 }
                 else {
@@ -20189,7 +20209,7 @@ tf.init();}}
 
     #region exportCSV
     if (-not $NoCsvExport) {
-        if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+        if ($htParameters.onAzureDevOps -eq $true) {
             $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_RoleDefinitions"
         }
         else {
@@ -20437,11 +20457,9 @@ if ($accountType -eq "User") {
 $htParameters.userType = $userType
 
 
-if ($htParameters.AzureDevOpsWikiAsCode -eq $true -or $accountType -eq "ServicePrincipal") {
+if ($htParameters.onAzureDevOps -eq $true -or $accountType -eq "ServicePrincipal") {
 
-    if ($htParameters.AzureDevOpsWikiAsCode -eq $true -or $accountType -eq "ServicePrincipal") {
-        Write-Host "Checking ServicePrincipal permissions"
-    }
+    Write-Host "Checking ServicePrincipal permissions"
     
     $permissionsCheckFailed = $false
 
@@ -20593,7 +20611,7 @@ else {
 
     if ($permissionsCheckFailed -eq $true) {
         Write-Host "Please consult the documentation: https://$($GithubRepository)#required-permissions-in-azure"
-        if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+        if ($htParameters.onAzureDevOps -eq $true) {
             Write-Error "Error"
         }
         else {
@@ -20762,7 +20780,7 @@ else {
     $mermaidprnts = "'$getMgParentId',$getMgParentId"
 }
 
-if ($htParameters.AzureDevOpsWikiAsCode -eq $false) {
+if ($htParameters.onAzureDevOps -eq $false) {
     $currentTask = "Get Tenant details"
     Write-Host $currentTask
     $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)tenants?api-version=2020-01-01"
@@ -20828,7 +20846,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         foreach ($whiteListEntry in $SubscriptionQuotaIdWhitelist) {
             if ($whiteListEntry -eq "undefined") {
                 Write-Host "When defining the 'SubscriptionQuotaIdWhitelist' make sure to remove the 'undefined' entry from the array :)" -ForegroundColor Red
-                if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+                if ($htParameters.onAzureDevOps -eq $true) {
                     Write-Error "Error"
                 }
                 else {
@@ -20907,7 +20925,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     if ($htParameters.DoAzureConsumption -eq $true) {
         if (-not $AzureConsumptionPeriod -is [int]) {
             Write-Host "parameter -AzureConsumptionPeriod must be an integer"
-            if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+            if ($htParameters.onAzureDevOps -eq $true) {
                 Write-Error "Error"
             }
             else {
@@ -20916,7 +20934,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         }
         elseif ($AzureConsumptionPeriod -eq 0) {
             Write-Host "parameter -AzureConsumptionPeriod must be gt 0"
-            if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+            if ($htParameters.onAzureDevOps -eq $true) {
                 Write-Error "Error"
             }
             else {
@@ -21240,7 +21258,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
     if ($tryCounter -gt 6) {
         Write-Host "Problem switching the context to a Subscription that has a non AAD_ QuotaId"
-        if ($htParameters.AzureDevOpsWikiAsCode -eq $true) {
+        if ($htParameters.onAzureDevOps -eq $true) {
             Write-Error "Error"
         }
         else {
@@ -23249,7 +23267,7 @@ $parentMgIdx = $parentMgBaseQuery.mgParentId | Get-Unique
 $ManagementGroupIdCaseSensitived = (($optimizedTableForPathQueryMg.where( { $_.MgId -eq $ManagementGroupId } )).mgId) | Get-Unique
 
 #region filename
-if ($htParameters.AzureDevOpsWikiAsCode -eq $true) { 
+if ($htParameters.onAzureDevOps -eq $true) { 
     $fileName = "AzGovViz_$($ManagementGroupIdCaseSensitived)"
     if ($htParameters.HierarchyMapOnly -eq $true) {
         $fileName = "AzGovViz_$($ManagementGroupIdCaseSensitived)_HierarchyMapOnly"
@@ -23758,7 +23776,7 @@ $html = @"
 if ($htParameters.HierarchyMapOnly -eq $false) {
     if (-not $NoSingleSubscriptionOutput) {
 
-        if ($AzureDevOpsWikiAsCode) {
+        if ($onAzureDevOps) {
             $HTMLPath = "HTML-Subscriptions_$($ManagementGroupId)"
             if (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($HTMLPath)") {
                 Write-Host " Cleaning old state (Pipeline only)"
@@ -23847,7 +23865,7 @@ $html += @"
     <li id="first">
 "@
 
-if ($htParameters.AzureDevOpsWikiAsCode -eq $false) {
+if ($htParameters.onAzureDevOps -eq $false) {
     $tenantDetailsDisplay = "$tenantDisplayName<br>$tenantDefaultDomain<br>$($checkContext.Tenant.Id)"
 }
 else {
@@ -23913,7 +23931,7 @@ else {
         $mgNameAndOrId = "$parentMgNamex<br><i>$parentMgIdx</i>"
     }
     
-    if ($htParameters.AzureDevOpsWikiAsCode -eq $false) {
+    if ($htParameters.onAzureDevOps -eq $false) {
         $tenantDetailsDisplay = "$tenantDisplayName<br>$tenantDefaultDomain<br>"
     }
     else {
@@ -24167,7 +24185,7 @@ $markdownhierarchyMgs = $null
 $markdownhierarchySubs = $null
 $markdownTable = $null
 
-if ($htParameters.AzureDevOpsWikiAsCode -eq $true) { 
+if ($htParameters.onAzureDevOps -eq $true) { 
     $markdown += @"
 # AzGovViz - Management Group Hierarchy
 
@@ -24618,7 +24636,7 @@ if (-not $NoJsonExport) {
         }
     }
 
-    if ($AzureDevOpsWikiAsCode) {
+    if ($onAzureDevOps) {
         $JSONPath = "JSON_$($ManagementGroupId)"
         if (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)") {
             Write-Host " Cleaning old state (Pipeline only)"
@@ -24632,7 +24650,7 @@ if (-not $NoJsonExport) {
 
     $null = new-item -Name $JSONPath -ItemType directory -path $outputPath
 
-    if ($AzureDevOpsWikiAsCode) {
+    if ($onAzureDevOps) {
         "The directory '$($JSONPath)' will be rebuilt during the AzDO Pipeline run. __Do not save any files in this directory, files and folders will be deleted!__" | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)ReadMe_important.md" -Encoding utf8
     }
     
@@ -25067,7 +25085,7 @@ else {
 #region Stats
 if (-not $StatsOptOut) {
 
-    if ($htParameters.AzureDevOpsWikiAsCode) {
+    if ($htParameters.onAzureDevOps) {
         if ($env:BUILD_REPOSITORY_ID) {
             $hashTenantIdOrRepositoryId = [string]($env:BUILD_REPOSITORY_ID)
         }
@@ -25114,16 +25132,6 @@ if (-not $StatsOptOut) {
     $identifierBase = $hasher512.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($hashUse))
     $identifier = "$(([System.BitConverter]::ToString($identifierBase)) -replace '-')"
 
-    $platform = "Console"
-    if ($htParameters.AzureDevOpsWikiAsCode) {
-        if ($env:SYSTEM_TEAMPROJECTID) {
-            $platform = "AzureDevOps"
-        }
-        else {
-            $platform = "unclear"
-        }
-    }
-
     $accountInfo = "$($accountType)$($userType)"
     if ($accountType -eq "ServicePrincipal") {
         $accountInfo = $accountType
@@ -25162,7 +25170,7 @@ if (-not $StatsOptOut) {
                 "accType": "$($accountInfo)",
                 "azCloud": "$($checkContext.Environment.Name)",
                 "identifier": "$($identifier)",
-                "platform": "$($platform)",
+                "platform": "$($checkCodeRunPlatform)",
                 "productVersion": "$($ProductVersion)",
                 "psAzAccountsVersion": "$($resolvedAzModuleVersion)",
                 "psVersion": "$($PSVersionTable.PSVersion)",

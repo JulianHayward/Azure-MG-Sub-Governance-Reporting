@@ -56,6 +56,11 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
+__Changes__ (2021-Dec-10 / Minor)
+
+* deprecation of parameter `-AzureDevOpsWikiAsCode` / Based on environment variables the script will detect the code run platform
+* changed throttlelimit default from 5 to 10
+
 __Changes__ (2021-Dec-09 / Minor)
 
 * [Run AzGovViz in GitHub Codespaces](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/setup.md#azgovviz-github-codespaces) - __thanks!__ Carlos Mendible (Microsoft Cloud Solution Architect - Spain)
@@ -383,7 +388,7 @@ Screenshot Azure Portal
   * `-ManagementGroupId` Management Group Id (Root Management Group Id equals your Tenant Id)
   * `-CsvDelimiter` - The world is split into two kinds of delimiters - comma and semicolon - choose yours (default is semicolon ';')
   * `-OutputPath` 
-  * `-AzureDevOpsWikiAsCode` - Use this parameter only when running AzGovViz in a Azure DevOps Pipeline
+  * ~~`-AzureDevOpsWikiAsCode` - Use this parameter only when running AzGovViz in a Azure DevOps Pipeline~~ Based on environment variables the script will detect the code run platform
   * `-DoNotShowRoleAssignmentsUserData` - Scrub personally identifiable information (PII)
   * `-LimitCriticalPercentage` - Limit warning level, default is 80%
   * ~~`-HierarchyTreeOnly`~~ `-HierarchyMapOnly` - Output only the __HierarchyMap__ for Management Groups including linked Subscriptions

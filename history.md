@@ -4,6 +4,11 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2021-Dec-10 / Minor)
+
+* deprecation of parameter `-AzureDevOpsWikiAsCode` / Based on environment variables the script will detect the code run platform
+* changed throttlelimit default from 5 to 10
+
 __Changes__ (2021-Dec-09 / Minor)
 
 * [Run AzGovViz in GitHub CodeSpaces](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/setup.md#azgovviz-github-codespaces) - __thanks!__ Carlos Mendible (Microsoft Cloud Solution Architect - Spain)
