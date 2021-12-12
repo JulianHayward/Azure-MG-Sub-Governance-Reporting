@@ -315,13 +315,13 @@ This permission is <b>mandatory</b> in each and every scenario!
       </td>
     </tr>
     <tr>
-      <td><b>C</b><br>Console | Service Principal</td>
+      <td><b>C</b><br>Console | Service Principal | Managed Identity</td>
       <td>
         <table>
           <tbody>
             <tr>
-              <th>Feature</th>
-              <th>Permissions</th>
+              <th>Capability</th>
+              <th>API Permissions</th>
             </tr>
             <tr>
               <td>Get AAD<br>Users</td>
@@ -337,6 +337,7 @@ This permission is <b>mandatory</b> in each and every scenario!
             </tr>
           </tbody>
         </table>
+        Optional: AAD Role 'Directory readers' could be used instead of API permissions (more read than required)
       </td>
     </tr>
     <tr>
@@ -345,8 +346,8 @@ This permission is <b>mandatory</b> in each and every scenario!
         <table>
           <tbody>
             <tr>
-              <th>Feature</th>
-              <th>Permissions</th>
+              <th>Capability</th>
+              <th>API Permissions</th>
             </tr>
             <tr>
               <td>Get AAD<br>Users</td>
@@ -362,6 +363,7 @@ This permission is <b>mandatory</b> in each and every scenario!
             </tr>
           </tbody>
         </table>
+        Optional: AAD Role 'Directory readers' could be used instead of API permissions (more read than required)
       </td>
     </tr>
   </tbody>

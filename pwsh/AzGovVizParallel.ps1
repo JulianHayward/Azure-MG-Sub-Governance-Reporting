@@ -268,7 +268,7 @@
 Param
 (
     [string]$Product = "AzGovViz",
-    [string]$ProductVersion = "v6_minor_20211210_1",
+    [string]$ProductVersion = "v6_minor_20211212_1",
     [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #deprecated - Based on environment variables the script will detect the code run platform
@@ -20457,9 +20457,9 @@ if ($accountType -eq "User") {
 $htParameters.userType = $userType
 
 
-if ($htParameters.onAzureDevOps -eq $true -or $accountType -eq "ServicePrincipal") {
+if ($htParameters.onAzureDevOps -eq $true -or $accountType -eq "ServicePrincipal" -or $accountType -eq "ManagedService") {
 
-    Write-Host "Checking ServicePrincipal permissions"
+    Write-Host "Checking $accountType permissions"
     
     $permissionsCheckFailed = $false
 
@@ -20826,6 +20826,9 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     if ($accountType -eq "ServicePrincipal") {
         $paramsUsed += "ExecutedBy: $($accountId) (App/ClientId) ($($accountType)) &#13;"
     }
+    elseif ($accountType -eq "ManagedService") {
+        $paramsUsed += "ExecutedBy: $($accountId) (Id) ($($accountType)) &#13;"
+    }
     else {
         $paramsUsed += "ExecutedBy: $($accountId) ($($accountType), $($userType)) &#13;"
     }
@@ -21114,7 +21117,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         $paramsUsed += "NoJsonExport: true &#13;"
     }
 
-    if ($ThrottleLimit -eq 5) {
+    if ($ThrottleLimit -eq 10) {
         Write-Host " ThrottleLimit = $ThrottleLimit" -ForegroundColor Yellow
         #$paramsUsed += "ThrottleLimit: $ThrottleLimit &#13;"
     }
@@ -25133,7 +25136,7 @@ if (-not $StatsOptOut) {
     $identifier = "$(([System.BitConverter]::ToString($identifierBase)) -replace '-')"
 
     $accountInfo = "$($accountType)$($userType)"
-    if ($accountType -eq "ServicePrincipal") {
+    if ($accountType -eq "ServicePrincipal" -or $accountType -eq "ManagedService") {
         $accountInfo = $accountType
     }
 
