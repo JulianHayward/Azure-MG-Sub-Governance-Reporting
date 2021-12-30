@@ -56,15 +56,13 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2021-Dec-10 / Minor)
+__Changes__ (2021-Dec-30 / Major)
 
-* deprecation of parameter `-AzureDevOpsWikiAsCode` / Based on environment variables the script will detect the code run platform
-* changed throttlelimit default from 5 to 10
-
-__Changes__ (2021-Dec-09 / Minor)
-
-* [Run AzGovViz in GitHub Codespaces](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/setup.md#azgovviz-github-codespaces) - __thanks!__ Carlos Mendible (Microsoft Cloud Solution Architect - Spain)
-* JSON output update -> filenames will indicate if Role assignment is PIM (Priviliged Identity Management) based
+* __DefinitionInsights__ collapsible JSON definitions
+* Fix PIM state / Subscription Role assignments inherited from Management Group
+* Bugfixes
+* AzAPICall enhanced error handling (GeneralError)
+* Script optimization / prepare for PS module
 
 Passed tests: Powershell Core 7.2.0 on Windows  
 Passed tests: Powershell Core 7.2.0 Azure DevOps hosted agent ubuntu-18.04  

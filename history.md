@@ -4,6 +4,14 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2021-Dec-30 / Major)
+
+* __DefinitionInsights__ collapsible JSON definitions
+* Fix PIM state / Subscription Role assignments inherited from Management Group
+* Bugfixes
+* AzAPICall enhanced error handling (GeneralError)
+* Script optimization / prepare for PS module
+
 __Changes__ (2021-Dec-10 / Minor)
 
 * deprecation of parameter `-AzureDevOpsWikiAsCode` / Based on environment variables the script will detect the code run platform
