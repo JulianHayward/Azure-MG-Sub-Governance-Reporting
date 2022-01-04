@@ -7,8 +7,11 @@
 __Changes__ (2021-Dec-30 / Major)
 
 * __DefinitionInsights__ collapsible JSON definitions
-* Fix PIM state / Subscription Role assignments inherited from Management Group
+* Fix PIM (Priviliged Identity Management) state for inherited Subscription Role assignments
+* __TenantSummary__ 'Azure Active Directory' add link to [AzADServicePrincipalInsights](#azadserviceprincipalinsights) (POC)
 * Bugfixes
+* HTML output patch jQuery / use latest version 3.6.0
+* Update [Demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210818_2.html)
 * AzAPICall enhanced error handling (GeneralError)
 * Script optimization / prepare for PS module
 

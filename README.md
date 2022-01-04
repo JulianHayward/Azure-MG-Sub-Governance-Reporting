@@ -52,6 +52,7 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 * [Facts](#facts)
 * [Contributions](#contributions)
 * [AzAdvertizer](#azadvertizer)
+* [AzADServicePrincipalInsights](#azadserviceprincipalinsights)
 * [Final note](#final-note)
 
 ## Release history
@@ -59,8 +60,11 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 __Changes__ (2021-Dec-30 / Major)
 
 * __DefinitionInsights__ collapsible JSON definitions
-* Fix PIM state / Subscription Role assignments inherited from Management Group
+* Fix PIM (Priviliged Identity Management) state for inherited Subscription Role assignments
+* __TenantSummary__ 'Azure Active Directory' add link to [AzADServicePrincipalInsights](#azadserviceprincipalinsights) (POC)
 * Bugfixes
+* HTML output patch jQuery / use latest version 3.6.0
+* Update [Demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210818_2.html)
 * AzAPICall enhanced error handling (GeneralError)
 * Script optimization / prepare for PS module
 
@@ -537,17 +541,27 @@ Please feel free to contribute. Thanks to so many supporters - testing, giving f
 
 Thanks Stefan Stranger (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale. Make sure you read Stefan´s Blog Article: [Enterprise-Scale - Policy Driven Governance](https://stefanstranger.github.io/2020/08/28/EnterpriseScalePolicyDrivenGovernance)
 
-Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale.
+Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale. 
+
+Carlos Mendible (Microsoft) gracias por tu contribución on the project - run AzGovViz with GitHub Codespaces.
 
 Special thanks to Tim Wanierke, Brooks Vaughn and Friedrich Weinmann (Microsoft).
 
-Kudos to the [TableFilter](https://www.tablefilter.com) Project Team!
+Kudos to the [TableFilter](https://www.tablefilter.com) Project Team!  
+Kudos to [LorDOniX](https://github.com/LorDOniX/json-viewer) for JSON-viewer!
 
 ## AzAdvertizer
 
 ![alt text](img/azadvertizer70.png "example output")
 
 Also check <https://www.azadvertizer.net> - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's Policy definitions, initiatives (Set definitions), aliases and Azure RBAC's Role definitions and resource provider operations.
+
+## AzADServicePrincipalInsights
+
+![alt text](img/azadserviceprincipalinsights73.png "example output")
+
+Also check <https://aka.ms/AzADServicePrincipalInsights> - Provides deep insights on ServicePrincipals (Enterprise Applications and Applications).  
+__Note:__ AzADServicePrincipalInsights is in proof of concept phase, the repository is not open sourced. However testing the code is explicitly allowed and appreciated.
 
 ## Final Note
 
