@@ -4,7 +4,7 @@
 
 ### AzGovViz version 6
 
-__Changes__ (2021-Dec-30 / Major)
+__Changes__ (rc / Major)
 
 * __DefinitionInsights__ collapsible JSON definitions
 * Fix PIM (Priviliged Identity Management) state for inherited Subscription Role assignments
@@ -12,7 +12,7 @@ __Changes__ (2021-Dec-30 / Major)
 * Bugfixes
 * HTML output patch jQuery / use latest version 3.6.0
 * Update [Demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210818_2.html)
-* AzAPICall enhanced error handling (GeneralError)
+* AzAPICall enhanced error handling (GeneralError, ResourceGroupNotFound)
 * Script optimization / prepare for PS module
 
 __Changes__ (2021-Dec-10 / Minor)

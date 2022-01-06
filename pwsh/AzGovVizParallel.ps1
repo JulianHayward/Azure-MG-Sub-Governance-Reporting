@@ -268,7 +268,7 @@
 Param
 (
     [string]$Product = "AzGovViz",
-    [string]$ProductVersion = "v6_major_20220104_1",
+    [string]$ProductVersion = "v6_major_20220106_3",
     [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #deprecated - Based on environment variables the script will detect the code run platform
@@ -1664,7 +1664,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType, $resourceId) 
         }
         if ($unexpectedError -eq $false) {
             if ($azAPIRequest.StatusCode -ne 200) {
-                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.code -like "*InternalServerError*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.code -like "*NotSupported*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*" -or $catchResult.error.code -like "*Authentication_ExpiredToken*" -or $catchResult.error.code -like "*ResourceNotFound*" -or $catchResult.code -like "*ResourceNotFound*" -or $catchResult.error.code -like "*UnknownError*" -or $catchResult.error.code -eq "500") {
+                if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.code -like "*InternalServerError*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*AuthorizationFailed*" -or $catchResult.code -like "*NotSupported*" -or $catchResult.error.code -like "*ExpiredAuthenticationToken*" -or $catchResult.error.code -like "*Authentication_ExpiredToken*" -or $catchResult.error.code -like "*ResourceNotFound*" -or $catchResult.code -like "*ResourceNotFound*" -or $catchResult.error.code -like "*ResourceGroupNotFound*" -or $catchResult.code -like "*ResourceGroupNotFound*" -or $catchResult.error.code -like "*UnknownError*" -or $catchResult.error.code -eq "500") {
                     if ($catchResult.error.code -like "*GatewayTimeout*" -or $catchResult.error.code -like "*BadGatewayConnection*" -or $catchResult.error.code -like "*InvalidGatewayHost*" -or $catchResult.error.code -like "*ServerTimeout*" -or $catchResult.error.code -like "*ServiceUnavailable*" -or $catchResult.code -like "*ServiceUnavailable*" -or $catchResult.error.code -like "*MultipleErrorsOccurred*" -or $catchResult.code -like "*InternalServerError*" -or $catchResult.error.code -like "*InternalServerError*" -or $catchResult.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*RequestTimeout*" -or $catchResult.error.code -like "*UnknownError*" -or $catchResult.error.code -eq "500") {
                         Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again in $tryCounter second(s)"
                         Start-Sleep -Seconds $tryCounter
@@ -1697,8 +1697,13 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType, $resourceId) 
                         Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token"
                         CreateBearerToken -targetEndPoint $targetEndpoint
                     }
-                    if ($catchResult.error.code -like "*ResourceNotFound*" -or $catchResult.code -like "*ResourceNotFound*") {
-                        Write-Host "  ResourceGone | The resourceId '$($resourceId)' seems meanwhile deleted."
+                    if ($catchResult.error.code -like "*ResourceNotFound*" -or $catchResult.code -like "*ResourceNotFound*" -or $catchResult.error.code -like "*ResourceGroupNotFound*" -or $catchResult.code -like "*ResourceGroupNotFound*") {
+                        if ($catchResult.error.code -like "*ResourceNotFound*" -or $catchResult.code -like "*ResourceNotFound*") {
+                            Write-Host "  ResourceGone | The resourceId '$($resourceId)' seems meanwhile deleted."
+                        }
+                        if ($catchResult.error.code -like "*ResourceGroupNotFound*" -or $catchResult.code -like "*ResourceGroupNotFound*") {
+                            Write-Host "  ResourceGone | ResourceGroup not found - the resourceId '$($resourceId)' seems meanwhile deleted."
+                        }
                         $script:responseJSON = "meanwhile_deleted"
                     }
                 }
@@ -2876,78 +2881,76 @@ function DataCollectionPolicyDefinitions {
             if ($hlpPolicyDefinitionId -like "/providers/Microsoft.Management/managementGroups/$($scopeId)/*" -and $hlpPolicyDefinitionId -notlike "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/*") {
                 $doIt = $true
             }
-
             if ($scopeId -eq $ManagementGroupId) {
                 $doIt = $true
             }
         }
 
         if ($doIt) {
-
             if (($scopePolicyDefinition.Properties.description).length -eq 0) {
                 $policyDefinitionDescription = "no description given"
             }
             else {
                 $policyDefinitionDescription = $scopePolicyDefinition.Properties.description
             }
-                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId) = @{}
-                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Id = $hlpPolicyDefinitionId
+            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId) = @{}
+            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Id = $hlpPolicyDefinitionId
             if ($hlpPolicyDefinitionId -like "/providers/Microsoft.Management/managementGroups/*") {
-                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Scope = (($hlpPolicyDefinitionId).split('/'))[0..4] -join "/"
-                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeMgSub = "Mg"
-                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeId = (($hlpPolicyDefinitionId).split('/'))[4]
+                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Scope = (($hlpPolicyDefinitionId).split('/'))[0..4] -join "/"
+                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeMgSub = "Mg"
+                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeId = (($hlpPolicyDefinitionId).split('/'))[4]
             }
             if ($hlpPolicyDefinitionId -like "/subscriptions/*") {
-                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Scope = (($hlpPolicyDefinitionId).split('/'))[0..2] -join "/"
-                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeMgSub = "Sub"
-                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeId = (($hlpPolicyDefinitionId).split('/'))[2]
+                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Scope = (($hlpPolicyDefinitionId).split('/'))[0..2] -join "/"
+                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeMgSub = "Sub"
+                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeId = (($hlpPolicyDefinitionId).split('/'))[2]
             }
-                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).DisplayName = $($scopePolicyDefinition.Properties.displayname)
-                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Description = $($policyDefinitionDescription)
-                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Type = $($scopePolicyDefinition.Properties.policyType)
-                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Category = $($scopePolicyDefinition.Properties.metadata.category)
-                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).PolicyDefinitionId = $hlpPolicyDefinitionId
+            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).DisplayName = $($scopePolicyDefinition.Properties.displayname)
+            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Description = $($policyDefinitionDescription)
+            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Type = $($scopePolicyDefinition.Properties.policyType)
+            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Category = $($scopePolicyDefinition.Properties.metadata.category)
+            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).PolicyDefinitionId = $hlpPolicyDefinitionId
             if ($scopePolicyDefinition.Properties.metadata.deprecated -eq $true -or $scopePolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
-                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Deprecated = $scopePolicyDefinition.Properties.metadata.deprecated
+                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Deprecated = $scopePolicyDefinition.Properties.metadata.deprecated
             }
             else {
-                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Deprecated = $false
+                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Deprecated = $false
             }
             if ($scopePolicyDefinition.Properties.metadata.preview -eq $true -or $scopePolicyDefinition.Properties.displayname -like "``[*Preview``]*") {
-                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Preview = $scopePolicyDefinition.Properties.metadata.preview
+                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Preview = $scopePolicyDefinition.Properties.metadata.preview
             }
             else {
-                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Preview = $false
+                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Preview = $false
             }
             #effects
             if ($scopePolicyDefinition.properties.parameters.effect.defaultvalue) {
-                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectDefaultValue = $scopePolicyDefinition.properties.parameters.effect.defaultvalue
+                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectDefaultValue = $scopePolicyDefinition.properties.parameters.effect.defaultvalue
                 if ($scopePolicyDefinition.properties.parameters.effect.allowedValues) {
-                            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectAllowedValue = $scopePolicyDefinition.properties.parameters.effect.allowedValues -join ","
+                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectAllowedValue = $scopePolicyDefinition.properties.parameters.effect.allowedValues -join ","
                 }
                 else {
-                            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectAllowedValue = "n/a"
+                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectAllowedValue = "n/a"
                 }
-                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectFixedValue = "n/a"
+                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectFixedValue = "n/a"
             }
             else {
                 if ($scopePolicyDefinition.properties.parameters.policyEffect.defaultValue) {
-                            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectDefaultValue = $scopePolicyDefinition.properties.parameters.policyEffect.defaultvalue
+                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectDefaultValue = $scopePolicyDefinition.properties.parameters.policyEffect.defaultvalue
                     if ($scopePolicyDefinition.properties.parameters.policyEffect.allowedValues) {
-                                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectAllowedValue = $scopePolicyDefinition.properties.parameters.policyEffect.allowedValues -join ","
+                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectAllowedValue = $scopePolicyDefinition.properties.parameters.policyEffect.allowedValues -join ","
                     }
                     else {
-                                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectAllowedValue = "n/a"
+                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectAllowedValue = "n/a"
                     }
-                            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectFixedValue = "n/a"
+                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectFixedValue = "n/a"
                 }
                 else {
-                            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectFixedValue = $scopePolicyDefinition.Properties.policyRule.then.effect
-                            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectDefaultValue = "n/a"
-                            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectAllowedValue = "n/a"
+                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectFixedValue = $scopePolicyDefinition.Properties.policyRule.then.effect
+                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectDefaultValue = "n/a"
+                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectAllowedValue = "n/a"
                 }
             }
-                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Json = $scopePolicyDefinition
+            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Json = $scopePolicyDefinition
 
             if (-not [string]::IsNullOrEmpty($scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
                         ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).RoleDefinitionIds = $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
@@ -2969,14 +2972,13 @@ function DataCollectionPolicyDefinitions {
                 }
             }
             else {
-                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).RoleDefinitionIds = "n/a"
+                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).RoleDefinitionIds = "n/a"
             }
 
             #namingValidation
             if (-not [string]::IsNullOrEmpty($scopePolicyDefinition.Properties.displayname)) {
                 $namingValidationResult = NamingValidation -toCheck $scopePolicyDefinition.Properties.displayname
                 if ($namingValidationResult.Count -gt 0) {
-
                     if (-not $script:htNamingValidation.Policy.($hlpPolicyDefinitionId)) {
                         $script:htNamingValidation.Policy.($hlpPolicyDefinitionId) = @{}
                     }
@@ -2987,7 +2989,6 @@ function DataCollectionPolicyDefinitions {
             if (-not [string]::IsNullOrEmpty($scopePolicyDefinition.Name)) {
                 $namingValidationResult = NamingValidation -toCheck $scopePolicyDefinition.Name
                 if ($namingValidationResult.Count -gt 0) {
-
                     if (-not $script:htNamingValidation.Policy.($hlpPolicyDefinitionId)) {
                         $script:htNamingValidation.Policy.($hlpPolicyDefinitionId) = @{}
                     }
@@ -3003,7 +3004,6 @@ function DataCollectionPolicyDefinitions {
     return $returnObject
 }
 $funcDataCollectionPolicyDefinitions = $function:DataCollectionPolicyDefinitions.ToString()
-
 
 function DataCollectionPolicySetDefinitions {
     [CmdletBinding()]Param(
@@ -3039,61 +3039,58 @@ function DataCollectionPolicySetDefinitions {
             if ($hlpPolicySetDefinitionId -like "/providers/Microsoft.Management/managementGroups/$($scopeId)/*" -and $hlpPolicySetDefinitionId -notlike "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/*") {
                 $doIt = $true
             }
-
             if ($scopeId -eq $ManagementGroupId) {
                 $doIt = $true
             }
         }
 
         if ($doIt) {
-
             if (($scopePolicySetDefinition.Properties.description).length -eq 0) {
                 $policySetDefinitionDescription = "no description given"
             }
             else {
                 $policySetDefinitionDescription = $scopePolicySetDefinition.Properties.description
             }
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId) = @{}
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Id = $hlpPolicySetDefinitionId
+            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId) = @{}
+            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Id = $hlpPolicySetDefinitionId
             if ($scopePolicySetDefinition.Id -like "/providers/Microsoft.Management/managementGroups/*") {
-                    ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Scope = (($scopePolicySetDefinition.Id).split('/'))[0..4] -join "/"
-                    ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeMgSub = "Mg"
-                    ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeId = (($scopePolicySetDefinition.Id).split('/'))[4]
+                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Scope = (($scopePolicySetDefinition.Id).split('/'))[0..4] -join "/"
+                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeMgSub = "Mg"
+                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeId = (($scopePolicySetDefinition.Id).split('/'))[4]
             }
             if ($scopePolicySetDefinition.Id -like "/subscriptions/*") {
-                    ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Scope = (($scopePolicySetDefinition.Id).split('/'))[0..2] -join "/"
-                    ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeMgSub = "Sub"
-                    ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeId = (($scopePolicySetDefinition.Id).split('/'))[2]
+                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Scope = (($scopePolicySetDefinition.Id).split('/'))[0..2] -join "/"
+                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeMgSub = "Sub"
+                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeId = (($scopePolicySetDefinition.Id).split('/'))[2]
             }
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).DisplayName = $($scopePolicySetDefinition.Properties.displayname)
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Description = $($policySetDefinitionDescription)
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Type = $($scopePolicySetDefinition.Properties.policyType)
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Category = $($scopePolicySetDefinition.Properties.metadata.category)
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).PolicyDefinitionId = $hlpPolicySetDefinitionId
+            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).DisplayName = $($scopePolicySetDefinition.Properties.displayname)
+            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Description = $($policySetDefinitionDescription)
+            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Type = $($scopePolicySetDefinition.Properties.policyType)
+            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Category = $($scopePolicySetDefinition.Properties.metadata.category)
+            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).PolicyDefinitionId = $hlpPolicySetDefinitionId
             $arrayPolicySetPolicyIdsToLower = @()
             $arrayPolicySetPolicyIdsToLower = foreach ($policySetPolicy in $scopePolicySetDefinition.properties.policydefinitions.policyDefinitionId) {
                     ($policySetPolicy).ToLower()
             }
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Json = $scopePolicySetDefinition
+            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
+            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Json = $scopePolicySetDefinition
             if ($scopePolicySetDefinition.Properties.metadata.deprecated -eq $true -or $scopePolicySetDefinition.Properties.displayname -like "``[Deprecated``]*") {
-                    ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Deprecated = $scopePolicySetDefinition.Properties.metadata.deprecated
+                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Deprecated = $scopePolicySetDefinition.Properties.metadata.deprecated
             }
             else {
-                    ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Deprecated = $false
+                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Deprecated = $false
             }
             if ($scopePolicySetDefinition.Properties.metadata.preview -eq $true -or $scopePolicySetDefinition.Properties.displayname -like "``[*Preview``]*") {
-                    ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Preview = $scopePolicySetDefinition.Properties.metadata.preview
+                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Preview = $scopePolicySetDefinition.Properties.metadata.preview
             }
             else {
-                    ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Preview = $false
+                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Preview = $false
             }
 
             #namingValidation
             if (-not [string]::IsNullOrEmpty($scopePolicySetDefinition.Properties.displayname)) {
                 $namingValidationResult = NamingValidation -toCheck $scopePolicySetDefinition.Properties.displayname
                 if ($namingValidationResult.Count -gt 0) {
-
                     if (-not $script:htNamingValidation.PolicySet.($scopePolicySetDefinition.Id)) {
                         $script:htNamingValidation.PolicySet.($scopePolicySetDefinition.Id) = @{}
                     }
@@ -3104,7 +3101,6 @@ function DataCollectionPolicySetDefinitions {
             if (-not [string]::IsNullOrEmpty($scopePolicySetDefinition.Name)) {
                 $namingValidationResult = NamingValidation -toCheck $scopePolicySetDefinition.Name
                 if ($namingValidationResult.Count -gt 0) {
-
                     if (-not $script:htNamingValidation.PolicySet.($scopePolicySetDefinition.Id)) {
                         $script:htNamingValidation.PolicySet.($scopePolicySetDefinition.Id) = @{}
                     }
@@ -3161,7 +3157,6 @@ function DataCollectionPolicyAssignmentsMG {
         if ($L0mgmtGroupPolicyAssignment.properties.scope -eq "/providers/Microsoft.Management/managementGroups/$($scopeId)" -and $L0mgmtGroupPolicyAssignment.properties.scope -ne "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)") {
             $doIt = $true
         }
-
         if ($scopeId -eq $ManagementGroupId) {
             $doIt = $true
         }
@@ -3174,12 +3169,10 @@ function DataCollectionPolicyAssignmentsMG {
             $script:htCacheAssignmentsPolicy.(($L0mgmtGroupPolicyAssignment.Id).ToLower()).AssignmentScopeId = [string]($splitAssignment[4])
         }
 
-
         #namingValidation
         if (-not [string]::IsNullOrEmpty($L0mgmtGroupPolicyAssignment.Properties.DisplayName)) {
             $namingValidationResult = NamingValidation -toCheck $L0mgmtGroupPolicyAssignment.Properties.DisplayName
             if ($namingValidationResult.Count -gt 0) {
-
                 if (-not $script:htNamingValidation.PolicyAssignment.($L0mgmtGroupPolicyAssignment.Id)) {
                     $script:htNamingValidation.PolicyAssignment.($L0mgmtGroupPolicyAssignment.Id) = @{}
                 }
@@ -3190,7 +3183,6 @@ function DataCollectionPolicyAssignmentsMG {
         if (-not [string]::IsNullOrEmpty($L0mgmtGroupPolicyAssignment.Name)) {
             $namingValidationResult = NamingValidation -toCheck $L0mgmtGroupPolicyAssignment.Name
             if ($namingValidationResult.Count -gt 0) {
-
                 if (-not $script:htNamingValidation.PolicyAssignment.($L0mgmtGroupPolicyAssignment.Id)) {
                     $script:htNamingValidation.PolicyAssignment.($L0mgmtGroupPolicyAssignment.Id) = @{}
                 }
@@ -3299,14 +3291,14 @@ function DataCollectionPolicyAssignmentsMG {
                     $nonComplianceMessage = ""
                 }
 
-                $FormatedPolicyAssignmentParameters = ""
+                $formatedPolicyAssignmentParameters = ""
                 $hlp = $L0mgmtGroupPolicyAssignment.Properties.Parameters
                 if (-not [string]::IsNullOrEmpty($hlp)) {
                     $arrayPolicyAssignmentParameters = @()
                     $arrayPolicyAssignmentParameters = foreach ($parameterName in $hlp.PSObject.Properties.Name | Sort-Object) {
                         "$($parameterName)=$($hlp.($parameterName).Value -join "$($CsvDelimiter) ")"
                     }
-                    $FormatedPolicyAssignmentParameters = $arrayPolicyAssignmentParameters -join "$($CsvDelimiterOpposite) "
+                    $formatedPolicyAssignmentParameters = $arrayPolicyAssignmentParameters -join "$($CsvDelimiterOpposite) "
                 }
 
                 $addRowToTableDone = $true
@@ -3331,8 +3323,8 @@ function DataCollectionPolicyAssignmentsMG {
                     -PolicyDefinitionsScopedCount $policyDefinitionsScopedCount `
                     -PolicySetDefinitionsScopedLimit $LimitPOLICYPolicySetDefinitionsScopedManagementGroup `
                     -PolicySetDefinitionsScopedCount $policySetDefinitionsScopedCount `
-                    -PolicyDefinitionEffectDefault ($htCacheDefinitionsPolicy).(($policyDefinitionId)).effectDefaultValue `
-                    -PolicyDefinitionEffectFixed ($htCacheDefinitionsPolicy).(($policyDefinitionId)).effectFixedValue `
+                    -PolicyDefinitionEffectDefault $policyDefinition.effectDefaultValue `
+                    -PolicyDefinitionEffectFixed $policyDefinition.effectFixedValue `
                     -PolicyAssignmentScope $policyAssignmentScope `
                     -PolicyAssignmentScopeMgSubRg "Mg" `
                     -PolicyAssignmentScopeName ($policyAssignmentScope -replace ".*/", "") `
@@ -3348,7 +3340,7 @@ function DataCollectionPolicyAssignmentsMG {
                     -PolicyAssignmentCount $L0mgmtGroupPolicyAssignmentsPolicyCount `
                     -PolicyAssignmentAtScopeCount $L0mgmtGroupPolicyAssignmentsPolicyAtScopeCount `
                     -PolicyAssignmentParameters $L0mgmtGroupPolicyAssignment.Properties.Parameters `
-                    -PolicyAssignmentParametersFormated $FormatedPolicyAssignmentParameters `
+                    -PolicyAssignmentParametersFormated $formatedPolicyAssignmentParameters `
                     -PolicyAssignmentAssignedBy $assignedBy `
                     -PolicyAssignmentCreatedBy $createdBy `
                     -PolicyAssignmentCreatedOn $createdOn `
@@ -3450,14 +3442,14 @@ function DataCollectionPolicyAssignmentsMG {
                     $nonComplianceMessage = ""
                 }
 
-                $FormatedPolicyAssignmentParameters = ""
+                $formatedPolicyAssignmentParameters = ""
                 $hlp = $L0mgmtGroupPolicyAssignment.Properties.Parameters
                 if (-not [string]::IsNullOrEmpty($hlp)) {
                     $arrayPolicyAssignmentParameters = @()
                     $arrayPolicyAssignmentParameters = foreach ($parameterName in $hlp.PSObject.Properties.Name | Sort-Object) {
                         "$($parameterName)=$($hlp.($parameterName).Value -join "$($CsvDelimiter) ")"
                     }
-                    $FormatedPolicyAssignmentParameters = $arrayPolicyAssignmentParameters -join "$($CsvDelimiterOpposite) "
+                    $formatedPolicyAssignmentParameters = $arrayPolicyAssignmentParameters -join "$($CsvDelimiterOpposite) "
                 }
 
                 $addRowToTableDone = $true
@@ -3497,7 +3489,7 @@ function DataCollectionPolicyAssignmentsMG {
                     -PolicyAssignmentCount $L0mgmtGroupPolicyAssignmentsPolicyCount `
                     -PolicyAssignmentAtScopeCount $L0mgmtGroupPolicyAssignmentsPolicyAtScopeCount `
                     -PolicyAssignmentParameters $L0mgmtGroupPolicyAssignment.Properties.Parameters `
-                    -PolicyAssignmentParametersFormated $FormatedPolicyAssignmentParameters `
+                    -PolicyAssignmentParametersFormated $formatedPolicyAssignmentParameters `
                     -PolicyAssignmentAssignedBy $assignedBy `
                     -PolicyAssignmentCreatedBy $createdBy `
                     -PolicyAssignmentCreatedOn $createdOn `
@@ -3550,7 +3542,6 @@ function DataCollectionPolicyAssignmentsSub {
         $L1mgmtGroupSubPolicyAssignmentsPolicySetCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" } )).count
         $L1mgmtGroupSubPolicyAssignmentsPolicyAtScopeCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.Id -match "/subscriptions/$($scopeId)" } )).count
         $L1mgmtGroupSubPolicyAssignmentsPolicySetAtScopeCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.Id -match "/subscriptions/$($scopeId)" } )).count
-
         $L1mgmtGroupSubPolicyAssignmentsQuery = $L1mgmtGroupSubPolicyAssignments
     }
     else {
@@ -3560,7 +3551,6 @@ function DataCollectionPolicyAssignmentsSub {
         $L1mgmtGroupSubPolicyAssignmentsPolicySetCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.Id -notmatch "/subscriptions/$($scopeId)/resourceGroups" } )).count
         $L1mgmtGroupSubPolicyAssignmentsPolicyAtScopeCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -and $_.Id -match "/subscriptions/$($scopeId)" -and $_.Id -notmatch "/subscriptions/$($scopeId)/resourceGroups" } )).count
         $L1mgmtGroupSubPolicyAssignmentsPolicySetAtScopeCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/" -and $_.Id -match "/subscriptions/$($scopeId)" -and $_.Id -notmatch "/subscriptions/$($scopeId)/resourceGroups" } )).count
-
         foreach ($L1mgmtGroupSubPolicyAssignment in $L1mgmtGroupSubPolicyAssignments.where( { $_.Id -match "/subscriptions/$($scopeId)/resourceGroups" } )) {
             ($script:htCacheAssignmentsPolicyOnResourceGroupsAndResources).(($L1mgmtGroupSubPolicyAssignment.Id).ToLower()) = $L1mgmtGroupSubPolicyAssignment
         }
@@ -3570,7 +3560,6 @@ function DataCollectionPolicyAssignmentsSub {
     $L1mgmtGroupSubPolicyAssignmentsPolicyAndPolicySetAtScopeCount = ($L1mgmtGroupSubPolicyAssignmentsPolicyAtScopeCount + $L1mgmtGroupSubPolicyAssignmentsPolicySetAtScopeCount)
 
     foreach ($L1mgmtGroupSubPolicyAssignment in $L1mgmtGroupSubPolicyAssignmentsQuery ) {
-
         if ($L1mgmtGroupSubPolicyAssignment.Id -like "/subscriptions/$($scopeId)/*") {
             $script:htCacheAssignmentsPolicy.(($L1mgmtGroupSubPolicyAssignment.Id).ToLower()) = @{}
             $script:htCacheAssignmentsPolicy.(($L1mgmtGroupSubPolicyAssignment.Id).ToLower()).Assignment = $L1mgmtGroupSubPolicyAssignment
@@ -3589,7 +3578,6 @@ function DataCollectionPolicyAssignmentsSub {
         if (-not [string]::IsNullOrEmpty($L1mgmtGroupSubPolicyAssignment.Properties.DisplayName)) {
             $namingValidationResult = NamingValidation -toCheck $L1mgmtGroupSubPolicyAssignment.Properties.DisplayName
             if ($namingValidationResult.Count -gt 0) {
-
                 if (-not $script:htNamingValidation.PolicyAssignment.($L1mgmtGroupSubPolicyAssignment.Id)) {
                     $script:htNamingValidation.PolicyAssignment.($L1mgmtGroupSubPolicyAssignment.Id) = @{}
                 }
@@ -3600,7 +3588,6 @@ function DataCollectionPolicyAssignmentsSub {
         if (-not [string]::IsNullOrEmpty($L1mgmtGroupSubPolicyAssignment.Name)) {
             $namingValidationResult = NamingValidation -toCheck $L1mgmtGroupSubPolicyAssignment.Name
             if ($namingValidationResult.Count -gt 0) {
-
                 if (-not $script:htNamingValidation.PolicyAssignment.($L1mgmtGroupSubPolicyAssignment.Id)) {
                     $script:htNamingValidation.PolicyAssignment.($L1mgmtGroupSubPolicyAssignment.Id) = @{}
                 }
@@ -3611,21 +3598,22 @@ function DataCollectionPolicyAssignmentsSub {
 
         if ($L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -OR $L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/") {
             if ($L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/") {
-                $PolicyVariant = "Policy"
-                $Id = ($L1mgmtGroupSubPolicyAssignment.properties.policydefinitionid).ToLower()
+                $policyVariant = "Policy"
+                $policyDefinitionId = ($L1mgmtGroupSubPolicyAssignment.properties.policydefinitionid).ToLower()
 
-                if (($htCacheDefinitionsPolicy).($Id)) {
-                    $Def = ($htCacheDefinitionsPolicy).($Id)
-                    $policyDisplayName = $Def.DisplayName
-                    $policyDescription = $Def.Description
-                    $policyType = $Def.Type
-                    $policyCategory = $Def.Category
-                    $policyDefinitionIdGuid = (($Def.Id) -replace ".*/")
-                    $policyDefinitionId = $Def.PolicyDefinitionId
-                    if (($htCacheDefinitionsPolicy).($Id).Type -eq "Custom") {
-                        $policyDefintionScope = $Def.Scope
-                        $policyDefintionScopeMgSub = $Def.ScopeMgSub
-                        $policyDefintionScopeId = $Def.ScopeId
+                if (($htCacheDefinitionsPolicy).($policyDefinitionId)) {
+                    $policyAssignmentsPolicyDefinition = ($htCacheDefinitionsPolicy).($policyDefinitionId)
+                    $policyDisplayName = $policyAssignmentsPolicyDefinition.DisplayName
+                    $policyDescription = $policyAssignmentsPolicyDefinition.Description
+                    $policyType = $policyAssignmentsPolicyDefinition.Type
+                    $policyCategory = $policyAssignmentsPolicyDefinition.Category
+                    $policyDefinitionEffectDefault = $policyAssignmentsPolicyDefinition.effectDefaultValue
+                    $policyDefinitionEffectFixed = $policyAssignmentsPolicyDefinition.effectFixedValue
+
+                    if (($htCacheDefinitionsPolicy).($policyDefinitionId).Type -eq "Custom") {
+                        $policyDefintionScope = $policyAssignmentsPolicyDefinition.Scope
+                        $policyDefintionScopeMgSub = $policyAssignmentsPolicyDefinition.ScopeMgSub
+                        $policyDefintionScopeId = $policyAssignmentsPolicyDefinition.ScopeId
                     }
                     else {
                         $policyDefintionScope = "n/a"
@@ -3637,19 +3625,18 @@ function DataCollectionPolicyAssignmentsSub {
                 else {
                     $policyDisplayName = "unknown"
                     $policyDescription = "unknown"
-
                     $policyType = "unknown"
                     $policyCategory = "unknown"
-                    $policyDefinitionIdGuid = (($Id) -replace ".*/")
-                    $policyDefinitionId = $Id
-
+                    $policyDefinitionEffectDefault = "unknown"
+                    $policyDefinitionEffectFixed = "unknown"
                     $policyDefintionScope = "unknown"
                     $policyDefintionScopeMgSub = "unknown"
                     $policyDefintionScopeId = "unknown"
+                    #test
+                    Write-Host " * * * Finding?! could not be found: '$($policyDefinitionId)'"
                 }
 
                 $PolicyAssignmentScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
-
                 if ($PolicyAssignmentScope -like "/providers/Microsoft.Management/managementGroups/*") {
                     $PolicyAssignmentScopeMgSubRg = "Mg"
                 }
@@ -3716,15 +3703,18 @@ function DataCollectionPolicyAssignmentsSub {
                     $nonComplianceMessage = ""
                 }
 
-                $FormatedPolicyAssignmentParameters = ""
+                $formatedPolicyAssignmentParameters = ""
                 $hlp = $L1mgmtGroupSubPolicyAssignment.Properties.Parameters
                 if (-not [string]::IsNullOrEmpty($hlp)) {
                     $arrayPolicyAssignmentParameters = @()
                     $arrayPolicyAssignmentParameters = foreach ($parameterName in $hlp.PSObject.Properties.Name | Sort-Object) {
                         "$($parameterName)=$($hlp.($parameterName).Value -join "$($CsvDelimiter) ")"
                     }
-                    $FormatedPolicyAssignmentParameters = $arrayPolicyAssignmentParameters -join "$($CsvDelimiterOpposite) "
+                    $formatedPolicyAssignmentParameters = $arrayPolicyAssignmentParameters -join "$($CsvDelimiterOpposite) "
                 }
+
+                #test
+                #Write-Host "processing: $scopeDisplayName - $PolicyAssignmentId"
 
                 $addRowToTableDone = $true
                 AddRowToTable `
@@ -3743,10 +3733,10 @@ function DataCollectionPolicyAssignmentsSub {
                     -SubscriptionTagsCount $subscriptionTagsCount `
                     -Policy $policyDisplayName `
                     -PolicyDescription $policyDescription `
-                    -PolicyVariant $PolicyVariant `
+                    -PolicyVariant $policyVariant `
                     -PolicyType $policyType `
                     -PolicyCategory $policyCategory `
-                    -PolicyDefinitionIdGuid $policyDefinitionIdGuid `
+                    -PolicyDefinitionIdGuid ($policyDefinitionId -replace ".*/") `
                     -PolicyDefinitionId $policyDefinitionId `
                     -PolicyDefintionScope $policyDefintionScope `
                     -PolicyDefintionScopeMgSub $policyDefintionScopeMgSub `
@@ -3755,8 +3745,8 @@ function DataCollectionPolicyAssignmentsSub {
                     -PolicyDefinitionsScopedCount $PolicyDefinitionsScopedCount `
                     -PolicySetDefinitionsScopedLimit $LimitPOLICYPolicySetDefinitionsScopedSubscription `
                     -PolicySetDefinitionsScopedCount $PolicySetDefinitionsScopedCount `
-                    -PolicyDefinitionEffectDefault ($htCacheDefinitionsPolicy).(($policyDefinitionId)).effectDefaultValue `
-                    -PolicyDefinitionEffectFixed ($htCacheDefinitionsPolicy).(($policyDefinitionId)).effectFixedValue `
+                    -PolicyDefinitionEffectDefault $policyDefinitionEffectDefault `
+                    -PolicyDefinitionEffectFixed $policyDefinitionEffectFixed `
                     -PolicyAssignmentScope $PolicyAssignmentScope `
                     -PolicyAssignmentScopeMgSubRg $PolicyAssignmentScopeMgSubRg `
                     -PolicyAssignmentScopeName ($PolicyAssignmentScope -replace '.*/', '') `
@@ -3772,7 +3762,7 @@ function DataCollectionPolicyAssignmentsSub {
                     -PolicyAssignmentCount $L1mgmtGroupSubPolicyAssignmentsPolicyCount `
                     -PolicyAssignmentAtScopeCount $L1mgmtGroupSubPolicyAssignmentsPolicyAtScopeCount `
                     -PolicyAssignmentParameters $L1mgmtGroupSubPolicyAssignment.Properties.Parameters `
-                    -PolicyAssignmentParametersFormated $FormatedPolicyAssignmentParameters `
+                    -PolicyAssignmentParametersFormated $formatedPolicyAssignmentParameters `
                     -PolicyAssignmentAssignedBy $assignedBy `
                     -PolicyAssignmentCreatedBy $createdBy `
                     -PolicyAssignmentCreatedOn $createdOn `
@@ -3784,9 +3774,9 @@ function DataCollectionPolicyAssignmentsSub {
                     -PolicyAndPolicySetAssignmentAtScopeCount $L1mgmtGroupSubPolicyAssignmentsPolicyAndPolicySetAtScopeCount
             }
             if ($L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/") {
-                $PolicyVariant = "PolicySet"
+                $policyVariant = "PolicySet"
                 $Id = ($L1mgmtGroupSubPolicyAssignment.properties.policydefinitionid).ToLower()
-                $Def = ($htCacheDefinitionsPolicySet).($Id)
+                $policyAssignmentsPolicyDefinition = ($htCacheDefinitionsPolicySet).($Id)
                 $PolicyAssignmentScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
                 if ($PolicyAssignmentScope -like "/providers/Microsoft.Management/managementGroups/*") {
                     $PolicyAssignmentScopeMgSubRg = "Mg"
@@ -3825,9 +3815,9 @@ function DataCollectionPolicyAssignmentsSub {
                 }
 
                 if (($htCacheDefinitionsPolicySet).$($Id).Type -eq "Custom") {
-                    $policyDefintionScope = $Def.Scope
-                    $policyDefintionScopeMgSub = $Def.ScopeMgSub
-                    $policyDefintionScopeId = $Def.ScopeId
+                    $policyDefintionScope = $policyAssignmentsPolicyDefinition.Scope
+                    $policyDefintionScopeMgSub = $policyAssignmentsPolicyDefinition.ScopeMgSub
+                    $policyDefintionScopeId = $policyAssignmentsPolicyDefinition.ScopeId
                 }
                 else {
                     $policyDefintionScope = "n/a"
@@ -3865,14 +3855,14 @@ function DataCollectionPolicyAssignmentsSub {
                     $nonComplianceMessage = ""
                 }
 
-                $FormatedPolicyAssignmentParameters = ""
+                $formatedPolicyAssignmentParameters = ""
                 $hlp = $L1mgmtGroupSubPolicyAssignment.Properties.Parameters
                 if (-not [string]::IsNullOrEmpty($hlp)) {
                     $arrayPolicyAssignmentParameters = @()
                     $arrayPolicyAssignmentParameters = foreach ($parameterName in $hlp.PSObject.Properties.Name | Sort-Object) {
                         "$($parameterName)=$($hlp.($parameterName).Value -join "$($CsvDelimiter) ")"
                     }
-                    $FormatedPolicyAssignmentParameters = $arrayPolicyAssignmentParameters -join "$($CsvDelimiterOpposite) "
+                    $formatedPolicyAssignmentParameters = $arrayPolicyAssignmentParameters -join "$($CsvDelimiterOpposite) "
                 }
 
                 $addRowToTableDone = $true
@@ -3890,13 +3880,13 @@ function DataCollectionPolicyAssignmentsSub {
                     -SubscriptionASCSecureScore $subscriptionASCSecureScore `
                     -SubscriptionTags $subscriptionTags `
                     -SubscriptionTagsCount $subscriptionTagsCount `
-                    -Policy $Def.DisplayName `
-                    -PolicyDescription $Def.Description `
-                    -PolicyVariant $PolicyVariant `
-                    -PolicyType $Def.Type `
-                    -PolicyCategory $Def.Category `
-                    -PolicyDefinitionIdGuid (($Def.Id) -replace ".*/") `
-                    -PolicyDefinitionId $Def.PolicyDefinitionId `
+                    -Policy $policyAssignmentsPolicyDefinition.DisplayName `
+                    -PolicyDescription $policyAssignmentsPolicyDefinition.Description `
+                    -PolicyVariant $policyVariant `
+                    -PolicyType $policyAssignmentsPolicyDefinition.Type `
+                    -PolicyCategory $policyAssignmentsPolicyDefinition.Category `
+                    -PolicyDefinitionIdGuid (($policyAssignmentsPolicyDefinition.Id) -replace ".*/") `
+                    -PolicyDefinitionId $policyAssignmentsPolicyDefinition.PolicyDefinitionId `
                     -PolicyDefintionScope $policyDefintionScope `
                     -PolicyDefintionScopeMgSub $policyDefintionScopeMgSub `
                     -PolicyDefintionScopeId $policyDefintionScopeId `
@@ -3919,7 +3909,7 @@ function DataCollectionPolicyAssignmentsSub {
                     -PolicyAssignmentCount $L1mgmtGroupSubPolicyAssignmentsPolicyCount `
                     -PolicyAssignmentAtScopeCount $L1mgmtGroupSubPolicyAssignmentsPolicyAtScopeCount `
                     -PolicyAssignmentParameters $L1mgmtGroupSubPolicyAssignment.Properties.Parameters `
-                    -PolicyAssignmentParametersFormated $FormatedPolicyAssignmentParameters `
+                    -PolicyAssignmentParametersFormated $formatedPolicyAssignmentParameters `
                     -PolicyAssignmentAssignedBy $assignedBy `
                     -PolicyAssignmentCreatedBy $createdBy `
                     -PolicyAssignmentCreatedOn $createdOn `
@@ -4087,23 +4077,23 @@ function DataCollectionRoleAssignmentsMG {
         $roleDefinitionIdGuid = $roleDefinitionId -replace ".*/"
 
         if (-not ($htCacheDefinitionsRole).($roleDefinitionIdGuid)) {
+            $roleAssignmentsRoleDefinition = ""
             $roleDefinitionName = "'This roleDefinition likely was deleted although a roleAssignment existed'"
         }
         else {
-            $roleDefinitionName = ($htCacheDefinitionsRole).($roleDefinitionIdGuid).Name
+            $roleAssignmentsRoleDefinition = ($htCacheDefinitionsRole).($roleDefinitionIdGuid)
+            $roleDefinitionName = $roleAssignmentsRoleDefinition.Name
         }
 
         $doIt = $false
         if ($L0mgmtGroupRoleAssignment.properties.scope -eq "/providers/Microsoft.Management/managementGroups/$($scopeId)" -and $L0mgmtGroupRoleAssignment.properties.scope -ne "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)") {
             $doIt = $true
         }
-
         if ($scopeId -eq $ManagementGroupId) {
             $doIt = $true
         }
 
         if ($doIt) {
-
             #assignment
             $splitAssignment = ($roleAssignmentId).Split('/')
             $arrayRoleAssignment = [System.Collections.ArrayList]@()
@@ -4119,16 +4109,16 @@ function DataCollectionRoleAssignmentsMG {
                     PIM                = $pim
                 })
 
-            $script:htCacheAssignmentsRole.($roleAssignmentId) = @{}
-                ($script:htCacheAssignmentsRole).($roleAssignmentId).Assignment = $arrayRoleAssignment
+            ($script:htCacheAssignmentsRole).($roleAssignmentId) = @{}
+            ($script:htCacheAssignmentsRole).($roleAssignmentId).Assignment = $arrayRoleAssignment
 
             if ($roleAssignmentId -like "/providers/Microsoft.Authorization/roleAssignments/*") {
-                    ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeTenMgSubRgRes = "Tenant"
-                    ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeId = "Tenant"
+                ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeTenMgSubRgRes = "Tenant"
+                ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeId = "Tenant"
             }
             else {
-                    ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeTenMgSubRgRes = "Mg"
-                    ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeId = [string]$splitAssignment[4]
+                ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeTenMgSubRgRes = "Mg"
+                ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeId = [string]$splitAssignment[4]
             }
         }
 
@@ -4171,11 +4161,11 @@ function DataCollectionRoleAssignmentsMG {
         $roleAssignmentScopeType = "MG"
 
         $roleSecurityCustomRoleOwner = 0
-        if (($htCacheDefinitionsRole).$($roleDefinitionIdGuid).Actions -eq '*' -and ((($htCacheDefinitionsRole).$($roleDefinitionIdGuid).NotActions)).length -eq 0 -and ($htCacheDefinitionsRole).$($roleDefinitionIdGuid).IsCustom -eq $True) {
+        if ($roleAssignmentsRoleDefinition.Actions -eq '*' -and (($roleAssignmentsRoleDefinition.NotActions)).length -eq 0 -and $roleAssignmentsRoleDefinition.IsCustom -eq $True) {
             $roleSecurityCustomRoleOwner = 1
         }
         $roleSecurityOwnerAssignmentSP = 0
-        if ((($htCacheDefinitionsRole).$($roleDefinitionIdGuid).Id -eq '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' -and $roleAssignmentIdentityObjectType -eq "ServicePrincipal") -or (($htCacheDefinitionsRole).$($roleDefinitionIdGuid).Actions -eq '*' -and ((($htCacheDefinitionsRole).$($roleDefinitionIdGuid).NotActions)).length -eq 0 -and ($htCacheDefinitionsRole).$($roleDefinitionIdGuid).IsCustom -eq $True -and $roleAssignmentIdentityObjectType -eq "ServicePrincipal")) {
+        if (($roleAssignmentsRoleDefinition.Id -eq '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' -and $roleAssignmentIdentityObjectType -eq "ServicePrincipal") -or ($roleAssignmentsRoleDefinition.Actions -eq '*' -and (($roleAssignmentsRoleDefinition.NotActions)).length -eq 0 -and $roleAssignmentsRoleDefinition.IsCustom -eq $True -and $roleAssignmentIdentityObjectType -eq "ServicePrincipal")) {
             $roleSecurityOwnerAssignmentSP = 1
         }
 
@@ -4209,12 +4199,12 @@ function DataCollectionRoleAssignmentsMG {
             -mgASCSecureScore $mgAscSecureScoreResult `
             -RoleDefinitionId $roleDefinitionIdGuid `
             -RoleDefinitionName $roleDefinitionName `
-            -RoleIsCustom ($htCacheDefinitionsRole).$($roleDefinitionIdGuid).IsCustom `
-            -RoleAssignableScopes (($htCacheDefinitionsRole).$($roleDefinitionIdGuid).AssignableScopes -join "$CsvDelimiterOpposite ") `
-            -RoleActions (($htCacheDefinitionsRole).$($roleDefinitionIdGuid).Actions -join "$CsvDelimiterOpposite ") `
-            -RoleNotActions (($htCacheDefinitionsRole).$($roleDefinitionIdGuid).NotActions -join "$CsvDelimiterOpposite ") `
-            -RoleDataActions (($htCacheDefinitionsRole).$($roleDefinitionIdGuid).DataActions -join "$CsvDelimiterOpposite ") `
-            -RoleNotDataActions (($htCacheDefinitionsRole).$($roleDefinitionIdGuid).NotDataActions -join "$CsvDelimiterOpposite ") `
+            -RoleIsCustom $roleAssignmentsRoleDefinition.IsCustom `
+            -RoleAssignableScopes ($roleAssignmentsRoleDefinition.AssignableScopes -join "$CsvDelimiterOpposite ") `
+            -RoleActions ($roleAssignmentsRoleDefinition.Actions -join "$CsvDelimiterOpposite ") `
+            -RoleNotActions ($roleAssignmentsRoleDefinition.NotActions -join "$CsvDelimiterOpposite ") `
+            -RoleDataActions ($roleAssignmentsRoleDefinition.DataActions -join "$CsvDelimiterOpposite ") `
+            -RoleNotDataActions ($roleAssignmentsRoleDefinition.NotDataActions -join "$CsvDelimiterOpposite ") `
             -RoleAssignmentIdentityDisplayname $roleAssignmentIdentityDisplayname `
             -RoleAssignmentIdentitySignInName $roleAssignmentIdentitySignInName `
             -RoleAssignmentIdentityObjectId $roleAssignmentIdentityObjectId `
@@ -4345,10 +4335,12 @@ function DataCollectionRoleAssignmentsSub {
                 $roleDefinitionIdGuid = $roleDefinitionId -replace ".*/"
 
                 if (-not ($htCacheDefinitionsRole).($roleDefinitionIdGuid)) {
+                    $roleAssignmentsRoleDefinition = ""
                     $roleDefinitionName = "'This roleDefinition likely was deleted although a roleAssignment existed'"
                 }
                 else {
-                    $roleDefinitionName = ($htCacheDefinitionsRole).($roleDefinitionIdGuid).Name
+                    $roleAssignmentsRoleDefinition = ($htCacheDefinitionsRole).($roleDefinitionIdGuid)
+                    $roleDefinitionName = $roleAssignmentsRoleDefinition.Name
                 }
 
                 #assignment
@@ -4356,12 +4348,9 @@ function DataCollectionRoleAssignmentsSub {
                 $null = $arrayRoleAssignment.Add([PSCustomObject]@{
                         RoleAssignmentId   = $L1mgmtGroupSubRoleAssignmentOnRg.id
                         Scope              = $L1mgmtGroupSubRoleAssignmentOnRg.properties.scope
-                        #DisplayName = $htPrincipals.($L1mgmtGroupSubRoleAssignmentOnRg.properties.principalId).displayName
-                        #SignInName = $htPrincipals.($L1mgmtGroupSubRoleAssignmentOnRg.properties.principalId).signInName
                         RoleDefinitionName = $roleDefinitionName
                         RoleDefinitionId   = $L1mgmtGroupSubRoleAssignmentOnRg.properties.roleDefinitionId -replace ".*/"
                         ObjectId           = $L1mgmtGroupSubRoleAssignmentOnRg.properties.principalId
-                        #ObjectType = $htPrincipals.($L1mgmtGroupSubRoleAssignmentOnRg.properties.principalId).type
                     })
 
                 ($script:htCacheAssignmentsRBACOnResourceGroupsAndResources).($L1mgmtGroupSubRoleAssignmentOnRg.id) = $arrayRoleAssignment
@@ -4393,10 +4382,12 @@ function DataCollectionRoleAssignmentsSub {
         $roleDefinitionIdGuid = $roleDefinitionId -replace ".*/"
 
         if (-not ($htCacheDefinitionsRole).($roleDefinitionIdGuid)) {
+            $roleAssignmentsRoleDefinition = ""
             $roleDefinitionName = "'This roleDefinition likely was deleted although a roleAssignment existed'"
         }
         else {
-            $roleDefinitionName = ($htCacheDefinitionsRole).($roleDefinitionIdGuid).Name
+            $roleAssignmentsRoleDefinition = ($htCacheDefinitionsRole).($roleDefinitionIdGuid)
+            $roleDefinitionName = $roleAssignmentsRoleDefinition.Name
         }
 
         $roleAssignmentIdentityObjectId = $L1mgmtGroupSubRoleAssignment.properties.principalId
@@ -4555,12 +4546,12 @@ function DataCollectionRoleAssignmentsSub {
             -SubscriptionTagsCount $subscriptionTagsCount `
             -RoleDefinitionId $roleDefinitionIdGuid `
             -RoleDefinitionName $roleDefinitionName `
-            -RoleIsCustom ($htCacheDefinitionsRole).$($roleDefinitionIdGuid).IsCustom `
-            -RoleAssignableScopes (($htCacheDefinitionsRole).$($roleDefinitionIdGuid).AssignableScopes -join "$CsvDelimiterOpposite ") `
-            -RoleActions (($htCacheDefinitionsRole).$($roleDefinitionIdGuid).Actions -join "$CsvDelimiterOpposite ") `
-            -RoleNotActions (($htCacheDefinitionsRole).$($roleDefinitionIdGuid).NotActions -join "$CsvDelimiterOpposite ") `
-            -RoleDataActions (($htCacheDefinitionsRole).$($roleDefinitionIdGuid).DataActions -join "$CsvDelimiterOpposite ") `
-            -RoleNotDataActions (($htCacheDefinitionsRole).$($roleDefinitionIdGuid).NotDataActions -join "$CsvDelimiterOpposite ") `
+            -RoleIsCustom $roleAssignmentsRoleDefinition.IsCustom `
+            -RoleAssignableScopes ($roleAssignmentsRoleDefinition.AssignableScopes -join "$CsvDelimiterOpposite ") `
+            -RoleActions ($roleAssignmentsRoleDefinition.Actions -join "$CsvDelimiterOpposite ") `
+            -RoleNotActions ($roleAssignmentsRoleDefinition.NotActions -join "$CsvDelimiterOpposite ") `
+            -RoleDataActions ($roleAssignmentsRoleDefinition.DataActions -join "$CsvDelimiterOpposite ") `
+            -RoleNotDataActions ($roleAssignmentsRoleDefinition.NotDataActions -join "$CsvDelimiterOpposite ") `
             -RoleAssignmentIdentityDisplayname $roleAssignmentIdentityDisplayname `
             -RoleAssignmentIdentitySignInName $roleAssignmentIdentitySignInName `
             -RoleAssignmentIdentityObjectId $roleAssignmentIdentityObjectId `
@@ -22505,14 +22496,14 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                             $nonComplianceMessage = ""
                         }
 
-                        $FormatedPolicyAssignmentParameters = ""
+                        $formatedPolicyAssignmentParameters = ""
                         $hlp = $L0mgmtGroupPolicyAssignment.Properties.Parameters
                         if (-not [string]::IsNullOrEmpty($hlp)) {
                             $arrayPolicyAssignmentParameters = @()
                             $arrayPolicyAssignmentParameters = foreach ($parameterName in $hlp.PSObject.Properties.Name | Sort-Object) {
                                 "$($parameterName)=$($hlp.($parameterName).Value -join "$($CsvDelimiter) ")"
                             }
-                            $FormatedPolicyAssignmentParameters = $arrayPolicyAssignmentParameters -join "$($CsvDelimiterOpposite) "
+                            $formatedPolicyAssignmentParameters = $arrayPolicyAssignmentParameters -join "$($CsvDelimiterOpposite) "
                         }
 
                         #mgSecureScore
@@ -22556,7 +22547,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                             -PolicyAssignmentCount $upperScopesPolicyAssignmentsPolicyCount `
                             -PolicyAssignmentAtScopeCount $upperScopesPolicyAssignmentsPolicyAtScopeCount `
                             -PolicyAssignmentParameters $L0mgmtGroupPolicyAssignment.Properties.Parameters `
-                            -PolicyAssignmentParametersFormated $FormatedPolicyAssignmentParameters `
+                            -PolicyAssignmentParametersFormated $formatedPolicyAssignmentParameters `
                             -PolicyAssignmentAssignedBy $assignedBy `
                             -PolicyAssignmentCreatedBy $createdBy `
                             -PolicyAssignmentCreatedOn $createdOn `
@@ -22632,14 +22623,14 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                             $nonComplianceMessage = ""
                         }
 
-                        $FormatedPolicyAssignmentParameters = ""
+                        $formatedPolicyAssignmentParameters = ""
                         $hlp = $L0mgmtGroupPolicyAssignment.Properties.Parameters
                         if (-not [string]::IsNullOrEmpty($hlp)) {
                             $arrayPolicyAssignmentParameters = @()
                             $arrayPolicyAssignmentParameters = foreach ($parameterName in $hlp.PSObject.Properties.Name | Sort-Object) {
                                 "$($parameterName)=$($hlp.($parameterName).Value -join "$($CsvDelimiter) ")"
                             }
-                            $FormatedPolicyAssignmentParameters = $arrayPolicyAssignmentParameters -join "$($CsvDelimiterOpposite) "
+                            $formatedPolicyAssignmentParameters = $arrayPolicyAssignmentParameters -join "$($CsvDelimiterOpposite) "
                         }
 
                         AddRowToTable `
@@ -22678,7 +22669,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                             -PolicyAssignmentCount $upperScopesPolicyAssignmentsPolicyCount `
                             -PolicyAssignmentAtScopeCount $upperScopesPolicyAssignmentsPolicyAtScopeCount `
                             -PolicyAssignmentParameters $L0mgmtGroupPolicyAssignment.Properties.Parameters `
-                            -PolicyAssignmentParametersFormated $FormatedPolicyAssignmentParameters `
+                            -PolicyAssignmentParametersFormated $formatedPolicyAssignmentParameters `
                             -PolicyAssignmentAssignedBy $assignedBy `
                             -PolicyAssignmentCreatedBy $createdBy `
                             -PolicyAssignmentCreatedOn $createdOn `
@@ -23499,7 +23490,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                     }
                 }
                 else {
-                    Write-Host "Skipping ResourceType $($resourcetype) as per '`$ExludedResourceTypesDiagnosticsCapable'"
+                    Write-Host "Skipping ResourceType $($resourcetype) as per parameter '-ExludedResourceTypesDiagnosticsCapable'"
                 }
             } -ThrottleLimit $ThrottleLimit
             #[System.GC]::Collect()
@@ -23551,7 +23542,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
 #region BuildHTML
 #testhelper
-$fileTimestamp = (Get-Date -Format $FileTimeStampFormat)
+#$fileTimestamp = (Get-Date -Format $FileTimeStampFormat)
 
 $startBuildHTML = Get-Date
 Write-Host "Building HTML"
