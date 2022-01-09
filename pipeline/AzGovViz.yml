@@ -16,7 +16,7 @@
 # NoResourceDiagnosticsPolicyLifecycle | example: -NoResourceDiagnosticsPolicyLifecycle | WhatDoesItDo? will not create Resource Diagnostics Policy Lifecycle recommendations
 # NoAADGroupsResolveMembers | example: -NoAADGroupsResolveMembers | WhatDoesItDo? will not resolve Azure Active Directory Group memberships for Role assignments where identity type is 'Group'
 # AADServicePrincipalExpiryWarningDays | example: -AADServicePrincipalExpiryWarningDays 21 | WhatDoesItDo? define warning period for Service Principal secret and certificate expiry; default is 14 days
-# NoAzureConsumption | example: -NoAzureConsumption | WhatDoesItDo? Azure Consumption data will not be collected/reported
+# DoAzureConsumption | example: -DoAzureConsumption | WhatDoesItDo? Define if Azure Consumption data should be reported
 # AzureConsumptionPeriod | example: -AzureConsumptionPeriod 7 | WhatDoesItDo? define for which time period Azure Consumption data should be gathered; default is 1 day
 # NoAzureConsumptionReportExportToCSV | example: -NoAzureConsumptionReportExportToCSV | WhatDoesItDo? Azure Consumption data will not be exported (CSV)
 # ThrottleLimit | example: -ThrottleLimit 10 | WhatDoesItDo? Define the number of script blocks running in parallel. Leveraging PowerShell Core´s parallel capability you can define the ThrottleLimit (default=5)
