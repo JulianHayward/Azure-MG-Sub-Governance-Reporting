@@ -57,28 +57,30 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (rc / Major)
+__Changes__ (2022-Jan-09 / Major)
 
+* New feature __TenantSummary | Subscriptions, Resources & Defender__ and __ScopeInsights__:  Insights on UserAssignedIdentities/Resources - which resource has an user assigned managed identity assigned / vice versa
 * __DefinitionInsights__ collapsible JSON definitions
+* Defender plans usage / highlight use of depcrecated plans such as Container Registry & Kubernetes
 * Fix PIM (Priviliged Identity Management) state for inherited Subscription Role assignments
 * __TenantSummary__ 'Azure Active Directory' add link to [AzADServicePrincipalInsights](#azadserviceprincipalinsights) (POC)
 * Bugfixes
 * HTML output patch jQuery / use latest version 3.6.0
-* Update [Demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210818_2.html)
+* Update [Demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)
 * AzAPICall enhanced error handling (GeneralError, ResourceGroupNotFound)
 * Script optimization / prepare for PS module
 
-Passed tests: Powershell Core 7.2.0 on Windows  
-Passed tests: Powershell Core 7.2.0 Azure DevOps hosted agent ubuntu-18.04  
+Passed tests: Powershell Core 7.2.1 on Windows  
+Passed tests: Powershell Core 7.2.1 Azure DevOps hosted agent ubuntu-18.04  
 Passed tests: Powershell Core 7.2.0 GitHub Codespaces mcr.microsoft.com/powershell:latest
 
 [Release history](history.md)
 
 ## Demo
 
-<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210818_2.html" target="_blank">![Demo](img/demo4_66.png)</a>
+<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html" target="_blank">![Demo](img/demo4_66.png)</a>
 
-[Demo (v5_major_20210818_2)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210818_2.html)  
+[Demo (v6_major_20220109_3)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)  
 Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation
 
 More [demo output](https://github.com/JulianHayward/AzGovViz)
@@ -185,6 +187,9 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
   * Microsoft Defender for Cloud
     * Summary of Microsoft Defender for Cloud coverage by plan (count of Subscription per plan/tier)
     * Summary of Microsoft Defender for Cloud plans coverage by Subscription (plan/tier)
+  * UserAssigned Managed Identities assigned to Resources / vice versa
+    * Summary of all UserAssigned Managed Identities assigned to Resources
+    * Summary of Resources that have an UserAssigned Managed Identity assigned
 * __Diagnostics__
   * Management Groups Diagnostic settings report
     * Management Group, Diagnostic setting name, target type (LA, SA, EH), target Id, Log Category status
@@ -215,7 +220,8 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
 * __Azure Active Directory (AAD)__
   * Insights on those Service Principals where a Role assignment exists (scopes: Management Group, Subscription, ResourceGroup, Resource):
     * Type=ManagedIdentity
-      * Core information on the Service Principal such as related Ids and use case information
+      * Core information on the Service Principal such as related Ids, use case information and Role assignments
+      * For UserManaged Identities the count of assignment to Resources is reported
     * Type=Application
       * Secrets and Certificates expiry information & warning
       * Report on external Service Principals
@@ -426,7 +432,7 @@ Screenshot Azure Portal
   * `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big. Using this parameter the following parameters will be set: -PolicyAtScopeOnly $true, -RBACAtScopeOnly $true, -NoResourceProvidersDetailed $true, -NoScopeInsights $true
   * `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
   * `-AADGroupMembersLimit` - Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved 
-  * `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability and resource type statistic (featured for large tenants)
+  * `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability, resource type stats, UserAssigned Identities assigned to Resources is excluded (featured for large tenants)
   * `-StatsOptOut` - Opt out sending [stats](#stats)
   * `-NoSingleSubscriptionOutput` - Single __Scope Insights__ output per Subscription should not be created
 

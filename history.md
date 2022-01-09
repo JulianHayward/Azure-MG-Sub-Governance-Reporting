@@ -4,14 +4,16 @@
 
 ### AzGovViz version 6
 
-__Changes__ (rc / Major)
+__Changes__ (2022-Jan-09 / Major)
 
+* New feature __TenantSummary | Subscriptions, Resources & Defender__ and __ScopeInsights__:  Insights on UserAssignedIdentities/Resources - which resource has an user assigned managed identity assigned / vice versa
 * __DefinitionInsights__ collapsible JSON definitions
+* Defender plans usage / highlight use of depcrecated plans such as Container Registry & Kubernetes
 * Fix PIM (Priviliged Identity Management) state for inherited Subscription Role assignments
 * __TenantSummary__ 'Azure Active Directory' add link to [AzADServicePrincipalInsights](#azadserviceprincipalinsights) (POC)
 * Bugfixes
 * HTML output patch jQuery / use latest version 3.6.0
-* Update [Demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210818_2.html)
+* Update [Demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)
 * AzAPICall enhanced error handling (GeneralError, ResourceGroupNotFound)
 * Script optimization / prepare for PS module
 
