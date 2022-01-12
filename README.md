@@ -192,6 +192,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
   * Microsoft Defender for Cloud
     * Summary of Microsoft Defender for Cloud coverage by plan (count of Subscription per plan/tier)
     * Summary of Microsoft Defender for Cloud plans coverage by Subscription (plan/tier)
+    * Highlight the usage of deprecated Defender plans (e.g. Container Registry & Kubernetes)
   * UserAssigned Managed Identities assigned to Resources / vice versa
     * Summary of all UserAssigned Managed Identities assigned to Resources
     * Summary of Resources that have an UserAssigned Managed Identity assigned
