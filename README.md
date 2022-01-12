@@ -125,6 +125,8 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
     * Lists all Exemptions (scopes: Management Groups, Subscriptions, ResourceGroups, Resources)
     * Enrich information on Exemption scope
     * Summary on expired Exemptions
+  * Policy assignments orphaned
+    * Policy assignments's Policy definition does not exist / likely Management Group scoped Policy defintion - Management Group deleted
   * Policy assignments throughout the entirety of scopes (Management Groups, Subscriptions and Resource Groups)
     * Core information on Policy assignments
       * NonCompliance Message on Policy assignment for a PolicySet will only show the default non-compliance message
@@ -225,6 +227,8 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
     * Type=ManagedIdentity
       * Core information on the Service Principal such as related Ids, use case information and Role assignments
       * For UserManaged Identities the count of assignment to Resources is reported
+      * Orphaned Managed Identity - Policy assignment related Managed Identities / the related Policy assignment does not exist
+      * UserAssigned Managed Identity - count of resources that it is assigned to
     * Type=Application
       * Secrets and Certificates expiry information & warning
       * Report on external Service Principals
