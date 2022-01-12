@@ -57,13 +57,16 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Jan-09 / Major)
+__Changes__ (2022-Jan-12 / Major)
 
-* New feature __TenantSummary | Subscriptions, Resources & Defender__ and __ScopeInsights__:  Insights on UserAssignedIdentities/Resources - which resource has an user assigned managed identity assigned / vice versa
-* __DefinitionInsights__ collapsible JSON definitions
+* New feature __TenantSummary | Subscriptions, Resources & Defender__, __TenantSummary | Azure Active Directory__ and __ScopeInsights__ insights on UserAssignedIdentities/Resources - which resource has an user assigned managed identity assigned / vice versa
+* New feature __TenantSummary | Policy | Policy assignments orphanded__ (Policy assignments's Policy definition does not exist / likely Management Group scoped Policy defintion - Management Group deleted)
+* Optimize __DefinitionInsights__ collapsible JSON definitions
 * Defender plans usage / highlight use of depcrecated plans such as Container Registry & Kubernetes
+* New 'Large Tenant' feature __TenantSummary | Policy | Policy assignments__ if the number of Policy assignments exceeds the `-HtmlTableRowsLimit` parameter's value (default = 20.000) then the html table will not be created / the CSV file will still be created 
+* New feature  __TenantSummary | Azure Active Directory | AAD ServicePrincipals type=ManagedIdentity__ orphaned Managed Identities (for Policy assignment related Managed Identities - Policy assignment does not exist anymore)
 * Fix PIM (Priviliged Identity Management) state for inherited Subscription Role assignments
-* __TenantSummary__ 'Azure Active Directory' add link to [AzADServicePrincipalInsights](#azadserviceprincipalinsights) (POC)
+* __TenantSummary | Azure Active Directory__ add link to [AzADServicePrincipalInsights](#azadserviceprincipalinsights) (POC)
 * Bugfixes
 * HTML output patch jQuery / use latest version 3.6.0
 * Update [Demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)

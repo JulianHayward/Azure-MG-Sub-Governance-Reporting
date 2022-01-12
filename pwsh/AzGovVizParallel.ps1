@@ -268,7 +268,7 @@
 Param
 (
     [string]$Product = "AzGovViz",
-    [string]$ProductVersion = "v6_major_20220109_3",
+    [string]$ProductVersion = "v6_major_20220112_3",
     [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #deprecated - Based on environment variables the script will detect the code run platform
@@ -519,12 +519,7 @@ else {
     Write-Host " Get Powershell: https://github.com/PowerShell/PowerShell#get-powershell"
     Write-Host " Installing PowerShell on Windows: https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-windows"
     Write-Host " Installing PowerShell on Linux: https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-linux"
-    if ($htParameters.onAzureDevOps -eq $true) {
-        Write-Error "Error"
-    }
-    else {
-        Throw "Error - AzGovViz: check the last console output for details"
-    }
+    Throw "Error - AzGovViz: check the last console output for details"
 }
 #endregion PowerShellEditionAnVersionCheck
 
@@ -535,15 +530,9 @@ $azModules = @('Az.Accounts')
 Write-Host "Testing required Az modules cmdlets"
 foreach ($testCommand in $testCommands) {
     if (-not (Get-Command $testCommand -ErrorAction Ignore)) {
-        if ($htParameters.onAzureDevOps -eq $true) {
-            Write-Error "AzModule test failed: cmdlet $testCommand not available - make sure the modules $($azModules -join ", ") are installed"
-            Write-Error "Error"
-        }
-        else {
-            Write-Host " AzModule test failed: cmdlet $testCommand not available - make sure the modules $($azModules -join ", ") are installed" -ForegroundColor Red
-            Write-Host " Install the Azure Az PowerShell module: https://docs.microsoft.com/en-us/powershell/azure/install-az-ps"
-            Throw "Error - AzGovViz: check the last console output for details"
-        }
+        Write-Host " AzModule test failed: cmdlet $testCommand not available - make sure the modules $($azModules -join ", ") are installed"
+        Write-Host " Install the Azure Az PowerShell module: https://docs.microsoft.com/en-us/powershell/azure/install-az-ps"
+        Throw "Error - AzGovViz: check the last console output for details"
     }
     else {
         Write-Host " AzModule test passed: Az ps module supporting cmdlet $testCommand installed" -ForegroundColor Green
@@ -568,12 +557,7 @@ foreach ($azModule in $azModules) {
 Write-Host "Checking Az Context"
 if (-not $checkContext) {
     Write-Host " Context test failed: No context found. Please connect to Azure (run: Connect-AzAccount) and re-run AzGovViz" -ForegroundColor Red
-    if ($htParameters.onAzureDevOps -eq $true) {
-        Write-Error "Error"
-    }
-    else {
-        Throw "Error - AzGovViz: check the last console output for details"
-    }
+    Throw "Error - AzGovViz: check the last console output for details"
 }
 else {
     $accountType = $checkContext.Account.Type
@@ -602,12 +586,7 @@ else {
             until($settingContextFailed -eq $false -or $settingContextTryCounter -gt $settingContextMaxRetries)
             if ($settingContextTryCounter -gt $settingContextMaxRetries) {
                 Write-Host "Failed setting AzContext - exit"
-                if ($htParameters.onAzureDevOps -eq $true) {
-                    Write-Error "Error"
-                }
-                else {
-                    Throw "Error - AzGovViz: check the last console output for details"
-                }
+                Throw "Error - AzGovViz: check the last console output for details"
             }
 
             $checkContext = Get-AzContext -ErrorAction Stop
@@ -621,14 +600,8 @@ else {
     if (-not $checkContext.Subscription) {
         $checkContext
         Write-Host " Context test failed: Context is not set to any Subscription. Set your context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run AzGovViz" -ForegroundColor Red
-
-        if ($htParameters.onAzureDevOps -eq $true) {
-            Write-host " If this error occurs you may want to leverage parameter 'SubscriptionId4AzContext' (AzGovVizParallel.ps1 -SubscriptionId4AzContext '<SubscriptionId>')"
-            Write-Error "Error"
-        }
-        else {
-            Throw "Error - AzGovViz: check the last console output for details"
-        }
+        Write-host " If this error occurs you may want to leverage parameter 'SubscriptionId4AzContext' (AzGovVizParallel.ps1 -SubscriptionId4AzContext '<SubscriptionId>')"
+        Throw "Error - AzGovViz: check the last console output for details"
     }
     else {
         Write-Host " Context test passed: Context OK" -ForegroundColor Green
@@ -1163,12 +1136,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                                 foreach ($htParameter in ($htParameters.Keys | Sort-Object)) {
                                     Write-Host "$($htParameter):$($htParameters.($htParameter))"
                                 }
-                                if ($htParameters.onAzureDevOps -eq $true) {
-                                    Write-Error "Error"
-                                }
-                                else {
-                                    Throw "Error - AzGovViz: check the last console output for details"
-                                }
+                                Throw "Error - AzGovViz: check the last console output for details"
                             }
                             else {
                                 if ($retryAuthorizationFailedCounter -gt 2) {
@@ -1256,12 +1224,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         $sleepSec = @(1, 3, 5, 7, 10, 12, 20, 30, 40, 45)[$tryCounter]
                         if ($tryCounter -gt $maxTries) {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - exit"
-                            if ($htParameters.onAzureDevOps -eq $true) {
-                                Write-Error "Error"
-                            }
-                            else {
-                                Throw "Error - AzGovViz: check the last console output for details"
-                            }
+                            Throw "Error - AzGovViz: check the last console output for details"
                         }
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' sleeping $($sleepSec) seconds"
                         start-sleep -Seconds $sleepSec
@@ -1291,12 +1254,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             foreach ($htParameter in ($htParameters.Keys | Sort-Object)) {
                                 Write-Host "$($htParameter):$($htParameters.($htParameter))"
                             }
-                            if ($htParameters.onAzureDevOps -eq $true) {
-                                Write-Error "Error"
-                            }
-                            else {
-                                Throw "Authorization_RequestDenied"
-                            }
+                            Throw "Error - AzGovViz: check the last console output for details"
                         }
                     }
 
@@ -1352,12 +1310,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         $sleepSec = @(1, 3, 5, 7, 10, 12, 20, 30, 40, 45)[$tryCounter]
                         if ($tryCounter -gt $maxTries) {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - exit"
-                            if ($htParameters.onAzureDevOps -eq $true) {
-                                Write-Error "Error"
-                            }
-                            else {
-                                Throw "Error - AzGovViz: check the last console output for details"
-                            }
+                            Throw "Error - AzGovViz: check the last console output for details"
                         }
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' sleeping $($sleepSec) seconds"
                         start-sleep -Seconds $sleepSec
@@ -1410,12 +1363,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         if ($getConsumption) {
                             Write-Host "If Consumption data is not that important for you, do not use parameter: -DoAzureConsumption (however, please still report the issue - thank you)"
                         }
-                        if ($htParameters.onAzureDevOps -eq $true) {
-                            Write-Error "Error"
-                        }
-                        else {
-                            Throw "Error - AzGovViz: check the last console output for details"
-                        }
+                        Throw "Error - AzGovViz: check the last console output for details"
                     }
                 }
             }
@@ -1482,12 +1430,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         if ($uri -eq $azAPIRequestConvertedFromJson.nextLink) {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                                 Write-Host " $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
-                                if ($htParameters.onAzureDevOps -eq $true) {
-                                    Write-Error "Error"
-                                }
-                                else {
-                                    Throw "Error - AzGovViz: check the last console output for details"
-                                }
+                                Throw "Error - AzGovViz: check the last console output for details"
                             }
                             else {
                                 $restartDueToDuplicateNextlinkCounter++
@@ -1515,12 +1458,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         if ($uri -eq $azAPIRequestConvertedFromJson."@odata.nextLink") {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                                 Write-Host " $currentTask restartDueToDuplicate@odataNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
-                                if ($htParameters.onAzureDevOps -eq $true) {
-                                    Write-Error "Error"
-                                }
-                                else {
-                                    Throw "Error - AzGovViz: check the last console output for details"
-                                }
+                                Throw "Error - AzGovViz: check the last console output for details"
                             }
                             else {
                                 $restartDueToDuplicateNextlinkCounter++
@@ -1548,12 +1486,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         if ($uri -eq $azAPIRequestConvertedFromJson.properties.nextLink) {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                                 Write-Host " $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
-                                if ($htParameters.onAzureDevOps -eq $true) {
-                                    Write-Error "Error"
-                                }
-                                else {
-                                    Throw "Error - AzGovViz: check the last console output for details"
-                                }
+                                Throw "Error - AzGovViz: check the last console output for details"
                             }
                             else {
                                 $restartDueToDuplicateNextlinkCounter++
@@ -1598,12 +1531,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
             }
             else {
                 Write-Host " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (tried 5 times)/exit"
-                if ($htParameters.onAzureDevOps -eq $true) {
-                    Write-Error "Error"
-                }
-                else {
-                    Throw "Error - AzGovViz: check the last console output for details"
-                }
+                Throw "Error - AzGovViz: check the last console output for details"
             }
         }
     }
@@ -1675,12 +1603,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType, $resourceId) 
                     if ($catchResult.error.code -like "*AuthorizationFailed*") {
                         if ($retryAuthorizationFailedCounter -gt $retryAuthorizationFailed) {
                             Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - $retryAuthorizationFailed retries failed - investigate that error!"
-                            if ($htParameters.onAzureDevOps -eq $true) {
-                                Write-Error "Error"
-                            }
-                            else {
-                                Throw "Error - AzGovViz: check the last console output for details"
-                            }
+                            Throw "Error - AzGovViz: check the last console output for details"
                         }
                         else {
                             if ($retryAuthorizationFailedCounter -gt 2) {
@@ -1709,12 +1632,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType, $resourceId) 
                 }
                 else {
                     Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - investigate that error!"
-                    if ($htParameters.onAzureDevOps -eq $true) {
-                        Write-Error "Error"
-                    }
-                    else {
-                        Throw "Error - AzGovViz: check the last console output for details"
-                    }
+                    Throw "Error - AzGovViz: check the last console output for details"
                 }
             }
             else {
@@ -1729,12 +1647,7 @@ function AzAPICallDiag($uri, $method, $currentTask, $resourceType, $resourceId) 
                 Start-Sleep -Seconds $tryCounterUnexpectedError
             }
             else {
-                if ($htParameters.onAzureDevOps -eq $true) {
-                    Write-Error "Error"
-                }
-                else {
-                    Throw "Error - AzGovViz: check the last console output for details"
-                }
+                Throw "Error - AzGovViz: check the last console output for details"
             }
         }
     }
@@ -1772,6 +1685,7 @@ function AddRowToTable() {
         [string]$SubscriptionTags = "",
         [int]$SubscriptionTagsCount = 0,
         [string]$Policy = "",
+        [string]$PolicyAvailability = "",
         [string]$PolicyDescription = "",
         [string]$PolicyVariant = "",
         [string]$PolicyType = "",
@@ -1867,6 +1781,7 @@ function AddRowToTable() {
             SubscriptionTags                         = $SubscriptionTags
             SubscriptionTagsCount                    = $SubscriptionTagsCount
             Policy                                   = $Policy
+            PolicyAvailability                       = $PolicyAvailability
             PolicyDescription                        = $PolicyDescription
             PolicyVariant                            = $PolicyVariant
             PolicyType                               = $PolicyType
@@ -3250,12 +3165,7 @@ function DataCollectionPolicyAssignmentsMG {
                     foreach ($tmpPolicyDefinitionId in ($($htCacheDefinitionsPolicy).Keys | Sort-Object)) {
                         Write-Host $tmpPolicyDefinitionId
                     }
-                    if ($htParameters.onAzureDevOps -eq $true) {
-                        Write-Error "Error"
-                    }
-                    else {
-                        Throw "Error - AzGovViz: check the last console output for details"
-                    }
+                    Throw "Error - AzGovViz: check the last console output for details"
                 }
 
                 $policyAssignmentScope = $L0mgmtGroupPolicyAssignment.Properties.Scope
@@ -3401,12 +3311,7 @@ function DataCollectionPolicyAssignmentsMG {
                     Write-Host "Scope: $($scopeId) PolicySet / Custom:$($mgPolicySetDefinitions.Count) CustomAtScope:$($PolicySetDefinitionsScopedCount)"
                     Write-Host "BuiltIn PolicySetDefinitions: $($($htCacheDefinitionsPolicySet).Values.where({$_.Type -eq "BuiltIn"}).Count)"
                     Write-Host "Custom PolicySetDefinitions: $($($htCacheDefinitionsPolicySet).Values.where({$_.Type -eq "Custom"}).Count)"
-                    if ($htParameters.onAzureDevOps -eq $true) {
-                        Write-Error "Error"
-                    }
-                    else {
-                        Throw "Error - AzGovViz: check the last console output for details"
-                    }
+                    Throw "Error - AzGovViz: check the last console output for details"
                 }
 
                 $policyAssignmentScope = $L0mgmtGroupPolicyAssignment.Properties.Scope
@@ -3628,38 +3533,73 @@ function DataCollectionPolicyAssignmentsSub {
                 $policyDefinitionId = ($L1mgmtGroupSubPolicyAssignment.properties.policydefinitionid).ToLower()
 
                 if (($htCacheDefinitionsPolicy).($policyDefinitionId)) {
-                    $policyAssignmentsPolicyDefinition = ($htCacheDefinitionsPolicy).($policyDefinitionId)
-                    $policyDisplayName = $policyAssignmentsPolicyDefinition.DisplayName
-                    $policyDescription = $policyAssignmentsPolicyDefinition.Description
-                    $policyType = $policyAssignmentsPolicyDefinition.Type
-                    $policyCategory = $policyAssignmentsPolicyDefinition.Category
-                    $policyDefinitionEffectDefault = $policyAssignmentsPolicyDefinition.effectDefaultValue
-                    $policyDefinitionEffectFixed = $policyAssignmentsPolicyDefinition.effectFixedValue
+                    $policyAvailability = ""
 
-                    if (($htCacheDefinitionsPolicy).($policyDefinitionId).Type -eq "Custom") {
-                        $policyDefintionScope = $policyAssignmentsPolicyDefinition.Scope
-                        $policyDefintionScopeMgSub = $policyAssignmentsPolicyDefinition.ScopeMgSub
-                        $policyDefintionScopeId = $policyAssignmentsPolicyDefinition.ScopeId
+                    #handling some strange scenario where the synchronized hashTable responds fragments?!
+                    $tryCounter = 0
+                    do{
+                        $tryCounter++
+
+                        $policyAssignmentsPolicyDefinition = ($htCacheDefinitionsPolicy).($policyDefinitionId)
+
+                        if (($policyAssignmentsPolicyDefinition).Type -eq "Custom" -or ($policyAssignmentsPolicyDefinition).Type -eq "Builtin") {
+                            $policyReturnedFromHt = $true
+
+                            $policyDisplayName = ($policyAssignmentsPolicyDefinition).DisplayName
+                            $policyDescription = ($policyAssignmentsPolicyDefinition).Description
+                            $policyDefinitionType = ($policyAssignmentsPolicyDefinition).Type
+                            $policyCategory = ($policyAssignmentsPolicyDefinition).Category
+                            $policyDefinitionEffectDefault = ($policyAssignmentsPolicyDefinition).effectDefaultValue
+                            $policyDefinitionEffectFixed = ($policyAssignmentsPolicyDefinition).effectFixedValue
+
+                            if (($policyAssignmentsPolicyDefinition).Type -ne $policyDefinitionType){
+                                Write-Host "$scopeDisplayName ($scopeId) $policyVariant was processing: $policyDefinitionId"
+                                Write-Host "'$(($policyAssignmentsPolicyDefinition).Type)' ne '$policyDefinitionType'"
+                                Write-Host "!Please report this error: $($htParameters.GithubRepository)" -ForegroundColor Yellow
+                                throw
+                            }
+
+                            if ($policyDefinitionType -eq "Custom") {
+                                $policyDefintionScope = ($policyAssignmentsPolicyDefinition).Scope
+                                $policyDefintionScopeMgSub = ($policyAssignmentsPolicyDefinition).ScopeMgSub
+                                $policyDefintionScopeId = ($policyAssignmentsPolicyDefinition).ScopeId
+                            }
+
+                            if ($policyDefinitionType -eq "Builtin") {
+                                $policyDefintionScope = "n/a"
+                                $policyDefintionScopeMgSub = "n/a"
+                                $policyDefintionScopeId = "n/a"
+                            }
+                        }
+                        else{
+                            $policyReturnedFromHt = $false
+                            if ($htParameters.onAzureDevOps -eq $true) {
+                                #Write-Host "##[warning]TryHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policyId:'$policyDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; type:'$(($policyAssignmentsPolicyDefinition).Type)' - sleeping '$tryCounter' seconds"
+                            }
+                            #Write-Host "TryHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policyId:'$policyDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; type:'$(($policyAssignmentsPolicyDefinition).Type)' - sleeping '$tryCounter' seconds"
+                            start-sleep -seconds 1
+                        }
                     }
-                    else {
-                        $policyDefintionScope = "n/a"
-                        $policyDefintionScopeMgSub = "n/a"
-                        $policyDefintionScopeId = "n/a"
+                    until($policyReturnedFromHt -or $tryCounter -gt 5)
+                    if (-not $policyReturnedFromHt){
+                        Write-Host "FinalHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policyId:'$policyDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'"
+                        Write-Host "!Please report this error: $($htParameters.GithubRepository)" -ForegroundColor Yellow
+                        throw
                     }
                 }
                 #policyDefinition not exists!
                 else {
+                    $policyAvailability = "na"
                     $policyDisplayName = "unknown"
                     $policyDescription = "unknown"
-                    $policyType = "unknown"
+                    $policyDefinitionType = "unknown"
                     $policyCategory = "unknown"
                     $policyDefinitionEffectDefault = "unknown"
                     $policyDefinitionEffectFixed = "unknown"
                     $policyDefintionScope = "unknown"
                     $policyDefintionScopeMgSub = "unknown"
                     $policyDefintionScopeId = "unknown"
-                    #test
-                    Write-Host " * * * Finding?! could not be found: '$($policyDefinitionId)'"
+                    Write-Host "$scopeDisplayName ($scopeId); policyAssignment '$($L1mgmtGroupSubPolicyAssignment.Id)' policyDefinition (Policy) could not be found: '$($policyDefinitionId)'"
                 }
 
                 $PolicyAssignmentScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
@@ -3739,9 +3679,6 @@ function DataCollectionPolicyAssignmentsSub {
                     $formatedPolicyAssignmentParameters = $arrayPolicyAssignmentParameters -join "$($CsvDelimiterOpposite) "
                 }
 
-                #test
-                #Write-Host "processing: $scopeDisplayName - $PolicyAssignmentId"
-
                 $addRowToTableDone = $true
                 AddRowToTable `
                     -level $hierarchyLevel `
@@ -3758,9 +3695,10 @@ function DataCollectionPolicyAssignmentsSub {
                     -SubscriptionTags $subscriptionTags `
                     -SubscriptionTagsCount $subscriptionTagsCount `
                     -Policy $policyDisplayName `
+                    -PolicyAvailability $policyAvailability `
                     -PolicyDescription $policyDescription `
                     -PolicyVariant $policyVariant `
-                    -PolicyType $policyType `
+                    -PolicyType $policyDefinitionType `
                     -PolicyCategory $policyCategory `
                     -PolicyDefinitionIdGuid ($policyDefinitionId -replace ".*/") `
                     -PolicyDefinitionId $policyDefinitionId `
@@ -3801,8 +3739,8 @@ function DataCollectionPolicyAssignmentsSub {
             }
             if ($L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/") {
                 $policyVariant = "PolicySet"
-                $Id = ($L1mgmtGroupSubPolicyAssignment.properties.policydefinitionid).ToLower()
-                $policyAssignmentsPolicyDefinition = ($htCacheDefinitionsPolicySet).($Id)
+                $policySetDefinitionId = ($L1mgmtGroupSubPolicyAssignment.properties.policydefinitionid).ToLower()
+                #$policyAssignmentsPolicySetDefinition = ($htCacheDefinitionsPolicySet).($policySetDefinitionId)
                 $PolicyAssignmentScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
                 if ($PolicyAssignmentScope -like "/providers/Microsoft.Management/managementGroups/*") {
                     $PolicyAssignmentScopeMgSubRg = "Mg"
@@ -3840,15 +3778,65 @@ function DataCollectionPolicyAssignmentsSub {
                     $PolicyAssignmentIdentity = "n/a"
                 }
 
-                if (($htCacheDefinitionsPolicySet).$($Id).Type -eq "Custom") {
-                    $policyDefintionScope = $policyAssignmentsPolicyDefinition.Scope
-                    $policyDefintionScopeMgSub = $policyAssignmentsPolicyDefinition.ScopeMgSub
-                    $policyDefintionScopeId = $policyAssignmentsPolicyDefinition.ScopeId
+                if (($htCacheDefinitionsPolicySet).($policySetDefinitionId)){
+                    $policyAvailability = ""
+
+                    #handling some strange behavior where the synchronized hashTable responds fragments?!
+                    $tryCounter = 0
+                    do{
+                        $tryCounter++
+                        $policyAssignmentsPolicySetDefinition = ($htCacheDefinitionsPolicySet).($policySetDefinitionId)
+
+                        if (($policyAssignmentsPolicySetDefinition).Type -eq "Custom" -or ($policyAssignmentsPolicySetDefinition).Type -eq "Builtin") {
+                            $policySetReturnedFromHt = $true
+
+                            $policySetDisplayName = ($policyAssignmentsPolicySetDefinition).DisplayName
+                            $policySetDescription = ($policyAssignmentsPolicySetDefinition).Description
+                            $policySetDefinitionType = ($policyAssignmentsPolicySetDefinition).Type
+                            $policySetCategory = ($policyAssignmentsPolicySetDefinition).Category
+
+                            if (($policyAssignmentsPolicySetDefinition).Type -ne $policySetDefinitionType){
+                                Write-Host "$scopeDisplayName ($scopeId) $policyVariant was processing: $policySetDefinitionId"
+                                Write-Host "'$(($policyAssignmentsPolicySetDefinition).Type)' ne '$policySetDefinitionType'"
+                                Write-Host "!Please report this error: $($htParameters.GithubRepository)" -ForegroundColor Yellow
+                                throw
+                            }
+
+                            if ($policySetDefinitionType -eq "Custom") {
+                                $policySetDefintionScope = ($policyAssignmentsPolicySetDefinition).Scope
+                                $policySetDefintionScopeMgSub = ($policyAssignmentsPolicySetDefinition).ScopeMgSub
+                                $policySetDefintionScopeId = ($policyAssignmentsPolicySetDefinition).ScopeId
+                            }
+                            if ($policySetDefinitionType -eq "Builtin") {
+                                $policySetDefintionScope = "n/a"
+                                $policySetDefintionScopeMgSub = "n/a"
+                                $policySetDefintionScopeId = "n/a"
+                            }
+                        }
+                        else{
+                            $policySetReturnedFromHt = $false
+                            if ($htParameters.onAzureDevOps -eq $true) {
+                                #Write-Host "##[warning]TryHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policySetId:'$policySetDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; type:'$(($policyAssignmentsPolicySetDefinition).Type)' - sleeping '$tryCounter' seconds"
+                            }
+                            #Write-Host "TryHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policySetId:'$policySetDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; type:'$(($policyAssignmentsPolicySetDefinition).Type)' - sleeping '$tryCounter' seconds"
+                            start-sleep -seconds 1
+                        }
+                    }
+                    until($policySetReturnedFromHt -or $tryCounter -gt 5)
+                    if (-not $policySetReturnedFromHt){
+                        Write-Host "FinalHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policySetId:'$policySetDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'"
+                        Write-Host "!Please report this error: $($htParameters.GithubRepository)" -ForegroundColor Yellow
+                        throw
+                    }
                 }
-                else {
-                    $policyDefintionScope = "n/a"
-                    $policyDefintionScopeMgSub = "n/a"
-                    $policyDefintionScopeId = "n/a"
+                #policySetDefinition not exists!
+                else{
+                    $policyAvailability = "na"
+                    $policySetDisplayName = "unknown"
+                    $policySetDescription = "unknown"
+                    $policySetDefinitionType = "unknown"
+                    $policySetCategory = "unknown"
+                    Write-Host "$scopeDisplayName ($scopeId); policyAssignment '$($L1mgmtGroupSubPolicyAssignment.Id)' policyDefinition (PolicySet) could not be found: '$($policySetDefinitionId)'"
                 }
 
                 $assignedBy = "n/a"
@@ -3906,16 +3894,17 @@ function DataCollectionPolicyAssignmentsSub {
                     -SubscriptionASCSecureScore $subscriptionASCSecureScore `
                     -SubscriptionTags $subscriptionTags `
                     -SubscriptionTagsCount $subscriptionTagsCount `
-                    -Policy $policyAssignmentsPolicyDefinition.DisplayName `
-                    -PolicyDescription $policyAssignmentsPolicyDefinition.Description `
+                    -Policy $policySetDisplayName `
+                    -PolicyAvailability $policyAvailability `
+                    -PolicyDescription $policySetDescription `
                     -PolicyVariant $policyVariant `
-                    -PolicyType $policyAssignmentsPolicyDefinition.Type `
-                    -PolicyCategory $policyAssignmentsPolicyDefinition.Category `
-                    -PolicyDefinitionIdGuid (($policyAssignmentsPolicyDefinition.Id) -replace ".*/") `
-                    -PolicyDefinitionId $policyAssignmentsPolicyDefinition.PolicyDefinitionId `
-                    -PolicyDefintionScope $policyDefintionScope `
-                    -PolicyDefintionScopeMgSub $policyDefintionScopeMgSub `
-                    -PolicyDefintionScopeId $policyDefintionScopeId `
+                    -PolicyType $policySetDefinitionType `
+                    -PolicyCategory $policySetCategory `
+                    -PolicyDefinitionIdGuid (($policySetDefinitionId) -replace ".*/") `
+                    -PolicyDefinitionId $policySetDefinitionId `
+                    -PolicyDefintionScope $policySetDefintionScope `
+                    -PolicyDefintionScopeMgSub $policySetDefintionScopeMgSub `
+                    -PolicyDefintionScopeId $policySetDefintionScopeId `
                     -PolicyDefinitionsScopedLimit $LimitPOLICYPolicyDefinitionsScopedSubscription `
                     -PolicyDefinitionsScopedCount $PolicyDefinitionsScopedCount `
                     -PolicySetDefinitionsScopedLimit $LimitPOLICYPolicySetDefinitionsScopedSubscription `
@@ -4835,8 +4824,8 @@ function DataCollection($mgId) {
             Write-Host $tmpPolicyDefinitionId
         }
     }
-    #SUBSCRIPTION
 
+    #region SUBSCRIPTION
     Write-Host " CustomDataCollection Subscriptions"
     $subsExcludedStateCount = ($outOfScopeSubscriptions.where( { $_.outOfScopeReason -like "State*" } )).Count
     $subsExcludedWhitelistCount = ($outOfScopeSubscriptions.where( { $_.outOfScopeReason -like "QuotaId*" } )).Count
@@ -5150,6 +5139,7 @@ function DataCollection($mgId) {
         Write-Host " Custom PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq "Custom"}).Count)"
         Write-Host " All PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.Count)"
     }
+    #endregion SUBSCRIPTION
 }
 
 #endregion dataCollection
@@ -7292,7 +7282,7 @@ extensions: [{ name: 'sort' }]
 <tbody>
 "@)
                 $htmlScopeInsightsTags = $null
-                $htmlScopeInsightsTags = foreach ($miResEntry in $arrayUserAssignedIdentities4ResourcesSubscription) {
+                $htmlScopeInsightsTags = foreach ($miResEntry in $arrayUserAssignedIdentities4ResourcesSubscription | Sort-Object -Property miResourceId, resourceId) {
                     @"
 <tr>
     <td>$($miResEntry.miResourceName)</td>
@@ -8681,6 +8671,7 @@ function ProcessTenantSummary() {
     #region RelatedPolicyAssignments
     $startRelatedPolicyAssignmentsAll = Get-Date
     $htRoleAssignmentRelatedPolicyAssignments = @{}
+    $htOrphanedSPMI = @{}
     foreach ($roleAssignmentIdUnique in $roleAssignmentsUniqueById) {
 
         $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId) = @{}
@@ -8692,10 +8683,16 @@ function ProcessTenantSummary() {
                     if ($htParameters.DoNotIncludeResourceGroupsOnPolicy) {
                         if (-not ($htCacheAssignmentsPolicyOnResourceGroupsAndResources).($hlpPolicyAssignmentId)) {
                             Write-Host "   !Relict detected: SP MI: $($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId) - PolicyAssignmentId: $hlpPolicyAssignmentId"
+                            if (-not $htOrphanedSPMI.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId)){
+                                $htOrphanedSPMI.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId) = @{}
+                            }
                         }
                     }
                     else {
                         Write-Host "   !Relict detected: SP MI: $($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId) - PolicyAssignmentId: $hlpPolicyAssignmentId"
+                        if (-not $htOrphanedSPMI.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId)){
+                            $htOrphanedSPMI.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId) = @{}
+                        }
                     }
                 }
             }
@@ -11074,6 +11071,89 @@ extensions: [{ name: 'sort' }]
     }
     #endregion SUMMARYPolicyExemptions
 
+    #region SUMMARYPolicyAssignmentsOrphaned
+    Write-Host "  processing TenantSummary PolicyAssignments orphaned"
+
+    if ($policyAssignmentsOrphanedCount -gt 0) {
+        $tfCount = $policyAssignmentsOrphanedCount
+        $htmlTableId = "TenantSummary_policyAssignmentsOrphaned"
+
+        [void]$htmlTenantSummary.AppendLine(@"
+<button type="button" class="collapsible" id="buttonTenantSummary_policyAssignmentsOrphaned"><i class="padlx fa fa-exclamation-triangle orange" aria-hidden="true"></i> <span class="valignMiddle">$($policyAssignmentsOrphanedCount) Policy assignments orphaned <abbr title="Policy definition not available &#13;(likely a Management Group scoped Policy definition / Management Group deleted)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+</button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id= "$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Policy AssignmentId</th>
+<th>Policy/Set definition</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+        $htmlSUMMARYPolicyassignmentsOrphaned = $null
+        $htmlSUMMARYPolicyassignmentsOrphaned = foreach ($orphanedPolicyAssignment in $policyAssignmentsOrphaned | Sort-Object -Property PolicyAssignmentId) {
+            @"
+<tr>
+<td>$($orphanedPolicyAssignment.policyAssignmentId -replace "<", "&lt;" -replace ">", "&gt;")</td>
+<td>$($orphanedPolicyAssignment.PolicyDefinitionId -replace "<", "&lt;" -replace ">", "&gt;")</td>
+</tr>
+"@
+        }
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYPolicyassignmentsOrphaned)
+        [void]$htmlTenantSummary.AppendLine(@"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_types: [
+                'caseinsensitivestring'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();
+    </script>
+"@)
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$($policyAssignmentsOrphanedCount) Policy assignments orphaned <abbr title="Policy definition not available &#13;(likely a Management Group scoped Policy definition / Management Group deleted)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span></p>
+"@)
+    }
+    #endregion SUMMARYPolicyAssignmentsOrphaned
+
     #region SUMMARYPolicyAssignmentsAll
     $startSummaryPolicyAssignmentsAll = Get-Date
     $allPolicyAssignments = ($policyBaseQuery).count
@@ -11514,6 +11594,7 @@ extensions: [{ name: 'sort' }]
                     Effect                                = $effect
                     PolicyName                            = $azaLinkOrNot
                     PolicyNameClear                       = $policyAssignmentAll.Policy
+                    PolicyAvailability                    = $policyAssignmentAll.PolicyAvailability
                     PolicyDescription                     = $policyAssignmentAll.PolicyDescription
                     PolicyId                              = $policyAssignmentAll.PolicyDefinitionId
                     PolicyVariant                         = $policyAssignmentAll.PolicyVariant
@@ -11558,6 +11639,7 @@ extensions: [{ name: 'sort' }]
                     Effect                                = $effect
                     PolicyName                            = $azaLinkOrNot
                     PolicyNameClear                       = $policyAssignmentAll.Policy
+                    PolicyAvailability                    = $policyAssignmentAll.PolicyAvailability
                     PolicyDescription                     = $policyAssignmentAll.PolicyDescription
                     PolicyId                              = $policyAssignmentAll.PolicyDefinitionId
                     PolicyVariant                         = $policyAssignmentAll.PolicyVariant
@@ -11705,7 +11787,25 @@ extensions: [{ name: 'sort' }]
     $endtest2 = Get-Date
     Write-Host "   processing duration: $((NEW-TIMESPAN -Start $starttest2 -End $endtest2).TotalSeconds) seconds"
 
+
+    
     if (($arrayPolicyAssignmentsEnriched).count -gt 0) {
+
+        if (-not $NoCsvExport) {
+            if ($htParameters.onAzureDevOps -eq $true) {
+                $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_PolicyAssignments"
+            }
+            else {
+                $csvFilename = "AzGovViz_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)_PolicyAssignments"
+            }
+            if ($CsvExportUseQuotesAsNeeded) {
+                $arrayPolicyAssignmentsEnriched | Sort-Object -Property Level, MgId, SubscriptionId, PolicyAssignmentId | Select-Object -ExcludeProperty PolicyName, RelatedRoleAssignments | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
+            }
+            else {
+                $arrayPolicyAssignmentsEnriched | Sort-Object -Property Level, MgId, SubscriptionId, PolicyAssignmentId | Select-Object -ExcludeProperty PolicyName, RelatedRoleAssignments | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+            }
+        }
+
         $policyAssignmentsUniqueCount = ($arrayPolicyAssignmentsEnriched | Sort-Object -Property PolicyAssignmentId -Unique).count
         if ($htParameters.LargeTenant -or $htParameters.PolicyAtScopeOnly) {
             $policyAssignmentsCount = $policyAssignmentsUniqueCount
@@ -11716,12 +11816,27 @@ extensions: [{ name: 'sort' }]
             $tfCount = $policyAssignmentsCount
         }
 
-        $htmlTableId = "TenantSummary_policyAssignmentsAll"
-        $noteOrNot = ""
+        if ($tfCount -gt $HtmlTableRowsLimit) {
+            Write-Host "   !Skipping TenantSummary PolicyAssignments HTML processing as $tfCount lines is exceeding the critical rows limit of $HtmlTableRowsLimit" -ForegroundColor Yellow
+            [void]$htmlTenantSummary.AppendLine(@"
+            <button type="button" class="collapsible" id="buttonTenantSummary_policyAssignmentsAll_largeDataSet">
+                <i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($policyAssignmentsCount) Policy assignments ($policyAssignmentsUniqueCount unique)</span>
+            </button>
+            <div class="content TenantSummary padlxx">
+                <i class="fa fa-exclamation-triangle orange" aria-hidden="true"></i><span style="color:#ff0000"> Output of $tfCount lines would exceed the html rows limit of $HtmlTableRowsLimit (html file potentially would become unresponsive). Work with the CSV file <i>$($csvFilename).csv</i> | Note: the CSV file will only exist if you did NOT use parameter <i>-NoCsvExport</i></span><br>
+                <span style="color:#ff0000">You can adjust the html row limit by using parameter <i>-HtmlTableRowsLimit</i></span><br>
+                <span style="color:#ff0000">You can reduce the number of lines by using parameter <i>-LargeTenant</i> and/or <i>-DoNotIncludeResourceGroupsAnsResourcesOnRBAC</i></span><br>
+                <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">AzGovViz docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
+            </div>
+"@)
+        }
+        else {
 
-        [void]$htmlTenantSummary.AppendLine(@"
-        <button onclick="loadtf$htmlTableId()" type="button" class="collapsible" id="buttonTenantSummary_policyAssignmentsAll"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($policyAssignmentsCount) Policy assignments ($policyAssignmentsUniqueCount unique)</span>
-</button>
+            $htmlTableId = "TenantSummary_policyAssignmentsAll"
+            $noteOrNot = ""
+
+            [void]$htmlTenantSummary.AppendLine(@"
+        <button onclick="loadtf$htmlTableId()" type="button" class="collapsible" id="buttonTenantSummary_policyAssignmentsAll"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($policyAssignmentsCount) Policy assignments ($policyAssignmentsUniqueCount unique)</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a><br>
 <span class="padlxx hintTableSize">*Depending on the number of rows and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
@@ -11748,17 +11863,17 @@ extensions: [{ name: 'sort' }]
 <th>NonCompliance Message</th>
 "@)
 
-        if ($htParameters.NoPolicyComplianceStates -eq $false) {
-            [void]$htmlTenantSummary.AppendLine(@"
+            if ($htParameters.NoPolicyComplianceStates -eq $false) {
+                [void]$htmlTenantSummary.AppendLine(@"
 <th>Policies NonCmplnt</th>
 <th>Policies Compliant</th>
 <th>Resources NonCmplnt</th>
 <th>Resources Compliant</th>
 <th>Resources Conflicting</th>
 "@)
-        }
+            }
 
-        [void]$htmlTenantSummary.AppendLine(@"
+            [void]$htmlTenantSummary.AppendLine(@"
 <th>Role/Assignment $noteOrNot</th>
 <th>Managed Identity</th>
 <th>Assignment DisplayName</th>
@@ -11774,39 +11889,24 @@ extensions: [{ name: 'sort' }]
 <tbody>
 "@)
 
-        $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-        $htmlTenantSummary = [System.Text.StringBuilder]::new()
-        $htmlSummaryPolicyAssignmentsAll = $null
-        $startloop = Get-Date
+            $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+            $htmlTenantSummary = [System.Text.StringBuilder]::new()
+            $htmlSummaryPolicyAssignmentsAll = $null
+            $startloop = Get-Date
 
-        if (-not $NoCsvExport) {
-            if ($htParameters.onAzureDevOps -eq $true) {
-                $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_PolicyAssignments"
-            }
-            else {
-                $csvFilename = "AzGovViz_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)_PolicyAssignments"
-            }
-            if ($CsvExportUseQuotesAsNeeded) {
-                $arrayPolicyAssignmentsEnriched | Sort-Object -Property Level, MgId, SubscriptionId, PolicyAssignmentId | Select-Object -ExcludeProperty PolicyName, RelatedRoleAssignments | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
-            }
-            else {
-                $arrayPolicyAssignmentsEnriched | Sort-Object -Property Level, MgId, SubscriptionId, PolicyAssignmentId | Select-Object -ExcludeProperty PolicyName, RelatedRoleAssignments | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
-            }
-        }
-
-        $htmlSummaryPolicyAssignmentsAll = foreach ($policyAssignment in $arrayPolicyAssignmentsEnriched | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, PolicyAssignmentId) {
-            if ($htParameters.LargeTenant -or $htParameters.PolicyAtScopeOnly) {
-                if ($policyAssignment.Inheritance -like "inherited *" -and $policyAssignment.MgParentId -ne "'upperScopes'") {
-                    continue
+            $htmlSummaryPolicyAssignmentsAll = foreach ($policyAssignment in $arrayPolicyAssignmentsEnriched | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, PolicyAssignmentId) {
+                if ($htParameters.LargeTenant -or $htParameters.PolicyAtScopeOnly) {
+                    if ($policyAssignment.Inheritance -like "inherited *" -and $policyAssignment.MgParentId -ne "'upperScopes'") {
+                        continue
+                    }
                 }
-            }
-            if ($policyAssignment.PolicyType -eq "Custom") {
-                $policyName = ($policyAssignment.PolicyName -replace "<", "&lt;" -replace ">", "&gt;")
-            }
-            else {
-                $policyName = $policyAssignment.PolicyName
-            }
-            @"
+                if ($policyAssignment.PolicyType -eq "Custom") {
+                    $policyName = ($policyAssignment.PolicyName -replace "<", "&lt;" -replace ">", "&gt;")
+                }
+                else {
+                    $policyName = $policyAssignment.PolicyName
+                }
+                @"
 <tr>
 <td>$($policyAssignment.mgOrSubOrRG)</td>
 <td>$($policyAssignment.MgId)</td>
@@ -11828,17 +11928,17 @@ extensions: [{ name: 'sort' }]
 <td>$($policyAssignment.PolicyAssignmentNonComplianceMessages -replace "<", "&lt;" -replace ">", "&gt;")</td>
 "@
 
-            if ($htParameters.NoPolicyComplianceStates -eq $false) {
-                @"
+                if ($htParameters.NoPolicyComplianceStates -eq $false) {
+                    @"
 <td>$($policyAssignment.NonCompliantPolicies)</td>
 <td>$($policyAssignment.CompliantPolicies)</td>
 <td>$($policyAssignment.NonCompliantResources)</td>
 <td>$($policyAssignment.CompliantResources)</td>
 <td>$($policyAssignment.ConflictingResources)</td>
 "@
-            }
+                }
 
-            @"
+                @"
 <td class="breakwordall">$($policyAssignment.RelatedRoleAssignments)</td>
 <td>$($policyAssignment.PolicyAssignmentMI)</td>
 <td class="breakwordall">$($policyAssignment.PolicyAssignmentDisplayName -replace "<", "&lt;" -replace ">", "&gt;")</td>
@@ -11851,20 +11951,20 @@ extensions: [{ name: 'sort' }]
 <td>$($policyAssignment.UpdatedBy)</td>
 </tr>
 "@
-        }
+            }
 
-        $endloop = Get-Date
-        Write-Host "   loop duration: $((NEW-TIMESPAN -Start $startloop -End $endloop).TotalSeconds) seconds"
+            $endloop = Get-Date
+            Write-Host "   loop duration: $((NEW-TIMESPAN -Start $startloop -End $endloop).TotalSeconds) seconds"
 
-        $start = Get-Date
-        [void]$htmlTenantSummary.AppendLine($htmlSummaryPolicyAssignmentsAll)
-        $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-        $htmlTenantSummary = [System.Text.StringBuilder]::new()
-        $end = Get-Date
-        Write-Host "   append file duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
-        #[System.GC]::Collect()
+            $start = Get-Date
+            [void]$htmlTenantSummary.AppendLine($htmlSummaryPolicyAssignmentsAll)
+            $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+            $htmlTenantSummary = [System.Text.StringBuilder]::new()
+            $end = Get-Date
+            Write-Host "   append file duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
+            #[System.GC]::Collect()
 
-        [void]$htmlTenantSummary.AppendLine(@"
+            [void]$htmlTenantSummary.AppendLine(@"
             </tbody>
         </table>
     </div>
@@ -11874,31 +11974,31 @@ extensions: [{ name: 'sort' }]
         var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
-        if ($tfCount -gt 10) {
-            $spectrum = "10, $tfCount"
-            if ($tfCount -gt 50) {
-                $spectrum = "10, 25, 50, $tfCount"
-            }
-            if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, 100, $tfCount"
-            }
-            if ($tfCount -gt 500) {
-                $spectrum = "10, 30, 50, 100, 250, $tfCount"
-            }
-            if ($tfCount -gt 1000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-            }
-            if ($tfCount -gt 2000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-            }
-            if ($tfCount -gt 3000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-            }
-            [void]$htmlTenantSummary.AppendLine(@"
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
         paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
 "@)
-        }
-        [void]$htmlTenantSummary.AppendLine(@"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
             btn_reset: true,
             highlight_keywords: true,
             alternate_rows: true,
@@ -11936,17 +12036,17 @@ extensions: [{ name: 'sort' }]
                 'caseinsensitivestring',
 "@)
 
-        if ($htParameters.NoPolicyComplianceStates -eq $false) {
-            [void]$htmlTenantSummary.AppendLine(@"
+            if ($htParameters.NoPolicyComplianceStates -eq $false) {
+                [void]$htmlTenantSummary.AppendLine(@"
                 'number',
                 'number',
                 'number',
                 'number',
                 'number',
 "@)
-        }
+            }
 
-        [void]$htmlTenantSummary.AppendLine(@"
+            [void]$htmlTenantSummary.AppendLine(@"
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -11960,35 +12060,35 @@ extensions: [{ name: 'sort' }]
             ],
 "@)
 
-        if ($htParameters.NoPolicyComplianceStates -eq $false) {
-            [void]$htmlTenantSummary.AppendLine(@"
+            if ($htParameters.NoPolicyComplianceStates -eq $false) {
+                [void]$htmlTenantSummary.AppendLine(@"
             watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
 "@)
-        }
-        else {
-            [void]$htmlTenantSummary.AppendLine(@"
+            }
+            else {
+                [void]$htmlTenantSummary.AppendLine(@"
             watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
 "@)
-        }
+            }
 
-        [void]$htmlTenantSummary.AppendLine(@"
+            [void]$htmlTenantSummary.AppendLine(@"
             extensions: [
                 {
                     name: 'colsVisibility',
 "@)
 
-        if ($htParameters.NoPolicyComplianceStates -eq $false) {
-            [void]$htmlTenantSummary.AppendLine(@"
+            if ($htParameters.NoPolicyComplianceStates -eq $false) {
+                [void]$htmlTenantSummary.AppendLine(@"
                     at_start: [9, 25, 26],
 "@)
-        }
-        else {
-            [void]$htmlTenantSummary.AppendLine(@"
+            }
+            else {
+                [void]$htmlTenantSummary.AppendLine(@"
                     at_start: [9, 20, 21],
 "@)
-        }
+            }
 
-        [void]$htmlTenantSummary.AppendLine(@"
+            [void]$htmlTenantSummary.AppendLine(@"
                     text: 'Columns: ',
                     enable_tick_all: true
                 },
@@ -12000,6 +12100,7 @@ extensions: [{ name: 'sort' }]
         tf.init();}}
     </script>
 "@)
+        }
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
@@ -15227,7 +15328,7 @@ extensions: [{ name: 'sort' }]
 <tbody>
 "@)
 
-            foreach ($miResEntry in $arrayUserAssignedIdentities4Resources) {
+            foreach ($miResEntry in $arrayUserAssignedIdentities4Resources | Sort-Object -Property miResourceId, resourceId) {
                 [void]$htmlTenantSummary.AppendLine(@"
             <tr>
                 <td>$($miResEntry.miResourceName)</td>
@@ -17426,7 +17527,12 @@ tf.init();
         $tfCount = $servicePrincipalsOfTypeManagedIdentityCount
         $htmlTableId = "TenantSummary_AADSPManagedIdentities"
 
+        if ($htOrphanedSPMI.keys.Count -gt 0){
+            $orphanedSPMIPresent = $true
+        }
+
         $abbr = " <abbr title=`"Relevant for UserAssigned MI's &#13;Check 'TenantSummary/Subscription, Resources & Defender/UserAssigned Managed Identities assigned to Resources' for more details`"><i class=`"fa fa-question-circle`" aria-hidden=`"true`"></i></abbr>"
+        $abbrOrphanedSPMI = " <abbr title=`"Policy assignment related Managed Identities &#13;The related Policy assignment does not exist`"><i class=`"fa fa-question-circle`" aria-hidden=`"true`"></i></abbr>"
         [void]$htmlTenantSummary.AppendLine(@"
 <button type="button" class="collapsible" id="buttonTenantSummary_AADSPManagedIdentities"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($servicePrincipalsOfTypeManagedIdentityCount) AAD ServicePrincipals type=ManagedIdentity</span> <abbr title="ServicePrincipals where a Role assignment exists &#13;(including ResourceGroups and Resources)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
 <div class="content TenantSummary">
@@ -17443,6 +17549,7 @@ tf.init();
 <th>Policy assignment details</th>
 <th>Role assignments</th>
 <th>Assigned to resources$($abbr)</th>
+<th>Orphaned$($abbrOrphanedSPMI)</td>
 </tr>
 </thead>
 <tbody>
@@ -17641,6 +17748,14 @@ tf.init();
                 $miRoleAssignments = "$(($arrayMiRoleAssignments).Count) ($($arrayMiRoleAssignments -join ", "))"
             }
 
+            $orphanedMI = ""
+            if ($miResourceType -eq "Microsoft.Authorization/policyAssignments") {
+                $orphanedMI = "false"
+                if ($htOrphanedSPMI.($serviceprincipalMI)){
+                    $orphanedMI = "true"
+                }
+            }
+
             @"
 <tr>
 <td>$($serviceprincipalMIDetailed.appId)</td>
@@ -17652,6 +17767,7 @@ tf.init();
 <td class="breakwordall">$($policyAssignmentMoreInfo)</td>
 <td class="breakwordall">$($miRoleAssignments)</td>
 <td>$userMiAssignedToResourcesCount</td>
+<td>$orphanedMI</td>
 </tr>
 "@
         }
@@ -17692,6 +17808,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
     col_3: 'select',
     col_4: 'select',
+    col_9: 'select',
     col_types: [
         'caseinsensitivestring',
         'caseinsensitivestring',
@@ -17701,7 +17818,8 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         'caseinsensitivestring',
         'caseinsensitivestring',
         'caseinsensitivestring',
-        'number'
+        'number',
+        'caseinsensitivestring'
     ],
 extensions: [{ name: 'sort' }]
 };
@@ -19988,6 +20106,9 @@ function ProcessDefinitionInsights() {
     $startDefinitionInsights = Get-Date
     Write-Host " Building DefinitionInsights"
 
+    $md5 = New-Object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
+    $utf8 = New-Object -TypeName System.Text.UTF8Encoding
+
     #region definitionInsightsAzurePolicy
     $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
     [void]$htmlDefinitionInsights.AppendLine( @"
@@ -20244,7 +20365,7 @@ function ProcessDefinitionInsights() {
         }
 
         $json = $($policy.Json | convertto-json -depth 99)
-        $guid = (((new-guid).guid).tostring() -replace "-")
+        $guid = ([System.BitConverter]::ToString($md5.ComputeHash($utf8.GetBytes($policy.PolicyDefinitionId)))) -replace "-"
         @"
 <tr>
 <td class="definitionInsightsjsontd">
@@ -20512,7 +20633,6 @@ tf.init();}}
                 }
                 $assignmentsDetailed = $arrayAssignmentDetails -join "$CsvDelimiterOpposite "
             }
-
         }
 
         $scopeDetails = "n/a"
@@ -20520,7 +20640,7 @@ tf.init();}}
             $scopeDetails = "$($policySet.ScopeId) ($($htEntities.($policySet.ScopeId).DisplayName))"
         }
         $json = $($policySet.Json | convertto-json -depth 99)
-        $guid = (((new-guid).guid).tostring() -replace "-")
+        $guid = ([System.BitConverter]::ToString($md5.ComputeHash($utf8.GetBytes($policySet.PolicyDefinitionId)))) -replace "-"
         @"
 <tr>
 <td class="definitionInsightsjsontd">
@@ -20803,7 +20923,7 @@ tf.init();}}
         }
 
         $json = $role.Json | convertto-json -depth 99
-        $guid = (((new-guid).guid).tostring() -replace "-")
+        $guid = $role.Id -replace "-"
         @"
 <tr>
 <td class="definitionInsightsjsontd">
@@ -21255,12 +21375,7 @@ else {
 
     if ($permissionsCheckFailed -eq $true) {
         Write-Host "Please consult the documentation: https://$($GithubRepository)#required-permissions-in-azure"
-        if ($htParameters.onAzureDevOps -eq $true) {
-            Write-Error "Error"
-        }
-        else {
-            Throw "Error - AzGovViz: check the last console output for details"
-        }
+        Throw "Error - AzGovViz: check the last console output for details"
     }
 
 }
@@ -21501,12 +21616,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
         foreach ($whiteListEntry in $SubscriptionQuotaIdWhitelist) {
             if ($whiteListEntry -eq "undefined") {
                 Write-Host "When defining the 'SubscriptionQuotaIdWhitelist' make sure to remove the 'undefined' entry from the array :)" -ForegroundColor Red
-                if ($htParameters.onAzureDevOps -eq $true) {
-                    Write-Error "Error"
-                }
-                else {
-                    Throw "Error - AzGovViz: check the last console output for details"
-                }
+                Throw "Error - AzGovViz: check the last console output for details"
             }
         }
         $paramsUsed += "SubscriptionQuotaIdWhitelist: $($SubscriptionQuotaIdWhitelist -join ", ") &#13;"
@@ -21580,21 +21690,11 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     if ($htParameters.DoAzureConsumption -eq $true) {
         if (-not $AzureConsumptionPeriod -is [int]) {
             Write-Host "parameter -AzureConsumptionPeriod must be an integer"
-            if ($htParameters.onAzureDevOps -eq $true) {
-                Write-Error "Error"
-            }
-            else {
-                Throw "Error - AzGovViz: check the last console output for details"
-            }
+            Throw "Error - AzGovViz: check the last console output for details"
         }
         elseif ($AzureConsumptionPeriod -eq 0) {
             Write-Host "parameter -AzureConsumptionPeriod must be gt 0"
-            if ($htParameters.onAzureDevOps -eq $true) {
-                Write-Error "Error"
-            }
-            else {
-                Throw "Error - AzGovViz: check the last console output for details"
-            }
+            Throw "Error - AzGovViz: check the last console output for details"
         }
         else {
             $azureConsumptionStartDate = ((Get-Date).AddDays( - ($($AzureConsumptionPeriod)))).ToString("yyyy-MM-dd")
@@ -21914,12 +22014,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
     if ($tryCounter -gt 6) {
         Write-Host "Problem switching the context to a Subscription that has a non AAD_ QuotaId"
-        if ($htParameters.onAzureDevOps -eq $true) {
-            Write-Error "Error"
-        }
-        else {
-            Throw "Error - AzGovViz: check the last console output for details"
-        }
+        Throw "Error - AzGovViz: check the last console output for details"
     }
 
     #API in rare cases returns duplicates, therefor sorting unique (id)
@@ -24009,7 +24104,9 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $policyBaseQueryManagementGroups = $policyBaseQuery.where( { [String]::IsNullOrEmpty($_.SubscriptionId) } )
     $policyPolicyBaseQueryScopeInsights = ($policyBaseQuery | Select-Object Mg*, Subscription*, PolicyAssignmentAtScopeCount, PolicySetAssignmentAtScopeCount, PolicyAndPolicySetAssignmentAtScopeCount, PolicyAssignmentLimit -Unique)
     $policyBaseQueryUniqueAssignments = $policyBaseQuery | Select-Object -Property Policy* | Sort-Object -Property PolicyAssignmentId -Unique
-
+    $policyAssignmentsOrphaned = $policyBaseQuery.where( { $_.PolicyAvailability -eq "na" } ) | Sort-Object -Property PolicyAssignmentId -Unique
+    $policyAssignmentsOrphanedCount = $policyAssignmentsOrphaned.Count
+    Write-Host "  $policyAssignmentsOrphanedCount orphaned Policy assignments found"
 
     $htPolicyWithAssignmentsBase = @{}
     foreach ($policyAssignment in $policyBaseQueryUniqueAssignments) {
