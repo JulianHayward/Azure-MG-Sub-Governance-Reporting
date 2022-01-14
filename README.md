@@ -553,7 +553,9 @@ ARM Limits are not acquired programmatically, these are hardcoded. The links use
 
 ## Contributions
 
-Please feel free to contribute. Thanks to so many supporters - testing, giving feedback, making suggestions, presenting use-case, posting/blogging articles, refactoring code - THANK YOU!
+Please feel free to contribute. 
+
+Thanks to so many supporters - testing, giving feedback, making suggestions, presenting use-case, posting/blogging articles, refactoring code - THANK YOU!
 
 Thanks Stefan Stranger (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale. Make sure you read Stefan´s Blog Article: [Enterprise-Scale - Policy Driven Governance](https://stefanstranger.github.io/2020/08/28/EnterpriseScalePolicyDrivenGovernance)
 
@@ -562,6 +564,8 @@ Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his AzGovViz output
 Carlos Mendible (Microsoft) gracias por tu contribución on the project - run AzGovViz with GitHub Codespaces.
 
 Special thanks to Tim Wanierke, Brooks Vaughn and Friedrich Weinmann (Microsoft).
+
+And another big thanks to Wayne Meyer (Microsoft) for constant support and building bridges.
 
 Kudos to the [TableFilter](https://www.tablefilter.com) Project Team!  
 Kudos to [LorDOniX](https://github.com/LorDOniX/json-viewer) for JSON-viewer!
