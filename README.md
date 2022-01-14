@@ -57,9 +57,10 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Jan-12 / Major)
+__Changes__ (2022-Jan-14 / Major)
 
-* New feature __TenantSummary | Subscriptions, Resources & Defender__, __TenantSummary | Azure Active Directory__ and __ScopeInsights__ insights on UserAssignedIdentities/Resources - which resource has an user assigned managed identity assigned / vice versa
+* New parameter `-ManagementGroupsOnly` - collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
+* New feature __TenantSummary | Subscriptions, Resources & Defender__, __TenantSummary | Azure Active Directory__ and __ScopeInsights__ insights on UserAssignedIdentities/Resources - which resource has an user assigned managed identity assigned / vice versa - thanks to Thomas Naunheim (Microsoft Azure MVP) for inspiration :)
 * New feature __TenantSummary | Policy | Policy assignments orphanded__ (Policy assignments's Policy definition does not exist / likely Management Group scoped Policy defintion - Management Group deleted)
 * Optimize __DefinitionInsights__ collapsible JSON definitions
 * Defender plans usage / highlight use of depcrecated plans such as Container Registry & Kubernetes
@@ -443,6 +444,7 @@ Screenshot Azure Portal
   * `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability, resource type stats, UserAssigned Identities assigned to Resources is excluded (featured for large tenants)
   * `-StatsOptOut` - Opt out sending [stats](#stats)
   * `-NoSingleSubscriptionOutput` - Single __Scope Insights__ output per Subscription should not be created
+  * `-ManagementGroupsOnly` - Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
 
 ## Integrate with AzOps
 

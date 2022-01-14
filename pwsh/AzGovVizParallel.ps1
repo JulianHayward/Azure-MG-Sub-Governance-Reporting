@@ -134,6 +134,9 @@
 .PARAMETER HtmlTableRowsLimit
     Although the parameter -LargeTenant was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
 
+.PARAMETER ManagementGroupsOnly
+    Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
+
 .EXAMPLE
     Define the ManagementGroup ID
     PS C:\> .\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>
@@ -255,6 +258,9 @@
     Although the parameter -LargeTenant was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -HtmlTableRowsLimit 23077
 
+    Define if data should be collected for Management Groups only (Subscription data such as e.g. Policy assignments etc. will not be collected)
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ManagementGroupsOnly
+
     .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
@@ -268,7 +274,7 @@
 Param
 (
     [string]$Product = "AzGovViz",
-    [string]$ProductVersion = "v6_major_20220112_3",
+    [string]$ProductVersion = "v6_major_20220114_1",
     [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #deprecated - Based on environment variables the script will detect the code run platform
@@ -313,6 +319,7 @@ Param
     [switch]$NoResources,
     [switch]$StatsOptOut,
     [switch]$NoSingleSubscriptionOutput,
+    [switch]$ManagementGroupsOnly,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]$LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -342,8 +349,27 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = 'SilentlyContinue'
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 
+#region CheckCodeRunPlatform
+if ($env:GITHUB_SERVER_URL -and $env:CODESPACES) {
+    #GitHub Codespaces
+    $checkCodeRunPlatform = "GitHubCodespaces"
+}
+elseif ($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) {
+    #Azure DevOps
+    $checkCodeRunPlatform = "AzureDevOps"
+    $onAzureDevOps = $true
+}
+elseif ($PSPrivateMetadata) {
+    #Azure Automation
+    $checkCodeRunPlatform = "AzureAutomation"
+}
+else {
+    #Other Console
+    $checkCodeRunPlatform = "Console"
+}
+#endregion CheckCodeRunPlatform
+
 #region file
-#filedir
 if (-not [IO.Path]::IsPathRooted($outputPath)) {
     $outputPath = Join-Path -Path (Get-Location).Path -ChildPath $outputPath
 }
@@ -368,15 +394,61 @@ catch {
     $fileTimestamp = (Get-Date -Format $FileTimeStampFormat)
 }
 
+#region DoTranscript
 if ($DoTranscript) {
     if ($ManagementGroupId) {
-        $fileNameTranscript = "AzGovViz_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupId)_Log.txt"
+        if ($onAzureDevOps -eq $true) {
+            if ($HierarchyMapOnly -eq $true) {
+                $fileNameTranscript = "AzGovViz_HierarchyMapOnly_$($ManagementGroupId)_Log.txt"
+            }
+            elseif ($ManagementGroupsOnly -eq $true) {
+                $fileNameTranscript = "AzGovViz_ManagementGroupsOnly_$($ManagementGroupId)_Log.txt"
+            }
+            else {
+                $fileNameTranscript = "AzGovViz_$($ManagementGroupId)_Log.txt"
+            }
+        }
+        else {
+            if ($HierarchyMapOnly -eq $true) {
+                $fileNameTranscript = "AzGovViz_HierarchyMapOnly_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupId)_Log.txt"
+            }
+            elseif ($ManagementGroupsOnly -eq $true) {
+                $fileNameTranscript = "AzGovViz_ManagementGroupsOnly_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupId)_Log.txt"
+            }
+            else {
+                $fileNameTranscript = "AzGovViz_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupId)_Log.txt"
+            }
+        }
     }
     else {
-        $fileNameTranscript = "AzGovViz_$($ProductVersion)_$($fileTimestamp)_Log.txt"
+        if ($onAzureDevOps -eq $true) {
+            if ($HierarchyMapOnly -eq $true) {
+                $fileNameTranscript = "AzGovViz_HierarchyMapOnly_Log.txt"
+            }
+            elseif ($ManagementGroupsOnly -eq $true) {
+                $fileNameTranscript = "AzGovViz_ManagementGroupsOnly_Log.txt"
+            }
+            else {
+                $fileNameTranscript = "AzGovViz_Log.txt"
+            }
+        }
+        else {
+            if ($HierarchyMapOnly -eq $true) {
+                $fileNameTranscript = "AzGovViz_HierarchyMapOnly_$($ProductVersion)_$($fileTimestamp)_Log.txt"
+            }
+            elseif ($ManagementGroupsOnly -eq $true) {
+                $fileNameTranscript = "AzGovViz_ManagementGroupsOnly_$($ProductVersion)_$($fileTimestamp)_Log.txt"
+            }
+            else {
+                $fileNameTranscript = "AzGovViz_$($ProductVersion)_$($fileTimestamp)_Log.txt"
+            }
+        }
     }
-    Start-Transcript -Path "$($outputPath)$($DirectorySeparatorChar)$($fileNameTranscript)" -NoClobber
+    Write-Host "Writing transcript: $($outputPath)$($DirectorySeparatorChar)$($fileNameTranscript)"
+    Start-Transcript -Path "$($outputPath)$($DirectorySeparatorChar)$($fileNameTranscript)"
 }
+#endregion DoTranscript
+
 #endregion file
 
 #time
@@ -388,6 +460,14 @@ $startAzGovViz = Get-Date
 $startTime = Get-Date -Format "dd-MMM-yyyy HH:mm:ss"
 $startTimeUTC = ((Get-Date).ToUniversalTime()).ToString("dd-MMM-yyyy HH:mm:ss")
 Write-Host "Start AzGovViz $($startTime) (#$($ProductVersion))"
+Write-Host "CheckCodeRunPlatform: running in $($checkCodeRunPlatform)"
+
+if ($DebugAzAPICall) {
+    write-host "AzAPICall debug enabled" -ForegroundColor Cyan
+}
+else {
+    write-host "AzAPICall debug disabled" -ForegroundColor Cyan
+}
 
 #region ChinaBilling
 $checkContext = Get-AzContext -ErrorAction Stop
@@ -402,46 +482,19 @@ if ($DoAzureConsumption) {
 #endregion ChinaBilling
 
 #region htParameters (all switch params used in foreach-object -parallel)
-
-if ($env:GITHUB_SERVER_URL -and $env:CODESPACES) {
-    #GitHub Codespaces
-    Write-Host "CheckCodeRunPlatform: running in GitHub Codespaces"
-    $checkCodeRunPlatform = "GitHubCodespaces"
-    #Write-Host "GITHUB_SERVER_URL" $env:GITHUB_SERVER_URL
-    #Write-Host "CODESPACES" $env:CODESPACES
-}
-elseif ($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) {
-    #Azure DevOps
-    Write-Host "CheckCodeRunPlatform: running in Azure DevOps"
-    $checkCodeRunPlatform = "AzureDevOps"
-    #Write-Host "BUILD_REPOSITORY_ID" $env:BUILD_REPOSITORY_ID
-    #Write-Host "SYSTEM_TEAMPROJECTID" $env:SYSTEM_TEAMPROJECTID
-    $onAzureDevOps = $true
-}
-elseif ($PSPrivateMetadata) {
-    #Azure Automation
-    Write-Output "CheckCodeRunPlatform: running in Azure Automation"
-    $checkCodeRunPlatform = "AzureAutomation"
-    #Write-Output "PSPrivateMetadata:" $PSPrivateMetadata
-}
-else {
-    #Other Console
-    Write-Host "CheckCodeRunPlatform: not Codespaces, not Azure DevOps, not Azure Automation - likely local console"
-    $checkCodeRunPlatform = "Console"
-}
-
-if ($DebugAzAPICall) {
-    write-host "AzAPICall debug enabled" -ForegroundColor Cyan
-}
-else {
-    write-host "AzAPICall debug disabled" -ForegroundColor Cyan
-}
-
 if ($LargeTenant -eq $true) {
     $NoScopeInsights = $true
     $NoResourceProvidersDetailed = $true
     $PolicyAtScopeOnly = $true
     $RBACAtScopeOnly = $true
+}
+
+if ($ManagementGroupsOnly) {
+    $NoSingleSubscriptionOutput = $true
+}
+
+if ($HierarchyMapOnly) {
+    $NoJsonExport = $true
 }
 
 if ($NoASCSecureScore -or $NoMDfCSecureScore) {
@@ -467,6 +520,7 @@ $htParameters = @{
     NoJsonExport                                 = [bool]$NoJsonExport
     NoResources                                  = [bool]$NoResources
     DoAzureConsumption                           = [bool]$DoAzureConsumption
+    ManagementGroupsOnly                         = [bool]$ManagementGroupsOnly
 }
 #endregion htParameters
 
@@ -2167,27 +2221,28 @@ function DataCollectionResources {
 
         if ($resource.identity.userAssignedIdentities) {
             $resource.identity.userAssignedIdentities.psobject.properties | ForEach-Object {
-                #array
-                $hlp = ($_.Name.split("/"))
-                $hlpMiSubId = $hlp[2]
-                $null = $script:arrayUserAssignedIdentities4Resources.Add([PSCustomObject]@{
-                        resourceId                = $resource.Id
-                        resourceName              = $resource.name
-                        resourceMgPath            = $childMgMgPath
-                        resourceSubscriptionName  = $scopeDisplayName
-                        resourceSubscriptionId    = $scopeId
-                        resourceResourceGroupName = ($resource.Id -split ("/"))[4]
-                        resourceType              = $resource.type
-                        resourceLocation          = $resource.location
-                        miPrincipalId             = $_.Value.principalId
-                        miClientId                = $_.Value.clientId
-                        miMgPath                  = $htSubscriptionsMgPath.($hlpMiSubId).pathDelimited
-                        miSubscriptionName        = $htSubscriptionsMgPath.($hlpMiSubId).DisplayName
-                        miSubscriptionId          = $hlpMiSubId
-                        miResourceGroupName       = $hlp[4]
-                        miResourceId              = $_.Name
-                        miResourceName            = $_.Name -replace ".*/"
-                    })
+                if ((-not [string]::IsNullOrEmpty($resource.Id)) -and (-not [string]::IsNullOrEmpty($_.Value.principalId))) {
+                    $hlp = ($_.Name.split("/"))
+                    $hlpMiSubId = $hlp[2]
+                    $null = $script:arrayUserAssignedIdentities4Resources.Add([PSCustomObject]@{
+                            resourceId                = $resource.Id
+                            resourceName              = $resource.name
+                            resourceMgPath            = $childMgMgPath
+                            resourceSubscriptionName  = $scopeDisplayName
+                            resourceSubscriptionId    = $scopeId
+                            resourceResourceGroupName = ($resource.Id -split ("/"))[4]
+                            resourceType              = $resource.type
+                            resourceLocation          = $resource.location
+                            miPrincipalId             = $_.Value.principalId
+                            miClientId                = $_.Value.clientId
+                            miMgPath                  = $htSubscriptionsMgPath.($hlpMiSubId).pathDelimited
+                            miSubscriptionName        = $htSubscriptionsMgPath.($hlpMiSubId).DisplayName
+                            miSubscriptionId          = $hlpMiSubId
+                            miResourceGroupName       = $hlp[4]
+                            miResourceId              = $_.Name
+                            miResourceName            = $_.Name -replace ".*/"
+                        })
+                }
             }
         }
     }
@@ -2701,7 +2756,7 @@ function DataCollectionBluePrintAssignmentsSub {
                 $blueprintName = $subscriptionBlueprintAssignment.properties.blueprintId -replace ".*/blueprints/", "" -replace "/versions/.*", ""
             }
 
-            $currentTask = "Blueprint definitions related to Blueprint assignments '$($scopeDisplayName)' ('$scopeId')"
+            $currentTask = "   Blueprint definitions related to Blueprint assignments '$($scopeDisplayName)' ('$scopeId')"
             $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)$($blueprintScope)/providers/Microsoft.Blueprint/blueprints/$($blueprintName)?api-version=2018-11-01-preview"
             $method = "GET"
             $subscriptionBlueprintDefinitionResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn "Content" -caller "CustomDataCollection"
@@ -3537,7 +3592,7 @@ function DataCollectionPolicyAssignmentsSub {
 
                     #handling some strange scenario where the synchronized hashTable responds fragments?!
                     $tryCounter = 0
-                    do{
+                    do {
                         $tryCounter++
 
                         $policyAssignmentsPolicyDefinition = ($htCacheDefinitionsPolicy).($policyDefinitionId)
@@ -3552,7 +3607,7 @@ function DataCollectionPolicyAssignmentsSub {
                             $policyDefinitionEffectDefault = ($policyAssignmentsPolicyDefinition).effectDefaultValue
                             $policyDefinitionEffectFixed = ($policyAssignmentsPolicyDefinition).effectFixedValue
 
-                            if (($policyAssignmentsPolicyDefinition).Type -ne $policyDefinitionType){
+                            if (($policyAssignmentsPolicyDefinition).Type -ne $policyDefinitionType) {
                                 Write-Host "$scopeDisplayName ($scopeId) $policyVariant was processing: $policyDefinitionId"
                                 Write-Host "'$(($policyAssignmentsPolicyDefinition).Type)' ne '$policyDefinitionType'"
                                 Write-Host "!Please report this error: $($htParameters.GithubRepository)" -ForegroundColor Yellow
@@ -3571,7 +3626,7 @@ function DataCollectionPolicyAssignmentsSub {
                                 $policyDefintionScopeId = "n/a"
                             }
                         }
-                        else{
+                        else {
                             $policyReturnedFromHt = $false
                             if ($htParameters.onAzureDevOps -eq $true) {
                                 #Write-Host "##[warning]TryHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policyId:'$policyDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; type:'$(($policyAssignmentsPolicyDefinition).Type)' - sleeping '$tryCounter' seconds"
@@ -3581,7 +3636,7 @@ function DataCollectionPolicyAssignmentsSub {
                         }
                     }
                     until($policyReturnedFromHt -or $tryCounter -gt 5)
-                    if (-not $policyReturnedFromHt){
+                    if (-not $policyReturnedFromHt) {
                         Write-Host "FinalHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policyId:'$policyDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'"
                         Write-Host "!Please report this error: $($htParameters.GithubRepository)" -ForegroundColor Yellow
                         throw
@@ -3599,7 +3654,7 @@ function DataCollectionPolicyAssignmentsSub {
                     $policyDefintionScope = "unknown"
                     $policyDefintionScopeMgSub = "unknown"
                     $policyDefintionScopeId = "unknown"
-                    Write-Host "$scopeDisplayName ($scopeId); policyAssignment '$($L1mgmtGroupSubPolicyAssignment.Id)' policyDefinition (Policy) could not be found: '$($policyDefinitionId)'"
+                    Write-Host "   $scopeDisplayName ($scopeId); policyAssignment '$($L1mgmtGroupSubPolicyAssignment.Id)' policyDefinition (Policy) could not be found: '$($policyDefinitionId)'"
                 }
 
                 $PolicyAssignmentScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
@@ -3778,12 +3833,12 @@ function DataCollectionPolicyAssignmentsSub {
                     $PolicyAssignmentIdentity = "n/a"
                 }
 
-                if (($htCacheDefinitionsPolicySet).($policySetDefinitionId)){
+                if (($htCacheDefinitionsPolicySet).($policySetDefinitionId)) {
                     $policyAvailability = ""
 
                     #handling some strange behavior where the synchronized hashTable responds fragments?!
                     $tryCounter = 0
-                    do{
+                    do {
                         $tryCounter++
                         $policyAssignmentsPolicySetDefinition = ($htCacheDefinitionsPolicySet).($policySetDefinitionId)
 
@@ -3795,7 +3850,7 @@ function DataCollectionPolicyAssignmentsSub {
                             $policySetDefinitionType = ($policyAssignmentsPolicySetDefinition).Type
                             $policySetCategory = ($policyAssignmentsPolicySetDefinition).Category
 
-                            if (($policyAssignmentsPolicySetDefinition).Type -ne $policySetDefinitionType){
+                            if (($policyAssignmentsPolicySetDefinition).Type -ne $policySetDefinitionType) {
                                 Write-Host "$scopeDisplayName ($scopeId) $policyVariant was processing: $policySetDefinitionId"
                                 Write-Host "'$(($policyAssignmentsPolicySetDefinition).Type)' ne '$policySetDefinitionType'"
                                 Write-Host "!Please report this error: $($htParameters.GithubRepository)" -ForegroundColor Yellow
@@ -3813,7 +3868,7 @@ function DataCollectionPolicyAssignmentsSub {
                                 $policySetDefintionScopeId = "n/a"
                             }
                         }
-                        else{
+                        else {
                             $policySetReturnedFromHt = $false
                             if ($htParameters.onAzureDevOps -eq $true) {
                                 #Write-Host "##[warning]TryHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policySetId:'$policySetDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; type:'$(($policyAssignmentsPolicySetDefinition).Type)' - sleeping '$tryCounter' seconds"
@@ -3823,20 +3878,20 @@ function DataCollectionPolicyAssignmentsSub {
                         }
                     }
                     until($policySetReturnedFromHt -or $tryCounter -gt 5)
-                    if (-not $policySetReturnedFromHt){
+                    if (-not $policySetReturnedFromHt) {
                         Write-Host "FinalHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policySetId:'$policySetDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'"
                         Write-Host "!Please report this error: $($htParameters.GithubRepository)" -ForegroundColor Yellow
                         throw
                     }
                 }
                 #policySetDefinition not exists!
-                else{
+                else {
                     $policyAvailability = "na"
                     $policySetDisplayName = "unknown"
                     $policySetDescription = "unknown"
                     $policySetDefinitionType = "unknown"
                     $policySetCategory = "unknown"
-                    Write-Host "$scopeDisplayName ($scopeId); policyAssignment '$($L1mgmtGroupSubPolicyAssignment.Id)' policyDefinition (PolicySet) could not be found: '$($policySetDefinitionId)'"
+                    Write-Host "   $scopeDisplayName ($scopeId); policyAssignment '$($L1mgmtGroupSubPolicyAssignment.Id)' policyDefinition (PolicySet) could not be found: '$($policySetDefinitionId)'"
                 }
 
                 $assignedBy = "n/a"
@@ -4825,6 +4880,7 @@ function DataCollection($mgId) {
         }
     }
 
+
     #region SUBSCRIPTION
     Write-Host " CustomDataCollection Subscriptions"
     $subsExcludedStateCount = ($outOfScopeSubscriptions.where( { $_.outOfScopeReason -like "State*" } )).Count
@@ -4971,8 +5027,8 @@ function DataCollection($mgId) {
                     }
                 }
 
-                $rndom = Get-Random -Minimum 10 -Maximum 750
-                start-sleep -Millisecond $rndom
+                #$rndom = Get-Random -Minimum 10 -Maximum 750
+                #start-sleep -Millisecond $rndom
                 if ($htParameters.HierarchyMapOnly -eq $false) {
                     $currentSubscription = $htAllSubscriptionsFromAPI.($childMgSubId).subDetails
                     $subscriptionQuotaId = $currentSubscription.subscriptionPolicies.quotaId
@@ -4984,108 +5040,110 @@ function DataCollection($mgId) {
                         scopeDisplayName = $childMgSubDisplayName
                     }
 
-                    #mgSecureScore
-                    $mgAscSecureScoreResult = DataCollectionMGSecureScore -Id $childMgId
+                    if (-not $htParameters.ManagementGroupsOnly) {
+                        #mgSecureScore
+                        $mgAscSecureScoreResult = DataCollectionMGSecureScore -Id $childMgId
 
-                    #defenderPlans
-                    $dataCollectionDefenderPlansParameters = @{
-                        ChildMgMgPath = $childMgMgPath
-                    }
-                    DataCollectionDefenderPlans @baseParameters @dataCollectionDefenderPlansParameters
-
-                    #diagnostics
-                    $dataCollectionDiagnosticsSubParameters = @{
-                        ChildMgMgPath = $childMgMgPath
-                        ChildMgId     = $childMgId
-                    }
-                    DataCollectionDiagnosticsSub @baseParameters @dataCollectionDiagnosticsSubParameters
-
-
-                    if ($htParameters.NoResources -eq $false) {
-                        #resources
-                        $dataCollectionResourcesParameters = @{
+                        #defenderPlans
+                        $dataCollectionDefenderPlansParameters = @{
                             ChildMgMgPath = $childMgMgPath
                         }
-                        DataCollectionResources @baseParameters @dataCollectionResourcesParameters
-                    }
+                        DataCollectionDefenderPlans @baseParameters @dataCollectionDefenderPlansParameters
 
-                    #resourceGroups
-                    DataCollectionResourceGroups @baseParameters
+                        #diagnostics
+                        $dataCollectionDiagnosticsSubParameters = @{
+                            ChildMgMgPath = $childMgMgPath
+                            ChildMgId     = $childMgId
+                        }
+                        DataCollectionDiagnosticsSub @baseParameters @dataCollectionDiagnosticsSubParameters
 
-                    #resourceProviders
-                    DataCollectionResourceProviders @baseParameters
 
-                    #resourceLocks
-                    DataCollectionResourceLocks @baseParameters
+                        if ($htParameters.NoResources -eq $false) {
+                            #resources
+                            $dataCollectionResourcesParameters = @{
+                                ChildMgMgPath = $childMgMgPath
+                            }
+                            DataCollectionResources @baseParameters @dataCollectionResourcesParameters
+                        }
 
-                    #tags
-                    $subscriptionTagsReturn = DataCollectionTags @baseParameters
-                    $subscriptionTags = $subscriptionTagsReturn.subscriptionTags
-                    $subscriptionTagsCount = $subscriptionTagsReturn.subscriptionTagsCount
+                        #resourceGroups
+                        DataCollectionResourceGroups @baseParameters
 
-                    if ($htParameters.NoPolicyComplianceStates -eq $false) {
-                        #SubscriptionPolicyCompliance
-                        DataCollectionPolicyComplianceStates @baseParameters -TargetMgOrSub $targetMgOrSub
-                    }
+                        #resourceProviders
+                        DataCollectionResourceProviders @baseParameters
 
-                    #SubscriptionASCSecureScore
-                    $subscriptionASCSecureScore = DataCollectionASCSecureScoreSub @baseParameters
+                        #resourceLocks
+                        DataCollectionResourceLocks @baseParameters
 
-                    $addRowToTableParameters = @{
-                        hierarchyLevel             = $hierarchyLevel
-                        childMgDisplayName         = $childMgDisplayName
-                        childMgId                  = $childMgId
-                        childMgParentId            = $childMgParentId
-                        childMgParentName          = $childMgParentName
-                        mgAscSecureScoreResult     = $mgAscSecureScoreResult
-                        subscriptionQuotaId        = $subscriptionQuotaId
-                        subscriptionState          = $subscriptionState
-                        subscriptionASCSecureScore = $subscriptionASCSecureScore
-                        subscriptionTags           = $subscriptionTags
-                        subscriptionTagsCount      = $subscriptionTagsCount
-                    }
+                        #tags
+                        $subscriptionTagsReturn = DataCollectionTags @baseParameters
+                        $subscriptionTags = $subscriptionTagsReturn.subscriptionTags
+                        $subscriptionTagsCount = $subscriptionTagsReturn.subscriptionTagsCount
 
-                    #SubscriptionBlueprintDefinitions
-                    $functionReturn = DataCollectionBluePrintDefinitionsSub @baseParameters @addRowToTableParameters
-                    if ($functionReturn."addRowToTableDone") {
-                        $addRowToTableDone = $true
-                    }
+                        if ($htParameters.NoPolicyComplianceStates -eq $false) {
+                            #SubscriptionPolicyCompliance
+                            DataCollectionPolicyComplianceStates @baseParameters -TargetMgOrSub $targetMgOrSub
+                        }
 
-                    #SubscriptionBlueprintAssignments
-                    $functionReturn = DataCollectionBluePrintAssignmentsSub @baseParameters @addRowToTableParameters
-                    if ($functionReturn."addRowToTableDone") {
-                        $addRowToTableDone = $true
-                    }
+                        #SubscriptionASCSecureScore
+                        $subscriptionASCSecureScore = DataCollectionASCSecureScoreSub @baseParameters
 
-                    #SubscriptionPolicyExemptions
-                    DataCollectionPolicyExemptions @baseParameters -TargetMgOrSub $targetMgOrSub
+                        $addRowToTableParameters = @{
+                            hierarchyLevel             = $hierarchyLevel
+                            childMgDisplayName         = $childMgDisplayName
+                            childMgId                  = $childMgId
+                            childMgParentId            = $childMgParentId
+                            childMgParentName          = $childMgParentName
+                            mgAscSecureScoreResult     = $mgAscSecureScoreResult
+                            subscriptionQuotaId        = $subscriptionQuotaId
+                            subscriptionState          = $subscriptionState
+                            subscriptionASCSecureScore = $subscriptionASCSecureScore
+                            subscriptionTags           = $subscriptionTags
+                            subscriptionTagsCount      = $subscriptionTagsCount
+                        }
 
-                    #SubscriptionPolicyDefinitions
-                    $functionReturn = DataCollectionPolicyDefinitions @baseParameters -TargetMgOrSub $targetMgOrSub
-                    $policyDefinitionsScopedCount = $functionReturn."PolicyDefinitionsScopedCount"
+                        #SubscriptionBlueprintDefinitions
+                        $functionReturn = DataCollectionBluePrintDefinitionsSub @baseParameters @addRowToTableParameters
+                        if ($functionReturn."addRowToTableDone") {
+                            $addRowToTableDone = $true
+                        }
 
-                    #SubscriptionPolicySets
-                    $functionReturn = DataCollectionPolicySetDefinitions @baseParameters -TargetMgOrSub $targetMgOrSub
-                    $policySetDefinitionsScopedCount = $functionReturn."PolicySetDefinitionsScopedCount"
+                        #SubscriptionBlueprintAssignments
+                        $functionReturn = DataCollectionBluePrintAssignmentsSub @baseParameters @addRowToTableParameters
+                        if ($functionReturn."addRowToTableDone") {
+                            $addRowToTableDone = $true
+                        }
 
-                    $scopedPolicyCounts = @{
-                        policyDefinitionsScopedCount    = $policyDefinitionsScopedCount
-                        policySetDefinitionsScopedCount = $policySetDefinitionsScopedCount
-                    }
+                        #SubscriptionPolicyExemptions
+                        DataCollectionPolicyExemptions @baseParameters -TargetMgOrSub $targetMgOrSub
 
-                    #SubscriptionPolicyAssignments
-                    $functionReturn = DataCollectionPolicyAssignmentsSub @baseParameters @addRowToTableParameters @scopedPolicyCounts
-                    if ($functionReturn."addRowToTableDone") {
-                        $addRowToTableDone = $true
-                    }
+                        #SubscriptionPolicyDefinitions
+                        $functionReturn = DataCollectionPolicyDefinitions @baseParameters -TargetMgOrSub $targetMgOrSub
+                        $policyDefinitionsScopedCount = $functionReturn."PolicyDefinitionsScopedCount"
 
-                    #SubscriptionRoleDefinitions
-                    DataCollectionRoleDefinitions @baseParameters -TargetMgOrSub $targetMgOrSub
+                        #SubscriptionPolicySets
+                        $functionReturn = DataCollectionPolicySetDefinitions @baseParameters -TargetMgOrSub $targetMgOrSub
+                        $policySetDefinitionsScopedCount = $functionReturn."PolicySetDefinitionsScopedCount"
 
-                    #SubscriptionRoleAssignments
-                    $functionReturn = DataCollectionRoleAssignmentsSub @baseParameters @addRowToTableParameters
-                    if ($functionReturn."addRowToTableDone") {
-                        $addRowToTableDone = $true
+                        $scopedPolicyCounts = @{
+                            policyDefinitionsScopedCount    = $policyDefinitionsScopedCount
+                            policySetDefinitionsScopedCount = $policySetDefinitionsScopedCount
+                        }
+
+                        #SubscriptionPolicyAssignments
+                        $functionReturn = DataCollectionPolicyAssignmentsSub @baseParameters @addRowToTableParameters @scopedPolicyCounts
+                        if ($functionReturn."addRowToTableDone") {
+                            $addRowToTableDone = $true
+                        }
+
+                        #SubscriptionRoleDefinitions
+                        DataCollectionRoleDefinitions @baseParameters -TargetMgOrSub $targetMgOrSub
+
+                        #SubscriptionRoleAssignments
+                        $functionReturn = DataCollectionRoleAssignmentsSub @baseParameters @addRowToTableParameters
+                        if ($functionReturn."addRowToTableDone") {
+                            $addRowToTableDone = $true
+                        }
                     }
 
                     if ($addRowToTableDone -ne $true) {
@@ -5140,6 +5198,7 @@ function DataCollection($mgId) {
         Write-Host " All PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.Count)"
     }
     #endregion SUBSCRIPTION
+
 }
 
 #endregion dataCollection
@@ -5460,7 +5519,10 @@ function ProcessScopeInsightsMGSubs($mgChild) {
 "@
             }
 
-            ProcessScopeInsightsMgOrSub -mgOrSub "sub" -subscriptionId $subEntry.subscriptionId -subscriptionsMgId $mgChild
+            if (-not $htParameters.ManagementGroupsOnly) {
+                ProcessScopeInsightsMgOrSub -mgOrSub "sub" -subscriptionId $subEntry.subscriptionId -subscriptionsMgId $mgChild
+            }
+
             if (-not $NoScopeInsights) {
                 $script:html += @"
                 </table><!--subTable-->
@@ -8683,14 +8745,14 @@ function ProcessTenantSummary() {
                     if ($htParameters.DoNotIncludeResourceGroupsOnPolicy) {
                         if (-not ($htCacheAssignmentsPolicyOnResourceGroupsAndResources).($hlpPolicyAssignmentId)) {
                             Write-Host "   !Relict detected: SP MI: $($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId) - PolicyAssignmentId: $hlpPolicyAssignmentId"
-                            if (-not $htOrphanedSPMI.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId)){
+                            if (-not $htOrphanedSPMI.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId)) {
                                 $htOrphanedSPMI.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId) = @{}
                             }
                         }
                     }
                     else {
                         Write-Host "   !Relict detected: SP MI: $($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId) - PolicyAssignmentId: $hlpPolicyAssignmentId"
-                        if (-not $htOrphanedSPMI.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId)){
+                        if (-not $htOrphanedSPMI.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId)) {
                             $htOrphanedSPMI.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId) = @{}
                         }
                     }
@@ -9466,12 +9528,8 @@ function ProcessTenantSummary() {
     }
 
     if (-not $NoCsvExport) {
-        if ($htParameters.onAzureDevOps -eq $true) {
-            $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_PolicyDefinitions"
-        }
-        else {
-            $csvFilename = "AzGovViz_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)_PolicyDefinitions"
-        }
+        $csvFilename = "$($filename)_PolicyDefinitions"
+        Write-Host "   Exporting PolicyDefinitions CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
         $tenantPoliciesDetailed | Sort-Object -Property Type, Scope, PolicyDefinitionId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
     }
 
@@ -10148,12 +10206,8 @@ extensions: [{ name: 'sort' }]
     }
 
     if (-not $NoCsvExport) {
-        if ($htParameters.onAzureDevOps -eq $true) {
-            $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_PolicySetDefinitions"
-        }
-        else {
-            $csvFilename = "AzGovViz_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)_PolicySetDefinitions"
-        }
+        $csvFilename = "$($filename)_PolicySetDefinitions"
+        Write-Host "   Exporting PolicySetDefinitions CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
         $tenantPolicySetsDetailed | Sort-Object -Property Type, Scope, PolicySetDefinitionId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
     }
 
@@ -11162,6 +11216,9 @@ extensions: [{ name: 'sort' }]
     $script:arrayPolicyAssignmentsEnriched = [System.Collections.ArrayList]@()
     $cnter = 0
 
+    #region PolicyAssignmentsRoleAssignmentMapping
+    $startPolicyAssignmentsRoleAssignmentMapping = Get-Date
+    Write-Host "   processing PolicyAssignmentsRoleAssignmentMapping"
     $script:htPolicyAssignmentRoleAssignmentMapping = @{}
     foreach ($roleassignmentId in ($htCacheAssignmentsRole).keys | Sort-Object) {
         $roleAssignment = ($htCacheAssignmentsRole).($roleassignmentId).Assignment
@@ -11237,9 +11294,13 @@ extensions: [{ name: 'sort' }]
         }
     }
     $htPolicyAssignmentRoleAssignmentMappingCount = ($htPolicyAssignmentRoleAssignmentMapping.keys).Count
+    $endPolicyAssignmentsRoleAssignmentMapping = Get-Date
+    Write-Host "   PolicyAssignmentsRoleAssignmentMapping processing duration: $((NEW-TIMESPAN -Start $startPolicyAssignmentsRoleAssignmentMapping -End $endPolicyAssignmentsRoleAssignmentMapping).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPolicyAssignmentsRoleAssignmentMapping -End $endPolicyAssignmentsRoleAssignmentMapping).TotalSeconds) seconds)"
+    #endregion PolicyAssignmentsRoleAssignmentMapping
 
-    $starttest = Get-Date
-
+    #region PolicyAssignmentsUniqueRelations
+    $startPolicyAssignmnetsUniqueRelations = Get-Date
+    Write-Host "   processing PolicyAssignmnetsUniqueRelations"
     $htPolicyAssignmentRelatedRoleAssignments = @{}
     $htPolicyAssignmentRelatedExemptions = @{}
 
@@ -11291,17 +11352,19 @@ extensions: [{ name: 'sort' }]
         }
         #endregion exemptions
     }
+    $endPolicyAssignmnetsUniqueRelations = Get-Date
+    Write-Host "   PolicyAssignmnetsUniqueRelations processing duration: $((NEW-TIMESPAN -Start $startPolicyAssignmnetsUniqueRelations -End $endPolicyAssignmnetsUniqueRelations).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPolicyAssignmnetsUniqueRelations -End $endPolicyAssignmnetsUniqueRelations).TotalSeconds) seconds)"
+    #endregion PolicyAssignmentsUniqueRelations
 
-    $endtest = Get-Date
-    Write-Host "   processing duration: $((NEW-TIMESPAN -Start $starttest -End $endtest).TotalSeconds) seconds"
-
-    $starttest2 = Get-Date
+    #region PolicyAssignmentsAllCreateEnriched
+    $startPolicyAssignmentsAllCreateEnriched = Get-Date
+    Write-Host "   processing PolicyAssignmentsAllCreateEnriched"
     foreach ($policyAssignmentAll in $policyBaseQuery) {
 
         $cnter++
         if ($cnter % 1000 -eq 0) {
             $etappeSummaryPolicyAssignmentsAll = Get-Date
-            Write-Host "   $cnter of $allPolicyAssignments PolicyAssignments processed: $((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAll -End $etappeSummaryPolicyAssignmentsAll).TotalSeconds) seconds"
+            Write-Host "    $cnter of $allPolicyAssignments PolicyAssignments processed: $((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAll -End $etappeSummaryPolicyAssignmentsAll).TotalSeconds) seconds"
             #if ($cnter % 5000 -eq 0) {
             #[System.GC]::Collect()
             #}
@@ -11654,9 +11717,12 @@ extensions: [{ name: 'sort' }]
                 })
         }
     }
+    $EndPolicyAssignmentsAllCreateEnriched = Get-Date
+    Write-Host "   PolicyAssignmentsAllCreateEnriched processing duration: $((NEW-TIMESPAN -Start $startPolicyAssignmentsAllCreateEnriched -End $EndPolicyAssignmentsAllCreateEnriched).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPolicyAssignmentsAllCreateEnriched -End $EndPolicyAssignmentsAllCreateEnriched).TotalSeconds) seconds)"
+    #endregion PolicyAssignmentsAllCreateEnriched
 
-    #resolveIdentities
-    Write-Host "    Processing unresoved Identities (createdBy/updatedBy)"
+    #region PolicyAssignmentsAllResolveIdentities
+    Write-Host "   processing unresoved Identities (createdBy/updatedBy)"
     $startUnResolvedIdentitiesCreatedByUpdatedByPolicy = Get-Date
 
     $createdByNotResolved = ($arrayPolicyAssignmentsEnriched.where( { -not [string]::IsNullOrEmpty($_.CreatedBy) -and $_.CreatedBy -notlike "ObjectType:*" })).CreatedBy | Sort-Object -Unique
@@ -11676,7 +11742,7 @@ extensions: [{ name: 'sort' }]
 
     $htNonResolvedIdentitiesPolicyCount = $htNonResolvedIdentitiesPolicy.Count
     if ($htNonResolvedIdentitiesPolicyCount -gt 0) {
-        Write-Host "    $htNonResolvedIdentitiesPolicyCount unresolved identities that created/updated a Policy assignment (createdBy/updatedBy)"
+        Write-Host "     $htNonResolvedIdentitiesPolicyCount unresolved identities that created/updated a Policy assignment (createdBy/updatedBy)"
         $arrayUnresolvedIdentities = @()
         $arrayUnresolvedIdentities = foreach ($unresolvedIdentity in  $htNonResolvedIdentitiesPolicy.keys) {
             if (-not [string]::IsNullOrEmpty($unresolvedIdentity)) {
@@ -11684,10 +11750,10 @@ extensions: [{ name: 'sort' }]
             }
         }
         $arrayUnresolvedIdentitiesCount = $arrayUnresolvedIdentities.Count
-        Write-Host "    $arrayUnresolvedIdentitiesCount unresolved identities that have a value"
+        Write-Host "     $arrayUnresolvedIdentitiesCount unresolved identities that have a value"
         if ($arrayUnresolvedIdentitiesCount.Count -gt 0) {
             $nonResolvedIdentitiesToCheck = '"{0}"' -f ($arrayUnresolvedIdentities -join '","')
-            Write-Host "    IdentitiesToCheck: $nonResolvedIdentitiesToCheck"
+            Write-Host "     IdentitiesToCheck: $nonResolvedIdentitiesToCheck"
             $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)/v1.0/directoryObjects/getByIds"
             $method = "POST"
             $body = @"
@@ -11701,7 +11767,7 @@ extensions: [{ name: 'sort' }]
             function resolveIdentitiesPolicy($currentTask) {
                 $resolvedIdentities = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask
                 $resolvedIdentitiesCount = $resolvedIdentities.Count
-                Write-Host "    $resolvedIdentitiesCount identities resolved"
+                Write-Host "     $resolvedIdentitiesCount identities resolved"
                 if ($resolvedIdentitiesCount -gt 0) {
                     foreach ($resolvedIdentity in $resolvedIdentities) {
                         if (-not $htResolvedIdentitiesPolicy.($resolvedIdentity.id)) {
@@ -11781,23 +11847,19 @@ extensions: [{ name: 'sort' }]
 
     $endUnResolvedIdentitiesCreatedByUpdatedByPolicy = Get-Date
     Write-Host "    UnresolvedIdentities (createdBy/updatedBy) duration: $((NEW-TIMESPAN -Start $startUnResolvedIdentitiesCreatedByUpdatedByPolicy -End $endUnResolvedIdentitiesCreatedByUpdatedByPolicy).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startUnResolvedIdentitiesCreatedByUpdatedByPolicy -End $endUnResolvedIdentitiesCreatedByUpdatedByPolicy).TotalSeconds) seconds)"
+    #endregion PolicyAssignmentsAllResolveIdentities
 
     $script:arrayPolicyAssignmentsEnrichedGroupedBySubscription = $arrayPolicyAssignmentsEnriched | Group-Object -Property subscriptionId
     $script:arrayPolicyAssignmentsEnrichedGroupedByManagementGroup = $arrayPolicyAssignmentsEnriched | Group-Object -Property MgId
-    $endtest2 = Get-Date
-    Write-Host "   processing duration: $((NEW-TIMESPAN -Start $starttest2 -End $endtest2).TotalSeconds) seconds"
 
-
-    
+    #region policyAssignmentsAllHTML
+    Write-Host "   processing SummaryPolicyAssignmentsAllHTML"
+    $startSummaryPolicyAssignmentsAllHTML = Get-Date
     if (($arrayPolicyAssignmentsEnriched).count -gt 0) {
 
         if (-not $NoCsvExport) {
-            if ($htParameters.onAzureDevOps -eq $true) {
-                $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_PolicyAssignments"
-            }
-            else {
-                $csvFilename = "AzGovViz_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)_PolicyAssignments"
-            }
+            $csvFilename = "$($filename)_PolicyAssignments"
+            Write-Host "    Exporting PolicyAssignments CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
             if ($CsvExportUseQuotesAsNeeded) {
                 $arrayPolicyAssignmentsEnriched | Sort-Object -Property Level, MgId, SubscriptionId, PolicyAssignmentId | Select-Object -ExcludeProperty PolicyName, RelatedRoleAssignments | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
             }
@@ -11954,14 +12016,14 @@ extensions: [{ name: 'sort' }]
             }
 
             $endloop = Get-Date
-            Write-Host "   loop duration: $((NEW-TIMESPAN -Start $startloop -End $endloop).TotalSeconds) seconds"
+            Write-Host "    html foreach loop duration: $((NEW-TIMESPAN -Start $startloop -End $endloop).TotalSeconds) seconds"
 
             $start = Get-Date
             [void]$htmlTenantSummary.AppendLine($htmlSummaryPolicyAssignmentsAll)
             $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
             $htmlTenantSummary = [System.Text.StringBuilder]::new()
             $end = Get-Date
-            Write-Host "   append file duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
+            Write-Host "    html append file duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
             #[System.GC]::Collect()
 
             [void]$htmlTenantSummary.AppendLine(@"
@@ -12107,6 +12169,9 @@ extensions: [{ name: 'sort' }]
     <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($arrayPolicyAssignmentsEnriched).count) Policy assignments</span></p>
 "@)
     }
+    $endSummaryPolicyAssignmentsAllHTML = Get-Date
+    Write-Host "   SummaryPolicyAssignmentsAllHTML duration: $((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAllHTML -End $endSummaryPolicyAssignmentsAllHTML).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAllHTML -End $endSummaryPolicyAssignmentsAllHTML).TotalSeconds) seconds)"
+    #endregion policyAssignmentsAllHTML
     $endSummaryPolicyAssignmentsAll = Get-Date
     Write-Host "   SummaryPolicyAssignmentsAll duration: $((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAll -End $endSummaryPolicyAssignmentsAll).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAll -End $endSummaryPolicyAssignmentsAll).TotalSeconds) seconds)"
     #endregion SUMMARYPolicyAssignmentsAll
@@ -12630,12 +12695,8 @@ extensions: [{ name: 'sort' }]
         if (-not $NoCsvExport) {
             $startCreateRBACAllCSV = Get-Date
 
-            if ($htParameters.onAzureDevOps -eq $true) {
-                $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_RoleAssignments"
-            }
-            else {
-                $csvFilename = "AzGovViz_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)_RoleAssignments"
-            }
+            $csvFilename = "$($filename)_RoleAssignments"
+            Write-Host "   Exporting RoleAssignments CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
             if ($CsvExportUseQuotesAsNeeded) {
                 if ($htParameters.LargeTenant -or $htParameters.RBACAtScopeOnly) {
                     $rbacAllAtScope | Sort-Object -Property Level, RoleAssignmentId, MgId, SubscriptionId, RoleClear, ObjectId | Select-Object -ExcludeProperty Role, RbacRelatedPolicyAssignment | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
@@ -14766,12 +14827,8 @@ extensions: [{ name: 'sort' }]
 
             #region exportCSV
             if (-not $NoCsvExport) {
-                if ($htParameters.onAzureDevOps -eq $true) {
-                    $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_ResourceProviders"
-                }
-                else {
-                    $csvFilename = "AzGovViz_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)_ResourceProviders"
-                }
+                $csvFilename = "$($filename)_ResourceProviders"
+                Write-Host "   Exporting ResourceProviders CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
                 $arrayResourceProvidersDetailedForCSVExport | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
                 $arrayResourceProvidersDetailedForCSVExport = $null
             }
@@ -17527,7 +17584,7 @@ tf.init();
         $tfCount = $servicePrincipalsOfTypeManagedIdentityCount
         $htmlTableId = "TenantSummary_AADSPManagedIdentities"
 
-        if ($htOrphanedSPMI.keys.Count -gt 0){
+        if ($htOrphanedSPMI.keys.Count -gt 0) {
             $orphanedSPMIPresent = $true
         }
 
@@ -17751,7 +17808,7 @@ tf.init();
             $orphanedMI = ""
             if ($miResourceType -eq "Microsoft.Authorization/policyAssignments") {
                 $orphanedMI = "false"
-                if ($htOrphanedSPMI.($serviceprincipalMI)){
+                if ($htOrphanedSPMI.($serviceprincipalMI)) {
                     $orphanedMI = "true"
                 }
             }
@@ -20968,12 +21025,8 @@ tf.init();}}
 
     #region exportCSV
     if (-not $NoCsvExport) {
-        if ($htParameters.onAzureDevOps -eq $true) {
-            $csvFilename = "AzGovViz_$($ManagementGroupIdCaseSensitived)_RoleDefinitions"
-        }
-        else {
-            $csvFilename = "AzGovViz_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)_RoleDefinitions"
-        }
+        $csvFilename = "$($filename)_RoleDefinitions"
+        Write-Host "   Exporting RoleDefinitions CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
         $arrayRoleDefinitionsForCSVExport | Sort-Object -Property Type, Name, Id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
         $arrayRoleDefinitionsForCSVExport = $null
     }
@@ -21603,6 +21656,13 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $paramsUsed += "HierarchyMapOnly: false &#13;"
     Write-Host "Run Info:"
     Write-Host " Creating HierarchyMap, TenantSummary, DefinitionInsights and ScopeInsights - use parameter: '-HierarchyMapOnly' to only create the HierarchyMap" -ForegroundColor Yellow
+
+    if ($htParameters.ManagementGroupsOnly) {
+        Write-Host " Management Groups only = $($htParameters.ManagementGroupsOnly)" -ForegroundColor Green
+    }
+    else {
+        Write-Host " Management Groups only = $($htParameters.ManagementGroupsOnly) - use parameter -ManagementGroupsOnly to only collect data for Management Groups" -ForegroundColor Yellow
+    }
 
     if (($SubscriptionQuotaIdWhitelist).count -eq 1 -and $SubscriptionQuotaIdWhitelist[0] -eq "undefined") {
         Write-Host " Subscription Whitelist disabled - use parameter: '-SubscriptionQuotaIdWhitelist' to whitelist QuotaIds" -ForegroundColor Yellow
@@ -23993,7 +24053,6 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
     Write-Host "Create helper hash table"
     $startHelperHt = Get-Date
-    #$htPoliciesUsedInPolicySets = @{}
     $tenantAllPolicySets = ($htCacheDefinitionsPolicySet).Values
     $tenantAllPolicySetsCount = ($tenantAllPolicySets).count
     if ($tenantAllPolicySetsCount -gt 0) {
@@ -24047,9 +24106,12 @@ $ManagementGroupIdCaseSensitived = (($optimizedTableForPathQueryMg.where( { $_.M
 
 #region filename
 if ($htParameters.onAzureDevOps -eq $true) {
-    $fileName = "AzGovViz_$($ManagementGroupIdCaseSensitived)"
+    #$fileName = "AzGovViz_$($ManagementGroupIdCaseSensitived)"
     if ($htParameters.HierarchyMapOnly -eq $true) {
-        $fileName = "AzGovViz_$($ManagementGroupIdCaseSensitived)_HierarchyMapOnly"
+        $fileName = "AzGovViz_HierarchyMapOnly_$($ManagementGroupIdCaseSensitived)"
+    }
+    elseif ($htParameters.ManagementGroupsOnly -eq $true) {
+        $fileName = "AzGovViz_ManagementGroupsOnly_$($ManagementGroupIdCaseSensitived)"
     }
     else {
         $fileName = "AzGovViz_$($ManagementGroupIdCaseSensitived)"
@@ -24057,7 +24119,10 @@ if ($htParameters.onAzureDevOps -eq $true) {
 }
 else {
     if ($htParameters.HierarchyMapOnly -eq $true) {
-        $fileName = "AzGovViz_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)_HierarchyMapOnly"
+        $fileName = "AzGovViz_HierarchyMapOnly_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)"
+    }
+    elseif ($htParameters.ManagementGroupsOnly -eq $true) {
+        $fileName = "AzGovViz_ManagementGroupsOnly_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)"
     }
     else {
         $fileName = "AzGovViz_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupIdCaseSensitived)"
@@ -24066,7 +24131,7 @@ else {
 #endregion filename
 
 #region BuildCSV
-Write-Host "Exporting CSV"
+Write-Host "Exporting CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName).csv'"
 $startBuildCSV = Get-Date
 
 $outprops = $newtable[0].PSObject.Properties.Name
@@ -24078,12 +24143,14 @@ else {
     $newTable | Sort-Object -Property level, mgId, SubscriptionId, PolicyAssignmentId, RoleAssignmentId, BlueprintId, BlueprintAssignmentId | Select-Object -Property $outprops -ExcludeProperty PolicyAssignmentParameters | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
 }
 
-if ($htParameters.NoResources -eq $false) {
+if (-not $htParameters.HierarchyMapOnly -and -not $htParameters.ManagementGroupsOnly -and $htParameters.NoResources -eq $false) {
     if (-not $NoCsvExport) {
         #DataCollection Export of All Resources
+        Write-Host "Exporting ResourcesAll CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv'"
         $resourcesIdsAll | Sort-Object -Property id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
     }
 }
+
 
 $endBuildCSV = Get-Date
 Write-Host "Exporting CSV total duration: $((NEW-TIMESPAN -Start $startBuildCSV -End $endBuildCSV).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startBuildCSV -End $endBuildCSV).TotalSeconds) seconds)"
@@ -24144,7 +24211,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
     #region create array Policy definitions
     $tenantAllPoliciesCount = (($htCacheDefinitionsPolicy).Values).count
-    $tenantCustomPolicies = ($htCacheDefinitionsPolicy).Values.where( { $_.Type -eq "Custom" } )
+    $tenantCustomPolicies = (($htCacheDefinitionsPolicy).Values).where( { $_.Type -eq "Custom" } )
     $tenantCustomPoliciesCount = ($tenantCustomPolicies).count
     #endregion create array Policy definitions
 
@@ -25009,18 +25076,18 @@ ProcessDiagramMermaid
 $markdown += @"
 $markdownhierarchyMgs
 $markdownhierarchySubs
- classDef mgr fill:#D9F0FF,stroke:#56595E,stroke-width:1px;
- classDef subs fill:#EEEEEE,stroke:#56595E,stroke-width:1px;
+ classDef mgr fill:#D9F0FF,stroke:#56595E,color:#000000,stroke-width:1px;
+ classDef subs fill:#EEEEEE,stroke:#56595E,color:#000000,stroke-width:1px;
 "@
 
 if (($arraySubsOos).count -gt 0) {
     $markdown += @"
- classDef subsoos fill:#FFCBC7,stroke:#56595E,stroke-width:1px;
+ classDef subsoos fill:#FFCBC7,stroke:#56595E,color:#000000,stroke-width:1px;
 "@
 }
 
 $markdown += @"
- classDef mgrprnts fill:#FFFFFF,stroke:#56595E,stroke-width:1px;
+ classDef mgrprnts fill:#FFFFFF,stroke:#56595E,color:#000000,stroke-width:1px;
  class $(($arrayMgs | Sort-Object -unique) -join ",") mgr;
  class $(($arraySubs | Sort-Object -unique) -join ",") subs;
 "@
@@ -25102,21 +25169,25 @@ Write-Host "Building Markdown total duration: $((NEW-TIMESPAN -Start $startBuild
 #endregion BuildMD
 
 #region BuildDailySummaryCSV
-$dailySummary4ExportToCSV = [System.Collections.ArrayList]@()
-foreach ($entry in $htDailySummary.keys | sort-Object) {
-    $null = $dailySummary4ExportToCSV.Add([PSCustomObject]@{
-            capability = $entry
-            count      = $htDailySummary.($entry)
-        })
+if (-not $htParameters.HierarchyMapOnly) {
+    $dailySummary4ExportToCSV = [System.Collections.ArrayList]@()
+    foreach ($entry in $htDailySummary.keys | sort-Object) {
+        $null = $dailySummary4ExportToCSV.Add([PSCustomObject]@{
+                capability = $entry
+                count      = $htDailySummary.($entry)
+            })
+    }
+    Write-Host "Exporting DailySummary CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_DailySummary.csv'"
+    $dailySummary4ExportToCSV | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_DailySummary.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
 }
-$dailySummary4ExportToCSV | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_DailySummary.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+
 #region BuildDailySummaryCSV
 
 #region BuildConsumptionCSV
 if ($htParameters.HierarchyMapOnly -eq $false) {
     if ($htParameters.DoAzureConsumption -eq $true) {
         if (-not $NoAzureConsumptionReportExportToCSV) {
-            Write-Host "Exporting Consumption CSV"
+            Write-Host "Exporting Consumption CSV $($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv"
             $startBuildConsumptionCSV = Get-Date
             if ($CsvExportUseQuotesAsNeeded) {
                 $allConsumptionData | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
@@ -25433,14 +25504,25 @@ if (-not $htParameters.NoJsonExport) {
     }
 
     if ($htParameters.onAzureDevOps) {
-        $JSONPath = "JSON_$($ManagementGroupId)"
+        if ($ManagementGroupsOnly) {
+            $JSONPath = "JSON_ManagementGroupsOnly_$($ManagementGroupId)"
+        }
+        else {
+            $JSONPath = "JSON_$($ManagementGroupId)"
+        }
+
         if (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)") {
             Write-Host " Cleaning old state (Pipeline only)"
             Remove-Item -Recurse -Force "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)"
         }
     }
     else {
-        $JSONPath = "JSON_$($ManagementGroupId)_$($fileTimestamp)"
+        if ($ManagementGroupsOnly) {
+            $JSONPath = "JSON_ManagementGroupsOnly_$($ManagementGroupId)_$($fileTimestamp)"
+        }
+        else {
+            $JSONPath = "JSON_$($ManagementGroupId)_$($fileTimestamp)"
+        }
         Write-Host " Creating new state ($($JSONPath)) (local only))"
     }
 
