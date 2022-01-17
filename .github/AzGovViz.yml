@@ -1,0 +1,57 @@
+# AzGovViz v6_major_20220116_2
+name: AzGovViz
+
+env:
+  outputpath: wiki
+  ManagementGroupId: <managementGroupId>
+
+on:
+  schedule:
+    - cron:  '45 4,16 * * *'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  AzGovViz:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      
+      - name: Connect Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{secrets.CREDS}}
+          enable-AzPSSession: true 
+          # CREDS looks like this:
+          # {
+          #   "tenantId": "<GUID>",
+          #   "subscriptionId": "<GUID>",
+          #   "clientId": "<GUID>",
+          #   "clientSecret": "<GUID>"
+          # }
+       
+      - name: Check prerequisites
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            .\pwsh\prerequisites.ps1
+          azPSVersion: "latest"
+
+      - name: Run AzGovViz
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            .\pwsh\AzGovVizParallel.ps1 -ManagementGroupId ${env:ManagementGroupId} -outputpath ${env:outputpath}
+          azPSVersion: "latest"
+      
+      - name: Push AzGovViz output to repository
+        run: |        
+          git config --global user.email "AzGovVizGHActions@ghActions.com"
+          git config --global user.name "$GITHUB_ACTOR"
+          git config pull.rebase false
+          git add --all
+          git commit -m "$GITHUB_WORKFLOW $GITHUB_JOB"
+          git push
