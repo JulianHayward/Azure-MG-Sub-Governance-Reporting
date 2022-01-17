@@ -52,31 +52,42 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 * [Facts](#facts)
 * [Contributions](#contributions)
 * [AzAdvertizer](#azadvertizer)
+* [AzADServicePrincipalInsights](#azadserviceprincipalinsights)
 * [Final note](#final-note)
 
 ## Release history
 
-__Changes__ (2021-Dec-10 / Minor)
+__Changes__ (2022-Jan-16 / Major)
 
-* deprecation of parameter `-AzureDevOpsWikiAsCode` / Based on environment variables the script will detect the code run platform
-* changed throttlelimit default from 5 to 10
+* New parameter `-ManagementGroupsOnly` - collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
+* New feature __TenantSummary | Subscriptions, Resources & Defender__, __TenantSummary | Azure Active Directory__ and __ScopeInsights__ insights on UserAssignedIdentities/Resources - which resource has an user assigned managed identity assigned / vice versa. Includes CSV export. Thanks to Thomas Naunheim (Microsoft Azure MVP) for inspiration :)
+* New feature __TenantSummary | Policy | Policy assignments orphanded__ (Policy assignments's Policy definition does not exist / likely Management Group scoped Policy defintion - Management Group deleted)
+* Optimize __DefinitionInsights__ collapsible JSON definitions
+* Defender plans usage / highlight use of depcrecated plans such as Container Registry & Kubernetes
+* New 'Large Tenant' feature __TenantSummary | Policy | Policy assignments__ if the number of Policy assignments exceeds the `-HtmlTableRowsLimit` parameter's value (default = 20.000) then the html table will not be created / the CSV file will still be created 
+* New feature  __TenantSummary | Azure Active Directory | AAD ServicePrincipals type=ManagedIdentity__ orphaned Managed Identities (for Policy assignment related Managed Identities - Policy assignment does not exist anymore)
+* Fix PIM (Priviliged Identity Management) state for inherited Subscription Role assignments
+* __TenantSummary | Azure Active Directory__ add link to [AzADServicePrincipalInsights](#azadserviceprincipalinsights) (POC)
+* Add CSV export for Policy Exemptions
+* Add workflow files (YAML) for GitHub Actions (one for [OpenID Connect (OIDC)](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-azure))
+* Bugfixes
+* HTML output patch jQuery / use latest version 3.6.0
+* Update [Demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)
+* AzAPICall enhanced error handling (GeneralError, ResourceGroupNotFound)
+* Script optimization / prepare for PS module
 
-__Changes__ (2021-Dec-09 / Minor)
-
-* [Run AzGovViz in GitHub Codespaces](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/setup.md#azgovviz-github-codespaces) - __thanks!__ Carlos Mendible (Microsoft Cloud Solution Architect - Spain)
-* JSON output update -> filenames will indicate if Role assignment is PIM (Priviliged Identity Management) based
-
-Passed tests: Powershell Core 7.2.0 on Windows  
-Passed tests: Powershell Core 7.2.0 Azure DevOps hosted agent ubuntu-18.04  
-Passed tests: Powershell Core 7.2.0 GitHub Codespaces mcr.microsoft.com/powershell:latest
+Passed tests: Powershell Core 7.2.1 on Windows  
+Passed tests: Powershell Core 7.2.1 Azure DevOps hosted agent ubuntu-18.04  
+Passed tests: Powershell Core 7.2.1 Github Actions hosted agent ubuntu-latest  
+Passed tests: Powershell Core 7.2.1 GitHub Codespaces mcr.microsoft.com/powershell:latest
 
 [Release history](history.md)
 
 ## Demo
 
-<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210818_2.html" target="_blank">![Demo](img/demo4_66.png)</a>
+<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html" target="_blank">![Demo](img/demo4_66.png)</a>
 
-[Demo (v5_major_20210818_2)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210818_2.html)  
+[Demo (v6_major_20220109_3)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)  
 Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation
 
 More [demo output](https://github.com/JulianHayward/AzGovViz)
@@ -118,6 +129,8 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
     * Lists all Exemptions (scopes: Management Groups, Subscriptions, ResourceGroups, Resources)
     * Enrich information on Exemption scope
     * Summary on expired Exemptions
+  * Policy assignments orphaned
+    * Policy assignments's Policy definition does not exist / likely Management Group scoped Policy defintion - Management Group deleted
   * Policy assignments throughout the entirety of scopes (Management Groups, Subscriptions and Resource Groups)
     * Core information on Policy assignments
       * NonCompliance Message on Policy assignment for a PolicySet will only show the default non-compliance message
@@ -183,6 +196,10 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
   * Microsoft Defender for Cloud
     * Summary of Microsoft Defender for Cloud coverage by plan (count of Subscription per plan/tier)
     * Summary of Microsoft Defender for Cloud plans coverage by Subscription (plan/tier)
+    * Highlight the usage of deprecated Defender plans (e.g. Container Registry & Kubernetes)
+  * UserAssigned Managed Identities assigned to Resources / vice versa
+    * Summary of all UserAssigned Managed Identities assigned to Resources
+    * Summary of Resources that have an UserAssigned Managed Identity assigned
 * __Diagnostics__
   * Management Groups Diagnostic settings report
     * Management Group, Diagnostic setting name, target type (LA, SA, EH), target Id, Log Category status
@@ -213,7 +230,10 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
 * __Azure Active Directory (AAD)__
   * Insights on those Service Principals where a Role assignment exists (scopes: Management Group, Subscription, ResourceGroup, Resource):
     * Type=ManagedIdentity
-      * Core information on the Service Principal such as related Ids and use case information
+      * Core information on the Service Principal such as related Ids, use case information and Role assignments
+      * For UserManaged Identities the count of assignment to Resources is reported
+      * Orphaned Managed Identity - Policy assignment related Managed Identities / the related Policy assignment does not exist
+      * UserAssigned Managed Identity - count of Resources that it is assigned to
     * Type=Application
       * Secrets and Certificates expiry information & warning
       * Report on external Service Principals
@@ -341,7 +361,7 @@ This permission is <b>mandatory</b> in each and every scenario!
       </td>
     </tr>
     <tr>
-      <td><b>D</b><br>Azure DevOps Pipeline | ServicePrincipal (Service Connection)</td>
+      <td><b>D</b><br>Azure DevOps Pipeline / Github Actions | ServicePrincipal (Service Connection)</td>
       <td>
         <table>
           <tbody>
@@ -413,7 +433,7 @@ Screenshot Azure Portal
   * `-SubscriptionId4AzContext` - Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
   * `-PolicyAtScopeOnly` - Removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants. Note using parameter `-LargeTenant` will set `-PolicyAtScopeOnly $true`
   * `-RBACAtScopeOnly` - Removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants. Note using parameter `-LargeTenant` will set `-RBACAtScopeOnly $true`
-  * ~~`-CsvExport`~~ `-NoCsvExport` - Do not export enriched data for 'Role assignments', 'Policy assignments' data and 'all resources' (subscriptionId,  managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
+  * ~~`-CsvExport`~~ `-NoCsvExport` - Do not export enriched data for 'Role assignments', 'Policy assignments' data and 'all Resources' (subscriptionId,  managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
   * ~~`-PolicyIncludeResourceGroups`~~ `-DoNotIncludeResourceGroupsOnPolicy` - Do not include Policy assignments on ResourceGroups
   * ~~`-RBACIncludeResourceGroupsAndResources`~~ `-DoNotIncludeResourceGroupsAndResourcesOnRBAC` - Do not include Role assignments on ResourceGroups and Resources
   * `-ChangeTrackingDays` - Define the period for Change tracking on newly created and updated custom Policy, PolicySet and RBAC Role definitions and Policy/RBAC Role assignments (default is '14') 
@@ -424,9 +444,10 @@ Screenshot Azure Portal
   * `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big. Using this parameter the following parameters will be set: -PolicyAtScopeOnly $true, -RBACAtScopeOnly $true, -NoResourceProvidersDetailed $true, -NoScopeInsights $true
   * `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
   * `-AADGroupMembersLimit` - Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved 
-  * `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability and resource type statistic (featured for large tenants)
+  * `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability, resource type stats, UserAssigned Identities assigned to Resources is excluded (featured for large tenants)
   * `-StatsOptOut` - Opt out sending [stats](#stats)
   * `-NoSingleSubscriptionOutput` - Single __Scope Insights__ output per Subscription should not be created
+  * `-ManagementGroupsOnly` - Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
 
 ## Integrate with AzOps
 
@@ -535,21 +556,35 @@ ARM Limits are not acquired programmatically, these are hardcoded. The links use
 
 ## Contributions
 
-Please feel free to contribute. Thanks to so many supporters - testing, giving feedback, making suggestions, presenting use-case, posting/blogging articles, refactoring code - THANK YOU!
+Please feel free to contribute. 
+
+Thanks to so many supporters - testing, giving feedback, making suggestions, presenting use-case, posting/blogging articles, refactoring code - THANK YOU!
 
 Thanks Stefan Stranger (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale. Make sure you read Stefan´s Blog Article: [Enterprise-Scale - Policy Driven Governance](https://stefanstranger.github.io/2020/08/28/EnterpriseScalePolicyDrivenGovernance)
 
-Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale.
+Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale. 
+
+Carlos Mendible (Microsoft) gracias por tu contribución on the project - run AzGovViz with GitHub Codespaces.
 
 Special thanks to Tim Wanierke, Brooks Vaughn and Friedrich Weinmann (Microsoft).
 
-Kudos to the [TableFilter](https://www.tablefilter.com) Project Team!
+And another big thanks to Wayne Meyer (Microsoft) for constant support and building bridges.
+
+Kudos to the [TableFilter](https://www.tablefilter.com) Project Team!  
+Kudos to [LorDOniX](https://github.com/LorDOniX/json-viewer) for JSON-viewer!
 
 ## AzAdvertizer
 
 ![alt text](img/azadvertizer70.png "example output")
 
 Also check <https://www.azadvertizer.net> - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's Policy definitions, initiatives (Set definitions), aliases and Azure RBAC's Role definitions and resource provider operations.
+
+## AzADServicePrincipalInsights
+
+![alt text](img/azadserviceprincipalinsights73.png "example output")
+
+Also check <https://aka.ms/AzADServicePrincipalInsights> - Provides deep insights on ServicePrincipals (Enterprise Applications and Applications).  
+__Note:__ AzADServicePrincipalInsights is in proof of concept phase, the repository is not open sourced. However testing the code is explicitly allowed and appreciated.
 
 ## Final Note
 
