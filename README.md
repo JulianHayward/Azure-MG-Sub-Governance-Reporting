@@ -77,8 +77,8 @@ __Changes__ (2022-Jan-16 / Major)
 * Script optimization / prepare for PS module
 
 Passed tests: Powershell Core 7.2.1 on Windows  
-Passed tests: Powershell Core 7.2.1 Azure DevOps hosted agent ubuntu-18.04
-Passed tests: Powershell Core 7.2.1 Github Actions hosted agent ubuntu-latest 
+Passed tests: Powershell Core 7.2.1 Azure DevOps hosted agent ubuntu-18.04  
+Passed tests: Powershell Core 7.2.1 Github Actions hosted agent ubuntu-latest  
 Passed tests: Powershell Core 7.2.1 GitHub Codespaces mcr.microsoft.com/powershell:latest
 
 [Release history](history.md)
