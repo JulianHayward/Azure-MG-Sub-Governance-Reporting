@@ -9383,6 +9383,7 @@ function ProcessTenantSummary() {
     [void]$htmlTenantSummary.AppendLine(@"
 <button type="button" class="collapsible" id="tenantSummaryPolicy"><hr class="hr-textPolicy" data-content="Policy" /></button>
 <div class="content TenantSummaryContent">
+<i class="padlx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Anything which can help you learn Azure Policy</span> <a class="externallink" href="https://github.com/globalbao/awesome-azure-policy" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 "@)
 
     #region SUMMARYcustompolicies
