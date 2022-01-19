@@ -6,8 +6,8 @@ env:
   ManagementGroupId: <managementGroupId>
 
 on:
-  schedule:
-    - cron:  '45 4,16 * * *'
+  #schedule:
+  #  - cron:  '45 4,16 * * *'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
