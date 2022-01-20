@@ -19,7 +19,7 @@ This guide will help you to setup and run AzGovViz
 
 * [__AzGovViz in Azure DevOps (AzDO)__](#azgovviz-in-azure-devops)
     * Create AzDO Project
-    * Import AzGovViz Github repository
+    * Import AzGovViz GitHub repository
     * Create AzDO Service Connection
       * Option 1 - Create Service Connection in AzDO
       * Option 2 - Create Service Connection´s Service Principal in the Azure Portal
@@ -112,7 +112,7 @@ Proceed with step [__Clone the AzGovViz repository__](#clone-the-azgovviz-reposi
 ## Clone the AzGovViz repository
 
 * Requirements
-  * To clone the AzGovViz Github repository you need to have GIT installed
+  * To clone the AzGovViz GitHub repository you need to have GIT installed
   * Install Git: https://git-scm.com/download/win
 
 * PowerShell
@@ -178,7 +178,7 @@ c:\Git\Azure-MG-Sub-Governance-Reporting\pwsh\AzGovVizParallel.ps1 -ManagementGr
 
 [Create a project](https://docs.microsoft.com/en-us/azure/devops/organizations/projects/create-project?view=azure-devops&tabs=preview-page#create-a-project)
 
-## Import AzGovViz Github repository
+## Import AzGovViz GitHub repository
 
 AzGovViz Clone URL: `https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting.git`
 
