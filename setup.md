@@ -169,7 +169,7 @@ Note if not using the `-OutputPath` parameter, all outputs will be created in th
 
 * PowerShell
 ```powershell
-c:\Git\Azure-MG-Sub-Governance-Reporting\pwsh\AzGovVizParallel.ps1 -ManagementGroupId <target Management Group Id> -OutPath "c:\AzGovViz-Output"
+c:\Git\Azure-MG-Sub-Governance-Reporting\pwsh\AzGovVizParallel.ps1 -ManagementGroupId <target Management Group Id> -OutputPath "c:\AzGovViz-Output"
 ```
 
 # AzGovViz in Azure DevOps
