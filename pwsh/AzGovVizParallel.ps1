@@ -274,7 +274,7 @@
 Param
 (
     [string]$Product = "AzGovViz",
-    [string]$ProductVersion = "v6_major_20220120_2",
+    [string]$ProductVersion = "v6_major_20220124_1",
     [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #deprecated - Based on environment variables the script will detect the code run platform
@@ -1416,16 +1416,24 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         Start-Sleep -Seconds $sleepSec
                     }
                     else {
-                        Write-Host "- - - - - - - - - - - - - - - - - - - - "
-                        Write-Host "!Please report at $($htParameters.GithubRepository) and provide the following dump" -ForegroundColor Yellow
-                        Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
-                        Write-Host ""
-                        Write-Host "Parameters:"
-                        foreach ($htParameter in ($htParameters.Keys | Sort-Object)) {
-                            Write-Host "$($htParameter):$($htParameters.($htParameter))"
+                        if ($htParameters.userType -eq "Guest" -and $catchResult.error.code -eq "Authorization_RequestDenied") {
+                            Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) (guest : $($htParameters.userType)) - EXIT"
+                            Write-Host "Tenant seems hardened (AAD External Identities / Guest user access = most restrictive) -> https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions"
+                            Write-Host "AAD Role 'Directory readers' is required for your Guest User Account!"
+                            Write-Host ""
                         }
-                        if ($getConsumption) {
-                            Write-Host "If Consumption data is not that important for you, do not use parameter: -DoAzureConsumption (however, please still report the issue - thank you)"
+                        else {
+                            Write-Host "- - - - - - - - - - - - - - - - - - - - "
+                            Write-Host "!Please report at $($htParameters.GithubRepository) and provide the following dump" -ForegroundColor Yellow
+                            Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
+                            Write-Host ""
+                            Write-Host "Parameters:"
+                            foreach ($htParameter in ($htParameters.Keys | Sort-Object)) {
+                                Write-Host "$($htParameter):$($htParameters.($htParameter))"
+                            }
+                            if ($getConsumption) {
+                                Write-Host "If Consumption data is not that important for you, do not use parameter: -DoAzureConsumption (however, please still report the issue - thank you)"
+                            }
                         }
                         Throw "Error - AzGovViz: check the last console output for details"
                     }
@@ -3207,7 +3215,7 @@ function DataCollectionPolicyAssignmentsMG {
                 $hlpPolicyDefinitionScope = $policyDefinitionId.split('/')[4]
                 #Write-Host "hlpPolicyDefinitionScope" $hlpPolicyDefinitionScope
                 #Write-Host "allManagementGroupsFromEntitiesChildOfRequestedMg" $allManagementGroupsFromEntitiesChildOfRequestedMg.Count
-                if ( ($policyDefinitionId -like "/providers/microsoft.management/managementgroups/*" -and $allManagementGroupsFromEntitiesChildOfRequestedMg.Name -contains ($hlpPolicyDefinitionScope)) -or $policyDefinitionId -like "/providers/microsoft.authorization/policydefinitions/*" ){
+                if ( ($policyDefinitionId -like "/providers/microsoft.management/managementgroups/*" -and $allManagementGroupsFromEntitiesChildOfRequestedMg.Name -contains ($hlpPolicyDefinitionScope)) -or $policyDefinitionId -like "/providers/microsoft.authorization/policydefinitions/*" ) {
                     $tryCounter = 0
                     do {
                         $defAvailable = $false
@@ -3261,7 +3269,7 @@ function DataCollectionPolicyAssignmentsMG {
                     }
                 }
                 #policyDefinition Scope does not exist
-                else{
+                else {
                     Write-Host "   $scopeDisplayName ($scopeId); policyAssignment '$($L0mgmtGroupPolicyAssignment.Id)' policyDefinition (Policy) could not be found: '$($policyDefinitionId)' - the scope '$($hlpPolicyDefinitionScope)' does not exist (anymore)"
                     $policyAvailability = "na"
                     $policyDisplayName = "unknown"
@@ -4082,7 +4090,7 @@ function DataCollectionRoleDefinitions {
             ) {
                 $roleCapable4RoleAssignmentsWrite = $true
             }
-            else{
+            else {
                 $roleCapable4RoleAssignmentsWrite = $false
             }
 
@@ -4737,7 +4745,7 @@ function DataCollection($mgId) {
     $allManagementGroupsFromEntitiesChildOfRequestedMgCount = ($allManagementGroupsFromEntitiesChildOfRequestedMg).Count
 
     $mgBatch = ($allManagementGroupsFromEntitiesChildOfRequestedMg | Group-Object -Property { ($_.properties.parentNameChain).Count }) | Sort-Object -Property Name
-    foreach ($batchLevel in $mgBatch){
+    foreach ($batchLevel in $mgBatch) {
         Write-Host "  Processing Management Groups L$($batchLevel.Name) ($($batchLevel.Count) Management Groups)"
         $batchLevel.Group | ForEach-Object -Parallel {
             $mgdetail = $_
@@ -8641,6 +8649,7 @@ extensions: [{ name: 'sort' }]
 <th>RoleId</th>
 <th>Role Type</th>
 <th>Data</th>
+<th>Can do Role assignment</th>
 <th>Identity Displayname</th>
 <th>Identity SignInName</th>
 <th>Identity ObjectId</th>
@@ -8665,6 +8674,7 @@ extensions: [{ name: 'sort' }]
 <td>$($roleAssignment.RoleId)</td>
 <td>$($roleAssignment.RoleType)</td>
 <td>$($roleAssignment.RoleDataRelated)</td>
+<td>$($roleAssignment.RoleCanDoRoleAssignments)</td>
 <td class="breakwordall">$($roleAssignment.ObjectDisplayName)</td>
 <td class="breakwordall">$($roleAssignment.ObjectSignInName)</td>
 <td class="breakwordall">$($roleAssignment.ObjectId)</td>
@@ -8719,10 +8729,12 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             linked_filters: true,
             col_3: 'select',
             col_4: 'select',
-            col_8: 'multiple',
-            col_9: 'select',
+            col_5: 'select',
+            col_9: 'multiple',
+            col_10: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -8740,7 +8752,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'date',
                 'caseinsensitivestring'
             ],
-            watermark: ['', 'try owner||reader', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', 'try owner||reader', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
             extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
@@ -9019,6 +9031,7 @@ function ProcessTenantSummary() {
                         RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
                         RoleSecurityCustomRoleOwner          = $rbac.RoleSecurityCustomRoleOwner
                         RoleSecurityOwnerAssignmentSP        = $rbac.RoleSecurityOwnerAssignmentSP
+                        RoleCanDoRoleAssignments             = $rbac.RoleCanDoRoleAssignments
                     })
 
 
@@ -9105,6 +9118,7 @@ function ProcessTenantSummary() {
                                     RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
                                     RoleSecurityCustomRoleOwner          = $rbac.RoleSecurityCustomRoleOwner
                                     RoleSecurityOwnerAssignmentSP        = $rbac.RoleSecurityOwnerAssignmentSP
+                                    RoleCanDoRoleAssignments             = $rbac.RoleCanDoRoleAssignments
                                 })
                         }
                     }
@@ -9147,6 +9161,7 @@ function ProcessTenantSummary() {
                                 RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
                                 RoleSecurityCustomRoleOwner          = $rbac.RoleSecurityCustomRoleOwner
                                 RoleSecurityOwnerAssignmentSP        = $rbac.RoleSecurityOwnerAssignmentSP
+                                RoleCanDoRoleAssignments             = $rbac.RoleCanDoRoleAssignments
                             })
                     }
                 }
@@ -9205,6 +9220,7 @@ function ProcessTenantSummary() {
                         RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
                         RoleSecurityCustomRoleOwner          = $rbac.RoleSecurityCustomRoleOwner
                         RoleSecurityOwnerAssignmentSP        = $rbac.RoleSecurityOwnerAssignmentSP
+                        RoleCanDoRoleAssignments             = $rbac.RoleCanDoRoleAssignments
                     })
             }
         }
@@ -9265,6 +9281,7 @@ function ProcessTenantSummary() {
                     RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
                     RoleSecurityCustomRoleOwner          = $rbac.RoleSecurityCustomRoleOwner
                     RoleSecurityOwnerAssignmentSP        = $rbac.RoleSecurityOwnerAssignmentSP
+                    RoleCanDoRoleAssignments             = $rbac.RoleCanDoRoleAssignments
                 })
         }
     }
@@ -11122,19 +11139,19 @@ extensions: [{ name: 'sort' }]
 
             if (-not $NoCsvExport) {
                 $null = $exemptionData4CSVExport.Add([PSCustomObject]@{
-                    Scope = $exemptionScope
-                    ManagementGroupId = $mgId
-                    ManagementGroupName = $mgName
-                    SubscriptionId = $subId
-                    SubscriptionName = $subName
-                    ResourceGroup = $rgName
-                    ResourceName_ResourceType = $resName
-                    DisplayName = $exemption.properties.DisplayName
-                    Category = $exemption.properties.exemptionCategory
-                    ExpiresOn_UTC = $exemptionExpiresOn
-                    Id = $exemption.Id
-                    PolicyAssignmentId = $exemption.properties.policyAssignmentId
-                })
+                        Scope                     = $exemptionScope
+                        ManagementGroupId         = $mgId
+                        ManagementGroupName       = $mgName
+                        SubscriptionId            = $subId
+                        SubscriptionName          = $subName
+                        ResourceGroup             = $rgName
+                        ResourceName_ResourceType = $resName
+                        DisplayName               = $exemption.properties.DisplayName
+                        Category                  = $exemption.properties.exemptionCategory
+                        ExpiresOn_UTC             = $exemptionExpiresOn
+                        Id                        = $exemption.Id
+                        PolicyAssignmentId        = $exemption.properties.policyAssignmentId
+                    })
             }
 
             @"
@@ -12857,6 +12874,7 @@ extensions: [{ name: 'sort' }]
 <th>Role Id</th>
 <th>Role Type</th>
 <th>Data</th>
+<th>Can do Role assignment</th>
 <th>Identity Displayname</th>
 <th>Identity SignInName</th>
 <th>Identity ObjectId</th>
@@ -12930,21 +12948,22 @@ extensions: [{ name: 'sort' }]
 <td>{7}</td>
 <td>{8}</td>
 <td>{9}</td>
-<td class="breakwordall">{10}</td>
+<td>{10}</td>
 <td class="breakwordall">{11}</td>
 <td class="breakwordall">{12}</td>
-<td style="width:76px" class="breakwordnone">{13}</td>
-<td>{14}</td>
+<td class="breakwordall">{13}</td>
+<td style="width:76px" class="breakwordnone">{14}</td>
 <td>{15}</td>
 <td>{16}</td>
 <td>{17}</td>
 <td>{18}</td>
 <td>{19}</td>
 <td>{20}</td>
-<td class="breakwordall">{21}</td>
+<td>{21}</td>
 <td class="breakwordall">{22}</td>
 <td class="breakwordall">{23}</td>
 <td class="breakwordall">{24}</td>
+<td class="breakwordall">{25}</td>
 </tr>
 '@, $roleAssignment.TenOrMgOrSubOrRGOrRes,
                     $roleAssignment.MgId,
@@ -12956,6 +12975,7 @@ extensions: [{ name: 'sort' }]
                     $roleAssignment.RoleId,
                     $roleAssignment.RoleType,
                     $roleAssignment.RoleDataRelated,
+                    $roleAssignment.RoleCanDoRoleAssignments,
                     $roleAssignment.ObjectDisplayName,
                     $roleAssignment.ObjectSignInName,
                     $roleAssignment.ObjectId,
@@ -13025,12 +13045,14 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_0: 'multiple',
             col_8: 'select',
             col_9: 'select',
-            col_13: 'multiple',
-            col_14: 'select',
-            col_17: 'select',
+            col_10: 'select',
+            col_14: 'multiple',
+            col_15: 'select',
             col_18: 'select',
+            col_19: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -13057,7 +13079,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'date',
                 'caseinsensitivestring'
             ],
-            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', 'try owner||reader', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', 'try owner||reader', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
             extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
@@ -13185,8 +13207,8 @@ extensions: [{ name: 'sort' }]
         #$roleAssignments4RolesCanDoRoleAssignments = (($rbacBaseQuery.where( { $_.RoleCanDoRoleAssignments -eq $true })) | Sort-Object -Property RoleAssignmentId -Unique) | Select-Object RoleAssignmentId, RoleDefinitionId
         $roleAssignments4RolesCanDoRoleAssignments = (($rbacBaseQuery | Sort-Object -Property RoleAssignmentId -Unique).where( { $_.RoleCanDoRoleAssignments -eq $true })) | Select-Object RoleAssignmentId, RoleDefinitionId
         $htRoleAssignments4RolesCanDoRoleAssignments = @{}
-        foreach ($roleAssignment4RolesCanDoRoleAssignments in $roleAssignments4RolesCanDoRoleAssignments){
-            if (-not $htRoleAssignments4RolesCanDoRoleAssignments.($roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId)){
+        foreach ($roleAssignment4RolesCanDoRoleAssignments in $roleAssignments4RolesCanDoRoleAssignments) {
+            if (-not $htRoleAssignments4RolesCanDoRoleAssignments.($roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId)) {
                 $htRoleAssignments4RolesCanDoRoleAssignments.($roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId) = @{}
                 $htRoleAssignments4RolesCanDoRoleAssignments.($roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId).roleAssignments = [System.Collections.ArrayList]@()
             }
@@ -15633,24 +15655,24 @@ extensions: [{ name: 'sort' }]
 
                 if (-not $NoCsvExport) {
                     $null = $userAssignedIdentities4Resources4CSVExport.Add([PSCustomObject]@{
-                        MIName = $miResEntry.miResourceName
-                        MIMgPath = $miResEntry.miMgPath
-                        MISubscriptionName = $miResEntry.miSubscriptionName
-                        MISubscriptionId = $miResEntry.miSubscriptionId
-                        MIResourceGroup = $miResEntry.miResourceGroupName
-                        MIResourceId = $miResEntry.miResourceId
-                        MIAADSPObjectId = $miResEntry.miPrincipalId
-                        MIAADSPApplicationId = $miResEntry.miClientId
-                        MICountResAssignments = $htUserAssignedIdentitiesAssignedResources.($miResEntry.miPrincipalId).ResourcesCount
-                        ResName = $miResEntry.resourceName
-                        ResType = $miResEntry.resourceType
-                        ResMgPath = $miResEntry.resourceMgPath
-                        ResSubscriptionName = $miResEntry.resourceSubscriptionName
-                        ResSubscriptionId = $miResEntry.resourceSubscriptionId
-                        ResResourceGroup = $miResEntry.resourceResourceGroupName
-                        ResId = $miResEntry.resourceId
-                        ResCountAssignedMIs = $htResourcesAssignedUserAssignedIdentities.(($miResEntry.resourceId).tolower()).UserAssignedIdentitiesCount
-                    })
+                            MIName                = $miResEntry.miResourceName
+                            MIMgPath              = $miResEntry.miMgPath
+                            MISubscriptionName    = $miResEntry.miSubscriptionName
+                            MISubscriptionId      = $miResEntry.miSubscriptionId
+                            MIResourceGroup       = $miResEntry.miResourceGroupName
+                            MIResourceId          = $miResEntry.miResourceId
+                            MIAADSPObjectId       = $miResEntry.miPrincipalId
+                            MIAADSPApplicationId  = $miResEntry.miClientId
+                            MICountResAssignments = $htUserAssignedIdentitiesAssignedResources.($miResEntry.miPrincipalId).ResourcesCount
+                            ResName               = $miResEntry.resourceName
+                            ResType               = $miResEntry.resourceType
+                            ResMgPath             = $miResEntry.resourceMgPath
+                            ResSubscriptionName   = $miResEntry.resourceSubscriptionName
+                            ResSubscriptionId     = $miResEntry.resourceSubscriptionId
+                            ResResourceGroup      = $miResEntry.resourceResourceGroupName
+                            ResId                 = $miResEntry.resourceId
+                            ResCountAssignedMIs   = $htResourcesAssignedUserAssignedIdentities.(($miResEntry.resourceId).tolower()).UserAssignedIdentitiesCount
+                        })
                 }
 
             }
@@ -20662,7 +20684,7 @@ function ProcessDefinitionInsights() {
 
         $scopeDetails = "n/a"
         if ($policy.ScopeId -ne "n/a") {
-            if ([string]::IsNullOrEmpty($policy.ScopeId)){
+            if ([string]::IsNullOrEmpty($policy.ScopeId)) {
                 Write-Host "unexpected IsNullOrEmpty - processing:"
                 $policy
             }
@@ -23209,7 +23231,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 ) {
                     $roleCapable4RoleAssignmentsWrite = $true
                 }
-                else{
+                else {
                     $roleCapable4RoleAssignmentsWrite = $false
                 }
 
@@ -26429,5 +26451,5 @@ Write-Host ""
 Write-Host "--------------------"
 Write-Host "Completed successful" -ForegroundColor Green
 if ($Error.Count -gt 0) {
-    Write-Host "Don´t bother about dumped errors"
+    Write-Host "Don't bother about dumped errors"
 }
