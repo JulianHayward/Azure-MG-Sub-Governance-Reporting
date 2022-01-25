@@ -274,7 +274,7 @@
 Param
 (
     [string]$Product = "AzGovViz",
-    [string]$ProductVersion = "v6_major_20220124_1",
+    [string]$ProductVersion = "v6_major_20220124_2",
     [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #deprecated - Based on environment variables the script will detect the code run platform
@@ -2205,7 +2205,7 @@ function DataCollectionResources {
         $ChildMgMgPath
     )
     $currentTask = "Getting ResourceTypes for Subscription: '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime&api-version=2020-06-01"
+    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime&api-version=2021-04-01"
     $method = "GET"
     $resourcesSubscriptionResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"
 
@@ -2314,7 +2314,7 @@ function DataCollectionResourceGroups {
 
     #https://management.azure.com/subscriptions/{subscriptionId}/resourcegroups?api-version=2020-06-01
     $currentTask = "Getting ResourceGroups for Subscription: '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($scopeId)/resourcegroups?api-version=2020-06-01"
+    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($scopeId)/resourcegroups?api-version=2021-04-01"
     $method = "GET"
     $resourceGroupsSubscriptionResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"
 
@@ -22326,7 +22326,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $startGetSubscriptions = Get-Date
     $currentTask = "Getting all Subscriptions"
     Write-Host "$currentTask"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions?api-version=2019-10-01"
+    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions?api-version=2020-01-01"
     $method = "GET"
     $requestAllSubscriptionsAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask
 
