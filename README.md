@@ -57,13 +57,14 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Jan-20 / Major)
+__Changes__ (rc / Major)
 
-* New __TenantSummary | RBAC__ feature - insights on all Role definitions that can do Role assignments
+* New __TenantSummary | RBAC__ feature - insights on all Role definitions that are capable to write Role assignments
 * __TenantSummary | Subscriptions, Resources & Defender | Subscriptions__ report (new) [Role assignment limits](https://docs.microsoft.com/en-us/azure/role-based-access-control/troubleshooting#azure-role-assignments-limit)
 * Handling orphaned Policy assignments (scope Management Group)
 * Update Dockerfile
 * Datacollection for Management Groups process in batches (batch per Management Group level)
+* Update API version for Resources, ResourceGroups and Subscriptions
 * Bugfixes
 
 Passed tests: Powershell Core 7.2.1 on Windows  
@@ -156,9 +157,11 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
       * Related Policy assignments (Policy assignment that leverages the DeployIfNotExists (DINE) or Modify effect)
       * System metadata 'createdOn, createdBy' ('createdBy' identity is fully resolved)
       * Determine if the Role assignment is 'standing' or PIM (Privileged Identity Management) managed
+      * Determine if the Role assignmet's Role definition is capable to write Role assignments
   * ~~Role assignments ClassicAdministrators~~
   * Security & Best practice analysis
     * Existence of custom Role definition that reflect 'Owner' permissions
+    * Report all Role definitions that are capable to write Role assignements, list all Role assignments for those Role definitions
     * Role assignments for 'Owner' permissions on identity-type == 'ServicePrincipal' 
     * Role assignments for 'Owner' permissions on identity-type != 'Group'
     * Role assignments for 'User Access Administrator' permissions on identity-type != 'Group'
@@ -172,7 +175,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
   * Hierarchy Settings | Require authorization for Management Group creation
 * __Subscriptions, Resources & Defender__
   * Subscription insights
-    * QuotaId, State, Tags, Microsoft Defender for Cloud Secure Score, Cost, Management Group path
+    * QuotaId, State, Tags, Microsoft Defender for Cloud Secure Score, Cost, Management Group path, Role assignment limit
   * Tag Name usage
     * Insights on usage of Tag Names on Subscriptions, ResourceGroups and Resources
   * Resources
