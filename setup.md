@@ -6,7 +6,6 @@ This guide will help you to setup and run AzGovViz
     * Azure DevOps - AzDO
 
 ## Table of contents
-* [Featured: __AzGovViz GitHub Codespaces__](#azgovviz-github-codespaces)
 
 * [__AzGovViz from Console__](#azgovviz-from-console)
     * Grant permissions in Azure
@@ -30,6 +29,20 @@ This guide will help you to setup and run AzGovViz
     * Create AzDO Pipeline
     * Run the AzDO Pipeline
     * Create AzDO Wiki - WikiAsCode
+
+* [__AzGovViz in GitHub Actions__](#azgovviz-in-github-actions)
+    * Create GitHub repository
+    * Import Code
+    * AzGovViz YAML
+        * Store the credentials in GitHub
+        * Edit the workflow YAML file
+        * Run AzGovViz in GitHub Actions
+    * AzGovViz OIDC YAML
+        * Store the credentials in GitHub
+        * Edit the workflow YAML file
+        * Run AzGovViz in GitHub Actions
+    
+* [__AzGovViz in GitHub Codespaces__](#azgovviz-github-codespaces)
 
 # AzGovViz from Console
 
@@ -334,6 +347,119 @@ Once the pipeline has executed successfully we can setup our Wiki (WikiAsCode)
 * Select the folder '__wiki__' and click '__OK__'
 * Enter a name for the Wiki
 * Click '__Publish__'
+
+# AzGovViz in GitHub Actions
+
+## Create GitHub repository
+
+Create a 'private' repository.
+
+## Import Code
+
+Click on 'Import code'  
+Use 'https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting.git' as clone URL  
+Click on 'Begin import'  
+
+Navigate to your newly created repository  
+In the folder `./github/workflows` two worklows are available:  
+1. [AzGovViz.yml](#azgovviz-yaml)  
+Use this workflow if you want to store your Application (App registration) secret in GitHub  
+
+2. [AzGovViz_OIDC.yml](#azgovviz-oidc-yaml)  
+Use this workflow if you want leverage the [OIDC (Open ID Connect) feature](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-azure) - no secret stored in GitHub
+
+## AzGovViz YAML
+
+For the GitHub Actiom to authenticate and connect to Azure we need to create Service Principal (Application)
+
+* Navigate to 'Azure Active Directory'
+* Click on '__App registrations__'
+* Click on '__New registration__'
+* Name your application (e.g. 'AzGovViz_SC')
+* Click '__Register__'
+* Your App registration has been created, in the '__Overview__' copy the '__Application (client) ID__' as we will need it later to setup the secrets in GitHub
+* Under '__Manage__' click on '__Certificates & Secrets__'
+* Click on '__New client secret__'
+* Provide a good description and choose the expiry time based on your need and click '__Add__'
+* A new client secret has been created, copy the secret´s value as we will need it later to setup the secrets in GitHub
+
+### Store the credentials in GitHub (AzGovViz YAML)
+
+In GitHub navigate to 'Settings'  
+Click on 'Secrets'
+Click on 'Actions'
+Click 'New repository secret'  
+Name: CREDS
+Value: 
+```
+{
+   "tenantId": "<GUID>",
+   "subscriptionId": "<GUID>",
+   "clientId": "<GUID>",
+   "clientSecret": "<GUID>"
+}
+```
+
+### Edit the workflow YAML file (AzGovViz YAML)
+
+In the folder `./github/workflows` edit the YAML file `AzGovViz.yml`  
+In the `env` section enter you Management Group ID  
+If you want to continuously run AzGovViz then enable the `schedule` in the `on` section
+
+### Run AzGovViz in GitHub Actions (AzGovViz YAML)
+
+In GitHub navigate to 'Actions'  
+Click 'Enable GitHub Actions on this repository'  
+Select the AzGovViz workflow  
+Click 'Run workflow'
+
+## AzGovViz OIDC YAML
+
+For the GitHub Actiom to authenticate and connect to Azure we need to create Service Principal (Application). Using OIDC we will however not have the requirement to create a secret, nore store it in GitHub - awesome :)
+
+* Navigate to 'Azure Active Directory'
+* Click on '__App registrations__'
+* Click on '__New registration__'
+* Name your application (e.g. 'AzGovViz_SC')
+* Click '__Register__'
+* Your App registration has been created, in the '__Overview__' copy the '__Application (client) ID__' as we will need it later to setup the secrets in GitHub
+* Under '__Manage__' click on '__Certificates & Secrets__'
+* Click on '__Federated credentials__'
+* Click 'Add credential'
+* Select Federation credential scenario 'GitHub Actions deploying Azure Resources'
+* Fill the field 'Organization' with your GitHub Organization name
+* Fill the field 'Repository' with your GitHub repository name
+* For the entity type select 'Branch'
+* Fill the field 'GitHub branch name' with your branch name (default is 'master' if you imported the AzGovViz repository)
+* Fill the field 'Name' with a name (e.g. AzGovViz_GitHub_Actions)
+* Click 'Add'
+
+### Store the credentials in GitHub (AzGovViz OIDC YAML)
+
+In GitHub navigate to 'Settings'  
+Click on 'Secrets'
+Click on 'Actions'
+Click 'New repository secret'  
+Create the following three secrets:    
+* Name: CLIENT_ID  
+Value: `Application (client) ID`  
+* Name: TENANT_ID  
+Value: `Tenant ID`  
+* Name: SUBSCRIPTION_ID  
+Value: `Subscription ID`  
+
+### Edit the workflow YAML file (AzGovViz OIDC YAML)
+
+In the folder `./github/workflows` edit the YAML file `AzGovViz_OIDC.yml`  
+In the `env` section enter you Management Group ID  
+If you want to continuously run AzGovViz then enable the `schedule` in the `on` section
+
+### Run AzGovViz in GitHub Actions (AzGovViz OIDC YAML)
+
+In GitHub navigate to 'Actions'  
+Click 'Enable GitHub Actions on this repository'  
+Select the AzGovViz_OIDC workflow  
+Click 'Run workflow'
 
 # AzGovViz GitHub Codespaces
 

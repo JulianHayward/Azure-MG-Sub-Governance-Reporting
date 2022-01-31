@@ -53,24 +53,29 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 * [Contributions](#contributions)
 * [AzAdvertizer](#azadvertizer)
 * [AzADServicePrincipalInsights](#azadserviceprincipalinsights)
-* [Final note](#final-note)
+* [Closing note](#closing-note)
 
 ## Release history
 
-__Changes__ (rc / Major)
+__Changes__ (2022-Jan-31 / Major)
 
 * New __TenantSummary | RBAC__ feature - insights on all Role definitions that are capable to write Role assignments
 * __TenantSummary | Subscriptions, Resources & Defender | Subscriptions__ report (new) [Role assignment limits](https://docs.microsoft.com/en-us/azure/role-based-access-control/troubleshooting#azure-role-assignments-limit)
 * Handling orphaned Policy assignments (scope Management Group)
-* Update Dockerfile
 * Datacollection for Management Groups process in batches (batch per Management Group level)
+* Update Dockerfile
 * Update API version for Resources, ResourceGroups and Subscriptions
+* Further enrich _PolicyDefinitions and _PolicySetDefinitions CSV outputs
+* HTML file performance optimization
+* Include instructions for GitHub Actions in the __[Setup Guide](setup.md)__
+* New [demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html) uploaded
 * Bugfixes
 
 Passed tests: Powershell Core 7.2.1 on Windows  
 Passed tests: Powershell Core 7.2.1 Azure DevOps hosted agent ubuntu-18.04  
 Passed tests: Powershell Core 7.2.1 Github Actions hosted agent ubuntu-latest  
-Passed tests: Powershell Core 7.2.1 GitHub Codespaces mcr.microsoft.com/powershell:latest
+Passed tests: Powershell Core 7.2.1 GitHub Codespaces mcr.microsoft.com/powershell:latest  
+Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
 
 [Release history](history.md)
 
@@ -78,7 +83,7 @@ Passed tests: Powershell Core 7.2.1 GitHub Codespaces mcr.microsoft.com/powershe
 
 <a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html" target="_blank">![Demo](img/demo4_66.png)</a>
 
-[Demo (v6_major_20220109_3)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)  
+[Demo (v6_major_20220131_1)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)  
 Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation
 
 More [demo output](https://github.com/JulianHayward/AzGovViz)
@@ -301,7 +306,7 @@ This permission is <b>mandatory</b> in each and every scenario!
       <th>Permissions</th>
     </tr>
     <tr>
-      <td><b>ANY</b><br>Console or AzureDevOps Pipeline</td>
+      <td><b>ANY</b><br>Console / Azure DevOps / GitHub Actions ..</td>
       <td><b>Reader</b> Role assignment on <b>Management Group</b></td>
     </tr>
   </tbody>
@@ -350,11 +355,11 @@ This permission is <b>mandatory</b> in each and every scenario!
             </tr>
           </tbody>
         </table>
-        Optional: AAD Role 'Directory readers' could be used instead of API permissions (more read than required)
+        Optional: AAD Role 'Directory readers' could be used instead of API permissions (more 'read' than required)
       </td>
     </tr>
     <tr>
-      <td><b>D</b><br>Azure DevOps Pipeline / Github Actions | ServicePrincipal (Service Connection)</td>
+      <td><b>D</b><br>Azure DevOps / Github Actions | ServicePrincipal</td>
       <td>
         <table>
           <tbody>
@@ -376,7 +381,7 @@ This permission is <b>mandatory</b> in each and every scenario!
             </tr>
           </tbody>
         </table>
-        Optional: AAD Role 'Directory readers' could be used instead of API permissions (more read than required)
+        Optional: AAD Role 'Directory readers' could be used instead of API permissions (more 'read' than required)
       </td>
     </tr>
   </tbody>
@@ -579,6 +584,6 @@ Also check <https://www.azadvertizer.net> - AzAdvertizer helps you to keep up wi
 Also check <https://aka.ms/AzADServicePrincipalInsights> - Provides deep insights on ServicePrincipals (Enterprise Applications and Applications).  
 __Note:__ AzADServicePrincipalInsights is in proof of concept phase, the repository is not open sourced. However testing the code is explicitly allowed and appreciated.
 
-## Final Note
+## Closing Note
 
 Please note that while being developed by a Microsoft employee, AzGovViz is not a Microsoft service or product. AzGovViz is a personal/community driven project, there are none implicit or explicit obligations related to this project, it is provided 'as is' with no warranties and confer no rights.
