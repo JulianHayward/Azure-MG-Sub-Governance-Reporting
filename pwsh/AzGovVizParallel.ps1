@@ -274,7 +274,7 @@
 Param
 (
     [string]$Product = "AzGovViz",
-    [string]$ProductVersion = "v6_major_20220131_1",
+    [string]$ProductVersion = "v6_major_20220201_1",
     [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #deprecated - Based on environment variables the script will detect the code run platform
@@ -2987,7 +2987,7 @@ function DataCollectionPolicyDefinitions {
                 ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).RoleDefinitionIds = "n/a"
             }
 
-            #namingValidation
+            #region namingValidation
             if (-not [string]::IsNullOrEmpty($scopePolicyDefinition.Properties.displayname)) {
                 $namingValidationResult = NamingValidation -toCheck $scopePolicyDefinition.Properties.displayname
                 if ($namingValidationResult.Count -gt 0) {
@@ -3008,6 +3008,7 @@ function DataCollectionPolicyDefinitions {
                     $script:htNamingValidation.Policy.($hlpPolicyDefinitionId).name = $scopePolicyDefinition.Name
                 }
             }
+            #endregion namingValidation
         }
     }
 
@@ -3694,13 +3695,14 @@ function DataCollectionPolicyAssignmentsSub {
                             }
                         }
                         else {
-                            #Write-Host "TryHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policyId:'$policyDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; type:'$(($policyAssignmentsPolicyDefinition).Type)' - sleeping '$tryCounter' seconds"
+                            Write-Host " **INCONSISTENCY! processing policyId:'$policyDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; policyAssignmentsPolicyDefinition.Type: '$($policyAssignmentsPolicyDefinition.Type)'"
                             start-sleep -seconds 1
                         }
                     }
                     until($policyReturnedFromHt -or $tryCounter -gt 5)
                     if (-not $policyReturnedFromHt) {
-                        Write-Host "FinalHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policyId:'$policyDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'"
+                        Write-Host "FinalHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policyId:'$policyDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; policyAssignmentsPolicyDefinition.Type: '$($policyAssignmentsPolicyDefinition.Type)'"
+                        Write-Host ($policyAssignmentsPolicyDefinition | ConvertTo-Json -depth 99)
                         Write-Host "!Please report this error: $($htParameters.GithubRepository)" -ForegroundColor Yellow
                         throw
                     }
