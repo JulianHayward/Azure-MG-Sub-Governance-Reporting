@@ -53,33 +53,29 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 * [Contributions](#contributions)
 * [AzAdvertizer](#azadvertizer)
 * [AzADServicePrincipalInsights](#azadserviceprincipalinsights)
-* [Final note](#final-note)
+* [Closing note](#closing-note)
 
 ## Release history
 
-__Changes__ (2022-Jan-16 / Major)
+__Changes__ (2022-Jan-31 / Major)
 
-* New parameter `-ManagementGroupsOnly` - collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
-* New feature __TenantSummary | Subscriptions, Resources & Defender__, __TenantSummary | Azure Active Directory__ and __ScopeInsights__ insights on UserAssignedIdentities/Resources - which resource has an user assigned managed identity assigned / vice versa. Includes CSV export. Thanks to Thomas Naunheim (Microsoft Azure MVP) for inspiration :)
-* New feature __TenantSummary | Policy | Policy assignments orphanded__ (Policy assignments's Policy definition does not exist / likely Management Group scoped Policy defintion - Management Group deleted)
-* Optimize __DefinitionInsights__ collapsible JSON definitions
-* Defender plans usage / highlight use of depcrecated plans such as Container Registry & Kubernetes
-* New 'Large Tenant' feature __TenantSummary | Policy | Policy assignments__ if the number of Policy assignments exceeds the `-HtmlTableRowsLimit` parameter's value (default = 20.000) then the html table will not be created / the CSV file will still be created 
-* New feature  __TenantSummary | Azure Active Directory | AAD ServicePrincipals type=ManagedIdentity__ orphaned Managed Identities (for Policy assignment related Managed Identities - Policy assignment does not exist anymore)
-* Fix PIM (Priviliged Identity Management) state for inherited Subscription Role assignments
-* __TenantSummary | Azure Active Directory__ add link to [AzADServicePrincipalInsights](#azadserviceprincipalinsights) (POC)
-* Add CSV export for Policy Exemptions
-* Add workflow files (YAML) for GitHub Actions (one for [OpenID Connect (OIDC)](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-azure))
+* New __TenantSummary | RBAC__ feature - insights on all Role definitions that are capable to write Role assignments
+* __TenantSummary | Subscriptions, Resources & Defender | Subscriptions__ report (new) [Role assignment limits](https://docs.microsoft.com/en-us/azure/role-based-access-control/troubleshooting#azure-role-assignments-limit)
+* Handling orphaned Policy assignments (scope Management Group)
+* Datacollection for Management Groups process in batches (batch per Management Group level)
+* Update Dockerfile
+* Update API version for Resources, ResourceGroups and Subscriptions
+* Further enrich _PolicyDefinitions and _PolicySetDefinitions CSV outputs
+* HTML file performance optimization
+* Include instructions for GitHub Actions in the __[Setup Guide](setup.md)__
+* New [demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html) uploaded
 * Bugfixes
-* HTML output patch jQuery / use latest version 3.6.0
-* Update [Demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)
-* AzAPICall enhanced error handling (GeneralError, ResourceGroupNotFound)
-* Script optimization / prepare for PS module
 
 Passed tests: Powershell Core 7.2.1 on Windows  
 Passed tests: Powershell Core 7.2.1 Azure DevOps hosted agent ubuntu-18.04  
 Passed tests: Powershell Core 7.2.1 Github Actions hosted agent ubuntu-latest  
-Passed tests: Powershell Core 7.2.1 GitHub Codespaces mcr.microsoft.com/powershell:latest
+Passed tests: Powershell Core 7.2.1 GitHub Codespaces mcr.microsoft.com/powershell:latest  
+Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
 
 [Release history](history.md)
 
@@ -87,7 +83,7 @@ Passed tests: Powershell Core 7.2.1 GitHub Codespaces mcr.microsoft.com/powershe
 
 <a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html" target="_blank">![Demo](img/demo4_66.png)</a>
 
-[Demo (v6_major_20220109_3)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)  
+[Demo (v6_major_20220131_1)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)  
 Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation
 
 More [demo output](https://github.com/JulianHayward/AzGovViz)
@@ -166,9 +162,11 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
       * Related Policy assignments (Policy assignment that leverages the DeployIfNotExists (DINE) or Modify effect)
       * System metadata 'createdOn, createdBy' ('createdBy' identity is fully resolved)
       * Determine if the Role assignment is 'standing' or PIM (Privileged Identity Management) managed
+      * Determine if the Role assignmet's Role definition is capable to write Role assignments
   * ~~Role assignments ClassicAdministrators~~
   * Security & Best practice analysis
     * Existence of custom Role definition that reflect 'Owner' permissions
+    * Report all Role definitions that are capable to write Role assignements, list all Role assignments for those Role definitions
     * Role assignments for 'Owner' permissions on identity-type == 'ServicePrincipal' 
     * Role assignments for 'Owner' permissions on identity-type != 'Group'
     * Role assignments for 'User Access Administrator' permissions on identity-type != 'Group'
@@ -182,7 +180,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
   * Hierarchy Settings | Require authorization for Management Group creation
 * __Subscriptions, Resources & Defender__
   * Subscription insights
-    * QuotaId, State, Tags, Microsoft Defender for Cloud Secure Score, Cost, Management Group path
+    * QuotaId, State, Tags, Microsoft Defender for Cloud Secure Score, Cost, Management Group path, Role assignment limit
   * Tag Name usage
     * Insights on usage of Tag Names on Subscriptions, ResourceGroups and Resources
   * Resources
@@ -308,7 +306,7 @@ This permission is <b>mandatory</b> in each and every scenario!
       <th>Permissions</th>
     </tr>
     <tr>
-      <td><b>ANY</b><br>Console or AzureDevOps Pipeline</td>
+      <td><b>ANY</b><br>Console / Azure DevOps / GitHub Actions ..</td>
       <td><b>Reader</b> Role assignment on <b>Management Group</b></td>
     </tr>
   </tbody>
@@ -357,11 +355,11 @@ This permission is <b>mandatory</b> in each and every scenario!
             </tr>
           </tbody>
         </table>
-        Optional: AAD Role 'Directory readers' could be used instead of API permissions (more read than required)
+        Optional: AAD Role 'Directory readers' could be used instead of API permissions (more 'read' than required)
       </td>
     </tr>
     <tr>
-      <td><b>D</b><br>Azure DevOps Pipeline / Github Actions | ServicePrincipal (Service Connection)</td>
+      <td><b>D</b><br>Azure DevOps / Github Actions | ServicePrincipal</td>
       <td>
         <table>
           <tbody>
@@ -383,7 +381,7 @@ This permission is <b>mandatory</b> in each and every scenario!
             </tr>
           </tbody>
         </table>
-        Optional: AAD Role 'Directory readers' could be used instead of API permissions (more read than required)
+        Optional: AAD Role 'Directory readers' could be used instead of API permissions (more 'read' than required)
       </td>
     </tr>
   </tbody>
@@ -586,6 +584,6 @@ Also check <https://www.azadvertizer.net> - AzAdvertizer helps you to keep up wi
 Also check <https://aka.ms/AzADServicePrincipalInsights> - Provides deep insights on ServicePrincipals (Enterprise Applications and Applications).  
 __Note:__ AzADServicePrincipalInsights is in proof of concept phase, the repository is not open sourced. However testing the code is explicitly allowed and appreciated.
 
-## Final Note
+## Closing Note
 
 Please note that while being developed by a Microsoft employee, AzGovViz is not a Microsoft service or product. AzGovViz is a personal/community driven project, there are none implicit or explicit obligations related to this project, it is provided 'as is' with no warranties and confer no rights.

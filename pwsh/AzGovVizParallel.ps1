@@ -274,7 +274,7 @@
 Param
 (
     [string]$Product = "AzGovViz",
-    [string]$ProductVersion = "v6_major_20220116_2",
+    [string]$ProductVersion = "v6_major_20220201_1",
     [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #deprecated - Based on environment variables the script will detect the code run platform
@@ -324,8 +324,7 @@ Param
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]$LimitRBACCustomRoleDefinitionsTenant = 5000,
     [int]$LimitRBACRoleAssignmentsManagementGroup = 500,
-    [int]$LimitRBACRoleAssignmentsSubscription = 2000,
-    #[string]$LimitRBACRoleAssignmentsSubscription = 2000 #will be retrieved programatically
+    #[int]$LimitRBACRoleAssignmentsSubscription = 2000, #will be retrieved programatically
 
     #https://docs.microsoft.com/en-us/azure/governance/policy/overview#maximum-count-of-azure-policy-objects
     [int]$LimitPOLICYPolicyAssignmentsManagementGroup = 200,
@@ -351,30 +350,24 @@ Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 
 #region CheckCodeRunPlatform
 if ($env:GITHUB_SERVER_URL -and $env:CODESPACES) {
-    #GitHub Codespaces
     $checkCodeRunPlatform = "GitHubCodespaces"
 }
 elseif ($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) {
-    #Azure DevOps
     $checkCodeRunPlatform = "AzureDevOps"
     $onAzureDevOps = $true
     $onAzureDevOpsOrGitHubActions = $true
 }
 elseif ($PSPrivateMetadata) {
-    #Azure Automation
     $checkCodeRunPlatform = "AzureAutomation"
 }
 elseif ($env:GITHUB_ACTIONS) {
-    #GitHub Actions
     $checkCodeRunPlatform = "GitHubActions"
     $onAzureDevOpsOrGitHubActions = $true
 }
 elseif ($env:ACC_IDLE_TIME_LIMIT -and $env:AZURE_HTTP_USER_AGENT -and $env:AZUREPS_HOST_ENVIRONMENT) {
-    #Azure Cloud Shell
     $checkCodeRunPlatform = "CloudShell"
 }
 else {
-    #Other Console
     $checkCodeRunPlatform = "Console"
 }
 #endregion CheckCodeRunPlatform
@@ -390,7 +383,7 @@ if (-not (test-path $outputPath)) {
     Throw "Error - AzGovViz: check the last console output for details"
 }
 else {
-    Write-Host "Output/Files will be created in path $outputPath"
+    Write-Host "Output/Files will be created in path '$outputPath'"
 }
 $DirectorySeparatorChar = [IO.Path]::DirectorySeparatorChar
 
@@ -1382,7 +1375,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     }
 
                     if ($validateAccess -and $catchResult.error.code -eq "Authorization_RequestDenied") {
-                        #Write-Host "$currentTask failed ('$($catchResult.error.code)' | '$($catchResult.error.message)')" -ForegroundColor DarkRed
+                        Write-Host "$currentTask failed ('$($catchResult.error.code)' | '$($catchResult.error.message)')" -ForegroundColor DarkRed
                         return "failed"
                     }
 
@@ -1417,16 +1410,24 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         Start-Sleep -Seconds $sleepSec
                     }
                     else {
-                        Write-Host "- - - - - - - - - - - - - - - - - - - - "
-                        Write-Host "!Please report at $($htParameters.GithubRepository) and provide the following dump" -ForegroundColor Yellow
-                        Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
-                        Write-Host ""
-                        Write-Host "Parameters:"
-                        foreach ($htParameter in ($htParameters.Keys | Sort-Object)) {
-                            Write-Host "$($htParameter):$($htParameters.($htParameter))"
+                        if ($htParameters.userType -eq "Guest" -and $catchResult.error.code -eq "Authorization_RequestDenied") {
+                            Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) (guest : $($htParameters.userType)) - EXIT"
+                            Write-Host "Tenant seems hardened (AAD External Identities / Guest user access = most restrictive) -> https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions"
+                            Write-Host "AAD Role 'Directory readers' is required for your Guest User Account!"
+                            Write-Host ""
                         }
-                        if ($getConsumption) {
-                            Write-Host "If Consumption data is not that important for you, do not use parameter: -DoAzureConsumption (however, please still report the issue - thank you)"
+                        else {
+                            Write-Host "- - - - - - - - - - - - - - - - - - - - "
+                            Write-Host "!Please report at $($htParameters.GithubRepository) and provide the following dump" -ForegroundColor Yellow
+                            Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
+                            Write-Host ""
+                            Write-Host "Parameters:"
+                            foreach ($htParameter in ($htParameters.Keys | Sort-Object)) {
+                                Write-Host "$($htParameter):$($htParameters.($htParameter))"
+                            }
+                            if ($getConsumption) {
+                                Write-Host "If Consumption data is not that important for you, do not use parameter: -DoAzureConsumption (however, please still report the issue - thank you)"
+                            }
                         }
                         Throw "Error - AzGovViz: check the last console output for details"
                     }
@@ -1816,6 +1817,7 @@ function AddRowToTable() {
         [string]$RoleNotActions = "",
         [string]$RoleDataActions = "",
         [string]$RoleNotDataActions = "",
+        $RoleCanDoRoleAssignments,
         [int]$RoleSecurityCustomRoleOwner = 0,
         [int]$RoleSecurityOwnerAssignmentSP = 0,
         [string]$BlueprintName = "",
@@ -1912,6 +1914,7 @@ function AddRowToTable() {
             RoleNotActions                           = $RoleNotActions
             RoleDataActions                          = $RoleDataActions
             RoleNotDataActions                       = $RoleNotDataActions
+            RoleCanDoRoleAssignments                 = $RoleCanDoRoleAssignments
             RoleSecurityCustomRoleOwner              = $RoleSecurityCustomRoleOwner
             RoleSecurityOwnerAssignmentSP            = $RoleSecurityOwnerAssignmentSP
             BlueprintName                            = $BlueprintName
@@ -2196,7 +2199,7 @@ function DataCollectionResources {
         $ChildMgMgPath
     )
     $currentTask = "Getting ResourceTypes for Subscription: '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime&api-version=2020-06-01"
+    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime&api-version=2021-04-01"
     $method = "GET"
     $resourcesSubscriptionResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"
 
@@ -2305,7 +2308,7 @@ function DataCollectionResourceGroups {
 
     #https://management.azure.com/subscriptions/{subscriptionId}/resourcegroups?api-version=2020-06-01
     $currentTask = "Getting ResourceGroups for Subscription: '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($scopeId)/resourcegroups?api-version=2020-06-01"
+    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($scopeId)/resourcegroups?api-version=2021-04-01"
     $method = "GET"
     $resourceGroupsSubscriptionResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller "CustomDataCollection"
 
@@ -2906,11 +2909,13 @@ function DataCollectionPolicyDefinitions {
                 ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Scope = (($hlpPolicyDefinitionId).split('/'))[0..4] -join "/"
                 ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeMgSub = "Mg"
                 ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeId = (($hlpPolicyDefinitionId).split('/'))[4]
+                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeMGLevel = $htManagementGroupsMgPath.((($hlpPolicyDefinitionId).split('/'))[4]).ParentNameChainCount
             }
             if ($hlpPolicyDefinitionId -like "/subscriptions/*") {
                 ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Scope = (($hlpPolicyDefinitionId).split('/'))[0..2] -join "/"
                 ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeMgSub = "Sub"
                 ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeId = (($hlpPolicyDefinitionId).split('/'))[2]
+                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeMGLevel = ""
             }
             ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).DisplayName = $($scopePolicyDefinition.Properties.displayname)
             ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Description = $($policyDefinitionDescription)
@@ -2982,7 +2987,7 @@ function DataCollectionPolicyDefinitions {
                 ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).RoleDefinitionIds = "n/a"
             }
 
-            #namingValidation
+            #region namingValidation
             if (-not [string]::IsNullOrEmpty($scopePolicyDefinition.Properties.displayname)) {
                 $namingValidationResult = NamingValidation -toCheck $scopePolicyDefinition.Properties.displayname
                 if ($namingValidationResult.Count -gt 0) {
@@ -3003,6 +3008,7 @@ function DataCollectionPolicyDefinitions {
                     $script:htNamingValidation.Policy.($hlpPolicyDefinitionId).name = $scopePolicyDefinition.Name
                 }
             }
+            #endregion namingValidation
         }
     }
 
@@ -3064,11 +3070,13 @@ function DataCollectionPolicySetDefinitions {
                 ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Scope = (($scopePolicySetDefinition.Id).split('/'))[0..4] -join "/"
                 ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeMgSub = "Mg"
                 ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeId = (($scopePolicySetDefinition.Id).split('/'))[4]
+                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeMGLevel = $htManagementGroupsMgPath.((($scopePolicySetDefinition.Id).split('/'))[4]).ParentNameChainCount
             }
             if ($scopePolicySetDefinition.Id -like "/subscriptions/*") {
                 ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Scope = (($scopePolicySetDefinition.Id).split('/'))[0..2] -join "/"
                 ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeMgSub = "Sub"
                 ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeId = (($scopePolicySetDefinition.Id).split('/'))[2]
+                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeMGLevel = ""
             }
             ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).DisplayName = $($scopePolicySetDefinition.Properties.displayname)
             ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Description = $($policySetDefinitionDescription)
@@ -3176,7 +3184,7 @@ function DataCollectionPolicyAssignmentsMG {
             $script:htCacheAssignmentsPolicy.(($L0mgmtGroupPolicyAssignment.Id).ToLower()).AssignmentScopeId = [string]($splitAssignment[4])
         }
 
-        #namingValidation
+        #region namingValidation
         if (-not [string]::IsNullOrEmpty($L0mgmtGroupPolicyAssignment.Properties.DisplayName)) {
             $namingValidationResult = NamingValidation -toCheck $L0mgmtGroupPolicyAssignment.Properties.DisplayName
             if ($namingValidationResult.Count -gt 0) {
@@ -3197,41 +3205,89 @@ function DataCollectionPolicyAssignmentsMG {
                 $script:htNamingValidation.PolicyAssignment.($L0mgmtGroupPolicyAssignment.Id).name = $L0mgmtGroupPolicyAssignment.Name
             }
         }
+        #endregion namingValidation
 
         if ($L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -OR $L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/") {
+
+            #policy
             if ($L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/") {
                 $policyVariant = "Policy"
                 $policyDefinitionId = ($L0mgmtGroupPolicyAssignment.properties.policydefinitionid).ToLower()
 
-                $defAvailable = $false
-                $tryCounter = 0
-                do {
-                    $tryCounter++
-                    if (($htCacheDefinitionsPolicy).($policyDefinitionId)) {
-                        $defAvailable = $true
-                        $policyDefinition = ($htCacheDefinitionsPolicy).($policyDefinitionId)
-                        if ([string]::IsnullOrEmpty($policyDefinition.PolicyDefinitionId)) {
-                            Write-Host "check: $policyDefinitionId"
-                            $policyDefinition
+                $policyDefinitionSplitted = $policyDefinitionId.split('/')
+                $hlpPolicyDefinitionScope = $policyDefinitionSplitted[4]
+
+                if ( ($policyDefinitionId -like "/providers/microsoft.management/managementgroups/*" -and $htManagementGroupsMgPath.($scopeId).path -contains ($hlpPolicyDefinitionScope)) -or $policyDefinitionId -like "/providers/microsoft.authorization/policydefinitions/*" ) {
+                    $tryCounter = 0
+                    do {
+                        $tryCounter++
+                        if (($htCacheDefinitionsPolicy).($policyDefinitionId)) {
+                            $policyReturnedFromHt = $true
+                            $policyDefinition = ($htCacheDefinitionsPolicy).($policyDefinitionId)
+
+                            if ([string]::IsnullOrEmpty($policyDefinition.PolicyDefinitionId)) {
+                                Write-Host "check: $policyDefinitionId"
+                                $policyDefinition
+                            }
+
+                            if ($policyDefinition.Type -eq "Custom") {
+                                $policyDefintionScope = $policyDefinition.Scope
+                                $policyDefintionScopeMgSub = $policyDefinition.ScopeMgSub
+                                $policyDefintionScopeId = $policyDefinition.ScopeId
+                            }
+                            else {
+                                $policyDefintionScope = "n/a"
+                                $policyDefintionScopeMgSub = "n/a"
+                                $policyDefintionScopeId = "n/a"
+                            }
+
+                            $policyAvailability = ""
+                            $policyDisplayName = ($policyDefinition).DisplayName
+                            $policyDescription = ($policyDefinition).Description
+                            $policyDefinitionType = ($policyDefinition).Type
+                            $policyCategory = ($policyDefinition).Category
+                            $policyDefinitionEffectDefault = ($policyDefinition).effectDefaultValue
+                            $policyDefinitionEffectFixed = ($policyDefinition).effectFixedValue
+                        }
+                        else {
+                            #test
+                            Write-Host "   attention! $scopeDisplayName ($scopeId); policyAssignment '$($L0mgmtGroupPolicyAssignment.Id)' policyDefinition (Policy) could not be found: '$($policyDefinitionId)' -retry"
+                            start-sleep -seconds 1
                         }
                     }
-                    else {
-                        #test
-                        #Write-Host "pa '($L0mgmtGroupPolicyAssignment.Id)' scope: '$($scopeId)' policyDefinition not available: $policyDefinitionId"
-                        start-sleep -seconds ($tryCounter * 4)
+                    until ($policyReturnedFromHt -or $tryCounter -gt 2)
+                    if (-not $policyReturnedFromHt) {
+                        Write-Host "   attention! $scopeDisplayName ($scopeId); policyAssignment '$($L0mgmtGroupPolicyAssignment.Id)' policyDefinition (Policy) could not be found: '$($policyDefinitionId)'"
+                        Write-Host "   scope: $($scopeId) Policy / Custom:$($mgPolicyDefinitions.Count) CustomAtScope:$($PolicyDefinitionsScopedCount)"
+                        Write-Host "   built-in PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq "BuiltIn"}).Count)"
+                        Write-Host "   custom PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq "Custom"}).Count)"
+                        Write-Host "   Listing all PolicyDefinitions:"
+                        foreach ($tmpPolicyDefinitionId in ($($htCacheDefinitionsPolicy).Keys | Sort-Object)) {
+                            Write-Host $tmpPolicyDefinitionId
+                        }
+                        Throw "Error - AzGovViz: check the last console output for details"
                     }
                 }
-                until ($defAvailable -eq $true -or $tryCounter -gt 5)
-                if ($tryCounter -gt 5) {
-                    Write-Host "pa '$($L0mgmtGroupPolicyAssignment.Id)' scope: '$($scopeId)' policyDefinition not available: $policyDefinitionId"
-                    Write-Host "Scope: $($scopeId) Policy / Custom:$($mgPolicyDefinitions.Count) CustomAtScope:$($PolicyDefinitionsScopedCount)"
-                    Write-Host "BuiltIn PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq "BuiltIn"}).Count)"
-                    Write-Host "Custom PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq "Custom"}).Count)"
-                    Write-Host "Listing all PolicyDefinitions:"
-                    foreach ($tmpPolicyDefinitionId in ($($htCacheDefinitionsPolicy).Keys | Sort-Object)) {
-                        Write-Host $tmpPolicyDefinitionId
+                #policyDefinition Scope does not exist
+                else {
+                    if ($htManagementGroupsMgPath.Keys -contains $hlpPolicyDefinitionScope) {
+                        Write-Host "   $scopeDisplayName ($scopeId); policyAssignment '$($L0mgmtGroupPolicyAssignment.Id)' policyDefinition (Policy) could not be found: '$($policyDefinitionId)' - the scope '$($hlpPolicyDefinitionScope)' is not contained in the '$scopeId' Management Group chain. The Policy definition scope '$hlpPolicyDefinitionScope' has MGPath: '$($htManagementGroupsMgPath.($hlpPolicyDefinitionScope).pathDelimited)'"
                     }
-                    Throw "Error - AzGovViz: check the last console output for details"
+                    else {
+                        Write-Host "   $scopeDisplayName ($scopeId); policyAssignment '$($L0mgmtGroupPolicyAssignment.Id)' policyDefinition (Policy) could not be found: '$($policyDefinitionId)' - the scope '$($hlpPolicyDefinitionScope)' could not be found"
+                    }
+                    $policyAvailability = "na"
+
+                    $policyDefintionScope = "/$($policyDefinitionSplitted[1])/$($policyDefinitionSplitted[2])/$($policyDefinitionSplitted[3])/$($hlpPolicyDefinitionScope)"
+                    $policyDefintionScopeMgSub = "Mg"
+                    $policyDefintionScopeId = $hlpPolicyDefinitionScope
+
+                    $policyDisplayName = "unknown"
+                    $policyDescription = "unknown"
+                    $policyDefinitionType = "likely Custom"
+                    $policyCategory = "unknown"
+                    $policyDefinitionEffectDefault = "unknown"
+                    $policyDefinitionEffectFixed = "unknown"
                 }
 
                 $policyAssignmentScope = $L0mgmtGroupPolicyAssignment.Properties.Scope
@@ -3250,17 +3306,6 @@ function DataCollectionPolicyAssignmentsMG {
                 }
                 else {
                     $policyAssignmentIdentity = "n/a"
-                }
-
-                if ($policyDefinition.Type -eq "Custom") {
-                    $policyDefintionScope = $policyDefinition.Scope
-                    $policyDefintionScopeMgSub = $policyDefinition.ScopeMgSub
-                    $policyDefintionScopeId = $policyDefinition.ScopeId
-                }
-                else {
-                    $policyDefintionScope = "n/a"
-                    $policyDefintionScopeMgSub = "n/a"
-                    $policyDefintionScopeId = "n/a"
                 }
 
                 $assignedBy = "n/a"
@@ -3311,11 +3356,12 @@ function DataCollectionPolicyAssignmentsMG {
                     -mgParentId $mgParentId `
                     -mgParentName $mgParentName `
                     -mgASCSecureScore $mgAscSecureScoreResult `
-                    -Policy $policyDefinition.DisplayName `
-                    -PolicyDescription $policyDefinition.Description `
+                    -Policy $policyDisplayName `
+                    -PolicyAvailability $policyAvailability `
+                    -PolicyDescription $policyDescription `
                     -PolicyVariant $policyVariant `
-                    -PolicyType $policyDefinition.Type `
-                    -PolicyCategory $policyDefinition.Category `
+                    -PolicyType $policyDefinitionType `
+                    -PolicyCategory $policyCategory `
                     -PolicyDefinitionIdGuid ($policyDefinitionId -replace ".*/") `
                     -PolicyDefinitionId $policyDefinitionId `
                     -PolicyDefintionScope $policyDefintionScope `
@@ -3325,8 +3371,8 @@ function DataCollectionPolicyAssignmentsMG {
                     -PolicyDefinitionsScopedCount $policyDefinitionsScopedCount `
                     -PolicySetDefinitionsScopedLimit $LimitPOLICYPolicySetDefinitionsScopedManagementGroup `
                     -PolicySetDefinitionsScopedCount $policySetDefinitionsScopedCount `
-                    -PolicyDefinitionEffectDefault $policyDefinition.effectDefaultValue `
-                    -PolicyDefinitionEffectFixed $policyDefinition.effectFixedValue `
+                    -PolicyDefinitionEffectDefault $policyDefinitionEffectDefault `
+                    -PolicyDefinitionEffectFixed $policyDefinitionEffectFixed `
                     -PolicyAssignmentScope $policyAssignmentScope `
                     -PolicyAssignmentScopeMgSubRg "Mg" `
                     -PolicyAssignmentScopeName ($policyAssignmentScope -replace ".*/", "") `
@@ -3354,30 +3400,50 @@ function DataCollectionPolicyAssignmentsMG {
                     -PolicyAndPolicySetAssignmentAtScopeCount $L0mgmtGroupPolicyAssignmentsPolicyAndPolicySetAtScopeCount
             }
 
+            #policySet
             if ($L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/") {
                 $policyVariant = "PolicySet"
                 $policySetDefinitionId = ($L0mgmtGroupPolicyAssignment.properties.policydefinitionid).ToLower()
+                $policySetDefinitionSplitted = $policySetDefinitionId.split('/')
+                $hlpPolicySetDefinitionScope = $policySetDefinitionSplitted[4]
 
-                $defAvailable = $false
                 $tryCounter = 0
                 do {
                     $tryCounter++
                     if (($htCacheDefinitionsPolicySet).($policySetDefinitionId)) {
-                        $defAvailable = $true
+                        $policySetReturnedFromHt = $true
                         $policySetDefinition = ($htCacheDefinitionsPolicySet).($policySetDefinitionId)
+                        if ($policySetDefinition.Type -eq "Custom") {
+                            $policySetDefintionScope = $policySetDefinition.Scope
+                            $policySetDefintionScopeMgSub = $policySetDefinition.ScopeMgSub
+                            $policySetDefintionScopeId = $policySetDefinition.ScopeId
+                        }
+                        else {
+                            $policySetDefintionScope = "n/a"
+                            $policySetDefintionScopeMgSub = "n/a"
+                            $policySetDefintionScopeId = "n/a"
+                        }
+                        $policySetDisplayName = $policySetDefinition.DisplayName
+                        $policySetDescription = $policySetDefinition.Description
+                        $policySetDefinitionType = $policySetDefinition.Type
+                        $policySetCategory = $policySetDefinition.Category
                     }
                     else {
                         #test
                         #Write-Host "pa '($L0mgmtGroupPolicyAssignment.Id)' scope: '$($scopeId)' - policySetDefinition not available: $policySetDefinitionId"
-                        start-sleep -seconds ($tryCounter * 4)
+                        start-sleep -seconds 1
                     }
                 }
-                until ($defAvailable -eq $true -or $tryCounter -gt 5)
-                if ($tryCounter -gt 5) {
-                    Write-Host "Scope: $($scopeId) PolicySet / Custom:$($mgPolicySetDefinitions.Count) CustomAtScope:$($PolicySetDefinitionsScopedCount)"
-                    Write-Host "BuiltIn PolicySetDefinitions: $($($htCacheDefinitionsPolicySet).Values.where({$_.Type -eq "BuiltIn"}).Count)"
-                    Write-Host "Custom PolicySetDefinitions: $($($htCacheDefinitionsPolicySet).Values.where({$_.Type -eq "Custom"}).Count)"
-                    Throw "Error - AzGovViz: check the last console output for details"
+                until ($policySetReturnedFromHt -or $tryCounter -gt 2)
+                if (-not $policySetReturnedFromHt) {
+                    Write-Host "   $scopeDisplayName ($scopeId); policyAssignment '$($L0mgmtGroupPolicyAssignment.Id)' policyDefinition (PolicySet) could not be found: '$($policySetDefinitionId)'"
+                    $policySetDefintionScope = "/$($policySetDefinitionSplitted[1])/$($policySetDefinitionSplitted[2])/$($policySetDefinitionSplitted[3])/$($hlpPolicySetDefinitionScope)"
+                    $policySetDefintionScopeMgSub = "Mg"
+                    $policySetDefintionScopeId = $hlpPolicySetDefinitionScope
+                    $policySetDisplayName = "unknown"
+                    $policySetDescription = "unknown"
+                    $policySetDefinitionType = "likely Custom"
+                    $policySetCategory = "unknown"
                 }
 
                 $policyAssignmentScope = $L0mgmtGroupPolicyAssignment.Properties.Scope
@@ -3396,17 +3462,6 @@ function DataCollectionPolicyAssignmentsMG {
                 }
                 else {
                     $policyAssignmentIdentity = "n/a"
-                }
-
-                if ($policySetDefinition.Type -eq "Custom") {
-                    $policyDefintionScope = $policySetDefinition.Scope
-                    $policyDefintionScopeMgSub = $policySetDefinition.ScopeMgSub
-                    $policyDefintionScopeId = $policySetDefinition.ScopeId
-                }
-                else {
-                    $policyDefintionScope = "n/a"
-                    $policyDefintionScopeMgSub = "n/a"
-                    $policyDefintionScopeId = "n/a"
                 }
 
                 $assignedBy = "n/a"
@@ -3457,16 +3512,16 @@ function DataCollectionPolicyAssignmentsMG {
                     -mgParentId $mgParentId `
                     -mgParentName $mgParentName `
                     -mgASCSecureScore $mgAscSecureScoreResult `
-                    -Policy $policySetDefinition.DisplayName `
-                    -PolicyDescription $policySetDefinition.Description `
+                    -Policy $policySetDisplayName `
+                    -PolicyDescription $policySetDescription `
                     -PolicyVariant $policyVariant `
-                    -PolicyType $policySetDefinition.Type `
-                    -PolicyCategory $policySetDefinition.Category `
+                    -PolicyType $policySetDefinitionType `
+                    -PolicyCategory $policySetCategory `
                     -PolicyDefinitionIdGuid ($policySetDefinitionId -replace ".*/") `
                     -PolicyDefinitionId $policySetDefinitionId `
-                    -PolicyDefintionScope $policyDefintionScope `
-                    -PolicyDefintionScopeMgSub $policyDefintionScopeMgSub `
-                    -PolicyDefintionScopeId $policyDefintionScopeId `
+                    -PolicyDefintionScope $policySetDefintionScope `
+                    -PolicyDefintionScopeMgSub $policySetDefintionScopeMgSub `
+                    -PolicyDefintionScopeId $policySetDefintionScopeId `
                     -PolicyDefinitionsScopedLimit $LimitPOLICYPolicyDefinitionsScopedManagementGroup `
                     -PolicyDefinitionsScopedCount $policyDefinitionsScopedCount `
                     -PolicySetDefinitionsScopedLimit $LimitPOLICYPolicySetDefinitionsScopedManagementGroup `
@@ -3571,7 +3626,7 @@ function DataCollectionPolicyAssignmentsSub {
             }
         }
 
-        #namingValidation
+        #region namingValidation
         if (-not [string]::IsNullOrEmpty($L1mgmtGroupSubPolicyAssignment.Properties.DisplayName)) {
             $namingValidationResult = NamingValidation -toCheck $L1mgmtGroupSubPolicyAssignment.Properties.DisplayName
             if ($namingValidationResult.Count -gt 0) {
@@ -3592,8 +3647,11 @@ function DataCollectionPolicyAssignmentsSub {
                 $script:htNamingValidation.PolicyAssignment.($L1mgmtGroupSubPolicyAssignment.Id).name = $L1mgmtGroupSubPolicyAssignment.Name
             }
         }
+        #endregion namingValidation
 
         if ($L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/" -OR $L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/") {
+
+            #policy
             if ($L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policyDefinitions/") {
                 $policyVariant = "Policy"
                 $policyDefinitionId = ($L1mgmtGroupSubPolicyAssignment.properties.policydefinitionid).ToLower()
@@ -3605,7 +3663,6 @@ function DataCollectionPolicyAssignmentsSub {
                     $tryCounter = 0
                     do {
                         $tryCounter++
-
                         $policyAssignmentsPolicyDefinition = ($htCacheDefinitionsPolicy).($policyDefinitionId)
 
                         if (($policyAssignmentsPolicyDefinition).Type -eq "Custom" -or ($policyAssignmentsPolicyDefinition).Type -eq "Builtin") {
@@ -3638,34 +3695,53 @@ function DataCollectionPolicyAssignmentsSub {
                             }
                         }
                         else {
-                            $policyReturnedFromHt = $false
-                            if ($htParameters.onAzureDevOpsOrGitHubActions -eq $true) {
-                                #Write-Host "##[warning]TryHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policyId:'$policyDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; type:'$(($policyAssignmentsPolicyDefinition).Type)' - sleeping '$tryCounter' seconds"
-                            }
-                            #Write-Host "TryHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policyId:'$policyDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; type:'$(($policyAssignmentsPolicyDefinition).Type)' - sleeping '$tryCounter' seconds"
+                            Write-Host " **INCONSISTENCY! processing policyId:'$policyDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; policyAssignmentsPolicyDefinition.Type: '$($policyAssignmentsPolicyDefinition.Type)'"
                             start-sleep -seconds 1
                         }
                     }
                     until($policyReturnedFromHt -or $tryCounter -gt 5)
                     if (-not $policyReturnedFromHt) {
-                        Write-Host "FinalHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policyId:'$policyDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'"
+                        Write-Host "FinalHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policyId:'$policyDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; policyAssignmentsPolicyDefinition.Type: '$($policyAssignmentsPolicyDefinition.Type)'"
+                        Write-Host ($policyAssignmentsPolicyDefinition | ConvertTo-Json -depth 99)
                         Write-Host "!Please report this error: $($htParameters.GithubRepository)" -ForegroundColor Yellow
                         throw
                     }
                 }
                 #policyDefinition not exists!
                 else {
+                    $policyDefinitionSplitted = $policyDefinitionId.split('/')
+
+                    if ($policyDefinitionId -like "/providers/microsoft.management/managementgroups/*") {
+                        $hlpPolicyDefinitionScope = $policyDefinitionSplitted[4]
+                        if ($htSubscriptionsMgPath.($scopeId).path -contains $hlpPolicyDefinitionScope) {
+                            Write-Host "   ATTENTION: $scopeDisplayName ($scopeId); policyAssignment '$($L1mgmtGroupSubPolicyAssignment.Id)' policyDefinition (Policy) could not be found: '$($policyDefinitionId)' - the scope '$($hlpPolicyDefinitionScope)' HOWEVER IS CONTAINED in the '$scopeId' Management Group chain. The Policy definition scope '$hlpPolicyDefinitionScope' has MGPath: '$($htManagementGroupsMgPath.($hlpPolicyDefinitionScope).pathDelimited)'"
+                        }
+                        else {
+                            if ($htManagementGroupsMgPath.($hlpPolicyDefinitionScope)) {
+                                Write-Host "   $scopeDisplayName ($scopeId); policyAssignment '$($L1mgmtGroupSubPolicyAssignment.Id)' policyDefinition (Policy) could not be found: '$($policyDefinitionId)' - the scope '$($hlpPolicyDefinitionScope)' IS NOT CONTAINED in the '$scopeId' Management Group chain. The Policy definition scope '$hlpPolicyDefinitionScope' has MGPath: '$($htManagementGroupsMgPath.($hlpPolicyDefinitionScope).pathDelimited)'"
+                            }
+                            else{
+                                Write-Host "   $scopeDisplayName ($scopeId); policyAssignment '$($L1mgmtGroupSubPolicyAssignment.Id)' policyDefinition (Policy) could not be found: '$($policyDefinitionId)' - the scope '$($hlpPolicyDefinitionScope)' IS NOT CONTAINED in the '$scopeId' Management Group chain. The Policy definition scope '$hlpPolicyDefinitionScope' could not be found"
+                            }
+                        }
+                        $policyDefintionScope = "/$($policyDefinitionSplitted[1])/$($policyDefinitionSplitted[2])/$($policyDefinitionSplitted[3])/$($hlpPolicyDefinitionScope)"
+                        $policyDefintionScopeMgSub = "Mg"
+                        $policyDefintionScopeId = $hlpPolicyDefinitionScope
+                    }
+                    else{
+                        $hlpPolicyDefinitionScope = $policyDefinitionSplitted[2]
+                        Write-Host "   $scopeDisplayName ($scopeId); policyAssignment '$($L1mgmtGroupSubPolicyAssignment.Id)' policyDefinition (Policy) could not be found: '$($policyDefinitionId)'"
+                        $policyDefintionScope = "/$($policyDefinitionSplitted[1])/$($hlpPolicyDefinitionScope)"
+                        $policyDefintionScopeMgSub = "Sub"
+                        $policyDefintionScopeId = $hlpPolicyDefinitionScope
+                    }
                     $policyAvailability = "na"
                     $policyDisplayName = "unknown"
                     $policyDescription = "unknown"
-                    $policyDefinitionType = "unknown"
+                    $policyDefinitionType = "likely Custom"
                     $policyCategory = "unknown"
                     $policyDefinitionEffectDefault = "unknown"
                     $policyDefinitionEffectFixed = "unknown"
-                    $policyDefintionScope = "unknown"
-                    $policyDefintionScopeMgSub = "unknown"
-                    $policyDefintionScopeId = "unknown"
-                    Write-Host "   $scopeDisplayName ($scopeId); policyAssignment '$($L1mgmtGroupSubPolicyAssignment.Id)' policyDefinition (Policy) could not be found: '$($policyDefinitionId)'"
                 }
 
                 $PolicyAssignmentScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
@@ -3803,46 +3879,12 @@ function DataCollectionPolicyAssignmentsSub {
                     -PolicySetAssignmentAtScopeCount $L1mgmtGroupSubPolicyAssignmentsPolicySetAtScopeCount `
                     -PolicyAndPolicySetAssignmentAtScopeCount $L1mgmtGroupSubPolicyAssignmentsPolicyAndPolicySetAtScopeCount
             }
+
+            #policySet
             if ($L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match "/providers/Microsoft.Authorization/policySetDefinitions/") {
                 $policyVariant = "PolicySet"
                 $policySetDefinitionId = ($L1mgmtGroupSubPolicyAssignment.properties.policydefinitionid).ToLower()
-                #$policyAssignmentsPolicySetDefinition = ($htCacheDefinitionsPolicySet).($policySetDefinitionId)
-                $PolicyAssignmentScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
-                if ($PolicyAssignmentScope -like "/providers/Microsoft.Management/managementGroups/*") {
-                    $PolicyAssignmentScopeMgSubRg = "Mg"
-                }
-                else {
-                    $splitPolicyAssignmentScope = ($PolicyAssignmentScope).Split('/')
-                    switch (($splitPolicyAssignmentScope).Count - 1) {
-                        #sub
-                        2 {
-                            $PolicyAssignmentScopeMgSubRg = "Sub"
-                        }
-                        4 {
-                            $PolicyAssignmentScopeMgSubRg = "Rg"
-                        }
-                        Default {
-                            $PolicyAssignmentScopeMgSubRg = "unknown"
-                        }
-                    }
-                }
-
-                $PolicyAssignmentId = ($L1mgmtGroupSubPolicyAssignment.Id).ToLower()
-                $PolicyAssignmentName = $L1mgmtGroupSubPolicyAssignment.Name
-                $PolicyAssignmentDisplayName = $L1mgmtGroupSubPolicyAssignment.Properties.DisplayName
-                if (($L1mgmtGroupSubPolicyAssignment.Properties.Description).length -eq 0) {
-                    $PolicyAssignmentDescription = "no description given"
-                }
-                else {
-                    $PolicyAssignmentDescription = $L1mgmtGroupSubPolicyAssignment.Properties.Description
-                }
-
-                if ($L1mgmtGroupSubPolicyAssignment.identity) {
-                    $PolicyAssignmentIdentity = $L1mgmtGroupSubPolicyAssignment.identity.principalId
-                }
-                else {
-                    $PolicyAssignmentIdentity = "n/a"
-                }
+                $policySetDefinitionSplitted = $policySetDefinitionId.split('/')
 
                 if (($htCacheDefinitionsPolicySet).($policySetDefinitionId)) {
                     $policyAvailability = ""
@@ -3880,10 +3922,6 @@ function DataCollectionPolicyAssignmentsSub {
                             }
                         }
                         else {
-                            $policySetReturnedFromHt = $false
-                            if ($htParameters.onAzureDevOpsOrGitHubActions -eq $true) {
-                                #Write-Host "##[warning]TryHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policySetId:'$policySetDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; type:'$(($policyAssignmentsPolicySetDefinition).Type)' - sleeping '$tryCounter' seconds"
-                            }
                             #Write-Host "TryHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policySetId:'$policySetDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; type:'$(($policyAssignmentsPolicySetDefinition).Type)' - sleeping '$tryCounter' seconds"
                             start-sleep -seconds 1
                         }
@@ -3900,9 +3938,60 @@ function DataCollectionPolicyAssignmentsSub {
                     $policyAvailability = "na"
                     $policySetDisplayName = "unknown"
                     $policySetDescription = "unknown"
-                    $policySetDefinitionType = "unknown"
+                    $policySetDefinitionType = "likely Custom"
                     $policySetCategory = "unknown"
+
+                    if ($policySetDefinitionId -like "/providers/microsoft.management/managementgroups/*") {
+                        $hlpPolicySetDefinitionScope = $policySetDefinitionSplitted[4]
+                        $policySetDefintionScope = "/$($policySetDefinitionSplitted[1])/$($policySetDefinitionSplitted[2])/$($policySetDefinitionSplitted[3])/$($hlpPolicySetDefinitionScope)"
+                        $policySetDefintionScopeMgSub = "Mg"
+                        $policySetDefintionScopeId = $hlpPolicySetDefinitionScope
+                    }
+                    else{
+                        $hlpPolicySetDefinitionScope = $policySetDefinitionSplitted[2]
+                        $policySetDefintionScope = "/$($policySetDefinitionSplitted[1])/$($hlpPolicySetDefinitionScope)"
+                        $policySetDefintionScopeMgSub = "Sub"
+                        $policySetDefintionScopeId = $hlpPolicySetDefinitionScope
+
+                    }
                     Write-Host "   $scopeDisplayName ($scopeId); policyAssignment '$($L1mgmtGroupSubPolicyAssignment.Id)' policyDefinition (PolicySet) could not be found: '$($policySetDefinitionId)'"
+                }
+
+                $PolicyAssignmentScope = $L1mgmtGroupSubPolicyAssignment.Properties.Scope
+                if ($PolicyAssignmentScope -like "/providers/Microsoft.Management/managementGroups/*") {
+                    $PolicyAssignmentScopeMgSubRg = "Mg"
+                }
+                else {
+                    $splitPolicyAssignmentScope = ($PolicyAssignmentScope).Split('/')
+                    switch (($splitPolicyAssignmentScope).Count - 1) {
+                        #sub
+                        2 {
+                            $PolicyAssignmentScopeMgSubRg = "Sub"
+                        }
+                        4 {
+                            $PolicyAssignmentScopeMgSubRg = "Rg"
+                        }
+                        Default {
+                            $PolicyAssignmentScopeMgSubRg = "unknown"
+                        }
+                    }
+                }
+
+                $PolicyAssignmentId = ($L1mgmtGroupSubPolicyAssignment.Id).ToLower()
+                $PolicyAssignmentName = $L1mgmtGroupSubPolicyAssignment.Name
+                $PolicyAssignmentDisplayName = $L1mgmtGroupSubPolicyAssignment.Properties.DisplayName
+                if (($L1mgmtGroupSubPolicyAssignment.Properties.Description).length -eq 0) {
+                    $PolicyAssignmentDescription = "no description given"
+                }
+                else {
+                    $PolicyAssignmentDescription = $L1mgmtGroupSubPolicyAssignment.Properties.Description
+                }
+
+                if ($L1mgmtGroupSubPolicyAssignment.identity) {
+                    $PolicyAssignmentIdentity = $L1mgmtGroupSubPolicyAssignment.identity.principalId
+                }
+                else {
+                    $PolicyAssignmentIdentity = "n/a"
                 }
 
                 $assignedBy = "n/a"
@@ -4031,6 +4120,30 @@ function DataCollectionRoleDefinitions {
 
     foreach ($scopeCustomRoleDefinition in $scopeCustomRoleDefinitions) {
         if (-not $($htCacheDefinitionsRole).($scopeCustomRoleDefinition.name)) {
+
+            if (
+                (
+                    $scopeCustomRoleDefinition.properties.permissions.Actions -contains 'Microsoft.Authorization/roleassignments/write' -or
+                    $scopeCustomRoleDefinition.properties.permissions.Actions -contains 'Microsoft.Authorization/roleassignments/*' -or
+                    $scopeCustomRoleDefinition.properties.permissions.Actions -contains 'Microsoft.Authorization/*/write' -or
+                    $scopeCustomRoleDefinition.properties.permissions.Actions -contains 'Microsoft.Authorization/*' -or
+                    $scopeCustomRoleDefinition.properties.permissions.Actions -contains '*/write' -or
+                    $scopeCustomRoleDefinition.properties.permissions.Actions -contains '*'
+                ) -and (
+                    $scopeCustomRoleDefinition.properties.permissions.NotActions -notcontains 'Microsoft.Authorization/roleassignments/write' -and
+                    $scopeCustomRoleDefinition.properties.permissions.NotActions -notcontains 'Microsoft.Authorization/roleassignments/*' -and
+                    $scopeCustomRoleDefinition.properties.permissions.NotActions -notcontains 'Microsoft.Authorization/*/write' -and
+                    $scopeCustomRoleDefinition.properties.permissions.NotActions -notcontains 'Microsoft.Authorization/*' -and
+                    $scopeCustomRoleDefinition.properties.permissions.NotActions -notcontains '*/write' -and
+                    $scopeCustomRoleDefinition.properties.permissions.NotActions -notcontains '*'
+                )
+            ) {
+                $roleCapable4RoleAssignmentsWrite = $true
+            }
+            else {
+                $roleCapable4RoleAssignmentsWrite = $false
+            }
+
             ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name) = @{}
             ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name).Id = $($scopeCustomRoleDefinition.name)
             ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name).Name = $($scopeCustomRoleDefinition.properties.roleName)
@@ -4041,6 +4154,7 @@ function DataCollectionRoleDefinitions {
             ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name).DataActions = $($scopeCustomRoleDefinition.properties.permissions.DataActions)
             ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name).NotDataActions = $($scopeCustomRoleDefinition.properties.permissions.NotDataActions)
             ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name).Json = $scopeCustomRoleDefinition
+            ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name).RoleCanDoRoleAssignments = $roleCapable4RoleAssignmentsWrite
 
             #namingValidation
             if (-not [string]::IsNullOrEmpty($scopeCustomRoleDefinition.properties.roleName)) {
@@ -4286,6 +4400,7 @@ function DataCollectionRoleAssignmentsMG {
             -RoleNotActions ($roleAssignmentsRoleDefinition.NotActions -join "$CsvDelimiterOpposite ") `
             -RoleDataActions ($roleAssignmentsRoleDefinition.DataActions -join "$CsvDelimiterOpposite ") `
             -RoleNotDataActions ($roleAssignmentsRoleDefinition.NotDataActions -join "$CsvDelimiterOpposite ") `
+            -RoleCanDoRoleAssignments $roleAssignmentsRoleDefinition.RoleCanDoRoleAssignments `
             -RoleAssignmentIdentityDisplayname $roleAssignmentIdentityDisplayname `
             -RoleAssignmentIdentitySignInName $roleAssignmentIdentitySignInName `
             -RoleAssignmentIdentityObjectId $roleAssignmentIdentityObjectId `
@@ -4340,6 +4455,8 @@ function DataCollectionRoleAssignmentsSub {
     $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics?api-version=2019-08-01-preview"
     $method = "GET"
     $roleAssignmentsUsage = AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn "Content" -caller "CustomDataCollection"
+
+    $script:htSubscriptionsRoleAssignmentLimit.($scopeId) = $roleAssignmentsUsage.roleAssignmentsLimit
 
     #PIM SubscriptionRoleAssignmentSchedules
     $currentTask = "Role assignment schedules API '$($scopeDisplayName)' ('$scopeId')"
@@ -4633,6 +4750,7 @@ function DataCollectionRoleAssignmentsSub {
             -RoleNotActions ($roleAssignmentsRoleDefinition.NotActions -join "$CsvDelimiterOpposite ") `
             -RoleDataActions ($roleAssignmentsRoleDefinition.DataActions -join "$CsvDelimiterOpposite ") `
             -RoleNotDataActions ($roleAssignmentsRoleDefinition.NotDataActions -join "$CsvDelimiterOpposite ") `
+            -RoleCanDoRoleAssignments $roleAssignmentsRoleDefinition.RoleCanDoRoleAssignments `
             -RoleAssignmentIdentityDisplayname $roleAssignmentIdentityDisplayname `
             -RoleAssignmentIdentitySignInName $roleAssignmentIdentitySignInName `
             -RoleAssignmentIdentityObjectId $roleAssignmentIdentityObjectId `
@@ -4676,175 +4794,190 @@ function DataCollection($mgId) {
     $allManagementGroupsFromEntitiesChildOfRequestedMg = $arrayEntitiesFromAPI.where( { $_.type -eq "Microsoft.Management/managementGroups" -and ($_.Name -eq $mgId -or $_.properties.parentNameChain -contains $mgId) })
     $allManagementGroupsFromEntitiesChildOfRequestedMgCount = ($allManagementGroupsFromEntitiesChildOfRequestedMg).Count
 
-    $allManagementGroupsFromEntitiesChildOfRequestedMg | ForEach-Object -Parallel {
-        $mgdetail = $_
-        #region UsingVARs
-        #Parameters MG&Sub related
-        $CsvDelimiter = $using:CsvDelimiter
-        $CsvDelimiterOpposite = $using:CsvDelimiterOpposite
-        $ManagementGroupId = $using:ManagementGroupId
-        #fromOtherFunctions
-        $arrayAzureManagementEndPointUrls = $using:arrayAzureManagementEndPointUrls
-        $checkContext = $using:checkContext
-        $htAzureEnvironmentRelatedUrls = $using:htAzureEnvironmentRelatedUrls
-        $htBearerAccessToken = $using:htBearerAccessToken
-        #Array&HTs
-        $htParameters = $using:htParameters
-        $newTable = $using:newTable
-        $customDataCollectionDuration = $using:customDataCollectionDuration
-        $htSubscriptionTagList = $using:htSubscriptionTagList
-        $htResourceTypesUniqueResource = $using:htResourceTypesUniqueResource
-        $htAllTagList = $using:htAllTagList
-        $htSubscriptionTags = $using:htSubscriptionTags
-        $htCacheDefinitionsPolicy = $using:htCacheDefinitionsPolicy
-        $htCacheDefinitionsPolicySet = $using:htCacheDefinitionsPolicySet
-        $htCacheDefinitionsRole = $using:htCacheDefinitionsRole
-        $htCacheDefinitionsBlueprint = $using:htCacheDefinitionsBlueprint
-        $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
-        $htCachePolicyComplianceMG = $using:htCachePolicyComplianceMG
-        $htCachePolicyComplianceResponseTooLargeMG = $using:htCachePolicyComplianceResponseTooLargeMG
-        $htCacheAssignmentsRole = $using:htCacheAssignmentsRole
-        $htCacheAssignmentsRBACOnResourceGroupsAndResources = $using:htCacheAssignmentsRBACOnResourceGroupsAndResources
-        $htCacheAssignmentsBlueprint = $using:htCacheAssignmentsBlueprint
-        $htCacheAssignmentsPolicy = $using:htCacheAssignmentsPolicy
-        $htPolicyAssignmentExemptions = $using:htPolicyAssignmentExemptions
-        $htManagementGroupsMgPath = $using:htManagementGroupsMgPath
-        $LimitPOLICYPolicyDefinitionsScopedManagementGroup = $using:LimitPOLICYPolicyDefinitionsScopedManagementGroup
-        $LimitPOLICYPolicySetDefinitionsScopedManagementGroup = $using:LimitPOLICYPolicySetDefinitionsScopedManagementGroup
-        $LimitPOLICYPolicyAssignmentsManagementGroup = $using:LimitPOLICYPolicyAssignmentsManagementGroup
-        $LimitPOLICYPolicySetAssignmentsManagementGroup = $using:LimitPOLICYPolicySetAssignmentsManagementGroup
-        $LimitRBACRoleAssignmentsManagementGroup = $using:LimitRBACRoleAssignmentsManagementGroup
-        $arrayEntitiesFromAPI = $using:arrayEntitiesFromAPI
-        $allManagementGroupsFromEntitiesChildOfRequestedMg = $using:allManagementGroupsFromEntitiesChildOfRequestedMg
-        $allManagementGroupsFromEntitiesChildOfRequestedMgCount = $using:allManagementGroupsFromEntitiesChildOfRequestedMgCount
-        $arrayDataCollectionProgressMg = $using:arrayDataCollectionProgressMg
-        $arrayAPICallTracking = $using:arrayAPICallTracking
-        $arrayAPICallTrackingCustomDataCollection = $using:arrayAPICallTrackingCustomDataCollection
-        $arrayDiagnosticSettingsMgSub = $using:arrayDiagnosticSettingsMgSub
-        $htMgAtScopePolicyAssignments = $using:htMgAtScopePolicyAssignments
-        $htMgAtScopePoliciesScoped = $using:htMgAtScopePoliciesScoped
-        $htMgAtScopeRoleAssignments = $using:htMgAtScopeRoleAssignments
-        $htMgASCSecureScore = $using:htMgASCSecureScore
-        $htRoleAssignmentsFromAPIInheritancePrevention = $using:htRoleAssignmentsFromAPIInheritancePrevention
-        $htNamingValidation = $using:htNamingValidation
-        $htPrincipals = $using:htPrincipals
-        $htServicePrincipals = $using:htServicePrincipals
-        $htUserTypesGuest = $using:htUserTypesGuest
-        #Functions
-        $function:AzAPICall = $using:funcAzAPICall
-        $function:CreateBearerToken = $using:funcCreateBearerToken
-        $function:AddRowToTable = $using:funcAddRowToTable
-        $function:GetJWTDetails = $using:funcGetJWTDetails
-        $function:NamingValidation = $using:funcNamingValidation
-        $function:ResolveObjectIds = $using:funcResolveObjectIds
-        $function:DataCollectionMGSecureScore = $using:funcDataCollectionMGSecureScore
-        $function:DataCollectionDiagnosticsMG = $using:funcDataCollectionDiagnosticsMG
-        $function:DataCollectionPolicyComplianceStates = $using:funcDataCollectionPolicyComplianceStates
-        $function:DataCollectionBluePrintDefinitionsMG = $using:funcDataCollectionBluePrintDefinitionsMG
-        $function:DataCollectionPolicyExemptions = $using:funcDataCollectionPolicyExemptions
-        $function:DataCollectionPolicyDefinitions = $using:funcDataCollectionPolicyDefinitions
-        $function:DataCollectionPolicySetDefinitions = $using:funcDataCollectionPolicySetDefinitions
-        $function:DataCollectionPolicyAssignmentsMG = $using:funcDataCollectionPolicyAssignmentsMG
-        $function:DataCollectionRoleDefinitions = $using:funcDataCollectionRoleDefinitions
-        $function:DataCollectionRoleAssignmentsMG = $using:funcDataCollectionRoleAssignmentsMG
-        #endregion usingVARS
-        $builtInPolicyDefinitionsCount = $using:builtInPolicyDefinitionsCount
+    $mgBatch = ($allManagementGroupsFromEntitiesChildOfRequestedMg | Group-Object -Property { ($_.properties.parentNameChain).Count }) | Sort-Object -Property Name
+    foreach ($batchLevel in $mgBatch) {
+        Write-Host "  Processing Management Groups L$($batchLevel.Name) ($($batchLevel.Count) Management Groups)"
+        $batchLevel.Group | ForEach-Object -Parallel {
+            $mgdetail = $_
+            #region UsingVARs
+            #Parameters MG&Sub related
+            $CsvDelimiter = $using:CsvDelimiter
+            $CsvDelimiterOpposite = $using:CsvDelimiterOpposite
+            $ManagementGroupId = $using:ManagementGroupId
+            #fromOtherFunctions
+            $arrayAzureManagementEndPointUrls = $using:arrayAzureManagementEndPointUrls
+            $checkContext = $using:checkContext
+            $htAzureEnvironmentRelatedUrls = $using:htAzureEnvironmentRelatedUrls
+            $htBearerAccessToken = $using:htBearerAccessToken
+            #Array&HTs
+            $htParameters = $using:htParameters
+            $newTable = $using:newTable
+            $customDataCollectionDuration = $using:customDataCollectionDuration
+            $htSubscriptionTagList = $using:htSubscriptionTagList
+            $htResourceTypesUniqueResource = $using:htResourceTypesUniqueResource
+            $htAllTagList = $using:htAllTagList
+            $htSubscriptionTags = $using:htSubscriptionTags
+            $htCacheDefinitionsPolicy = $using:htCacheDefinitionsPolicy
+            $htCacheDefinitionsPolicySet = $using:htCacheDefinitionsPolicySet
+            $htCacheDefinitionsRole = $using:htCacheDefinitionsRole
+            $htCacheDefinitionsBlueprint = $using:htCacheDefinitionsBlueprint
+            $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
+            $htCachePolicyComplianceMG = $using:htCachePolicyComplianceMG
+            $htCachePolicyComplianceResponseTooLargeMG = $using:htCachePolicyComplianceResponseTooLargeMG
+            $htCacheAssignmentsRole = $using:htCacheAssignmentsRole
+            $htCacheAssignmentsRBACOnResourceGroupsAndResources = $using:htCacheAssignmentsRBACOnResourceGroupsAndResources
+            $htCacheAssignmentsBlueprint = $using:htCacheAssignmentsBlueprint
+            $htCacheAssignmentsPolicy = $using:htCacheAssignmentsPolicy
+            $htPolicyAssignmentExemptions = $using:htPolicyAssignmentExemptions
+            $htManagementGroupsMgPath = $using:htManagementGroupsMgPath
+            $LimitPOLICYPolicyDefinitionsScopedManagementGroup = $using:LimitPOLICYPolicyDefinitionsScopedManagementGroup
+            $LimitPOLICYPolicySetDefinitionsScopedManagementGroup = $using:LimitPOLICYPolicySetDefinitionsScopedManagementGroup
+            $LimitPOLICYPolicyAssignmentsManagementGroup = $using:LimitPOLICYPolicyAssignmentsManagementGroup
+            $LimitPOLICYPolicySetAssignmentsManagementGroup = $using:LimitPOLICYPolicySetAssignmentsManagementGroup
+            $LimitRBACRoleAssignmentsManagementGroup = $using:LimitRBACRoleAssignmentsManagementGroup
+            $arrayEntitiesFromAPI = $using:arrayEntitiesFromAPI
+            #$allManagementGroupsFromEntitiesChildOfRequestedMg = $using:allManagementGroupsFromEntitiesChildOfRequestedMg
+            $allManagementGroupsFromEntitiesChildOfRequestedMgCount = $using:allManagementGroupsFromEntitiesChildOfRequestedMgCount
+            $arrayDataCollectionProgressMg = $using:arrayDataCollectionProgressMg
+            $arrayAPICallTracking = $using:arrayAPICallTracking
+            $arrayAPICallTrackingCustomDataCollection = $using:arrayAPICallTrackingCustomDataCollection
+            $arrayDiagnosticSettingsMgSub = $using:arrayDiagnosticSettingsMgSub
+            $htMgAtScopePolicyAssignments = $using:htMgAtScopePolicyAssignments
+            $htMgAtScopePoliciesScoped = $using:htMgAtScopePoliciesScoped
+            $htMgAtScopeRoleAssignments = $using:htMgAtScopeRoleAssignments
+            $htMgASCSecureScore = $using:htMgASCSecureScore
+            $htRoleAssignmentsFromAPIInheritancePrevention = $using:htRoleAssignmentsFromAPIInheritancePrevention
+            $htNamingValidation = $using:htNamingValidation
+            $htPrincipals = $using:htPrincipals
+            $htServicePrincipals = $using:htServicePrincipals
+            $htUserTypesGuest = $using:htUserTypesGuest
+            #Functions
+            $function:AzAPICall = $using:funcAzAPICall
+            $function:CreateBearerToken = $using:funcCreateBearerToken
+            $function:AddRowToTable = $using:funcAddRowToTable
+            $function:GetJWTDetails = $using:funcGetJWTDetails
+            $function:NamingValidation = $using:funcNamingValidation
+            $function:ResolveObjectIds = $using:funcResolveObjectIds
+            $function:DataCollectionMGSecureScore = $using:funcDataCollectionMGSecureScore
+            $function:DataCollectionDiagnosticsMG = $using:funcDataCollectionDiagnosticsMG
+            $function:DataCollectionPolicyComplianceStates = $using:funcDataCollectionPolicyComplianceStates
+            $function:DataCollectionBluePrintDefinitionsMG = $using:funcDataCollectionBluePrintDefinitionsMG
+            $function:DataCollectionPolicyExemptions = $using:funcDataCollectionPolicyExemptions
+            $function:DataCollectionPolicyDefinitions = $using:funcDataCollectionPolicyDefinitions
+            $function:DataCollectionPolicySetDefinitions = $using:funcDataCollectionPolicySetDefinitions
+            $function:DataCollectionPolicyAssignmentsMG = $using:funcDataCollectionPolicyAssignmentsMG
+            $function:DataCollectionRoleDefinitions = $using:funcDataCollectionRoleDefinitions
+            $function:DataCollectionRoleAssignmentsMG = $using:funcDataCollectionRoleAssignmentsMG
+            #endregion usingVARS
+            $builtInPolicyDefinitionsCount = $using:builtInPolicyDefinitionsCount
 
-        $addRowToTableDone = $false
+            $addRowToTableDone = $false
 
-        $MgParentId = ($allManagementGroupsFromEntitiesChildOfRequestedMg.where( { $_.Name -eq $mgdetail.Name } )).properties.parent.Id -replace ".*/"
-        if ([string]::IsNullOrEmpty($MgParentId)) {
-            $MgParentId = "TenantRoot"
-            $MgParentName = "TenantRoot"
-        }
-        else {
-            $MgParentName = $htManagementGroupsMgPath.($MgParentId).DisplayName
-        }
-        $hierarchyLevel = (($allManagementGroupsFromEntitiesChildOfRequestedMg.where( { $_.Name -eq $mgdetail.Name } )).properties.parentNameChain).Count
+            $MgDetailThis = $htManagementGroupsMgPath.($mgdetail.Name)
+            $MgParentId = $MgDetailThis.Parent
+            $hierarchyLevel = $MgDetailThis.ParentNameChainCount
 
-        $rndom = Get-Random -Minimum 10 -Maximum 750
-        start-sleep -Millisecond $rndom
-        $startMgLoopThis = Get-Date
+            if ($MgParentId -eq "__TenantRoot__") {
+                $MgParentId = "TenantRoot"
+                $MgParentName = $MgParentId
+            }
+            else {
+                $MgParentName = $htManagementGroupsMgPath.($MgParentId).DisplayName
+            }
 
-        if ($htParameters.HierarchyMapOnly -eq $false) {
+            $rndom = Get-Random -Minimum 10 -Maximum 750
+            start-sleep -Millisecond $rndom
+            $startMgLoopThis = Get-Date
 
-            #namingValidation
-            if (-not [string]::IsNullOrEmpty($mgdetail.properties.displayName)) {
-                $namingValidationResult = NamingValidation -toCheck $mgdetail.properties.displayName
-                if ($namingValidationResult.Count -gt 0) {
-                    $script:htNamingValidation.ManagementGroup.($mgdetail.Name) = @{}
-                    $script:htNamingValidation.ManagementGroup.($mgdetail.Name).nameInvalidChars = ($namingValidationResult -join "")
-                    $script:htNamingValidation.ManagementGroup.($mgdetail.Name).name = $mgdetail.properties.displayName
+            if ($htParameters.HierarchyMapOnly -eq $false) {
+
+                #namingValidation
+                if (-not [string]::IsNullOrEmpty($mgdetail.properties.displayName)) {
+                    $namingValidationResult = NamingValidation -toCheck $mgdetail.properties.displayName
+                    if ($namingValidationResult.Count -gt 0) {
+                        $script:htNamingValidation.ManagementGroup.($mgdetail.Name) = @{}
+                        $script:htNamingValidation.ManagementGroup.($mgdetail.Name).nameInvalidChars = ($namingValidationResult -join "")
+                        $script:htNamingValidation.ManagementGroup.($mgdetail.Name).name = $mgdetail.properties.displayName
+                    }
+                }
+
+                $targetMgOrSub = "MG"
+                $baseParameters = @{
+                    scopeId          = $mgdetail.Name
+                    scopeDisplayName = $mgdetail.properties.displayName
+                }
+
+                #ManagementGroupASCSecureScore
+                $mgAscSecureScoreResult = DataCollectionMGSecureScore -Id $mgdetail.Name
+
+                $addRowToTableParameters = @{
+                    hierarchyLevel         = $hierarchyLevel
+                    mgParentId             = $mgParentId
+                    mgParentName           = $mgParentName
+                    mgAscSecureScoreResult = $mgAscSecureScoreResult
+                }
+
+                #mg diag
+                DataCollectionDiagnosticsMG @baseParameters
+
+                if ($htParameters.NoPolicyComplianceStates -eq $false) {
+                    #MGPolicyCompliance
+                    DataCollectionPolicyComplianceStates @baseParameters -TargetMgOrSub $targetMgOrSub
+                }
+
+                #MGBlueprintDefinitions
+                $functionReturn = DataCollectionBluePrintDefinitionsMG @baseParameters @addRowToTableParameters
+                if ($functionReturn."addRowToTableDone") {
+                    $addRowToTableDone = $true
+                }
+
+                #MGPolicyExemptions
+                DataCollectionPolicyExemptions @baseParameters -TargetMgOrSub $targetMgOrSub
+
+                #MGPolicyDefinitions
+                $functionReturn = DataCollectionPolicyDefinitions @baseParameters -TargetMgOrSub $targetMgOrSub
+                $policyDefinitionsScopedCount = $functionReturn."PolicyDefinitionsScopedCount"
+
+                #MGPolicySetDefinitions
+                $functionReturn = DataCollectionPolicySetDefinitions @baseParameters -TargetMgOrSub $targetMgOrSub
+                $policySetDefinitionsScopedCount = $functionReturn."PolicySetDefinitionsScopedCount"
+
+                if (-not $htMgAtScopePoliciesScoped.($mgdetail.Name)) {
+                    $script:htMgAtScopePoliciesScoped.($mgdetail.Name) = @{}
+                    $script:htMgAtScopePoliciesScoped.($mgdetail.Name).ScopedCount = $policyDefinitionsScopedCount + $policySetDefinitionsScopedCount
+                }
+
+                $scopedPolicyCounts = @{
+                    policyDefinitionsScopedCount    = $policyDefinitionsScopedCount
+                    policySetDefinitionsScopedCount = $policySetDefinitionsScopedCount
+                }
+
+                #MgPolicyAssignments
+                $functionReturn = DataCollectionPolicyAssignmentsMG @baseParameters @addRowToTableParameters @scopedPolicyCounts
+                if ($functionReturn."addRowToTableDone") {
+                    $addRowToTableDone = $true
+                }
+
+                #MGRoleDefinitions
+                DataCollectionRoleDefinitions @baseParameters -TargetMgOrSub $targetMgOrSub
+
+                #MGRoleAssignments
+                $functionReturn = DataCollectionRoleAssignmentsMG @baseParameters @addRowToTableParameters
+                if ($functionReturn."addRowToTableDone") {
+                    $addRowToTableDone = $true
+                }
+
+                if ($addRowToTableDone -ne $true) {
+                    AddRowToTable `
+                        -level $hierarchyLevel `
+                        -mgName $mgdetail.properties.displayName `
+                        -mgId $mgdetail.Name `
+                        -mgParentId $mgParentId `
+                        -mgParentName $mgParentName `
+                        -mgASCSecureScore $mgAscSecureScoreResult
                 }
             }
-
-            $targetMgOrSub = "MG"
-            $baseParameters = @{
-                scopeId          = $mgdetail.Name
-                scopeDisplayName = $mgdetail.properties.displayName
-            }
-
-            #ManagementGroupASCSecureScore
-            $mgAscSecureScoreResult = DataCollectionMGSecureScore -Id $mgdetail.Name
-
-            $addRowToTableParameters = @{
-                hierarchyLevel         = $hierarchyLevel
-                mgParentId             = $mgParentId
-                mgParentName           = $mgParentName
-                mgAscSecureScoreResult = $mgAscSecureScoreResult
-            }
-
-            #mg diag
-            DataCollectionDiagnosticsMG @baseParameters
-
-            if ($htParameters.NoPolicyComplianceStates -eq $false) {
-                #MGPolicyCompliance
-                DataCollectionPolicyComplianceStates @baseParameters -TargetMgOrSub $targetMgOrSub
-            }
-
-            #MGBlueprintDefinitions
-            $functionReturn = DataCollectionBluePrintDefinitionsMG @baseParameters @addRowToTableParameters
-            if ($functionReturn."addRowToTableDone") {
-                $addRowToTableDone = $true
-            }
-
-            #MGPolicyExemptions
-            DataCollectionPolicyExemptions @baseParameters -TargetMgOrSub $targetMgOrSub
-
-            #MGPolicyDefinitions
-            $functionReturn = DataCollectionPolicyDefinitions @baseParameters -TargetMgOrSub $targetMgOrSub
-            $policyDefinitionsScopedCount = $functionReturn."PolicyDefinitionsScopedCount"
-
-            #MGPolicySetDefinitions
-            $functionReturn = DataCollectionPolicySetDefinitions @baseParameters -TargetMgOrSub $targetMgOrSub
-            $policySetDefinitionsScopedCount = $functionReturn."PolicySetDefinitionsScopedCount"
-
-            if (-not $htMgAtScopePoliciesScoped.($mgdetail.Name)) {
-                $script:htMgAtScopePoliciesScoped.($mgdetail.Name) = @{}
-                $script:htMgAtScopePoliciesScoped.($mgdetail.Name).ScopedCount = $policyDefinitionsScopedCount + $policySetDefinitionsScopedCount
-            }
-
-            $scopedPolicyCounts = @{
-                policyDefinitionsScopedCount    = $policyDefinitionsScopedCount
-                policySetDefinitionsScopedCount = $policySetDefinitionsScopedCount
-            }
-
-            #MgPolicyAssignments
-            $functionReturn = DataCollectionPolicyAssignmentsMG @baseParameters @addRowToTableParameters @scopedPolicyCounts
-            if ($functionReturn."addRowToTableDone") {
-                $addRowToTableDone = $true
-            }
-
-            #MGRoleDefinitions
-            DataCollectionRoleDefinitions @baseParameters -TargetMgOrSub $targetMgOrSub
-
-            #MGRoleAssignments
-            $functionReturn = DataCollectionRoleAssignmentsMG @baseParameters @addRowToTableParameters
-            if ($functionReturn."addRowToTableDone") {
-                $addRowToTableDone = $true
-            }
-
-            if ($addRowToTableDone -ne $true) {
+            else {
                 AddRowToTable `
                     -level $hierarchyLevel `
                     -mgName $mgdetail.properties.displayName `
@@ -4853,31 +4986,22 @@ function DataCollection($mgId) {
                     -mgParentName $mgParentName `
                     -mgASCSecureScore $mgAscSecureScoreResult
             }
-        }
-        else {
-            AddRowToTable `
-                -level $hierarchyLevel `
-                -mgName $mgdetail.properties.displayName `
-                -mgId $mgdetail.Name `
-                -mgParentId $mgParentId `
-                -mgParentName $mgParentName `
-                -mgASCSecureScore $mgAscSecureScoreResult
-        }
 
 
-        $endMgLoopThis = Get-Date
-        $null = $script:customDataCollectionDuration.Add([PSCustomObject]@{
-                Type        = "Mg"
-                Id          = $mgdetail.Name
-                DurationSec = (NEW-TIMESPAN -Start $startMgLoopThis -End $endMgLoopThis).TotalSeconds
-            })
+            $endMgLoopThis = Get-Date
+            $null = $script:customDataCollectionDuration.Add([PSCustomObject]@{
+                    Type        = "Mg"
+                    Id          = $mgdetail.Name
+                    DurationSec = (NEW-TIMESPAN -Start $startMgLoopThis -End $endMgLoopThis).TotalSeconds
+                })
 
-        $null = $script:arrayDataCollectionProgressMg.Add($mgdetail.Name)
-        $progressCount = ($arrayDataCollectionProgressMg).Count
-        Write-Host "  $($progressCount)/$($allManagementGroupsFromEntitiesChildOfRequestedMgCount) ManagementGroups processed"
+            $null = $script:arrayDataCollectionProgressMg.Add($mgdetail.Name)
+            $progressCount = ($arrayDataCollectionProgressMg).Count
+            Write-Host "  $($progressCount)/$($allManagementGroupsFromEntitiesChildOfRequestedMgCount) Management Groups processed"
 
-    } -ThrottleLimit $ThrottleLimit
-    #[System.GC]::Collect()
+        } -ThrottleLimit $ThrottleLimit
+        #[System.GC]::Collect()
+    }
 
     $endMgLoop = Get-Date
     Write-Host " CustomDataCollection ManagementGroups processing duration: $((NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalSeconds) seconds)"
@@ -4982,16 +5106,15 @@ function DataCollection($mgId) {
                 $htPrincipals = $using:htPrincipals
                 $htServicePrincipals = $using:htServicePrincipals
                 $htUserTypesGuest = $using:htUserTypesGuest
-                #$htDefenderPlans = $using:htDefenderPlans
                 $arrayDefenderPlans = $using:arrayDefenderPlans
                 $arrayDefenderPlansSubscriptionNotRegistered = $using:arrayDefenderPlansSubscriptionNotRegistered
                 $arrayUserAssignedIdentities4Resources = $using:arrayUserAssignedIdentities4Resources
+                $htSubscriptionsRoleAssignmentLimit = $using:htSubscriptionsRoleAssignmentLimit
                 #Functions
                 $function:AzAPICall = $using:funcAzAPICall
                 $function:CreateBearerToken = $using:funcCreateBearerToken
                 $function:AddRowToTable = $using:funcAddRowToTable
                 $function:GetJWTDetails = $using:funcGetJWTDetails
-                #$function:GetRoleAssignments = $using:funcGetRoleAssignments
                 $function:NamingValidation = $using:funcNamingValidation
                 $function:ResolveObjectIds = $using:funcResolveObjectIds
                 $function:DataCollectionMGSecureScore = $using:funcDataCollectionMGSecureScore
@@ -5204,12 +5327,11 @@ function DataCollection($mgId) {
         Write-Host " CustomDataCollection Subscriptions processing duration: $((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds) seconds)"
 
         #test
-        Write-Host " BuiltIn PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq "BuiltIn"}).Count)"
-        Write-Host " Custom PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq "Custom"}).Count)"
-        Write-Host " All PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.Count)"
+        Write-Host " built-in PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq "BuiltIn"}).Count)"
+        Write-Host " custom PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq "Custom"}).Count)"
+        Write-Host " all PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.Count)"
     }
     #endregion SUBSCRIPTION
-
 }
 
 #endregion dataCollection
@@ -5489,10 +5611,10 @@ function ProcessScopeInsightsMGSubs($mgChild) {
     $subscriptionsOutOfScopelinked = $outOfScopeSubscriptions.where( { $_.ManagementGroupId -eq $mgChild } )
     $subscriptionsOutOfScopelinkedCount = ($subscriptionsOutOfScopelinked).count
     if ($subscriptionsOutOfScopelinkedCount -gt 0) {
-        $subscriptionsOutOfScopelinkedInfo = "($subscriptionsOutOfScopelinkedCount out-of-scope)"
+        $subscriptionsOutOfScopelinkedDetail = "($($subscriptionsOutOfScopelinkedCount) out-of-scope)"
     }
     else {
-        $subscriptionsOutOfScopelinkedInfo = ""
+        $subscriptionsOutOfScopelinkedDetail = ""
     }
     Write-Host "  Building ScopeInsights MG '$mgChild', $subscriptionLinkedCount Subscriptions"
 
@@ -5501,7 +5623,7 @@ function ProcessScopeInsightsMGSubs($mgChild) {
             $script:html += @"
     <tr>
         <td class="detailstd">
-            <button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionLinkedCount Subscriptions linked $subscriptionsOutOfScopelinkedInfo</p></button>
+            <button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionLinkedCount Subscriptions linked $subscriptionsOutOfScopelinkedDetail</p></button>
             <div class="content"><!--collapsible-->
 "@
         }
@@ -5559,7 +5681,7 @@ function ProcessScopeInsightsMGSubs($mgChild) {
             $script:html += @"
     <tr>
         <td class="detailstd">
-            <p><i class="fa fa-ban" aria-hidden="true"></i> $subscriptionLinkedCount Subscriptions linked $subscriptionsOutOfScopelinkedInfo</p>
+            <p><i class="fa fa-ban" aria-hidden="true"></i> $subscriptionLinkedCount Subscriptions linked $subscriptionsOutOfScopelinkedDetail</p>
 "@
         }
     }
@@ -5729,7 +5851,7 @@ function ProcessScopeInsightsMgOrSub($mgOrSub, $mgChild, $subscriptionId, $subsc
             $htmlTableId = "ScopeInsights_DefenderPlans_$($subscriptionId -replace '-','_')"
             $randomFunctionName = "func_$htmlTableId"
             [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud plans <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud plans <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p></button>
 <div class="content contentSISub">
 "@)
 
@@ -5776,7 +5898,7 @@ function ProcessScopeInsightsMgOrSub($mgOrSub, $mgChild, $subscriptionId, $subsc
 </tbody>
 </table>
 <script>
-function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
 window.helpertfConfig4$htmlTableId =1;
 var tfConfig4$htmlTableId = {
 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
@@ -5863,7 +5985,7 @@ tf.init();}}
             $htmlTableId = "ScopeInsights_DiagnosticsSub_$($subscriptionId -replace '-','_')"
             $randomFunctionName = "func_$htmlTableId"
             [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $diagnosticsSubCount Subscription Diagnostic settings</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $diagnosticsSubCount Subscription Diagnostic settings</p></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -5915,7 +6037,7 @@ tf.init();}}
 </tbody>
 </table>
 <script>
-function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
 window.helpertfConfig4$htmlTableId =1;
 var tfConfig4$htmlTableId = {
 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
@@ -6005,7 +6127,7 @@ tf.init();}}
             $htmlTableId = "ScopeInsights_Tags_$($subscriptionId -replace '-','_')"
             $randomFunctionName = "func_$htmlTableId"
             [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible">
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
 <p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $tagsSubscriptionCount Subscription Tags | Limit: ($tagsSubscriptionCount/$LimitTagsSubscription)</p></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -6032,9 +6154,9 @@ tf.init();}}
             </tbody>
         </table>
         <script>
-            function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
-   window.helpertfConfig4$htmlTableId =1;
-   var tfConfig4$htmlTableId = {
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -6107,7 +6229,7 @@ extensions: [{ name: 'sort' }]
             $htmlTableId = "ScopeInsights_TagNameUsage_$($subscriptionId -replace '-','_')"
             $randomFunctionName = "func_$htmlTableId"
             [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible">
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
 <p><i class="fa fa-check-circle blue" aria-hidden="true"></i> Tag Name Usage ($tagNamesUniqueCount unique Tag Names applied at $($tagNamesUsedInScopes)</p></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Resource naming and tagging decision guide</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/decision-guides/resource-tagging" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
@@ -6137,9 +6259,9 @@ extensions: [{ name: 'sort' }]
             </tbody>
         </table>
         <script>
-            function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
-            window.helpertfConfig4$htmlTableId =1;
-            var tfConfig4$htmlTableId = {
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -6245,7 +6367,7 @@ extensions: [{ name: 'sort' }]
                 $htmlTableId = "ScopeInsights_Consumption_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><i class="fa fa-credit-card blue" aria-hidden="true"></i> Total cost $($arrayTotalCostSummarySub -join ", ") last $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)</button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-credit-card blue" aria-hidden="true"></i> Total cost $($arrayTotalCostSummarySub -join ", ") last $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)</button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -6280,7 +6402,7 @@ extensions: [{ name: 'sort' }]
 </table>
 </div>
 <script>
-function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
 window.helpertfConfig4$htmlTableId=1;
 var tfConfig4$htmlTableId = {
     base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
@@ -6372,7 +6494,7 @@ tf.init();}}
                 $htmlTableId = "ScopeInsights_ResourceProvider_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -6399,9 +6521,9 @@ tf.init();}}
         </table>
     </div>
     <script>
-        function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
-   window.helpertfConfig4$htmlTableId=1;
-   var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId=1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
                 if ($tfCount -gt 10) {
@@ -6469,7 +6591,7 @@ extensions: [{ name: 'sort' }]
             $resourcesLocksReadOnlyCount = $htResourceLocks.($subscriptionId).ResourcesLocksReadOnlyCount
 
             [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible">
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
 <p><i class="fa fa-check-circle blue" aria-hidden="true"></i> Resource Locks</p></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Considerations before applying locks</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources#considerations-before-applying-locks" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
@@ -6491,9 +6613,9 @@ extensions: [{ name: 'sort' }]
 </tbody>
 </table>
 <script>
-            function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
-   window.helpertfConfig4$htmlTableId =1;
-   var tfConfig4$htmlTableId = {
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -6569,7 +6691,7 @@ extensions: [{ name: 'sort' }]
             $htmlTableId = "ScopeInsights_DiagnosticsMg_$($mgChild -replace '-','_')"
             $randomFunctionName = "func_$htmlTableId"
             [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $diagnosticsMgCount Management Group Diagnostic settings</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $diagnosticsMgCount Management Group Diagnostic settings</p></button>
 <div class="content contentSIMG">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -6621,9 +6743,9 @@ extensions: [{ name: 'sort' }]
     </tbody>
 </table>
 <script>
-    function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
-window.helpertfConfig4$htmlTableId =1;
-var tfConfig4$htmlTableId = {
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -6755,7 +6877,7 @@ extensions: [{ name: 'sort' }]
                     $htmlTableId = "ScopeInsights_Consumption_$($mgChild -replace '-','_')"
                     $randomFunctionName = "func_$htmlTableId"
                     [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><i class="fa fa-credit-card blue" aria-hidden="true"></i> Total cost $($arrayTotalCostSummaryMg -join "$CsvDelimiterOpposite ") last $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)</button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-credit-card blue" aria-hidden="true"></i> Total cost $($arrayTotalCostSummaryMg -join "$CsvDelimiterOpposite ") last $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)</button>
 <div class="content contentSIMG">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV
 <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> |
@@ -6794,7 +6916,7 @@ extensions: [{ name: 'sort' }]
 </table>
 </div>
 <script>
-function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
 window.helpertfConfig4$htmlTableId=1;
 var tfConfig4$htmlTableId = {
 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
@@ -6881,7 +7003,7 @@ tf.init();}}
                 $htmlTableId = "ScopeInsights_Resources_$($mgChild -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $resourcesAllChildSubscriptionResourceTypeCount ResourceTypes ($resourcesAllChildSubscriptionTotal Resources) in $resourcesAllChildSubscriptionLocationCount Locations (all Subscriptions below this scope)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $resourcesAllChildSubscriptionResourceTypeCount ResourceTypes ($resourcesAllChildSubscriptionTotal Resources) in $resourcesAllChildSubscriptionLocationCount Locations (all Subscriptions below this scope)</p></button>
 <div class="content contentSIMG">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -6909,9 +7031,9 @@ tf.init();}}
             </tbody>
         </table>
         <script>
-            function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
-   window.helpertfConfig4$htmlTableId =1;
-   var tfConfig4$htmlTableId = {
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
                 if ($tfCount -gt 10) {
@@ -6970,7 +7092,7 @@ extensions: [{ name: 'sort' }]
                 $htmlTableId = "ScopeInsights_Resources_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $resourcesSubscriptionResourceTypeCount ResourceTypes ($resourcesSubscriptionTotal Resources) in $resourcesSubscriptionLocationCount Locations</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $resourcesSubscriptionResourceTypeCount ResourceTypes ($resourcesSubscriptionTotal Resources) in $resourcesSubscriptionLocationCount Locations</p></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -6998,9 +7120,9 @@ extensions: [{ name: 'sort' }]
             </tbody>
         </table>
         <script>
-            function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
-   window.helpertfConfig4$htmlTableId =1;
-   var tfConfig4$htmlTableId = {
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
                 if ($tfCount -gt 10) {
@@ -7090,7 +7212,7 @@ extensions: [{ name: 'sort' }]
                 $htmlTableId = "ScopeInsights_resourcesDiagnosticsCapable_$($mgchild -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesAllChildSubscriptionResourceTypeCount ResourceTypes (1st party) Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs) (all Subscriptions below this scope)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesAllChildSubscriptionResourceTypeCount ResourceTypes (1st party) Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs) (all Subscriptions below this scope)</p></button>
 <div class="content contentSIMG">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -7124,9 +7246,9 @@ extensions: [{ name: 'sort' }]
             </tbody>
         </table>
         <script>
-            function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
-   window.helpertfConfig4$htmlTableId =1;
-   var tfConfig4$htmlTableId = {
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
                 if ($tfCount -gt 10) {
@@ -7218,7 +7340,7 @@ extensions: [{ name: 'sort' }]
                 $htmlTableId = "ScopeInsights_resourcesDiagnosticsCapable_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesSubscriptionResourceTypeCount ResourceTypes (1st party) Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesSubscriptionResourceTypeCount ResourceTypes (1st party) Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs)</p></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -7252,9 +7374,9 @@ extensions: [{ name: 'sort' }]
             </tbody>
         </table>
         <script>
-            function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
-   window.helpertfConfig4$htmlTableId =1;
-   var tfConfig4$htmlTableId = {
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
                 if ($tfCount -gt 10) {
@@ -7325,7 +7447,7 @@ extensions: [{ name: 'sort' }]
                 $htmlTableId = "ScopeInsights_UserAssignedIdentities4Resources_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible">
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
 <p><i class="fa fa-user-circle-o" aria-hidden="true"></i> UserAssigned Managed Identities assigned to Resources / vice versa</p></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Managed identity 'user-assigned' vs 'system-assigned'</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview#managed-identity-types" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
@@ -7383,9 +7505,9 @@ extensions: [{ name: 'sort' }]
             </tbody>
         </table>
         <script>
-            function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
-   window.helpertfConfig4$htmlTableId =1;
-   var tfConfig4$htmlTableId = {
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
                 if ($tfCount -gt 10) {
@@ -7521,7 +7643,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         $randomFunctionName = "func_$htmlTableId"
         $noteOrNot = ""
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $policiesCount Policy assignments ($policiesAssignedAtScope at scope, $policiesInherited inherited) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $policiesCount Policy assignments ($policiesAssignedAtScope at scope, $policiesInherited inherited) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom)</p></button>
 <div class="content $SIDivContentClass">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a><br>
 &nbsp;&nbsp;<span class="hintTableSize">*Depending on the number of rows and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
@@ -7619,9 +7741,9 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         </table>
     </div>
     <script>
-        function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
-   window.helpertfConfig4$htmlTableId =1;
-   var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -7777,7 +7899,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         $randomFunctionName = "func_$htmlTableId"
         $noteOrNot = ""
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $policySetsCount PolicySet assignments ($policySetsAssignedAtScope at scope, $policySetsInherited inherited) (Builtin: $policySetsCountBuiltin | Custom: $policySetsCountCustom)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $policySetsCount PolicySet assignments ($policySetsAssignedAtScope at scope, $policySetsInherited inherited) (Builtin: $policySetsCountBuiltin | Custom: $policySetsCountCustom)</p></button>
 <div class="content $SIDivContentClass">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -7867,9 +7989,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         </table>
     </div>
     <script>
-        function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
-   window.helpertfConfig4$htmlTableId =1;
-   var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -7999,13 +8121,13 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     if ($mgOrSub -eq "mg") {
         $SIDivContentClass = "contentSIMG"
         $htmlTableIdentifier = $mgChild
-        $scopePolicies = $customPoliciesDetailed.Where( { $_.PolicyDefinitionId -like "*/providers/Microsoft.Management/managementGroups/$mgChild/*" } )
+        $scopePolicies = $customPoliciesDetailed.where( { $_.PolicyDefinitionId -like "*/providers/Microsoft.Management/managementGroups/$mgChild/*" } )
         $scopePoliciesCount = ($scopePolicies).count
     }
     if ($mgOrSub -eq "sub") {
         $SIDivContentClass = "contentSISub"
         $htmlTableIdentifier = $subscriptionId
-        $scopePolicies = $customPoliciesDetailed.Where( { $_.PolicyDefinitionId -like "*/subscriptions/$subscriptionId/*" } )
+        $scopePolicies = $customPoliciesDetailed.where( { $_.PolicyDefinitionId -like "*/subscriptions/$subscriptionId/*" } )
         $scopePoliciesCount = ($scopePolicies).count
     }
 
@@ -8033,7 +8155,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         }
 
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p>$faIcon $scopePoliciesCount Custom Policy definitions scoped | Limit: ($scopePoliciesCount/$LimitPOLICYPolicyScoped)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p>$faIcon $scopePoliciesCount Custom Policy definitions scoped | Limit: ($scopePoliciesCount/$LimitPOLICYPolicyScoped)</p></button>
 <div class="content $SIDivContentClass">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -8052,6 +8174,12 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 "@)
         $htmlScopeInsightsScopedPolicies = $null
         $htmlScopeInsightsScopedPolicies = foreach ($custompolicy in $scopePolicies | Sort-Object @{Expression = { $_.PolicyDisplayName } }, @{Expression = { $_.PolicyDefinitionId } }) {
+            if ($custompolicy.UsedInPolicySetsCount -gt 0){
+                $customPolicyUsedInPolicySets = "$($customPolicy.UsedInPolicySetsCount) ($($customPolicy.UsedInPolicySets))"
+            }
+            else{
+                $customPolicyUsedInPolicySets = $($customPolicy.UsedInPolicySetsCount)
+            }
             @"
 <tr>
 <td>$($customPolicy.PolicyDisplayName -replace "<", "&lt;" -replace ">", "&gt;")</td>
@@ -8060,7 +8188,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <td>$($customPolicy.PolicyEffect)</td>
 <td>$($customPolicy.RoleDefinitions)</td>
 <td class="breakwordall">$($customPolicy.UniqueAssignments -replace "<", "&lt;" -replace ">", "&gt;")</td>
-<td class="breakwordall">$($customPolicy.UsedInPolicySets)</td>
+<td class="breakwordall">$($customPolicyUsedInPolicySets)</td>
 </tr>
 "@
         }
@@ -8070,9 +8198,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             </table>
         </div>
         <script>
-            function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
-   window.helpertfConfig4$htmlTableId =1;
-   var tfConfig4$htmlTableId = {
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -8133,13 +8261,13 @@ extensions: [{ name: 'sort' }]
     if ($mgOrSub -eq "mg") {
         $SIDivContentClass = "contentSIMG"
         $htmlTableIdentifier = $mgChild
-        $scopePolicySets = $customPolicySetsDetailed.Where( { $_.PolicySetDefinitionId -like "*/providers/Microsoft.Management/managementGroups/$mgChild/*" } )
+        $scopePolicySets = $customPolicySetsDetailed.where( { $_.PolicySetDefinitionId -like "*/providers/Microsoft.Management/managementGroups/$mgChild/*" } )
         $scopePolicySetsCount = ($scopePolicySets).count
     }
     if ($mgOrSub -eq "sub") {
         $SIDivContentClass = "contentSISub"
         $htmlTableIdentifier = $subscriptionId
-        $scopePolicySets = $customPolicySetsDetailed.Where( { $_.PolicySetDefinitionId -like "*/subscriptions/$subscriptionId/*" } )
+        $scopePolicySets = $customPolicySetsDetailed.where( { $_.PolicySetDefinitionId -like "*/subscriptions/$subscriptionId/*" } )
         $scopePolicySetsCount = ($scopePolicySets).count
     }
 
@@ -8166,7 +8294,7 @@ extensions: [{ name: 'sort' }]
             }
         }
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p>$faIcon $scopePolicySetsCount Custom PolicySet definitions scoped | Limit: ($scopePolicySetsCount/$LimitPOLICYPolicySetScoped)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p>$faIcon $scopePolicySetsCount Custom PolicySet definitions scoped | Limit: ($scopePolicySetsCount/$LimitPOLICYPolicySetScoped)</p></button>
 <div class="content $SIDivContentClass">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -8199,9 +8327,9 @@ extensions: [{ name: 'sort' }]
             </table>
         </div>
         <script>
-            function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
-   window.helpertfConfig4$htmlTableId =1;
-   var tfConfig4$htmlTableId = {
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -8268,7 +8396,7 @@ extensions: [{ name: 'sort' }]
             $htmlTableId = "ScopeInsights_BlueprintAssignment_$($htmlTableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
             $randomFunctionName = "func_$htmlTableId"
             [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintsAssignedCount Blueprints assigned</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintsAssignedCount Blueprints assigned</p></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -8303,9 +8431,9 @@ extensions: [{ name: 'sort' }]
             </table>
         </div>
         <script>
-            function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
-   window.helpertfConfig4$htmlTableId =1;
-   var tfConfig4$htmlTableId = {
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -8376,7 +8504,7 @@ extensions: [{ name: 'sort' }]
         $htmlTableId = "ScopeInsights_BlueprintScoped_$($htmlTableIdentifier -replace "\(","_" -replace "\)","_" -replace "-","_" -replace "\.","_")"
         $randomFunctionName = "func_$htmlTableId"
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintsScopedCount Blueprints scoped</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintsScopedCount Blueprints scoped</p></button>
 <div class="content $SIDivContentClass">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -8407,9 +8535,9 @@ extensions: [{ name: 'sort' }]
             </table>
         </div>
         <script>
-            function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
-   window.helpertfConfig4$htmlTableId =1;
-   var tfConfig4$htmlTableId = {
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -8514,7 +8642,7 @@ extensions: [{ name: 'sort' }]
     if ($mgOrSub -eq "sub") {
         $SIDivContentClass = "contentSISub"
         $htmlTableIdentifier = $subscriptionId
-        $LimitRoleAssignmentsScope = $LimitRBACRoleAssignmentsSubscription
+        $LimitRoleAssignmentsScope = $htSubscriptionsRoleAssignmentLimit.($subscriptionId)
 
         $rolesAssigned = [System.Collections.ArrayList]@()
         $rolesAssignedCount = 0
@@ -8566,7 +8694,7 @@ extensions: [{ name: 'sort' }]
         $randomFunctionName = "func_$htmlTableId"
         $noteOrNot = ""
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$randomFunctionName()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $rolesAssignedCount Role assignments ($rolesAssignedInheritedCount inherited) (User: $rolesAssignedUser | Group: $rolesAssignedGroup | ServicePrincipal: $rolesAssignedServicePrincipal | Orphaned: $rolesAssignedUnknown) ($($roleSecurityFindingCustomRoleOwnerImg)CustomRoleOwner: $roleSecurityFindingCustomRoleOwner, $($RoleSecurityFindingOwnerAssignmentSPImg)OwnerAssignmentSP: $roleSecurityFindingOwnerAssignmentSP) (Policy related: $roleAssignmentsRelatedToPolicyCount) | Limit: ($rolesAssignedAtScopeCount/$LimitRoleAssignmentsScope)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $rolesAssignedCount Role assignments ($rolesAssignedInheritedCount inherited) (User: $rolesAssignedUser | Group: $rolesAssignedGroup | ServicePrincipal: $rolesAssignedServicePrincipal | Orphaned: $rolesAssignedUnknown) ($($roleSecurityFindingCustomRoleOwnerImg)CustomRoleOwner: $roleSecurityFindingCustomRoleOwner, $($RoleSecurityFindingOwnerAssignmentSPImg)OwnerAssignmentSP: $roleSecurityFindingOwnerAssignmentSP) (Policy related: $roleAssignmentsRelatedToPolicyCount) | Limit: ($rolesAssignedAtScopeCount/$LimitRoleAssignmentsScope)</p></button>
 <div class="content $SIDivContentClass">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a><br>
 &nbsp;&nbsp;<span class="hintTableSize">*Depending on the number of rows and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
@@ -8578,6 +8706,7 @@ extensions: [{ name: 'sort' }]
 <th>RoleId</th>
 <th>Role Type</th>
 <th>Data</th>
+<th>Can do Role assignment</th>
 <th>Identity Displayname</th>
 <th>Identity SignInName</th>
 <th>Identity ObjectId</th>
@@ -8602,6 +8731,7 @@ extensions: [{ name: 'sort' }]
 <td>$($roleAssignment.RoleId)</td>
 <td>$($roleAssignment.RoleType)</td>
 <td>$($roleAssignment.RoleDataRelated)</td>
+<td>$($roleAssignment.RoleCanDoRoleAssignments)</td>
 <td class="breakwordall">$($roleAssignment.ObjectDisplayName)</td>
 <td class="breakwordall">$($roleAssignment.ObjectSignInName)</td>
 <td class="breakwordall">$($roleAssignment.ObjectId)</td>
@@ -8622,9 +8752,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        function loadtf$randomFunctionName() { if (window.helpertfConfig4$htmlTableId !== 1) {
-   window.helpertfConfig4$htmlTableId =1;
-   var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -8656,10 +8786,12 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             linked_filters: true,
             col_3: 'select',
             col_4: 'select',
-            col_8: 'multiple',
-            col_9: 'select',
+            col_5: 'select',
+            col_9: 'multiple',
+            col_10: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -8677,7 +8809,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'date',
                 'caseinsensitivestring'
             ],
-            watermark: ['', 'try owner||reader', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', 'try owner||reader', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
             extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
@@ -8956,6 +9088,7 @@ function ProcessTenantSummary() {
                         RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
                         RoleSecurityCustomRoleOwner          = $rbac.RoleSecurityCustomRoleOwner
                         RoleSecurityOwnerAssignmentSP        = $rbac.RoleSecurityOwnerAssignmentSP
+                        RoleCanDoRoleAssignments             = $rbac.RoleCanDoRoleAssignments
                     })
 
 
@@ -9042,6 +9175,7 @@ function ProcessTenantSummary() {
                                     RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
                                     RoleSecurityCustomRoleOwner          = $rbac.RoleSecurityCustomRoleOwner
                                     RoleSecurityOwnerAssignmentSP        = $rbac.RoleSecurityOwnerAssignmentSP
+                                    RoleCanDoRoleAssignments             = $rbac.RoleCanDoRoleAssignments
                                 })
                         }
                     }
@@ -9084,6 +9218,7 @@ function ProcessTenantSummary() {
                                 RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
                                 RoleSecurityCustomRoleOwner          = $rbac.RoleSecurityCustomRoleOwner
                                 RoleSecurityOwnerAssignmentSP        = $rbac.RoleSecurityOwnerAssignmentSP
+                                RoleCanDoRoleAssignments             = $rbac.RoleCanDoRoleAssignments
                             })
                     }
                 }
@@ -9142,6 +9277,7 @@ function ProcessTenantSummary() {
                         RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
                         RoleSecurityCustomRoleOwner          = $rbac.RoleSecurityCustomRoleOwner
                         RoleSecurityOwnerAssignmentSP        = $rbac.RoleSecurityOwnerAssignmentSP
+                        RoleCanDoRoleAssignments             = $rbac.RoleCanDoRoleAssignments
                     })
             }
         }
@@ -9202,6 +9338,7 @@ function ProcessTenantSummary() {
                     RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
                     RoleSecurityCustomRoleOwner          = $rbac.RoleSecurityCustomRoleOwner
                     RoleSecurityOwnerAssignmentSP        = $rbac.RoleSecurityOwnerAssignmentSP
+                    RoleCanDoRoleAssignments             = $rbac.RoleCanDoRoleAssignments
                 })
         }
     }
@@ -9414,10 +9551,12 @@ function ProcessTenantSummary() {
 
         #PolicyUsedInPolicySet
         $usedInPolicySet = "0"
+        $usedInPolicySet4CSV = ""
         $usedInPolicySetCount = "0"
         if (($htPoliciesUsedInPolicySets).($tenantPolicy.PolicyDefinitionId)) {
             $hlpPolicySetUsed = ($htPoliciesUsedInPolicySets).($tenantPolicy.PolicyDefinitionId)
-            $usedInPolicySet = "$(($hlpPolicySetUsed.PolicySet).Count) ($(($hlpPolicySetUsed.PolicySet | Sort-Object) -join "$CsvDelimiterOpposite ")"
+            $usedInPolicySet = "$(($hlpPolicySetUsed.PolicySet | Sort-Object) -join "$CsvDelimiterOpposite ")"
+            $usedInPolicySet4CSV = "$(($hlpPolicySetUsed.PolicySet4CSV | Sort-Object) -join "$CsvDelimiterOpposite ")"
             $usedInPolicySetCount = ($hlpPolicySetUsed.PolicySet).Count
         }
 
@@ -9482,6 +9621,7 @@ function ProcessTenantSummary() {
 
             $null = $script:customPoliciesDetailed.Add([PSCustomObject]@{
                     Type                  = "Custom"
+                    ScopeMGLevel          = $tenantPolicy.ScopeMGLevel
                     Scope                 = $tenantPolicy.ScopeMgSub
                     ScopeId               = $tenantPolicy.ScopeId
                     PolicyDisplayName     = $tenantPolicy.DisplayName
@@ -9491,8 +9631,9 @@ function ProcessTenantSummary() {
                     RoleDefinitions       = $policyRoleDefinitions
                     RoleDefinitionsClear  = $policyRoleDefinitionsClear
                     UniqueAssignments     = $uniqueAssignments
+                    UsedInPolicySetsCount = $usedInPolicySetCount
                     UsedInPolicySets      = $usedInPolicySet
-                    UsedInPolicySetsClean = $usedInPolicySet
+                    UsedInPolicySet4CSV   = $usedInPolicySet4CSV
                     CreatedOn             = $createdOn
                     CreatedBy             = $createdBy
                     UpdatedOn             = $updatedOn
@@ -9501,39 +9642,45 @@ function ProcessTenantSummary() {
                 })
 
             $null = $script:tenantPoliciesDetailed.Add([PSCustomObject]@{
-                    Type                 = "Custom"
-                    Scope                = $tenantPolicy.ScopeMgSub
-                    ScopeId              = $tenantPolicy.ScopeId
-                    PolicyDisplayName    = $tenantPolicy.DisplayName
-                    PolicyDefinitionName = $tenantPolicy.PolicyDefinitionId -replace ".*/"
-                    PolicyDefinitionId   = $tenantPolicy.PolicyDefinitionId
-                    PolicyEffect         = $effect
-                    PolicyCategory       = $tenantPolicy.Category
-                    UniqueAssignments    = $policyUniqueAssignmentsCount
-                    UsedInPolicySets     = $usedInPolicySetCount
-                    CreatedOn            = $createdOn
-                    CreatedBy            = $createdBy
-                    UpdatedOn            = $updatedOn
-                    UpdatedBy            = $updatedBy
+                    Type                  = "Custom"
+                    ScopeMGLevel          = $tenantPolicy.ScopeMGLevel
+                    Scope                 = $tenantPolicy.ScopeMgSub
+                    ScopeId               = $tenantPolicy.ScopeId
+                    PolicyDisplayName     = $tenantPolicy.DisplayName
+                    PolicyDefinitionName  = $tenantPolicy.PolicyDefinitionId -replace ".*/"
+                    PolicyDefinitionId    = $tenantPolicy.PolicyDefinitionId
+                    PolicyEffect          = $effect
+                    PolicyCategory        = $tenantPolicy.Category
+                    UniqueAssignments     = $policyUniqueAssignmentsCount
+                    UsedInPolicySetsCount = $usedInPolicySetCount
+                    UsedInPolicySets      = $usedInPolicySet
+                    UsedInPolicySet4CSV   = $usedInPolicySet4CSV
+                    CreatedOn             = $createdOn
+                    CreatedBy             = $createdBy
+                    UpdatedOn             = $updatedOn
+                    UpdatedBy             = $updatedBy
                     #Json                  = [string]($tenantPolicy.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
                 })
         }
         else {
             $null = $script:tenantPoliciesDetailed.Add([PSCustomObject]@{
-                    Type                 = "BuiltIn"
-                    Scope                = ""
-                    ScopeId              = ""
-                    PolicyDisplayName    = $tenantPolicy.DisplayName
-                    PolicyDefinitionName = $tenantPolicy.PolicyDefinitionId -replace ".*/"
-                    PolicyDefinitionId   = $tenantPolicy.PolicyDefinitionId
-                    PolicyEffect         = $effect
-                    PolicyCategory       = $tenantPolicy.Category
-                    UniqueAssignments    = $policyUniqueAssignmentsCount
-                    UsedInPolicySets     = $usedInPolicySetCount
-                    CreatedOn            = ""
-                    CreatedBy            = ""
-                    UpdatedOn            = ""
-                    UpdatedBy            = ""
+                    Type                  = "BuiltIn"
+                    ScopeMGLevel          = $tenantPolicy.ScopeMGLevel
+                    Scope                 = ""
+                    ScopeId               = ""
+                    PolicyDisplayName     = $tenantPolicy.DisplayName
+                    PolicyDefinitionName  = $tenantPolicy.PolicyDefinitionId -replace ".*/"
+                    PolicyDefinitionId    = $tenantPolicy.PolicyDefinitionId
+                    PolicyEffect          = $effect
+                    PolicyCategory        = $tenantPolicy.Category
+                    UniqueAssignments     = $policyUniqueAssignmentsCount
+                    UsedInPolicySetsCount = $usedInPolicySetCount
+                    UsedInPolicySets      = $usedInPolicySet
+                    UsedInPolicySet4CSV   = $usedInPolicySet4CSV
+                    CreatedOn             = ""
+                    CreatedBy             = ""
+                    UpdatedOn             = ""
+                    UpdatedBy             = ""
                     #Json                  = [string]($tenantPolicy.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
                 })
         }
@@ -9542,7 +9689,7 @@ function ProcessTenantSummary() {
     if (-not $NoCsvExport) {
         $csvFilename = "$($filename)_PolicyDefinitions"
         Write-Host "   Exporting PolicyDefinitions CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-        $tenantPoliciesDetailed | Sort-Object -Property Type, Scope, PolicyDefinitionId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+        $tenantPoliciesDetailed | Sort-Object -Property Type, Scope, PolicyDefinitionId | Select-Object -ExcludeProperty UsedInPolicySets | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
     }
 
     if ($getMgParentName -eq "Tenant Root") {
@@ -9550,8 +9697,9 @@ function ProcessTenantSummary() {
         if ($tenantCustomPoliciesCount -gt 0) {
             $tfCount = $tenantCustomPoliciesCount
             $htmlTableId = "TenantSummary_customPolicies"
+            $randomFunctionName = "func_$htmlTableId"
             [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_customPolicies"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tenantCustomPoliciesCount Custom Policy definitions ($scopeNamingSummary)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_customPolicies"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tenantCustomPoliciesCount Custom Policy definitions ($scopeNamingSummary)</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -9576,6 +9724,12 @@ function ProcessTenantSummary() {
 "@)
             $htmlSUMMARYcustompolicies = $null
             $htmlSUMMARYcustompolicies = foreach ($customPolicy in ($customPoliciesDetailed | Sort-Object @{Expression = { $_.PolicyDisplayName } }, @{Expression = { $_.PolicyDefinitionId } })) {
+                if ($custompolicy.UsedInPolicySetsCount -gt 0){
+                    $customPolicyUsedInPolicySets = "$($customPolicy.UsedInPolicySetsCount) ($($customPolicy.UsedInPolicySets))"
+                }
+                else{
+                    $customPolicyUsedInPolicySets = $($customPolicy.UsedInPolicySetsCount)
+                }
                 @"
 <tr>
 <td class="breakwordall">$($customPolicy.Scope)</td>
@@ -9586,7 +9740,7 @@ function ProcessTenantSummary() {
 <td class="breakwordall">$($customPolicy.PolicyEffect)</td>
 <td class="breakwordall">$($customPolicy.RoleDefinitions)</td>
 <td class="breakwordall">$($customPolicy.UniqueAssignments -replace "<", "&lt;" -replace ">", "&gt;")</td>
-<td class="breakwordall">$($customPolicy.UsedInPolicySets)</td>
+<td class="breakwordall">$($customPolicyUsedInPolicySets)</td>
 <td class="breakwordall">$($customPolicy.CreatedOn)</td>
 <td class="breakwordall">$($customPolicy.CreatedBy)</td>
 <td class="breakwordall">$($customPolicy.UpdatedOn)</td>
@@ -9603,7 +9757,9 @@ function ProcessTenantSummary() {
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -9659,7 +9815,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
         }
@@ -9704,8 +9860,9 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         if ($tenantCustomPoliciesCount -gt 0) {
             $tfCount = $tenantCustomPoliciesCount
             $htmlTableId = "TenantSummary_customPolicies"
+            $randomFunctionName = "func_$htmlTableId"
             [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_customPolicies"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tenantCustomPoliciesCount Custom Policy definitions $scopeNamingSummary ($customPoliciesFromSuperiorMGs from superior scopes)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_customPolicies"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tenantCustomPoliciesCount Custom Policy definitions $scopeNamingSummary ($customPoliciesFromSuperiorMGs from superior scopes)</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -9730,6 +9887,12 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 "@)
             $htmlSUMMARYcustompolicies = $null
             $htmlSUMMARYcustompolicies = foreach ($customPolicy in ($customPoliciesDetailed | Sort-Object @{Expression = { $_.PolicyDisplayName } }, @{Expression = { $_.PolicyDefinitionId } })) {
+                if ($custompolicy.UsedInPolicySetsCount -gt 0){
+                    $customPolicyUsedInPolicySets = "$($customPolicy.UsedInPolicySetsCount) ($($customPolicy.UsedInPolicySets))"
+                }
+                else{
+                    $customPolicyUsedInPolicySets = $($customPolicy.UsedInPolicySetsCount)
+                }
                 @"
 <tr>
 <td>$($customPolicy.Scope)</td>
@@ -9740,7 +9903,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 <td>$($customPolicy.PolicyEffect)</td>
 <td>$($customPolicy.RoleDefinitions)</td>
 <td class="breakwordall">$($customPolicy.UniqueAssignments -replace "<", "&lt;" -replace ">", "&gt;")</td>
-<td class="breakwordall">$($customPolicy.UsedInPolicySets)</td>
+<td class="breakwordall">$($customPolicyUsedInPolicySets)</td>
 <td>$($customPolicy.CreatedOn)</td>
 <td>$($customPolicy.CreatedBy)</td>
 <td>$($customPolicy.UpdatedOn)</td>
@@ -9754,7 +9917,9 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -9803,7 +9968,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
         }
@@ -9861,7 +10026,7 @@ extensions: [{ name: 'sort' }]
             $tfCount = ($arrayCustomPoliciesOrphanedFinalIncludingResourceGroups).count
             $htmlTableId = "TenantSummary_customPoliciesOrphaned"
             [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_customPoliciesOrphaned"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arrayCustomPoliciesOrphanedFinalIncludingResourceGroups).count) Orphaned Custom Policy definitions ($scopeNamingSummary)</span> <abbr title="Policy is not used in a PolicySet &#13;AND &#13;Policy has no assignments (including ResourceGroups)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_customPoliciesOrphaned"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arrayCustomPoliciesOrphanedFinalIncludingResourceGroups).count) Orphaned Custom Policy definitions ($scopeNamingSummary)</span> <abbr title="Policy is not used in a PolicySet &#13;AND &#13;Policy has no assignments (including ResourceGroups)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -9888,7 +10053,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -9924,7 +10091,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
         }
@@ -9983,7 +10150,7 @@ extensions: [{ name: 'sort' }]
             $tfCount = ($arrayCustomPoliciesOrphanedFinalIncludingResourceGroups).count
             $htmlTableId = "TenantSummary_customPoliciesOrphaned"
             [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_customPoliciesOrphaned"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arrayCustomPoliciesOrphanedFinalIncludingResourceGroups).count) Orphaned Custom Policy definitions ($scopeNamingSummary)</span> <abbr title="Policy is not used in a PolicySet &#13;AND &#13;Policy has no assignments (including ResourceGroups) &#13;Note: Policies from superior scopes are not evaluated"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_customPoliciesOrphaned"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arrayCustomPoliciesOrphanedFinalIncludingResourceGroups).count) Orphaned Custom Policy definitions ($scopeNamingSummary)</span> <abbr title="Policy is not used in a PolicySet &#13;AND &#13;Policy has no assignments (including ResourceGroups) &#13;Note: Policies from superior scopes are not evaluated"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -10010,7 +10177,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -10046,7 +10215,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
         }
@@ -10164,6 +10333,7 @@ extensions: [{ name: 'sort' }]
 
             $null = $script:customPolicySetsDetailed.Add([PSCustomObject]@{
                     Type                  = "Custom"
+                    ScopeMGLevel          = $tenantPolicySet.ScopeMGLevel
                     Scope                 = $tenantPolicySet.ScopeMgSub
                     ScopeId               = $tenantPolicySet.ScopeId
                     PolicySetDisplayName  = $tenantPolicySet.DisplayName
@@ -10181,6 +10351,7 @@ extensions: [{ name: 'sort' }]
 
             $null = $script:tenantPolicySetsDetailed.Add([PSCustomObject]@{
                     Type                    = "Custom"
+                    ScopeMGLevel            = $tenantPolicySet.ScopeMGLevel
                     Scope                   = $tenantPolicySet.ScopeMgSub
                     ScopeId                 = $tenantPolicySet.ScopeId
                     PolicySetDisplayName    = $tenantPolicySet.DisplayName
@@ -10200,6 +10371,7 @@ extensions: [{ name: 'sort' }]
         else {
             $null = $script:tenantPolicySetsDetailed.Add([PSCustomObject]@{
                     Type                    = "BuiltIn"
+                    ScopeMGLevel            = $tenantPolicySet.ScopeMGLevel
                     Scope                   = ""
                     ScopeId                 = ""
                     PolicySetDisplayName    = $tenantPolicySet.DisplayName
@@ -10235,7 +10407,7 @@ extensions: [{ name: 'sort' }]
             $tfCount = $tenantCustompolicySetsCount
             $htmlTableId = "TenantSummary_customPolicySets"
             [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_customPolicySets">$faimage <span class="valignMiddle">$tenantCustompolicySetsCount Custom PolicySet definitions ($scopeNamingSummary) (Limit: $tenantCustompolicySetsCount/$LimitPOLICYPolicySetDefinitionsScopedTenant)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_customPolicySets">$faimage <span class="valignMiddle">$tenantCustompolicySetsCount Custom PolicySet definitions ($scopeNamingSummary) (Limit: $tenantCustompolicySetsCount/$LimitPOLICYPolicySetDefinitionsScopedTenant)</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -10280,7 +10452,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -10327,7 +10501,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
         }
@@ -10358,7 +10532,7 @@ extensions: [{ name: 'sort' }]
             $tfCount = $tenantCustompolicySetsCount
             $htmlTableId = "TenantSummary_customPolicySets"
             [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_customPolicySets">$faimage <span class="valignMiddle">$tenantCustomPolicySetsCount Custom PolicySet definitions $scopeNamingSummary ($custompolicySetsFromSuperiorMGs from superior scopes) (Limit: $tenantCustompolicySetsCount/$LimitPOLICYPolicySetDefinitionsScopedTenant)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_customPolicySets">$faimage <span class="valignMiddle">$tenantCustomPolicySetsCount Custom PolicySet definitions $scopeNamingSummary ($custompolicySetsFromSuperiorMGs from superior scopes) (Limit: $tenantCustompolicySetsCount/$LimitPOLICYPolicySetDefinitionsScopedTenant)</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -10403,7 +10577,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -10450,7 +10626,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
         }
@@ -10490,7 +10666,7 @@ extensions: [{ name: 'sort' }]
             $tfCount = ($arraycustompolicySetSetsOrphanedFinalIncludingResourceGroups).count
             $htmlTableId = "TenantSummary_customPolicySetsOrphaned"
             [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_custompolicySetsOrphaned"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arraycustompolicySetSetsOrphanedFinalIncludingResourceGroups).count) Orphaned Custom PolicySet definitions ($scopeNamingSummary)</span> <abbr title="PolicySet has no assignments (including ResourceGroups)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_custompolicySetsOrphaned"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arraycustompolicySetSetsOrphanedFinalIncludingResourceGroups).count) Orphaned Custom PolicySet definitions ($scopeNamingSummary)</span> <abbr title="PolicySet has no assignments (including ResourceGroups)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -10517,7 +10693,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -10553,7 +10731,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
         }
@@ -10607,7 +10785,7 @@ extensions: [{ name: 'sort' }]
             $tfCount = ($arraycustompolicySetsOrphanedFinalIncludingResourceGroups).count
             $htmlTableId = "TenantSummary_customPolicySetsOrphaned"
             [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_custompolicySetsOrphaned"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arraycustompolicySetsOrphanedFinalIncludingResourceGroups).count) Orphaned Custom PolicySet definitions ($scopeNamingSummary)</span> <abbr title="PolicySet has no assignments (including ResourceGroups) &#13;Note: PolicySets from superior scopes are not evaluated"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_custompolicySetsOrphaned"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arraycustompolicySetsOrphanedFinalIncludingResourceGroups).count) Orphaned Custom PolicySet definitions ($scopeNamingSummary)</span> <abbr title="PolicySet has no assignments (including ResourceGroups) &#13;Note: PolicySets from superior scopes are not evaluated"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -10634,7 +10812,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -10670,7 +10850,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
         }
@@ -10710,7 +10890,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($policySetsDeprecated).count
         $htmlTableId = "TenantSummary_policySetsDeprecated"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_policySetsDeprecated"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($policySetsDeprecated).count) Custom PolicySet definitions / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_policySetsDeprecated"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($policySetsDeprecated).count) Custom PolicySet definitions / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -10751,7 +10931,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -10790,7 +10972,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -10857,7 +11039,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($policyAssignmentsDeprecated).count
         $htmlTableId = "TenantSummary_policyAssignmentsDeprecated"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_policyAssignmentsDeprecated"><i class="padlx fa fa-exclamation-triangle orange" aria-hidden="true"></i> <span class="valignMiddle">$(($policyAssignmentsDeprecated).count) Policy assignments / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_policyAssignmentsDeprecated"><i class="padlx fa fa-exclamation-triangle orange" aria-hidden="true"></i> <span class="valignMiddle">$(($policyAssignmentsDeprecated).count) Policy assignments / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -10897,7 +11079,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -10940,7 +11124,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -10964,7 +11148,7 @@ extensions: [{ name: 'sort' }]
         $expiredExemptionsCount = ($htPolicyAssignmentExemptions.Keys | where-object { $htPolicyAssignmentExemptions.($_).exemption.properties.expiresOn -and $htPolicyAssignmentExemptions.($_).exemption.properties.expiresOn -lt (Get-Date).ToUniversalTime() } | Measure-Object).count
 
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_policyExemptions"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($policyExemptionsCount) Policy exemptions | Expired: $($expiredExemptionsCount)</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_policyExemptions"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($policyExemptionsCount) Policy exemptions | Expired: $($expiredExemptionsCount)</span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -11059,19 +11243,19 @@ extensions: [{ name: 'sort' }]
 
             if (-not $NoCsvExport) {
                 $null = $exemptionData4CSVExport.Add([PSCustomObject]@{
-                    Scope = $exemptionScope
-                    ManagementGroupId = $mgId
-                    ManagementGroupName = $mgName
-                    SubscriptionId = $subId
-                    SubscriptionName = $subName
-                    ResourceGroup = $rgName
-                    ResourceName_ResourceType = $resName
-                    DisplayName = $exemption.properties.DisplayName
-                    Category = $exemption.properties.exemptionCategory
-                    ExpiresOn_UTC = $exemptionExpiresOn
-                    Id = $exemption.Id
-                    PolicyAssignmentId = $exemption.properties.policyAssignmentId
-                })
+                        Scope                     = $exemptionScope
+                        ManagementGroupId         = $mgId
+                        ManagementGroupName       = $mgName
+                        SubscriptionId            = $subId
+                        SubscriptionName          = $subName
+                        ResourceGroup             = $rgName
+                        ResourceName_ResourceType = $resName
+                        DisplayName               = $exemption.properties.DisplayName
+                        Category                  = $exemption.properties.exemptionCategory
+                        ExpiresOn_UTC             = $exemptionExpiresOn
+                        Id                        = $exemption.Id
+                        PolicyAssignmentId        = $exemption.properties.policyAssignmentId
+                    })
             }
 
             @"
@@ -11103,7 +11287,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -11150,7 +11336,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -11169,7 +11355,7 @@ extensions: [{ name: 'sort' }]
         $htmlTableId = "TenantSummary_policyAssignmentsOrphaned"
 
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_policyAssignmentsOrphaned"><i class="padlx fa fa-exclamation-triangle orange" aria-hidden="true"></i> <span class="valignMiddle">$($policyAssignmentsOrphanedCount) Policy assignments orphaned <abbr title="Policy definition not available &#13;(likely a Management Group scoped Policy definition / Management Group deleted)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_policyAssignmentsOrphaned"><i class="padlx fa fa-exclamation-triangle orange" aria-hidden="true"></i> <span class="valignMiddle">$($policyAssignmentsOrphanedCount) Policy assignments orphaned <abbr title="Policy definition not available &#13;(likely a Management Group scoped Policy definition / Management Group deleted)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -11198,7 +11384,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -11233,7 +11421,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -11934,7 +12122,7 @@ extensions: [{ name: 'sort' }]
             $noteOrNot = ""
 
             [void]$htmlTenantSummary.AppendLine(@"
-        <button onclick="loadtf$htmlTableId()" type="button" class="collapsible" id="buttonTenantSummary_policyAssignmentsAll"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($policyAssignmentsCount) Policy assignments ($policyAssignmentsUniqueCount unique)</span></button>
+        <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_policyAssignmentsAll"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($policyAssignmentsCount) Policy assignments ($policyAssignmentsUniqueCount unique)</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a><br>
 <span class="padlxx hintTableSize">*Depending on the number of rows and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
@@ -12067,7 +12255,7 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        function loadtf$htmlTableId() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
         window.helpertfConfig4$htmlTableId =1;
         var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
@@ -12236,7 +12424,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $tenantCustomRolesCount
         $htmlTableId = "TenantSummary_customRoles"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_customRoles">$faimage <span class="valignMiddle">$tenantCustomRolesCount Custom Role definitions ($scopeNamingSummary) (Limit: $tenantCustomRolesCount/$LimitRBACCustomRoleDefinitionsTenant)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_customRoles">$faimage <span class="valignMiddle">$tenantCustomRolesCount Custom Role definitions ($scopeNamingSummary) (Limit: $tenantCustomRolesCount/$LimitRBACCustomRoleDefinitionsTenant)</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -12312,7 +12500,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -12356,7 +12546,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -12407,7 +12597,7 @@ extensions: [{ name: 'sort' }]
             $tfCount = ($arrayCustomRolesOrphanedFinalIncludingResourceGroups).count
             $htmlTableId = "TenantSummary_customRolesOrphaned"
             [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_customRolesOrphaned"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arrayCustomRolesOrphanedFinalIncludingResourceGroups).count) Orphaned Custom Role definitions ($scopeNamingSummary) <abbr title="Role has no assignments (including ResourceGroups and Resources) &#13;AND &#13;Role is not used in a Policy definition´s rule (roleDefinitionIds)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_customRolesOrphaned"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arrayCustomRolesOrphanedFinalIncludingResourceGroups).count) Orphaned Custom Role definitions ($scopeNamingSummary) <abbr title="Role has no assignments (including ResourceGroups and Resources) &#13;AND &#13;Role is not used in a Policy definition´s rule (roleDefinitionIds)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -12437,7 +12627,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -12474,7 +12666,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
         }
@@ -12535,7 +12727,7 @@ extensions: [{ name: 'sort' }]
             $tfCount = ($arrayCustomRolesOrphanedFinalIncludingResourceGroups).count
             $htmlTableId = "TenantSummary_customRolesOrphaned"
             [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_customRolesOrphaned"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arrayCustomRolesOrphanedFinalIncludingResourceGroups).count) Orphaned Custom Role definitions ($scopeNamingSummary) <abbr title="Role has no assignments (including ResourceGroups and Resources) &#13;AND &#13;Role is not used in a Policy definition´s rule (roleDefinitionIds) &#13;(Roles where assignableScopes contains MG Id from superior scopes are not evaluated)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_customRolesOrphaned"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($arrayCustomRolesOrphanedFinalIncludingResourceGroups).count) Orphaned Custom Role definitions ($scopeNamingSummary) <abbr title="Role has no assignments (including ResourceGroups and Resources) &#13;AND &#13;Role is not used in a Policy definition´s rule (roleDefinitionIds) &#13;(Roles where assignableScopes contains MG Id from superior scopes are not evaluated)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -12565,7 +12757,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -12602,7 +12796,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
         }
@@ -12619,14 +12813,14 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYOrphanedRoleAssignments
     Write-Host "  processing TenantSummary RoleAssignments orphaned"
-    $roleAssignmentsOrphanedAll = ($rbacBaseQuery.Where( { $_.RoleAssignmentIdentityObjectType -eq "Unknown" })) | Sort-Object -Property RoleAssignmentId
+    $roleAssignmentsOrphanedAll = ($rbacBaseQuery.where( { $_.RoleAssignmentIdentityObjectType -eq "Unknown" })) | Sort-Object -Property RoleAssignmentId
     $roleAssignmentsOrphanedUnique = $roleAssignmentsOrphanedAll | Sort-Object -Property RoleAssignmentId -Unique
 
     if (($roleAssignmentsOrphanedUnique).count -gt 0) {
         $tfCount = ($roleAssignmentsOrphanedUnique).count
         $htmlTableId = "TenantSummary_roleAssignmentsOrphaned"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsOrphaned"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOrphanedUnique).count) Orphaned Role assignments ($scopeNamingSummary) <abbr title="Role definition was deleted although and assignment existed &#13;OR &#13;Target identity (User, Group, ServicePrincipal) was deleted &#13;OR &#13;Target Resource was moved"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsOrphaned"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOrphanedUnique).count) Orphaned Role assignments ($scopeNamingSummary) <abbr title="Role definition was deleted although and assignment existed &#13;OR &#13;Target identity (User, Group, ServicePrincipal) was deleted &#13;OR &#13;Target Resource was moved"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -12661,7 +12855,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -12699,7 +12895,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -12772,7 +12968,7 @@ extensions: [{ name: 'sort' }]
             $htmlTableId = "TenantSummary_roleAssignmentsAll"
             $noteOrNot = ""
             [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$htmlTableId()" type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsAll"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($rbacAllCount) Role assignments ($uniqueRoleAssignmentsCount unique)</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsAll"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($rbacAllCount) Role assignments ($uniqueRoleAssignmentsCount unique)</span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a><br>
@@ -12794,6 +12990,7 @@ extensions: [{ name: 'sort' }]
 <th>Role Id</th>
 <th>Role Type</th>
 <th>Data</th>
+<th>Can do Role assignment</th>
 <th>Identity Displayname</th>
 <th>Identity SignInName</th>
 <th>Identity ObjectId</th>
@@ -12867,21 +13064,22 @@ extensions: [{ name: 'sort' }]
 <td>{7}</td>
 <td>{8}</td>
 <td>{9}</td>
-<td class="breakwordall">{10}</td>
+<td>{10}</td>
 <td class="breakwordall">{11}</td>
 <td class="breakwordall">{12}</td>
-<td style="width:76px" class="breakwordnone">{13}</td>
-<td>{14}</td>
+<td class="breakwordall">{13}</td>
+<td style="width:76px" class="breakwordnone">{14}</td>
 <td>{15}</td>
 <td>{16}</td>
 <td>{17}</td>
 <td>{18}</td>
 <td>{19}</td>
 <td>{20}</td>
-<td class="breakwordall">{21}</td>
+<td>{21}</td>
 <td class="breakwordall">{22}</td>
 <td class="breakwordall">{23}</td>
 <td class="breakwordall">{24}</td>
+<td class="breakwordall">{25}</td>
 </tr>
 '@, $roleAssignment.TenOrMgOrSubOrRGOrRes,
                     $roleAssignment.MgId,
@@ -12893,6 +13091,7 @@ extensions: [{ name: 'sort' }]
                     $roleAssignment.RoleId,
                     $roleAssignment.RoleType,
                     $roleAssignment.RoleDataRelated,
+                    $roleAssignment.RoleCanDoRoleAssignments,
                     $roleAssignment.ObjectDisplayName,
                     $roleAssignment.ObjectSignInName,
                     $roleAssignment.ObjectId,
@@ -12927,7 +13126,7 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        function loadtf$htmlTableId() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
         window.helpertfConfig4$htmlTableId =1;
         var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
@@ -12962,12 +13161,14 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_0: 'multiple',
             col_8: 'select',
             col_9: 'select',
-            col_13: 'multiple',
-            col_14: 'select',
-            col_17: 'select',
+            col_10: 'select',
+            col_14: 'multiple',
+            col_15: 'select',
             col_18: 'select',
+            col_19: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -12994,7 +13195,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'date',
                 'caseinsensitivestring'
             ],
-            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', 'try owner||reader', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', 'try owner||reader', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
             extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
@@ -13016,13 +13217,13 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 
     #region SUMMARYSecurityCustomRoles
     Write-Host "  processing TenantSummary Custom Roles security (owner permissions)"
-    $customRolesOwnerAll = ($rbacBaseQuery.Where( { $_.RoleSecurityCustomRoleOwner -eq 1 })) | Sort-Object -Property RoleDefinitionId
-    $customRolesOwnerHtAll = $tenantCustomRoles.Where( { $_.Actions -eq '*' -and ($_.NotActions).length -eq 0 })
+    $customRolesOwnerAll = ($rbacBaseQuery.where( { $_.RoleSecurityCustomRoleOwner -eq 1 })) | Sort-Object -Property RoleDefinitionId
+    $customRolesOwnerHtAll = $tenantCustomRoles.where( { $_.Actions -eq '*' -and ($_.NotActions).length -eq 0 })
     if (($customRolesOwnerHtAll).count -gt 0) {
         $tfCount = ($customRolesOwnerHtAll).count
         $htmlTableId = "TenantSummary_CustomRoleOwner"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_CustomRoleOwner"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($customRolesOwnerHtAll).count) Custom Role definitions Owner permissions ($scopeNamingSummary) <abbr title="Custom 'Owner' Role definitions should not exist"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_CustomRoleOwner"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($customRolesOwnerHtAll).count) Custom Role definitions Owner permissions ($scopeNamingSummary) <abbr title="Custom 'Owner' Role definitions should not exist"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -13066,7 +13267,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -13104,7 +13307,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -13115,16 +13318,137 @@ extensions: [{ name: 'sort' }]
     }
     #endregion SUMMARYSecurityCustomRoles
 
+    #region SUMMARYSecurityRolesCanDoRoleAssignments
+    Write-Host "  processing TenantSummary Roles security (can apply Role assignments)"
+    if ($tenantAllRolesCanDoRoleAssignmentsCount -gt 0) {
+
+        #$roleAssignments4RolesCanDoRoleAssignments = (($rbacBaseQuery.where( { $_.RoleCanDoRoleAssignments -eq $true })) | Sort-Object -Property RoleAssignmentId -Unique) | Select-Object RoleAssignmentId, RoleDefinitionId
+        $roleAssignments4RolesCanDoRoleAssignments = (($rbacBaseQuery | Sort-Object -Property RoleAssignmentId -Unique).where( { $_.RoleCanDoRoleAssignments -eq $true })) | Select-Object RoleAssignmentId, RoleDefinitionId
+        $htRoleAssignments4RolesCanDoRoleAssignments = @{}
+        foreach ($roleAssignment4RolesCanDoRoleAssignments in $roleAssignments4RolesCanDoRoleAssignments) {
+            if (-not $htRoleAssignments4RolesCanDoRoleAssignments.($roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId)) {
+                $htRoleAssignments4RolesCanDoRoleAssignments.($roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId) = @{}
+                $htRoleAssignments4RolesCanDoRoleAssignments.($roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId).roleAssignments = [System.Collections.ArrayList]@()
+            }
+            $null = $htRoleAssignments4RolesCanDoRoleAssignments.($roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId).roleAssignments.Add($roleAssignment4RolesCanDoRoleAssignments.RoleAssignmentId)
+        }
+
+        $tfCount = $tenantAllRolesCanDoRoleAssignmentsCount
+        $htmlTableId = "TenantSummary_RolesCanDoRoleAssignments"
+        [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_RolesCanDoRoleAssignments"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$($tenantAllRolesCanDoRoleAssignmentsCount) Role definitions can apply Role assignments</span>
+</button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Role Name</th>
+<th>RoleId</th>
+<th>Type</th>
+<th>Role assignments</th>
+<th>Assignable Scopes</th>
+</tr>
+</thead>
+<tbody>
+"@)
+        $htmlSUMMARYSecurityRolesCanDoRoleAssignments = $null
+        foreach ($role in ($tenantAllRolesCanDoRoleAssignments | Sort-Object -Property Name)) {
+            if ($role.IsCustom) {
+                $roleType = "Custom"
+                $roleAssignableScopes = "$(($role.AssignableScopes).count) ($($role.AssignableScopes -join "$CsvDelimiterOpposite "))"
+            }
+            else {
+                $roleType = "BuiltIn"
+                $roleAssignableScopes = ""
+            }
+
+            if ($htRoleAssignments4RolesCanDoRoleAssignments.($role.Id).roleAssignments.Count -gt 0) {
+                $roleAssignments = "$($htRoleAssignments4RolesCanDoRoleAssignments.($role.Id).roleAssignments.Count) ($($htRoleAssignments4RolesCanDoRoleAssignments.($role.Id).roleAssignments -join ", "))"
+            }
+            else {
+                $roleAssignments = 0
+            }
+
+            $htmlSUMMARYSecurityRolesCanDoRoleAssignments += @"
+<tr>
+<td>$($role.Name -replace "<", "&lt;" -replace ">", "&gt;")</td>
+<td>$($role.Id)</td>
+<td>$($roleType)</td>
+<td>$($roleAssignments)</td>
+<td>$($roleAssignableScopes)</td>
+</tr>
+"@
+        }
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYSecurityRolesCanDoRoleAssignments)
+        [void]$htmlTenantSummary.AppendLine(@"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_2: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+"@)
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$($tenantAllRolesCanDoRoleAssignmentsCount) Role definitions can apply Role assignments</span></p>
+"@)
+    }
+    #endregion SUMMARYSecurityRolesCanDoRoleAssignments
+
     #region SUMMARYSecurityOwnerAssignmentSP
     $startSUMMARYSecurityOwnerAssignmentSP = Get-Date
     Write-Host "  processing TenantSummary RoleAssignments security (owner SP)"
-    $roleAssignmentsOwnerAssignmentSPAll = ($rbacBaseQuery.Where( { $_.RoleSecurityOwnerAssignmentSP -eq 1 })) | Sort-Object -Property RoleAssignmentId
+    $roleAssignmentsOwnerAssignmentSPAll = ($rbacBaseQuery.where( { $_.RoleSecurityOwnerAssignmentSP -eq 1 })) | Sort-Object -Property RoleAssignmentId
     $roleAssignmentsOwnerAssignmentSP = $roleAssignmentsOwnerAssignmentSPAll | Sort-Object -Property RoleAssignmentId -Unique
     if (($roleAssignmentsOwnerAssignmentSP).count -gt 0) {
         $tfCount = ($roleAssignmentsOwnerAssignmentSP).count
         $htmlTableId = "TenantSummary_roleAssignmentsOwnerAssignmentSP"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsOwnerAssignmentSP"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOwnerAssignmentSP).count) Owner permission assignments to ServicePrincipal ($scopeNamingSummary) <abbr title="Owner permissions on Service Principals should be treated exceptional"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsOwnerAssignmentSP"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOwnerAssignmentSP).count) Owner permission assignments to ServicePrincipal ($scopeNamingSummary) <abbr title="Owner permissions on Service Principals should be treated exceptional"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -13162,7 +13486,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -13201,7 +13527,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -13225,7 +13551,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($roleAssignmentsOwnerAssignmentNotGroup).count
         $htmlTableId = "TenantSummary_roleAssignmentsOwnerAssignmentNotGroup"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsOwnerAssignmentNotGroup"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOwnerAssignmentNotGroup).count) Owner permission assignments to notGroup ($scopeNamingSummary)</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsOwnerAssignmentNotGroup"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsOwnerAssignmentNotGroup).count) Owner permission assignments to notGroup ($scopeNamingSummary)</span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -13268,7 +13594,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -13312,7 +13640,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -13335,7 +13663,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($roleAssignmentsUserAccessAdministratorAssignmentNotGroup).count
         $htmlTableId = "TenantSummary_roleAssignmentsUserAccessAdministratorAssignmentNotGroup"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsUserAccessAdministratorAssignmentNotGroup"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsUserAccessAdministratorAssignmentNotGroup).count) UserAccessAdministrator permission assignments to notGroup ($scopeNamingSummary)</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsUserAccessAdministratorAssignmentNotGroup"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($roleAssignmentsUserAccessAdministratorAssignmentNotGroup).count) UserAccessAdministrator permission assignments to notGroup ($scopeNamingSummary)</span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -13378,7 +13706,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -13421,7 +13751,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -13444,7 +13774,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $highPriviledgedGuestUserRoleAssignmentsCount
         $htmlTableId = "TenantSummary_SecurityGuestUserHighPriviledgesAssignments"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_SecurityGuestUserHighPriviledgesAssignments"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$($highPriviledgedGuestUserRoleAssignmentsCount) Guest Users with high permissions ($scopeNamingSummary)</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SecurityGuestUserHighPriviledgesAssignments"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$($highPriviledgedGuestUserRoleAssignmentsCount) Guest Users with high permissions ($scopeNamingSummary)</span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -13490,7 +13820,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -13533,7 +13865,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -13565,7 +13897,7 @@ extensions: [{ name: 'sort' }]
     if ($blueprintDefinitionsCount -gt 0) {
         $htmlTableId = "TenantSummary_BlueprintDefinitions"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_BlueprintDefinitions"><p><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> $blueprintDefinitionsCount Blueprint definitions</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_BlueprintDefinitions"><p><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> $blueprintDefinitionsCount Blueprint definitions</p></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -13596,7 +13928,9 @@ extensions: [{ name: 'sort' }]
             </table>
         </div>
         <script>
-            var tfConfig4$htmlTableId = {
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -13634,7 +13968,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-            tf.init();
+            tf.init();}}
         </script>
 "@)
     }
@@ -13653,7 +13987,7 @@ extensions: [{ name: 'sort' }]
     if ($blueprintAssignmentsCount -gt 0) {
         $htmlTableId = "TenantSummary_BlueprintAssignments"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_BlueprintAssignments"><p><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> $blueprintAssignmentsCount Blueprint assignments</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_BlueprintAssignments"><p><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> $blueprintAssignmentsCount Blueprint assignments</p></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -13688,7 +14022,9 @@ extensions: [{ name: 'sort' }]
             </table>
         </div>
         <script>
-            var tfConfig4$htmlTableId = {
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
                 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -13728,7 +14064,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
             };
             var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-            tf.init();
+            tf.init();}}
         </script>
 "@)
     }
@@ -13762,7 +14098,7 @@ extensions: [{ name: 'sort' }]
 
         $htmlTableId = "TenantSummary_BlueprintsOrphaned"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_BlueprintsOrphaned"><p><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> $blueprintDefinitionsOrphanedCount Orphaned Blueprints</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_BlueprintsOrphaned"><p><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> $blueprintDefinitionsOrphanedCount Orphaned Blueprints</p></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -13793,7 +14129,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -13831,7 +14169,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -13863,7 +14201,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $summaryManagementGroupsCount
         $htmlTableId = "TenantSummary_ManagementGroups"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_Subs"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle">$($summaryManagementGroupsCount) Management Groups</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_Subs"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle">$($summaryManagementGroupsCount) Management Groups</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -14007,7 +14345,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -14062,7 +14402,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 
 "@)
@@ -14109,7 +14449,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $summarySubscriptionsCount
         $htmlTableId = "TenantSummary_subs"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_Subs"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle">$($summarySubscriptionsCount) Subscriptions (state: enabled)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_Subs"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle">$($summarySubscriptionsCount) Subscriptions (state: enabled)</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Supported Microsoft Azure offers</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/cost-management-billing/costs/understand-cost-mgt-data#supported-microsoft-azure-offers" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Understand Microsoft Defender for Cloud Secure Score</span> <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank" rel="noopener">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank" rel="noopener">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://docs.microsoft.com/en-us/azure/security-center/secure-score-security-controls#how-your-secure-score-is-calculated" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
@@ -14120,6 +14460,7 @@ extensions: [{ name: 'sort' }]
 <th>Subscription</th>
 <th>SubscriptionId</th>
 <th>QuotaId</th>
+<th>Role assignment limit</th>
 <th>Tags</th>
 <th>Sub MDfC Score</th>
 "@)
@@ -14167,6 +14508,7 @@ extensions: [{ name: 'sort' }]
 <td>$($summarySubscription.subscription -replace "<", "&lt;" -replace ">", "&gt;")</td>
 <td><span class="valignMiddle"><a class="internallink" href="#table_$($summarySubscription.MgId)">$($summarySubscription.subscriptionId)</a></span></td>
 <td>$($summarySubscription.SubscriptionQuotaId)</td>
+<td>$($htSubscriptionsRoleAssignmentLimit.($summarySubscription.subscriptionId))</td>
 <td>$(($subscriptionTagsArray | Sort-Object) -join "$CsvDelimiterOpposite ")</td>
 <td>$($summarySubscription.SubscriptionASCSecureScore)</td>
 "@
@@ -14187,7 +14529,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -14217,6 +14561,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_2: 'select',
+            col_3: 'select',
 "@)
         if ($htParameters.DoAzureConsumption -eq $true) {
             [void]$htmlTenantSummary.AppendLine(@"
@@ -14228,6 +14573,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+                'number',
                 'caseinsensitivestring',
                 'number',
 "@)
@@ -14243,7 +14589,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 
 "@)
@@ -14262,7 +14608,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $outOfScopeSubscriptionsCount
         $htmlTableId = "TenantSummary_outOfScopeSubscriptions"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_outOfScopeSubscriptions"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions_excluded_r.svg"> <span class="valignMiddle">$outOfScopeSubscriptionsCount Subscriptions out-of-scope</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_outOfScopeSubscriptions"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions_excluded_r.svg"> <span class="valignMiddle">$outOfScopeSubscriptionsCount Subscriptions out-of-scope</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -14293,7 +14639,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 
 "@)
@@ -14332,7 +14680,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -14352,7 +14700,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $tagsUsageCount
         $htmlTableId = "TenantSummary_tagsUsage"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_tagsUsage"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Tag Name Usage ($tagNamesUniqueCount unique Tag Names applied at $($tagNamesUsedInScopes))</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_tagsUsage"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Tag Name Usage ($tagNamesUniqueCount unique Tag Names applied at $($tagNamesUsedInScopes))</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Resource naming and tagging decision guide</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/decision-guides/resource-tagging" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -14382,7 +14730,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 
 "@)
@@ -14421,7 +14771,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -14445,7 +14795,7 @@ extensions: [{ name: 'sort' }]
                 $tfCount = ($resourcesAllGroupedByType | Measure-Object).Count
                 $htmlTableId = "TenantSummary_resources"
                 [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_resources"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resources ($resourcesResourceTypeCount ResourceTypes) ($resourcesTotal Resources) ($scopeNamingSummary)</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_resources"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resources ($resourcesResourceTypeCount ResourceTypes) ($resourcesTotal Resources) ($scopeNamingSummary)</span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -14476,7 +14826,9 @@ extensions: [{ name: 'sort' }]
     </table>
 </div>
 <script>
-    var tfConfig4$htmlTableId = {
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
                 if ($tfCount -gt 10) {
@@ -14512,7 +14864,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
     };
     var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-    tf.init();
+    tf.init();}}
 </script>
 "@)
             }
@@ -14547,7 +14899,7 @@ extensions: [{ name: 'sort' }]
                 $tfCount = ($resourcesAllGroupedByTypeLocation | Measure-Object).Count
                 $htmlTableId = "TenantSummary_resourcesByLocation"
                 [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_resourcesByLocation"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resources byLocation ($resourcesResourceTypeCount ResourceTypes) ($resourcesTotal Resources) in $resourcesLocationCount Locations ($scopeNamingSummary)</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_resourcesByLocation"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resources byLocation ($resourcesResourceTypeCount ResourceTypes) ($resourcesTotal Resources) in $resourcesLocationCount Locations ($scopeNamingSummary)</span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -14581,7 +14933,9 @@ extensions: [{ name: 'sort' }]
     </table>
 </div>
 <script>
-    var tfConfig4$htmlTableId = {
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
                 if ($tfCount -gt 10) {
@@ -14618,7 +14972,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
     };
     var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-    tf.init();
+    tf.init();}}
 </script>
 "@)
             }
@@ -14708,7 +15062,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $uniqueNamespacesCount
         $htmlTableId = "TenantSummary_SubResourceProviders"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_SubResourceProviders"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Total: $uniqueNamespacesCount Registered/Registering: $providersRegisteredCount NotRegistered/Unregistering: $providersNotRegisteredUniqueCount</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubResourceProviders"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Total: $uniqueNamespacesCount Registered/Registering: $providersRegisteredCount NotRegistered/Unregistering: $providersNotRegisteredUniqueCount</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -14741,7 +15095,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -14780,7 +15136,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -14804,7 +15160,7 @@ extensions: [{ name: 'sort' }]
             if ($tfCount -lt $HtmlTableRowsLimit) {
                 $htmlTableId = "TenantSummary_SubResourceProvidersDetailed"
                 [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_SubResourceProvidersDetailed"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubResourceProvidersDetailed"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -14877,7 +15233,9 @@ extensions: [{ name: 'sort' }]
         </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 
 "@)
@@ -14918,7 +15276,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
             }
@@ -14961,7 +15319,7 @@ extensions: [{ name: 'sort' }]
         $resourcesLocksReadOnlyCount = ($htResourceLocks.Keys.where( { $htResourceLocks.($_).ResourcesLocksReadOnlyCount -gt 0 } )).Count
 
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_ResourceLocks"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Locks</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ResourceLocks"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Locks</span></button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Considerations before applying locks</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources#considerations-before-applying-locks" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
 <table id="$htmlTableId" class="summaryTable">
@@ -14982,7 +15340,9 @@ extensions: [{ name: 'sort' }]
 </tbody>
 </table>
 <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -15022,7 +15382,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 </div>
 "@)
@@ -15047,10 +15407,11 @@ extensions: [{ name: 'sort' }]
         $htmlTableId = "TenantSummary_DefenderPlansSubscriptionNotRegistered"
 
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_DefenderPlansSubscriptionNotRegistered"><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans - Subscriptions not registered</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_DefenderPlansSubscriptionNotRegistered"><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans - Subscriptions not registered</span></button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Register Resource Provider 'Microsoft.Security'</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
-<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Microsoft Defender for Cloud's enhanced security features</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Microsoft Defender for Cloud's enhanced security features</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
 <thead>
 <tr>
@@ -15076,7 +15437,9 @@ extensions: [{ name: 'sort' }]
 </tbody>
 </table>
 <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -15113,7 +15476,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 </div>
 "@)
@@ -15133,7 +15496,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         $htmlTableId = "TenantSummary_DefenderPlans"
 
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_DefenderPlans"><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans (by plan)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_DefenderPlans"><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans (by plan)</span></button>
 <div class="content TenantSummary">
 "@)
 
@@ -15149,7 +15512,8 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         }
 
         [void]$htmlTenantSummary.AppendLine(@"
-<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Microsoft Defender for Cloud's enhanced security features</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Microsoft Defender for Cloud's enhanced security features</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
 <thead>
 <tr>
@@ -15179,7 +15543,9 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 </tbody>
 </table>
 <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
             btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_types: [
@@ -15189,7 +15555,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 </div>
 "@)
@@ -15212,7 +15578,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         $htmlTableId = "TenantSummary_DefenderPlansBySubscription"
 
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_DefenderPlansBySubscription"><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans (by Subscription)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_DefenderPlansBySubscription"><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans (by Subscription)</span></button>
 <div class="content TenantSummary">
 "@)
 
@@ -15228,7 +15594,8 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         }
 
         [void]$htmlTenantSummary.AppendLine(@"
-<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Microsoft Defender for Cloud's enhanced security features</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Microsoft Defender for Cloud's enhanced security features</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
 <thead>
 <tr>
@@ -15279,7 +15646,9 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 </tbody>
 </table>
 <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -15343,7 +15712,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 </div>
 "@)
@@ -15390,9 +15759,10 @@ extensions: [{ name: 'sort' }]
             $htmlTableId = "TenantSummary_UserAssignedIdentities4Resources"
 
             [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_UserAssignedIdentities4Resources"><i class="padlx fa fa-user-circle-o" aria-hidden="true"></i> <span class="valignMiddle">UserAssigned Managed Identities assigned to Resources / vice versa</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_UserAssignedIdentities4Resources"><i class="padlx fa fa-user-circle-o" aria-hidden="true"></i> <span class="valignMiddle">UserAssigned Managed Identities assigned to Resources / vice versa</span></button>
 <div class="content TenantSummary">
-<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Managed identity 'user-assigned' vs 'system-assigned'</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview#managed-identity-types" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Managed identity 'user-assigned' vs 'system-assigned'</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview#managed-identity-types" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
 <thead>
 <tr>
@@ -15447,24 +15817,24 @@ extensions: [{ name: 'sort' }]
 
                 if (-not $NoCsvExport) {
                     $null = $userAssignedIdentities4Resources4CSVExport.Add([PSCustomObject]@{
-                        MIName = $miResEntry.miResourceName
-                        MIMgPath = $miResEntry.miMgPath
-                        MISubscriptionName = $miResEntry.miSubscriptionName
-                        MISubscriptionId = $miResEntry.miSubscriptionId
-                        MIResourceGroup = $miResEntry.miResourceGroupName
-                        MIResourceId = $miResEntry.miResourceId
-                        MIAADSPObjectId = $miResEntry.miPrincipalId
-                        MIAADSPApplicationId = $miResEntry.miClientId
-                        MICountResAssignments = $htUserAssignedIdentitiesAssignedResources.($miResEntry.miPrincipalId).ResourcesCount
-                        ResName = $miResEntry.resourceName
-                        ResType = $miResEntry.resourceType
-                        ResMgPath = $miResEntry.resourceMgPath
-                        ResSubscriptionName = $miResEntry.resourceSubscriptionName
-                        ResSubscriptionId = $miResEntry.resourceSubscriptionId
-                        ResResourceGroup = $miResEntry.resourceResourceGroupName
-                        ResId = $miResEntry.resourceId
-                        ResCountAssignedMIs = $htResourcesAssignedUserAssignedIdentities.(($miResEntry.resourceId).tolower()).UserAssignedIdentitiesCount
-                    })
+                            MIName                = $miResEntry.miResourceName
+                            MIMgPath              = $miResEntry.miMgPath
+                            MISubscriptionName    = $miResEntry.miSubscriptionName
+                            MISubscriptionId      = $miResEntry.miSubscriptionId
+                            MIResourceGroup       = $miResEntry.miResourceGroupName
+                            MIResourceId          = $miResEntry.miResourceId
+                            MIAADSPObjectId       = $miResEntry.miPrincipalId
+                            MIAADSPApplicationId  = $miResEntry.miClientId
+                            MICountResAssignments = $htUserAssignedIdentitiesAssignedResources.($miResEntry.miPrincipalId).ResourcesCount
+                            ResName               = $miResEntry.resourceName
+                            ResType               = $miResEntry.resourceType
+                            ResMgPath             = $miResEntry.resourceMgPath
+                            ResSubscriptionName   = $miResEntry.resourceSubscriptionName
+                            ResSubscriptionId     = $miResEntry.resourceSubscriptionId
+                            ResResourceGroup      = $miResEntry.resourceResourceGroupName
+                            ResId                 = $miResEntry.resourceId
+                            ResCountAssignedMIs   = $htResourcesAssignedUserAssignedIdentities.(($miResEntry.resourceId).tolower()).UserAssignedIdentitiesCount
+                        })
                 }
 
             }
@@ -15478,7 +15848,9 @@ extensions: [{ name: 'sort' }]
 </tbody>
 </table>
 <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -15531,7 +15903,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 </div>
 "@)
@@ -15569,7 +15941,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         $tfCount = $diagnosticSettingsMgCount
         $htmlTableId = "TenantSummary_DiagnosticsManagementGroups"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_DiagnosticsManagementGroups"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$diagnosticSettingsMgManagementGroupsCount ($mgsDiagnosticsApplicableCount) Management Groups configured for Diagnostic settings ($diagnosticSettingsMgCount settings)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_DiagnosticsManagementGroups"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$diagnosticSettingsMgManagementGroupsCount ($mgsDiagnosticsApplicableCount) Management Groups configured for Diagnostic settings ($diagnosticSettingsMgCount settings)</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Management Group Diagnostic Settings - Create Or Update - REST API</span> <a class="externallink" href="https://docs.microsoft.com/en-us/rest/api/monitor/managementgroupdiagnosticsettings/createorupdate" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -15631,7 +16003,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     </table>
 </div>
 <script>
-    var tfConfig4$htmlTableId = {
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -15700,7 +16074,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
     };
     var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-    tf.init();
+    tf.init();}}
 </script>
 "@)
     }
@@ -15716,7 +16090,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $arrayMgsWithoutDiagnosticsCount
         $htmlTableId = "TenantSummary_NoDiagnosticsManagementGroups"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_NoDiagnosticsManagementGroups"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$arrayMgsWithoutDiagnosticsCount Management Groups NOT configured for Diagnostic settings</span> <a class="externallink" href="https://docs.microsoft.com/en-us/rest/api/monitor/managementgroupdiagnosticsettings/createorupdate" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_NoDiagnosticsManagementGroups"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$arrayMgsWithoutDiagnosticsCount Management Groups NOT configured for Diagnostic settings</span> <a class="externallink" href="https://docs.microsoft.com/en-us/rest/api/monitor/managementgroupdiagnosticsettings/createorupdate" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Management Group Diagnostic Settings - Create Or Update - REST API</span> <a class="externallink" href="https://docs.microsoft.com/en-us/rest/api/monitor/managementgroupdiagnosticsettings/createorupdate" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -15747,7 +16121,9 @@ extensions: [{ name: 'sort' }]
     </table>
 </div>
 <script>
-    var tfConfig4$htmlTableId = {
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -15784,7 +16160,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
     };
     var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-    tf.init();
+    tf.init();}}
 </script>
 "@)
     }
@@ -15809,7 +16185,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $diagnosticSettingsSubCount
         $htmlTableId = "TenantSummary_DiagnosticsSubscriptions"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_DiagnosticsSubscriptions"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$diagnosticSettingsSubSubscriptionsCount Subscriptions configured for Diagnostic settings ($diagnosticSettingsSubCount settings)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_DiagnosticsSubscriptions"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$diagnosticSettingsSubSubscriptionsCount Subscriptions configured for Diagnostic settings ($diagnosticSettingsSubCount settings)</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Create diagnostic setting</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/essentials/quick-collect-activity-log-portal#create-diagnostic-setting" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -15869,7 +16245,9 @@ extensions: [{ name: 'sort' }]
     </table>
 </div>
 <script>
-    var tfConfig4$htmlTableId = {
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -15936,7 +16314,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
     };
     var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-    tf.init();
+    tf.init();}}
 </script>
 "@)
     }
@@ -15952,7 +16330,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $diagnosticSettingsSubNoDiagCount
         $htmlTableId = "TenantSummary_NoDiagnosticsSubscriptions"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_NoDiagnosticsSubscriptions"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$diagnosticSettingsSubNoDiagCount Subscriptions NOT configured for Diagnostic settings</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_NoDiagnosticsSubscriptions"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$diagnosticSettingsSubNoDiagCount Subscriptions NOT configured for Diagnostic settings</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Create diagnostic setting</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/essentials/quick-collect-activity-log-portal#create-diagnostic-setting" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -15983,7 +16361,9 @@ extensions: [{ name: 'sort' }]
     </table>
 </div>
 <script>
-    var tfConfig4$htmlTableId = {
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -16020,7 +16400,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
     };
     var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-    tf.init();
+    tf.init();}}
 </script>
 "@)
     }
@@ -16051,7 +16431,7 @@ extensions: [{ name: 'sort' }]
             $tfCount = $resourceTypesDiagnosticsArraySortedCount
             $htmlTableId = "TenantSummary_ResourcesDiagnosticsCapable"
             [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_ResourcesDiagnosticsCapable"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resources (1st party) Diagnostics capable $resourceTypesDiagnosticsMetricsLogsTrueCount/$resourceTypesDiagnosticsArraySortedCount ResourceTypes ($resourceTypesDiagnosticsMetricsTrueCount Metrics, $resourceTypesDiagnosticsLogsTrueCount Logs)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ResourcesDiagnosticsCapable"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resources (1st party) Diagnostics capable $resourceTypesDiagnosticsMetricsLogsTrueCount/$resourceTypesDiagnosticsArraySortedCount ResourceTypes ($resourceTypesDiagnosticsMetricsTrueCount Metrics, $resourceTypesDiagnosticsLogsTrueCount Logs)</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Create Custom Policies for Azure ResourceTypes that support Diagnostics Logs and Metrics</span> <a class="externallink" href="https://github.com/JimGBritt/AzurePolicy/blob/master/AzureMonitor/Scripts/README.md#overview-of-create-azdiagpolicyps1" target="_blank" rel="noopener">Create-AzDiagPolicy <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Supported categories for Azure Resource Logs</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/platform/resource-logs-categories" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
@@ -16099,7 +16479,9 @@ extensions: [{ name: 'sort' }]
     </table>
 </div>
 <script>
-    var tfConfig4$htmlTableId = {
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -16143,7 +16525,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
     };
     var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-    tf.init();
+    tf.init();}}
 </script>
 "@)
         }
@@ -16404,7 +16786,7 @@ extensions: [{ name: 'sort' }]
 
                         $htmlTableId = "TenantSummary_DiagnosticsLifecycle"
                         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_DiagnosticsLifecycle"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">ResourceDiagnostics for Logs - Policy Lifecycle recommendations</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_DiagnosticsLifecycle"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">ResourceDiagnostics for Logs - Policy Lifecycle recommendations</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Create Custom Policies for Azure ResourceTypes that support Diagnostics Logs and Metrics</span> <a class="externallink" href="https://github.com/JimGBritt/AzurePolicy/blob/master/AzureMonitor/Scripts/README.md#overview-of-create-azdiagpolicyps1" target="_blank" rel="noopener">Create-AzDiagPolicy <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Supported categories for Azure Resource Logs</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/platform/resource-logs-categories" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
@@ -16479,7 +16861,9 @@ extensions: [{ name: 'sort' }]
     </table>
 </div>
 <script>
-    var tfConfig4$htmlTableId = {
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
                         if ($tfCount -gt 10) {
@@ -16531,7 +16915,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
     };
     var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-    tf.init();
+    tf.init();}}
 </script>
 "@)
                     }
@@ -16592,12 +16976,12 @@ extensions: [{ name: 'sort' }]
     #CustomRoleDefinitions
     if ($tenantCustomRolesCount -gt (($LimitRBACCustomRoleDefinitionsTenant * $LimitCriticalPercentage) / 100)) {
         [void]$htmlTenantSummary.AppendLine(@"
-    <p><i class="padlx fa fa-check green" aria-hidden="true"></i> Custom Role definitions: $tenantCustomRolesCount/$LimitRBACCustomRoleDefinitionsTenant <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-role-based-access-control-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+    <p><i class="padlx fa fa-check green" aria-hidden="true"></i> Custom Role definitions: $tenantCustomRolesCount/$LimitRBACCustomRoleDefinitionsTenant <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-rbac-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
 "@)
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-    <p><i class="padlx fa fa-check green" aria-hidden="true"></i> Custom Role definitions: $tenantCustomRolesCount/$LimitRBACCustomRoleDefinitionsTenant <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-role-based-access-control-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+    <p><i class="padlx fa fa-check green" aria-hidden="true"></i> Custom Role definitions: $tenantCustomRolesCount/$LimitRBACCustomRoleDefinitionsTenant <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-rbac-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
 "@)
     }
 
@@ -16615,7 +16999,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($mgsApproachingLimitPolicyAssignments | measure-object).count
         $htmlTableId = "TenantSummary_MgsapproachingLimitsPolicyAssignments"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_MgsapproachingLimitsPolicyAssignments"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyAssignments | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicyAssignmentsManagementGroup) for PolicyAssignment</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_MgsapproachingLimitsPolicyAssignments"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyAssignments | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicyAssignmentsManagementGroup) for PolicyAssignment</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Policy Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -16645,7 +17029,9 @@ extensions: [{ name: 'sort' }]
     </table>
 </div>
 <script>
-    var tfConfig4$htmlTableId = {
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -16682,7 +17068,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
     };
     var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-    tf.init();
+    tf.init();}}
 </script>
 "@)
     }
@@ -16700,7 +17086,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($mgsApproachingLimitPolicyScope | measure-object).count
         $htmlTableId = "TenantSummary_MgsapproachingLimitsPolicyScope"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_MgsapproachingLimitsPolicyScope"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyScope | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicyDefinitionsScopedManagementGroup) for Policy Scope</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_MgsapproachingLimitsPolicyScope"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyScope | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicyDefinitionsScopedManagementGroup) for Policy Scope</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Policy Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -16730,7 +17116,9 @@ extensions: [{ name: 'sort' }]
     </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -16767,7 +17155,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -16785,7 +17173,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($mgsApproachingLimitPolicySetScope | measure-object).count
         $htmlTableId = "TenantSummary_MgsapproachingLimitsPolicySetScope"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_MgsapproachingLimitsPolicySetScope"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicySetScope | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedManagementGroup) for PolicySet Scope</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_MgsapproachingLimitsPolicySetScope"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicySetScope | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedManagementGroup) for PolicySet Scope</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Policy Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -16815,7 +17203,9 @@ extensions: [{ name: 'sort' }]
     </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -16852,7 +17242,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -16865,15 +17255,15 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYMgsapproachingLimitsRoleAssignment
     Write-Host "  processing TenantSummary ManagementGroups Limit RoleAssignments"
-    $mgsApproachingRoleAssignmentLimit = $rbacBaseQuery.Where( { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.RoleAssignmentsCount -gt ($LimitRBACRoleAssignmentsManagementGroup * $LimitCriticalPercentage / 100) }) | Sort-Object -Property MgId -Unique | select-object -Property MgId, MgName, RoleAssignmentsCount, RoleAssignmentsLimit
+    $mgsApproachingRoleAssignmentLimit = $rbacBaseQuery.where( { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.RoleAssignmentsCount -gt ($LimitRBACRoleAssignmentsManagementGroup * $LimitCriticalPercentage / 100) }) | Sort-Object -Property MgId -Unique | select-object -Property MgId, MgName, RoleAssignmentsCount, RoleAssignmentsLimit
 
-    if (($mgsApproachingRoleAssignmentLimit | measure-object).count -gt 0) {
-        $tfCount = ($mgsApproachingRoleAssignmentLimit | measure-object).count
+    if (($mgsApproachingRoleAssignmentLimit).count -gt 0) {
+        $tfCount = ($mgsApproachingRoleAssignmentLimit).count
         $htmlTableId = "TenantSummary_MgsapproachingLimitsRoleAssignment"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_MgsapproachingLimitsRoleAssignment"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingRoleAssignmentLimit | measure-object).count) Management Groups approaching Limit ($LimitRBACRoleAssignmentsManagementGroup) for RoleAssignment</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_MgsapproachingLimitsRoleAssignment"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingRoleAssignmentLimit | measure-object).count) Management Groups approaching Limit ($LimitRBACRoleAssignmentsManagementGroup) for RoleAssignment</span></button>
 <div class="content TenantSummary">
-<i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure RBAC Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-role-based-access-control-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure RBAC Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-rbac-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id= "$htmlTableId" class="summaryTable">
 <thead>
@@ -16901,7 +17291,9 @@ extensions: [{ name: 'sort' }]
     </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -16938,13 +17330,13 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-    <p><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($mgApproachingRoleAssignmentLimit | measure-object).count) Management Groups approaching Limit ($LimitRBACRoleAssignmentsManagementGroup) for RoleAssignment</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-role-based-access-control-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+    <p><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($mgApproachingRoleAssignmentLimit | measure-object).count) Management Groups approaching Limit ($LimitRBACRoleAssignmentsManagementGroup) for RoleAssignment</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-rbac-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
 "@)
     }
     #endregion SUMMARYMgsapproachingLimitsRoleAssignment
@@ -16963,7 +17355,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count
         $htmlTableId = "TenantSummary_SubsapproachingLimitsResourceGroups"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsResourceGroups"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count) Subscriptions approaching Limit ($LimitResourceGroups) for ResourceGroups</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsResourceGroups"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count) Subscriptions approaching Limit ($LimitResourceGroups) for ResourceGroups</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Subscription Resource Group Limit</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#subscription-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -16994,7 +17386,9 @@ extensions: [{ name: 'sort' }]
     </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -17031,7 +17425,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -17049,7 +17443,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($subscriptionsApproachingLimitTags | measure-object).count
         $htmlTableId = "TenantSummary_SubsapproachingLimitsSubscriptionTags"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsSubscriptionTags"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitTags | measure-object).count) Subscriptions approaching Limit ($LimitTagsSubscription) for Tags</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsSubscriptionTags"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitTags | measure-object).count) Subscriptions approaching Limit ($LimitTagsSubscription) for Tags</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Subscription Tag Limit</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#subscription-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -17079,7 +17473,9 @@ extensions: [{ name: 'sort' }]
     </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -17116,7 +17512,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -17134,7 +17530,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($subscriptionsApproachingLimitPolicyAssignments | measure-object).count
         $htmlTableId = "TenantSummary_SubsapproachingLimitsPolicyAssignments"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsPolicyAssignments"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyAssignments | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicyAssignmentsSubscription) for PolicyAssignment</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsPolicyAssignments"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyAssignments | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicyAssignmentsSubscription) for PolicyAssignment</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Policy Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -17164,7 +17560,9 @@ extensions: [{ name: 'sort' }]
     </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -17201,7 +17599,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -17219,7 +17617,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($subscriptionsApproachingLimitPolicyScope | measure-object).count
         $htmlTableId = "TenantSummary_SubsapproachingLimitsPolicyScope"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsPolicyScope"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicyDefinitionsScopedSubscription) for Policy Scope</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsPolicyScope"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicyDefinitionsScopedSubscription) for Policy Scope</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Policy Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -17249,7 +17647,9 @@ extensions: [{ name: 'sort' }]
     </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -17286,7 +17686,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -17304,7 +17704,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($subscriptionsApproachingLimitPolicySetScope | measure-object).count
         $htmlTableId = "TenantSummary_SubsapproachingLimitsPolicySetScope"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsPolicySetScope"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedSubscription) for PolicySet Scope</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsPolicySetScope"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedSubscription) for PolicySet Scope</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Policy Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -17334,7 +17734,9 @@ extensions: [{ name: 'sort' }]
     </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -17371,7 +17773,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
@@ -17384,15 +17786,17 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYSubsapproachingLimitsRoleAssignment
     Write-Host "  processing TenantSummary Subscriptions Limit RoleAssignments"
-    $subscriptionsApproachingRoleAssignmentLimit = $rbacBaseQuery.Where( { -not [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.RoleAssignmentsCount -gt ($_.RoleAssignmentsLimit * $LimitCriticalPercentage / 100) }) | Sort-Object -Property SubscriptionId -Unique | select-object -Property MgId, SubscriptionId, Subscription, RoleAssignmentsCount, RoleAssignmentsLimit
+    $subscriptionsApproachingRoleAssignmentLimit = $rbacBaseQuery.where( { -not [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.RoleAssignmentsCount -gt ($_.RoleAssignmentsLimit * $LimitCriticalPercentage / 100) }) | Sort-Object -Property SubscriptionId -Unique | select-object -Property MgId, SubscriptionId, Subscription, RoleAssignmentsCount, RoleAssignmentsLimit
 
-    if (($subscriptionsApproachingRoleAssignmentLimit | measure-object).count -gt 0) {
-        $tfCount = ($subscriptionsApproachingRoleAssignmentLimit | measure-object).count
+    $availableSubscriptionsRoleAssignmentLimits = ($htSubscriptionsRoleAssignmentLimit.values | Sort-Object -Unique) -join ' | '
+
+    if (($subscriptionsApproachingRoleAssignmentLimit).count -gt 0) {
+        $tfCount = ($subscriptionsApproachingRoleAssignmentLimit).count
         $htmlTableId = "TenantSummary_SubsapproachingLimitsRoleAssignment"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsRoleAssignment"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingRoleAssignmentLimit | measure-object).count) Subscriptions approaching Limit ($LimitRBACRoleAssignmentsSubscription) for RoleAssignment</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsRoleAssignment"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingRoleAssignmentLimit | measure-object).count) Subscriptions approaching Limit ($($availableSubscriptionsRoleAssignmentLimits)) for RoleAssignment</span></button>
 <div class="content TenantSummary">
-<i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure RBAC Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-role-based-access-control-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure RBAC Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-rbac-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id= "$htmlTableId" class="summaryTable">
 <thead>
@@ -17420,7 +17824,9 @@ extensions: [{ name: 'sort' }]
     </table>
     </div>
     <script>
-        var tfConfig4$htmlTableId = {
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -17457,13 +17863,13 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();
+        tf.init();}}
     </script>
 "@)
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-    <p"><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingRoleAssignmentLimit | measure-object).count) Subscriptions approaching Limit ($LimitRBACRoleAssignmentsSubscription) for RoleAssignment</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-role-based-access-control-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+    <p"><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingRoleAssignmentLimit | measure-object).count) Subscriptions approaching Limit ($availableSubscriptionsRoleAssignmentLimits) for RoleAssignment</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-rbac-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
 "@)
     }
     #endregion SUMMARYSubsapproachingLimitsRoleAssignment
@@ -17492,7 +17898,7 @@ extensions: [{ name: 'sort' }]
         $htmlTableId = "TenantSummary_AADSPNotFound"
 
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_AADSPNotFound"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($servicePrincipalRequestResourceNotFoundCount) AAD ServicePrincipals 'Request_ResourceNotFound'</span> <abbr title="API return: Request_ResourceNotFound"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_AADSPNotFound"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($servicePrincipalRequestResourceNotFoundCount) AAD ServicePrincipals 'Request_ResourceNotFound'</span> <abbr title="API return: Request_ResourceNotFound"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
 <div class="content TenantSummary">
 <table id="$htmlTableId" class="summaryTable">
 <thead>
@@ -17517,7 +17923,9 @@ extensions: [{ name: 'sort' }]
 </table>
 </div>
 <script>
-var tfConfig4$htmlTableId = {
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+    window.helpertfConfig4$htmlTableId =1;
+    var tfConfig4$htmlTableId = {
     base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -17552,7 +17960,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
 };
 var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-tf.init();
+tf.init();}}
 </script>
 "@)
     }
@@ -17571,7 +17979,7 @@ tf.init();
         $htmlTableId = "TenantSummary_AADAppNotFound"
 
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_AADAppNotFound"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($applicationRequestResourceNotFoundCount) AAD Applications 'Request_ResourceNotFound'</span> <abbr title="API return: Request_ResourceNotFound"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_AADAppNotFound"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($applicationRequestResourceNotFoundCount) AAD Applications 'Request_ResourceNotFound'</span> <abbr title="API return: Request_ResourceNotFound"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
 <div class="content TenantSummary">
 <table id="$htmlTableId" class="summaryTable">
 <thead>
@@ -17596,7 +18004,9 @@ tf.init();
 </table>
 </div>
 <script>
-var tfConfig4$htmlTableId = {
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+    window.helpertfConfig4$htmlTableId =1;
+    var tfConfig4$htmlTableId = {
     base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -17631,7 +18041,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
 };
 var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-tf.init();
+tf.init();}}
 </script>
 "@)
     }
@@ -17657,7 +18067,7 @@ tf.init();
         $abbr = " <abbr title=`"Relevant for UserAssigned MI's &#13;Check 'TenantSummary/Subscription, Resources & Defender/UserAssigned Managed Identities assigned to Resources' for more details`"><i class=`"fa fa-question-circle`" aria-hidden=`"true`"></i></abbr>"
         $abbrOrphanedSPMI = " <abbr title=`"Policy assignment related Managed Identities &#13;The related Policy assignment does not exist`"><i class=`"fa fa-question-circle`" aria-hidden=`"true`"></i></abbr>"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_AADSPManagedIdentities"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($servicePrincipalsOfTypeManagedIdentityCount) AAD ServicePrincipals type=ManagedIdentity</span> <abbr title="ServicePrincipals where a Role assignment exists &#13;(including ResourceGroups and Resources)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_AADSPManagedIdentities"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($servicePrincipalsOfTypeManagedIdentityCount) AAD ServicePrincipals type=ManagedIdentity</span> <abbr title="ServicePrincipals where a Role assignment exists &#13;(including ResourceGroups and Resources)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -17900,7 +18310,9 @@ tf.init();
 </table>
 </div>
 <script>
-var tfConfig4$htmlTableId = {
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+    window.helpertfConfig4$htmlTableId =1;
+    var tfConfig4$htmlTableId = {
     base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -17947,7 +18359,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
 };
 var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-tf.init();
+tf.init();}}
 </script>
 "@)
     }
@@ -17983,7 +18395,7 @@ tf.init();
                 $warningOrNot = "<i class=`"padlx fa fa-check-circle blue`" aria-hidden=`"true`"></i>"
             }
             [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_AADSPCredExpiry">$warningOrNot <span class="valignMiddle">$($servicePrincipalsOfTypeApplicationCount) AAD ServicePrincipals type=Application | $servicePrincipalsOfTypeApplicationSecretsExpiringCount Secrets expire < $($AADServicePrincipalExpiryWarningDays)d | $servicePrincipalsOfTypeApplicationCertificatesExpiringCount Certificates expire < $($AADServicePrincipalExpiryWarningDays)d</span> <abbr title="ServicePrincipals where a Role assignment exists &#13;(including ResourceGroups and Resources)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_AADSPCredExpiry">$warningOrNot <span class="valignMiddle">$($servicePrincipalsOfTypeApplicationCount) AAD ServicePrincipals type=Application | $servicePrincipalsOfTypeApplicationSecretsExpiringCount Secrets expire < $($AADServicePrincipalExpiryWarningDays)d | $servicePrincipalsOfTypeApplicationCertificatesExpiringCount Certificates expire < $($AADServicePrincipalExpiryWarningDays)d</span> <abbr title="ServicePrincipals where a Role assignment exists &#13;(including ResourceGroups and Resources)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -18066,7 +18478,9 @@ tf.init();
 </table>
 </div>
 <script>
-var tfConfig4$htmlTableId = {
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+    window.helpertfConfig4$htmlTableId =1;
+    var tfConfig4$htmlTableId = {
     base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
             if ($tfCount -gt 10) {
@@ -18115,7 +18529,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
 };
 var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-tf.init();
+tf.init();}}
 </script>
 "@)
         }
@@ -18162,7 +18576,7 @@ tf.init();
             $abbr = ""
         }
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_AADSPExternal"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($appsWithOtherOrgIdCount) External (appOwnerOrganizationId) AAD ServicePrincipals type=Application</span> <abbr title="External (appOwnerOrganizationId != $($checkContext.Subscription.TenantId)) ServicePrincipals where a Role assignment exists &#13;(including ResourceGroups and Resources)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_AADSPExternal"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($appsWithOtherOrgIdCount) External (appOwnerOrganizationId) AAD ServicePrincipals type=Application</span> <abbr title="External (appOwnerOrganizationId != $($checkContext.Subscription.TenantId)) ServicePrincipals where a Role assignment exists &#13;(including ResourceGroups and Resources)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -18213,7 +18627,9 @@ tf.init();
 </table>
 </div>
 <script>
-var tfConfig4$htmlTableId = {
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+    window.helpertfConfig4$htmlTableId =1;
+    var tfConfig4$htmlTableId = {
     base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -18252,7 +18668,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
 };
 var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-tf.init();
+tf.init();}}
 </script>
 "@)
     }
@@ -18286,7 +18702,7 @@ tf.init();
             $tfCount = ($arrayConsumptionData | Measure-Object).Count
             $htmlTableId = "TenantSummary_Consumption"
             [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_Consumption"><i class="padlx fa fa-credit-card blue" aria-hidden="true"></i> <span class="valignMiddle">Total cost $($arrayTotalCostSummary -join "$CsvDelimiterOpposite ") last $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_Consumption"><i class="padlx fa fa-credit-card blue" aria-hidden="true"></i> <span class="valignMiddle">Total cost $($arrayTotalCostSummary -join "$CsvDelimiterOpposite ") last $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -18323,6 +18739,8 @@ tf.init();
 </table>
 </div>
 <script>
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+window.helpertfConfig4$htmlTableId =1;
 var tfConfig4$htmlTableId = {
 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
@@ -18365,7 +18783,7 @@ col_types: [
 extensions: [{ name: 'sort' }]
 };
 var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-tf.init();
+tf.init();}}
 </script>
 "@)
         }
@@ -18570,7 +18988,7 @@ tf.init();
         $tfCount = $customPolicyCreatedOrUpdatedCount
         $htmlTableId = "TenantSummary_ChangeTrackingCustomPolicy"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_ChangeTrackingCustomPolicy"><i class="padlxx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle"> $customPolicyCreatedOrUpdatedCount Created/Updated custom Policy definitions (Mg: C:$($customPolicyCreatedMgCount), U:$($customPolicyUpdatedMgCount); Sub: C:$($customPolicyCreatedSubCount), U:$($customPolicyUpdatedSubCount))</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ChangeTrackingCustomPolicy"><i class="padlxx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle"> $customPolicyCreatedOrUpdatedCount Created/Updated custom Policy definitions (Mg: C:$($customPolicyCreatedMgCount), U:$($customPolicyUpdatedMgCount); Sub: C:$($customPolicyCreatedSubCount), U:$($customPolicyUpdatedSubCount))</span></button>
 <div class="content TenantSummary">
 <i class="padlxxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -18630,6 +19048,13 @@ tf.init();
                 $createOnUpdatedOn = "Created&Updated"
             }
 
+            if ($entry.UsedInPolicySetsCount -gt 0){
+                $customPolicyUsedInPolicySets = "$($entry.UsedInPolicySetsCount) ($($entry.UsedInPolicySets))"
+            }
+            else{
+                $customPolicyUsedInPolicySets = $($entry.UsedInPolicySetsCount)
+            }
+
             @"
 <tr>
 <td>$($entry.Scope)</td>
@@ -18640,7 +19065,7 @@ tf.init();
 <td>$($entry.PolicyEffect)</td>
 <td>$($entry.RoleDefinitions)</td>
 <td class="breakwordall">$($entry.UniqueAssignments -replace "<", "&lt;" -replace ">", "&gt;")</td>
-<td class="breakwordall">$($entry.UsedInPolicySets)</td>
+<td class="breakwordall">$($customPolicyUsedInPolicySets)</td>
 <td>$createOnUpdatedOn</td>
 <td>$($entry.CreatedOn)</td>
 <td>$($entry.CreatedBy)</td>
@@ -18655,6 +19080,8 @@ tf.init();
 </table>
 </div>
 <script>
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+window.helpertfConfig4$htmlTableId =1;
 var tfConfig4$htmlTableId = {
 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
@@ -18707,7 +19134,7 @@ col_types: [
 extensions: [{ name: 'sort' }]
 };
 var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-tf.init();
+tf.init();}}
 </script>
 "@)
     }
@@ -18723,7 +19150,7 @@ tf.init();
         $tfCount = $customPolicySetCreatedOrUpdatedCount
         $htmlTableId = "TenantSummary_ChangeTrackingCustomPolicySet"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_ChangeTrackingCustomPolicySet"><i class="padlxx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle"> $customPolicySetCreatedOrUpdatedCount Created/Updated custom PolicySet definitions (Mg: C:$($customPolicySetCreatedMgCount), U:$($customPolicySetUpdatedMgCount); Sub: C:$($customPolicySetCreatedSubCount), U:$($customPolicySetUpdatedSubCount))</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ChangeTrackingCustomPolicySet"><i class="padlxx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle"> $customPolicySetCreatedOrUpdatedCount Created/Updated custom PolicySet definitions (Mg: C:$($customPolicySetCreatedMgCount), U:$($customPolicySetUpdatedMgCount); Sub: C:$($customPolicySetCreatedSubCount), U:$($customPolicySetUpdatedSubCount))</span></button>
 <div class="content TenantSummary">
 <i class="padlxxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -18804,6 +19231,8 @@ tf.init();
 </table>
 </div>
 <script>
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+window.helpertfConfig4$htmlTableId =1;
 var tfConfig4$htmlTableId = {
 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
@@ -18854,7 +19283,7 @@ col_types: [
 extensions: [{ name: 'sort' }]
 };
 var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-tf.init();
+tf.init();}}
 </script>
 "@)
     }
@@ -18870,7 +19299,7 @@ tf.init();
         $tfCount = $policyAssignmentsCreatedOrUpdatedCount
         $htmlTableId = "TenantSummary_ChangeTrackingPolicyAssignments"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_ChangeTrackingPolicyAssignments"><i class="padlxx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle"> $policyAssignmentsCreatedOrUpdatedCount Created/Updated Policy assignments ($policyAssignmentSummaryCt)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ChangeTrackingPolicyAssignments"><i class="padlxx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle"> $policyAssignmentsCreatedOrUpdatedCount Created/Updated Policy assignments ($policyAssignmentSummaryCt)</span></button>
 <div class="content TenantSummary">
 <i class="padlxxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -19016,6 +19445,8 @@ tf.init();
 </table>
 </div>
 <script>
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+window.helpertfConfig4$htmlTableId =1;
 var tfConfig4$htmlTableId = {
 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
@@ -19148,7 +19579,7 @@ col_0: 'select',
         ]
     };
 var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-tf.init();
+tf.init();}}
 </script>
 "@)
     }
@@ -19176,7 +19607,7 @@ tf.init();
         $tfCount = $customRoleDefinitionsCreatedOrUpdatedCount
         $htmlTableId = "TenantSummary_ChangeTrackingCustomRoles"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_ChangeTrackingCustomRoles"><i class="padlxx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle"> $customRoleDefinitionsCreatedOrUpdatedCount Created/Updated custom Role definitions (Created: $customRoleDefinitionsCreatedCount; Updated: $customRoleDefinitionsUpdatedCount)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ChangeTrackingCustomRoles"><i class="padlxx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle"> $customRoleDefinitionsCreatedOrUpdatedCount Created/Updated custom Role definitions (Created: $customRoleDefinitionsCreatedCount; Updated: $customRoleDefinitionsUpdatedCount)</span></button>
 <div class="content TenantSummary">
 <i class="padlxxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -19245,6 +19676,8 @@ tf.init();
 </table>
 </div>
 <script>
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+window.helpertfConfig4$htmlTableId =1;
 var tfConfig4$htmlTableId = {
 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
@@ -19292,7 +19725,7 @@ col_types: [
 extensions: [{ name: 'sort' }]
 };
 var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-tf.init();
+tf.init();}}
 </script>
 "@)
     }
@@ -19308,7 +19741,7 @@ tf.init();
         $tfCount = $roleAssignmentsCreatedCount
         $htmlTableId = "TenantSummary_ChangeTrackingRoleAssignments"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_ChangeTrackingRoleAssignments"><i class="padlxx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle"> $roleAssignmentsCreatedCount Created Role assignments $rbacAssignmentSummaryCt (impacted identities: $roleAssignmentsCreatedImpactedIdentitiesCount)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ChangeTrackingRoleAssignments"><i class="padlxx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle"> $roleAssignmentsCreatedCount Created Role assignments $rbacAssignmentSummaryCt (impacted identities: $roleAssignmentsCreatedImpactedIdentitiesCount)</span></button>
 <div class="content TenantSummary">
 <i class="padlxxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -19387,6 +19820,8 @@ tf.init();
 </table>
 </div>
 <script>
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+window.helpertfConfig4$htmlTableId =1;
 var tfConfig4$htmlTableId = {
 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
@@ -19444,7 +19879,7 @@ col_types: [
 extensions: [{ name: 'sort' }]
 };
 var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-tf.init();
+tf.init();}}
 </script>
 "@)
     }
@@ -19473,7 +19908,7 @@ tf.init();
             $tfCount = $resourcesCreatedOrChangedGroupedCount
             $htmlTableId = "TenantSummary_ChangeTrackingResources"
             [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_ChangeTrackingResources"><i class="padlxx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle"> $resourcesCreatedOrChangedCount Created/Changed Resources ($resourcesCreatedOrChangedGroupedCount ResourceTypes) (Created&Changed: $resourcesCreatedAndChangedCount; Created: $resourcesCreatedCount; Changed: $resourcesChangedCount)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ChangeTrackingResources"><i class="padlxx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle"> $resourcesCreatedOrChangedCount Created/Changed Resources ($resourcesCreatedOrChangedGroupedCount ResourceTypes) (Created&Changed: $resourcesCreatedAndChangedCount; Created: $resourcesCreatedCount; Changed: $resourcesChangedCount)</span></button>
 <div class="content TenantSummary">
 <i class="padlxxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -19524,6 +19959,8 @@ tf.init();
 </table>
 </div>
 <script>
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+window.helpertfConfig4$htmlTableId =1;
 var tfConfig4$htmlTableId = {
 base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
@@ -19566,7 +20003,7 @@ col_types: [
 extensions: [{ name: 'sort' }]
 };
 var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-tf.init();
+tf.init();}}
 </script>
 "@)
         }
@@ -19607,7 +20044,7 @@ tf.init();
         $tfCount = $namingPolicyCount
         $htmlTableId = "TenantSummary_NamingPolicy"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_NamingPolicy"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/policydefinition.svg"> <span class="valignMiddle"><b>Policy</b> $($namingPolicyCount) Naming findings</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_NamingPolicy"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/policydefinition.svg"> <span class="valignMiddle"><b>Policy</b> $($namingPolicyCount) Naming findings</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -19661,7 +20098,9 @@ tf.init();
     </table>
 </div>
 <script>
-    var tfConfig4$htmlTableId = {
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -19700,7 +20139,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
     };
     var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-    tf.init();
+    tf.init();}}
 </script>
 
 "@)
@@ -19716,7 +20155,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $namingPolicySetCount
         $htmlTableId = "TenantSummary_NamingPolicySet"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_NamingPolicySet"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/policysetdefinition.svg"> <span class="valignMiddle"><b>PolicySet</b> $($namingPolicySetCount) Naming findings</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_NamingPolicySet"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/policysetdefinition.svg"> <span class="valignMiddle"><b>PolicySet</b> $($namingPolicySetCount) Naming findings</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -19770,7 +20209,9 @@ extensions: [{ name: 'sort' }]
     </table>
 </div>
 <script>
-    var tfConfig4$htmlTableId = {
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -19809,7 +20250,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
     };
     var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-    tf.init();
+    tf.init();}}
 </script>
 
 "@)
@@ -19825,7 +20266,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $namingPolicyAssignmentCount
         $htmlTableId = "TenantSummary_NamingPolicyAssignment"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_NamingPolicyAssignment"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/policyassignment.svg"> <span class="valignMiddle"><b>Policy assignment</b> $($namingPolicyAssignmentCount) Naming findings</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_NamingPolicyAssignment"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/policyassignment.svg"> <span class="valignMiddle"><b>Policy assignment</b> $($namingPolicyAssignmentCount) Naming findings</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -19879,7 +20320,9 @@ extensions: [{ name: 'sort' }]
     </table>
 </div>
 <script>
-    var tfConfig4$htmlTableId = {
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -19918,7 +20361,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
     };
     var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-    tf.init();
+    tf.init();}}
 </script>
 
 "@)
@@ -19934,7 +20377,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $namingManagementGroupCount
         $htmlTableId = "TenantSummary_NamingManagementGroup"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_NamingManagementGroup"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle"><b>Management Group</b> $($namingManagementGroupCount) Naming findings</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_NamingManagementGroup"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle"><b>Management Group</b> $($namingManagementGroupCount) Naming findings</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -19974,7 +20417,9 @@ extensions: [{ name: 'sort' }]
     </table>
 </div>
 <script>
-    var tfConfig4$htmlTableId = {
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -20011,7 +20456,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
     };
     var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-    tf.init();
+    tf.init();}}
 </script>
 
 "@)
@@ -20028,7 +20473,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $namingSubscriptionCount
         $htmlTableId = "TenantSummary_NamingSubscription"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_NamingSubscription"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle"><b>Subscription</b> $($namingSubscriptionCount) Naming findings</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_NamingSubscription"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle"><b>Subscription</b> $($namingSubscriptionCount) Naming findings</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -20067,7 +20512,9 @@ extensions: [{ name: 'sort' }]
     </table>
 </div>
 <script>
-    var tfConfig4$htmlTableId = {
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -20104,7 +20551,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
     };
     var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-    tf.init();
+    tf.init();}}
 </script>
 
 "@)
@@ -20121,7 +20568,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $namingRoleCount
         $htmlTableId = "TenantSummary_NamingRole"
         [void]$htmlTenantSummary.AppendLine(@"
-<button type="button" class="collapsible" id="buttonTenantSummary_NamingRole"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/rbacrole.svg"> <span class="valignMiddle"><b>RBAC</b> $($namingRoleCount) Naming findings</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_NamingRole"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/rbacrole.svg"> <span class="valignMiddle"><b>RBAC</b> $($namingRoleCount) Naming findings</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -20160,7 +20607,9 @@ extensions: [{ name: 'sort' }]
     </table>
 </div>
 <script>
-    var tfConfig4$htmlTableId = {
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
         base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
         if ($tfCount -gt 10) {
@@ -20197,7 +20646,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 extensions: [{ name: 'sort' }]
     };
     var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-    tf.init();
+    tf.init();}}
 </script>
 
 "@)
@@ -20314,7 +20763,7 @@ function ProcessDefinitionInsights() {
     $tfCount = $tenantAllPoliciesCount
     $htmlTableId = "definitionInsights_Policy"
     [void]$htmlDefinitionInsights.AppendLine( @"
-<button onclick="loadtf$($htmlTableId)()" type="button" class="collapsible" id="button_definitionInsights_Policy"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tenantAllPoliciesCount Policy definitions</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="button_definitionInsights_Policy"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tenantAllPoliciesCount Policy definitions</span></button>
 <div class="content contentDefinitionInsights">
 
 <div id="extGridPolicy" class="panel panel-info pull-left" >
@@ -20474,6 +20923,10 @@ function ProcessDefinitionInsights() {
 
         $scopeDetails = "n/a"
         if ($policy.ScopeId -ne "n/a") {
+            if ([string]::IsNullOrEmpty($policy.ScopeId)) {
+                Write-Host "unexpected IsNullOrEmpty - processing:"
+                $policy
+            }
             $scopeDetails = "$($policy.ScopeId) ($($htEntities.($policy.ScopeId).DisplayName))"
         }
 
@@ -20547,7 +21000,7 @@ function ProcessDefinitionInsights() {
 </table>
 </div>
 <script>
-function loadtf$htmlTableId() { if (window.helpertfConfig4$htmlTableId !== 1) {
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
     window.helpertfConfig4$htmlTableId =1;
     var tfConfig4$htmlTableId = {
     base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
@@ -20664,7 +21117,7 @@ tf.init();}}
     $tfCount = $tenantAllPolicySetsCount
     $htmlTableId = "definitionInsights_PolicySet"
     [void]$htmlDefinitionInsights.AppendLine( @"
-<button type="button" onclick="loadtf$($htmlTableId)()" class="collapsible" id="button_definitionInsights_PolicySet"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tenantAllPolicySetsCount PolicySet definitions</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="button_definitionInsights_PolicySet"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tenantAllPolicySetsCount PolicySet definitions</span></button>
 <div class="content contentDefinitionInsights">
 
 <div id="extGridPolicySet" class="panel panel-info pull-left" >
@@ -20817,7 +21270,7 @@ tf.init();}}
 </table>
 </div>
 <script>
-function loadtf$htmlTableId() { if (window.helpertfConfig4$htmlTableId !== 1) {
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
     window.helpertfConfig4$htmlTableId =1;
     var tfConfig4$htmlTableId = {
     base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
@@ -20940,7 +21393,7 @@ tf.init();}}
     $tfCount = $tenantAllRolesCount
     $htmlTableId = "definitionInsights_Roles"
     [void]$htmlDefinitionInsights.AppendLine( @"
-<button type="button" onclick="loadtf$($htmlTableId)()" class="collapsible" id="button_definitionInsights_Roles"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tenantAllRolesCount Role definitions</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="button_definitionInsights_Roles"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tenantAllRolesCount Role definitions</span></button>
 <div class="content contentDefinitionInsights">
 
 <div id="extGridRole" class="panel panel-info pull-left" >
@@ -20961,6 +21414,11 @@ tf.init();}}
         </div>
 
         <div class="me">
+            <label>canDoRoleAssignments</label>
+            <span id="roleCanDoRoleAssignments"></span>
+        </div>
+
+        <div class="me">
             <label>hasAssignment</label>
             <span id="roleHasAssignment"></span>
         </div>
@@ -20977,6 +21435,7 @@ tf.init();}}
 <th>JSON</th>
 <th>Role Type</th>
 <th>Data</th>
+<th>canDoRoleAssignments</th>
 <th>hasAssignments</th>
 <th>Assignments Count</th>
 <th>Assignments</th>
@@ -21038,6 +21497,7 @@ tf.init();}}
                     AssignableScopesMG    = $AssignableScopesMG
                     AssignableScopes      = ($role.AssignableScopes | Sort-Object) -join "$CsvDelimiterOpposite "
                     DataRelated           = $roleManageData
+                    RoleAssWriteCapable   = $role.RoleCanDoRoleAssignments
                     Actions               = $role.Actions -join "$CsvDelimiterOpposite "
                     NotActions            = $role.NotActions -join "$CsvDelimiterOpposite "
                     DataActions           = $role.DataActions -join "$CsvDelimiterOpposite "
@@ -21082,6 +21542,7 @@ tf.init();}}
 </td>
 <td>$($roleType)</td>
 <td>$($roleManageData)</td>
+<td>$($role.RoleCanDoRoleAssignments)</td>
 <td>$hasAssignments</td>
 <td>$assignmentsCount</td>
 <td class="breakwordall">$assignmentsDetailed</td>
@@ -21106,7 +21567,7 @@ tf.init();}}
 </table>
 </div>
 <script>
-function loadtf$htmlTableId() { if (window.helpertfConfig4$htmlTableId !== 1) {
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
     window.helpertfConfig4$htmlTableId =1;
     var tfConfig4$htmlTableId = {
     base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
@@ -21156,7 +21617,9 @@ function loadtf$htmlTableId() { if (window.helpertfConfig4$htmlTableId !== 1) {
     col_1: 'select',
     col_2: 'select',
     col_3: 'select',
+    col_4: 'select',
     col_types: [
+        'caseinsensitivestring',
         'caseinsensitivestring',
         'caseinsensitivestring',
         'caseinsensitivestring',
@@ -21168,6 +21631,7 @@ function loadtf$htmlTableId() { if (window.helpertfConfig4$htmlTableId !== 1) {
         'roleJson',
         'roleType',
         'roleDataRelated',
+        'roleCanDoRoleAssignments',
         'roleHasAssignment'
     ],
     extensions: [
@@ -21176,7 +21640,7 @@ function loadtf$htmlTableId() { if (window.helpertfConfig4$htmlTableId !== 1) {
         },
         {
             name: 'colsVisibility',
-            at_start: [1,2,3,4,5],
+            at_start: [1,2,3,4,5,6],
             text: 'Columns: ',
             enable_tick_all: true
         }
@@ -21600,7 +22064,7 @@ foreach ($entity in $arrayEntitiesFromAPI) {
     }
     if ($entity.Type -eq "Microsoft.Management/managementGroups") {
         if ([string]::IsNullOrEmpty($entity.properties.parent.Id)) {
-            $parent = "_TenantRoot_"
+            $parent = "__TenantRoot__"
         }
         else {
             $parent = $entity.properties.parent.Id -replace ".*/"
@@ -21623,8 +22087,8 @@ foreach ($entity in $arrayEntitiesFromAPI) {
     $htEntities.($entity.name) = @{}
     $htEntities.($entity.name).ParentNameChain = $entity.properties.parentNameChain
     $htEntities.($entity.name).Parent = $parent
-    if ($parent -eq "_TenantRoot_") {
-        $parentDisplayName = "_TenantRoot_"
+    if ($parent -eq "__TenantRoot__") {
+        $parentDisplayName = "__TenantRoot__"
     }
     else {
         $parentDisplayName = $htEntitiesPlain.($htEntities.($entity.name).Parent).properties.displayName
@@ -22092,16 +22556,16 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $htPrincipals = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htServicePrincipals = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htDailySummary = @{}
-    #$htDefenderPlans = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $arrayDefenderPlans = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayDefenderPlansSubscriptionNotRegistered = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayUserAssignedIdentities4Resources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $htSubscriptionsRoleAssignmentLimit = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
 
     #subscriptions
     $startGetSubscriptions = Get-Date
     $currentTask = "Getting all Subscriptions"
     Write-Host "$currentTask"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions?api-version=2019-10-01"
+    $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions?api-version=2020-01-01"
     $method = "GET"
     $requestAllSubscriptionsAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask
 
@@ -22858,12 +23322,13 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
             $method = "GET"
             $requestPolicyDefinitionAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask
 
-            Write-Host " $($requestPolicyDefinitionAPI.Count) BuiltIn PolicyDefinitions returned"
+            Write-Host " $($requestPolicyDefinitionAPI.Count) built-in Policy definitions returned"
             $builtinPolicyDefinitions = $requestPolicyDefinitionAPI.where( { $_.properties.policyType -eq "BuiltIn" } )
 
             foreach ($builtinPolicyDefinition in $builtinPolicyDefinitions) {
                 ($htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()) = @{}
                 ($htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Id = ($builtinPolicyDefinition.Id).ToLower()
+                ($htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).ScopeMGLevel = ""
                 ($htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Scope = "n/a"
                 ($htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).ScopeMgSub = "n/a"
                 ($htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).ScopeId = "n/a"
@@ -22944,10 +23409,11 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
             $requestPolicySetDefinitionAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask
 
             $builtinPolicySetDefinitions = $requestPolicySetDefinitionAPI.where( { $_.properties.policyType -eq "BuiltIn" } )
-            Write-Host " $($requestPolicySetDefinitionAPI.Count) BuiltIn PolicySetDefinitions returned"
+            Write-Host " $($requestPolicySetDefinitionAPI.Count) built-in PolicySet definitions returned"
             foreach ($builtinPolicySetDefinition in $builtinPolicySetDefinitions) {
             ($htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()) = @{}
             ($htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).Id = ($builtinPolicySetDefinition.Id).ToLower()
+            ($htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).ScopeMGLevel = ""
             ($htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).Scope = "n/a"
             ($htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).ScopeMgSub = "n/a"
             ($htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).ScopeId = "n/a"
@@ -22985,19 +23451,43 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
             $method = "GET"
             $requestRoleDefinitionAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask
 
-            Write-Host " $($requestRoleDefinitionAPI.Count) BuiltIn RoleDefinitions returned"
+            Write-Host " $($requestRoleDefinitionAPI.Count) built-in Role definitions returned"
             foreach ($roleDefinition in $requestRoleDefinitionAPI) {
-            ($htCacheDefinitionsRole).($roleDefinition.name) = @{}
-            ($htCacheDefinitionsRole).($roleDefinition.name).Id = ($roleDefinition.name)
-            ($htCacheDefinitionsRole).($roleDefinition.name).Name = ($roleDefinition.properties.roleName)
-            ($htCacheDefinitionsRole).($roleDefinition.name).IsCustom = $false
-            ($htCacheDefinitionsRole).($roleDefinition.name).AssignableScopes = ($roleDefinition.properties.assignableScopes)
-            ($htCacheDefinitionsRole).($roleDefinition.name).Actions = ($roleDefinition.properties.permissions.actions)
-            ($htCacheDefinitionsRole).($roleDefinition.name).NotActions = ($roleDefinition.properties.permissions.notActions)
-            ($htCacheDefinitionsRole).($roleDefinition.name).DataActions = ($roleDefinition.properties.permissions.dataActions)
-            ($htCacheDefinitionsRole).($roleDefinition.name).NotDataActions = ($roleDefinition.properties.permissions.notDataActions)
-            ($htCacheDefinitionsRole).($roleDefinition.name).Json = ($roleDefinition.properties)
-            ($htCacheDefinitionsRole).($roleDefinition.name).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($roleDefinition.name).html`" target=`"_blank`" rel=`"noopener`">$($roleDefinition.properties.roleName)</a>"
+                if (
+                    (
+                        $roleDefinition.properties.permissions.actions -contains 'Microsoft.Authorization/roleassignments/write' -or
+                        $roleDefinition.properties.permissions.actions -contains 'Microsoft.Authorization/roleassignments/*' -or
+                        $roleDefinition.properties.permissions.actions -contains 'Microsoft.Authorization/*/write' -or
+                        $roleDefinition.properties.permissions.actions -contains 'Microsoft.Authorization/*' -or
+                        $roleDefinition.properties.permissions.actions -contains '*/write' -or
+                        $roleDefinition.properties.permissions.actions -contains '*'
+                    ) -and (
+                        $roleDefinition.properties.permissions.notActions -notcontains 'Microsoft.Authorization/roleassignments/write' -and
+                        $roleDefinition.properties.permissions.notActions -notcontains 'Microsoft.Authorization/roleassignments/*' -and
+                        $roleDefinition.properties.permissions.notActions -notcontains 'Microsoft.Authorization/*/write' -and
+                        $roleDefinition.properties.permissions.notActions -notcontains 'Microsoft.Authorization/*' -and
+                        $roleDefinition.properties.permissions.notActions -notcontains '*/write' -and
+                        $roleDefinition.properties.permissions.notActions -notcontains '*'
+                    )
+                ) {
+                    $roleCapable4RoleAssignmentsWrite = $true
+                }
+                else {
+                    $roleCapable4RoleAssignmentsWrite = $false
+                }
+
+                ($htCacheDefinitionsRole).($roleDefinition.name) = @{}
+                ($htCacheDefinitionsRole).($roleDefinition.name).Id = ($roleDefinition.name)
+                ($htCacheDefinitionsRole).($roleDefinition.name).Name = ($roleDefinition.properties.roleName)
+                ($htCacheDefinitionsRole).($roleDefinition.name).IsCustom = $false
+                ($htCacheDefinitionsRole).($roleDefinition.name).AssignableScopes = ($roleDefinition.properties.assignableScopes)
+                ($htCacheDefinitionsRole).($roleDefinition.name).Actions = ($roleDefinition.properties.permissions.actions)
+                ($htCacheDefinitionsRole).($roleDefinition.name).NotActions = ($roleDefinition.properties.permissions.notActions)
+                ($htCacheDefinitionsRole).($roleDefinition.name).DataActions = ($roleDefinition.properties.permissions.dataActions)
+                ($htCacheDefinitionsRole).($roleDefinition.name).NotDataActions = ($roleDefinition.properties.permissions.notDataActions)
+                ($htCacheDefinitionsRole).($roleDefinition.name).Json = ($roleDefinition.properties)
+                ($htCacheDefinitionsRole).($roleDefinition.name).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($roleDefinition.name).html`" target=`"_blank`" rel=`"noopener`">$($roleDefinition.properties.roleName)</a>"
+                ($htCacheDefinitionsRole).($roleDefinition.name).RoleCanDoRoleAssignments = $roleCapable4RoleAssignmentsWrite
             }
         }
     }
@@ -24135,14 +24625,19 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 else {
                     $hlperDisplayNameWithOrWithoutLinkToAzAdvertizer = "$($policySet.DisplayName) ($($policySet.PolicyDefinitionId))"
                 }
+                $hlper4CSVOutput = "$($policySet.DisplayName) ($($policySet.PolicyDefinitionId))"
                 if (-not $htPoliciesUsedInPolicySets.($PolicySetPolicyId)) {
                     $htPoliciesUsedInPolicySets.($PolicySetPolicyId) = @{}
                     $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet = [array]$hlperDisplayNameWithOrWithoutLinkToAzAdvertizer
+                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV = [array]$hlper4CSVOutput
                 }
                 else {
                     $array = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet
                     $array += $hlperDisplayNameWithOrWithoutLinkToAzAdvertizer
+                    $arrayCSV = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV
+                    $arrayCSV += $hlper4CSVOutput
                     $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet = $array
+                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV = $arrayCSV
                 }
             }
         }
@@ -24319,6 +24814,8 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $tenantAllRolesCount = ($tenantAllRoles).Count
     $tenantCustomRoles = $tenantAllRoles.where( { $_.IsCustom -eq $True } )
     $tenantCustomRolesCount = ($tenantCustomRoles).Count
+    $tenantAllRolesCanDoRoleAssignments = $tenantAllRoles.where( { $_.RoleCanDoRoleAssignments -eq $True } )
+    $tenantAllRolesCanDoRoleAssignmentsCount = $tenantAllRolesCanDoRoleAssignments.Count
 
     $mgSubRoleAssignmentsArrayFromHTValues = ($htCacheAssignmentsRole).Values.Assignment
     if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
@@ -25283,11 +25780,11 @@ if (-not $htParameters.NoJsonExport) {
     $htJSON.ManagementGroups = [ordered]@{}
 
     $MgIds = ($optimizedTableForPathQuery) | select-object -property level, MgId, MgName, mgParentId, mgParentName | Sort-Object -property level, MgId -unique
-    $grpScopePolicyDefinitionsCustom = (($htCacheDefinitionsPolicy).values).Where( { $_.Type -eq "Custom" }) | Group-Object ScopeMgSub
+    $grpScopePolicyDefinitionsCustom = (($htCacheDefinitionsPolicy).values).where( { $_.Type -eq "Custom" }) | Group-Object ScopeMgSub
     $grpMgScopePolicyDefinitionsCustom = ($grpScopePolicyDefinitionsCustom.where( { $_.Name -eq "Mg" }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId)
     $grpSubScopePolicyDefinitionsCustom = ($grpScopePolicyDefinitionsCustom.where( { $_.Name -eq "Sub" }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId)
 
-    $grpScopePolicySetDefinitionsCustom = (($htCacheDefinitionsPolicySet).values).Where( { $_.Type -eq "Custom" }) | Group-Object ScopeMgSub
+    $grpScopePolicySetDefinitionsCustom = (($htCacheDefinitionsPolicySet).values).where( { $_.Type -eq "Custom" }) | Group-Object ScopeMgSub
     $grpMgScopePolicySetDefinitionsCustom = $grpScopePolicySetDefinitionsCustom.where( { $_.Name -eq "Mg" }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId
     $grpSubScopePolicySetDefinitionsCustom = $grpScopePolicySetDefinitionsCustom.where( { $_.Name -eq "Sub" }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId
 
@@ -25368,7 +25865,7 @@ if (-not $htParameters.NoJsonExport) {
 
     $bluePrintsAssignmentsAtScope = ($htCacheAssignmentsBlueprint).keys | Sort-Object
     $bluePrintDefinitions = ($htCacheDefinitionsBlueprint).Keys | Sort-Object
-    $subscriptions = ($optimizedTableForPathQuery.Where( { -not [string]::IsNullOrEmpty($_.subscriptionId) })) | Select-Object mgId, Subscription* | Sort-Object -Property subscriptionId -Unique
+    $subscriptions = ($optimizedTableForPathQuery.where( { -not [string]::IsNullOrEmpty($_.subscriptionId) })) | Select-Object mgId, Subscription* | Sort-Object -Property subscriptionId -Unique
     foreach ($mg in $MgIds) {
 
         $htJSON.ManagementGroups.($mg.MgId) = [ordered]@{}
@@ -25385,27 +25882,27 @@ if (-not $htParameters.NoJsonExport) {
         $htJSON.ManagementGroups.($mg.MgId).DiagnosticSettings = [ordered]@{}
         $htJSON.ManagementGroups.($mg.MgId).Subscriptions = [ordered]@{}
 
-        foreach ($PolDef in (($grpMgScopePolicyDefinitionsCustom).Where( { $_.Name -eq $mg.MgId })).group) {
+        foreach ($PolDef in (($grpMgScopePolicyDefinitionsCustom).where( { $_.Name -eq $mg.MgId })).group) {
             $htJSON.ManagementGroups.($mg.MgId).PolicyDefinitionsCustom.($PolDef.Id) = [ordered]@{}
             $htJSON.ManagementGroups.($mg.MgId).PolicyDefinitionsCustom.($PolDef.Id) = $PolDef.Json
         }
 
-        foreach ($PolSetDef in (($grpMgScopePolicySetDefinitionsCustom).Where( { $_.Name -eq $mg.MgId })).group) {
+        foreach ($PolSetDef in (($grpMgScopePolicySetDefinitionsCustom).where( { $_.Name -eq $mg.MgId })).group) {
             $htJSON.ManagementGroups.($mg.MgId).PolicySetDefinitionsCustom.($PolSetDef.Id) = [ordered]@{}
             $htJSON.ManagementGroups.($mg.MgId).PolicySetDefinitionsCustom.($PolSetDef.Id) = $PolSetDef.Json
         }
 
-        foreach ($PolAssignment in ($grpMgScopePolicyAssignments).Where( { $_.Name -eq $mg.MgId }).group) {
+        foreach ($PolAssignment in ($grpMgScopePolicyAssignments).where( { $_.Name -eq $mg.MgId }).group) {
             $htJSON.ManagementGroups.($mg.MgId).PolicyAssignments.($PolAssignment.Assignment.id) = [ordered]@{}
             $htJSON.ManagementGroups.($mg.MgId).PolicyAssignments.($PolAssignment.Assignment.id) = $PolAssignment.Assignment
         }
 
-        foreach ($RoleAssignment in ($grpMgScopeRoleAssignments).Where( { $_.Name -eq $mg.MgId }).group) {
+        foreach ($RoleAssignment in ($grpMgScopeRoleAssignments).where( { $_.Name -eq $mg.MgId }).group) {
             $htJSON.ManagementGroups.($mg.MgId).RoleAssignments.($RoleAssignment.Assignment.RoleAssignmentId) = [ordered]@{}
             $htJSON.ManagementGroups.($mg.MgId).RoleAssignments.($RoleAssignment.Assignment.RoleAssignmentId) = $RoleAssignment.Assignment
         }
 
-        foreach ($BlueprintDefinition in ($bluePrintDefinitions).Where( { $_ -like "/providers/Microsoft.Management/managementGroups/$($mg.MgId)/*" })) {
+        foreach ($BlueprintDefinition in ($bluePrintDefinitions).where( { $_ -like "/providers/Microsoft.Management/managementGroups/$($mg.MgId)/*" })) {
             $htJSON.ManagementGroups.($mg.MgId).BlueprintDefinitions.($BlueprintDefinition) = [ordered]@{}
             $htJSON.ManagementGroups.($mg.MgId).BlueprintDefinitions.($BlueprintDefinition) = $BlueprintDefinition
         }
@@ -25444,32 +25941,32 @@ if (-not $htParameters.NoJsonExport) {
                 $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).BlueprintAssignments = [ordered]@{}
                 $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).DiagnosticSettings = [ordered]@{}
 
-                foreach ($PolDef in (($grpSubScopePolicyDefinitionsCustom).Where( { $_.Name -eq $subscription.subscriptionId })).group) {
+                foreach ($PolDef in (($grpSubScopePolicyDefinitionsCustom).where( { $_.Name -eq $subscription.subscriptionId })).group) {
                     $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).PolicyDefinitionsCustom.($PolDef.Id) = [ordered]@{}
                     $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).PolicyDefinitionsCustom.($PolDef.Id) = $PolDef.Json
                 }
 
-                foreach ($PolSetDef in (($grpSubScopePolicySetDefinitionsCustom).Where( { $_.Name -eq $subscription.subscriptionId })).group) {
+                foreach ($PolSetDef in (($grpSubScopePolicySetDefinitionsCustom).where( { $_.Name -eq $subscription.subscriptionId })).group) {
                     $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).PolicySetDefinitionsCustom.($PolSetDef.Id) = [ordered]@{}
                     $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).PolicySetDefinitionsCustom.($PolSetDef.Id) = $PolSetDef.Json
                 }
 
-                foreach ($PolAssignment in ($grpSubScopePolicyAssignments).Where( { $_.Name -eq $subscription.subscriptionId }).group) {
+                foreach ($PolAssignment in ($grpSubScopePolicyAssignments).where( { $_.Name -eq $subscription.subscriptionId }).group) {
                     $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).PolicyAssignments.($PolAssignment.Assignment.id) = [ordered]@{}
                     $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).PolicyAssignments.($PolAssignment.Assignment.id) = $PolAssignment.Assignment
                 }
 
-                foreach ($RoleAssignment in ($grpSubScopeRoleAssignments).Where( { $_.Name -eq $subscription.subscriptionId }).group) {
+                foreach ($RoleAssignment in ($grpSubScopeRoleAssignments).where( { $_.Name -eq $subscription.subscriptionId }).group) {
                     $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).RoleAssignments.($RoleAssignment.Assignment.RoleAssignmentId) = [ordered]@{}
                     $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).RoleAssignments.($RoleAssignment.Assignment.RoleAssignmentId) = $RoleAssignment.Assignment
                 }
 
-                foreach ($BlueprintDefinition in ($bluePrintDefinitions).Where( { $_ -like "/subscriptions/$($subscription.subscriptionId)/*" })) {
+                foreach ($BlueprintDefinition in ($bluePrintDefinitions).where( { $_ -like "/subscriptions/$($subscription.subscriptionId)/*" })) {
                     $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).BlueprintDefinitions.($BlueprintDefinition) = [ordered]@{}
                     $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).BlueprintDefinitions.($BlueprintDefinition) = $BlueprintDefinition
                 }
 
-                foreach ($BlueprintsAssignment in ($blueprintsAssignmentsAtScope).Where( { $_ -like "/subscriptions/$($subscription.subscriptionId)/*" })) {
+                foreach ($BlueprintsAssignment in ($blueprintsAssignmentsAtScope).where( { $_ -like "/subscriptions/$($subscription.subscriptionId)/*" })) {
                     $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).BlueprintAssignments.($BlueprintsAssignment) = [ordered]@{}
                     $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).BlueprintAssignments.($BlueprintsAssignment) = $BlueprintsAssignment
                 }
@@ -25634,12 +26131,12 @@ if (-not $htParameters.NoJsonExport) {
     }
 
     if (($htCacheDefinitionsRole).Keys.Count -gt 0) {
-        foreach ($roleDefinition in ($htCacheDefinitionsRole).Keys.Where( { ($htCacheDefinitionsRole).($_).IsCustom }) | Sort-Object) {
+        foreach ($roleDefinition in ($htCacheDefinitionsRole).Keys.where( { ($htCacheDefinitionsRole).($_).IsCustom }) | Sort-Object) {
             $htJSON.RoleDefinitions.($roleDefinition) = ($htCacheDefinitionsRole).($roleDefinition).Json.properties
             $jsonConverted = ($htCacheDefinitionsRole).($roleDefinition).Json.properties | ConvertTo-Json -Depth 99
             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionCustom)$($DirectorySeparatorChar)$(RemoveInvalidFileNameChars ($htCacheDefinitionsRole).($roleDefinition).Name) ($(($htCacheDefinitionsRole).($roleDefinition).Id)).json" -Encoding utf8
         }
-        foreach ($roleDefinition in ($htCacheDefinitionsRole).Keys.Where( { -not ($htCacheDefinitionsRole).($_).IsCustom })) {
+        foreach ($roleDefinition in ($htCacheDefinitionsRole).Keys.where( { -not ($htCacheDefinitionsRole).($_).IsCustom })) {
             $jsonConverted = ($htCacheDefinitionsRole).($roleDefinition).Json | ConvertTo-Json -Depth 99
             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionBuiltIn)$($DirectorySeparatorChar)$(RemoveInvalidFileNameChars ($htCacheDefinitionsRole).($roleDefinition).Name ) ($(($htCacheDefinitionsRole).($roleDefinition).Id)).json" -Encoding utf8
         }
@@ -25652,7 +26149,7 @@ if (-not $htParameters.NoJsonExport) {
         $null = new-item -Name "$($pathPolicyDefinitionBuiltIn)" -ItemType directory -path $outputPath
     }
     if (($htCacheDefinitionsPolicy).Keys.Count -gt 0) {
-        foreach ($policyDefinition in ($htCacheDefinitionsPolicy).Keys.Where( { ($htCacheDefinitionsPolicy).($_).Type -eq "BuiltIn" })) {
+        foreach ($policyDefinition in ($htCacheDefinitionsPolicy).Keys.where( { ($htCacheDefinitionsPolicy).($_).Type -eq "BuiltIn" })) {
             $jsonConverted = ($htCacheDefinitionsPolicy).($policyDefinition).Json.properties | ConvertTo-Json -Depth 99
             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicyDefinitionBuiltIn)$($DirectorySeparatorChar)$(RemoveInvalidFileNameChars ($htCacheDefinitionsPolicy).($policyDefinition).displayName) ($(($htCacheDefinitionsPolicy).($policyDefinition).Json.name)).json" -Encoding utf8
         }
@@ -25665,7 +26162,7 @@ if (-not $htParameters.NoJsonExport) {
         $null = new-item -Name "$($pathPolicySetDefinitionBuiltIn)" -ItemType directory -path $outputPath
     }
     if (($htCacheDefinitionsPolicySet).Keys.Count -gt 0) {
-        foreach ($policySetDefinition in ($htCacheDefinitionsPolicySet).Keys.Where( { ($htCacheDefinitionsPolicySet).($_).Type -eq "BuiltIn" })) {
+        foreach ($policySetDefinition in ($htCacheDefinitionsPolicySet).Keys.where( { ($htCacheDefinitionsPolicySet).($_).Type -eq "BuiltIn" })) {
             $jsonConverted = ($htCacheDefinitionsPolicySet).($policySetDefinition).Json.properties | ConvertTo-Json -Depth 99
             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicySetDefinitionBuiltIn)$($DirectorySeparatorChar)$(RemoveInvalidFileNameChars ($htCacheDefinitionsPolicySet).($policySetDefinition).displayName) ($(($htCacheDefinitionsPolicySet).($policySetDefinition).Json.name)).json" -Encoding utf8
         }
@@ -25677,8 +26174,8 @@ if (-not $htParameters.NoJsonExport) {
     $startBuildJSON = Get-Date
     Write-Host " Build JSON"
     function buildTree($mgId, $prnt) {
-        $getMg = $arrayEntitiesFromAPI.Where( { $_.type -eq "Microsoft.Management/managementGroups" -and $_.name -eq $mgId })
-        $childrenManagementGroups = $arrayEntitiesFromAPI.Where( { $_.type -eq "Microsoft.Management/managementGroups" -and $_.properties.parent.id -eq "/providers/Microsoft.Management/managementGroups/$($getMg.Name)" })
+        $getMg = $arrayEntitiesFromAPI.where( { $_.type -eq "Microsoft.Management/managementGroups" -and $_.name -eq $mgId })
+        $childrenManagementGroups = $arrayEntitiesFromAPI.where( { $_.type -eq "Microsoft.Management/managementGroups" -and $_.properties.parent.id -eq "/providers/Microsoft.Management/managementGroups/$($getMg.Name)" })
         $mgNameValid = RemoveInvalidFileNameChars $getMg.Name
         $mgDisplayNameValid = RemoveInvalidFileNameChars $getMg.properties.displayName
         $prntx = "$($prnt)$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
@@ -26200,5 +26697,5 @@ Write-Host ""
 Write-Host "--------------------"
 Write-Host "Completed successful" -ForegroundColor Green
 if ($Error.Count -gt 0) {
-    Write-Host "Don´t bother about dumped errors"
+    Write-Host "Don't bother about dumped errors"
 }
