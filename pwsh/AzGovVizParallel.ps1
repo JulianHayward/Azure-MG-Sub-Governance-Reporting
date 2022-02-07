@@ -274,7 +274,7 @@
 Param
 (
     [string]$Product = "AzGovViz",
-    [string]$ProductVersion = "v6_major_20220201_1",
+    [string]$ProductVersion = "v6_minor_20220206_1",
     [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #deprecated - Based on environment variables the script will detect the code run platform
@@ -2383,7 +2383,7 @@ function DataCollectionResourceLocks {
 
     $requestSubscriptionResourceLocksCount = ($requestSubscriptionResourceLocks).Count
     if ($requestSubscriptionResourceLocksCount -gt 0) {
-        $script:htResourceLocks.($scopeId) = @{}
+        $htTemp = @{}
         $locksAnyLockSubscriptionCount = 0
         $locksCannotDeleteSubscriptionCount = 0
         $locksReadOnlySubscriptionCount = 0
@@ -2444,24 +2444,26 @@ function DataCollectionResourceLocks {
             }
         }
 
-        $script:htResourceLocks.($scopeId).SubscriptionLocksCannotDeleteCount = $locksCannotDeleteSubscriptionCount
-        $script:htResourceLocks.($scopeId).SubscriptionLocksReadOnlyCount = $locksReadOnlySubscriptionCount
+        $htTemp.SubscriptionLocksCannotDeleteCount = $locksCannotDeleteSubscriptionCount
+        $htTemp.SubscriptionLocksReadOnlyCount = $locksReadOnlySubscriptionCount
 
         #resourceGroups
         $resourceGroupsLocksCannotDeleteCount = ($arrayResourceGroupsCannotDeleteLock).Count
-        $script:htResourceLocks.($scopeId).ResourceGroupsLocksCannotDeleteCount = $resourceGroupsLocksCannotDeleteCount
+        $htTemp.ResourceGroupsLocksCannotDeleteCount = $resourceGroupsLocksCannotDeleteCount
 
         $resourceGroupsLocksReadOnlyCount = ($arrayResourceGroupsReadOnlyLock).Count
-        $script:htResourceLocks.($scopeId).ResourceGroupsLocksReadOnlyCount = $resourceGroupsLocksReadOnlyCount
-        $script:htResourceLocks.($scopeId).ResourceGroupsLocksCannotDelete = $arrayResourceGroupsCannotDeleteLock
+        $htTemp.ResourceGroupsLocksReadOnlyCount = $resourceGroupsLocksReadOnlyCount
+        $htTemp.ResourceGroupsLocksCannotDelete = $arrayResourceGroupsCannotDeleteLock
 
         #resources
         $resourcesLocksCannotDeleteCount = ($arrayResourcesCannotDeleteLock).Count
-        $script:htResourceLocks.($scopeId).ResourcesLocksCannotDeleteCount = $resourcesLocksCannotDeleteCount
+        $htTemp.ResourcesLocksCannotDeleteCount = $resourcesLocksCannotDeleteCount
 
         $resourcesLocksReadOnlyCount = ($arrayResourcesReadOnlyLock).Count
-        $script:htResourceLocks.($scopeId).ResourcesLocksReadOnlyCount = $resourcesLocksReadOnlyCount
-        $script:htResourceLocks.($scopeId).ResourcesLocksCannotDelete = $arrayResourcesCannotDeleteLock
+        $htTemp.ResourcesLocksReadOnlyCount = $resourcesLocksReadOnlyCount
+        $htTemp.ResourcesLocksCannotDelete = $arrayResourcesCannotDeleteLock
+
+        $script:htResourceLocks.($scopeId) = $htTemp
     }
 }
 $funcDataCollectionResourceLocks = $function:DataCollectionResourceLocks.ToString()
@@ -2903,69 +2905,72 @@ function DataCollectionPolicyDefinitions {
             else {
                 $policyDefinitionDescription = $scopePolicyDefinition.Properties.description
             }
-            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId) = @{}
-            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Id = $hlpPolicyDefinitionId
+
+            $htTemp = @{}
+            $htTemp.Id = $hlpPolicyDefinitionId
             if ($hlpPolicyDefinitionId -like "/providers/Microsoft.Management/managementGroups/*") {
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Scope = (($hlpPolicyDefinitionId).split('/'))[0..4] -join "/"
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeMgSub = "Mg"
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeId = (($hlpPolicyDefinitionId).split('/'))[4]
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeMGLevel = $htManagementGroupsMgPath.((($hlpPolicyDefinitionId).split('/'))[4]).ParentNameChainCount
+                $htTemp.Scope = (($hlpPolicyDefinitionId).split('/'))[0..4] -join "/"
+                $htTemp.ScopeMgSub = "Mg"
+                $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[4]
+                $htTemp.ScopeMGLevel = $htManagementGroupsMgPath.((($hlpPolicyDefinitionId).split('/'))[4]).ParentNameChainCount
             }
             if ($hlpPolicyDefinitionId -like "/subscriptions/*") {
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Scope = (($hlpPolicyDefinitionId).split('/'))[0..2] -join "/"
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeMgSub = "Sub"
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeId = (($hlpPolicyDefinitionId).split('/'))[2]
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).ScopeMGLevel = ""
+                $htTemp.Scope = (($hlpPolicyDefinitionId).split('/'))[0..2] -join "/"
+                $htTemp.ScopeMgSub = "Sub"
+                $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[2]
+                $htTemp.ScopeMGLevel = ""
             }
-            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).DisplayName = $($scopePolicyDefinition.Properties.displayname)
-            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Description = $($policyDefinitionDescription)
-            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Type = $($scopePolicyDefinition.Properties.policyType)
-            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Category = $($scopePolicyDefinition.Properties.metadata.category)
-            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).PolicyDefinitionId = $hlpPolicyDefinitionId
+            $htTemp.DisplayName = $($scopePolicyDefinition.Properties.displayname)
+            $htTemp.Description = $($policyDefinitionDescription)
+            $htTemp.Type = $($scopePolicyDefinition.Properties.policyType)
+            $htTemp.Category = $($scopePolicyDefinition.Properties.metadata.category)
+            $htTemp.PolicyDefinitionId = $hlpPolicyDefinitionId
             if ($scopePolicyDefinition.Properties.metadata.deprecated -eq $true -or $scopePolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Deprecated = $scopePolicyDefinition.Properties.metadata.deprecated
+                $htTemp.Deprecated = $scopePolicyDefinition.Properties.metadata.deprecated
             }
             else {
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Deprecated = $false
+                $htTemp.Deprecated = $false
             }
             if ($scopePolicyDefinition.Properties.metadata.preview -eq $true -or $scopePolicyDefinition.Properties.displayname -like "``[*Preview``]*") {
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Preview = $scopePolicyDefinition.Properties.metadata.preview
+                $htTemp.Preview = $scopePolicyDefinition.Properties.metadata.preview
             }
             else {
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Preview = $false
+                $htTemp.Preview = $false
             }
             #effects
             if ($scopePolicyDefinition.properties.parameters.effect.defaultvalue) {
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectDefaultValue = $scopePolicyDefinition.properties.parameters.effect.defaultvalue
+                $htTemp.effectDefaultValue = $scopePolicyDefinition.properties.parameters.effect.defaultvalue
                 if ($scopePolicyDefinition.properties.parameters.effect.allowedValues) {
-                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectAllowedValue = $scopePolicyDefinition.properties.parameters.effect.allowedValues -join ","
+                    $htTemp.effectAllowedValue = $scopePolicyDefinition.properties.parameters.effect.allowedValues -join ","
                 }
                 else {
-                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectAllowedValue = "n/a"
+                    $htTemp.effectAllowedValue = "n/a"
                 }
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectFixedValue = "n/a"
+                $htTemp.effectFixedValue = "n/a"
             }
             else {
                 if ($scopePolicyDefinition.properties.parameters.policyEffect.defaultValue) {
-                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectDefaultValue = $scopePolicyDefinition.properties.parameters.policyEffect.defaultvalue
+                    $htTemp.effectDefaultValue = $scopePolicyDefinition.properties.parameters.policyEffect.defaultvalue
                     if ($scopePolicyDefinition.properties.parameters.policyEffect.allowedValues) {
-                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectAllowedValue = $scopePolicyDefinition.properties.parameters.policyEffect.allowedValues -join ","
+                        $htTemp.effectAllowedValue = $scopePolicyDefinition.properties.parameters.policyEffect.allowedValues -join ","
                     }
                     else {
-                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectAllowedValue = "n/a"
+                        $htTemp.effectAllowedValue = "n/a"
                     }
-                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectFixedValue = "n/a"
+                    $htTemp.effectFixedValue = "n/a"
                 }
                 else {
-                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectFixedValue = $scopePolicyDefinition.Properties.policyRule.then.effect
-                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectDefaultValue = "n/a"
-                    ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).effectAllowedValue = "n/a"
+                    $htTemp.effectFixedValue = $scopePolicyDefinition.Properties.policyRule.then.effect
+                    $htTemp.effectDefaultValue = "n/a"
+                    $htTemp.effectAllowedValue = "n/a"
                 }
             }
-            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).Json = $scopePolicyDefinition
+            $htTemp.Json = $scopePolicyDefinition
+            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId) = $htTemp
 
-            if (-not [string]::IsNullOrEmpty($scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
-                        ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).RoleDefinitionIds = $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
+
+            if (-not [string]::IsNullOrEmpty($scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) -or -not [string]::IsNullOrWhiteSpace($scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
+                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).RoleDefinitionIds = $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
                 foreach ($roledefinitionId in $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
                     if (-not [string]::IsNullOrEmpty($roledefinitionId)) {
                         if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
@@ -3064,43 +3069,45 @@ function DataCollectionPolicySetDefinitions {
             else {
                 $policySetDefinitionDescription = $scopePolicySetDefinition.Properties.description
             }
-            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId) = @{}
-            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Id = $hlpPolicySetDefinitionId
+
+            $htTemp = @{}
+            $htTemp.Id = $hlpPolicySetDefinitionId
             if ($scopePolicySetDefinition.Id -like "/providers/Microsoft.Management/managementGroups/*") {
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Scope = (($scopePolicySetDefinition.Id).split('/'))[0..4] -join "/"
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeMgSub = "Mg"
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeId = (($scopePolicySetDefinition.Id).split('/'))[4]
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeMGLevel = $htManagementGroupsMgPath.((($scopePolicySetDefinition.Id).split('/'))[4]).ParentNameChainCount
+                $htTemp.Scope = (($scopePolicySetDefinition.Id).split('/'))[0..4] -join "/"
+                $htTemp.ScopeMgSub = "Mg"
+                $htTemp.ScopeId = (($scopePolicySetDefinition.Id).split('/'))[4]
+                $htTemp.ScopeMGLevel = $htManagementGroupsMgPath.((($scopePolicySetDefinition.Id).split('/'))[4]).ParentNameChainCount
             }
             if ($scopePolicySetDefinition.Id -like "/subscriptions/*") {
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Scope = (($scopePolicySetDefinition.Id).split('/'))[0..2] -join "/"
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeMgSub = "Sub"
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeId = (($scopePolicySetDefinition.Id).split('/'))[2]
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).ScopeMGLevel = ""
+                $htTemp.Scope = (($scopePolicySetDefinition.Id).split('/'))[0..2] -join "/"
+                $htTemp.ScopeMgSub = "Sub"
+                $htTemp.ScopeId = (($scopePolicySetDefinition.Id).split('/'))[2]
+                $htTemp.ScopeMGLevel = ""
             }
-            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).DisplayName = $($scopePolicySetDefinition.Properties.displayname)
-            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Description = $($policySetDefinitionDescription)
-            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Type = $($scopePolicySetDefinition.Properties.policyType)
-            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Category = $($scopePolicySetDefinition.Properties.metadata.category)
-            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).PolicyDefinitionId = $hlpPolicySetDefinitionId
+            $htTemp.DisplayName = $($scopePolicySetDefinition.Properties.displayname)
+            $htTemp.Description = $($policySetDefinitionDescription)
+            $htTemp.Type = $($scopePolicySetDefinition.Properties.policyType)
+            $htTemp.Category = $($scopePolicySetDefinition.Properties.metadata.category)
+            $htTemp.PolicyDefinitionId = $hlpPolicySetDefinitionId
             $arrayPolicySetPolicyIdsToLower = @()
             $arrayPolicySetPolicyIdsToLower = foreach ($policySetPolicy in $scopePolicySetDefinition.properties.policydefinitions.policyDefinitionId) {
                     ($policySetPolicy).ToLower()
             }
-            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
-            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Json = $scopePolicySetDefinition
+            $htTemp.PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
+            $htTemp.Json = $scopePolicySetDefinition
             if ($scopePolicySetDefinition.Properties.metadata.deprecated -eq $true -or $scopePolicySetDefinition.Properties.displayname -like "``[Deprecated``]*") {
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Deprecated = $scopePolicySetDefinition.Properties.metadata.deprecated
+                $htTemp.Deprecated = $scopePolicySetDefinition.Properties.metadata.deprecated
             }
             else {
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Deprecated = $false
+                $htTemp.Deprecated = $false
             }
             if ($scopePolicySetDefinition.Properties.metadata.preview -eq $true -or $scopePolicySetDefinition.Properties.displayname -like "``[*Preview``]*") {
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Preview = $scopePolicySetDefinition.Properties.metadata.preview
+                $htTemp.Preview = $scopePolicySetDefinition.Properties.metadata.preview
             }
             else {
-                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId).Preview = $false
+                $htTemp.Preview = $false
             }
+            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId) = $htTemp
 
             #namingValidation
             if (-not [string]::IsNullOrEmpty($scopePolicySetDefinition.Properties.displayname)) {
@@ -3177,11 +3184,12 @@ function DataCollectionPolicyAssignmentsMG {
         }
 
         if ($doIt) {
-            $script:htCacheAssignmentsPolicy.(($L0mgmtGroupPolicyAssignment.Id).ToLower()) = @{}
-            $script:htCacheAssignmentsPolicy.(($L0mgmtGroupPolicyAssignment.Id).ToLower()).Assignment = $L0mgmtGroupPolicyAssignment
-            $script:htCacheAssignmentsPolicy.(($L0mgmtGroupPolicyAssignment.Id).ToLower()).AssignmentScopeMgSubRg = "Mg"
+            $htTemp = @{}
+            $htTemp.Assignment = $L0mgmtGroupPolicyAssignment
+            $htTemp.AssignmentScopeMgSubRg = "Mg"
             $splitAssignment = (($L0mgmtGroupPolicyAssignment.Id).ToLower()).Split('/')
-            $script:htCacheAssignmentsPolicy.(($L0mgmtGroupPolicyAssignment.Id).ToLower()).AssignmentScopeId = [string]($splitAssignment[4])
+            $htTemp.AssignmentScopeId = [string]($splitAssignment[4])
+            $script:htCacheAssignmentsPolicy.(($L0mgmtGroupPolicyAssignment.Id).ToLower()) = $htTemp
         }
 
         #region namingValidation
@@ -3613,17 +3621,18 @@ function DataCollectionPolicyAssignmentsSub {
 
     foreach ($L1mgmtGroupSubPolicyAssignment in $L1mgmtGroupSubPolicyAssignmentsQuery ) {
         if ($L1mgmtGroupSubPolicyAssignment.Id -like "/subscriptions/$($scopeId)/*") {
-            $script:htCacheAssignmentsPolicy.(($L1mgmtGroupSubPolicyAssignment.Id).ToLower()) = @{}
-            $script:htCacheAssignmentsPolicy.(($L1mgmtGroupSubPolicyAssignment.Id).ToLower()).Assignment = $L1mgmtGroupSubPolicyAssignment
+            $htTemp = @{}
+            $htTemp.Assignment = $L1mgmtGroupSubPolicyAssignment
             $splitAssignment = (($L1mgmtGroupSubPolicyAssignment.Id).ToLower()).Split('/')
             if (($L1mgmtGroupSubPolicyAssignment.Id).ToLower() -like "/subscriptions/$($scopeId)/resourceGroups*") {
-                $script:htCacheAssignmentsPolicy.(($L1mgmtGroupSubPolicyAssignment.Id).ToLower()).AssignmentScopeMgSubRg = "Rg"
-                $script:htCacheAssignmentsPolicy.(($L1mgmtGroupSubPolicyAssignment.Id).ToLower()).AssignmentScopeId = "$($splitAssignment[2])/$($splitAssignment[4])"
+                $htTemp.AssignmentScopeMgSubRg = "Rg"
+                $htTemp.AssignmentScopeId = "$($splitAssignment[2])/$($splitAssignment[4])"
             }
             else {
-                $script:htCacheAssignmentsPolicy.(($L1mgmtGroupSubPolicyAssignment.Id).ToLower()).AssignmentScopeMgSubRg = "Sub"
-                $script:htCacheAssignmentsPolicy.(($L1mgmtGroupSubPolicyAssignment.Id).ToLower()).AssignmentScopeId = [string]$splitAssignment[2]
+                $htTemp.AssignmentScopeMgSubRg = "Sub"
+                $htTemp.AssignmentScopeId = [string]$splitAssignment[2]
             }
+            $script:htCacheAssignmentsPolicy.(($L1mgmtGroupSubPolicyAssignment.Id).ToLower()) = $htTemp
         }
 
         #region namingValidation
@@ -4144,17 +4153,18 @@ function DataCollectionRoleDefinitions {
                 $roleCapable4RoleAssignmentsWrite = $false
             }
 
-            ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name) = @{}
-            ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name).Id = $($scopeCustomRoleDefinition.name)
-            ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name).Name = $($scopeCustomRoleDefinition.properties.roleName)
-            ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name).IsCustom = $true
-            ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name).AssignableScopes = $($scopeCustomRoleDefinition.properties.AssignableScopes)
-            ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name).Actions = $($scopeCustomRoleDefinition.properties.permissions.Actions)
-            ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name).NotActions = $($scopeCustomRoleDefinition.properties.permissions.NotActions)
-            ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name).DataActions = $($scopeCustomRoleDefinition.properties.permissions.DataActions)
-            ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name).NotDataActions = $($scopeCustomRoleDefinition.properties.permissions.NotDataActions)
-            ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name).Json = $scopeCustomRoleDefinition
-            ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name).RoleCanDoRoleAssignments = $roleCapable4RoleAssignmentsWrite
+            $htTemp = @{}
+            $htTemp.Id = $($scopeCustomRoleDefinition.name)
+            $htTemp.Name = $($scopeCustomRoleDefinition.properties.roleName)
+            $htTemp.IsCustom = $true
+            $htTemp.AssignableScopes = $($scopeCustomRoleDefinition.properties.AssignableScopes)
+            $htTemp.Actions = $($scopeCustomRoleDefinition.properties.permissions.Actions)
+            $htTemp.NotActions = $($scopeCustomRoleDefinition.properties.permissions.NotActions)
+            $htTemp.DataActions = $($scopeCustomRoleDefinition.properties.permissions.DataActions)
+            $htTemp.NotDataActions = $($scopeCustomRoleDefinition.properties.permissions.NotDataActions)
+            $htTemp.Json = $scopeCustomRoleDefinition
+            $htTemp.RoleCanDoRoleAssignments = $roleCapable4RoleAssignmentsWrite
+            ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name) = $htTemp
 
             #namingValidation
             if (-not [string]::IsNullOrEmpty($scopeCustomRoleDefinition.properties.roleName)) {
@@ -4304,17 +4314,18 @@ function DataCollectionRoleAssignmentsMG {
                     PIM                = $pim
                 })
 
-            ($script:htCacheAssignmentsRole).($roleAssignmentId) = @{}
-            ($script:htCacheAssignmentsRole).($roleAssignmentId).Assignment = $arrayRoleAssignment
+            $htTemp = @{}
+            $htTemp.Assignment = $arrayRoleAssignment
 
             if ($roleAssignmentId -like "/providers/Microsoft.Authorization/roleAssignments/*") {
-                ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeTenMgSubRgRes = "Tenant"
-                ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeId = "Tenant"
+                $htTemp.AssignmentScopeTenMgSubRgRes = "Tenant"
+                $htTemp.AssignmentScopeId = "Tenant"
             }
             else {
-                ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeTenMgSubRgRes = "Mg"
-                ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeId = [string]$splitAssignment[4]
+                $htTemp.AssignmentScopeTenMgSubRgRes = "Mg"
+                $htTemp.AssignmentScopeId = [string]$splitAssignment[4]
             }
+            ($script:htCacheAssignmentsRole).($roleAssignmentId) = $htTemp
         }
 
         if (($htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).displayName).length -eq 0) {
@@ -4648,20 +4659,21 @@ function DataCollectionRoleAssignmentsSub {
                     PIM                = $pim
                 })
 
-            ($script:htCacheAssignmentsRole).($roleAssignmentId) = @{}
-            ($script:htCacheAssignmentsRole).($roleAssignmentId).Assignment = $arrayRoleAssignment
+            $htTemp = @{}
+            $htTemp.Assignment = $arrayRoleAssignment
 
-            ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeTenMgSubRgRes = $roleAssignmentScopeType
+            $htTemp.AssignmentScopeTenMgSubRgRes = $roleAssignmentScopeType
             if ($roleAssignmentScopeType -eq "Sub") {
-                ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeId = [string]$splitAssignment[2]
+                $htTemp.AssignmentScopeId = [string]$splitAssignment[2]
             }
             if ($roleAssignmentScopeType -eq "RG") {
-                ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeId = "$($splitAssignment[2])/$($splitAssignment[4])"
+                $htTemp.AssignmentScopeId = "$($splitAssignment[2])/$($splitAssignment[4])"
             }
             if ($roleAssignmentScopeType -eq "Res") {
-                ($script:htCacheAssignmentsRole).($roleAssignmentId).AssignmentScopeId = "$($splitAssignment[2])/$($splitAssignment[4])/$($splitAssignment[8])"
-                ($script:htCacheAssignmentsRole).($roleAssignmentId).ResourceType = "$($splitAssignment[6])-$($splitAssignment[7])"
+                $htTemp.AssignmentScopeId = "$($splitAssignment[2])/$($splitAssignment[4])/$($splitAssignment[8])"
+                $htTemp.ResourceType = "$($splitAssignment[6])-$($splitAssignment[7])"
             }
+            ($script:htCacheAssignmentsRole).($roleAssignmentId) = $htTemp
         }
 
 
@@ -20924,8 +20936,7 @@ function ProcessDefinitionInsights() {
         $scopeDetails = "n/a"
         if ($policy.ScopeId -ne "n/a") {
             if ([string]::IsNullOrEmpty($policy.ScopeId)) {
-                Write-Host "unexpected IsNullOrEmpty - processing:"
-                $policy
+                Write-Host "unexpected IsNullOrEmpty - processing: $($policy | ConvertTo-Json -depth 99)"
             }
             $scopeDetails = "$($policy.ScopeId) ($($htEntities.($policy.ScopeId).DisplayName))"
         }
