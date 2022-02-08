@@ -301,7 +301,9 @@ Param
     [switch]$DoTranscript,
     [int]$HtmlTableRowsLimit = 20000, #HTML TenantSummary may become unresponsive depending on client device performance. A recommendation will be shown to use the CSV file instead of opening the TF table
     [int]$ThrottleLimit = 10,
-    [array]$ExludedResourceTypesDiagnosticsCapable = @("microsoft.web/certificates"),
+
+    [Alias('ExludedResourceTypesDiagnosticsCapable')]
+    [array]$ExcludedResourceTypesDiagnosticsCapable = @("microsoft.web/certificates"),
     [switch]$DoNotIncludeResourceGroupsOnPolicy,
     [switch]$DoNotIncludeResourceGroupsAndResourcesOnRBAC,
     [parameter(ValueFromPipeline)][ValidateSet("TD", "LR")][string]$AzureDevOpsWikiHierarchyDirection = "TD",
@@ -24026,7 +24028,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 $htBearerAccessToken = $using:htBearerAccessToken
                 #Array&HTs
                 $htParameters = $using:htParameters
-                $ExludedResourceTypesDiagnosticsCapable = $using:ExludedResourceTypesDiagnosticsCapable
+                $ExcludedResourceTypesDiagnosticsCapable = $using:ExcludedResourceTypesDiagnosticsCapable
                 $resourceTypesDiagnosticsArray = $using:resourceTypesDiagnosticsArray
                 $htResourceTypesUniqueResource = $using:htResourceTypesUniqueResource
                 $resourceTypesSummarizedArray = $using:resourceTypesSummarizedArray
@@ -24038,8 +24040,8 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                 #endregion UsingVARs
 
                 $skipThisResourceType = $false
-                if (($ExludedResourceTypesDiagnosticsCapable).Count -gt 0) {
-                    foreach ($excludedResourceType in $ExludedResourceTypesDiagnosticsCapable) {
+                if (($ExcludedResourceTypesDiagnosticsCapable).Count -gt 0) {
+                    foreach ($excludedResourceType in $ExcludedResourceTypesDiagnosticsCapable) {
                         if ($excludedResourceType -eq $resourcetype) {
                             $skipThisResourceType = $true
                         }
@@ -24107,7 +24109,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
                     }
                 }
                 else {
-                    Write-Host "Skipping ResourceType $($resourcetype) as per parameter '-ExludedResourceTypesDiagnosticsCapable'"
+                    Write-Host "Skipping ResourceType $($resourcetype) as per parameter '-ExcludedResourceTypesDiagnosticsCapable'"
                 }
             } -ThrottleLimit $ThrottleLimit
             #[System.GC]::Collect()
