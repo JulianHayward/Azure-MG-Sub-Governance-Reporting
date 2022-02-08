@@ -1,0 +1,18 @@
+{
+    "editor.formatOnPaste": true,
+    "editor.formatOnSave": true,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "cSpell.words": [
+        "aadpermissionsportal",
+        "azgovviz",
+        "Codespaces",
+        "pscredential",
+        "pwsh",
+        "Quickstart",
+        "serviceconnection"
+    ],
+    "markdownlint.config": {
+        "MD024": false
+    }
+}
