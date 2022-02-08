@@ -67,12 +67,12 @@ variables:
     # Integer | default = 1 | example: value: 7
     value:
 
-  # Define the direction the Hierarchy should be built in Azure DevOps WokiAsCode (Markdown) TD = TopDown (Horizontal), LR = LeftRight (Vertical)
+  # Define the direction the Hierarchy should be built in Azure DevOps WikiAsCode (Markdown) TD = TopDown (Horizontal), LR = LeftRight (Vertical)
   - name: AzureDevOpsWikiHierarchyDirection
     # String | default = 'TD' | example: value: 'LR'
     value:
 
-  # Tracks newly created and updated custom Policy, PolicySet and RBAC Role definitions, Policy/RBAC Role assignments and Resources that occured within the last 14 days (default)
+  # Tracks newly created and updated custom Policy, PolicySet and RBAC Role definitions, Policy/RBAC Role assignments and Resources that occurred within the last 14 days (default)
   - name: ChangeTrackingDays
     # Integer | example: value: 30
     value:
@@ -132,7 +132,7 @@ variables:
     # Switch | example: value: true
     value:
 
-  # Marks capabilities that approch limits e.g. limit 100, usage 80 will mark with warning
+  # Marks capabilities that approach limits e.g. limit 100, usage 80 will mark with warning
   - name: LimitCriticalPercentage
     # Integer | default = 80 | example: value: 90
     value:
@@ -222,7 +222,7 @@ variables:
     value:
 
 # Dynamic Variables - Do Not Modify Anything Below this line!
-  - name: ExludedResourceTypesDiagnosticsCapable
+  - name: ExcludedResourceTypesDiagnosticsCapable
     value: ${{ join(',',parameters.ExcludedResourceTypesDiagnosticsCapableParameters) }}
 
   - name: SubscriptionQuotaIdWhitelist
