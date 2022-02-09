@@ -274,7 +274,7 @@
 Param
 (
     [string]$Product = "AzGovViz",
-    [string]$ProductVersion = "v6_minor_20220206_1",
+    [string]$ProductVersion = "v6_minor_20220209_1",
     [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #deprecated - Based on environment variables the script will detect the code run platform
@@ -2969,7 +2969,7 @@ function DataCollectionPolicyDefinitions {
             ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId) = $htTemp
 
 
-            if (-not [string]::IsNullOrEmpty($scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) -or -not [string]::IsNullOrWhiteSpace($scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
+            if (-not [string]::IsNullOrWhiteSpace($scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
                 ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).RoleDefinitionIds = $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
                 foreach ($roledefinitionId in $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
                     if (-not [string]::IsNullOrEmpty($roledefinitionId)) {
