@@ -274,7 +274,7 @@
 Param
 (
     [string]$Product = "AzGovViz",
-    [string]$ProductVersion = "v6_minor_20220209_1",
+    [string]$ProductVersion = "v6_minor_20220212_1",
     [string]$GithubRepository = "aka.ms/AzGovViz",
     [string]$ManagementGroupId,
     [switch]$AzureDevOpsWikiAsCode, #deprecated - Based on environment variables the script will detect the code run platform
@@ -351,6 +351,9 @@ Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 #region CheckCodeRunPlatform
 if ($env:GITHUB_SERVER_URL -and $env:CODESPACES) {
     $checkCodeRunPlatform = "GitHubCodespaces"
+}
+elseif ($env:REMOTE_CONTAINERS) {
+    $checkCodeRunPlatform = "RemoteContainers"
 }
 elseif ($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) {
     $checkCodeRunPlatform = "AzureDevOps"

@@ -6,8 +6,8 @@
 	},
 	"extensions": [
 		"ms-vscode.powershell",
-		"analytic-signal.preview-html"
+		"analytic-signal.preview-html",
+		"bierner.markdown-mermaid"
 	],
-	"forwardPorts": [],
-	"postCreateCommand": "chmod +x ./.devcontainer/profile.sh && ./.devcontainer/profile.sh"
+	"forwardPorts": []
 }
