@@ -1,9 +1,9 @@
-# [Depreciated] `AzGovViz.yml`
+# [Deprecated] `AzGovViz.yml`
 
-This version of the pipeline is depreciated. All updates will be for the new `AzGovViz.pipeline.yml` pipeline.
+This version of the pipeline is deprecated. All updates will be for the new `AzGovViz.pipeline.yml` pipeline.
 
 
-## [Depreciated] Edit AzDO YAML file
+## [Deprecated] Edit AzDO YAML file
 
 * Click on '__Repos__'
 * Navigate to the AzGovViz Repository
@@ -13,7 +13,7 @@ This version of the pipeline is depreciated. All updates will be for the new `Az
   * Enter the Management Group Id (ManagementGroupId)
 * Click '__Commit__'
 
-## [Depreciated] Create AzDO Pipeline
+## [Deprecated] Create AzDO Pipeline
 
 * Click on '__Pipelines__'
 * Click on '__New pipeline__'
