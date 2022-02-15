@@ -4,6 +4,20 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Jan-31 / Major)
+
+* New __TenantSummary | RBAC__ feature - insights on all Role definitions that are capable to write Role assignments
+* __TenantSummary | Subscriptions, Resources & Defender | Subscriptions__ report (new) [Role assignment limits](https://docs.microsoft.com/en-us/azure/role-based-access-control/troubleshooting#azure-role-assignments-limit)
+* Handling orphaned Policy assignments (scope Management Group)
+* Datacollection for Management Groups process in batches (batch per Management Group level)
+* Update Dockerfile
+* Update API version for Resources, ResourceGroups and Subscriptions
+* Further enrich _PolicyDefinitions and _PolicySetDefinitions CSV outputs
+* HTML file performance optimization
+* Include instructions for GitHub Actions in the __[Setup Guide](setup.md)__
+* New [demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html) uploaded
+* Bugfixes
+
 __Changes__ (2022-Jan-16 / Major)
 
 * New parameter `-ManagementGroupsOnly` - collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)

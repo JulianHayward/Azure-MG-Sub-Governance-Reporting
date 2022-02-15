@@ -6,7 +6,8 @@
     },
     "extensions": [
         "ms-vscode.powershell",
-        "analytic-signal.preview-html"
+        "analytic-signal.preview-html",
+        "bierner.markdown-mermaid"
     ],
     "forwardPorts": []
 }
