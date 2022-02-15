@@ -7,7 +7,9 @@
     "extensions": [
         "ms-vscode.powershell",
         "analytic-signal.preview-html",
-        "bierner.markdown-mermaid"
+        "bierner.markdown-mermaid",
+        "streetsidesoftware.code-spell-checker",
+        "yzhang.markdown-all-in-one"
     ],
     "forwardPorts": []
 }
