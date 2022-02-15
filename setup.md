@@ -9,30 +9,30 @@ This guide will help you to setup and run AzGovViz
 ## AzGovViz from Console
 
 * [__AzGovViz in Azure DevOps (AzDO)__](#azgovviz-in-azure-devops)
-    * Create AzDO Project
-    * Import AzGovViz GitHub repository
-    * Create AzDO Service Connection
-      * Option 1 - Create Service Connection in AzDO
-      * Option 2 - Create Service Connection´s Service Principal in the Azure Portal
-    * Grant permissions in Azure
-    * Grant permissions in AAD
-    * Grant permissions on AzGovViz AzDO repository
-    * Edit AzDO YAML file
-    * Create AzDO Pipeline
-    * Run the AzDO Pipeline
-    * Create AzDO Wiki - WikiAsCode
+  * Create AzDO Project
+  * Import AzGovViz GitHub repository
+  * Create AzDO Service Connection
+    * Option 1 - Create Service Connection in AzDO
+    * Option 2 - Create Service Connection´s Service Principal in the Azure Portal
+  * Grant permissions in Azure
+  * Grant permissions in AAD
+  * Grant permissions on AzGovViz AzDO repository
+  * Edit AzDO YAML file
+  * Create AzDO Pipeline
+  * Run the AzDO Pipeline
+  * Create AzDO Wiki - WikiAsCode
 
 * [__AzGovViz in GitHub Actions__](#azgovviz-in-github-actions)
-    * Create GitHub repository
-    * Import Code
-    * AzGovViz YAML
-        * Store the credentials in GitHub
-        * Edit the workflow YAML file
-        * Run AzGovViz in GitHub Actions
-    * AzGovViz OIDC YAML
-        * Store the credentials in GitHub
-        * Edit the workflow YAML file
-        * Run AzGovViz in GitHub Actions
+  * Create GitHub repository
+  * Import Code
+  * AzGovViz YAML
+    * Store the credentials in GitHub
+    * Edit the workflow YAML file
+    * Run AzGovViz in GitHub Actions
+  * AzGovViz OIDC YAML
+    * Store the credentials in GitHub
+    * Edit the workflow YAML file
+    * Run AzGovViz in GitHub Actions
 
 * [__AzGovViz in GitHub Codespaces__](#azgovviz-github-codespaces)
 
@@ -121,7 +121,7 @@ Proceed with step [__Clone the AzGovViz repository__](#clone-the-azgovviz-reposi
 
 * Requirements
   * To clone the AzGovViz GitHub repository you need to have GIT installed
-  * Install Git: https://git-scm.com/download/win
+  * Install Git: [https://git-scm.com/download/win](https://git-scm.com/download/win)
 
 * PowerShell
 
@@ -315,15 +315,22 @@ When the AzDO pipeline executes the AzGovViz script the outputs should be pushed
   * On the right side search for the Build Service account
     __%Project name% Build Service (%Organization name%)__ and grant it with '__Contribute__' permissions by selecting '__Allow__' (no save button available)
 
-### Edit AzDO YAML file
+### Edit AzDO Variables YAML file
+
+>For the '__parameters__' and '__variables__' sections, details about each parameter or variable is documented inline.
 
 * Click on '__Repos__'
-* Navigate to the AzGovViz Repository
-* In the folder '__pipeline__' click on '__AzGovViz.yml__' and click '__Edit__'
-* Under the variables section
-  * Enter the Service Connection name that you copied earlier (ServiceConnection)
-  * Enter the Management Group Id (ManagementGroupId)
-* Click '__Commit__'
+* Navigate to the AzGovViz repository
+* In the folder '__/.azuredevops/pipelines__' click on '__AzGovViz.variables.yml__' and click '__Edit__'
+* If needed, modify the '__parameters__' section:
+  * For more information about [parameters](https://docs.microsoft.com/en-us/azure/devops/pipelines/process/runtime-parameters)
+  * [Optional] Update the '__ExcludedResourceTypesDiagnosticsCapableParameters__'
+  * [Optional] Update the '__SubscriptionQuotaIdWhitelistParameters__'
+* Update the '__Required Variables__' section:
+  * Replace `<YourServiceConnection>` with the Service connection name you copied earlier (ServiceConnnection)
+  * Replace `<YourManagementGroupId>` with the Management Group Id (ManagementGroupId)
+* If needed, update the '__Default Variables__' section
+* If needed, update the '__Optional Variables__' section
 
 ### Create AzDO Pipeline
 
@@ -332,7 +339,7 @@ When the AzDO pipeline executes the AzGovViz script the outputs should be pushed
 * Select '__Azure Repos Git__'
 * Select the AzGovViz repository
 * Click on '__Existing Azure Pipelines YAML file__'
-* Under '__Path__' select '__/pipeline/AzGovViz.yml__' (the YAML file we edited earlier)
+* Under '__Path__' select '__/.azuredevops/pipelines/AzGovViz.pipeline.yml__'
 * Click ' __Save__'
 
 ### Run the AzDO Pipeline
