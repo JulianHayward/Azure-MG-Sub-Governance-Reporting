@@ -1,13 +1,12 @@
 {
-	"name": "AzGovViz",
-	"dockerFile": "Dockerfile",
-	"settings": {
-		"terminal.integrated.defaultProfile.linux": "pwsh"
-	},
-	"extensions": [
-		"ms-vscode.powershell",
-		"analytic-signal.preview-html"
-	],
-	"forwardPorts": [],
-	"postCreateCommand": "chmod +x ./.devcontainer/profile.sh && ./.devcontainer/profile.sh"
+    "name": "AzGovViz",
+    "dockerFile": "Dockerfile",
+    "settings": {
+        "terminal.integrated.defaultProfile.linux": "pwsh"
+    },
+    "extensions": [
+        "ms-vscode.powershell",
+        "analytic-signal.preview-html"
+    ],
+    "forwardPorts": []
 }
