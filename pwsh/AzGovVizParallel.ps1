@@ -309,9 +309,7 @@ Param
     [switch]
     $HierarchyMapOnly,
 
-    [switch]
-    $NoASCSecureScore,
-
+    [Alias('NoASCSecureScore')]
     [switch]
     $NoMDfCSecureScore,
 
@@ -482,6 +480,8 @@ $funcAzAPICall = $function:AzAPICall.ToString()
 #EndRegion AzAPICall
 #EndRegion Functions
 
+$arrayAPICallTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+
 . .\pwsh\prerequisites\Test-HashtableParameter.ps1
 . .\pwsh\prerequisites\Test-PowerShellVersion.ps1
 . .\pwsh\prerequisites\Test-AzModules.ps1
@@ -610,9 +610,9 @@ if ($HierarchyMapOnly) {
     $NoJsonExport = $true
 }
 
-if ($NoASCSecureScore -or $NoMDfCSecureScore) {
-    $NoMDfCSecureScore = $true
-}
+#if ($NoASCSecureScore -or $NoMDfCSecureScore) {
+#    $NoMDfCSecureScore = $true
+#}
 
 $htParametersAzGovViz = @{
     ProductVersion                               = $ProductVersion
@@ -20953,7 +20953,7 @@ $mgInLevel(`"$mgNameId`") --> SubsoosOf$mgInLevel(`"$(($subsoosUnderMg | measure
 
 #run
 
-$arrayAPICallTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+
 $arrayAPICallTrackingCustomDataCollection = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 
 #region validationAccess
