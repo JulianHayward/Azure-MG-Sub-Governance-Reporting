@@ -25733,7 +25733,7 @@ if (-not $htParameters.NoJsonExport) {
 
     $htTree."Tenant"."CustomRoleDefinitions" = $htJSON.RoleDefinitions
 
-    Write-Host "Exporting Tenant JSON '$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)$($fileName).json'"
+    Write-Host " Exporting Tenant JSON '$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)$($fileName).json'"
     $htTree | ConvertTo-JSON -Depth 99 | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)$($fileName).json" -Encoding utf8 -Force
 
     $endBuildJSON = Get-Date
@@ -25745,6 +25745,7 @@ if (-not $htParameters.NoJsonExport) {
 #endregion BuildJSON
 
 #region BuildPolicyJSON
+Write-Host "Creating PolicyAll JSON"
 $startPolicyAllJSON = Get-Date
 $htPolicyAndPolicySet = [ordered]@{}
 $htPolicyAndPolicySet.Policy = [ordered]@{}
@@ -25790,7 +25791,7 @@ foreach ($policySet in ($tenantPolicySetsDetailed | Sort-Object -Property Type, 
     $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).UpdatedBy = $policySet.UpdatedByJson
     $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).JSON = $policySet.Json
 }
-Write-Host "Exporting PolicyAll JSON '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyAll.json'"
+Write-Host " Exporting PolicyAll JSON '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyAll.json'"
 $htPolicyAndPolicySet | ConvertTo-JSON -Depth 99 | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyAll.json" -Encoding utf8 -Force
 
 $endPolicyAllJSON = Get-Date
