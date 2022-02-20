@@ -39,7 +39,7 @@ if ($checkCodeRunPlatform -eq "GitHubActions") {
     }
 
     Write-Host "outputpath is '$($env:outputpath)'"
-    if (-not (Test-Path -Path wiki)) {
+    if (-not (Test-Path -Path ".\$($env:outputpath)")) {
         #Assuming this is the initial run
 
         #Create the outputpath dir
