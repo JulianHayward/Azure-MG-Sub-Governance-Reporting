@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220114_1
+# AzGovViz v6_major_20220220_1
 # First things first:
 # 1. Set needed variables in the AzGovViz.variables.yml file.
 #
@@ -19,15 +19,15 @@ variables:
     value: AzGovVizParallel.ps1
 
   - name: ScheduleBranch
-    value: main
+    value: dev
 
-schedules:
-- cron: "0 0,12 * * *"
-  displayName: every 12h
-  always: true
-  branches:
-    include:
-    - $(ScheduleBranch) #CHECK: branch 'master' is applicable? - delete me :)
+#schedules:
+#- cron: "0 0,12 * * *"
+#  displayName: every 12h
+#  always: true
+#  branches:
+#    include:
+#    - $(ScheduleBranch) #CHECK: branch 'master' is applicable? - delete me :)
 
 #Running AzOps? Run AzGovViz after 'AzOps - Push' ..
 #AzOps Accellerator https://github.com/Azure/AzOps-Accelerator
@@ -48,14 +48,6 @@ jobs:
     vmImage: 'ubuntu-18.04'
 
   steps:
-  - task: PowerShell@2
-    inputs:
-      targetType: 'filePath'
-      filePath: $(System.DefaultWorkingDirectory)/$(ScriptDir)/prerequisites.ps1
-    displayName: 'Prerequisites check'
-    env:
-      SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-
   - pwsh: |
       Write-Host 'Build Script Arguments String...'
 
@@ -77,12 +69,24 @@ jobs:
           } else {
             $argumentsString += "-$( $scriptParameterName ) '$( $argument.Value )' "
           }
+          if ($scriptParameterName -eq 'outputPath') {
+            $outputPath = "$( $argument.Value )"
+          }
         }
       }
 
       Write-Host "Arguments String: $( $argumentsString.Trim() )"
       Write-Host "##vso[task.setvariable variable=ScriptArguments]$( $argumentsString.Trim() )"
+      Write-Host "outputPath String: $( $outputPath )"
+      Write-Host "##vso[task.setvariable variable=WIKIDIR]$( $outputPath )"
     displayName: 'Create Arguments String Variable'
+  - task: PowerShell@2
+    inputs:
+      targetType: 'filePath'
+      filePath: $(System.DefaultWorkingDirectory)/$(ScriptDir)/prerequisites.ps1
+    displayName: 'Prerequisites check'
+    env:
+      SYSTEM_ACCESSTOKEN: $(System.AccessToken)
 
   - task: AzurePowerShell@4
     inputs:
