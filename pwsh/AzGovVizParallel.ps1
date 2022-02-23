@@ -277,7 +277,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = 'v6_major_20220220_1',
+    $ProductVersion = 'v6_major_20220223_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -8482,7 +8482,6 @@ function ProcessTenantSummary() {
                 $arr += "$($_.Name): $value"
                 $ht.($_.Name) = $value
             }
-            Write-Host ($ht | convertto-Json)
 
             $script:htIdentitiesWithRoleAssignmentsUnique.($identityWithRoleAssignment.ObjectId).details = $arr -join "$CsvDelimiterOpposite "
             $script:htIdentitiesWithRoleAssignmentsUnique.($identityWithRoleAssignment.ObjectId).detailsJson = $ht
@@ -8692,9 +8691,9 @@ function ProcessTenantSummary() {
 
         #PolicyUsedInPolicySet
         $usedInPolicySet4JSON = $null
-        $usedInPolicySet = "0"
+        $usedInPolicySet = 0
         $usedInPolicySet4CSV = ""
-        $usedInPolicySetCount = "0"
+        $usedInPolicySetCount = 0
         if (($htPoliciesUsedInPolicySets).($tenantPolicy.PolicyDefinitionId)) {
             $hlpPolicySetUsed = ($htPoliciesUsedInPolicySets).($tenantPolicy.PolicyDefinitionId)
             $usedInPolicySet4JSON = $hlpPolicySetUsed.PolicySetIdOnly | Sort-Object
@@ -20960,26 +20959,6 @@ $arrayAPICallTrackingCustomDataCollection = [System.Collections.ArrayList]::Sync
 
 #validation / check 'Microsoft Graph API' Access
 $permissionCheckResults = @()
-
-$userType = "n/a"
-if ($accountType -eq "User") {
-    $currentTask = "Checking AAD UserType"
-    Write-Host $currentTask
-    $uri = "$(($htAzureEnvironmentRelatedUrls).MicrosoftGraph)/v1.0/me?`$select=userType"
-    $method = "GET"
-    $checkUserType = AzAPICall -uri $uri -method $method -listenOn "Content" -currentTask $currentTask
-
-    if ($checkUserType -eq "unknown") {
-        $userType = $checkUserType
-    }
-    else {
-        $userType = $checkUserType.userType
-    }
-    Write-Host " AAD UserType: $($userType)" -ForegroundColor Yellow
-}
-$htParameters.userType = $userType
-
-
 if ($htParameters.onAzureDevOpsOrGitHubActions -eq $true -or $accountType -eq "ServicePrincipal" -or $accountType -eq "ManagedService" -or $accountType -eq "ClientAssertion") {
 
     Write-Host "Checking $accountType permissions"

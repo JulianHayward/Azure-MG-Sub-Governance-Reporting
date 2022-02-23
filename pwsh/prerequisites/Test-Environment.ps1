@@ -4,7 +4,7 @@
 ($htAzureEnvironmentRelatedUrls).KeyVault = $checkContext.Environment.AzureKeyVaultServiceEndpointResourceId
 ($htAzureEnvironmentRelatedUrls).LogAnalytics = $checkContext.Environment.AzureOperationalInsightsEndpointResourceId
 if ([string]::IsNullOrEmpty($checkContext.Environment.ExtendedProperties.MicrosoftGraphUrl)) {
-    Write-Host "Applying Workaround if ResourceGraphUrl cannot be validated"
+    Write-Host "Older Az.Accounts version. AzureEnvironmentRelatedUrls -> Setting static Microsoft Graph Url 'https://graph.microsoft.com'"
     ($htAzureEnvironmentRelatedUrls).MicrosoftGraph = "https://graph.microsoft.com"
 }
 else { 
@@ -17,7 +17,7 @@ else {
 ($htAzureEnvironmentRelatedTargetEndpoints).((($checkContext.Environment.AzureOperationalInsightsEndpointResourceId) -split "/")[2]) = 'LogAnalytics'
 
 if ([string]::Isnullorempty($checkContext.Environment.ExtendedProperties.MicrosoftGraphUrl)) {
-    Write-Host "Applying Workaround if ResourceGraphUrl cannot be validated"
+    Write-Host "Older Az.Accounts version. AzureEnvironmentRelatedTargetEndpoints -> Setting static Microsoft Graph Url identifier 'graph.microsoft.com'"
     ($htAzureEnvironmentRelatedTargetEndpoints).'graph.microsoft.com' = 'MicrosoftGraph'
 }
 else { 
