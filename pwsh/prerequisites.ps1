@@ -1,40 +1,40 @@
-#v6_major_20220116_2
+#v6_major_20220220_1
 #This script should be run in Azure DevOps Pipelines and GitHub Actions only
 
 if ($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) {
-    $checkCodeRunPlatform = "AzureDevOps"
+    $codeRunPlatform = 'AzureDevOps'
 }
 elseif ($env:GITHUB_ACTIONS) {
-    $checkCodeRunPlatform = "GitHubActions"
+    $codeRunPlatform = 'GitHubActions'
 }
 else {
-    $checkCodeRunPlatform = "not 'AzureDevOps', not 'GitHubActions'"
+    $codeRunPlatform = "not 'AzureDevOps', not 'GitHubActions'"
 }
 
-Write-Host "CodeRunPlatform:" $checkCodeRunPlatform
+Write-Host 'CodeRunPlatform:' $codeRunPlatform
 
-if ($checkCodeRunPlatform -eq "GitHubActions") {
+if ($codeRunPlatform -eq 'GitHubActions') {
 
     $repoUri = "https://github.com/$($env:GITHUB_REPOSITORY)"
     Write-Host "Testing if repository '$($repoUri)' is accessible from the public"
-    try{
+    try {
         $res = Invoke-WebRequest -uri $repoUri
         $statusCode = $res.StatusCode
     }
-    catch{
+    catch {
         $statusCode = $_.Exception.Response.StatusCode.value__
     }
-    finally{
-        if ($statusCode -eq 404){
-            Write-Host  "Test returned statusCode: '$statusCode' - '$($repoUri)' seems not accessible from the public - proceed" 
+    finally {
+        if ($statusCode -eq 404) {
+            Write-Host  "Test returned statusCode: '$statusCode' - '$($repoUri)' seems not accessible from the public - proceed"
         }
-        elseif ($statusCode -eq 200){
+        elseif ($statusCode -eq 200) {
             Write-Host  "Test returned statusCode: '$statusCode' - '$($repoUri)' is accessible from the public!"
-            Write-Host  "Assuming and insisting that you do not want to publish your tenant insights to the public - throw" 
-            throw 
+            Write-Host  'Assuming and insisting that you do not want to publish your tenant insights to the public - throw'
+            throw
         }
-        else{
-            Write-Host  "Test returned statusCode: '$statusCode' - skipping this test" 
+        else {
+            Write-Host  "Test returned statusCode: '$statusCode' - skipping this test"
         }
     }
 
@@ -48,12 +48,12 @@ if ($checkCodeRunPlatform -eq "GitHubActions") {
 
         Get-ChildItem
     }
-    else{
+    else {
         Write-Host "outputpath dir '$($env:outputpath)' already exists"
     }
 }
 
-if ($checkCodeRunPlatform -eq "AzureDevOps") {
+if ($codeRunPlatform -eq 'AzureDevOps') {
     Write-Host "outputpath is '$($env:WIKIDIR)'"
     if (-not (Test-Path -Path "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:WIKIDIR)")) {
         #Assuming this is the initial run
@@ -63,7 +63,7 @@ if ($checkCodeRunPlatform -eq "AzureDevOps") {
         New-Item -ItemType Directory -Force -Path "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:WIKIDIR)"
 
         #Repository permission check
-        Write-Host "Repository access check"
+        Write-Host 'Repository access check'
 
         #createHeader
         $pat = $env:SYSTEM_ACCESSTOKEN #$(System.AccessToken)
@@ -75,7 +75,7 @@ if ($checkCodeRunPlatform -eq "AzureDevOps") {
 
         #region listRepos
         $uri = "$($collectionUri)/$($project)/_apis/git/repositories?api-version=5.1"
-        $repos = Invoke-RestMethod -Uri $uri -Method "get" -Headers $header -ContentType "application/json"
+        $repos = Invoke-RestMethod -Uri $uri -Method 'get' -Headers $header -ContentType 'application/json'
         $htRepos = @{}
         foreach ($repo in $repos.value) {
             $htRepos.($repo.id) = @{}
@@ -84,14 +84,14 @@ if ($checkCodeRunPlatform -eq "AzureDevOps") {
         #endregion listRepos
 
         #region gettingSubjectDescriptor
-        $organization = $collectionUri.Substring(0, $collectionUri.Length - 1) -replace ".*/"
+        $organization = $collectionUri.Substring(0, $collectionUri.Length - 1) -replace '.*/'
         $buildServiceAccountId = $env:SYSTEM_TEAMPROJECTID #$(System.TeamProjectId)
 
         #either 'Project Collection Build Service ($($organization))' OR '$($project) Build Service ($($organization))'
         $buildAccount = "Project Collection Build Service ($($organization))"
         Write-Host "Checking: $buildAccount"
         $uri = "https://vssps.dev.azure.com/$($organization)/_apis/identities?searchFilter=General&filterValue=$($buildAccount)&queryMembership=None&api-version=6.0"
-        $res = Invoke-RestMethod -Uri $uri -Method "GET" -Headers $header -ContentType "application/json"
+        $res = Invoke-RestMethod -Uri $uri -Method 'GET' -Headers $header -ContentType 'application/json'
         $providerDisplayName = $res.value.providerDisplayName
         $providerDisplayNameProjectCollectionBuildService = $providerDisplayName
         $subjectDescriptor = $res.value.subjectDescriptor
@@ -100,7 +100,7 @@ if ($checkCodeRunPlatform -eq "AzureDevOps") {
             $buildAccount = "$($project) Build Service ($($organization))"
             Write-Host "Checking: $buildAccount"
             $uri = "https://vssps.dev.azure.com/$($organization)/_apis/identities?searchFilter=General&filterValue=$($buildAccount)&queryMembership=None&api-version=6.0"
-            $res = Invoke-RestMethod -Uri $uri -Method "GET" -Headers $header -ContentType "application/json"
+            $res = Invoke-RestMethod -Uri $uri -Method 'GET' -Headers $header -ContentType 'application/json'
             $providerDisplayName = $res.value.providerDisplayName
             $providerDisplayNameProjectBuildService = $providerDisplayName
             $subjectDescriptor = $res.value.subjectDescriptor
@@ -115,7 +115,7 @@ if ($checkCodeRunPlatform -eq "AzureDevOps") {
 
             #region gettingPermissions
             $repositoryId = $env:BUILD_REPOSITORY_ID #$(Build.Repository.ID)
-            $permissionSetId = "2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87" #Git Repositories
+            $permissionSetId = '2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87' #Git Repositories
 
             $uri = "$($collectionUri)/_apis/Contribution/HierarchyQuery?api-version=5.0-preview.1"
             $body = @"
@@ -133,13 +133,13 @@ if ($checkCodeRunPlatform -eq "AzureDevOps") {
 }
 "@
 
-            $permissions = Invoke-RestMethod -Uri $uri -Method "post" -Body $body -Headers $header -ContentType "application/json"
+            $permissions = Invoke-RestMethod -Uri $uri -Method 'post' -Body $body -Headers $header -ContentType 'application/json'
             $htPermissionsRef = @{}
-            $htPermissionsRef."1" = "allow"
-            $htPermissionsRef."2" = "deny"
-            $htPermissionsRef."3" = "allow(inherited)"
+            $htPermissionsRef.'1' = 'allow'
+            $htPermissionsRef.'2' = 'deny'
+            $htPermissionsRef.'3' = 'allow(inherited)'
             Write-Host "'$($buildAccount)' ($buildServiceAccountId) permissions for Repository: $($htRepos.($repositoryId).name) ($repositoryId)"
-            $contributePermissionState = ($permissions.dataProviders."ms.vss-admin-web.security-view-permissions-data-provider".subjectPermissions).where( { $_.displayName -eq "Contribute" } ).effectivePermissionValue
+            $contributePermissionState = ($permissions.dataProviders.'ms.vss-admin-web.security-view-permissions-data-provider'.subjectPermissions).where( { $_.displayName -eq 'Contribute' } ).effectivePermissionValue
             if ($contributePermissionState -eq 1 -or $contributePermissionState -eq 3) {
                 Write-Host " Contribute: $($htPermissionsRef."$contributePermissionState") ($($contributePermissionState))"
             }
@@ -148,12 +148,12 @@ if ($checkCodeRunPlatform -eq "AzureDevOps") {
                     Write-Host " Contribute: $($htPermissionsRef."$contributePermissionState") ($($contributePermissionState))"
                 }
                 else {
-                    Write-Host " Contribute: not set"
+                    Write-Host ' Contribute: not set'
                 }
-                $testResult = "FAILED"
+                $testResult = 'FAILED'
             }
-            Write-Host "All permissions:"
-            foreach ($permission in $permissions.dataProviders."ms.vss-admin-web.security-view-permissions-data-provider".subjectPermissions) {
+            Write-Host 'All permissions:'
+            foreach ($permission in $permissions.dataProviders.'ms.vss-admin-web.security-view-permissions-data-provider'.subjectPermissions) {
                 if ($permission.effectivePermissionValue) {
                     Write-Host " $($permission.displayName): $($htPermissionsRef."$($permission.effectivePermissionValue)") ($($permission.effectivePermissionValue))"
                 }
@@ -162,16 +162,16 @@ if ($checkCodeRunPlatform -eq "AzureDevOps") {
                 }
             }
 
-            if ($testResult -eq "FAILED") {
-                Write-Host ""
-                Write-Host "- - - - - - - - - - - - - - - - -"
-                Write-Host "Repository permission test failed"
+            if ($testResult -eq 'FAILED') {
+                Write-Host ''
+                Write-Host '- - - - - - - - - - - - - - - - -'
+                Write-Host 'Repository permission test failed'
                 Write-Host "You must grant the Account '$($buildAccount)' ($buildServiceAccountId) with 'Contribute' permissions on the Repository '$($htRepos.($repositoryId).name)'' ($repositoryId)"
-                Write-Host "Instructions: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/setup.md#grant-permissions-on-azgovviz-azdo-repository"
-                Write-Error "Error"
+                Write-Host 'Instructions: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/setup.md#grant-permissions-on-azgovviz-azdo-repository'
+                Write-Error 'Error'
             }
             else {
-                $timestamp = get-date -format "yyyy-MM-dd_HH:mm:ss"
+                $timestamp = get-date -format 'yyyy-MM-dd_HH:mm:ss'
                 $fileContent = @"
         Repository access check result:
         Date: $($timestamp)
