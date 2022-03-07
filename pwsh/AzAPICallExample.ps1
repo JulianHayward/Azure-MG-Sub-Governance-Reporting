@@ -264,7 +264,7 @@ if (-not $NoPsParallelization) {
         $apiEndPoint = $Configuration['htAzureEnvironmentRelatedUrls'].ARM
         $apiVersion = '?api-version=2021-04-01'
         $api = "/subscriptions/$($subscription.subscriptionId)/resources"
-        $uriParameter = '' #"&`$filter=resourceType eq 'Microsoft.Network/virtualNetworks' or resourceType eq 'Microsoft.Compute/virtualMachines'"
+        $uriParameter = "&`$filter=resourceType eq 'Microsoft.Network/virtualNetworks' or resourceType eq 'Microsoft.Compute/virtualMachines'"
 
         #$uri = 'https://graph.microsoft.com/v1.0/groups/<GUID>/members'
         $uri = $apiEndPoint + $api + $apiVersion + $uriParameter
@@ -310,7 +310,7 @@ else {
         $apiEndPoint = $Configuration['htAzureEnvironmentRelatedUrls'].ARM
         $apiVersion = '?api-version=2021-04-01'
         $api = "/subscriptions/$($subscription.subscriptionId)/resources"
-        $uriParameter = '' #"&`$filter=resourceType eq 'Microsoft.Network/virtualNetworks' or resourceType eq 'Microsoft.Compute/virtualMachines'"
+        $uriParameter = "&`$filter=resourceType eq 'Microsoft.Network/virtualNetworks' or resourceType eq 'Microsoft.Compute/virtualMachines'"
 
         #$uri = 'https://graph.microsoft.com/v1.0/groups/<GUID>/members'
         $uri = $apiEndPoint + $api + $apiVersion + $uriParameter
