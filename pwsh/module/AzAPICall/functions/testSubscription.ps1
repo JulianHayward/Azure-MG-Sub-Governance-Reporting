@@ -1,13 +1,14 @@
 function testSubscription {
     [CmdletBinding()]Param(
-        [string]$SubscriptionId4Test
+        [string]$SubscriptionId4Test,
+        $AzAPICallConfiguration
     )
 
     $currentTask = "Check Subscription: '$SubscriptionId4Test'"
     Write-Host "  $currentTask"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($SubscriptionId4Test)?api-version=2020-01-01"
+    $uri = "$(($AzAPICallConfiguration['htAzureEnvironmentRelatedUrls']).ARM)/subscriptions/$($SubscriptionId4Test)?api-version=2020-01-01"
     $method = 'GET'
-    $testSubscription = AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn 'Content'
+    $testSubscription = AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -AzAPICallConfiguration $AzAPICallConfiguration
 
     if ($testSubscription.subscriptionPolicies.quotaId -like 'AAD*' -or $testSubscription.state -ne 'Enabled') {
         if ($testSubscription.subscriptionPolicies.quotaId -like 'AAD*') {

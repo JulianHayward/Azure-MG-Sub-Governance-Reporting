@@ -16,17 +16,26 @@
     General notes
     #>
     param (
-        [Parameter(Mandatory = $true)][string]$targetEndPoint
+        [Parameter(Mandatory = $true)]
+        [string]
+        $targetEndPoint,
+
+        [Parameter(Mandatory = $true)]
+        [Microsoft.Azure.Commands.Profile.Models.Core.PSAzureContext]
+        $checkContext,
+
+
+        $AzApiCallConfiguration
     )
 
     Write-Host " +Processing new bearer token request ($targetEndPoint)" -ForegroundColor Cyan
 
-    if (($htAzureEnvironmentRelatedUrls).$targetEndPoint) {
+    if (($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls']).$targetEndPoint) {
 
-        $contextForToken = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
+        # $checkContext = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
         $catchResult = 'letscheck'
         try {
-            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForToken.Account, $contextForToken.Environment, $contextForToken.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$(($htAzureEnvironmentRelatedUrls).$targetEndPoint)")
+            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($checkContext.Account, $checkContext.Environment, $checkContext.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$(($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls']).$targetEndPoint)")
         }
         catch {
             $catchResult = $_
@@ -41,7 +50,7 @@
 
         $dateTimeTokenCreated = (get-date -format 'MM/dd/yyyy HH:mm:ss')
 
-        ($global:htBearerAccessToken).$targetEndPoint = $newBearerAccessTokenRequest.AccessToken
+        ($AzApiCallConfiguration['htBearerAccessToken']).$targetEndPoint = $newBearerAccessTokenRequest.AccessToken
 
         $bearerDetails = getJWTDetails -token $newBearerAccessTokenRequest.AccessToken
         $bearerAccessTokenExpiryDateTime = $bearerDetails.expiryDateTime
