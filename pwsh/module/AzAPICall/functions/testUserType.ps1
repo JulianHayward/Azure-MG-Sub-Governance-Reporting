@@ -1,9 +1,12 @@
 function testUserType {
+    param(
+        $AzApiCallConfiguration
+    )
     $userType = 'n/a'
     if ($accountType -eq 'User') {
         $currentTask = 'Check AAD UserType'
         Write-Host " $currentTask"
-        $uri = ($htAzureEnvironmentRelatedUrls).MicrosoftGraph + '/v1.0/me?$select=userType'
+        $uri = ($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls']).MicrosoftGraph + '/v1.0/me?$select=userType'
         $method = 'GET'
         $checkUserType = AzAPICall -uri $uri -method $method -listenOn 'Content' -currentTask $currentTask
 
@@ -16,5 +19,5 @@ function testUserType {
         Write-Host "  AAD UserType: $($userType)" -ForegroundColor Yellow
         Write-Host '  AAD UserType check succeeded' -ForegroundColor Green
     }
-    $global:htParameters.UserType = $userType
+    Write-Output $userType
 }
