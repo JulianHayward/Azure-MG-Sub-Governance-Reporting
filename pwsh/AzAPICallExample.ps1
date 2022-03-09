@@ -36,7 +36,7 @@ $parameters4AzAPICallModule = @{
 $Configuration = initAzAPICall @parameters4AzAPICallModule
 
 if (-not $NoPsParallelization) {
-    $functions = getFunctions
+    $functions = getAzAPICallFunctions
 }
 Write-Host "Initialize 'AzAPICall' succeeded" -ForegroundColor Green
 #EndRegion initAZAPICall
