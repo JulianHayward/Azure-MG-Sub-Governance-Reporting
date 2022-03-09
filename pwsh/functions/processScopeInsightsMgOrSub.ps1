@@ -16,7 +16,7 @@ function processScopeInsightsMgOrSub($mgOrSub, $mgChild, $subscriptionId, $subsc
                 $entry
             }
         }
-        if ($htParameters.NoResources -eq $false) {
+        if ($Configuration['htParameters'].NoResources -eq $false) {
             $resourcesAllChildSubscriptions = [System.Collections.ArrayList]@()
             foreach ($mgAllChildSubscription in $mgAllChildSubscriptions) {
                 foreach ($resource in ($resourcesAllGroupedBySubcriptionId.where( { $_.name -eq $mgAllChildSubscription } )).group | Sort-Object -Property type, location) {
@@ -53,7 +53,7 @@ function processScopeInsightsMgOrSub($mgOrSub, $mgChild, $subscriptionId, $subsc
         $arrayPolicyAssignmentsEnrichedForThisManagementGroupVariantPolicy = ($arrayPolicyAssignmentsEnrichedForThisManagementGroupGroupedByPolicyVariant.where( { $_.name -eq 'Policy' } )).group
         $arrayPolicyAssignmentsEnrichedForThisManagementGroupVariantPolicySet = ($arrayPolicyAssignmentsEnrichedForThisManagementGroupGroupedByPolicyVariant.where( { $_.name -eq 'PolicySet' } )).group
 
-        if ($htParameters.NoMDfCSecureScore -eq $false) {
+        if ($Configuration['htParameters'].NoMDfCSecureScore -eq $false) {
             if ([string]::IsNullOrEmpty(($htMgASCSecureScore).($mgChild).SecureScore) -or [string]::IsNullOrWhiteSpace(($htMgASCSecureScore).($mgChild).SecureScore)) {
                 $managementGroupASCPoints = 'n/a'
             }
@@ -62,7 +62,7 @@ function processScopeInsightsMgOrSub($mgOrSub, $mgChild, $subscriptionId, $subsc
             }
         }
         else {
-            $managementGroupASCPoints = "excluded (-NoMDfCSecureScore $($htParameters.NoMDfCSecureScore))"
+            $managementGroupASCPoints = "excluded (-NoMDfCSecureScore $($Configuration['htParameters'].NoMDfCSecureScore))"
         }
 
         $cssClass = 'mgDetailsTable'
@@ -89,7 +89,7 @@ function processScopeInsightsMgOrSub($mgOrSub, $mgChild, $subscriptionId, $subsc
         }
         $subscriptionASCPoints = ($subscriptionDetailsReleatedQuery).SubscriptionASCSecureScore
 
-        if ($htParameters.NoResources -eq $false) {
+        if ($Configuration['htParameters'].NoResources -eq $false) {
             #Resources
             $resourcesSubscription = [System.Collections.ArrayList]@()
             foreach ($resource in ($resourcesAllGroupedBySubcriptionId.where( { $_.name -eq $subscriptionId } )).group | Sort-Object -Property type, location) {
@@ -617,7 +617,7 @@ extensions: [{ name: 'sort' }]
         #Consumption
         #$startScopeInsightsConsumptionSub = Get-Date
         #region ScopeInsightsConsumptionSub
-        if ($htParameters.DoAzureConsumption -eq $true) {
+        if ($Configuration['htParameters'].DoAzureConsumption -eq $true) {
 
             if ($htAzureConsumptionSubscriptions.($subscriptionId).ConsumptionData) {
                 $consumptionData = $htAzureConsumptionSubscriptions.($subscriptionId).ConsumptionData
@@ -787,7 +787,7 @@ tf.init();}}
 
         #ResourceProvider
         #region ScopeInsightsResourceProvidersDetailed
-        if ($htParameters.NoResourceProvidersDetailed -eq $false) {
+        if ($Configuration['htParameters'].NoResourceProvidersDetailed -eq $false) {
             if (($htResourceProvidersAll).($subscriptionId)) {
                 $tfCount = ($htResourceProvidersAll).($subscriptionId).Providers.Count
                 $htmlTableId = "ScopeInsights_ResourceProvider_$($subscriptionId -replace '-','_')"
@@ -1127,7 +1127,7 @@ extensions: [{ name: 'sort' }]
 
         #$startScopeInsightsConsumptionMg = Get-Date
         #region ScopeInsightsConsumptionMg
-        if ($htParameters.DoAzureConsumption -eq $true) {
+        if ($Configuration['htParameters'].DoAzureConsumption -eq $true) {
             if ($allConsumptionDataCount -gt 0) {
 
                 $consumptionData = $htManagementGroupsCost.($mgchild).consumptionDataSubscriptions
@@ -1293,7 +1293,7 @@ tf.init();}}
     #endregion ScopeInsightsManagementGroups
 
     #ScopeInsightsResources
-    if ($htParameters.NoResources -eq $false) {
+    if ($Configuration['htParameters'].NoResources -eq $false) {
         #resources
         #region ScopeInsightsResources
         if ($mgOrSub -eq 'mg') {
@@ -1477,7 +1477,7 @@ extensions: [{ name: 'sort' }]
     }
 
     #ScopeInsightsDiagnosticsCapable
-    if ($htParameters.NoResources -eq $false) {
+    if ($Configuration['htParameters'].NoResources -eq $false) {
         #resourcesDiagnosticsCapable
         #region ScopeInsightsDiagnosticsCapable
         if ($mgOrSub -eq 'mg') {
@@ -1738,7 +1738,7 @@ extensions: [{ name: 'sort' }]
     }
 
     #ScopeInsightsUserAssignedIdentities4Resources
-    if ($htParameters.NoResources -eq $false) {
+    if ($Configuration['htParameters'].NoResources -eq $false) {
         if ($mgOrSub -eq 'sub') {
             #region ScopeInsightsUserAssignedIdentities4Resources
             if ($arrayUserAssignedIdentities4ResourcesSubscriptionCount -gt 0) {
@@ -1962,7 +1962,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 <th>NonCompliance Message</th>
 "@)
 
-        if ($htParameters.NoPolicyComplianceStates -eq $false) {
+        if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
 
             [void]$htmlScopeInsights.AppendLine(@'
 <th>Policies NonCmplnt</th>
@@ -2011,7 +2011,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 <td>$($policyAssignment.PolicyAssignmentNonComplianceMessages)</td>
 "@
 
-            if ($htParameters.NoPolicyComplianceStates -eq $false) {
+            if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
                 @"
 <td>$($policyAssignment.NonCompliantPolicies)</td>
 <td>$($policyAssignment.CompliantPolicies)</td>
@@ -2092,7 +2092,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
 '@)
 
-        if ($htParameters.NoPolicyComplianceStates -eq $false) {
+        if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
 
             [void]$htmlScopeInsights.AppendLine(@'
 
@@ -2215,7 +2215,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>NonCompliance Message</th>
 "@)
 
-        if ($htParameters.NoPolicyComplianceStates -eq $false) {
+        if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
 
             [void]$htmlScopeInsights.AppendLine(@'
 <th>Policies NonCmplnt</th>
@@ -2260,7 +2260,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <td>$($policyAssignment.PolicyAssignmentEnforcementMode)</td>
 <td>$($policyAssignment.PolicyAssignmentNonComplianceMessages)</td>
 "@
-            if ($htParameters.NoPolicyComplianceStates -eq $false) {
+            if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
                 @"
 <td>$($policyAssignment.NonCompliantPolicies)</td>
 <td>$($policyAssignment.CompliantPolicies)</td>
@@ -2336,7 +2336,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
 '@)
 
-        if ($htParameters.NoPolicyComplianceStates -eq $false) {
+        if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
             [void]$htmlScopeInsights.AppendLine(@'
                 'number',
                 'number',

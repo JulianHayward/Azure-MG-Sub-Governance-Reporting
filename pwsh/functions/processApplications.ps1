@@ -1,14 +1,14 @@
 function processApplications {
     #region Application
     Write-Host 'Processing Service Principals - Applications'
-    $script:servicePrincipalsOfTypeApplication = $htServicePrincipals.Keys.where( { $htServicePrincipals.($_).servicePrincipalType -eq 'Application' -and $htServicePrincipals.($_).appOwnerOrganizationId -eq $checkContext.Subscription.TenantId } )
-    if ($htParameters.userType -eq 'Guest') {
+    $script:servicePrincipalsOfTypeApplication = $htServicePrincipals.Keys.where( { $htServicePrincipals.($_).servicePrincipalType -eq 'Application' -and $htServicePrincipals.($_).appOwnerOrganizationId -eq $Configuration['checkContext'].Subscription.TenantId } )
+    if ($Configuration['htParameters'].userType -eq 'Guest') {
         #checking if Guest has enough permissions
         $app4Test = $htServicePrincipals.($servicePrincipalsOfTypeApplication[0])
         $currentTask = "getApp Test $($app4Test.appId)"
-        $uri = "$(($htAzureEnvironmentRelatedUrls).MicrosoftGraph)/v1.0/applications?`$filter=appId eq '$($app4Test.appId)'"
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph)/v1.0/applications?`$filter=appId eq '$($app4Test.appId)'"
         $method = 'GET'
-        $testGetApplication = AzAPICall -uri $uri -method $method -currentTask $currentTask
+        $testGetApplication = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask
         if ($testGetApplication -eq 'skipApplications') {
             $skipApplications = $true
             Write-Host ' Guest account does not have enough permissions, skipping Applications (Secrets & Certificates)'
@@ -23,28 +23,23 @@ function processApplications {
             #region UsingVARs
             $currentDateUTC = $using:currentDateUTC
             #fromOtherFunctions
-            $htAzureEnvironmentRelatedTargetEndpoints = $using:htAzureEnvironmentRelatedTargetEndpoints
-            $checkContext = $using:checkContext
-            $htAzureEnvironmentRelatedUrls = $using:htAzureEnvironmentRelatedUrls
-            $htBearerAccessToken = $using:htBearerAccessToken
+            $Configuration = $using:Configuration
             #Array&HTs
-            $htParameters = $using:htParameters
             $arrayApplicationRequestResourceNotFound = $using:arrayApplicationRequestResourceNotFound
             $htAppDetails = $using:htAppDetails
             $htServicePrincipals = $using:htServicePrincipals
-            $arrayAPICallTracking = $using:arrayAPICallTracking
             #Functions
-            $function:AzAPICall = $using:funcAzAPICall
-            $function:createBearerToken = $using:funcCreateBearerToken
-            $function:getJWTDetails = $using:funcGetJWTDetails
+            $function:AzAPICall = $using:functions.funcAzAPICall
+            $function:createBearerToken = $using:functions.funcCreateBearerToken
+            $function:GetJWTDetails = $using:functions.funcGetJWTDetails
             #endregion UsingVARs
 
             $sp = $htServicePrincipals.($_)
 
             $currentTask = "getApp $($sp.appId)"
-            $uri = "$(($htAzureEnvironmentRelatedUrls).MicrosoftGraph)/v1.0/applications?`$filter=appId eq '$($sp.appId)'"
+            $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph)/v1.0/applications?`$filter=appId eq '$($sp.appId)'"
             $method = 'GET'
-            $getApplication = AzAPICall -uri $uri -method $method -currentTask $currentTask
+            $getApplication = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask
 
             if ($getApplication -eq 'Request_ResourceNotFound') {
                 $null = $script:arrayApplicationRequestResourceNotFound.Add([PSCustomObject]@{

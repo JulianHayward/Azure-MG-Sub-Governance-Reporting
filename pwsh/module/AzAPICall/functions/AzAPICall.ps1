@@ -83,7 +83,7 @@
         }
         $targetEndpoint = ($AzApiCallConfiguration['htAzureEnvironmentRelatedTargetEndpoints']).($uriSplitted[2])
         if (-not ($AzAPICallConfiguration['htBearerAccessToken']).$targetEndpoint) {
-            createBearerToken -targetEndPoint $targetEndpoint -checkContext $AzAPICallConfiguration.checkContext -AzAPICallConfiguration $AzAPICallConfiguration
+            createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
         }
 
         $unexpectedError = $false
@@ -330,7 +330,7 @@
 
                     if ($catchResult.error.code -like '*ExpiredAuthenticationToken*' -or $catchResult.error.code -like '*Authentication_ExpiredToken*' -or $catchResult.error.code -like '*InvalidAuthenticationToken*') {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
-                        createBearerToken -targetEndPoint $targetEndpoint -checkContext $AzAPICallConfiguration.checkContext
+                        createBearerToken -targetEndPoint $targetEndpoint -checkContext $AzAPICallConfiguration['checkContext']
                     }
 
                     if (
@@ -419,16 +419,16 @@
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - skip Application (Secrets & Certificates)"
                             return [string]'skipApplications'
                         }
-                        if ($userType -eq 'Guest' -or $userType -eq 'unknown') {
+                        <#if ($AzApiCallConfiguration['htParameters'].userType -eq 'Guest' -or $AzApiCallConfiguration['htParameters'].userType -eq 'unknown') {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult)"
-                            if ($userType -eq 'Guest') {
+                            if ($AzApiCallConfiguration['htParameters'].userType -eq 'Guest') {
                                 Write-Host " Your UserType is 'Guest' (member/guest/unknown) in the tenant therefore not enough permissions. You have the following options: [1. request membership to AAD Role 'Directory readers'.] Grant explicit Microsoft Graph API permission." -ForegroundColor Yellow
                             }
-                            if ($userType -eq 'unknown') {
+                            if ($AzApiCallConfiguration['htParameters'].userType -eq 'unknown') {
                                 Write-Host " Your UserType is 'unknown' (member/guest/unknown) in the tenant. Seems you do not have enough permissions geeting AAD related data. You have the following options: [1. request membership to AAD Role 'Directory readers'.]" -ForegroundColor Yellow
                             }
                             Throw 'Authorization_RequestDenied'
-                        }
+                        }#>
                         else {
                             Write-Host '- - - - - - - - - - - - - - - - - - - - '
                             Write-Host "!Please report at $($AzApiCallConfiguration['htParameters'].GithubRepository) and provide the following dump" -ForegroundColor Yellow
@@ -440,6 +440,19 @@
                             }
                             Throw 'Authorization_RequestDenied'
                         }
+                    }
+
+                    if ($validateAccess -and $catchResult.error.code -eq 'Authorization_RequestDenied') {
+                        #Write-Host "$currentTask failed ('$($catchResult.error.code)' | '$($catchResult.error.message)')" -ForegroundColor DarkRed
+                        return [string]'failed'
+                    }
+
+                    if ($AzApiCallConfiguration['htParameters'].userType -eq 'Guest' -and $catchResult.error.code -eq 'Authorization_RequestDenied') {
+                        #https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions
+                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - exit"
+                        Write-Host 'Tenant seems hardened (AAD External Identities / Guest user access = most restrictive) -> https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions'
+                        Write-Host "AAD Role 'Directory readers' is required for your Guest User Account!"
+                        Throw 'Error - check the last console output for details'
                     }
 
                     if ($catchResult.error.code -like '*BlueprintNotFound*') {
@@ -513,19 +526,6 @@
                         }
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' sleeping $($sleepSec) seconds"
                         start-sleep -Seconds $sleepSec
-                    }
-
-                    if ($validateAccess -and $catchResult.error.code -eq 'Authorization_RequestDenied') {
-                        #Write-Host "$currentTask failed ('$($catchResult.error.code)' | '$($catchResult.error.message)')" -ForegroundColor DarkRed
-                        return [string]'failed'
-                    }
-
-                    if ($AzApiCallConfiguration['htParameters'].userType -eq 'Guest' -and $catchResult.error.code -eq 'Authorization_RequestDenied') {
-                        #https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions
-                        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - exit"
-                        Write-Host 'Tenant seems hardened (AAD External Identities / Guest user access = most restrictive) -> https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions'
-                        Write-Host "AAD Role 'Directory readers' is required for your Guest User Account!"
-                        Throw 'Error - check the last console output for details'
                     }
 
                     if ($getARMMDfC -and $catchResult.error.code -eq 'Subscription Not Registered') {

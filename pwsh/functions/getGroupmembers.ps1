@@ -4,9 +4,9 @@ function getGroupmembers($aadGroupId, $aadGroupDisplayName) {
         $script:htAADGroupsDetails.$aadGroupId = @{}
         $script:htAADGroupsDetails.($aadGroupId).Id = $aadGroupId
         $script:htAADGroupsDetails.($aadGroupId).displayname = $aadGroupDisplayName
-        $uri = "$(($htAzureEnvironmentRelatedUrls).MicrosoftGraph)/beta/groups/$($aadGroupId)/transitiveMembers"
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph)/beta/groups/$($aadGroupId)/transitiveMembers"
         $method = 'GET'
-        $aadGroupMembers = AzAPICall -uri $uri -method $method -currentTask "getGroupmembers $($aadGroupId)"
+        $aadGroupMembers = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask "getGroupmembers $($aadGroupId)"
 
         if ($aadGroupMembers -eq 'Request_ResourceNotFound') {
             $null = $script:arrayGroupRequestResourceNotFound.Add([PSCustomObject]@{
@@ -28,7 +28,7 @@ function getGroupmembers($aadGroupId, $aadGroupDisplayName) {
             foreach ($identity in $aadGroupMembersServicePrincipals) {
                 $arrayIdentityObject = [System.Collections.ArrayList]@()
                 if ($identity.servicePrincipalType -eq 'Application') {
-                    if ($identity.appOwnerOrganizationId -eq $checkContext.Tenant.Id) {
+                    if ($identity.appOwnerOrganizationId -eq $Configuration['checkContext'].Tenant.Id) {
                         $null = $arrayIdentityObject.Add([PSCustomObject]@{
                                 type                   = 'ServicePrincipal'
                                 spTypeConcatinated     = 'SP APP INT'

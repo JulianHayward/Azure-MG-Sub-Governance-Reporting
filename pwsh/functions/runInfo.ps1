@@ -1,7 +1,7 @@
 function runInfo {
     #region RunInfo
     Write-Host 'Run Info:'
-    if ($htParameters.HierarchyMapOnly -eq $true) {
+    if ($Configuration['htParameters'].HierarchyMapOnly -eq $true) {
         Write-Host ' Creating HierarchyMap only' -ForegroundColor Green
     }
     else {
@@ -9,27 +9,27 @@ function runInfo {
         $startTimeUTC = ((Get-Date).ToUniversalTime()).ToString('dd-MMM-yyyy HH:mm:ss')
         $script:paramsUsed += "Date: $startTimeUTC (UTC); Version: $ProductVersion &#13;"
 
-        if ($accountType -eq 'ServicePrincipal') {
-            $script:paramsUsed += "ExecutedBy: $($accountId) (App/ClientId) ($($accountType)) &#13;"
+        if ($Configuration['accountType'] -eq 'ServicePrincipal') {
+            $script:paramsUsed += "ExecutedBy: $($Configuration['accountId']) (App/ClientId) ($($Configuration['accountType'])) &#13;"
         }
-        elseif ($accountType -eq 'ManagedService') {
-            $script:paramsUsed += "ExecutedBy: $($accountId) (Id) ($($accountType)) &#13;"
+        elseif ($Configuration['accountType'] -eq 'ManagedService') {
+            $script:paramsUsed += "ExecutedBy: $($Configuration['accountId']) (Id) ($($Configuration['accountType'])) &#13;"
         }
-        elseif ($accountType -eq 'ClientAssertion') {
-            $script:paramsUsed += "ExecutedBy: $($accountId) (App/ClientId) ($($accountType)) &#13;"
+        elseif ($Configuration['accountType'] -eq 'ClientAssertion') {
+            $script:paramsUsed += "ExecutedBy: $($Configuration['accountId']) (App/ClientId) ($($Configuration['accountType'])) &#13;"
         }
         else {
-            $script:paramsUsed += "ExecutedBy: $($accountId) ($($accountType), $($htParameters.userType)) &#13;"
+            $script:paramsUsed += "ExecutedBy: $($Configuration['accountId']) ($($Configuration['accountType']), $($Configuration['htParameters'].userType)) &#13;"
         }
         #$script:paramsUsed += "ManagementGroupId: $($ManagementGroupId) &#13;"
         $script:paramsUsed += 'HierarchyMapOnly: false &#13;'
         Write-Host " Creating HierarchyMap, TenantSummary, DefinitionInsights and ScopeInsights - use parameter: '-HierarchyMapOnly' to only create the HierarchyMap" -ForegroundColor Yellow
 
-        if ($htParameters.ManagementGroupsOnly) {
-            Write-Host " Management Groups only = $($htParameters.ManagementGroupsOnly)" -ForegroundColor Green
+        if ($Configuration['htParameters'].ManagementGroupsOnly) {
+            Write-Host " Management Groups only = $($Configuration['htParameters'].ManagementGroupsOnly)" -ForegroundColor Green
         }
         else {
-            Write-Host " Management Groups only = $($htParameters.ManagementGroupsOnly) - use parameter -ManagementGroupsOnly to only collect data for Management Groups" -ForegroundColor Yellow
+            Write-Host " Management Groups only = $($Configuration['htParameters'].ManagementGroupsOnly) - use parameter -ManagementGroupsOnly to only collect data for Management Groups" -ForegroundColor Yellow
         }
 
         if (($SubscriptionQuotaIdWhitelist).count -eq 1 -and $SubscriptionQuotaIdWhitelist[0] -eq 'undefined') {
@@ -50,8 +50,8 @@ function runInfo {
             $script:paramsUsed += "SubscriptionQuotaIdWhitelist: $($SubscriptionQuotaIdWhitelist -join ', ') &#13;"
         }
 
-        if ($htParameters.NoMDfCSecureScore -eq $true) {
-            Write-Host " Microsoft Defender for Cloud Secure Score disabled (-NoMDfCSecureScore = $($htParameters.NoMDfCSecureScore))" -ForegroundColor Green
+        if ($Configuration['htParameters'].NoMDfCSecureScore -eq $true) {
+            Write-Host " Microsoft Defender for Cloud Secure Score disabled (-NoMDfCSecureScore = $($Configuration['htParameters'].NoMDfCSecureScore))" -ForegroundColor Green
             $script:paramsUsed += 'NoMDfCSecureScore: true &#13;'
         }
         else {
@@ -59,8 +59,8 @@ function runInfo {
             $script:paramsUsed += 'NoMDfCSecureScore: false &#13;'
         }
 
-        if ($htParameters.DoNotShowRoleAssignmentsUserData -eq $true) {
-            Write-Host " Scrub Identity information for identityType='User' enabled (-DoNotShowRoleAssignmentsUserData = $($htParameters.DoNotShowRoleAssignmentsUserData))" -ForegroundColor Green
+        if ($Configuration['htParameters'].DoNotShowRoleAssignmentsUserData -eq $true) {
+            Write-Host " Scrub Identity information for identityType='User' enabled (-DoNotShowRoleAssignmentsUserData = $($Configuration['htParameters'].DoNotShowRoleAssignmentsUserData))" -ForegroundColor Green
             $script:paramsUsed += 'DoNotShowRoleAssignmentsUserData: true &#13;'
         }
         else {
@@ -77,12 +77,12 @@ function runInfo {
             #$script:paramsUsed += "LimitCriticalPercentage: $($LimitCriticalPercentage)% &#13;"
         }
 
-        if ($htParameters.NoPolicyComplianceStates -eq $false) {
+        if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
             Write-Host " Policy States enabled - use parameter: '-NoPolicyComplianceStates' to disable Policy States" -ForegroundColor Yellow
             $script:paramsUsed += 'NoPolicyComplianceStates: false &#13;'
         }
         else {
-            Write-Host " Policy States disabled (-NoPolicyComplianceStates = $($htParameters.NoPolicyComplianceStates))" -ForegroundColor Green
+            Write-Host " Policy States disabled (-NoPolicyComplianceStates = $($Configuration['htParameters'].NoPolicyComplianceStates))" -ForegroundColor Green
             $script:paramsUsed += 'NoPolicyComplianceStates: true &#13;'
         }
 
@@ -115,7 +115,7 @@ function runInfo {
         Write-Host " AADServicePrincipalExpiryWarningDays: $AADServicePrincipalExpiryWarningDays" -ForegroundColor Yellow
         #$script:paramsUsed += "AADServicePrincipalExpiryWarningDays: $AADServicePrincipalExpiryWarningDays &#13;"
 
-        if ($htParameters.DoAzureConsumption -eq $true) {
+        if ($Configuration['htParameters'].DoAzureConsumption -eq $true) {
             if (-not $AzureConsumptionPeriod -is [int]) {
                 Write-Host 'parameter -AzureConsumptionPeriod must be an integer'
                 Throw 'Error - AzGovViz: check the last console output for details'
@@ -146,7 +146,7 @@ function runInfo {
             }
         }
         else {
-            Write-Host " Azure Consumption reporting disabled (-DoAzureConsumption = $($htParameters.DoAzureConsumption))" -ForegroundColor Green
+            Write-Host " Azure Consumption reporting disabled (-DoAzureConsumption = $($Configuration['htParameters'].DoAzureConsumption))" -ForegroundColor Green
             $script:paramsUsed += 'DoAzureConsumption: false &#13;'
         }
 
@@ -168,85 +168,85 @@ function runInfo {
             $script:paramsUsed += 'NoSingleSubscriptionOutput: false &#13;'
         }
 
-        if ($htParameters.NoResourceProvidersDetailed -eq $true) {
-            Write-Host " ResourceProvider Detailed for TenantSummary disabled (-NoResourceProvidersDetailed = $($htParameters.NoResourceProvidersDetailed))" -ForegroundColor Green
-            $script:paramsUsed += "NoResourceProvidersDetailed: $($htParameters.NoResourceProvidersDetailed) &#13;"
+        if ($Configuration['htParameters'].NoResourceProvidersDetailed -eq $true) {
+            Write-Host " ResourceProvider Detailed for TenantSummary disabled (-NoResourceProvidersDetailed = $($Configuration['htParameters'].NoResourceProvidersDetailed))" -ForegroundColor Green
+            $script:paramsUsed += "NoResourceProvidersDetailed: $($Configuration['htParameters'].NoResourceProvidersDetailed) &#13;"
         }
         else {
             Write-Host " ResourceProvider Detailed for TenantSummary enabled - use parameter: '-NoResourceProvidersDetailed' to disable" -ForegroundColor Yellow
-            $script:paramsUsed += "NoResourceProvidersDetailed: $($htParameters.NoResourceProvidersDetailed) &#13;"
+            $script:paramsUsed += "NoResourceProvidersDetailed: $($Configuration['htParameters'].NoResourceProvidersDetailed) &#13;"
         }
 
-        if ($htParameters.LargeTenant -or $htParameters.PolicyAtScopeOnly -or $htParameters.RBACAtScopeOnly) {
-            if ($htParameters.LargeTenant) {
-                Write-Host " TenantSummary Policy assignments and Role assignments will not include assignment information on scopes where assignment is inherited, ScopeInsights will not be created, ResourceProvidersDetailed will not be created (-LargeTenant = $($htParameters.LargeTenant))" -ForegroundColor Green
-                $script:paramsUsed += "LargeTenant: $($htParameters.LargeTenant) &#13;"
-                $script:paramsUsed += "LargeTenant -> PolicyAtScopeOnly: $($htParameters.PolicyAtScopeOnly) &#13;"
-                $script:paramsUsed += "LargeTenant -> RBACAtScopeOnly: $($htParameters.RBACAtScopeOnly) &#13;"
+        if ($Configuration['htParameters'].LargeTenant -or $Configuration['htParameters'].PolicyAtScopeOnly -or $Configuration['htParameters'].RBACAtScopeOnly) {
+            if ($Configuration['htParameters'].LargeTenant) {
+                Write-Host " TenantSummary Policy assignments and Role assignments will not include assignment information on scopes where assignment is inherited, ScopeInsights will not be created, ResourceProvidersDetailed will not be created (-LargeTenant = $($Configuration['htParameters'].LargeTenant))" -ForegroundColor Green
+                $script:paramsUsed += "LargeTenant: $($Configuration['htParameters'].LargeTenant) &#13;"
+                $script:paramsUsed += "LargeTenant -> PolicyAtScopeOnly: $($Configuration['htParameters'].PolicyAtScopeOnly) &#13;"
+                $script:paramsUsed += "LargeTenant -> RBACAtScopeOnly: $($Configuration['htParameters'].RBACAtScopeOnly) &#13;"
                 $script:paramsUsed += "LargeTenant -> NoScopeInsights: $($NoScopeInsights) &#13;"
-                $script:paramsUsed += "LargeTenant -> NoResourceProvidersDetailed: $($htParameters.NoResourceProvidersDetailed) &#13;"
+                $script:paramsUsed += "LargeTenant -> NoResourceProvidersDetailed: $($Configuration['htParameters'].NoResourceProvidersDetailed) &#13;"
             }
             else {
-                Write-Host " TenantSummary LargeTenant disabled (-LargeTenant = $($htParameters.LargeTenant)) Q: Why would you not want to enable -LargeTenant? A: In larger tenants showing the inheritance on each scope may blow up the html file (up to unusable due to html file size)" -ForegroundColor Yellow
-                $script:paramsUsed += "LargeTenant: $($htParameters.LargeTenant) &#13;"
+                Write-Host " TenantSummary LargeTenant disabled (-LargeTenant = $($Configuration['htParameters'].LargeTenant)) Q: Why would you not want to enable -LargeTenant? A: In larger tenants showing the inheritance on each scope may blow up the html file (up to unusable due to html file size)" -ForegroundColor Yellow
+                $script:paramsUsed += "LargeTenant: $($Configuration['htParameters'].LargeTenant) &#13;"
 
-                if ($htParameters.PolicyAtScopeOnly) {
-                    Write-Host " TenantSummary Policy assignments will not include assignment information on scopes where assignment is inherited (PolicyAtScopeOnly = $($htParameters.PolicyAtScopeOnly))" -ForegroundColor Green
-                    $script:paramsUsed += "PolicyAtScopeOnly: $($htParameters.PolicyAtScopeOnly) &#13;"
+                if ($Configuration['htParameters'].PolicyAtScopeOnly) {
+                    Write-Host " TenantSummary Policy assignments will not include assignment information on scopes where assignment is inherited (PolicyAtScopeOnly = $($Configuration['htParameters'].PolicyAtScopeOnly))" -ForegroundColor Green
+                    $script:paramsUsed += "PolicyAtScopeOnly: $($Configuration['htParameters'].PolicyAtScopeOnly) &#13;"
                 }
                 else {
-                    Write-Host " TenantSummary Policy assignments will include assignment information on scopes where assignment is inherited (PolicyAtScopeOnly = $($htParameters.PolicyAtScopeOnly))" -ForegroundColor Yellow
-                    $script:paramsUsed += "PolicyAtScopeOnly: $($htParameters.PolicyAtScopeOnly) &#13;"
+                    Write-Host " TenantSummary Policy assignments will include assignment information on scopes where assignment is inherited (PolicyAtScopeOnly = $($Configuration['htParameters'].PolicyAtScopeOnly))" -ForegroundColor Yellow
+                    $script:paramsUsed += "PolicyAtScopeOnly: $($Configuration['htParameters'].PolicyAtScopeOnly) &#13;"
                 }
 
-                if ($htParameters.RBACAtScopeOnly) {
-                    Write-Host " TenantSummary Role assignments will not include assignment information on scopes where assignment is inherited (RBACAtScopeOnly = $($htParameters.RBACAtScopeOnly))" -ForegroundColor Green
-                    $script:paramsUsed += "RBACAtScopeOnly: $($htParameters.RBACAtScopeOnly) &#13;"
+                if ($Configuration['htParameters'].RBACAtScopeOnly) {
+                    Write-Host " TenantSummary Role assignments will not include assignment information on scopes where assignment is inherited (RBACAtScopeOnly = $($Configuration['htParameters'].RBACAtScopeOnly))" -ForegroundColor Green
+                    $script:paramsUsed += "RBACAtScopeOnly: $($Configuration['htParameters'].RBACAtScopeOnly) &#13;"
                 }
                 else {
-                    Write-Host " TenantSummary Role assignments will include assignment information on scopes where assignment is inherited (RBACAtScopeOnly = $($htParameters.RBACAtScopeOnly))" -ForegroundColor Yellow
-                    $script:paramsUsed += "RBACAtScopeOnly: $($htParameters.RBACAtScopeOnly) &#13;"
+                    Write-Host " TenantSummary Role assignments will include assignment information on scopes where assignment is inherited (RBACAtScopeOnly = $($Configuration['htParameters'].RBACAtScopeOnly))" -ForegroundColor Yellow
+                    $script:paramsUsed += "RBACAtScopeOnly: $($Configuration['htParameters'].RBACAtScopeOnly) &#13;"
                 }
             }
         }
         else {
-            Write-Host " TenantSummary LargeTenant disabled (-LargeTenant = $($htParameters.LargeTenant)) Q: Why would you not want to enable -LargeTenant? A: In larger tenants showing the inheritance on each scope may blow up the html file (up to unusable due to html file size)" -ForegroundColor Yellow
-            $script:paramsUsed += "LargeTenant: $($htParameters.LargeTenant) &#13;"
+            Write-Host " TenantSummary LargeTenant disabled (-LargeTenant = $($Configuration['htParameters'].LargeTenant)) Q: Why would you not want to enable -LargeTenant? A: In larger tenants showing the inheritance on each scope may blow up the html file (up to unusable due to html file size)" -ForegroundColor Yellow
+            $script:paramsUsed += "LargeTenant: $($Configuration['htParameters'].LargeTenant) &#13;"
 
-            if ($htParameters.PolicyAtScopeOnly) {
-                Write-Host " TenantSummary Policy assignments will not include assignment information on scopes where assignment is inherited (PolicyAtScopeOnly = $($htParameters.PolicyAtScopeOnly))" -ForegroundColor Green
-                $script:paramsUsed += "PolicyAtScopeOnly: $($htParameters.PolicyAtScopeOnly) &#13;"
+            if ($Configuration['htParameters'].PolicyAtScopeOnly) {
+                Write-Host " TenantSummary Policy assignments will not include assignment information on scopes where assignment is inherited (PolicyAtScopeOnly = $($Configuration['htParameters'].PolicyAtScopeOnly))" -ForegroundColor Green
+                $script:paramsUsed += "PolicyAtScopeOnly: $($Configuration['htParameters'].PolicyAtScopeOnly) &#13;"
             }
             else {
-                Write-Host " TenantSummary Policy assignments will include assignment information on scopes where assignment is inherited (PolicyAtScopeOnly = $($htParameters.PolicyAtScopeOnly))" -ForegroundColor Yellow
-                $script:paramsUsed += "PolicyAtScopeOnly: $($htParameters.PolicyAtScopeOnly) &#13;"
+                Write-Host " TenantSummary Policy assignments will include assignment information on scopes where assignment is inherited (PolicyAtScopeOnly = $($Configuration['htParameters'].PolicyAtScopeOnly))" -ForegroundColor Yellow
+                $script:paramsUsed += "PolicyAtScopeOnly: $($Configuration['htParameters'].PolicyAtScopeOnly) &#13;"
             }
 
-            if ($htParameters.RBACAtScopeOnly) {
-                Write-Host " TenantSummary Role assignments will not include assignment information on scopes where assignment is inherited (RBACAtScopeOnly = $($htParameters.RBACAtScopeOnly))" -ForegroundColor Green
-                $script:paramsUsed += "RBACAtScopeOnly: $($htParameters.RBACAtScopeOnly) &#13;"
+            if ($Configuration['htParameters'].RBACAtScopeOnly) {
+                Write-Host " TenantSummary Role assignments will not include assignment information on scopes where assignment is inherited (RBACAtScopeOnly = $($Configuration['htParameters'].RBACAtScopeOnly))" -ForegroundColor Green
+                $script:paramsUsed += "RBACAtScopeOnly: $($Configuration['htParameters'].RBACAtScopeOnly) &#13;"
             }
             else {
-                Write-Host " TenantSummary Role assignments will include assignment information on scopes where assignment is inherited (RBACAtScopeOnly = $($htParameters.RBACAtScopeOnly))" -ForegroundColor Yellow
-                $script:paramsUsed += "RBACAtScopeOnly: $($htParameters.RBACAtScopeOnly) &#13;"
+                Write-Host " TenantSummary Role assignments will include assignment information on scopes where assignment is inherited (RBACAtScopeOnly = $($Configuration['htParameters'].RBACAtScopeOnly))" -ForegroundColor Yellow
+                $script:paramsUsed += "RBACAtScopeOnly: $($Configuration['htParameters'].RBACAtScopeOnly) &#13;"
             }
         }
 
-        if (-not $htParameters.DoNotIncludeResourceGroupsOnPolicy) {
-            Write-Host " TenantSummary Policy assignments will also include assignments on ResourceGroups (DoNotIncludeResourceGroupsOnPolicy = $($htParameters.DoNotIncludeResourceGroupsOnPolicy))" -ForegroundColor Yellow
+        if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
+            Write-Host " TenantSummary Policy assignments will also include assignments on ResourceGroups (DoNotIncludeResourceGroupsOnPolicy = $($Configuration['htParameters'].DoNotIncludeResourceGroupsOnPolicy))" -ForegroundColor Yellow
             $script:paramsUsed += 'DoNotIncludeResourceGroupsOnPolicy: false &#13;'
         }
         else {
-            Write-Host " TenantSummary Policy assignments will not include assignments on ResourceGroups (DoNotIncludeResourceGroupsOnPolicy = $($htParameters.DoNotIncludeResourceGroupsOnPolicy))" -ForegroundColor Green
+            Write-Host " TenantSummary Policy assignments will not include assignments on ResourceGroups (DoNotIncludeResourceGroupsOnPolicy = $($Configuration['htParameters'].DoNotIncludeResourceGroupsOnPolicy))" -ForegroundColor Green
             $script:paramsUsed += 'DoNotIncludeResourceGroupsOnPolicy: true &#13;'
         }
 
-        if (-not $htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
-            Write-Host " TenantSummary RBAC Role assignments will also include assignments on ResourceGroups and Resources (DoNotIncludeResourceGroupsAndResourcesOnRBAC = $($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC))" -ForegroundColor Yellow
+        if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+            Write-Host " TenantSummary RBAC Role assignments will also include assignments on ResourceGroups and Resources (DoNotIncludeResourceGroupsAndResourcesOnRBAC = $($Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC))" -ForegroundColor Yellow
             $script:paramsUsed += 'DoNotIncludeResourceGroupsAndResourcesOnRBAC: false &#13;'
         }
         else {
-            Write-Host " TenantSummary RBAC Role assignments will not include assignments on ResourceGroups and Resources (DoNotIncludeResourceGroupsAndResourcesOnRBAC = $($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC))" -ForegroundColor Green
+            Write-Host " TenantSummary RBAC Role assignments will not include assignments on ResourceGroups and Resources (DoNotIncludeResourceGroupsAndResourcesOnRBAC = $($Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC))" -ForegroundColor Green
             $script:paramsUsed += 'DoNotIncludeResourceGroupsAndResourcesOnRBAC: true &#13;'
         }
 
@@ -259,10 +259,10 @@ function runInfo {
             $script:paramsUsed += 'NoCsvExport: true &#13;'
         }
 
-        if (-not $htParameters.NoJsonExport) {
-            Write-Host " JSON Export enabled: export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON (-NoJsonExport = $($htParameters.NoJsonExport))" -ForegroundColor Yellow
+        if (-not $Configuration['htParameters'].NoJsonExport) {
+            Write-Host " JSON Export enabled: export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON (-NoJsonExport = $($Configuration['htParameters'].NoJsonExport))" -ForegroundColor Yellow
             $script:paramsUsed += 'NoJsonExport: false &#13;'
-            if (-not $htParameters.DoNotIncludeResourceGroupsOnPolicy) {
+            if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
                 if (-not $JsonExportExcludeResourceGroups) {
                     Write-Host " JSON Export will also include Policy assignments on ResourceGroups (JsonExportExcludeResourceGroups = $($JsonExportExcludeResourceGroups))" -ForegroundColor Yellow
                     $script:paramsUsed += "JsonExportExcludeResourceGroups Policy: $($JsonExportExcludeResourceGroups) &#13;"
@@ -272,7 +272,7 @@ function runInfo {
                     $script:paramsUsed += "JsonExportExcludeResourceGroups Policy: $($JsonExportExcludeResourceGroups) &#13;"
                 }
             }
-            if (-not $htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+            if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
                 if (-not $JsonExportExcludeResourceGroups) {
                     Write-Host " JSON Export will also include Role assignments on ResourceGroups (JsonExportExcludeResourceGroups = $($JsonExportExcludeResourceGroups))" -ForegroundColor Yellow
                     $script:paramsUsed += "JsonExportExcludeResourceGroups RBAC: $($JsonExportExcludeResourceGroups) &#13;"
@@ -293,7 +293,7 @@ function runInfo {
             }
         }
         else {
-            Write-Host " JSON Export disabled: export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON (-NoJsonExport = $($htParameters.NoJsonExport))" -ForegroundColor Green
+            Write-Host " JSON Export disabled: export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON (-NoJsonExport = $($Configuration['htParameters'].NoJsonExport))" -ForegroundColor Green
             $script:paramsUsed += 'NoJsonExport: true &#13;'
         }
 
@@ -317,13 +317,13 @@ function runInfo {
         }
 
 
-        if ($htParameters.NoResources) {
-            Write-Host " NoResources = $($htParameters.NoResources)" -ForegroundColor Green
-            $script:paramsUsed += "NoResources: $($htParameters.NoResources) &#13;"
+        if ($Configuration['htParameters'].NoResources) {
+            Write-Host " NoResources = $($Configuration['htParameters'].NoResources)" -ForegroundColor Green
+            $script:paramsUsed += "NoResources: $($Configuration['htParameters'].NoResources) &#13;"
         }
         else {
-            Write-Host " NoResources = $($htParameters.NoResources)" -ForegroundColor Yellow
-            $script:paramsUsed += "NoResources: $($htParameters.NoResources) &#13;"
+            Write-Host " NoResources = $($Configuration['htParameters'].NoResources)" -ForegroundColor Yellow
+            $script:paramsUsed += "NoResources: $($Configuration['htParameters'].NoResources) &#13;"
         }
     }
     #endregion RunInfo

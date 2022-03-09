@@ -178,7 +178,7 @@ function buildTree($mgId, $prnt) {
                     }
 
                     #RG Pol
-                    if (-not $htParameters.DoNotIncludeResourceGroupsOnPolicy) {
+                    if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
                         if (-not $JsonExportExcludeResourceGroups) {
                             if ($subCap -eq 'ResourceGroups') {
                                 foreach ($rg in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys | Sort-Object) {
@@ -208,7 +208,7 @@ function buildTree($mgId, $prnt) {
 
                     #RG RoleAss
                     #marker
-                    if (-not $htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+                    if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
                         if (-not $JsonExportExcludeResourceGroups) {
                             if ($subCap -eq 'ResourceGroups') {
                                 foreach ($rg in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys | Sort-Object) {

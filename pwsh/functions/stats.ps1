@@ -2,19 +2,19 @@ function stats {
     #region Stats
     if (-not $StatsOptOut) {
 
-        if ($htParameters.onAzureDevOps) {
+        if ($Configuration['htParameters'].onAzureDevOps) {
             if ($env:BUILD_REPOSITORY_ID) {
                 $hashTenantIdOrRepositoryId = [string]($env:BUILD_REPOSITORY_ID)
             }
             else {
-                $hashTenantIdOrRepositoryId = [string]($checkContext.Tenant.Id)
+                $hashTenantIdOrRepositoryId = [string]($Configuration['checkContext'].Tenant.Id)
             }
         }
         else {
-            $hashTenantIdOrRepositoryId = [string]($checkContext.Tenant.Id)
+            $hashTenantIdOrRepositoryId = [string]($Configuration['checkContext'].Tenant.Id)
         }
 
-        $hashAccId = [string]($checkContext.Account.Id)
+        $hashAccId = [string]($Configuration['checkContext'].Account.Id)
 
         $hasher384 = [System.Security.Cryptography.HashAlgorithm]::Create('sha384')
         $hasher512 = [System.Security.Cryptography.HashAlgorithm]::Create('sha512')
@@ -49,13 +49,13 @@ function stats {
         $identifierBase = $hasher512.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($hashUse))
         $identifier = "$(([System.BitConverter]::ToString($identifierBase)) -replace '-')"
 
-        $accountInfo = "$($accountType)$($htParameters.userType)"
-        if ($accountType -eq 'ServicePrincipal' -or $accountType -eq 'ManagedService' -or $accountType -eq 'ClientAssertion') {
-            $accountInfo = $accountType
+        $accountInfo = "$($Configuration['accountType'])$($Configuration['htParameters'].userType)"
+        if ($Configuration['accountType'] -eq 'ServicePrincipal' -or $Configuration['accountType'] -eq 'ManagedService' -or $Configuration['accountType'] -eq 'ClientAssertion') {
+            $accountInfo = $Configuration['accountType']
         }
 
         $scopeUsage = 'childManagementGroup'
-        if ($ManagementGroupId -eq $checkContext.Tenant.Id) {
+        if ($ManagementGroupId -eq $Configuration['checkContext'].Tenant.Id) {
             $scopeUsage = 'rootManagementGroup'
         }
 
@@ -85,31 +85,31 @@ function stats {
             "ver": 2,
             "properties": {
                 "accType": "$($accountInfo)",
-                "azCloud": "$($checkContext.Environment.Name)",
+                "azCloud": "$($Configuration['checkContext'].Environment.Name)",
                 "identifier": "$($identifier)",
-                "platform": "$($htParameters.CodeRunPlatform)",
+                "platform": "$($Configuration['htParameters'].CodeRunPlatform)",
                 "productVersion": "$($ProductVersion)",
                 "psAzAccountsVersion": "$($resolvedAzModuleVersion)",
                 "psVersion": "$($PSVersionTable.PSVersion)",
                 "scopeUsage": "$($scopeUsage)",
                 "statsCountErrors": "$($Error.Count)",
                 "statsCountSubscriptions": "$($statsCountSubscriptions)",
-                "statsParametersDoNotIncludeResourceGroupsAndResourcesOnRBAC": "$($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC)",
-                "statsParametersDoNotIncludeResourceGroupsOnPolicy": "$($htParameters.DoNotIncludeResourceGroupsOnPolicy)",
-                "statsParametersDoNotShowRoleAssignmentsUserData": "$($htParameters.DoNotShowRoleAssignmentsUserData)",
-                "statsParametersHierarchyMapOnly": "$($htParameters.HierarchyMapOnly)",
-                "statsParametersManagementGroupsOnly": "$($htParameters.ManagementGroupsOnly)",
-                "statsParametersLargeTenant": "$($htParameters.LargeTenant)",
-                "statsParametersNoASCSecureScore": "$($htParameters.NoMDfCSecureScore)",
-                "statsParametersDoAzureConsumption": "$($htParameters.DoAzureConsumption)",
-                "statsParametersNoJsonExport": "$($htParameters.NoJsonExport)",
+                "statsParametersDoNotIncludeResourceGroupsAndResourcesOnRBAC": "$($Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC)",
+                "statsParametersDoNotIncludeResourceGroupsOnPolicy": "$($Configuration['htParameters'].DoNotIncludeResourceGroupsOnPolicy)",
+                "statsParametersDoNotShowRoleAssignmentsUserData": "$($Configuration['htParameters'].DoNotShowRoleAssignmentsUserData)",
+                "statsParametersHierarchyMapOnly": "$($Configuration['htParameters'].HierarchyMapOnly)",
+                "statsParametersManagementGroupsOnly": "$($Configuration['htParameters'].ManagementGroupsOnly)",
+                "statsParametersLargeTenant": "$($Configuration['htParameters'].LargeTenant)",
+                "statsParametersNoASCSecureScore": "$($Configuration['htParameters'].NoMDfCSecureScore)",
+                "statsParametersDoAzureConsumption": "$($Configuration['htParameters'].DoAzureConsumption)",
+                "statsParametersNoJsonExport": "$($Configuration['htParameters'].NoJsonExport)",
                 "statsParametersNoScopeInsights": "$($NoScopeInsights)",
                 "statsParametersNoSingleSubscriptionOutput": "$($NoSingleSubscriptionOutput)",
-                "statsParametersNoPolicyComplianceStates": "$($htParameters.NoPolicyComplianceStates)",
-                "statsParametersNoResourceProvidersDetailed": "$($htParameters.NoResourceProvidersDetailed)",
-                "statsParametersNoResources": "$($htParameters.NoResources)",
-                "statsParametersPolicyAtScopeOnly": "$($htParameters.PolicyAtScopeOnly)",
-                "statsParametersRBACAtScopeOnly": "$($htParameters.RBACAtScopeOnly)",
+                "statsParametersNoPolicyComplianceStates": "$($Configuration['htParameters'].NoPolicyComplianceStates)",
+                "statsParametersNoResourceProvidersDetailed": "$($Configuration['htParameters'].NoResourceProvidersDetailed)",
+                "statsParametersNoResources": "$($Configuration['htParameters'].NoResources)",
+                "statsParametersPolicyAtScopeOnly": "$($Configuration['htParameters'].PolicyAtScopeOnly)",
+                "statsParametersRBACAtScopeOnly": "$($Configuration['htParameters'].RBACAtScopeOnly)",
                 "statsTry": "$($tryCounter)"
             }
         }

@@ -277,7 +277,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = 'v6_major_20220307_2',
+    $ProductVersion = 'v6_major_20220309_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -462,8 +462,6 @@ Param
     $LimitTagsSubscription = 50
 )
 
-$global:GithubRepository = $GithubRepository
-
 $Error.clear()
 $ErrorActionPreference = 'Stop'
 #removeNoise
@@ -574,7 +572,9 @@ $parameters4AzAPICallModule = @{
     SubscriptionId4AzContext = $SubscriptionId4AzContext
     GithubRepository         = $GithubRepository
 }
-initAzAPICall @parameters4AzAPICallModule
+$Configuration = initAzAPICall @parameters4AzAPICallModule
+$functions = getAzAPICallFunctions
+
 Write-Host "Initialize 'AzAPICall' succeeded" -ForegroundColor Green
 #EndRegion initAZAPICall
 
@@ -608,7 +608,7 @@ $newTable = [System.Collections.ArrayList]::Synchronized((New-Object System.Coll
 $htMgDetails = @{}
 $htSubDetails = @{}
 
-if ($htParameters.HierarchyMapOnly -eq $false) {
+if ($Configuration['htParameters'].HierarchyMapOnly -eq $false) {
     #helper ht / collect results /save some time
     $htCacheDefinitionsPolicy = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htCacheDefinitionsPolicySet = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
@@ -628,7 +628,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $htCachePolicyComplianceResponseTooLargeSUB = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $outOfScopeSubscriptions = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htAllSubscriptionsFromAPI = @{}
-    if ($htParameters.DoAzureConsumption -eq $true) {
+    if ($Configuration['htParameters'].DoAzureConsumption -eq $true) {
         $htManagementGroupsCost = @{}
         $htAzureConsumptionSubscriptions = @{}
         $arrayConsumptionData = [System.Collections.ArrayList]@()
@@ -681,7 +681,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $arrayDefenderPlansSubscriptionNotRegistered = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayUserAssignedIdentities4Resources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htSubscriptionsRoleAssignmentLimit = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-    if ($htParameters.NoMDfCSecureScore -eq $false) {
+    if ($Configuration['htParameters'].NoMDfCSecureScore -eq $false) {
         $htMgASCSecureScore = @{}
     }
     $htManagedIdentityForPolicyAssignment = @{}
@@ -703,7 +703,7 @@ getEntities
 showMemoryUsage
 setBaseVariablesMG
 
-if ($accountType -eq 'User') {
+if ($Configuration['accountType'] -eq 'User') {
     getTenantDetails
 }
 
@@ -711,7 +711,7 @@ getDefaultManagementGroup
 
 runInfo
 
-if ($htParameters.HierarchyMapOnly -eq $false) {
+if ($Configuration['htParameters'].HierarchyMapOnly -eq $false) {
 
     #checkContextSubscriptionQuotaId -AADQuotaId $AADQuotaId
     #testAzContext
@@ -719,11 +719,11 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     detailSubscriptions
     showMemoryUsage
 
-    if ($htParameters.NoMDfCSecureScore -eq $false) {
+    if ($Configuration['htParameters'].NoMDfCSecureScore -eq $false) {
         getMDfCSecureScoreMG
     }
 
-    if ($htParameters.DoAzureConsumption -eq $true) {
+    if ($Configuration['htParameters'].DoAzureConsumption -eq $true) {
         getConsumption
     }
 
@@ -749,7 +749,7 @@ else {
 prepareData
 showMemoryUsage
 
-if ($htParameters.HierarchyMapOnly -eq $false) {
+if ($Configuration['htParameters'].HierarchyMapOnly -eq $false) {
 
     $rbacBaseQuery = $newTable.where( { -not [String]::IsNullOrEmpty($_.RoleDefinitionName) } ) | Sort-Object -Property RoleIsCustom, RoleDefinitionName | Select-Object -Property Level, Role*, mg*, Subscription*
     $roleAssignmentsUniqueById = $rbacBaseQuery | Sort-Object -Property RoleAssignmentId -Unique
@@ -768,7 +768,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     createTagList
     showMemoryUsage
 
-    if ($htParameters.NoResources -eq $false) {
+    if ($Configuration['htParameters'].NoResources -eq $false) {
         getResourceDiagnosticsCapability
         showMemoryUsage
     }
@@ -787,7 +787,7 @@ $html = $null
 
 #getFileNaming
 
-if ($htParameters.HierarchyMapOnly -eq $false) {
+if ($Configuration['htParameters'].HierarchyMapOnly -eq $false) {
     #region preQueries
     Write-Host ' Building preQueries'
     $startPreQueries = Get-Date
@@ -831,7 +831,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $endHelperHt = Get-Date
     Write-Host "Create Policy/Set helper hash table duration: $((NEW-TIMESPAN -Start $startHelperHt -End $endHelperHt).TotalSeconds) seconds"
 
-    if (-not $htParameters.DoNotIncludeResourceGroupsOnPolicy) {
+    if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
         $policyBaseQuery = $newTable.where( { -not [String]::IsNullOrEmpty($_.PolicyVariant) } ) | Sort-Object -Property PolicyType, Policy | Select-Object -Property Level, Policy*, mg*, Subscription*
     }
     else {
@@ -926,7 +926,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $tenantAllRolesCanDoRoleAssignmentsCount = $tenantAllRolesCanDoRoleAssignments.Count
 
     $mgSubRoleAssignmentsArrayFromHTValues = ($htCacheAssignmentsRole).Values.Assignment
-    if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+    if ($Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
         $rgResRoleAssignmentsArrayFromHTValues = ($htCacheAssignmentsRBACOnResourceGroupsAndResources).Values
     }
 
@@ -1065,7 +1065,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
 
     $totalPolicyAssignmentsCountSub = (($htCacheAssignmentsPolicy).Values.where( { $_.AssignmentScopeMgSubRg -eq 'Sub' } )).count
 
-    if (-not $htParameters.DoNotIncludeResourceGroupsOnPolicy) {
+    if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
         $totalPolicyAssignmentsCountRg = (($htCacheAssignmentsPolicy).Values.where( { $_.AssignmentScopeMgSubRg -eq 'Rg' -or $_.AssignmentScopeMgSubRg -eq 'Res' } )).count
     }
     else {
@@ -1077,7 +1077,7 @@ if ($htParameters.HierarchyMapOnly -eq $false) {
     $totalRoleAssignmentsCountTen = (($htCacheAssignmentsRole).keys.where( { ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq 'Tenant' } )).count
     $totalRoleAssignmentsCountMG = (($htCacheAssignmentsRole).keys.where( { ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq 'MG' } )).count
     $totalRoleAssignmentsCountSub = (($htCacheAssignmentsRole).keys.where( { ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq 'Sub' } )).count
-    if (-not $htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+    if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
         $totalRoleAssignmentsCountRG = (($htCacheAssignmentsRole).keys.where( { ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq 'RG' } )).count
         $totalRoleAssignmentsCountRes = (($htCacheAssignmentsRole).keys.where( { ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq 'Res' } )).count
         $totalRoleAssignmentsResourceGroupsAndResourcesCount = $totalRoleAssignmentsCountRG + $totalRoleAssignmentsCountRes
@@ -1306,10 +1306,10 @@ $html = @"
 </head>
 "@
 
-if ($htParameters.HierarchyMapOnly -eq $false) {
+if ($Configuration['htParameters'].HierarchyMapOnly -eq $false) {
     if (-not $NoSingleSubscriptionOutput) {
 
-        if ($htParameters.onAzureDevOpsOrGitHubActions) {
+        if ($Configuration['htParameters'].onAzureDevOpsOrGitHubActions) {
             $HTMLPath = "HTML-Subscriptions_$($ManagementGroupId)"
             if (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($HTMLPath)") {
                 Write-Host ' Cleaning old state (Pipeline only)'
@@ -1402,10 +1402,10 @@ $html += @'
 '@
 
 if ($tenantDisplayName) {
-    $tenantDetailsDisplay = "$tenantDisplayName<br>$tenantDefaultDomain<br>$($checkContext.Tenant.Id)"
+    $tenantDetailsDisplay = "$tenantDisplayName<br>$tenantDefaultDomain<br>$($Configuration['checkContext'].Tenant.Id)"
 }
 else {
-    $tenantDetailsDisplay = "$($checkContext.Tenant.Id)"
+    $tenantDetailsDisplay = "$($Configuration['checkContext'].Tenant.Id)"
 }
 
 $tenantRoleAssignmentCount = 0
@@ -1596,7 +1596,7 @@ else {
 '@
 }
 
-if ($htParameters.HierarchyMapOnly -eq $false) {
+if ($Configuration['htParameters'].HierarchyMapOnly -eq $false) {
 
     $html += @'
     <div class="summprnt" id="summprnt">
@@ -1684,7 +1684,7 @@ $html += @'
     <div class="VersionAlert"></div>
 '@
 
-if ($htParameters.HierarchyMapOnly -eq $false) {
+if ($Configuration['htParameters'].HierarchyMapOnly -eq $false) {
     $endAzGovVizHTML = Get-Date
     $AzGovVizHTMLDuration = (NEW-TIMESPAN -Start $startAzGovViz -End $endAzGovVizHTML).TotalMinutes
     $paramsUsed += "Creation duration: $AzGovVizHTMLDuration minutes &#13;"
@@ -1728,7 +1728,7 @@ Write-Host "Building HTML total duration: $((NEW-TIMESPAN -Start $startBuildHTML
 buildMD
 showMemoryUsage
 
-if (-not $htParameters.NoJsonExport) {
+if (-not $Configuration['htParameters'].NoJsonExport) {
     buildJSON
     showMemoryUsage
 }
@@ -1750,7 +1750,7 @@ foreach ($targetEndpoint in $APICallTrackingGroupedByTargetEndpoint | Sort-Objec
     $APICallTrackingRetriesCount = ($targetEndpoint.Group.where( { $_.TryCounter -gt 1 } )).Count
     $APICallTrackingRestartDueToDuplicateNextlinkCounterCount = ($targetEndpoint.Group.where( { $_.RestartDueToDuplicateNextlinkCounter -gt 0 } )).Count
     $duarationStats = ($targetEndpoint.Group.Duration | Measure-Object -Average -Maximum -Minimum)
-    Write-Host " API calls endpoint '$($targetEndpoint.Name) ($($htAzureEnvironmentRelatedUrls.($targetEndpoint.Name)))' count: $($targetEndpoint.Count) ($APICallTrackingRetriesCount retries; $APICallTrackingRestartDueToDuplicateNextlinkCounterCount nextLinkReset) | average: $($duarationStats.Average) sec, maximum: $($duarationStats.Maximum) sec, minimum: $($duarationStats.Minimum) sec"
+    Write-Host " API calls endpoint '$($targetEndpoint.Name) ($($Configuration['htAzureEnvironmentRelatedUrls'].($targetEndpoint.Name)))' count: $($targetEndpoint.Count) ($APICallTrackingRetriesCount retries; $APICallTrackingRestartDueToDuplicateNextlinkCounterCount nextLinkReset) | average: $($duarationStats.Average) sec, maximum: $($duarationStats.Maximum) sec, minimum: $($duarationStats.Minimum) sec"
 }
 $endAzGovViz = Get-Date
 $durationProduct = (NEW-TIMESPAN -Start $startAzGovViz -End $endAzGovViz)

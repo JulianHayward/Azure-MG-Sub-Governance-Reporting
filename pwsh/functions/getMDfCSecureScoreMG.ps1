@@ -3,7 +3,7 @@ function getMDfCSecureScoreMG {
     $currentTask = 'Getting Microsoft Defender for Cloud Secure Score for Management Groups'
     Write-Host $currentTask
     #ref: https://docs.microsoft.com/en-us/azure/governance/management-groups/resource-graph-samples?tabs=azure-cli#secure-score-per-management-group
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01"
     $method = 'POST'
 
     $query = @'
@@ -34,7 +34,7 @@ function getMDfCSecureScoreMG {
 "@
 
     $start = Get-Date
-    $getMgAscSecureScore = AzAPICall -uri $uri -method $method -currentTask $currentTask -body $body -listenOn 'Content' -getARMARGMgMDfCSecureScore
+    $getMgAscSecureScore = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -body $body -listenOn 'Content' -getARMARGMgMDfCSecureScore
     $end = Get-Date
     Write-Host " Getting Microsoft Defender for Cloud Secure Score for Management Groups duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
     if ($getMgAscSecureScore) {

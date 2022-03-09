@@ -8,28 +8,23 @@ function cacheBuiltIn {
 
         $builtInCapability = $_
         #fromOtherFunctions
-        $htAzureEnvironmentRelatedTargetEndpoints = $using:htAzureEnvironmentRelatedTargetEndpoints
-        $checkContext = $using:checkContext
-        $htAzureEnvironmentRelatedUrls = $using:htAzureEnvironmentRelatedUrls
-        $htBearerAccessToken = $using:htBearerAccessToken
+        $Configuration = $using:Configuration
         #Array&HTs
-        $htParameters = $using:htParameters
-        $arrayAPICallTracking = $using:arrayAPICallTracking
         $htCacheDefinitionsPolicy = $using:htCacheDefinitionsPolicy
         $htCacheDefinitionsPolicySet = $using:htCacheDefinitionsPolicySet
         $htCacheDefinitionsRole = $using:htCacheDefinitionsRole
         $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
         #Functions
-        $function:AzAPICall = $using:funcAzAPICall
-        $function:createBearerToken = $using:funcCreateBearerToken
-        $function:getJWTDetails = $using:funcGetJWTDetails
+        $function:AzAPICall = $using:functions.funcAzAPICall
+        $function:createBearerToken = $using:functions.funcCreateBearerToken
+        $function:GetJWTDetails = $using:functions.funcGetJWTDetails
 
         if ($builtInCapability -eq 'PolicyDefinitions') {
             $currentTask = 'Caching built-in Policy definitions'
             #Write-Host " $currentTask"
-            $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Authorization/policyDefinitions?api-version=2021-06-01&`$filter=policyType eq 'BuiltIn'"
+            $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Authorization/policyDefinitions?api-version=2021-06-01&`$filter=policyType eq 'BuiltIn'"
             $method = 'GET'
-            $requestPolicyDefinitionAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask
+            $requestPolicyDefinitionAPI = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask
 
             Write-Host " $($requestPolicyDefinitionAPI.Count) built-in Policy definitions returned"
             $builtinPolicyDefinitions = $requestPolicyDefinitionAPI.where( { $_.properties.policyType -eq 'BuiltIn' } )
@@ -113,9 +108,9 @@ function cacheBuiltIn {
 
             $currentTask = 'Caching built-in PolicySet definitions'
             #Write-Host " $currentTask"
-            $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2021-06-01&`$filter=policyType eq 'BuiltIn'"
+            $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2021-06-01&`$filter=policyType eq 'BuiltIn'"
             $method = 'GET'
-            $requestPolicySetDefinitionAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask
+            $requestPolicySetDefinitionAPI = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask
 
             $builtinPolicySetDefinitions = $requestPolicySetDefinitionAPI.where( { $_.properties.policyType -eq 'BuiltIn' } )
             Write-Host " $($requestPolicySetDefinitionAPI.Count) built-in PolicySet definitions returned"
@@ -156,9 +151,9 @@ function cacheBuiltIn {
         if ($builtInCapability -eq 'RoleDefinitions') {
             $currentTask = 'Caching built-in Role definitions'
             #Write-Host " $currentTask"
-            $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($checkContext.Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2018-07-01&`$filter=type eq 'BuiltInRole'"
+            $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$($Configuration['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2018-07-01&`$filter=type eq 'BuiltInRole'"
             $method = 'GET'
-            $requestRoleDefinitionAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask
+            $requestRoleDefinitionAPI = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask
 
             Write-Host " $($requestRoleDefinitionAPI.Count) built-in Role definitions returned"
             foreach ($roleDefinition in $requestRoleDefinitionAPI) {

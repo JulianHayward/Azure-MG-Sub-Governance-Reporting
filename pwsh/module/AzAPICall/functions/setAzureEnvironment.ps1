@@ -1,7 +1,8 @@
 ﻿function setAzureEnvironment {
     param(
-        [Parameter(Mandatory)]
-        $AzApiCallConfiguration
+        [Parameter(Mandatory = $True)]
+        [object]
+        $AzAPICallConfiguration
     )
     #Region Test-Environment
     Write-Host ' Set environment endPoint url mapping'

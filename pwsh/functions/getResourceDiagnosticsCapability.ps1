@@ -17,21 +17,17 @@ function getResourceDiagnosticsCapability {
             $resourcetype = $resourceTypesUniqueGroup.Name
             #region UsingVARs
             #fromOtherFunctions
-            $htAzureEnvironmentRelatedTargetEndpoints = $using:htAzureEnvironmentRelatedTargetEndpoints
-            $checkContext = $using:checkContext
-            $htAzureEnvironmentRelatedUrls = $using:htAzureEnvironmentRelatedUrls
-            $htBearerAccessToken = $using:htBearerAccessToken
+            $Configuration = $using:Configuration
             #Array&HTs
-            $htParameters = $using:htParameters
             $ExcludedResourceTypesDiagnosticsCapable = $using:ExcludedResourceTypesDiagnosticsCapable
             $resourceTypesDiagnosticsArray = $using:resourceTypesDiagnosticsArray
             $htResourceTypesUniqueResource = $using:htResourceTypesUniqueResource
             $resourceTypesSummarizedArray = $using:resourceTypesSummarizedArray
-            $arrayAPICallTracking = $using:arrayAPICallTracking
+            #$arrayAPICallTracking = $using:arrayAPICallTracking
             #Functions
-            $function:AzAPICall = $using:funcAzAPICall
-            $function:createBearerToken = $using:funcCreateBearerToken
-            $function:getJWTDetails = $using:funcGetJWTDetails
+            $function:AzAPICall = $using:functions.funcAzAPICall
+            $function:createBearerToken = $using:functions.funcCreateBearerToken
+            $function:GetJWTDetails = $using:functions.funcGetJWTDetails
             #endregion UsingVARs
 
             $skipThisResourceType = $false
@@ -65,10 +61,10 @@ function getResourceDiagnosticsCapability {
 
                     $resourceAvailability = $resourceAvailability - 1
                     $currentTask = "Checking if ResourceType '$resourceType' is capable for Resource Diagnostics using $counterTryForResourceType ResourceId: '$($resourceId)'"
-                    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/$($resourceId)/providers/microsoft.insights/diagnosticSettingsCategories?api-version=2021-05-01-preview"
+                    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/$($resourceId)/providers/microsoft.insights/diagnosticSettingsCategories?api-version=2021-05-01-preview"
                     $method = 'GET'
 
-                    $responseJSON = AzAPICall -uri $uri -method $method -currentTask $currentTask
+                    $responseJSON = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask
                     if ($responseJSON -notlike 'meanwhile_deleted*') {
                         if ($responseJSON -eq 'ResourceTypeNotSupported') {
                             Write-Host "  ResourceTypeNotSupported | The resource type '$($resourcetype)' does not support diagnostic settings."

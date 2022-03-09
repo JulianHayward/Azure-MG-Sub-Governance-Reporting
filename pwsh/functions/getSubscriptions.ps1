@@ -2,9 +2,9 @@ function getSubscriptions {
     $startGetSubscriptions = Get-Date
     $currentTask = 'Getting all Subscriptions'
     Write-Host "$currentTask"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions?api-version=2020-01-01"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions?api-version=2020-01-01"
     $method = 'GET'
-    $requestAllSubscriptionsAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask
+    $requestAllSubscriptionsAPI = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask
 
     Write-Host " $($requestAllSubscriptionsAPI.Count) Subscriptions returned"
     foreach ($subscription in $requestAllSubscriptionsAPI) {

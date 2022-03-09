@@ -1,9 +1,9 @@
 function setBaseVariablesMG {
-    if (($checkContext).Tenant.Id -ne $ManagementGroupId) {
+    if (($Configuration['checkContext']).Tenant.Id -ne $ManagementGroupId) {
         $script:mgSubPathTopMg = $selectedManagementGroupId.ParentName
         $script:getMgParentId = $selectedManagementGroupId.ParentName
         $script:getMgParentName = $selectedManagementGroupId.ParentDisplayName
-        $script:mermaidprnts = "'$(($checkContext).Tenant.Id)',$getMgParentId"
+        $script:mermaidprnts = "'$(($Configuration['checkContext']).Tenant.Id)',$getMgParentId"
     }
     else {
         $script:hierarchyLevel = -1

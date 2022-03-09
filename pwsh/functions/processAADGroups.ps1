@@ -26,34 +26,30 @@ function processAADGroups {
             #region UsingVARs
             #fromOtherFunctions
             $AADGroupMembersLimit = $using:AADGroupMembersLimit
-            $htAzureEnvironmentRelatedTargetEndpoints = $using:htAzureEnvironmentRelatedTargetEndpoints
-            $checkContext = $using:checkContext
-            $htAzureEnvironmentRelatedUrls = $using:htAzureEnvironmentRelatedUrls
-            $htBearerAccessToken = $using:htBearerAccessToken
+            $Configuration = $using:Configuration
             #Array&HTs
-            $htParameters = $using:htParameters
             $htAADGroupsDetails = $using:htAADGroupsDetails
             $arrayGroupRoleAssignmentsOnServicePrincipals = $using:arrayGroupRoleAssignmentsOnServicePrincipals
             $arrayGroupRequestResourceNotFound = $using:arrayGroupRequestResourceNotFound
             $arrayProgressedAADGroups = $using:arrayProgressedAADGroups
-            $arrayAPICallTracking = $using:arrayAPICallTracking
+            #$arrayAPICallTracking = $using:arrayAPICallTracking
             $htAADGroupsExeedingMemberLimit = $using:htAADGroupsExeedingMemberLimit
             $indicator = $using:indicator
             $htUserTypesGuest = $using:htUserTypesGuest
             $htServicePrincipals = $using:htServicePrincipals
             #Functions
-            $function:AzAPICall = $using:funcAzAPICall
-            $function:createBearerToken = $using:funcCreateBearerToken
-            $function:getJWTDetails = $using:funcGetJWTDetails
+            $function:AzAPICall = $using:functions.funcAzAPICall
+            $function:createBearerToken = $using:functions.funcCreateBearerToken
+            $function:GetJWTDetails = $using:functions.funcGetJWTDetails
             $function:getGroupmembers = $using:funcGetGroupmembers
             #endregion UsingVARs
 
             $rndom = Get-Random -Minimum 10 -Maximum 750
             start-sleep -Millisecond $rndom
 
-            $uri = "$(($htAzureEnvironmentRelatedUrls).MicrosoftGraph)/beta/groups/$($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)/transitiveMembers/`$count"
+            $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph)/beta/groups/$($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)/transitiveMembers/`$count"
             $method = 'GET'
-            $aadGroupMembersCount = AzAPICall -uri $uri -method $method -currentTask "getGroupMembersCountTransitive $($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)" -listenOn 'Content' -consistencyLevel 'eventual'
+            $aadGroupMembersCount = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask "getGroupMembersCountTransitive $($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)" -listenOn 'Content' -consistencyLevel 'eventual'
 
             if ($aadGroupMembersCount -eq 'Request_ResourceNotFound') {
                 $null = $script:arrayGroupRequestResourceNotFound.Add([PSCustomObject]@{

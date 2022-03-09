@@ -2,16 +2,16 @@ function validateAccess {
     #region validationAccess
     #validation / check 'Microsoft Graph API' Access
     $permissionCheckResults = @()
-    if ($htParameters.onAzureDevOpsOrGitHubActions -eq $true -or $accountType -eq 'ServicePrincipal' -or $accountType -eq 'ManagedService' -or $accountType -eq 'ClientAssertion') {
+    if ($Configuration['htParameters'].onAzureDevOpsOrGitHubActions -eq $true -or $Configuration['accountType'] -eq 'ServicePrincipal' -or $Configuration['accountType'] -eq 'ManagedService' -or $Configuration['accountType'] -eq 'ClientAssertion') {
 
-        Write-Host "Checking $accountType permissions"
+        Write-Host "Checking $Configuration['accountType'] permissions"
 
         $permissionsCheckFailed = $false
 
         $currentTask = 'Test MSGraph Users Read permission'
-        $uri = "$(($htAzureEnvironmentRelatedUrls).MicrosoftGraph)/v1.0/users?`$count=true&`$top=1"
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph)/v1.0/users?`$count=true&`$top=1"
         $method = 'GET'
-        $res = AzAPICall -uri $uri -method $method -currentTask $currentTask -consistencyLevel 'eventual' -validateAccess -noPaging
+        $res = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -consistencyLevel 'eventual' -validateAccess -noPaging
 
         if ($res -eq 'failed') {
             $permissionCheckResults += "MSGraph API 'Users Read' permission - check FAILED"
@@ -22,9 +22,9 @@ function validateAccess {
         }
 
         $currentTask = 'Test MSGraph Groups Read permission'
-        $uri = "$(($htAzureEnvironmentRelatedUrls).MicrosoftGraph)/v1.0/groups?`$count=true&`$top=1"
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph)/v1.0/groups?`$count=true&`$top=1"
         $method = 'GET'
-        $res = AzAPICall -uri $uri -method $method -currentTask $currentTask -consistencyLevel 'eventual' -validateAccess -noPaging
+        $res = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -consistencyLevel 'eventual' -validateAccess -noPaging
 
         if ($res -eq 'failed') {
             $permissionCheckResults += "MSGraph API 'Groups Read' permission - check FAILED"
@@ -35,9 +35,9 @@ function validateAccess {
         }
 
         $currentTask = 'Test MSGraph ServicePrincipals Read permission'
-        $uri = "$(($htAzureEnvironmentRelatedUrls).MicrosoftGraph)/v1.0/servicePrincipals?`$count=true&`$top=1"
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph)/v1.0/servicePrincipals?`$count=true&`$top=1"
         $method = 'GET'
-        $res = AzAPICall -uri $uri -method $method -currentTask $currentTask -consistencyLevel 'eventual' -validateAccess -noPaging
+        $res = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -consistencyLevel 'eventual' -validateAccess -noPaging
 
         if ($res -eq 'failed') {
             $permissionCheckResults += "MSGraph API 'ServicePrincipals Read' permission - check FAILED"
@@ -56,9 +56,9 @@ function validateAccess {
         #$catchResult = "letscheck"
         $currentTask = 'Getting all Management Groups'
         #Write-Host $currentTask
-        $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Management/managementGroups?api-version=2020-05-01"
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Management/managementGroups?api-version=2020-05-01"
         $method = 'GET'
-        $getAzManagementGroups = AzAPICall -uri $uri -method $method -currentTask $currentTask -validateAccess -noPaging
+        $getAzManagementGroups = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -validateAccess -noPaging
 
         if ($getAzManagementGroups -eq 'failed') {
             $permissionCheckResults += "'Reader' permissions on Management Group - check FAILED"
@@ -112,9 +112,9 @@ function validateAccess {
     else {
         $currentTask = "Checking permissions for ManagementGroup '$ManagementGroupId'"
         Write-Host $currentTask
-        $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)?api-version=2020-05-01"
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)?api-version=2020-05-01"
         $method = 'GET'
-        $selectedManagementGroupId = AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -validateAccess -noPaging
+        $selectedManagementGroupId = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -validateAccess -noPaging
 
         if ($selectedManagementGroupId -eq 'failed') {
             $permissionCheckResults += "'Reader' permissions on Management Group '$($ManagementGroupId)' - check FAILED"

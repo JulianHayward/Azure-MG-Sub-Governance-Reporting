@@ -11,7 +11,7 @@ function getConsumption {
             #$currenttask = "Getting Consumption data (scope MG '$($ManagementGroupId)') for $($subsToProcessInCustomDataCollectionCount) Subscriptions (QuotaId Whitelist: '$($SubscriptionQuotaIdWhitelist -join ", ")') for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
             #Write-Host "$currentTask"
             #https://docs.microsoft.com/en-us/rest/api/cost-management/query/usage
-            $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
+            $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
             $method = 'POST'
 
             $counterBatch = [PSCustomObject] @{ Value = 0 }
@@ -77,7 +77,7 @@ function getConsumption {
 }
 "@
 
-                $mgConsumptionData = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
+                $mgConsumptionData = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
                 #endregion mgScopeWhitelisted
 
                 <#test
@@ -148,30 +148,25 @@ function getConsumption {
                         $azureConsumptionEndDate = $using:azureConsumptionEndDate
                         $SubscriptionQuotaIdWhitelist = $using:SubscriptionQuotaIdWhitelist
                         #fromOtherFunctions
-                        $htAzureEnvironmentRelatedTargetEndpoints = $using:htAzureEnvironmentRelatedTargetEndpoints
-                        $checkContext = $using:checkContext
-                        $htAzureEnvironmentRelatedUrls = $using:htAzureEnvironmentRelatedUrls
-                        $htBearerAccessToken = $using:htBearerAccessToken
+                        $Configuration = $using:Configuration
                         #Array&HTs
-                        $htParameters = $using:htParameters
-                        $arrayAPICallTracking = $using:arrayAPICallTracking
                         $allConsumptionData = $using:allConsumptionData
                         $htSubscriptionsMgPath = $using:htSubscriptionsMgPath
                         $htAllSubscriptionsFromAPI = $using:htAllSubscriptionsFromAPI
                         $htConsumptionExceptionLog = $using:htConsumptionExceptionLog
                         #Functions
-                        $function:AzAPICall = $using:funcAzAPICall
-                        $function:createBearerToken = $using:funcCreateBearerToken
-                        $function:getJWTDetails = $using:funcGetJWTDetails
+                        $function:AzAPICall = $using:functions.funcAzAPICall
+                        $function:createBearerToken = $using:functions.funcCreateBearerToken
+                        $function:GetJWTDetails = $using:functions.funcGetJWTDetails
                         #endregion UsingVARs
 
                         $currentTask = "  Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)) (whitelist))"
                         #test
                         write-host $currentTask
                         #https://docs.microsoft.com/en-us/rest/api/cost-management/query/usage
-                        $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
+                        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
                         $method = 'POST'
-                        $subConsumptionData = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
+                        $subConsumptionData = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
                         if ($subConsumptionData -eq 'Unauthorized' -or $subConsumptionData -eq 'OfferNotSupported' -or $subConsumptionData -eq 'InvalidQueryDefinition' -or $subConsumptionData -eq 'NonValidWebDirectAIRSOfferType' -or $subConsumptionData -eq 'NotFoundNotSupported' -or $subConsumptionData -eq 'IndirectCostDisabled') {
                             Write-Host "   Failed ($subConsumptionData) - Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)) (whitelist))"
                             $hlper = $htAllSubscriptionsFromAPI.($subIdToProcess).subDetails
@@ -223,7 +218,7 @@ function getConsumption {
             $currenttask = "Getting Consumption data (scope MG '$($ManagementGroupId)') for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
             Write-Host "$currentTask"
             #https://docs.microsoft.com/en-us/rest/api/cost-management/query/usage
-            $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
+            $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
             $method = 'POST'
             $body = @"
 {
@@ -266,7 +261,7 @@ function getConsumption {
     }
 }
 "@
-            $script:allConsumptionData = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
+            $script:allConsumptionData = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
             #endregion mgScope
 
             #test
@@ -329,30 +324,25 @@ function getConsumption {
                     $azureConsumptionStartDate = $using:azureConsumptionStartDate
                     $azureConsumptionEndDate = $using:azureConsumptionEndDate
                     #fromOtherFunctions
-                    $htAzureEnvironmentRelatedTargetEndpoints = $using:htAzureEnvironmentRelatedTargetEndpoints
-                    $checkContext = $using:checkContext
-                    $htAzureEnvironmentRelatedUrls = $using:htAzureEnvironmentRelatedUrls
-                    $htBearerAccessToken = $using:htBearerAccessToken
+                    $Configuration = $using:Configuration
                     #Array&HTs
-                    $htParameters = $using:htParameters
-                    $arrayAPICallTracking = $using:arrayAPICallTracking
                     $htSubscriptionsMgPath = $using:htSubscriptionsMgPath
                     $htAllSubscriptionsFromAPI = $using:htAllSubscriptionsFromAPI
                     $allConsumptionData = $using:allConsumptionData
                     $htConsumptionExceptionLog = $using:htConsumptionExceptionLog
                     #Functions
-                    $function:AzAPICall = $using:funcAzAPICall
-                    $function:createBearerToken = $using:funcCreateBearerToken
-                    $function:getJWTDetails = $using:funcGetJWTDetails
+                    $function:AzAPICall = $using:functions.funcAzAPICall
+                    $function:createBearerToken = $using:functions.funcCreateBearerToken
+                    $function:GetJWTDetails = $using:functions.funcGetJWTDetails
                     #endregion UsingVARs
 
                     $currentTask = "  Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
                     #test
                     write-host $currentTask
                     #https://docs.microsoft.com/en-us/rest/api/cost-management/query/usage
-                    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
+                    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
                     $method = 'POST'
-                    $subConsumptionData = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
+                    $subConsumptionData = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
                     if ($subConsumptionData -eq 'Unauthorized' -or $subConsumptionData -eq 'OfferNotSupported' -or $subConsumptionData -eq 'InvalidQueryDefinition' -or $subConsumptionData -eq 'NonValidWebDirectAIRSOfferType' -or $subConsumptionData -eq 'NotFoundNotSupported' -or $subConsumptionData -eq 'IndirectCostDisabled') {
                         Write-Host "   Failed ($subConsumptionData) - Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
                         $hlper = $htAllSubscriptionsFromAPI.($subIdToProcess).subDetails
@@ -403,7 +393,7 @@ function getConsumption {
             Write-Host ' Seems there are no Subscriptions present - skipping CostManagement'
         }
         Write-Host " Action: Setting switch parameter 'DoAzureConsumption' to false"
-        $htParameters.DoAzureConsumption = $false
+        $Configuration['htParameters'].DoAzureConsumption = $false
     }
     else {
         Write-Host ' Checking returned Consumption data'

@@ -4,7 +4,7 @@ function HierarchyMgHTML($mgChild) {
     $mgName = $mgDetails.mgName
     $mgId = $mgDetails.MgId
 
-    if ($mgId -eq ($checkContext).Tenant.Id) {
+    if ($mgId -eq ($Configuration['checkContext']).Tenant.Id) {
         if ($mgId -eq $defaultManagementGroupId) {
             $class = "class=`"tenantRootGroup mgnonradius defaultMG`""
         }
@@ -312,7 +312,7 @@ function processScopeInsightsMGSubs($mgChild) {
 "@
             }
 
-            if (-not $htParameters.ManagementGroupsOnly) {
+            if (-not $Configuration['htParameters'].ManagementGroupsOnly) {
                 processScopeInsightsMgOrSub -mgOrSub 'sub' -subscriptionId $subEntry.subscriptionId -subscriptionsMgId $mgChild
             }
 

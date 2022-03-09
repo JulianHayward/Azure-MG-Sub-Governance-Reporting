@@ -5,9 +5,9 @@ function getEntities {
     $currentTask = ' Getting Entities'
     Write-Host $currentTask
     #https://management.azure.com/providers/Microsoft.Management/getEntities?api-version=2020-02-01
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Management/getEntities?api-version=2020-02-01"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Management/getEntities?api-version=2020-02-01"
     $method = 'POST'
-    $script:arrayEntitiesFromAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask
+    $script:arrayEntitiesFromAPI = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask
 
     Write-Host "  $($arrayEntitiesFromAPI.Count) Entities returned"
 

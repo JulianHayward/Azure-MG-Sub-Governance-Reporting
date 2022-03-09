@@ -16,7 +16,7 @@ function addHtParameters {
     }
 
     $htParametersAzGovViz = [ordered]@{
-        AzCloudEnv                                   = $checkContext.Environment.Name
+        AzCloudEnv                                   = $Configuration['checkContext'].Environment.Name
         DoAzureConsumption                           = [bool]$DoAzureConsumption
         DoNotIncludeResourceGroupsOnPolicy           = [bool]$DoNotIncludeResourceGroupsOnPolicy
         DoNotIncludeResourceGroupsAndResourcesOnRBAC = [bool]$DoNotIncludeResourceGroupsAndResourcesOnRBAC
@@ -33,8 +33,8 @@ function addHtParameters {
         PolicyAtScopeOnly                            = [bool]$PolicyAtScopeOnly
         RBACAtScopeOnly                              = [bool]$RBACAtScopeOnly
     }
-    $global:htParameters += $htParametersAzGovViz
+    $script:Configuration['htParameters'] += $htParametersAzGovViz
     Write-Host 'htParameters:'
-    $htParameters | format-table -AutoSize
+    $Configuration['htParameters'] | format-table -AutoSize | Out-String
     Write-Host 'Add AzGovViz htParameters succeeded' -ForegroundColor Green
 }

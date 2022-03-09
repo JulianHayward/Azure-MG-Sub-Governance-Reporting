@@ -1,6 +1,11 @@
 function testSubscription {
     [CmdletBinding()]Param(
-        [string]$SubscriptionId4Test,
+        [Parameter(Mandatory = $True)]    
+        [string]
+        $SubscriptionId4Test,
+
+        [Parameter(Mandatory = $True)]
+        [object]
         $AzAPICallConfiguration
     )
 

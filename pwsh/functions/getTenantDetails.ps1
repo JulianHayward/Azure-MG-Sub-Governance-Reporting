@@ -1,12 +1,12 @@
 function getTenantDetails {
     $currentTask = 'Get Tenant details'
     Write-Host $currentTask
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/tenants?api-version=2020-01-01"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/tenants?api-version=2020-01-01"
     $method = 'GET'
-    $tenantDetailsResult = AzAPICall -uri $uri -method $method -currentTask $currentTask
+    $tenantDetailsResult = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask
 
     if (($tenantDetailsResult).count -gt 0) {
-        $tenantDetails = $tenantDetailsResult | Where-Object { $_.tenantId -eq ($checkContext).Tenant.Id }
+        $tenantDetails = $tenantDetailsResult | Where-Object { $_.tenantId -eq ($Configuration['checkContext']).Tenant.Id }
         if ($tenantDetails.displayName) {
             $script:tenantDisplayName = $tenantDetails.displayName
             Write-Host " Tenant DisplayName: $tenantDisplayName"

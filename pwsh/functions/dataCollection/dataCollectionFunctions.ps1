@@ -6,7 +6,7 @@ function dataCollectionMGSecureScore {
     )
 
     $mgAscSecureScoreResult = ''
-    if ($htParameters.NoMDfCSecureScore -eq $false) {
+    if ($Configuration['htParameters'].NoMDfCSecureScore -eq $false) {
         if ($htMgASCSecureScore.($Id)) {
             $mgAscSecureScoreResult = $htMgASCSecureScore.($Id).SecureScore
         }
@@ -27,9 +27,9 @@ function dataCollectionDefenderPlans {
 
     $currentTask = "Getting Microsoft Defender for Cloud plans for Subscription: '$($scopeDisplayName)' ('$scopeId')"
     #https://docs.microsoft.com/en-us/rest/api/securitycenter/pricings
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/pricings?api-version=2018-06-01"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/pricings?api-version=2018-06-01"
     $method = 'GET'
-    $defenderPlansResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $defenderPlansResult = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     if ($defenderPlansResult -eq 'SubScriptionNotRegistered') {
         #Subscription skipped for MDfC
@@ -64,9 +64,9 @@ function dataCollectionDiagnosticsSub {
     )
 
     $currentTask = "getDiagnosticSettingsSub for Subscription: '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($scopeId)/providers/microsoft.insights/diagnosticSettings?api-version=2021-05-01-preview"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$($scopeId)/providers/microsoft.insights/diagnosticSettings?api-version=2021-05-01-preview"
     $method = 'GET'
-    $getDiagnosticSettingsSub = AzAPICall -uri $uri -method $method -currentTask $currentTask
+    $getDiagnosticSettingsSub = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask
 
     if ($getDiagnosticSettingsSub.Count -eq 0) {
         $null = $script:arrayDiagnosticSettingsMgSub.Add([PSCustomObject]@{
@@ -160,9 +160,9 @@ function dataCollectionDiagnosticsMG {
 
     $mgPath = $htManagementGroupsMgPath.($scopeId).pathDelimited
     $currentTask = "getARMDiagnosticSettingsMg '$($scopeDisplayName)' ('$($scopeId)')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/providers/microsoft.insights/diagnosticSettings?api-version=2020-01-01-preview"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/providers/microsoft.insights/diagnosticSettings?api-version=2020-01-01-preview"
     $method = 'GET'
-    $getDiagnosticSettingsMg = AzAPICall -uri $uri -method $method -currentTask $currentTask
+    $getDiagnosticSettingsMg = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask
 
     if ($getDiagnosticSettingsMg -eq 'InvalidResourceType') {
         #skipping until supported
@@ -264,9 +264,9 @@ function dataCollectionResources {
         $ChildMgMgPath
     )
     $currentTask = "Getting ResourceTypes for Subscription: '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime&api-version=2021-04-01"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime&api-version=2021-04-01"
     $method = 'GET'
-    $resourcesSubscriptionResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $resourcesSubscriptionResult = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     foreach ($resourceTypeLocation in ($resourcesSubscriptionResult | Group-Object -Property type, location)) {
         $null = $script:resourcesAll.Add([PSCustomObject]@{
@@ -373,9 +373,9 @@ function dataCollectionResourceGroups {
 
     #https://management.azure.com/subscriptions/{subscriptionId}/resourcegroups?api-version=2020-06-01
     $currentTask = "Getting ResourceGroups for Subscription: '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($scopeId)/resourcegroups?api-version=2021-04-01"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$($scopeId)/resourcegroups?api-version=2021-04-01"
     $method = 'GET'
-    $resourceGroupsSubscriptionResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $resourceGroupsSubscriptionResult = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     $null = $script:resourceGroupsAll.Add([PSCustomObject]@{
             subscriptionId = $scopeId
@@ -383,7 +383,7 @@ function dataCollectionResourceGroups {
         })
 
     #resourceGroupTags
-    if ($htParameters.NoResources -eq $true) {
+    if ($Configuration['htParameters'].NoResources -eq $true) {
         $script:htSubscriptionTagList.($scopeId) = @{}
     }
 
@@ -427,9 +427,9 @@ function dataCollectionResourceProviders {
 
     ($script:htResourceProvidersAll).($scopeId) = @{}
     $currentTask = "Getting ResourceProviders for Subscription: '$($scopeDisplayname)' ('$scopeId')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($scopeId)/providers?api-version=2019-10-01"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$($scopeId)/providers?api-version=2019-10-01"
     $method = 'GET'
-    $resProvResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $resProvResult = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     ($script:htResourceProvidersAll).($scopeId).Providers = $resProvResult | Select-Object namespace, registrationState
 }
@@ -442,9 +442,9 @@ function dataCollectionResourceLocks {
     )
 
     $currentTask = "Subscription ResourceLocks '$($scopeDisplayname)' ('$scopeId')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$scopeId/providers/Microsoft.Authorization/locks?api-version=2016-09-01"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$scopeId/providers/Microsoft.Authorization/locks?api-version=2016-09-01"
     $method = 'GET'
-    $requestSubscriptionResourceLocks = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $requestSubscriptionResourceLocks = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     $requestSubscriptionResourceLocksCount = ($requestSubscriptionResourceLocks).Count
     if ($requestSubscriptionResourceLocksCount -gt 0) {
@@ -540,9 +540,9 @@ function dataCollectionTags {
     )
 
     $currentTask = "Subscription Tags '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$scopeId/providers/Microsoft.Resources/tags/default?api-version=2020-06-01"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$scopeId/providers/Microsoft.Resources/tags/default?api-version=2020-06-01"
     $method = 'GET'
-    $requestSubscriptionTags = AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -caller 'CustomDataCollection'
+    $requestSubscriptionTags = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -caller 'CustomDataCollection'
 
     $script:htSubscriptionTagList.($scopeId).Subscription = @{}
     if ($requestSubscriptionTags.properties.tags) {
@@ -601,10 +601,10 @@ function dataCollectionPolicyComplianceStates {
     )
 
     $currentTask = "Policy Compliance $($TargetMgOrSub) '$($scopeDisplayName)' ('$scopeId')"
-    if ($TargetMgOrSub -eq 'Sub') { $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($scopeId)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01" }
-    if ($TargetMgOrSub -eq 'MG') { $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01" }
+    if ($TargetMgOrSub -eq 'Sub') { $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01" }
+    if ($TargetMgOrSub -eq 'MG') { $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01" }
     $method = 'POST'
-    $policyComplianceResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $policyComplianceResult = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     if ($policyComplianceResult -eq 'ResponseTooLarge') {
         if ($TargetMgOrSub -eq 'Sub') { ($script:htCachePolicyComplianceResponseTooLargeSUB).($scopeId) = @{} }
@@ -657,11 +657,11 @@ function dataCollectionASCSecureScoreSub {
         [string]$scopeDisplayName
     )
 
-    if ($htParameters.NoMDfCSecureScore -eq $false) {
+    if ($Configuration['htParameters'].NoMDfCSecureScore -eq $false) {
         $currentTask = "Microsoft Defender for Cloud Secure Score Sub: '$($scopeDisplayName)' ('$scopeId')"
-        $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$scopeId/providers/Microsoft.Security/securescores?api-version=2020-01-01"
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$scopeId/providers/Microsoft.Security/securescores?api-version=2020-01-01"
         $method = 'GET'
-        $subASCSecureScoreResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+        $subASCSecureScoreResult = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
         if (($subASCSecureScoreResult).count -gt 0) {
             $subscriptionASCSecureScore = "$($subASCSecureScoreResult.properties.score.current) of $($subASCSecureScoreResult.properties.score.max) points"
@@ -671,7 +671,7 @@ function dataCollectionASCSecureScoreSub {
         }
     }
     else {
-        $subscriptionASCSecureScore = "excluded (-NoMDfCSecureScore $($htParameters.NoMDfCSecureScore))"
+        $subscriptionASCSecureScore = "excluded (-NoMDfCSecureScore $($Configuration['htParameters'].NoMDfCSecureScore))"
     }
     return $subscriptionASCSecureScore
 }
@@ -688,9 +688,9 @@ function dataCollectionBluePrintDefinitionsMG {
     )
 
     $currentTask = "Blueprint definitions MG '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
     $method = 'GET'
-    $scopeBlueprintDefinitionResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $scopeBlueprintDefinitionResult = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     $addRowToTableDone = $false
     if (($scopeBlueprintDefinitionResult).count -gt 0) {
@@ -748,9 +748,9 @@ function dataCollectionBluePrintDefinitionsSub {
     )
 
     $currentTask = "Blueprint definitions Sub '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($scopeId)/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
     $method = 'GET'
-    $scopeBlueprintDefinitionResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $scopeBlueprintDefinitionResult = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     $addRowToTableDone = $false
     if (($scopeBlueprintDefinitionResult).count -gt 0) {
@@ -815,9 +815,9 @@ function dataCollectionBluePrintAssignmentsSub {
     )
 
     $currentTask = "Blueprint assignments '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$scopeId/providers/Microsoft.Blueprint/blueprintAssignments?api-version=2018-11-01-preview"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$scopeId/providers/Microsoft.Blueprint/blueprintAssignments?api-version=2018-11-01-preview"
     $method = 'GET'
-    $subscriptionBlueprintAssignmentsResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $subscriptionBlueprintAssignmentsResult = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     $addRowToTableDone = $false
     if (($subscriptionBlueprintAssignmentsResult).count -gt 0) {
@@ -838,9 +838,9 @@ function dataCollectionBluePrintAssignmentsSub {
             }
 
             $currentTask = "   Blueprint definitions related to Blueprint assignments '$($scopeDisplayName)' ('$scopeId')"
-            $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/$($blueprintScope)/providers/Microsoft.Blueprint/blueprints/$($blueprintName)?api-version=2018-11-01-preview"
+            $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/$($blueprintScope)/providers/Microsoft.Blueprint/blueprints/$($blueprintName)?api-version=2018-11-01-preview"
             $method = 'GET'
-            $subscriptionBlueprintDefinitionResult = AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -caller 'CustomDataCollection'
+            $subscriptionBlueprintDefinitionResult = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -caller 'CustomDataCollection'
 
             if ($subscriptionBlueprintDefinitionResult -eq 'BlueprintNotFound') {
                 $blueprintName = 'BlueprintNotFound'
@@ -903,13 +903,13 @@ function dataCollectionPolicyExemptions {
 
     $currentTask = "Policy exemptions $($TargetMgOrSub) '$($scopeDisplayName)' ('$scopeId')"
     if ($TargetMgOrSub -eq 'Sub') {
-        $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/policyExemptions?api-version=2020-07-01-preview"
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/policyExemptions?api-version=2020-07-01-preview"
     }
     if ($TargetMgOrSub -eq 'MG') {
-        $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/policyExemptions?api-version=2020-07-01-preview&`$filter=atScope()"
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/policyExemptions?api-version=2020-07-01-preview&`$filter=atScope()"
     }
     $method = 'GET'
-    $requestPolicyExemptionAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $requestPolicyExemptionAPI = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     $requestPolicyExemptionAPICount = ($requestPolicyExemptionAPI).Count
     if ($requestPolicyExemptionAPICount -gt 0) {
@@ -932,13 +932,13 @@ function dataCollectionPolicyDefinitions {
 
     $currentTask = "Policy definitions $($TargetMgOrSub) '$($scopeDisplayName)' ('$scopeId')"
     if ($TargetMgOrSub -eq 'Sub') {
-        $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/policyDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Custom'"
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/policyDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Custom'"
     }
     if ($TargetMgOrSub -eq 'MG') {
-        $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Management/managementgroups/$($scopeId)/providers/Microsoft.Authorization/policyDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Custom'"
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Management/managementgroups/$($scopeId)/providers/Microsoft.Authorization/policyDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Custom'"
     }
     $method = 'GET'
-    $requestPolicyDefinitionAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $requestPolicyDefinitionAPI = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     $scopePolicyDefinitions = $requestPolicyDefinitionAPI.where( { $_.properties.policyType -eq 'custom' } )
 
@@ -1097,13 +1097,13 @@ function dataCollectionPolicySetDefinitions {
 
     $currentTask = "PolicySet definitions $($TargetMgOrSub) '$($scopeDisplayName)' ('$scopeId')"
     if ($TargetMgOrSub -eq 'Sub') {
-        $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Custom'"
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Custom'"
     }
     if ($TargetMgOrSub -eq 'MG') {
-        $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Management/managementgroups/$($scopeId)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Custom'"
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Management/managementgroups/$($scopeId)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Custom'"
     }
     $method = 'GET'
-    $requestPolicySetDefinitionAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $requestPolicySetDefinitionAPI = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     $scopePolicySetDefinitions = $requestPolicySetDefinitionAPI.where( { $_.properties.policyType -eq 'custom' } )
     if ($TargetMgOrSub -eq 'Sub') {
@@ -1218,14 +1218,14 @@ function dataCollectionPolicyAssignmentsMG {
 
     $addRowToTableDone = $false
     $currentTask = "Policy assignments '$($scopeDisplayName)' ('$($scopeId)')"
-    if ($htParameters.LargeTenant -eq $false -or $htParameters.PolicyAtScopeOnly -eq $false) {
-        $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Management/managementgroups/$($scopeId)/providers/Microsoft.Authorization/policyAssignments?`$filter=atscope()&api-version=2021-06-01"
+    if ($Configuration['htParameters'].LargeTenant -eq $false -or $Configuration['htParameters'].PolicyAtScopeOnly -eq $false) {
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Management/managementgroups/$($scopeId)/providers/Microsoft.Authorization/policyAssignments?`$filter=atscope()&api-version=2021-06-01"
     }
     else {
-        $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Management/managementgroups/$($scopeId)/providers/Microsoft.Authorization/policyAssignments?`$filter=atExactScope()&api-version=2021-06-01"
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Management/managementgroups/$($scopeId)/providers/Microsoft.Authorization/policyAssignments?`$filter=atExactScope()&api-version=2021-06-01"
     }
     $method = 'GET'
-    $L0mgmtGroupPolicyAssignments = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $L0mgmtGroupPolicyAssignments = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     $L0mgmtGroupPolicyAssignmentsPolicyCount = (($L0mgmtGroupPolicyAssignments.where( { $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policyDefinitions/' } ))).count
     $L0mgmtGroupPolicyAssignmentsPolicySetCount = (($L0mgmtGroupPolicyAssignments.where( { $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policySetDefinitions/' } ))).count
@@ -1656,12 +1656,12 @@ function dataCollectionPolicyAssignmentsSub {
     )
 
     $currentTask = "Policy assignments '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/policyAssignments?api-version=2021-06-01"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/policyAssignments?api-version=2021-06-01"
     $method = 'GET'
 
     $addRowToTableDone = $false
-    if ($htParameters.DoNotIncludeResourceGroupsOnPolicy -eq $false) {
-        $L1mgmtGroupSubPolicyAssignments = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    if ($Configuration['htParameters'].DoNotIncludeResourceGroupsOnPolicy -eq $false) {
+        $L1mgmtGroupSubPolicyAssignments = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
         $L1mgmtGroupSubPolicyAssignmentsPolicyCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policyDefinitions/' } )).count
         $L1mgmtGroupSubPolicyAssignmentsPolicySetCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policySetDefinitions/' } )).count
@@ -1670,7 +1670,7 @@ function dataCollectionPolicyAssignmentsSub {
         $L1mgmtGroupSubPolicyAssignmentsQuery = $L1mgmtGroupSubPolicyAssignments
     }
     else {
-        $L1mgmtGroupSubPolicyAssignments = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+        $L1mgmtGroupSubPolicyAssignments = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
         $L1mgmtGroupSubPolicyAssignmentsPolicyCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policyDefinitions/' -and $_.Id -notmatch "/subscriptions/$($scopeId)/resourceGroups" } )).count
         $L1mgmtGroupSubPolicyAssignmentsPolicySetCount = ($L1mgmtGroupSubPolicyAssignments.where( { $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policySetDefinitions/' -and $_.Id -notmatch "/subscriptions/$($scopeId)/resourceGroups" } )).count
@@ -1752,7 +1752,7 @@ function dataCollectionPolicyAssignmentsSub {
                             if (($policyAssignmentsPolicyDefinition).Type -ne $policyDefinitionType) {
                                 Write-Host "$scopeDisplayName ($scopeId) $policyVariant was processing: $policyDefinitionId"
                                 Write-Host "'$(($policyAssignmentsPolicyDefinition).Type)' ne '$policyDefinitionType'"
-                                Write-Host "!Please report this error: $($htParameters.GithubRepository)" -ForegroundColor Yellow
+                                Write-Host "!Please report this error: $($Configuration['htParameters'].GithubRepository)" -ForegroundColor Yellow
                                 throw
                             }
 
@@ -1777,7 +1777,7 @@ function dataCollectionPolicyAssignmentsSub {
                     if (-not $policyReturnedFromHt) {
                         Write-Host "FinalHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policyId:'$policyDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; policyAssignmentsPolicyDefinition.Type: '$($policyAssignmentsPolicyDefinition.Type)'"
                         Write-Host ($policyAssignmentsPolicyDefinition | ConvertTo-Json -depth 99)
-                        Write-Host "!Please report this error: $($htParameters.GithubRepository)" -ForegroundColor Yellow
+                        Write-Host "!Please report this error: $($Configuration['htParameters'].GithubRepository)" -ForegroundColor Yellow
                         throw
                     }
                 }
@@ -1980,7 +1980,7 @@ function dataCollectionPolicyAssignmentsSub {
                             if (($policyAssignmentsPolicySetDefinition).Type -ne $policySetDefinitionType) {
                                 Write-Host "$scopeDisplayName ($scopeId) $policyVariant was processing: $policySetDefinitionId"
                                 Write-Host "'$(($policyAssignmentsPolicySetDefinition).Type)' ne '$policySetDefinitionType'"
-                                Write-Host "!Please report this error: $($htParameters.GithubRepository)" -ForegroundColor Yellow
+                                Write-Host "!Please report this error: $($Configuration['htParameters'].GithubRepository)" -ForegroundColor Yellow
                                 throw
                             }
 
@@ -2003,7 +2003,7 @@ function dataCollectionPolicyAssignmentsSub {
                     until($policySetReturnedFromHt -or $tryCounter -gt 5)
                     if (-not $policySetReturnedFromHt) {
                         Write-Host "FinalHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policySetId:'$policySetDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'"
-                        Write-Host "!Please report this error: $($htParameters.GithubRepository)" -ForegroundColor Yellow
+                        Write-Host "!Please report this error: $($Configuration['htParameters'].GithubRepository)" -ForegroundColor Yellow
                         throw
                     }
                 }
@@ -2182,15 +2182,15 @@ function dataCollectionRoleDefinitions {
         [string]$scopeDisplayName
     )
 
-    $currentTask = "Custom Role definitions $($TargetMgOrSub) '$($childMgSubDisplayName)' ('$scopeId')"
+    $currentTask = "Custom Role definitions $($TargetMgOrSub) '$($scopeDisplayName)' ('$scopeId')"
     if ($TargetMgOrSub -eq 'Sub') {
-        $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2015-07-01&`$filter=type eq 'CustomRole'"
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2015-07-01&`$filter=type eq 'CustomRole'"
     }
     if ($TargetMgOrSub -eq 'MG') {
-        $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2015-07-01&`$filter=type eq 'CustomRole'"
+        $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2015-07-01&`$filter=type eq 'CustomRole'"
     }
     $method = 'GET'
-    $scopeCustomRoleDefinitions = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $scopeCustomRoleDefinitions = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     foreach ($scopeCustomRoleDefinition in $scopeCustomRoleDefinitions) {
         if (-not $($htCacheDefinitionsRole).($scopeCustomRoleDefinition.name)) {
@@ -2258,9 +2258,9 @@ function dataCollectionRoleAssignmentsMG {
     $addRowToTableDone = $false
     #PIM MGRoleAssignmentSchedules
     $currentTask = "getARMRoleAssignmentSchedules '$($scopeDisplayName)' ('$($scopeId)')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentSchedules?api-version=2020-10-01-preview"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentSchedules?api-version=2020-10-01-preview"
     $method = 'GET'
-    $roleAssignmentSchedulesFromAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $roleAssignmentSchedulesFromAPI = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     if ($roleAssignmentSchedulesFromAPI -eq 'ResourceNotOnboarded' -or $roleAssignmentSchedulesFromAPI -eq 'TenantNotOnboarded' -or $roleAssignmentSchedulesFromAPI -eq 'InvalidResourceType') {
         #Write-Host "Scope '$($scopeDisplayName)' ('$scopeId') not onboarded in PIM"
@@ -2279,9 +2279,9 @@ function dataCollectionRoleAssignmentsMG {
 
     #RoleAssignment API MG
     $currentTask = "Role assignments API '$($scopeDisplayName)' ('$($scopeId)')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleAssignments?api-version=2015-07-01"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleAssignments?api-version=2015-07-01"
     $method = 'GET'
-    $roleAssignmentsFromAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $roleAssignmentsFromAPI = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     if ($roleAssignmentsFromAPI.Count -gt 0) {
         $principalsToResolve = @()
@@ -2304,7 +2304,7 @@ function dataCollectionRoleAssignmentsMG {
         $script:htMgAtScopeRoleAssignments.($scopeId).AssignmentsCount = $L0mgmtGroupRoleAssignmentsLimitUtilization
     }
 
-    if ($htParameters.LargeTenant -eq $true -or $htParameters.RBACAtScopeOnly -eq $true) {
+    if ($Configuration['htParameters'].LargeTenant -eq $true -or $Configuration['htParameters'].RBACAtScopeOnly -eq $true) {
         $L0mgmtGroupRoleAssignments = $L0mgmtGroupRoleAssignments.where( { $_.properties.scope -eq "/providers/Microsoft.Management/managementGroups/$($scopeId)" } )
     }
     else {
@@ -2398,7 +2398,7 @@ function dataCollectionRoleAssignmentsMG {
         }
         else {
             if ($htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).type -eq 'User') {
-                if ($htParameters.DoNotShowRoleAssignmentsUserData -eq $false) {
+                if ($Configuration['htParameters'].DoNotShowRoleAssignmentsUserData -eq $false) {
                     $roleAssignmentIdentityDisplayname = $htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).displayName
                 }
                 else {
@@ -2414,7 +2414,7 @@ function dataCollectionRoleAssignmentsMG {
         }
         else {
             if ($htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).type -eq 'User') {
-                if ($htParameters.DoNotShowRoleAssignmentsUserData -eq $false) {
+                if ($Configuration['htParameters'].DoNotShowRoleAssignmentsUserData -eq $false) {
                     $roleAssignmentIdentitySignInName = $htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).signInName
                 }
                 else {
@@ -2528,17 +2528,17 @@ function dataCollectionRoleAssignmentsSub {
     $addRowToTableDone = $false
     #Usage
     $currentTask = "Role assignments usage metrics '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics?api-version=2019-08-01-preview"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics?api-version=2019-08-01-preview"
     $method = 'GET'
-    $roleAssignmentsUsage = AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -caller 'CustomDataCollection'
+    $roleAssignmentsUsage = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -caller 'CustomDataCollection'
 
     $script:htSubscriptionsRoleAssignmentLimit.($scopeId) = $roleAssignmentsUsage.roleAssignmentsLimit
 
     #PIM SubscriptionRoleAssignmentSchedules
     $currentTask = "Role assignment schedules API '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentSchedules?api-version=2020-10-01-preview"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentSchedules?api-version=2020-10-01-preview"
     $method = 'GET'
-    $roleAssignmentSchedulesFromAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $roleAssignmentSchedulesFromAPI = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     if ($roleAssignmentSchedulesFromAPI -eq 'ResourceNotOnboarded' -or $roleAssignmentSchedulesFromAPI -eq 'TenantNotOnboarded' -or $roleAssignmentSchedulesFromAPI -eq 'InvalidResourceType') {
         #Write-Host "Scope '$($scopeDisplayName)' ('$scopeId') not onboarded in PIM"
@@ -2557,9 +2557,9 @@ function dataCollectionRoleAssignmentsSub {
 
     #RoleAssignment API Sub
     $currentTask = "Role assignments API '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$(($htAzureEnvironmentRelatedUrls).ARM)/subscriptions/$scopeId/providers/Microsoft.Authorization/roleAssignments?api-version=2015-07-01"
+    $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/$scopeId/providers/Microsoft.Authorization/roleAssignments?api-version=2015-07-01"
     $method = 'GET'
-    $roleAssignmentsFromAPI = AzAPICall -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $roleAssignmentsFromAPI = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     $baseRoleAssignments = [System.Collections.ArrayList]@()
     if ($roleAssignmentsFromAPI.Count -gt 0) {
@@ -2579,7 +2579,7 @@ function dataCollectionRoleAssignmentsSub {
         }
     }
 
-    if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC -eq $true) {
+    if ($Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC -eq $true) {
         $relevantRAs = $baseRoleAssignments.where( { $_.id -notmatch "/subscriptions/$($scopeId)/resourcegroups/" } )
     }
     else {
@@ -2601,7 +2601,7 @@ function dataCollectionRoleAssignmentsSub {
 
     $L1mgmtGroupSubRoleAssignments = $baseRoleAssignments
 
-    if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC -eq $true) {
+    if ($Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC -eq $true) {
         foreach ($L1mgmtGroupSubRoleAssignmentOnRg in $L1mgmtGroupSubRoleAssignments.where( { $_.id -match "/subscriptions/$($scopeId)/resourcegroups/" } )) {
             if (-not ($htCacheAssignmentsRBACOnResourceGroupsAndResources).($L1mgmtGroupSubRoleAssignmentOnRg.id)) {
 
@@ -2632,8 +2632,8 @@ function dataCollectionRoleAssignmentsSub {
         }
     }
 
-    if ($htParameters.LargeTenant -eq $true -or $htParameters.RBACAtScopeOnly -eq $true) {
-        if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC -eq $false) {
+    if ($Configuration['htParameters'].LargeTenant -eq $true -or $Configuration['htParameters'].RBACAtScopeOnly -eq $true) {
+        if ($Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC -eq $false) {
             $assignmentsScope = $L1mgmtGroupSubRoleAssignments
         }
         else {
@@ -2641,7 +2641,7 @@ function dataCollectionRoleAssignmentsSub {
         }
     }
     else {
-        if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC -eq $false) {
+        if ($Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC -eq $false) {
             $assignmentsScope = $L1mgmtGroupSubRoleAssignments
         }
         else {
@@ -2747,7 +2747,7 @@ function dataCollectionRoleAssignmentsSub {
         }
         else {
             if ($htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).type -eq 'User') {
-                if ($htParameters.DoNotShowRoleAssignmentsUserData -eq $false) {
+                if ($Configuration['htParameters'].DoNotShowRoleAssignmentsUserData -eq $false) {
                     $roleAssignmentIdentityDisplayname = $htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).displayName
                 }
                 else {
@@ -2763,7 +2763,7 @@ function dataCollectionRoleAssignmentsSub {
         }
         else {
             if ($htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).type -eq 'User') {
-                if ($htParameters.DoNotShowRoleAssignmentsUserData -eq $false) {
+                if ($Configuration['htParameters'].DoNotShowRoleAssignmentsUserData -eq $false) {
                     $roleAssignmentIdentitySignInName = $htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).signInName
                 }
                 else {

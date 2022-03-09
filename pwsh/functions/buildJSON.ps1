@@ -22,7 +22,7 @@ function buildJSON {
     $grpMgScopePolicyAssignments = $grpScopePolicyAssignments.where( { $_.Name -eq 'Mg' }).Group | Sort-Object @{Expression = { $_.Assignment.Id } } | Group-Object -Property AssignmentScopeId
     $grpSubScopePolicyAssignments = $grpScopePolicyAssignments.where( { $_.Name -eq 'Sub' }).Group | Sort-Object @{Expression = { $_.Assignment.Id } } | Group-Object -Property AssignmentScopeId
 
-    if (-not $htParameters.DoNotIncludeResourceGroupsOnPolicy) {
+    if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
         if (-not $JsonExportExcludeResourceGroups) {
             $grpRGScopePolicyAssignments = $grpScopePolicyAssignments.where( { $_.Name -eq 'RG' }).Group | Sort-Object @{Expression = { $_.Assignment.Id } } | Group-Object -Property AssignmentScopeId
             $htSubRGPolicyAssignments = @{}
@@ -44,7 +44,7 @@ function buildJSON {
     $grpMgScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq 'Mg' }).Group | Sort-Object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId
     $grpSubScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq 'Sub' }).Group | Sort-Object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId
 
-    if (-not $htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+    if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
         if (-not $JsonExportExcludeResourceGroups) {
             $grpRGScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq 'RG' }).Group | Sort-Object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId
             $htSubRGRoleAssignments = @{}
@@ -60,7 +60,7 @@ function buildJSON {
             }
 
             #res
-            if (-not $htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+            if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
                 if (-not $JsonExportExcludeResources) {
                     $grpResScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq 'Res' }).Group | Sort-Object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId
                     $htSubResRoleAssignments = @{}
@@ -214,7 +214,7 @@ function buildJSON {
                 }
 
 
-                if (-not $htParameters.DoNotIncludeResourceGroupsOnPolicy) {
+                if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
                     if (-not $JsonExportExcludeResourceGroups) {
                         $htTemp = @{}
                         if (-not $htTemp.ResourceGroups) {
@@ -236,7 +236,7 @@ function buildJSON {
                     }
                 }
 
-                if (-not $htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+                if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
                     if (-not $JsonExportExcludeResourceGroups) {
                         if (-not $htTemp) {
                             $htTemp = @{}
@@ -298,7 +298,7 @@ function buildJSON {
         }
     }
 
-    if ($htParameters.onAzureDevOpsOrGitHubActions) {
+    if ($Configuration['htParameters'].onAzureDevOpsOrGitHubActions) {
         if ($ManagementGroupsOnly) {
             $JSONPath = "JSON_ManagementGroupsOnly_$($ManagementGroupId)"
         }
@@ -323,7 +323,7 @@ function buildJSON {
 
     $null = new-item -Name $JSONPath -ItemType directory -path $outputPath
 
-    if ($htParameters.onAzureDevOpsOrGitHubActions) {
+    if ($Configuration['htParameters'].onAzureDevOpsOrGitHubActions) {
         "The directory '$($JSONPath)' will be rebuilt during the AzDO Pipeline run. __Do not save any files in this directory, files and folders will be deleted!__" | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)ReadMe_important.md" -Encoding utf8
     }
 
@@ -391,7 +391,7 @@ function buildJSON {
 
     $htTree = [ordered]@{}
     $htTree.'Tenant' = [ordered] @{}
-    $htTree.Tenant.TenantId = $checkContext.Tenant.Id
+    $htTree.Tenant.TenantId = $Configuration['checkContext'].Tenant.Id
     $htTree.Tenant.RoleAssignments = [ordered]@{}
     foreach ($RoleAssignment in ($grpTenantScopeRoleAssignments).Group | Sort-Object @{Expression = { $_.Assignment.RoleAssignmentId } }) {
 

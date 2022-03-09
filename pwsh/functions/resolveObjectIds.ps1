@@ -23,14 +23,14 @@ function ResolveObjectIds($objectIds) {
             $batchCnt++
             $objectsToProcess = '"{0}"' -f ($batch.Group -join '","')
             $currentTask = " Resolving ObjectIds - Batch #$batchCnt/$($ObjectBatchCount) ($(($batch.Group).Count)"
-            $uri = "$(($htAzureEnvironmentRelatedUrls).MicrosoftGraph)/beta/directoryObjects/getByIds"
+            $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph)/beta/directoryObjects/getByIds"
             $method = 'POST'
             $body = @"
         {
             "ids":[$($objectsToProcess)]
         }
 "@
-            $resolveObjectIds = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask
+            $resolveObjectIds = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -body $body -currentTask $currentTask
 
             foreach ($identity in $resolveObjectIds) {
                 if (-not $htPrincipals.($identity.id)) {
@@ -57,7 +57,7 @@ function ResolveObjectIds($objectIds) {
                     }
                     if ($identity.'@odata.type' -eq '#microsoft.graph.servicePrincipal') {
                         if ($identity.servicePrincipalType -eq 'Application') {
-                            if ($identity.appOwnerOrganizationId -eq $checkContext.Tenant.Id) {
+                            if ($identity.appOwnerOrganizationId -eq $Configuration['checkContext'].Tenant.Id) {
                                 $null = $arrayIdentityObject.Add([PSCustomObject]@{
                                         type                   = 'ServicePrincipal'
                                         spTypeConcatinated     = 'SP APP INT'

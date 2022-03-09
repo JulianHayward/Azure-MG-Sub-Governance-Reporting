@@ -9,9 +9,7 @@
         [Parameter(Mandatory = $False)][string]$GithubRepository
     )
 
-    $AzAPICallConfiguration = @{
-
-    }
+    $AzAPICallConfiguration = @{}
     $AzAPICallConfiguration['htParameters'] = $null
     $AzAPICallConfiguration['htParameters'] = setHtParameters
     Write-Host '  AzAPICall htParameters:'
@@ -27,6 +25,7 @@
     }
     else {
         Write-Host ' PowerShell parallelization: true' -ForegroundColor Yellow
+
         # $AzAPICallConfiguration['funcAzAPICall'] = $function:AzAPICall.ToString()
         # $AzAPICallConfiguration['funcCreateBearerToken'] = $function:createBearerToken.ToString()
         # $AzAPICallConfiguration['funcGetJWTDetails'] = $function:getJWTDetails.ToString()
@@ -55,8 +54,8 @@
     $AzAPICallConfiguration = setAzureEnvironment -AzAPICallConfiguration $AzAPICallConfiguration
 
     Write-Host ' Check Az context'
-    $AzAPICallConfiguration['accountType'] = $AzAPICallConfiguration['checkContext'].Account.Type
     $AzAPICallConfiguration['accountId'] = $AzAPICallConfiguration['checkContext'].Account.Id
+    $AzAPICallConfiguration['accountType'] = $AzAPICallConfiguration['checkContext'].Account.Type
     Write-Host "  Az context AccountId: '$($AzAPICallConfiguration['accountId'] )'" -ForegroundColor Yellow
     Write-Host "  Az context AccountType: '$($AzAPICallConfiguration['accountType'])'" -ForegroundColor Yellow
 
@@ -68,7 +67,6 @@
 
             Write-Host "  Setting Az context to SubscriptionId: '$SubscriptionId4AzContext'"
             try {
-                # $AzAPICallConfiguration['checkContext'].Subscription = $SubscriptionId4AzContext
                 $null = Set-AzContext -SubscriptionId $SubscriptionId4AzContext -ErrorAction Stop
             }
             catch {
@@ -84,10 +82,10 @@
     }
     else {
         testSubscription -SubscriptionId4Test $AzAPICallConfiguration['checkContext'].Subscription.Id -AzAPICallConfiguration $AzAPICallConfiguration
-    }
+    }    
 
     if (-not $AzAPICallConfiguration['checkContext'].Subscription) {
-        $AzAPICallConfiguration['checkContext']
+        $AzAPICallConfiguration['checkContext'] | Format-list | Out-String
         Write-Host '  Check Az context failed: Az context is not set to any Subscription'
         Write-Host '  Set Az context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run the script'
         Write-Host '  OR'
@@ -98,7 +96,7 @@
         Write-Host '  Az context check succeeded' -ForegroundColor Green
     }
 
-    $AzAPICallConfiguration['UserType'] = testUserType
+    $AzAPICallConfiguration['htParameters'].userType = testUserType -AzApiCallConfiguration $AzAPICallConfiguration
 
     Write-Output $AzAPICallConfiguration
 }

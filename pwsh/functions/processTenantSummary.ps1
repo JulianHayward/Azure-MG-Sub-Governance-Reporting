@@ -26,8 +26,8 @@ function processTenantSummary() {
         if ($htManagedIdentityForPolicyAssignment.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId)) {
             $hlpPolicyAssignmentId = ($htManagedIdentityForPolicyAssignment.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId).policyAssignmentId).ToLower()
             if (-not $htCacheAssignmentsPolicy.($hlpPolicyAssignmentId)) {
-                if ($ManagementGroupId -eq $checkContext.Tenant.Id) {
-                    if ($htParameters.DoNotIncludeResourceGroupsOnPolicy) {
+                if ($ManagementGroupId -eq $Configuration['checkContext'].Tenant.Id) {
+                    if ($Configuration['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
                         if (-not ($htCacheAssignmentsPolicyOnResourceGroupsAndResources).($hlpPolicyAssignmentId)) {
                             Write-Host "   !Relict detected: SP MI: $($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId) - PolicyAssignmentId: $hlpPolicyAssignmentId"
                             if (-not $htOrphanedSPMI.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId)) {
@@ -240,7 +240,7 @@ function processTenantSummary() {
 
                         foreach ($groupmember in $htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAll) {
                             if ($groupmember.'@odata.type' -eq '#microsoft.graph.user') {
-                                if ($htParameters.DoNotShowRoleAssignmentsUserData -eq $true) {
+                                if ($Configuration['htParameters'].DoNotShowRoleAssignmentsUserData -eq $true) {
                                     $grpMemberDisplayName = 'scrubbed'
                                     $grpMemberSignInName = 'scrubbed'
                                 }
@@ -547,7 +547,7 @@ function processTenantSummary() {
         if ($arrayUnresolvedIdentitiesCount -gt 0) {
             $nonResolvedIdentitiesToCheck = '"{0}"' -f ($arrayUnresolvedIdentities -join '","')
             Write-Host "    IdentitiesToCheck: $nonResolvedIdentitiesToCheck"
-            $uri = "$(($htAzureEnvironmentRelatedUrls).MicrosoftGraph)/v1.0/directoryObjects/getByIds"
+            $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph)/v1.0/directoryObjects/getByIds"
             $method = 'POST'
             $body = @"
         {
@@ -557,7 +557,7 @@ function processTenantSummary() {
 
             $script:htResolvedIdentities = @{}
             function resolveIdentitiesRBAC($currentTask) {
-                $resolvedIdentities = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask
+                $resolvedIdentities = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -body $body -currentTask $currentTask
                 $resolvedIdentitiesCount = $resolvedIdentities.Count
                 Write-Host "    $resolvedIdentitiesCount identities resolved"
                 if ($resolvedIdentitiesCount -gt 0) {
@@ -593,7 +593,7 @@ function processTenantSummary() {
                                     else {
                                         if ($resolvedIdentity.servicePrincipalType -eq 'Application') {
                                             $sptype = 'App'
-                                            if ($resolvedIdentity.appOwnerOrganizationId -eq $checkContext.Tenant.Id) {
+                                            if ($resolvedIdentity.appOwnerOrganizationId -eq $Configuration['checkContext'].Tenant.Id) {
                                                 $custObjectType = "ObjectType: SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
                                                 $ht = @{}
                                                 $ht.'ObjectType' = "SP $sptype INT"
@@ -2693,7 +2693,7 @@ extensions: [{ name: 'sort' }]
         }
     }
 
-    if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+    if ($Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
         foreach ($roleassignmentId in ($htCacheAssignmentsRBACOnResourceGroupsAndResources).keys | Sort-Object) {
             $roleAssignment = ($htCacheAssignmentsRBACOnResourceGroupsAndResources).($roleassignmentId)
 
@@ -2994,7 +2994,7 @@ extensions: [{ name: 'sort' }]
         }
         #endregion
 
-        if ($htParameters.NoPolicyComplianceStates -eq $false) {
+        if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
             #region policyCompliance
             $policyAssignmentIdToLower = ($policyAssignmentAll.policyAssignmentId).ToLower()
 
@@ -3191,7 +3191,7 @@ extensions: [{ name: 'sort' }]
         if ($arrayUnresolvedIdentitiesCount.Count -gt 0) {
             $nonResolvedIdentitiesToCheck = '"{0}"' -f ($arrayUnresolvedIdentities -join '","')
             Write-Host "     IdentitiesToCheck: $nonResolvedIdentitiesToCheck"
-            $uri = "$(($htAzureEnvironmentRelatedUrls).MicrosoftGraph)/v1.0/directoryObjects/getByIds"
+            $uri = "$($Configuration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph)/v1.0/directoryObjects/getByIds"
             $method = 'POST'
             $body = @"
         {
@@ -3202,7 +3202,7 @@ extensions: [{ name: 'sort' }]
             $script:htResolvedIdentitiesPolicy = @{}
 
             function resolveIdentitiesPolicy($currentTask) {
-                $resolvedIdentities = AzAPICall -uri $uri -method $method -body $body -currentTask $currentTask
+                $resolvedIdentities = AzAPICall -AzAPICallConfiguration $Configuration -uri $uri -method $method -body $body -currentTask $currentTask
                 $resolvedIdentitiesCount = $resolvedIdentities.Count
                 Write-Host "     $resolvedIdentitiesCount identities resolved"
                 if ($resolvedIdentitiesCount -gt 0) {
@@ -3229,7 +3229,7 @@ extensions: [{ name: 'sort' }]
                                 else {
                                     if ($resolvedIdentity.servicePrincipalType -eq 'Application') {
                                         $sptype = 'App'
-                                        if ($resolvedIdentity.appOwnerOrganizationId -eq $checkContext.Tenant.Id) {
+                                        if ($resolvedIdentity.appOwnerOrganizationId -eq $Configuration['checkContext'].Tenant.Id) {
                                             $custObjectType = "ObjectType: SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (rp)"
                                         }
                                         else {
@@ -3245,7 +3245,7 @@ extensions: [{ name: 'sort' }]
                             }
 
                             if ($resolvedIdentity.'@odata.type' -eq '#microsoft.graph.user') {
-                                if ($htParameters.DoNotShowRoleAssignmentsUserData) {
+                                if ($Configuration['htParameters'].DoNotShowRoleAssignmentsUserData) {
                                     $hlpObjectDisplayName = 'scrubbed'
                                     $hlpObjectSigninName = 'scrubbed'
                                 }
@@ -3306,7 +3306,7 @@ extensions: [{ name: 'sort' }]
         }
 
         $policyAssignmentsUniqueCount = ($arrayPolicyAssignmentsEnriched | Sort-Object -Property PolicyAssignmentId -Unique).count
-        if ($htParameters.LargeTenant -or $htParameters.PolicyAtScopeOnly) {
+        if ($Configuration['htParameters'].LargeTenant -or $Configuration['htParameters'].PolicyAtScopeOnly) {
             $policyAssignmentsCount = $policyAssignmentsUniqueCount
             $tfCount = $policyAssignmentsCount
         }
@@ -3362,7 +3362,7 @@ extensions: [{ name: 'sort' }]
 <th>NonCompliance Message</th>
 "@)
 
-            if ($htParameters.NoPolicyComplianceStates -eq $false) {
+            if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
                 [void]$htmlTenantSummary.AppendLine(@'
 <th>Policies NonCmplnt</th>
 <th>Policies Compliant</th>
@@ -3394,7 +3394,7 @@ extensions: [{ name: 'sort' }]
             $startloop = Get-Date
 
             $htmlSummaryPolicyAssignmentsAll = foreach ($policyAssignment in $arrayPolicyAssignmentsEnriched | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, PolicyAssignmentId) {
-                if ($htParameters.LargeTenant -or $htParameters.PolicyAtScopeOnly) {
+                if ($Configuration['htParameters'].LargeTenant -or $Configuration['htParameters'].PolicyAtScopeOnly) {
                     if ($policyAssignment.Inheritance -like 'inherited *' -and $policyAssignment.MgParentId -ne "'upperScopes'") {
                         continue
                     }
@@ -3427,7 +3427,7 @@ extensions: [{ name: 'sort' }]
 <td>$($policyAssignment.PolicyAssignmentNonComplianceMessages -replace '<', '&lt;' -replace '>', '&gt;')</td>
 "@
 
-                if ($htParameters.NoPolicyComplianceStates -eq $false) {
+                if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
                     @"
 <td>$($policyAssignment.NonCompliantPolicies)</td>
 <td>$($policyAssignment.CompliantPolicies)</td>
@@ -3535,7 +3535,7 @@ extensions: [{ name: 'sort' }]
                 'caseinsensitivestring',
 '@)
 
-            if ($htParameters.NoPolicyComplianceStates -eq $false) {
+            if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
                 [void]$htmlTenantSummary.AppendLine(@'
                 'number',
                 'number',
@@ -3559,7 +3559,7 @@ extensions: [{ name: 'sort' }]
             ],
 '@)
 
-            if ($htParameters.NoPolicyComplianceStates -eq $false) {
+            if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
                 [void]$htmlTenantSummary.AppendLine(@'
             watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
 '@)
@@ -3576,7 +3576,7 @@ extensions: [{ name: 'sort' }]
                     name: 'colsVisibility',
 '@)
 
-            if ($htParameters.NoPolicyComplianceStates -eq $false) {
+            if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
                 [void]$htmlTenantSummary.AppendLine(@'
                     at_start: [9, 25, 26],
 '@)
@@ -3780,7 +3780,7 @@ extensions: [{ name: 'sort' }]
 
         if (($tenantCustomRoles).count -gt 0) {
             $mgSubRoleAssignmentsArrayRoleDefinitionIdUnique = $mgSubRoleAssignmentsArrayFromHTValues.RoleDefinitionId | Sort-Object -Unique
-            if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+            if ($Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
                 $rgResRoleAssignmentsArrayRoleDefinitionIdUnique = $rgResRoleAssignmentsArrayFromHTValues.RoleDefinitionId | Sort-Object -Unique
             }
             foreach ($customRoleAll in $tenantCustomRoles) {
@@ -3789,7 +3789,7 @@ extensions: [{ name: 'sort' }]
                     $roleIsUsed = $true
                 }
 
-                if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+                if ($Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
                     if ($roleIsUsed -eq $false) {
                         if (($rgResRoleAssignmentsArrayRoleDefinitionIdUnique) -contains ($customRoleAll.Id)) {
                             $roleIsUsed = $true
@@ -3897,7 +3897,7 @@ extensions: [{ name: 'sort' }]
         $arrayCustomRolesOrphanedFinalIncludingResourceGroups = [System.Collections.ArrayList]@()
 
         $mgSubRoleAssignmentsArrayRoleDefinitionIdUnique = $mgSubRoleAssignmentsArrayFromHTValues.RoleDefinitionId | Sort-Object -Unique
-        if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+        if ($Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
             $rgResRoleAssignmentsArrayRoleDefinitionIdUnique = $rgResRoleAssignmentsArrayFromHTValues.RoleDefinitionId | Sort-Object -Unique
         }
         if (($tenantCustomRoles).count -gt 0) {
@@ -3919,7 +3919,7 @@ extensions: [{ name: 'sort' }]
                         $roleIsUsed = $true
                     }
                 }
-                if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+                if ($Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
                     if ($roleIsUsed -eq $false) {
                         if (($rgResRoleAssignmentsArrayRoleDefinitionIdUnique) -contains ($customRoleAll.Id)) {
                             $roleIsUsed = $true
@@ -4127,7 +4127,7 @@ extensions: [{ name: 'sort' }]
 
     $startCreateRBACAllHTMLbeforeForeach = Get-Date
 
-    if ($htParameters.LargeTenant -or $htParameters.RBACAtScopeOnly) {
+    if ($Configuration['htParameters'].LargeTenant -or $Configuration['htParameters'].RBACAtScopeOnly) {
         $rbacAllAtScope = ($rbacAll.where( { ((-not [string]::IsNullOrEmpty($_.SubscriptionId) -and $_.scope -notlike 'inherited *')) -or ([string]::IsNullOrEmpty($_.SubscriptionId)) }))
         $rbacAllCount = $rbacAllAtScope.Count
     }
@@ -4145,7 +4145,7 @@ extensions: [{ name: 'sort' }]
             $csvFilename = "$($filename)_RoleAssignments"
             Write-Host "   Exporting RoleAssignments CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
             if ($CsvExportUseQuotesAsNeeded) {
-                if ($htParameters.LargeTenant -or $htParameters.RBACAtScopeOnly) {
+                if ($Configuration['htParameters'].LargeTenant -or $Configuration['htParameters'].RBACAtScopeOnly) {
                     $rbacAllAtScope | Sort-Object -Property Level, RoleAssignmentId, MgId, SubscriptionId, RoleClear, ObjectId | Select-Object -ExcludeProperty Role, RbacRelatedPolicyAssignment | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
                 }
                 else {
@@ -4153,7 +4153,7 @@ extensions: [{ name: 'sort' }]
                 }
             }
             else {
-                if ($htParameters.LargeTenant -or $htParameters.RBACAtScopeOnly) {
+                if ($Configuration['htParameters'].LargeTenant -or $Configuration['htParameters'].RBACAtScopeOnly) {
                     $rbacAllAtScope | Sort-Object -Property Level, RoleAssignmentId, MgId, SubscriptionId, RoleClear, ObjectId | Select-Object -ExcludeProperty Role, RbacRelatedPolicyAssignment | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
                 }
                 else {
@@ -4235,7 +4235,7 @@ extensions: [{ name: 'sort' }]
             Write-Host "   CreateRBACAll HTML before Foreach duration: $((NEW-TIMESPAN -Start $startCreateRBACAllHTMLbeforeForeach -End $endCreateRBACAllHTMLbeforeForeach).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startCreateRBACAllHTMLbeforeForeach -End $endCreateRBACAllHTMLbeforeForeach).TotalSeconds) seconds)"
 
             $startSortRBACAll = Get-Date
-            if ($htParameters.LargeTenant -or $htParameters.RBACAtScopeOnly) {
+            if ($Configuration['htParameters'].LargeTenant -or $Configuration['htParameters'].RBACAtScopeOnly) {
                 $rbacAllSorted = $rbacAllAtScope | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, Scope, Role, RoleId, ObjectId, RoleAssignmentId
             }
             else {
@@ -5434,12 +5434,12 @@ extensions: [{ name: 'sort' }]
 <th>Sub children (total)</th>
 <th>Sub children (direct)</th>
 "@)
-        if ($htParameters.NoMDfCSecureScore -eq $false) {
+        if ($Configuration['htParameters'].NoMDfCSecureScore -eq $false) {
             [void]$htmlTenantSummary.AppendLine(@'
 <th>MG MDfC Score</th>
 '@)
         }
-        if ($htParameters.DoAzureConsumption -eq $true) {
+        if ($Configuration['htParameters'].DoAzureConsumption -eq $true) {
             [void]$htmlTenantSummary.AppendLine(@"
 <th>Cost ($($AzureConsumptionPeriod)d)</th>
 "@)
@@ -5456,7 +5456,7 @@ extensions: [{ name: 'sort' }]
 
             $mgPath = $htManagementGroupsMgPath.($summaryManagementGroup.mgId).pathDelimited
 
-            if ($summaryManagementGroup.mgid -eq $mgSubPathTopMg -and ($checkContext).Tenant.Id -ne $ManagementGroupId) {
+            if ($summaryManagementGroup.mgid -eq $mgSubPathTopMg -and ($Configuration['checkContext']).Tenant.Id -ne $ManagementGroupId) {
                 $pathhlper = "$($mgPath)"
                 $arrayTotalCostSummaryMgSummary = 'n/a'
                 $mgAllChildMgsCountTotal = 'n/a'
@@ -5467,7 +5467,7 @@ extensions: [{ name: 'sort' }]
             }
             else {
 
-                if ($htParameters.DoAzureConsumption -eq $true) {
+                if ($Configuration['htParameters'].DoAzureConsumption -eq $true) {
                     if ($allConsumptionDataCount -gt 0) {
                         $arrayTotalCostSummaryMgSummary = @()
                         if ($htManagementGroupsCost.($summaryManagementGroup.mgid)) {
@@ -5543,12 +5543,12 @@ extensions: [{ name: 'sort' }]
 <td>$($mgAllChildSubscriptionsCountTotal)</td>
 <td>$($mgAllChildSubscriptionsCountDirect)</td>
 "@
-            if ($htParameters.NoMDfCSecureScore -eq $false) {
+            if ($Configuration['htParameters'].NoMDfCSecureScore -eq $false) {
                 @"
 <td>$($mgSecureScore)</td>
 "@
             }
-            if ($htParameters.DoAzureConsumption -eq $true) {
+            if ($Configuration['htParameters'].DoAzureConsumption -eq $true) {
                 @"
 <td>$($arrayTotalCostSummaryMgSummary -join ', ')</td>
 "@
@@ -5605,12 +5605,12 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'number',
                 'number',
 '@)
-        if ($htParameters.NoMDfCSecureScore -eq $false) {
+        if ($Configuration['htParameters'].NoMDfCSecureScore -eq $false) {
             [void]$htmlTenantSummary.AppendLine(@'
                 'caseinsensitivestring',
 '@)
         }
-        if ($htParameters.DoAzureConsumption -eq $true) {
+        if ($Configuration['htParameters'].DoAzureConsumption -eq $true) {
             [void]$htmlTenantSummary.AppendLine(@'
                 'caseinsensitivestring',
 '@)
@@ -5685,7 +5685,7 @@ extensions: [{ name: 'sort' }]
 <th>Tags</th>
 <th>Sub MDfC Score</th>
 "@)
-        if ($htParameters.DoAzureConsumption -eq $true) {
+        if ($Configuration['htParameters'].DoAzureConsumption -eq $true) {
             [void]$htmlTenantSummary.AppendLine(@"
 <th>Cost ($($AzureConsumptionPeriod)d)</th>
 <th>Currency</th>
@@ -5705,7 +5705,7 @@ extensions: [{ name: 'sort' }]
                 $null = $subscriptionTagsArray.Add("'$($tag)':'$(($htSubscriptionTags).$($summarySubscription.subscriptionId).$tag)'")
             }
 
-            if ($htParameters.DoAzureConsumption -eq $true) {
+            if ($Configuration['htParameters'].DoAzureConsumption -eq $true) {
                 if ($htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId)) {
                     if ([math]::Round($htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId).TotalCost, 2) -eq 0) {
                         $totalCost = $htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId).TotalCost.ToString('0.0000')
@@ -5733,7 +5733,7 @@ extensions: [{ name: 'sort' }]
 <td>$(($subscriptionTagsArray | Sort-Object) -join "$CsvDelimiterOpposite ")</td>
 <td>$($summarySubscription.SubscriptionASCSecureScore)</td>
 "@
-            if ($htParameters.DoAzureConsumption -eq $true) {
+            if ($Configuration['htParameters'].DoAzureConsumption -eq $true) {
                 @"
 <td>$totalCost</td>
 <td>$currency</td>
@@ -5784,7 +5784,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_2: 'select',
             col_3: 'select',
 '@)
-        if ($htParameters.DoAzureConsumption -eq $true) {
+        if ($Configuration['htParameters'].DoAzureConsumption -eq $true) {
             [void]$htmlTenantSummary.AppendLine(@'
             col_6: 'select',
 '@)
@@ -5798,7 +5798,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'number',
 '@)
-        if ($htParameters.DoAzureConsumption -eq $true) {
+        if ($Configuration['htParameters'].DoAzureConsumption -eq $true) {
             [void]$htmlTenantSummary.AppendLine(@'
                 'number',
                 'caseinsensitivestring',
@@ -6003,7 +6003,7 @@ extensions: [{ name: 'sort' }]
     }
     #endregion SUMMARYTagNameUsage
 
-    if ($htParameters.NoResources -eq $false) {
+    if ($Configuration['htParameters'].NoResources -eq $false) {
         #region SUMMARYResources
         $startSUMMARYResources = Get-Date
         Write-Host '  processing TenantSummary Subscriptions Resources'
@@ -6106,7 +6106,7 @@ extensions: [{ name: 'sort' }]
         #endregion SUMMARYResources
     }
 
-    if ($htParameters.NoResources -eq $false) {
+    if ($Configuration['htParameters'].NoResources -eq $false) {
         #region SUMMARYResourcesByLocation
         $startSUMMARYResources = Get-Date
         Write-Host '  processing TenantSummary Subscriptions Resources by Location'
@@ -6371,7 +6371,7 @@ extensions: [{ name: 'sort' }]
     #endregion SUMMARYSubResourceProviders
 
     #region SUMMARYSubResourceProvidersDetailed
-    if ($htParameters.NoResourceProvidersDetailed -eq $false) {
+    if ($Configuration['htParameters'].NoResourceProvidersDetailed -eq $false) {
 
         Write-Host '  processing TenantSummary Subscriptions Resource Providers detailed'
         $startsumRPDetailed = Get-Date
@@ -6947,7 +6947,7 @@ extensions: [{ name: 'sort' }]
     Write-Host "   Microsoft Defender for Cloud plans by Subscription processing duration: $((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalSeconds) seconds)"
     #endregion SUMMARYSubDefenderPlansBySubscription
 
-    if ($htParameters.NoResources -eq $false) {
+    if ($Configuration['htParameters'].NoResources -eq $false) {
         #region SUMMARYSubUserAssignedIdentities4Resources
         Write-Host '  processing TenantSummary Subscriptions UserAssigned Managed Identities assigned to Resources'
         $arrayUserAssignedIdentities4ResourcesCount = $arrayUserAssignedIdentities4Resources.Count
@@ -7637,7 +7637,7 @@ extensions: [{ name: 'sort' }]
 
     #endregion subscriptions
 
-    if ($htParameters.NoResources -eq $false) {
+    if ($Configuration['htParameters'].NoResources -eq $false) {
         #region resources
         [void]$htmlTenantSummary.AppendLine( @'
 <p><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/10001-icon-service-All-Resources.svg"> <span class="valignMiddle"><b>Resources</b></span></p>
@@ -9363,7 +9363,7 @@ tf.init();}}
                     }
                     else {
                         #rg
-                        if ($htParameters.DoNotIncludeResourceGroupsOnPolicy) {
+                        if ($Configuration['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
                             if (-not ($htCacheAssignmentsPolicyOnResourceGroupsAndResources).($policyAssignmentId)) {
                                 $assignmentInfo = 'n/a'
                             }
@@ -9396,7 +9396,7 @@ tf.init();}}
                             $policyAssignmentsPolicyVariant4ht = 'policySet'
                         }
 
-                        if ($htParameters.DoNotIncludeResourceGroupsOnPolicy) {
+                        if ($Configuration['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
                             $policyAssignmentsPolicyDefinitionId = ($assignmentInfo.properties.policyDefinitionId).ToLower()
                             $policyAssignmentspolicyDefinitionIdGuid = $policyAssignmentsPolicyDefinitionId -replace '.*/'
 
@@ -9789,21 +9789,21 @@ tf.init();}}
         }
     }
 
-    $appsWithOtherOrgId = $htServicePrincipals.Keys.where( { $htServicePrincipals.($_).servicePrincipalType -eq 'Application' -and $htServicePrincipals.($_).appOwnerOrganizationId -ne $checkContext.Tenant.Id } )
+    $appsWithOtherOrgId = $htServicePrincipals.Keys.where( { $htServicePrincipals.($_).servicePrincipalType -eq 'Application' -and $htServicePrincipals.($_).appOwnerOrganizationId -ne $Configuration['checkContext'].Tenant.Id } )
     $appsWithOtherOrgIdCount = ($appsWithOtherOrgId).Count
 
     if ($appsWithOtherOrgIdCount -gt 0) {
         $tfCount = $appsWithOtherOrgIdCount
         $htmlTableId = 'TenantSummary_AADSPExternal'
 
-        if ($htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+        if ($Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
             $abbr = " <abbr title=`"Lists only RoleAssignmentIds for scope RG/Resource &#13;Check TenantSummary/RBAC to find the RoleAssignmentIds for MG/Sub scopes`"><i class=`"fa fa-question-circle`" aria-hidden=`"true`"></i></abbr>"
         }
         else {
             $abbr = ''
         }
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_AADSPExternal"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($appsWithOtherOrgIdCount) External (appOwnerOrganizationId) AAD ServicePrincipals type=Application</span> <abbr title="External (appOwnerOrganizationId != $($checkContext.Subscription.TenantId)) ServicePrincipals where a Role assignment exists &#13;(including ResourceGroups and Resources)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_AADSPExternal"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($appsWithOtherOrgIdCount) External (appOwnerOrganizationId) AAD ServicePrincipals type=Application</span> <abbr title="External (appOwnerOrganizationId != $($Configuration['checkContext'].Subscription.TenantId)) ServicePrincipals where a Role assignment exists &#13;(including ResourceGroups and Resources)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -9923,7 +9923,7 @@ tf.init();}}
     <i class="padlx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Customize your Azure environment optimizations (Cost, Reliability & more) with</span> <a class="externallink" href="https://github.com/helderpinto/AzureOptimizationEngine" target="_blank" rel="noopener">Azure Optimization Engine (AOE) <i class="fa fa-external-link" aria-hidden="true"></i></a>
 '@)
 
-    if ($htParameters.DoAzureConsumption -eq $true) {
+    if ($Configuration['htParameters'].DoAzureConsumption -eq $true) {
         $startConsumption = Get-Date
         Write-Host '  processing TenantSummary Consumption'
 
@@ -10089,7 +10089,7 @@ tf.init();}}
     $policyAssignmentsCreatedMgCount = ($policyAssignmentsCreatedMg).count
     $policyAssignmentsCreatedSub = ($policyAssignmentsCreatedMgSub.where( { $_.mgOrSubOrRG -eq 'Sub' }))
     $policyAssignmentsCreatedSubCount = ($policyAssignmentsCreatedSub).count
-    if (-not $htParameters.DoNotIncludeResourceGroupsOnPolicy) {
+    if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
         $policyAssignmentsCreatedRg = ($policyAssignmentsUpdatedMgSub.where( { $_.mgOrSubOrRG -eq 'RG' }))
         $policyAssignmentsCreatedRgCount = ($policyAssignmentsCreatedRg).count
     }
@@ -10099,7 +10099,7 @@ tf.init();}}
     $policyAssignmentsUpdatedMgCount = ($policyAssignmentsUpdatedMg).count
     $policyAssignmentsUpdatedSub = ($policyAssignmentsUpdatedMgSub.where( { $_.mgOrSubOrRG -eq 'Sub' }))
     $policyAssignmentsUpdatedSubCount = ($policyAssignmentsUpdatedSub).count
-    if (-not $htParameters.DoNotIncludeResourceGroupsOnPolicy) {
+    if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
         $policyAssignmentsUpdatedRg = ($policyAssignmentsUpdatedMgSub.where( { $_.mgOrSubOrRG -eq 'RG' }))
         $policyAssignmentsUpdatedRgCount = ($policyAssignmentsUpdatedRg).count
     }
@@ -10107,7 +10107,7 @@ tf.init();}}
 
     if ($customPolicyCreatedOrUpdatedCount -gt 0 -or $customPolicySetCreatedOrUpdatedCount -gt 0 -or $policyAssignmentsCreatedOrUpdatedCount -gt 0) {
         $ctContenIndicatorPolicy = 'ctContenPolicyTrue'
-        if (-not $htParameters.DoNotIncludeResourceGroupsOnPolicy) {
+        if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
             $policyAssignmentSummaryCt = "(Mg: C:$($policyAssignmentsCreatedMgCount), U:$($policyAssignmentsUpdatedMgCount); Sub: C:$($policyAssignmentsCreatedSubCount), U:$($policyAssignmentsUpdatedSubCount)); RG: C:$($policyAssignmentsCreatedRgCount), U:$($policyAssignmentsUpdatedRgCount)"
         }
         else {
@@ -10153,7 +10153,7 @@ tf.init();}}
     #rbac assignments createdSub
     $roleAssignmentsCreatedSub = $roleAssignmentsCreatedUnique.where( { $_.TenOrMgOrSubOrRGOrRes -eq 'Sub' })
     $roleAssignmentsCreatedSubCount = $roleAssignmentsCreatedSub.Count
-    if (-not $htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+    if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
         $roleAssignmentsCreatedSubRg = $roleAssignmentsCreatedUnique.where( { $_.TenOrMgOrSubOrRGOrRes -eq 'RG' })
         $roleAssignmentsCreatedSubRgCount = $roleAssignmentsCreatedSubRg.Count
         $roleAssignmentsCreatedSubRgRes = $roleAssignmentsCreatedUnique.where( { $_.TenOrMgOrSubOrRGOrRes -eq 'Res' })
@@ -10162,7 +10162,7 @@ tf.init();}}
 
     if ($customRoleDefinitionsCreatedOrUpdatedCount -gt 0 -or $roleAssignmentsCreatedCount -gt 0) {
         $ctContenIndicatorRBAC = 'ctContenRBACTrue'
-        if (-not $htParameters.DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
+        if (-not $Configuration['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
             $rbacAssignmentSummaryCt = "(Mg: $roleAssignmentsCreatedMgCount; Sub: $roleAssignmentsCreatedSubCount; RG: $roleAssignmentsCreatedSubRgCount; Res: $roleAssignmentsCreatedSubRgResCount)"
         }
         else {
@@ -10176,7 +10176,7 @@ tf.init();}}
     #endregion ctrbacassignments
 
 
-    if ($htParameters.NoResources -eq $false) {
+    if ($Configuration['htParameters'].NoResources -eq $false) {
         #region ctresources
         write-host '   processing Resources'
         $resourcesCreatedOrChanged = $resourcesIdsAll.where( { $_.createdTime -gt $xdaysAgo -or $_.changedTime -gt $xdaysAgo })
@@ -10556,7 +10556,7 @@ tf.init();}}
 <th>NonCompliance Message</th>
 "@)
 
-        if ($htParameters.NoPolicyComplianceStates -eq $false) {
+        if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
             [void]$htmlTenantSummary.AppendLine(@'
 <th>Policies NonCmplnt</th>
 <th>Policies Compliant</th>
@@ -10646,7 +10646,7 @@ tf.init();}}
 <td>$($policyAssignment.PolicyAssignmentNonComplianceMessages)</td>
 "@
 
-            if ($htParameters.NoPolicyComplianceStates -eq $false) {
+            if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
                 @"
 <td>$($policyAssignment.NonCompliantPolicies)</td>
 <td>$($policyAssignment.CompliantPolicies)</td>
@@ -10716,7 +10716,7 @@ col_0: 'select',
             col_14: 'select',
             col_16: 'select',
 '@)
-        if ($htParameters.NoPolicyComplianceStates -eq $false) {
+        if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
             [void]$htmlTenantSummary.AppendLine(@'
                 col_27: 'multiple',
 '@)
@@ -10749,7 +10749,7 @@ col_0: 'select',
                 'caseinsensitivestring',
 '@)
 
-        if ($htParameters.NoPolicyComplianceStates -eq $false) {
+        if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
             [void]$htmlTenantSummary.AppendLine(@'
                 'number',
                 'number',
@@ -10773,7 +10773,7 @@ col_0: 'select',
             ],
 '@)
 
-        if ($htParameters.NoPolicyComplianceStates -eq $false) {
+        if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
             [void]$htmlTenantSummary.AppendLine(@'
             watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
 '@)
@@ -10790,7 +10790,7 @@ col_0: 'select',
                 name: 'colsVisibility',
 '@)
 
-        if ($htParameters.NoPolicyComplianceStates -eq $false) {
+        if ($Configuration['htParameters'].NoPolicyComplianceStates -eq $false) {
             [void]$htmlTenantSummary.AppendLine(@'
                 at_start: [9, 23, 24],
 '@)
@@ -11127,7 +11127,7 @@ tf.init();}}
 
     #endregion ctrbac
 
-    if ($htParameters.NoResources -eq $false) {
+    if ($Configuration['htParameters'].NoResources -eq $false) {
         #region ctresources
         [void]$htmlTenantSummary.AppendLine(@"
 <button type="button" class="collapsible" id="tenantSummaryChangeTrackingResources"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/10001-icon-service-All-Resources.svg"> <span class="$ctContenIndicatorResources">Resources</span></button>

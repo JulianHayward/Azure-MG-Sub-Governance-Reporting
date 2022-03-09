@@ -2,8 +2,8 @@ function buildMD {
     #region BuildMD
     Write-Host 'Building Markdown'
     #test
-    Write-Host 'htParameters.onAzureDevOpsOrGitHubActions:' $htParameters.onAzureDevOpsOrGitHubActions
-    Write-Host 'htParameters.codeRunPlatform:' $htParameters.codeRunPlatform
+    Write-Host 'htParameters.onAzureDevOpsOrGitHubActions:' $Configuration['htParameters'].onAzureDevOpsOrGitHubActions
+    Write-Host 'htParameters.codeRunPlatform:' $Configuration['htParameters'].codeRunPlatform
     $startBuildMD = Get-Date
     $script:arrayMgs = [System.Collections.ArrayList]@()
     $script:arraySubs = [System.Collections.ArrayList]@()
@@ -13,8 +13,8 @@ function buildMD {
     $script:markdownhierarchySubs = $null
     $script:markdownTable = $null
 
-    if ($htParameters.onAzureDevOpsOrGitHubActions -eq $true) {
-        if ($htParameters.onAzureDevOps -eq $true) {
+    if ($Configuration['htParameters'].onAzureDevOpsOrGitHubActions -eq $true) {
+        if ($Configuration['htParameters'].onAzureDevOps -eq $true) {
             $markdown += @"
 # AzGovViz - Management Group Hierarchy
 
@@ -24,7 +24,7 @@ function buildMD {
     graph $($MermaidDirection.ToUpper());`n
 "@
         }
-        if ($htParameters.onGitHubActions -eq $true) {
+        if ($Configuration['htParameters'].onGitHubActions -eq $true) {
             $marks = '```'
             $markdown += @"
 # AzGovViz - Management Group Hierarchy
@@ -77,15 +77,15 @@ $markdownhierarchySubs
 "@
     }
 
-    if ($htParameters.onAzureDevOpsOrGitHubActions -eq $true) {
-        if ($htParameters.onAzureDevOps -eq $true) {
+    if ($Configuration['htParameters'].onAzureDevOpsOrGitHubActions -eq $true) {
+        if ($Configuration['htParameters'].onAzureDevOps -eq $true) {
             $markdown += @"
 class $mermaidprnts mgrprnts;
 :::
 
 "@
         }
-        if ($htParameters.onGitHubActions -eq $true) {
+        if ($Configuration['htParameters'].onGitHubActions -eq $true) {
 `
                 $marks = '```'
             $markdown += @"
@@ -107,7 +107,7 @@ class $mermaidprnts mgrprnts;
 ## Summary
 `n
 "@
-    if ($htParameters.HierarchyMapOnly -eq $false) {
+    if ($Configuration['htParameters'].HierarchyMapOnly -eq $false) {
         $markdown += @"
 Total Management Groups: $totalMgCount (depth $mgDepth)\`n
 "@
@@ -143,7 +143,7 @@ Total Resource Types: $totalResourceTypesCount
 "@
 
     }
-    if ($htParameters.HierarchyMapOnly -eq $true) {
+    if ($Configuration['htParameters'].HierarchyMapOnly -eq $true) {
         $mgsDetails = ($optimizedTableForPathQueryMg | Select-Object Level, MgId -Unique)
         $mgDepth = ($mgsDetails.Level | Measure-Object -maximum).Maximum
         $totalMgCount = ($mgsDetails).count

@@ -1,5 +1,5 @@
 function processDiagramMermaid() {
-    if ($ManagementGroupId -ne $checkContext.Tenant.Id) {
+    if ($ManagementGroupId -ne $Configuration['checkContext'].Tenant.Id) {
         $optimizedTableForPathQueryMg = $optimizedTableForPathQueryMg.where({ $_.mgParentId -ne "'upperScopes'" })
     }
     $mgLevels = ($optimizedTableForPathQueryMg | Sort-Object -Property Level -Unique).Level
