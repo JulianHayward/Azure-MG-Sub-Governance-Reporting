@@ -1,0 +1,229 @@
+# AzGovViz v6_major_20220114_1
+# First things first:
+# 1. Replace <YourServiceConnection> with the name of your service connection
+# 2. Replace <YourManagementGroupId> with the your ManagementGroupId
+# 3. Ensure that Service Connection Permissions are set: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#required-permissions-in-azure
+#
+# Documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
+# Also check https://www.azadvertizer.net - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
+
+parameters:
+  # Resource Types to be excluded from processing
+  - name: ExcludedResourceTypesDiagnosticsCapableParameters
+    type: object
+    # example:
+    #   default:
+    #     - microsoft.web/certificates
+    #     - Microsoft.VirtualMachineImages/imageTemplates
+    default:
+      - microsoft.web/certificates
+
+  # Processes only Subscriptions that startWith the given QuotaIds
+  - name: SubscriptionQuotaIdWhitelistParameters
+    type: object
+    # example:
+    #   default:
+    #     - MSDN_
+    #     - EnterpriseAgreement_
+    default:
+      - undefined
+
+variables:
+### Required Variables - Modify as Needed
+  # Name of the Azure DevOps Service Connection used to access Azure resources
+  - name: ServiceConnection
+    # String | example: value: 'azure-ado-serviceconnection'
+    value: '<YourServiceConnection>'
+
+  # The Management Group ID for the script to start processing with
+  - name: ManagementGroupId
+    # String | example: value: 'MyManagementGroup'
+    value: '<YourManagementGroupId>'
+
+### Default Variables - Modify as Needed
+  # The world is split into two kind of delimiters - comma and semicolon - choose yours
+  - name: CsvDelimiter
+    # String | default = ';' | example: value: ';'
+    value: ';'
+
+  # Specifies the path to output the results from AzGovViz
+  - name: OutputPath
+    # String | example: value: 'wiki'
+    value: 'wiki'
+
+### Optional Variables - Modify as Needed
+  # Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved
+  - name: AADGroupMembersLimit
+    # Integer | default = 500 | example: value: 333
+    value:
+
+  # Define warning period for Service Principal secret and certificate expiry
+  - name: AADServicePrincipalExpiryWarningDays
+    # Integer | default = 14 | example: value: 21
+    value:
+
+  # Define for which time period Azure Consumption data should be gathered
+  - name: AzureConsumptionPeriod
+    # Integer | default = 1 | example: value: 7
+    value:
+
+  # Define the direction the Hierarchy should be built in Azure DevOps WikiAsCode (Markdown) TD = TopDown (Horizontal), LR = LeftRight (Vertical)
+  - name: AzureDevOpsWikiHierarchyDirection
+    # String | default = 'TD' | example: value: 'LR'
+    value:
+
+  # Tracks newly created and updated custom Policy, PolicySet and RBAC Role definitions, Policy/RBAC Role assignments and Resources that occurred within the last 14 days (default)
+  - name: ChangeTrackingDays
+    # Integer | example: value: 30
+    value:
+
+  # Define if Azure Consumption data should be reported
+  - name: DoAzureConsumption
+    # Switch | example: value: true
+    value:
+
+  # Do not include Role assignments on ResourceGroups and Resources
+  - name: DoNotIncludeResourceGroupsAndResourcesOnRBAC
+    # Switch | example: value: true
+    value:
+
+  # Do not include Policy assignments on ResourceGroups
+  - name: DoNotIncludeResourceGroupsOnPolicy
+    # Switch | example: value: true
+    value:
+
+  # Scrub user information
+  - name: DoNotShowRoleAssignmentsUserData
+    # Switch | example: value: true
+    value:
+
+  # Log the console output
+  - name: DoTranscript
+    # Switch | example: value: true
+    value:
+
+  # Time format for the output files (See PowerShell Get-Date help for details on formatting.)
+  - name: FileTimeStampFormat
+    # String | default = 'yyyyMMdd_HHmmss' | example: value: 'yyyy-MM-dd_HH:mm:ss'
+    value:
+
+  # Only creates the Hierarchy Tree
+  - name: HierarchyMapOnly
+    # Switch | example: value: true
+    value:
+
+  # Although the parameter -LargeTenant was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
+  - name: HtmlTableRowsLimit
+    # Integer | default = 20000 | example: value: 30300
+    value:
+
+  # JSON Export will not include ResourceGroups (Policy & Role assignments)
+  - name: JsonExportExcludeResourceGroups
+    # Switch | example: value: true
+    value:
+
+  # JSON Export will not include Resources (Role assignments)
+  - name: JsonExportExcludeResources
+    # Switch | example: value: true
+    value:
+
+  # A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big. If the parameter switch is true then the following parameters will be set: -PolicyAtScopeOnly $true, -RBACAtScopeOnly $true, -NoResourceProvidersDetailed $true, -NoScopeInsights $true
+  - name: LargeTenant
+    # Switch | example: value: true
+    value:
+
+  # Marks capabilities that approach limits e.g. limit 100, usage 80 will mark with warning
+  - name: LimitCriticalPercentage
+    # Integer | default = 80 | example: value: 90
+    value:
+
+  # Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
+  - name: ManagementGroupsOnly
+    # Switch | example: value: true
+    value:
+
+  # Will not resolve Azure Active Directory Group memberships for Role assignments where identity type is 'Group'
+  - name: NoAADGroupsResolveMembers
+    # Switch | example: value: true
+    value:
+
+  # Azure Consumption data will not be exported (CSV)
+  - name: NoAzureConsumptionReportExportToCSV
+    # Switch | example: value: true
+    value:
+
+  # Do not export enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, resourceType, id, name, location, tags, createdTime, changedTime)
+  - name: NoCsvExport
+    # Switch | example: value: true
+    value:
+
+  # Do not export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
+  - name: NoJsonExport
+    # Switch | example: value: true
+    value:
+
+  # Disables Microsoft Defender for Cloud Secure Score request for Subscriptions and Management Groups
+  - name: NoMDfCSecureScore
+    # Switch | example: value: true
+    value:
+
+  # Will not query policy compliance states
+  - name: NoPolicyComplianceStates
+    # Switch | example: value: true
+    value:
+
+  # Will not create Resource Diagnostics Policy Lifecycle recommendations
+  - name: NoResourceDiagnosticsPolicyLifecycle
+    value:
+
+  # Disables 'ResourceProvider Detailed' output for TenantSummary (compute intensive)
+  - name: NoResourceProvidersDetailed
+    # Switch | example: value: true
+    value:
+
+  # Will speed up the processing time but information like Resource diagnostics capability, resource type stats, UserAssigned Identities assigned to Resources is excluded (featured for large tenants)
+  - name: NoResources
+    # Switch | example: value: true
+    value:
+
+  # In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size). To further reduce the output use parameter -LargeTenant
+  - name: NoScopeInsights
+    # Switch | example: value: true
+    value:
+
+  # Single Scope Insights output per Subscription should not be created
+  - name: NoSingleSubscriptionOutput
+    # Switch | example: value: true
+    value:
+
+  #
+  - name: PolicyAtScopeOnly
+    # Switch | example: value: true
+    value:
+
+  # Removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants
+  - name: RBACAtScopeOnly
+    # Switch | example: value: true
+    value:
+
+  # Will opt-out sending stats
+  - name: StatsOptOut
+    # Switch | example: value: true
+    value:
+
+  # Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
+  - name: SubscriptionId4AzContext
+    # String | example: value: "<your-Subscription-Id>"
+    value:
+
+  # Define the number of script blocks running in parallel. Leveraging PowerShell Core´s parallel capability you can define the ThrottleLimit (default=5)
+  - name: ThrottleLimit
+    # Integer | Default = 5 | example: value: 10
+    value:
+
+# Dynamic Variables - Do Not Modify Anything Below this line!
+  - name: ExcludedResourceTypesDiagnosticsCapable
+    value: ${{ join(',',parameters.ExcludedResourceTypesDiagnosticsCapableParameters) }}
+
+  - name: SubscriptionQuotaIdWhitelist
+    value: ${{ join(',',parameters.SubscriptionQuotaIdWhitelistParameters) }}
