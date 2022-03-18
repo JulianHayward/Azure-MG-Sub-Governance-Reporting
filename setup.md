@@ -232,6 +232,12 @@ There are two options to create the Service Connection:
 * Provide a good description and choose the expiry time based on your need and click '__Add__'
 * A new client secret has been created, copy the secret´s value as we will need it later to setup the Service Connection in AzDO
 
+**Note: if you do not assign the RBAC 'Reader' role to the Management group at this stage then the '__Verify__' step below will fail.**
+* In the portal proceed to '__Management Groups__', select the scope at which AzGovViz will run, usually __Tenant Root Group__
+* Go to '__Access Control (IAM)__', '__Grant Access__' and '__Add Role Assignment__', select '__Reader__', click '__Next__'
+* Now '__Select Member__', this will be the name of the Application you created above (e.g. 'AzGovViz_SC').
+* Select '__Next__', '__Review + Assign__'  
+
 #### Azure DevOps
 * Click on '__Project settings__' (located on the bottom left)
 * Under '__Pipelines__' click on '__Service Connections__'
