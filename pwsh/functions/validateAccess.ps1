@@ -4,7 +4,7 @@ function validateAccess {
     $permissionCheckResults = @()
     if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions -eq $true -or $azAPICallConf['htParameters'].accountType -eq 'ServicePrincipal' -or $azAPICallConf['htParameters'].accountType -eq 'ManagedService' -or $azAPICallConf['htParameters'].accountType -eq 'ClientAssertion') {
 
-        Write-Host "Checking $azAPICallConf['htParameters'].accountType permissions"
+        Write-Host "Checking $($azAPICallConf['htParameters'].accountType) permissions"
 
         $permissionsCheckFailed = $false
 
