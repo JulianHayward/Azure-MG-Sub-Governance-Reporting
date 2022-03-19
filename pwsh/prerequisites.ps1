@@ -90,34 +90,45 @@ if ($codeRunPlatform -eq 'AzureDevOps') {
         $buildAccount = "Project Collection Build Service ($($organization))"
         Write-Host "Checking: $buildAccount"
         $uri = "https://vssps.dev.azure.com/$($organization)/_apis/identities?searchFilter=General&filterValue=$($buildAccount)&queryMembership=None&api-version=6.0"
-        $res = Invoke-RestMethod -Uri $uri -Method 'GET' -Headers $header -ContentType 'application/json'
-        $providerDisplayName = $res.value.providerDisplayName
-        $providerDisplayNameProjectCollectionBuildService = $providerDisplayName
-        $subjectDescriptor = $res.value.subjectDescriptor
-
-        if ($providerDisplayName -ne $buildServiceAccountId) {
-            $buildAccount = "$($project) Build Service ($($organization))"
-            Write-Host "Checking: $buildAccount"
-            $uri = "https://vssps.dev.azure.com/$($organization)/_apis/identities?searchFilter=General&filterValue=$($buildAccount)&queryMembership=None&api-version=6.0"
+        try {
             $res = Invoke-RestMethod -Uri $uri -Method 'GET' -Headers $header -ContentType 'application/json'
+        }
+        catch {
+            Write-Host "Checking: $buildAccount failed:"
+            $_
+            Write-Host "Checking: $buildAccount failed; skipping check"
+            $skipCheck = $true
+        }
+
+        if (-not $skipCheck) {
             $providerDisplayName = $res.value.providerDisplayName
-            $providerDisplayNameProjectBuildService = $providerDisplayName
+            $providerDisplayNameProjectCollectionBuildService = $providerDisplayName
             $subjectDescriptor = $res.value.subjectDescriptor
-        }
-        #endregion gettingSubjectDescriptor
+    
+            if ($providerDisplayName -ne $buildServiceAccountId) {
+                $buildAccount = "$($project) Build Service ($($organization))"
+                Write-Host "Checking: $buildAccount"
+                $uri = "https://vssps.dev.azure.com/$($organization)/_apis/identities?searchFilter=General&filterValue=$($buildAccount)&queryMembership=None&api-version=6.0"
+                $res = Invoke-RestMethod -Uri $uri -Method 'GET' -Headers $header -ContentType 'application/json'
+                $providerDisplayName = $res.value.providerDisplayName
+                $providerDisplayNameProjectBuildService = $providerDisplayName
+                $subjectDescriptor = $res.value.subjectDescriptor
+            }
 
-        if ($providerDisplayName -ne $buildServiceAccountId) {
-            Write-Host "Neighter 'Project Collection Build Service ($($organization)) $($providerDisplayNameProjectCollectionBuildService)' nore '$($project) Build Service ($($organization))' $providerDisplayNameProjectBuildService matching Id: $($buildServiceAccountId)"
-        }
-        else {
-            Write-Host "subjectDescriptor for '$($buildAccount)':" $subjectDescriptor
+            #endregion gettingSubjectDescriptor
 
-            #region gettingPermissions
-            $repositoryId = $env:BUILD_REPOSITORY_ID #$(Build.Repository.ID)
-            $permissionSetId = '2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87' #Git Repositories
+            if ($providerDisplayName -ne $buildServiceAccountId) {
+                Write-Host "Neighter 'Project Collection Build Service ($($organization)) $($providerDisplayNameProjectCollectionBuildService)' nore '$($project) Build Service ($($organization))' $providerDisplayNameProjectBuildService matching Id: $($buildServiceAccountId)"
+            }
+            else {
+                Write-Host "subjectDescriptor for '$($buildAccount)':" $subjectDescriptor
 
-            $uri = "$($collectionUri)/_apis/Contribution/HierarchyQuery?api-version=5.0-preview.1"
-            $body = @"
+                #region gettingPermissions
+                $repositoryId = $env:BUILD_REPOSITORY_ID #$(Build.Repository.ID)
+                $permissionSetId = '2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87' #Git Repositories
+
+                $uri = "$($collectionUri)/_apis/Contribution/HierarchyQuery?api-version=5.0-preview.1"
+                $body = @"
 {
     "contributionIds": [
         "ms.vss-admin-web.security-view-permissions-data-provider"
@@ -132,54 +143,55 @@ if ($codeRunPlatform -eq 'AzureDevOps') {
 }
 "@
 
-            $permissions = Invoke-RestMethod -Uri $uri -Method 'post' -Body $body -Headers $header -ContentType 'application/json'
-            $htPermissionsRef = @{}
-            $htPermissionsRef.'1' = 'allow'
-            $htPermissionsRef.'2' = 'deny'
-            $htPermissionsRef.'3' = 'allow(inherited)'
-            Write-Host "'$($buildAccount)' ($buildServiceAccountId) permissions for Repository: $($htRepos.($repositoryId).name) ($repositoryId)"
-            $contributePermissionState = ($permissions.dataProviders.'ms.vss-admin-web.security-view-permissions-data-provider'.subjectPermissions).where( { $_.displayName -eq 'Contribute' } ).effectivePermissionValue
-            if ($contributePermissionState -eq 1 -or $contributePermissionState -eq 3) {
-                Write-Host " Contribute: $($htPermissionsRef."$contributePermissionState") ($($contributePermissionState))"
-            }
-            else {
-                if ($contributePermissionState) {
+                $permissions = Invoke-RestMethod -Uri $uri -Method 'post' -Body $body -Headers $header -ContentType 'application/json'
+                $htPermissionsRef = @{}
+                $htPermissionsRef.'1' = 'allow'
+                $htPermissionsRef.'2' = 'deny'
+                $htPermissionsRef.'3' = 'allow(inherited)'
+                Write-Host "'$($buildAccount)' ($buildServiceAccountId) permissions for Repository: $($htRepos.($repositoryId).name) ($repositoryId)"
+                $contributePermissionState = ($permissions.dataProviders.'ms.vss-admin-web.security-view-permissions-data-provider'.subjectPermissions).where( { $_.displayName -eq 'Contribute' } ).effectivePermissionValue
+                if ($contributePermissionState -eq 1 -or $contributePermissionState -eq 3) {
                     Write-Host " Contribute: $($htPermissionsRef."$contributePermissionState") ($($contributePermissionState))"
                 }
                 else {
-                    Write-Host ' Contribute: not set'
+                    if ($contributePermissionState) {
+                        Write-Host " Contribute: $($htPermissionsRef."$contributePermissionState") ($($contributePermissionState))"
+                    }
+                    else {
+                        Write-Host ' Contribute: not set'
+                    }
+                    $testResult = 'FAILED'
                 }
-                $testResult = 'FAILED'
-            }
-            Write-Host 'All permissions:'
-            foreach ($permission in $permissions.dataProviders.'ms.vss-admin-web.security-view-permissions-data-provider'.subjectPermissions) {
-                if ($permission.effectivePermissionValue) {
-                    Write-Host " $($permission.displayName): $($htPermissionsRef."$($permission.effectivePermissionValue)") ($($permission.effectivePermissionValue))"
+                Write-Host 'All permissions:'
+                foreach ($permission in $permissions.dataProviders.'ms.vss-admin-web.security-view-permissions-data-provider'.subjectPermissions) {
+                    if ($permission.effectivePermissionValue) {
+                        Write-Host " $($permission.displayName): $($htPermissionsRef."$($permission.effectivePermissionValue)") ($($permission.effectivePermissionValue))"
+                    }
+                    else {
+                        Write-Host " $($permission.displayName): not set"
+                    }
+                }
+
+                if ($testResult -eq 'FAILED') {
+                    Write-Host ''
+                    Write-Host '- - - - - - - - - - - - - - - - -'
+                    Write-Host 'Repository permission test failed'
+                    Write-Host "You must grant the Account '$($buildAccount)' ($buildServiceAccountId) with 'Contribute' permissions on the Repository '$($htRepos.($repositoryId).name)'' ($repositoryId)"
+                    Write-Host 'Instructions: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/setup.md#grant-permissions-on-azgovviz-azdo-repository'
+                    Write-Error 'Error'
                 }
                 else {
-                    Write-Host " $($permission.displayName): not set"
-                }
-            }
-
-            if ($testResult -eq 'FAILED') {
-                Write-Host ''
-                Write-Host '- - - - - - - - - - - - - - - - -'
-                Write-Host 'Repository permission test failed'
-                Write-Host "You must grant the Account '$($buildAccount)' ($buildServiceAccountId) with 'Contribute' permissions on the Repository '$($htRepos.($repositoryId).name)'' ($repositoryId)"
-                Write-Host 'Instructions: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/setup.md#grant-permissions-on-azgovviz-azdo-repository'
-                Write-Error 'Error'
-            }
-            else {
-                $timestamp = get-date -format 'yyyy-MM-dd_HH:mm:ss'
-                $fileContent = @"
+                    $timestamp = get-date -format 'yyyy-MM-dd_HH:mm:ss'
+                    $fileContent = @"
         Repository access check result:
         Date: $($timestamp)
         Build Account: '$($buildAccount)' ($buildServiceAccountId)
         Permission 'Contribute' for Repository '$($htRepos.($repositoryId).name) ($repositoryId)': $($contributePermissionState)
 "@
-                $fileContent | Set-Content -Path "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/AzGovViz_RepositoryPermissionCheck.log" -Encoding utf8 -Force
+                    $fileContent | Set-Content -Path "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/AzGovViz_RepositoryPermissionCheck.log" -Encoding utf8 -Force
+                }
+                #endregion gettingPermissions
             }
-            #endregion gettingPermissions
         }
     }
     else {
