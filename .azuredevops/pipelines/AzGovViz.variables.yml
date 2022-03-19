@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220114_1
+# AzGovViz v6_major_20220319_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -219,6 +219,11 @@ variables:
   # Define the number of script blocks running in parallel. Leveraging PowerShell Core´s parallel capability you can define the ThrottleLimit (default=5)
   - name: ThrottleLimit
     # Integer | Default = 5 | example: value: 10
+    value:
+
+  # Will show memory usage
+  - name: ShowMemoryUsage
+    # Switch | example: value: true
     value:
 
 # Dynamic Variables - Do Not Modify Anything Below this line!

@@ -277,13 +277,16 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.0',
+    $AzAPICallVersion = '1.1.1',
 
     [string]
-    $ProductVersion = 'v6_major_20220318_2',
+    $ProductVersion = 'v6_major_20220319_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
+
+    [string]
+    $ScriptPath = 'pwsh', #e.g. 'myfolder\pwsh'
 
     [string]
     $ManagementGroupId,
@@ -477,88 +480,88 @@ $startTime = Get-Date -Format 'dd-MMM-yyyy HH:mm:ss'
 Write-Host "Start AzGovViz $($startTime) (#$($ProductVersion))"
 
 #Region Functions
-. .\pwsh\functions\addRowToTable.ps1
+. .\$($ScriptPath)\functions\addRowToTable.ps1
 $funcAddRowToTable = $function:addRowToTable.ToString()
 
-. .\pwsh\functions\testPowerShellVersion.ps1
-. .\pwsh\functions\setOutput.ps1
-. .\pwsh\functions\setTranscript.ps1
+. .\$($ScriptPath)\functions\testPowerShellVersion.ps1
+. .\$($ScriptPath)\functions\setOutput.ps1
+. .\$($ScriptPath)\functions\setTranscript.ps1
 
-. .\pwsh\functions\handleCloudEnvironment.ps1
-. .\pwsh\functions\addHtParameters.ps1
-. .\pwsh\functions\selectMg.ps1
-. .\pwsh\functions\validateAccess.ps1
+. .\$($ScriptPath)\functions\handleCloudEnvironment.ps1
+. .\$($ScriptPath)\functions\addHtParameters.ps1
+. .\$($ScriptPath)\functions\selectMg.ps1
+. .\$($ScriptPath)\functions\validateAccess.ps1
 
-. .\pwsh\functions\getEntities.ps1
+. .\$($ScriptPath)\functions\getEntities.ps1
 
-. .\pwsh\functions\setBaseVariablesMG.ps1
+. .\$($ScriptPath)\functions\setBaseVariablesMG.ps1
 
-. .\pwsh\functions\getTenantDetails.ps1
+. .\$($ScriptPath)\functions\getTenantDetails.ps1
 
-. .\pwsh\functions\getDefaultManagementGroup.ps1
+. .\$($ScriptPath)\functions\getDefaultManagementGroup.ps1
 
-. .\pwsh\functions\runInfo.ps1
+. .\$($ScriptPath)\functions\runInfo.ps1
 
-. .\pwsh\functions\processHierarchyMapOnly.ps1
+. .\$($ScriptPath)\functions\processHierarchyMapOnly.ps1
 
-. .\pwsh\functions\getSubscriptions.ps1
-. .\pwsh\functions\detailSubscriptions.ps1
+. .\$($ScriptPath)\functions\getSubscriptions.ps1
+. .\$($ScriptPath)\functions\detailSubscriptions.ps1
 
-. .\pwsh\functions\getMDfCSecureScoreMG.ps1
+. .\$($ScriptPath)\functions\getMDfCSecureScoreMG.ps1
 
-. .\pwsh\functions\getConsumption.ps1
+. .\$($ScriptPath)\functions\getConsumption.ps1
 
-. .\pwsh\functions\cacheBuiltIn.ps1
+. .\$($ScriptPath)\functions\cacheBuiltIn.ps1
 
-. .\pwsh\functions\prepareData.ps1
+. .\$($ScriptPath)\functions\prepareData.ps1
 
-. .\pwsh\functions\getGroupmembers.ps1
+. .\$($ScriptPath)\functions\getGroupmembers.ps1
 $funcGetGroupmembers = $function:GetGroupmembers.ToString()
-. .\pwsh\functions\processAADGroups.ps1
+. .\$($ScriptPath)\functions\processAADGroups.ps1
 
-. .\pwsh\functions\processApplications.ps1
+. .\$($ScriptPath)\functions\processApplications.ps1
 
-. .\pwsh\functions\processManagedIdentities.ps1
+. .\$($ScriptPath)\functions\processManagedIdentities.ps1
 
-. .\pwsh\functions\createTagList.ps1
+. .\$($ScriptPath)\functions\createTagList.ps1
 
-. .\pwsh\functions\getResourceDiagnosticsCapability.ps1
+. .\$($ScriptPath)\functions\getResourceDiagnosticsCapability.ps1
 
-. .\pwsh\functions\getFileNaming.ps1
+. .\$($ScriptPath)\functions\getFileNaming.ps1
 
 
-. .\pwsh\functions\resolveObjectIds.ps1
+. .\$($ScriptPath)\functions\resolveObjectIds.ps1
 $funcResolveObjectIds = $function:ResolveObjectIds.ToString()
 
-. .\pwsh\functions\namingValidation.ps1
+. .\$($ScriptPath)\functions\namingValidation.ps1
 $funcNamingValidation = $function:NamingValidation.ToString()
 
-. .\pwsh\functions\removeInvalidFileNameChars.ps1
+. .\$($ScriptPath)\functions\removeInvalidFileNameChars.ps1
 
-. .\pwsh\functions\addIndexNumberToArray.ps1
+. .\$($ScriptPath)\functions\addIndexNumberToArray.ps1
 
-. .\pwsh\functions\processDiagramMermaid.ps1
-. .\pwsh\functions\buildMD.ps1
+. .\$($ScriptPath)\functions\processDiagramMermaid.ps1
+. .\$($ScriptPath)\functions\buildMD.ps1
 
-. .\pwsh\functions\buildTree.ps1
-. .\pwsh\functions\buildJSON.ps1
+. .\$($ScriptPath)\functions\buildTree.ps1
+. .\$($ScriptPath)\functions\buildJSON.ps1
 
-. .\pwsh\functions\buildPolicyAllJSON.ps1
+. .\$($ScriptPath)\functions\buildPolicyAllJSON.ps1
 
-. .\pwsh\functions\stats.ps1
+. .\$($ScriptPath)\functions\stats.ps1
 
 #Region dataCollectionFunctions
-. .\pwsh\functions\dataCollection\dataCollectionFunctions.ps1
-. .\pwsh\functions\processDataCollection.ps1
+. .\$($ScriptPath)\functions\dataCollection\dataCollectionFunctions.ps1
+. .\$($ScriptPath)\functions\processDataCollection.ps1
 
-. .\pwsh\functions\exportBaseCSV.ps1
+. .\$($ScriptPath)\functions\exportBaseCSV.ps1
 
-. .\pwsh\functions\html\htmlFunctions.ps1
-. .\pwsh\functions\processTenantSummary.ps1
-. .\pwsh\functions\processDefinitionInsights.ps1
-. .\pwsh\functions\processScopeInsightsMgOrSub.ps1
+. .\$($ScriptPath)\functions\html\htmlFunctions.ps1
+. .\$($ScriptPath)\functions\processTenantSummary.ps1
+. .\$($ScriptPath)\functions\processDefinitionInsights.ps1
+. .\$($ScriptPath)\functions\processScopeInsightsMgOrSub.ps1
 
-. .\pwsh\functions\showMemoryUsage.ps1
+. .\$($ScriptPath)\functions\showMemoryUsage.ps1
 #EndRegion dataCollectionFunctions
 #EndRegion Functions
 
@@ -628,7 +631,7 @@ do {
         if (-not $importAzAPICallModuleSuccess) {
             Write-Host "  Try importing AzAPICall module ($AzAPICallVersion)"
             if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
-                Import-Module ".\pwsh\AzAPICallModule\AzAPICall\$($AzAPICallVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+                Import-Module ".\$($ScriptPath)\AzAPICallModule\AzAPICall\$($AzAPICallVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
                 Write-Host "  Import PS module 'AzAPICall' ($($AzAPICallVersion)) succeeded" -ForegroundColor Green
             }
             else {
@@ -645,7 +648,7 @@ do {
             try {
                 $params = @{
                     Name            = 'AzAPICall'
-                    Path            = '.\pwsh\AzAPICallModule'
+                    Path            = '.\$($ScriptPath)\AzAPICallModule'
                     Force           = $true
                     RequiredVersion = $AzAPICallVersion
                 }

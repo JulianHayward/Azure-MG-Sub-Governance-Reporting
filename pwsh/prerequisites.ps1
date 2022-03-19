@@ -1,4 +1,3 @@
-#v6_major_20220220_1
 #This script should be run in Azure DevOps Pipelines and GitHub Actions only
 
 if ($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) {
@@ -38,18 +37,18 @@ if ($codeRunPlatform -eq 'GitHubActions') {
         }
     }
 
-    Write-Host "outputpath is '$($env:outputpath)'"
-    if (-not (Test-Path -Path ".\$($env:outputpath)")) {
+    Write-Host "outputpath is '$($env:Outputpath)'"
+    if (-not (Test-Path -Path ".\$($env:Outputpath)")) {
         #Assuming this is the initial run
 
         #Create the outputpath dir
-        Write-Host "Creating directory '$($env:outputpath)'"
-        New-Item -ItemType Directory -Force -Path $($env:outputpath)
+        Write-Host "Creating directory '$($env:Outputpath)'"
+        New-Item -ItemType Directory -Force -Path $($env:Outputpath)
 
         Get-ChildItem
     }
     else {
-        Write-Host "outputpath dir '$($env:outputpath)' already exists"
+        Write-Host "outputpath dir '$($env:Outputpath)' already exists"
     }
 }
 

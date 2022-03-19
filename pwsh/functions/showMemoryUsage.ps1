@@ -17,7 +17,7 @@ function showMemoryUsage {
         }
 
         if ($IsLinux) {
-            $memoryUsed = free | grep Mem | awk '{print $4/$2 * 100.0}'
+            $memoryUsed = 100 - (free | grep Mem | awk '{print $4/$2 * 100.0}')
             $memoryUsed = makeDouble $memoryUsed
         }
         if ($IsWindows) {

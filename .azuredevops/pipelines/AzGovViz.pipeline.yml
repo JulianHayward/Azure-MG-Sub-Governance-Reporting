@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220220_1
+# AzGovViz v6_major_20220319_1
 # First things first:
 # 1. Set needed variables in the AzGovViz.variables.yml file.
 #
@@ -94,7 +94,7 @@ jobs:
       scriptType: filePath
       pwsh: true
       scriptPath: '$(System.DefaultWorkingDirectory)/$(ScriptDir)/$(Script)'
-      scriptArguments: $(ScriptArguments)
+      scriptArguments: $(ScriptArguments) -ScriptPath $(ScriptDir)
       azurePowerShellVersion: latestVersion
     displayName: 'Run AzGovViz v6'
 

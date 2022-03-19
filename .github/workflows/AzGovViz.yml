@@ -1,9 +1,12 @@
-# AzGovViz v6_major_20220116_2
+# AzGovViz v6_major_20220319_1
 name: AzGovViz
 
 env:
-  outputpath: wiki
-  ManagementGroupId: <managementGroupId>
+  OutputPath: wiki
+  ManagementGroupId: <Management Group Id>
+  ScriptDir: pwsh
+  ScriptPrereqFile: prerequisites.ps1
+  ScriptFile: AzGovVizParallel.ps1
 
 on:
   #schedule:
@@ -32,19 +35,13 @@ jobs:
           #   "clientId": "<GUID>",
           #   "clientSecret": "<GUID>"
           # }
-       
-      - name: Check prerequisites
-        uses: azure/powershell@v1
-        with:
-          inlineScript: |
-            .\pwsh\prerequisites.ps1
-          azPSVersion: "latest"
 
       - name: Run AzGovViz
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            .\pwsh\AzGovVizParallel.ps1 -ManagementGroupId ${env:ManagementGroupId} -outputpath ${env:outputpath}
+            . .\$($env:ScriptDir)\$($env:ScriptPrereqFile)
+            . .\$($env:ScriptDir)\$($env:ScriptFile) -ManagementGroupId ${env:ManagementGroupId} -ScriptPath ${env:ScriptDir} -OutputPath ${env:OutputPath}
           azPSVersion: "latest"
       
       - name: Push AzGovViz output to repository
