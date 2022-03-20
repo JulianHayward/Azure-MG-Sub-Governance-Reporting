@@ -580,10 +580,18 @@ else {
     Write-Host " Verify 'AzAPICall' (latest)"
 }
 
+$maxRetry = 3
+$tryCount = 0
 do {
+    $tryCount++
+    if ($tryCount -gt $maxRetry) {
+        Write-Host " Managing 'AzAPICall' failed (tried $($tryCount - 1)x)"
+        throw " Managing 'AzAPICall' failed"
+    }
+
     $importAzAPICallModuleSuccess = $false
     try {
-        
+
         if (-not $AzAPICallVersion) {
             Write-Host '  Check latest module version'
             try {
@@ -673,7 +681,7 @@ do {
                 }
                 elseif ($installAzAPICallModuleUserChoice -eq 'n') {
                     Write-Host '  AzAPICall module is required, please visit https://aka.ms/AZAPICall or https://www.powershellgallery.com/packages/AzAPICall'
-                    throw '  AzAPICall module is required' 
+                    throw '  AzAPICall module is required'
                 }
                 else {
                     Write-Host "  Accepted input 'y' or 'n'; start over.."
