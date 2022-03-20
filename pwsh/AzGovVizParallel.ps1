@@ -637,7 +637,7 @@ do {
         }
 
         if (-not $importAzAPICallModuleSuccess) {
-            Write-Host "  Try importing AzAPICall module ($AzAPICallVersion)"
+            Write-Host "  Try (#$tryCount) importing AzAPICall module ($AzAPICallVersion)"
             if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
                 Import-Module ".\$($ScriptPath)\AzAPICallModule\AzAPICall\$($AzAPICallVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
                 Write-Host "  Import PS module 'AzAPICall' ($($AzAPICallVersion)) succeeded" -ForegroundColor Green

@@ -401,6 +401,11 @@ Screenshot Azure Portal
   * ~~Az.Resources~~
   * ~~Az.ResourceGraph~~
   * [Install the Azure Az PowerShell module](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps)
+* Requires PowerShell Module 'AzAPICall'.  
+Running in Azure DevOps or GitHub Actions the AzAPICall PowerShell module will be installed automatically.  
+AzAPICall resources:
+  * [![PowerShell Gallery Version (including pre-releases)](https://img.shields.io/powershellgallery/v/AzAPICall?include_prereleases&label=PowerShell%20Gallery)](https://www.powershellgallery.com/packages/AzAPICall)  
+  * [GitHub Repository](https://aka.ms/AzAPICall)
 * Usage/command
   * `.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>`
 
