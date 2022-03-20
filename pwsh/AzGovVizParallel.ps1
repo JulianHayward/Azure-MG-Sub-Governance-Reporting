@@ -648,7 +648,7 @@ do {
             try {
                 $params = @{
                     Name            = 'AzAPICall'
-                    Path            = '.\$($ScriptPath)\AzAPICallModule'
+                    Path            = ".\$($ScriptPath)\AzAPICallModule"
                     Force           = $true
                     RequiredVersion = $AzAPICallVersion
                 }
