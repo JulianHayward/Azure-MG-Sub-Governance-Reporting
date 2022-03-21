@@ -442,7 +442,7 @@ function dataCollectionResourceLocks {
     )
 
     $currentTask = "Subscription ResourceLocks '$($scopeDisplayname)' ('$scopeId')"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$scopeId/providers/Microsoft.Authorization/locks?api-version=2016-09-01"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/locks?api-version=2016-09-01"
     $method = 'GET'
     $requestSubscriptionResourceLocks = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
@@ -540,7 +540,7 @@ function dataCollectionTags {
     )
 
     $currentTask = "Subscription Tags '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$scopeId/providers/Microsoft.Resources/tags/default?api-version=2020-06-01"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Resources/tags/default?api-version=2020-06-01"
     $method = 'GET'
     $requestSubscriptionTags = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -caller 'CustomDataCollection'
 
@@ -659,7 +659,7 @@ function dataCollectionASCSecureScoreSub {
 
     if ($azAPICallConf['htParameters'].NoMDfCSecureScore -eq $false) {
         $currentTask = "Microsoft Defender for Cloud Secure Score Sub: '$($scopeDisplayName)' ('$scopeId')"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$scopeId/providers/Microsoft.Security/securescores?api-version=2020-01-01"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/securescores?api-version=2020-01-01"
         $method = 'GET'
         $subASCSecureScoreResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
@@ -815,7 +815,7 @@ function dataCollectionBluePrintAssignmentsSub {
     )
 
     $currentTask = "Blueprint assignments '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$scopeId/providers/Microsoft.Blueprint/blueprintAssignments?api-version=2018-11-01-preview"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Blueprint/blueprintAssignments?api-version=2018-11-01-preview"
     $method = 'GET'
     $subscriptionBlueprintAssignmentsResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
@@ -2557,7 +2557,7 @@ function dataCollectionRoleAssignmentsSub {
 
     #RoleAssignment API Sub
     $currentTask = "Role assignments API '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$scopeId/providers/Microsoft.Authorization/roleAssignments?api-version=2015-07-01"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleAssignments?api-version=2015-07-01"
     $method = 'GET'
     $roleAssignmentsFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 

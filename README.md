@@ -45,6 +45,7 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
   * [Required permissions in Azure Active Directory](#required-permissions-in-azure-active-directory)
   * [PowerShell](#powershell)
   * [Parameters](#parameters)
+  * [API](#api)
 * [Integrate with AzOps](#integrate-with-azops)
 * [Stats](#stats)
 * [Security](#security)
@@ -57,18 +58,16 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Jan-31 / Major)
+__Changes__ (2022-Mar-21 / Major)
 
-* New __TenantSummary | RBAC__ feature - insights on all Role definitions that are capable to write Role assignments
-* __TenantSummary | Subscriptions, Resources & Defender | Subscriptions__ report (new) [Role assignment limits](https://docs.microsoft.com/en-us/azure/role-based-access-control/troubleshooting#azure-role-assignments-limit)
-* Handling orphaned Policy assignments (scope Management Group)
-* Datacollection for Management Groups process in batches (batch per Management Group level)
-* Update Dockerfile
-* Update API version for Resources, ResourceGroups and Subscriptions
-* Further enrich _PolicyDefinitions and _PolicySetDefinitions CSV outputs
-* HTML file performance optimization
-* Include instructions for GitHub Actions in the __[Setup Guide](setup.md)__
-* New [demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html) uploaded
+* New JSON output *_PolicyAll.json - Contains all relations of Policy/Set definitions and Policy assignments
+* New parameter `-ShowMemoryUsage` - Shows memory usage at memory intense sections of the scripts, this shall help you determine if the the worker is well sized for AzGovViz
+* Refactor Script 
+  * dot sourcing functions
+  * leveraging AzAPICall PowerShell module. The AzAPICall function has been removed from the AzGovViz code base and has been published as a module to the [PoweShell Gallery](https://www.powershellgallery.com/packages/AzAPICall) ([GitHub](https://aka.ms/AzAPICall))
+* Optimize GitHub Actions workflows (YAML)
+* Added list of [APIs](#api) that are polled by AzGovViz
+* Performance optimization
 * Bugfixes
 
 Passed tests: Powershell Core 7.2.1 on Windows  
@@ -451,6 +450,63 @@ AzAPICall resources:
   * `-StatsOptOut` - Opt out sending [stats](#stats)
   * `-NoSingleSubscriptionOutput` - Single __Scope Insights__ output per Subscription should not be created
   * `-ManagementGroupsOnly` - Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
+  * `-ShowMemoryUsage` - Shows memory usage at memory intense sections of the scripts, this shall help you determine if the the worker is well sized for AzGovViz
+
+### API
+
+AzGovViz polls the following APIs
+
+| Endpoint | API name | API version |
+| --- | --- | --- |
+| MS Graph | /groups/`aadGroupId`/transitiveMembers | beta |
+| MS Graph | /applications | v1.0 |
+| MS Graph | /directoryObjects/getByIds | v1.0 |
+| MS Graph | /users | v1.0 |
+| MS Graph | /groupss | v1.0 |
+| MS Graph | /servicePrincipals | v1.0 |
+| ARM  | /`resourceId`/providers/Microsoft.Insights/diagnosticSettingsCategories | 2021-05-01-preview |
+| ARM  | /`scopeId`/providers/Microsoft.Blueprint/blueprints/`blueprintName` | 2018-11-01-preview |
+| ARM  | /providers/Microsoft.Authorization/policyDefinitions | 2021-06-01 |
+| ARM  | /providers/Microsoft.Authorization/policySetDefinitions | 2021-06-01 |
+| ARM  | /providers/Microsoft.Authorization/roleDefinitions | 2018-07-01 |
+| ARM  | /providers/Microsoft.Management/getEntities | 2020-02-01 |
+| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyAssignments | 2021-06-01 |
+| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyDefinitions | 2021-06-01 |
+| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyExemptions | 2020-07-01-preview |
+| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policySetDefinitions | 2021-06-01 |
+| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignments | 2015-07-01 |
+| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignmentSchedules | 2020-10-01-preview |
+| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleDefinitions | 2015-07-01 |
+| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Blueprint/blueprints | 2018-11-01-preview |
+| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.CostManagement/query | 2019-11-01 |
+| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/microsoft.insights/diagnosticSettings | 2020-01-01-preview |
+| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.PolicyInsights/policyStates/latest/summarize | 2019-10-01 |
+| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId` | 2020-05-01 |
+| ARM  | /providers/Microsoft.Management/managementGroups/`tenantId`/settings | 2020-02-01 |
+| ARM  | /providers/Microsoft.Management/managementGroups | 2020-05-01 |
+| ARM  | /providers/Microsoft.ResourceGraph/resources | 2021-03-01 |
+| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/locks | 2016-09-01 |
+| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyAssignments | 2021-06-01 |
+| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyDefinitions | 2021-06-01 |
+| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyExemptions | 2020-07-01-preview |
+| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policySetDefinitions | 2021-06-01 |
+| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignments | 2015-07-01 |
+| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentSchedules | 2020-10-01-preview |
+| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics | 2019-08-01-preview |
+| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleDefinitions | 2015-07-01 |
+| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprintAssignments | 2018-11-01-preview |
+| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprints | 2018-11-01-preview |
+| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.CostManagement/query | 2019-11-01 |
+| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Insights/diagnosticSettings | 2021-05-01-preview |
+| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.PolicyInsights/policyStates/latest/summarize | 2019-10-01 |
+| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Resources/tags/default | 2020-06-01 |
+| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Security/pricings | 2018-06-01 |
+| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securescores | 2020-01-01 |
+| ARM  | /subscriptions/`subscriptionId`/providers | 2019-10-01 |
+| ARM  | /subscriptions/`subscriptionId`/resourcegroups | 2021-04-01 |
+| ARM  | /subscriptions/`subscriptionId`/resources | 2021-04-01 |
+| ARM  | /subscriptions | 2020-01-01 |
+| ARM  | /tenants | 2020-01-01 |
 
 ## Integrate with AzOps
 
