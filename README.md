@@ -462,7 +462,7 @@ AzGovViz polls the following APIs
 | MS Graph | v1.0 | /applications |
 | MS Graph | v1.0 | /directoryObjects/getByIds |
 | MS Graph | v1.0 | /users |
-| MS Graph | v1.0 | /groupss |
+| MS Graph | v1.0 | /groups |
 | MS Graph | v1.0 | /servicePrincipals |
 | ARM |2021-05-01-preview | /`resourceId`/providers/Microsoft.Insights/diagnosticSettingsCategories |
 | ARM |2018-11-01-preview | /`scopeId`/providers/Microsoft.Blueprint/blueprints/`blueprintName` |
