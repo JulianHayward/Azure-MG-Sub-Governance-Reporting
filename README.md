@@ -456,57 +456,57 @@ AzAPICall resources:
 
 AzGovViz polls the following APIs
 
-| Endpoint | API name | API version |
+| Endpoint | API version | API name |
 | --- | --- | --- |
-| MS Graph | /groups/`aadGroupId`/transitiveMembers | beta |
-| MS Graph | /applications | v1.0 |
-| MS Graph | /directoryObjects/getByIds | v1.0 |
-| MS Graph | /users | v1.0 |
-| MS Graph | /groupss | v1.0 |
-| MS Graph | /servicePrincipals | v1.0 |
-| ARM  | /`resourceId`/providers/Microsoft.Insights/diagnosticSettingsCategories | 2021-05-01-preview |
-| ARM  | /`scopeId`/providers/Microsoft.Blueprint/blueprints/`blueprintName` | 2018-11-01-preview |
-| ARM  | /providers/Microsoft.Authorization/policyDefinitions | 2021-06-01 |
-| ARM  | /providers/Microsoft.Authorization/policySetDefinitions | 2021-06-01 |
-| ARM  | /providers/Microsoft.Authorization/roleDefinitions | 2018-07-01 |
-| ARM  | /providers/Microsoft.Management/getEntities | 2020-02-01 |
-| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyAssignments | 2021-06-01 |
-| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyDefinitions | 2021-06-01 |
-| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyExemptions | 2020-07-01-preview |
-| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policySetDefinitions | 2021-06-01 |
-| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignments | 2015-07-01 |
-| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignmentSchedules | 2020-10-01-preview |
-| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleDefinitions | 2015-07-01 |
-| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Blueprint/blueprints | 2018-11-01-preview |
-| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.CostManagement/query | 2019-11-01 |
-| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/microsoft.insights/diagnosticSettings | 2020-01-01-preview |
-| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.PolicyInsights/policyStates/latest/summarize | 2019-10-01 |
-| ARM  | /providers/Microsoft.Management/managementGroups/`managementGroupId` | 2020-05-01 |
-| ARM  | /providers/Microsoft.Management/managementGroups/`tenantId`/settings | 2020-02-01 |
-| ARM  | /providers/Microsoft.Management/managementGroups | 2020-05-01 |
-| ARM  | /providers/Microsoft.ResourceGraph/resources | 2021-03-01 |
-| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/locks | 2016-09-01 |
-| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyAssignments | 2021-06-01 |
-| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyDefinitions | 2021-06-01 |
-| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyExemptions | 2020-07-01-preview |
-| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policySetDefinitions | 2021-06-01 |
-| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignments | 2015-07-01 |
-| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentSchedules | 2020-10-01-preview |
-| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics | 2019-08-01-preview |
-| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleDefinitions | 2015-07-01 |
-| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprintAssignments | 2018-11-01-preview |
-| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprints | 2018-11-01-preview |
-| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.CostManagement/query | 2019-11-01 |
-| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Insights/diagnosticSettings | 2021-05-01-preview |
-| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.PolicyInsights/policyStates/latest/summarize | 2019-10-01 |
-| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Resources/tags/default | 2020-06-01 |
-| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Security/pricings | 2018-06-01 |
-| ARM  | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securescores | 2020-01-01 |
-| ARM  | /subscriptions/`subscriptionId`/providers | 2019-10-01 |
-| ARM  | /subscriptions/`subscriptionId`/resourcegroups | 2021-04-01 |
-| ARM  | /subscriptions/`subscriptionId`/resources | 2021-04-01 |
-| ARM  | /subscriptions | 2020-01-01 |
-| ARM  | /tenants | 2020-01-01 |
+| MS Graph | beta | /groups/`aadGroupId`/transitiveMembers |
+| MS Graph | v1.0 | /applications |
+| MS Graph | v1.0 | /directoryObjects/getByIds |
+| MS Graph | v1.0 | /users |
+| MS Graph | v1.0 | /groupss |
+| MS Graph | v1.0 | /servicePrincipals |
+| ARM |2021-05-01-preview | /`resourceId`/providers/Microsoft.Insights/diagnosticSettingsCategories |
+| ARM |2018-11-01-preview | /`scopeId`/providers/Microsoft.Blueprint/blueprints/`blueprintName` |
+| ARM |2021-06-01 | /providers/Microsoft.Authorization/policyDefinitions |
+| ARM |2021-06-01 | /providers/Microsoft.Authorization/policySetDefinitions |
+| ARM |2018-07-01 | /providers/Microsoft.Authorization/roleDefinitions |
+| ARM |2020-02-01 | /providers/Microsoft.Management/getEntities |
+| ARM |2021-06-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyAssignments |
+| ARM |2021-06-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyDefinitions |
+| ARM |2020-07-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyExemptions |
+| ARM |2021-06-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policySetDefinitions |
+| ARM |2015-07-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignments |
+| ARM |2020-10-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignmentSchedules |
+| ARM |2015-07-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleDefinitions |
+| ARM |2018-11-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Blueprint/blueprints |
+| ARM |2019-11-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.CostManagement/query |
+| ARM |2020-01-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/microsoft.insights/diagnosticSettings |
+| ARM |2019-10-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.PolicyInsights/policyStates/latest/summarize |
+| ARM |2020-05-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId` |
+| ARM |2020-02-01 | /providers/Microsoft.Management/managementGroups/`tenantId`/settings |
+| ARM |2020-05-01 | /providers/Microsoft.Management/managementGroups |
+| ARM |2021-03-01 | /providers/Microsoft.ResourceGraph/resources |
+| ARM |2016-09-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/locks |
+| ARM |2021-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyAssignments |
+| ARM |2021-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyDefinitions |
+| ARM |2020-07-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyExemptions |
+| ARM |2021-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policySetDefinitions |
+| ARM |2015-07-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignments |
+| ARM |2020-10-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentSchedules |
+| ARM |2019-08-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics |
+| ARM |2015-07-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleDefinitions |
+| ARM |2018-11-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprintAssignments |
+| ARM |2018-11-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprints |
+| ARM |2019-11-01 | /subscriptions/`subscriptionId`/providers/Microsoft.CostManagement/query |
+| ARM |2021-05-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Insights/diagnosticSettings |
+| ARM |2019-10-01 | /subscriptions/`subscriptionId`/providers/Microsoft.PolicyInsights/policyStates/latest/summarize |
+| ARM |2020-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Resources/tags/default |
+| ARM |2018-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Security/pricings |
+| ARM |2020-01-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securescores |
+| ARM |2019-10-01 | /subscriptions/`subscriptionId`/providers |
+| ARM |2021-04-01 | /subscriptions/`subscriptionId`/resourcegroups |
+| ARM |2021-04-01 | /subscriptions/`subscriptionId`/resources |
+| ARM |2020-01-01 | /subscriptions |
+| ARM |2020-01-01 | /tenants |
 
 ## Integrate with AzOps
 
