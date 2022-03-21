@@ -65,8 +65,8 @@ function getResourceDiagnosticsCapability {
 
                     $responseJSON = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
                     if ($responseJSON -notlike 'meanwhile_deleted*') {
-                        if ($responseJSON -eq 'ResourceTypeNotSupported') {
-                            Write-Host "  ResourceTypeNotSupported | The resource type '$($resourcetype)' does not support diagnostic settings."
+                        if ($responseJSON -eq 'ResourceTypeOrResourceProviderNotSupported') {
+                            Write-Host "  ResourceTypeOrResourceProviderNotSupported | The resource type '$($resourcetype)' does not support diagnostic settings."
 
                         }
                         else {

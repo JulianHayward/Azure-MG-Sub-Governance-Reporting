@@ -277,10 +277,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.1',
+    $AzAPICallVersion = '1.1.2',
 
     [string]
-    $ProductVersion = 'v6_major_20220319_1',
+    $ProductVersion = 'v6_major_20220321_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -871,7 +871,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     Write-Host "Collecting custom data duration: $((NEW-TIMESPAN -Start $startDataCollection -End $endDataCollection).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDataCollection -End $endDataCollection).TotalSeconds) seconds)"
 }
 else {
-    HierarchyMapOnly
+    processHierarchyMapOnly
     exportBaseCSV
 }
 
