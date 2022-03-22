@@ -158,7 +158,7 @@ function getConsumption {
 }
 }
 "@
-
+                    $funcAddToAllConsumptionData = $function:addToAllConsumptionData.ToString()
                     $batch.Group | ForEach-Object -Parallel {
                         $subIdToProcess = $_.subscriptionId
                         $subNameToProcess = $_.subscriptionName
@@ -179,6 +179,7 @@ function getConsumption {
                         $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
                         $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
                         $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
+                        $function:addToAllConsumptionData = $using:funcAddToAllConsumptionData
                         #endregion UsingVARs
 
                         $currentTask = "  Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)) (whitelist))"
@@ -353,6 +354,7 @@ function getConsumption {
 }
 "@
 
+                    $funcAddToAllConsumptionData = $function:addToAllConsumptionData.ToString()
                     $subsToProcessInCustomDataCollection | ForEach-Object -Parallel {
                         $subIdToProcess = $_.subscriptionId
                         $subNameToProcess = $_.subscriptionName
@@ -372,6 +374,7 @@ function getConsumption {
                         $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
                         $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
                         $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
+                        $function:addToAllConsumptionData = $using:funcAddToAllConsumptionData
                         #endregion UsingVARs
 
                         $currentTask = "  Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
