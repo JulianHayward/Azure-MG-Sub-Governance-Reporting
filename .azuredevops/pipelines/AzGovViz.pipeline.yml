@@ -19,7 +19,7 @@ variables:
     value: AzGovVizParallel.ps1
 
   - name: ScheduleBranch
-    value: dev
+    value: master
 
 #schedules:
 #- cron: "0 0,12 * * *"
@@ -27,7 +27,7 @@ variables:
 #  always: true
 #  branches:
 #    include:
-#    - $(ScheduleBranch) #CHECK: branch 'master' is applicable? - delete me :)
+#    - $(ScheduleBranch)
 
 #Running AzOps? Run AzGovViz after 'AzOps - Push' ..
 #AzOps Accellerator https://github.com/Azure/AzOps-Accelerator

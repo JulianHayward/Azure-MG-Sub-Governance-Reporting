@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.2',
 
     [string]
-    $ProductVersion = 'v6_major_20220321_1',
+    $ProductVersion = 'v6_major_20220323_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -480,88 +480,88 @@ $startTime = Get-Date -Format 'dd-MMM-yyyy HH:mm:ss'
 Write-Host "Start AzGovViz $($startTime) (#$($ProductVersion))"
 
 #Region Functions
-. .\$($ScriptPath)\functions\addRowToTable.ps1
+. ".\$($ScriptPath)\functions\addRowToTable.ps1"
 $funcAddRowToTable = $function:addRowToTable.ToString()
 
-. .\$($ScriptPath)\functions\testPowerShellVersion.ps1
-. .\$($ScriptPath)\functions\setOutput.ps1
-. .\$($ScriptPath)\functions\setTranscript.ps1
+. ".\$($ScriptPath)\functions\testPowerShellVersion.ps1"
+. ".\$($ScriptPath)\functions\setOutput.ps1"
+. ".\$($ScriptPath)\functions\setTranscript.ps1"
 
-. .\$($ScriptPath)\functions\handleCloudEnvironment.ps1
-. .\$($ScriptPath)\functions\addHtParameters.ps1
-. .\$($ScriptPath)\functions\selectMg.ps1
-. .\$($ScriptPath)\functions\validateAccess.ps1
+. ".\$($ScriptPath)\functions\handleCloudEnvironment.ps1"
+. ".\$($ScriptPath)\functions\addHtParameters.ps1"
+. ".\$($ScriptPath)\functions\selectMg.ps1"
+. ".\$($ScriptPath)\functions\validateAccess.ps1"
 
-. .\$($ScriptPath)\functions\getEntities.ps1
+. ".\$($ScriptPath)\functions\getEntities.ps1"
 
-. .\$($ScriptPath)\functions\setBaseVariablesMG.ps1
+. ".\$($ScriptPath)\functions\setBaseVariablesMG.ps1"
 
-. .\$($ScriptPath)\functions\getTenantDetails.ps1
+. ".\$($ScriptPath)\functions\getTenantDetails.ps1"
 
-. .\$($ScriptPath)\functions\getDefaultManagementGroup.ps1
+. ".\$($ScriptPath)\functions\getDefaultManagementGroup.ps1"
 
-. .\$($ScriptPath)\functions\runInfo.ps1
+. ".\$($ScriptPath)\functions\runInfo.ps1"
 
-. .\$($ScriptPath)\functions\processHierarchyMapOnly.ps1
+. ".\$($ScriptPath)\functions\processHierarchyMapOnly.ps1"
 
-. .\$($ScriptPath)\functions\getSubscriptions.ps1
-. .\$($ScriptPath)\functions\detailSubscriptions.ps1
+. ".\$($ScriptPath)\functions\getSubscriptions.ps1"
+. ".\$($ScriptPath)\functions\detailSubscriptions.ps1"
 
-. .\$($ScriptPath)\functions\getMDfCSecureScoreMG.ps1
+. ".\$($ScriptPath)\functions\getMDfCSecureScoreMG.ps1"
 
-. .\$($ScriptPath)\functions\getConsumption.ps1
+. ".\$($ScriptPath)\functions\getConsumption.ps1"
 
-. .\$($ScriptPath)\functions\cacheBuiltIn.ps1
+. ".\$($ScriptPath)\functions\cacheBuiltIn.ps1"
 
-. .\$($ScriptPath)\functions\prepareData.ps1
+. ".\$($ScriptPath)\functions\prepareData.ps1"
 
-. .\$($ScriptPath)\functions\getGroupmembers.ps1
+. ".\$($ScriptPath)\functions\getGroupmembers.ps1"
 $funcGetGroupmembers = $function:GetGroupmembers.ToString()
-. .\$($ScriptPath)\functions\processAADGroups.ps1
+. ".\$($ScriptPath)\functions\processAADGroups.ps1"
 
-. .\$($ScriptPath)\functions\processApplications.ps1
+. ".\$($ScriptPath)\functions\processApplications.ps1"
 
-. .\$($ScriptPath)\functions\processManagedIdentities.ps1
+. ".\$($ScriptPath)\functions\processManagedIdentities.ps1"
 
-. .\$($ScriptPath)\functions\createTagList.ps1
+. ".\$($ScriptPath)\functions\createTagList.ps1"
 
-. .\$($ScriptPath)\functions\getResourceDiagnosticsCapability.ps1
+. ".\$($ScriptPath)\functions\getResourceDiagnosticsCapability.ps1"
 
-. .\$($ScriptPath)\functions\getFileNaming.ps1
+. ".\$($ScriptPath)\functions\getFileNaming.ps1"
 
 
-. .\$($ScriptPath)\functions\resolveObjectIds.ps1
+. ".\$($ScriptPath)\functions\resolveObjectIds.ps1"
 $funcResolveObjectIds = $function:ResolveObjectIds.ToString()
 
-. .\$($ScriptPath)\functions\namingValidation.ps1
+. ".\$($ScriptPath)\functions\namingValidation.ps1"
 $funcNamingValidation = $function:NamingValidation.ToString()
 
-. .\$($ScriptPath)\functions\removeInvalidFileNameChars.ps1
+. ".\$($ScriptPath)\functions\removeInvalidFileNameChars.ps1"
 
-. .\$($ScriptPath)\functions\addIndexNumberToArray.ps1
+. ".\$($ScriptPath)\functions\addIndexNumberToArray.ps1"
 
-. .\$($ScriptPath)\functions\processDiagramMermaid.ps1
-. .\$($ScriptPath)\functions\buildMD.ps1
+. ".\$($ScriptPath)\functions\processDiagramMermaid.ps1"
+. ".\$($ScriptPath)\functions\buildMD.ps1"
 
-. .\$($ScriptPath)\functions\buildTree.ps1
-. .\$($ScriptPath)\functions\buildJSON.ps1
+. ".\$($ScriptPath)\functions\buildTree.ps1"
+. ".\$($ScriptPath)\functions\buildJSON.ps1"
 
-. .\$($ScriptPath)\functions\buildPolicyAllJSON.ps1
+. ".\$($ScriptPath)\functions\buildPolicyAllJSON.ps1"
 
-. .\$($ScriptPath)\functions\stats.ps1
+. ".\$($ScriptPath)\functions\stats.ps1"
 
 #Region dataCollectionFunctions
-. .\$($ScriptPath)\functions\dataCollection\dataCollectionFunctions.ps1
-. .\$($ScriptPath)\functions\processDataCollection.ps1
+. ".\$($ScriptPath)\functions\dataCollection\dataCollectionFunctions.ps1"
+. ".\$($ScriptPath)\functions\processDataCollection.ps1"
 
-. .\$($ScriptPath)\functions\exportBaseCSV.ps1
+. ".\$($ScriptPath)\functions\exportBaseCSV.ps1"
 
-. .\$($ScriptPath)\functions\html\htmlFunctions.ps1
-. .\$($ScriptPath)\functions\processTenantSummary.ps1
-. .\$($ScriptPath)\functions\processDefinitionInsights.ps1
-. .\$($ScriptPath)\functions\processScopeInsightsMgOrSub.ps1
+. ".\$($ScriptPath)\functions\html\htmlFunctions.ps1"
+. ".\$($ScriptPath)\functions\processTenantSummary.ps1"
+. ".\$($ScriptPath)\functions\processDefinitionInsights.ps1"
+. ".\$($ScriptPath)\functions\processScopeInsightsMgOrSub.ps1"
 
-. .\$($ScriptPath)\functions\showMemoryUsage.ps1
+. ".\$($ScriptPath)\functions\showMemoryUsage.ps1"
 #EndRegion dataCollectionFunctions
 #EndRegion Functions
 

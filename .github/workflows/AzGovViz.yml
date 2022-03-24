@@ -4,13 +4,13 @@ name: AzGovViz
 env:
   OutputPath: wiki
   ManagementGroupId: <Management Group Id>
-  ScriptDir: pwsh
+  ScriptDir: pwsh #example: 'my folder\pwsh' or 'my folder/pwsh'
   ScriptPrereqFile: prerequisites.ps1
   ScriptFile: AzGovVizParallel.ps1
 
 on:
   #schedule:
-  #  - cron:  '45 4,16 * * *'
+  #  - cron:  '30 4 * * *'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout
         uses: actions/checkout@v2
       
