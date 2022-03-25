@@ -18,16 +18,13 @@ variables:
   - name: Script
     value: AzGovVizParallel.ps1
 
-  - name: ScheduleBranch
-    value: master
-
 #schedules:
 #- cron: "0 0,12 * * *"
 #  displayName: every 12h
 #  always: true
 #  branches:
 #    include:
-#    - $(ScheduleBranch)
+#    - master #CHECK branch 'master' is applicable? - delete me :)
 
 #Running AzOps? Run AzGovViz after 'AzOps - Push' ..
 #AzOps Accellerator https://github.com/Azure/AzOps-Accelerator
@@ -38,7 +35,7 @@ variables:
 #      trigger:
 #        branches:
 #          include:
-#            - master #CHECK: branch 'master' is applicable? - delete me :)
+#            - master #CHECK branch 'master' is applicable? - delete me :)
 
 jobs:
 - job: AzGovViz

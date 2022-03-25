@@ -360,7 +360,7 @@ When the AzDO pipeline executes the AzGovViz script the outputs should be pushed
   * [Optional] Update the '__ExcludedResourceTypesDiagnosticsCapableParameters__'
   * [Optional] Update the '__SubscriptionQuotaIdWhitelistParameters__'
 * Update the '__Required Variables__' section:
-  * Replace `<YourServiceConnection>` with the Service connection name you copied earlier (ServiceConnnection)
+  * Replace `<YourServiceConnection>` with the Service connection name you copied earlier (ServiceConnection)
   * Replace `<YourManagementGroupId>` with the Management Group Id (ManagementGroupId)
 * If needed, update the '__Default Variables__' section
 * If needed, update the '__Optional Variables__' section

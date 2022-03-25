@@ -73,7 +73,7 @@ schedules:
   always: true
   branches:
     include:
-    - master #CHECK: branch 'master' is applicable? - delete me :)
+    - master #CHECK branch 'master' is applicable? - delete me :)
 
 #Running AzOps? Run AzGovViz after 'AzOps - Push' ..
 #AzOps Accellerator https://github.com/Azure/AzOps-Accelerator
