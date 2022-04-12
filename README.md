@@ -58,6 +58,11 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
+__Changes__ (2022-Apr-12 / Major)
+
+* Removed dot sourcing (keep it simple) / all functions are contained in the AzGovVizParallel.ps1 script
+* Bugfixes
+
 __Changes__ (2022-Mar-21 / Major)
 
 * New JSON output *_PolicyAll.json - Contains all relations of Policy/Set definitions and Policy assignments

@@ -1,4 +1,3 @@
-#region resolveObjectIds
 function ResolveObjectIds($objectIds) {
 
     $arrayObjectIdsToCheck = @()
@@ -150,4 +149,3 @@ function ResolveObjectIds($objectIds) {
         }
     }
 }
-#endregion resolveObjectIds

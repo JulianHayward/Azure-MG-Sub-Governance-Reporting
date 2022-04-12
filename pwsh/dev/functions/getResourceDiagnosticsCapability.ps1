@@ -24,9 +24,11 @@ function getResourceDiagnosticsCapability {
             $htResourceTypesUniqueResource = $using:htResourceTypesUniqueResource
             $resourceTypesSummarizedArray = $using:resourceTypesSummarizedArray
             #Functions
+            #AzAPICall
             $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
             $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
             $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
+            $function:Logging = $using:AzAPICallFunctions.funcLogging
             #endregion UsingVARs
 
             $skipThisResourceType = $false

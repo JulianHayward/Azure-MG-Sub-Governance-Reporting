@@ -1,4 +1,3 @@
-#region DefinitionInsights
 function processDefinitionInsights() {
     $startDefinitionInsights = Get-Date
     Write-Host ' Building DefinitionInsights'
@@ -995,4 +994,3 @@ tf.init();}}
     $endDefinitionInsights = Get-Date
     Write-Host "  DefinitionInsights processing duration: $((NEW-TIMESPAN -Start $startDefinitionInsights -End $endDefinitionInsights).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefinitionInsights -End $endDefinitionInsights).TotalSeconds) seconds)"
 }
-#endregion DefinitionInsights

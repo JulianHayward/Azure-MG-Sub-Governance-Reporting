@@ -1,5 +1,4 @@
 function processApplications {
-    #region Application
     Write-Host 'Processing Service Principals - Applications'
     $script:servicePrincipalsOfTypeApplication = $htServicePrincipals.Keys.where( { $htServicePrincipals.($_).servicePrincipalType -eq 'Application' -and $htServicePrincipals.($_).appOwnerOrganizationId -eq $azAPICallConf['checkContext'].Subscription.TenantId } )
     if ($azAPICallConf['htParameters'].userType -eq 'Guest') {
@@ -29,9 +28,11 @@ function processApplications {
             $htAppDetails = $using:htAppDetails
             $htServicePrincipals = $using:htServicePrincipals
             #Functions
+            #AzAPICall
             $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
             $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
             $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
+            $function:Logging = $using:AzAPICallFunctions.funcLogging
             #endregion UsingVARs
 
             $sp = $htServicePrincipals.($_)
@@ -123,5 +124,4 @@ function processApplications {
         $endSPApp = Get-Date
         Write-Host "Processing Service Principals - Applications duration: $((NEW-TIMESPAN -Start $startSPApp -End $endSPApp).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSPApp -End $endSPApp).TotalSeconds) seconds)"
     }
-    #endregion Application
 }

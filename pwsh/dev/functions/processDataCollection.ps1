@@ -64,9 +64,12 @@ function processDataCollection {
             $htServicePrincipals = $using:htServicePrincipals
             $htUserTypesGuest = $using:htUserTypesGuest
             #Functions
+            #AzAPICall
             $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
             $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
             $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
+            $function:Logging = $using:AzAPICallFunctions.funcLogging
+            #other
             $function:addRowToTable = $using:funcAddRowToTable
             $function:namingValidation = $using:funcNamingValidation
             $function:resolveObjectIds = $using:funcResolveObjectIds
@@ -323,10 +326,13 @@ function processDataCollection {
                 $arrayUserAssignedIdentities4Resources = $using:arrayUserAssignedIdentities4Resources
                 $htSubscriptionsRoleAssignmentLimit = $using:htSubscriptionsRoleAssignmentLimit
                 #Functions
+                #AzAPICall
                 $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
                 $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
-                $function:addRowToTable = $using:funcAddRowToTable
                 $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
+                $function:Logging = $using:AzAPICallFunctions.funcLogging
+                #other
+                $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation
                 $function:resolveObjectIds = $using:funcResolveObjectIds
                 $function:dataCollectionMGSecureScore = $using:funcDataCollectionMGSecureScore

@@ -1,5 +1,4 @@
 function setTranscript {
-    #region setTranscript
     if ($ManagementGroupId) {
         if ($onAzureDevOpsOrGitHubActions -eq $true) {
             if ($HierarchyMapOnly -eq $true) {
@@ -50,5 +49,4 @@ function setTranscript {
     }
     Write-Host "Writing transcript: $($outputPath)$($DirectorySeparatorChar)$($fileNameTranscript)"
     Start-Transcript -Path "$($outputPath)$($DirectorySeparatorChar)$($fileNameTranscript)"
-    #endregion setTranscript
 }

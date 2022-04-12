@@ -1,5 +1,4 @@
 function getMDfCSecureScoreMG {
-    #region ASCSecureScoreMGs
     $currentTask = 'Getting Microsoft Defender for Cloud Secure Score for Management Groups'
     Write-Host $currentTask
     #ref: https://docs.microsoft.com/en-us/azure/governance/management-groups/resource-graph-samples?tabs=azure-cli#secure-score-per-management-group
@@ -53,5 +52,4 @@ function getMDfCSecureScoreMG {
             }
         }
     }
-    #endregion ASCSecureScoreMGs
 }

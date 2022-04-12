@@ -1,5 +1,4 @@
 function buildMD {
-    #region BuildMD
     Write-Host 'Building Markdown'
     #test
     Write-Host 'htParameters.onAzureDevOpsOrGitHubActions:' $azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions
@@ -168,5 +167,4 @@ $markdownTable
     $markdown | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).md" -Encoding utf8 -Force
     $endBuildMD = Get-Date
     Write-Host "Building Markdown total duration: $((NEW-TIMESPAN -Start $startBuildMD -End $endBuildMD).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startBuildMD -End $endBuildMD).TotalSeconds) seconds)"
-    #endregion BuildMD
 }

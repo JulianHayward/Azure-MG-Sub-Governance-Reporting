@@ -1,5 +1,3 @@
-#rsu
-#region TenantSummary
 function processTenantSummary() {
     Write-Host ' Building TenantSummary'
     showMemoryUsage
@@ -11904,4 +11902,3 @@ extensions: [{ name: 'sort' }]
     $script:html = $null
 
 }
-#endregion TenantSummary

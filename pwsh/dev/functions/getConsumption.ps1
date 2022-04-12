@@ -176,9 +176,12 @@ function getConsumption {
                         $htAllSubscriptionsFromAPI = $using:htAllSubscriptionsFromAPI
                         $htConsumptionExceptionLog = $using:htConsumptionExceptionLog
                         #Functions
+                        #AzAPICall
                         $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
                         $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
                         $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
+                        $function:Logging = $using:AzAPICallFunctions.funcLogging
+                        #other
                         $function:addToAllConsumptionData = $using:funcAddToAllConsumptionData
                         #endregion UsingVARs
 
@@ -371,9 +374,12 @@ function getConsumption {
                         $allConsumptionData = $using:allConsumptionData
                         $htConsumptionExceptionLog = $using:htConsumptionExceptionLog
                         #Functions
+                        #AzAPICall
                         $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
                         $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
                         $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
+                        $function:Logging = $using:AzAPICallFunctions.funcLogging
+                        #other
                         $function:addToAllConsumptionData = $using:funcAddToAllConsumptionData
                         #endregion UsingVARs
 

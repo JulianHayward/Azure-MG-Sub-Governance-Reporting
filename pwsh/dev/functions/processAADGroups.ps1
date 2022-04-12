@@ -37,9 +37,12 @@ function processAADGroups {
             $htUserTypesGuest = $using:htUserTypesGuest
             $htServicePrincipals = $using:htServicePrincipals
             #Functions
+            #AzAPICall
             $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
             $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
             $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
+            $function:Logging = $using:AzAPICallFunctions.funcLogging
+            #other
             $function:getGroupmembers = $using:funcGetGroupmembers
             #endregion UsingVARs
 

@@ -15,9 +15,11 @@ function cacheBuiltIn {
         $htCacheDefinitionsRole = $using:htCacheDefinitionsRole
         $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
         #Functions
+        #AzAPICall
         $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
         $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
         $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
+        $function:Logging = $using:AzAPICallFunctions.funcLogging
 
         if ($builtInCapability -eq 'PolicyDefinitions') {
             $currentTask = 'Caching built-in Policy definitions'

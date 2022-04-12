@@ -1,5 +1,4 @@
 function getEntities {
-    #region GettingEntities
     Write-Host 'Entities'
     $startEntities = Get-Date
     $currentTask = ' Getting Entities'
@@ -87,5 +86,4 @@ function getEntities {
 
     $endEntities = Get-Date
     Write-Host "Processing Entities duration: $((NEW-TIMESPAN -Start $startEntities -End $endEntities).TotalSeconds) seconds"
-    #endregion GettingEntities
 }

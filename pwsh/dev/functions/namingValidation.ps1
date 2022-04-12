@@ -1,4 +1,3 @@
-#region namingValidation
 function NamingValidation($toCheck) {
     $checks = @(':', '/', '\', '<', '>', '|', '"')
     $array = @()
@@ -15,4 +14,3 @@ function NamingValidation($toCheck) {
     }
     return $array
 }
-#endregion namingValidation

@@ -1,4 +1,4 @@
-#region hierarchyMgHTML
+#region HTML
 function HierarchyMgHTML($mgChild) {
     $mgDetails = $htMgDetails.($mgChild).details
     $mgName = $mgDetails.mgName
@@ -131,9 +131,7 @@ function HierarchyMgHTML($mgChild) {
 '@
     }
 }
-#endregion hierarchyMgHTML
 
-#region hierarchySubForMgHTML
 function HierarchySubForMgHTML($mgChild) {
     $subscriptions = $htMgDetails.($mgChild).Subscriptions.SubScriptionId
     $subscriptionsCnt = ($subscriptions).count
@@ -158,9 +156,7 @@ function HierarchySubForMgHTML($mgChild) {
         }
     }
 }
-#endregion hierarchySubForMgHTML
 
-#region hierarchySubForMgUlHTML
 function HierarchySubForMgUlHTML($mgChild) {
     $subscriptions = $htMgDetails.($mgChild).Subscriptions.SubScriptionId
     $subscriptionsCnt = ($subscriptions).count
@@ -185,9 +181,7 @@ function HierarchySubForMgUlHTML($mgChild) {
         }
     }
 }
-#endregion hierarchySubForMgUlHTML
 
-#region tableMgHTML
 function processScopeInsights($mgChild, $mgChildOf) {
     $mgDetails = $htMgDetails.($mgChild).details
     $mgName = $mgDetails.mgName
@@ -262,9 +256,7 @@ function processScopeInsights($mgChild, $mgChildOf) {
         }
     }
 }
-#endregion tableMgHTML
 
-#region tableSubForMgHTML
 function processScopeInsightsMGSubs($mgChild) {
     $subscriptions = $htMgDetails.($mgChild).Subscriptions
     $subscriptionLinkedCount = ($subscriptions).count
@@ -355,4 +347,4 @@ function processScopeInsightsMGSubs($mgChild) {
 '@
     }
 }
-#endregion tableSubForMgHTML
+#endregion HTML

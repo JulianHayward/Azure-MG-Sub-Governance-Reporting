@@ -1,5 +1,4 @@
 function buildPolicyAllJSON {
-    #region BuildPolicyJSON
     Write-Host 'Creating PolicyAll JSON'
     $startPolicyAllJSON = Get-Date
     $htPolicyAndPolicySet = [ordered]@{}
@@ -51,5 +50,4 @@ function buildPolicyAllJSON {
 
     $endPolicyAllJSON = Get-Date
     Write-Host "Creating PolicyAll JSON duration: $((NEW-TIMESPAN -Start $startPolicyAllJSON -End $endPolicyAllJSON).TotalSeconds) seconds"
-    #endregion BuildPolicyJSON
 }

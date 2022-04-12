@@ -1,4 +1,3 @@
-#region addRowToTable
 function addRowToTable() {
     Param (
         [string]$level = 0,
@@ -194,4 +193,3 @@ function addRowToTable() {
             RoleAssignmentPIMSlotEnd                 = $RoleAssignmentPIMSlotEnd
         })
 }
-#endregion addRowToTable
