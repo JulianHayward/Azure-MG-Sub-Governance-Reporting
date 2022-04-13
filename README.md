@@ -58,8 +58,9 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Apr-12 / Major)
+__Changes__ (2022-Apr-12/13 / Major)
 
+* foreach -parallel import the AzAPICall module instead of $using:
 * Removed dot sourcing (keep it simple) / all functions are contained in the AzGovVizParallel.ps1 script
 * Bugfixes
 

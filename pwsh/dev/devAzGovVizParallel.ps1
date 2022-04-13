@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.8',
 
     [string]
-    $ProductVersion = 'v6_major_20220412_1',
+    $ProductVersion = 'v6_major_20220413_2',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -674,7 +674,8 @@ $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 Write-Host " Initialize 'AzAPICall' succeeded" -ForegroundColor Green
 #EndRegion initAZAPICall
 
-$AzAPICallFunctions = getAzAPICallFunctions
+#obsolete
+#$AzAPICallFunctions = getAzAPICallFunctions
 
 handleCloudEnvironment
 addHtParameters

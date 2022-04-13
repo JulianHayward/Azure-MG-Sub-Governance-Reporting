@@ -25,10 +25,16 @@ function getResourceDiagnosticsCapability {
             $resourceTypesSummarizedArray = $using:resourceTypesSummarizedArray
             #Functions
             #AzAPICall
-            $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
-            $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
-            $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
-            $function:Logging = $using:AzAPICallFunctions.funcLogging
+            # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
+            # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
+            # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
+            # $function:Logging = $using:AzAPICallFunctions.funcLogging
+            if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
+                Import-Module ".\pwsh\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+            }
+            else {
+                Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
+            }
             #endregion UsingVARs
 
             $skipThisResourceType = $false
