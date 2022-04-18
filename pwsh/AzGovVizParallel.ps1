@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.8',
 
     [string]
-    $ProductVersion = 'v6_major_20220413_2',
+    $ProductVersion = 'v6_major_20220418_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -9273,113 +9273,124 @@ function processTenantSummary() {
         $arrayUnresolvedIdentitiesCount = $arrayUnresolvedIdentities.Count
         Write-Host "    $arrayUnresolvedIdentitiesCount unresolved identities that have a value"
         if ($arrayUnresolvedIdentitiesCount -gt 0) {
-            $nonResolvedIdentitiesToCheck = '"{0}"' -f ($arrayUnresolvedIdentities -join '","')
-            Write-Host "    IdentitiesToCheck: $nonResolvedIdentitiesToCheck"
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/directoryObjects/getByIds"
-            $method = 'POST'
-            $body = @"
-        {
-            "ids":[$($nonResolvedIdentitiesToCheck)]
-        }
+
+            $counterBatch = [PSCustomObject] @{ Value = 0 }
+            $batchSize = 1000
+            $ObjectBatch = $arrayUnresolvedIdentities | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
+            $ObjectBatchCount = ($ObjectBatch | Measure-Object).Count
+            $batchCnt = 0
+
+            foreach ($batch in $ObjectBatch) {
+                $batchCnt++
+
+                $nonResolvedIdentitiesToCheck = '"{0}"' -f ($batch.Group -join '","')
+                Write-Host "     IdentitiesToCheck: Batch #$batchCnt/$($ObjectBatchCount) ($(($batch.Group).Count))"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/directoryObjects/getByIds"
+                $method = 'POST'
+                $body = @"
+            {
+                "ids":[$($nonResolvedIdentitiesToCheck)]
+            }
 "@
 
-            $script:htResolvedIdentities = @{}
-            function resolveIdentitiesRBAC($currentTask) {
-                $resolvedIdentities = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask
-                $resolvedIdentitiesCount = $resolvedIdentities.Count
-                Write-Host "    $resolvedIdentitiesCount identities resolved"
-                if ($resolvedIdentitiesCount -gt 0) {
+                $script:htResolvedIdentities = @{}
+                function resolveIdentitiesRBAC($currentTask) {
+                    $resolvedIdentities = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask
+                    $resolvedIdentitiesCount = $resolvedIdentities.Count
+                    Write-Host "    $resolvedIdentitiesCount identities resolved"
+                    if ($resolvedIdentitiesCount -gt 0) {
 
-                    foreach ($resolvedIdentity in $resolvedIdentities) {
+                        foreach ($resolvedIdentity in $resolvedIdentities) {
 
-                        if (-not $htResolvedIdentities.($resolvedIdentity.id)) {
+                            if (-not $htResolvedIdentities.($resolvedIdentity.id)) {
 
-                            $script:htResolvedIdentities.($resolvedIdentity.id) = @{}
-                            if ($resolvedIdentity.'@odata.type' -eq '#microsoft.graph.servicePrincipal' -or $resolvedIdentity.'@odata.type' -eq '#microsoft.graph.user') {
-                                if ($resolvedIdentity.'@odata.type' -eq '#microsoft.graph.servicePrincipal') {
-                                    if ($resolvedIdentity.servicePrincipalType -eq 'ManagedIdentity') {
-                                        $miType = 'unknown'
-                                        foreach ($altName in $resolvedIdentity.alternativeNames) {
-                                            if ($altName -like 'isExplicit=*') {
-                                                $splitAltName = $altName.split('=')
-                                                if ($splitAltName[1] -eq 'true') {
-                                                    $miType = 'Usr'
+                                $script:htResolvedIdentities.($resolvedIdentity.id) = @{}
+                                if ($resolvedIdentity.'@odata.type' -eq '#microsoft.graph.servicePrincipal' -or $resolvedIdentity.'@odata.type' -eq '#microsoft.graph.user') {
+                                    if ($resolvedIdentity.'@odata.type' -eq '#microsoft.graph.servicePrincipal') {
+                                        if ($resolvedIdentity.servicePrincipalType -eq 'ManagedIdentity') {
+                                            $miType = 'unknown'
+                                            foreach ($altName in $resolvedIdentity.alternativeNames) {
+                                                if ($altName -like 'isExplicit=*') {
+                                                    $splitAltName = $altName.split('=')
+                                                    if ($splitAltName[1] -eq 'true') {
+                                                        $miType = 'Usr'
+                                                    }
+                                                    if ($splitAltName[1] -eq 'false') {
+                                                        $miType = 'Sys'
+                                                    }
                                                 }
-                                                if ($splitAltName[1] -eq 'false') {
-                                                    $miType = 'Sys'
-                                                }
                                             }
-                                        }
-                                        $sptype = "MI $miType"
-                                        $custObjectType = "ObjectType: SP $sptype, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
-                                        $ht = @{}
-                                        $ht.'ObjectType' = "SP $sptype"
-                                        $ht.'ObjectDisplayName' = $($resolvedIdentity.displayName)
-                                        $ht.'ObjectSignInName' = 'n/a'
-                                        $ht.'ObjectId' = $resolvedIdentity.id
-                                    }
-                                    else {
-                                        if ($resolvedIdentity.servicePrincipalType -eq 'Application') {
-                                            $sptype = 'App'
-                                            if ($resolvedIdentity.appOwnerOrganizationId -eq $azAPICallConf['checkContext'].Tenant.Id) {
-                                                $custObjectType = "ObjectType: SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
-                                                $ht = @{}
-                                                $ht.'ObjectType' = "SP $sptype INT"
-                                                $ht.'ObjectDisplayName' = $($resolvedIdentity.displayName)
-                                                $ht.'ObjectSignInName' = 'n/a'
-                                                $ht.'ObjectId' = $resolvedIdentity.id
-                                            }
-                                            else {
-                                                $custObjectType = "ObjectType: SP $sptype EXT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
-                                                $ht = @{}
-                                                $ht.'ObjectType' = "SP $sptype EXT"
-                                                $ht.'ObjectDisplayName' = $($resolvedIdentity.displayName)
-                                                $ht.'ObjectSignInName' = 'n/a'
-                                                $ht.'ObjectId' = $resolvedIdentity.id
-                                            }
+                                            $sptype = "MI $miType"
+                                            $custObjectType = "ObjectType: SP $sptype, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
+                                            $ht = @{}
+                                            $ht.'ObjectType' = "SP $sptype"
+                                            $ht.'ObjectDisplayName' = $($resolvedIdentity.displayName)
+                                            $ht.'ObjectSignInName' = 'n/a'
+                                            $ht.'ObjectId' = $resolvedIdentity.id
                                         }
                                         else {
-                                            Write-Host "* * * Unexpected IdentityType $($resolvedIdentity.servicePrincipalType)"
+                                            if ($resolvedIdentity.servicePrincipalType -eq 'Application') {
+                                                $sptype = 'App'
+                                                if ($resolvedIdentity.appOwnerOrganizationId -eq $azAPICallConf['checkContext'].Tenant.Id) {
+                                                    $custObjectType = "ObjectType: SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
+                                                    $ht = @{}
+                                                    $ht.'ObjectType' = "SP $sptype INT"
+                                                    $ht.'ObjectDisplayName' = $($resolvedIdentity.displayName)
+                                                    $ht.'ObjectSignInName' = 'n/a'
+                                                    $ht.'ObjectId' = $resolvedIdentity.id
+                                                }
+                                                else {
+                                                    $custObjectType = "ObjectType: SP $sptype EXT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
+                                                    $ht = @{}
+                                                    $ht.'ObjectType' = "SP $sptype EXT"
+                                                    $ht.'ObjectDisplayName' = $($resolvedIdentity.displayName)
+                                                    $ht.'ObjectSignInName' = 'n/a'
+                                                    $ht.'ObjectId' = $resolvedIdentity.id
+                                                }
+                                            }
+                                            else {
+                                                Write-Host "* * * Unexpected IdentityType $($resolvedIdentity.servicePrincipalType)"
+                                            }
                                         }
+                                        $script:htResolvedIdentities.($resolvedIdentity.id).custObjectType = $custObjectType
+                                        $script:htResolvedIdentities.($resolvedIdentity.id).obj = $resolvedIdentity
                                     }
-                                    $script:htResolvedIdentities.($resolvedIdentity.id).custObjectType = $custObjectType
-                                    $script:htResolvedIdentities.($resolvedIdentity.id).obj = $resolvedIdentity
+
+                                    if ($resolvedIdentity.'@odata.type' -eq '#microsoft.graph.user') {
+                                        if ($htParamteters.DoNotShowRoleAssignmentsUserData) {
+                                            $hlpObjectDisplayName = 'scrubbed'
+                                            $hlpObjectSigninName = 'scrubbed'
+                                        }
+                                        else {
+                                            $hlpObjectDisplayName = $resolvedIdentity.displayName
+                                            $hlpObjectSigninName = $resolvedIdentity.userPrincipalName
+                                        }
+                                        $custObjectType = "ObjectType: User, ObjectDisplayName: $hlpObjectDisplayName, ObjectSignInName: $hlpObjectSigninName, ObjectId: $($resolvedIdentity.id) (r)"
+                                        $ht = @{}
+                                        $ht.'ObjectType' = 'User'
+                                        $ht.'ObjectDisplayName' = $hlpObjectDisplayName
+                                        $ht.'ObjectSignInName' = $hlpObjectSigninName
+                                        $ht.'ObjectId' = $resolvedIdentity.id
+
+                                        $script:htResolvedIdentities.($resolvedIdentity.id).custObjectType = $custObjectType
+                                        $script:htResolvedIdentities.($resolvedIdentity.id).obj = $resolvedIdentity
+                                    }
+                                    if (-not $htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id)) {
+                                        $script:htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id) = @{}
+                                        $script:htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id).details = $custObjectType
+                                        $script:htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id).detailsJson = $ht
+                                    }
                                 }
 
-                                if ($resolvedIdentity.'@odata.type' -eq '#microsoft.graph.user') {
-                                    if ($htParamteters.DoNotShowRoleAssignmentsUserData) {
-                                        $hlpObjectDisplayName = 'scrubbed'
-                                        $hlpObjectSigninName = 'scrubbed'
-                                    }
-                                    else {
-                                        $hlpObjectDisplayName = $resolvedIdentity.displayName
-                                        $hlpObjectSigninName = $resolvedIdentity.userPrincipalName
-                                    }
-                                    $custObjectType = "ObjectType: User, ObjectDisplayName: $hlpObjectDisplayName, ObjectSignInName: $hlpObjectSigninName, ObjectId: $($resolvedIdentity.id) (r)"
-                                    $ht = @{}
-                                    $ht.'ObjectType' = 'User'
-                                    $ht.'ObjectDisplayName' = $hlpObjectDisplayName
-                                    $ht.'ObjectSignInName' = $hlpObjectSigninName
-                                    $ht.'ObjectId' = $resolvedIdentity.id
-
-                                    $script:htResolvedIdentities.($resolvedIdentity.id).custObjectType = $custObjectType
-                                    $script:htResolvedIdentities.($resolvedIdentity.id).obj = $resolvedIdentity
+                                if ($resolvedIdentity.'@odata.type' -ne '#microsoft.graph.user' -and $resolvedIdentity.'@odata.type' -ne '#microsoft.graph.servicePrincipal') {
+                                    Write-Host "!!! * * * IdentityType '$($resolvedIdentity.'@odata.type')' was not considered by AzGovViz - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
                                 }
-                                if (-not $htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id)) {
-                                    $script:htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id) = @{}
-                                    $script:htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id).details = $custObjectType
-                                    $script:htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id).detailsJson = $ht
-                                }
-                            }
-
-                            if ($resolvedIdentity.'@odata.type' -ne '#microsoft.graph.user' -and $resolvedIdentity.'@odata.type' -ne '#microsoft.graph.servicePrincipal') {
-                                Write-Host "!!! * * * IdentityType '$($resolvedIdentity.'@odata.type')' was not considered by AzGovViz - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
                             }
                         }
                     }
                 }
+                resolveIdentitiesRBAC -currentTask '    resolveObjectbyId RoleAssignment'
             }
-            resolveIdentitiesRBAC -currentTask '    resolveObjectbyId RoleAssignment'
 
             foreach ($rbac in $rbacAll.where( { $_.CreatedBy -notlike 'ObjectType*' })) {
                 if ($htResolvedIdentities.($rbac.CreatedBy)) {
@@ -11917,84 +11928,94 @@ extensions: [{ name: 'sort' }]
         $arrayUnresolvedIdentitiesCount = $arrayUnresolvedIdentities.Count
         Write-Host "     $arrayUnresolvedIdentitiesCount unresolved identities that have a value"
         if ($arrayUnresolvedIdentitiesCount.Count -gt 0) {
-            $nonResolvedIdentitiesToCheck = '"{0}"' -f ($arrayUnresolvedIdentities -join '","')
-            Write-Host "     IdentitiesToCheck: $nonResolvedIdentitiesToCheck"
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/directoryObjects/getByIds"
-            $method = 'POST'
-            $body = @"
-        {
-            "ids":[$($nonResolvedIdentitiesToCheck)]
-        }
+            $counterBatch = [PSCustomObject] @{ Value = 0 }
+            $batchSize = 1000
+            $ObjectBatch = $arrayUnresolvedIdentities | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
+            $ObjectBatchCount = ($ObjectBatch | Measure-Object).Count
+            $batchCnt = 0
+
+            foreach ($batch in $ObjectBatch) {
+                $batchCnt++
+
+                $nonResolvedIdentitiesToCheck = '"{0}"' -f ($batch.Group -join '","')
+                Write-Host "     IdentitiesToCheck: Batch #$batchCnt/$($ObjectBatchCount) ($(($batch.Group).Count))"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/directoryObjects/getByIds"
+                $method = 'POST'
+                $body = @"
+            {
+                "ids":[$($nonResolvedIdentitiesToCheck)]
+            }
 "@
 
-            $script:htResolvedIdentitiesPolicy = @{}
+                $script:htResolvedIdentitiesPolicy = @{}
 
-            function resolveIdentitiesPolicy($currentTask) {
-                $resolvedIdentities = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask
-                $resolvedIdentitiesCount = $resolvedIdentities.Count
-                Write-Host "     $resolvedIdentitiesCount identities resolved"
-                if ($resolvedIdentitiesCount -gt 0) {
-                    foreach ($resolvedIdentity in $resolvedIdentities) {
-                        if (-not $htResolvedIdentitiesPolicy.($resolvedIdentity.id)) {
-                            $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id) = @{}
-                            if ($resolvedIdentity.'@odata.type' -eq '#microsoft.graph.servicePrincipal') {
-                                if ($resolvedIdentity.servicePrincipalType -eq 'ManagedIdentity') {
-                                    $miType = 'unknown'
-                                    foreach ($altName in $resolvedIdentity.alternativeNames) {
-                                        if ($altName -like 'isExplicit=*') {
-                                            $splitAltName = $altName.split('=')
-                                            if ($splitAltName[1] -eq 'true') {
-                                                $miType = 'Usr'
+                function resolveIdentitiesPolicy($currentTask) {
+                    $resolvedIdentities = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask
+                    $resolvedIdentitiesCount = $resolvedIdentities.Count
+                    Write-Host "     $resolvedIdentitiesCount identities resolved"
+                    if ($resolvedIdentitiesCount -gt 0) {
+                        foreach ($resolvedIdentity in $resolvedIdentities) {
+                            if (-not $htResolvedIdentitiesPolicy.($resolvedIdentity.id)) {
+                                $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id) = @{}
+                                if ($resolvedIdentity.'@odata.type' -eq '#microsoft.graph.servicePrincipal') {
+                                    if ($resolvedIdentity.servicePrincipalType -eq 'ManagedIdentity') {
+                                        $miType = 'unknown'
+                                        foreach ($altName in $resolvedIdentity.alternativeNames) {
+                                            if ($altName -like 'isExplicit=*') {
+                                                $splitAltName = $altName.split('=')
+                                                if ($splitAltName[1] -eq 'true') {
+                                                    $miType = 'Usr'
+                                                }
+                                                if ($splitAltName[1] -eq 'false') {
+                                                    $miType = 'Sys'
+                                                }
                                             }
-                                            if ($splitAltName[1] -eq 'false') {
-                                                $miType = 'Sys'
-                                            }
                                         }
-                                    }
-                                    $sptype = "MI $miType"
-                                    $custObjectType = "ObjectType: SP $sptype, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (rp)"
-                                }
-                                else {
-                                    if ($resolvedIdentity.servicePrincipalType -eq 'Application') {
-                                        $sptype = 'App'
-                                        if ($resolvedIdentity.appOwnerOrganizationId -eq $azAPICallConf['checkContext'].Tenant.Id) {
-                                            $custObjectType = "ObjectType: SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (rp)"
-                                        }
-                                        else {
-                                            $custObjectType = "ObjectType: SP $sptype EXT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (rp)"
-                                        }
+                                        $sptype = "MI $miType"
+                                        $custObjectType = "ObjectType: SP $sptype, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (rp)"
                                     }
                                     else {
-                                        Write-Host "* * * Unexpected IdentityType $($resolvedIdentity.servicePrincipalType)"
+                                        if ($resolvedIdentity.servicePrincipalType -eq 'Application') {
+                                            $sptype = 'App'
+                                            if ($resolvedIdentity.appOwnerOrganizationId -eq $azAPICallConf['checkContext'].Tenant.Id) {
+                                                $custObjectType = "ObjectType: SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (rp)"
+                                            }
+                                            else {
+                                                $custObjectType = "ObjectType: SP $sptype EXT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (rp)"
+                                            }
+                                        }
+                                        else {
+                                            Write-Host "* * * Unexpected IdentityType $($resolvedIdentity.servicePrincipalType)"
+                                        }
                                     }
+                                    $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).custObjectType = $custObjectType
+                                    $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).obj = $resolvedIdentity
                                 }
-                                $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).custObjectType = $custObjectType
-                                $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).obj = $resolvedIdentity
-                            }
 
-                            if ($resolvedIdentity.'@odata.type' -eq '#microsoft.graph.user') {
-                                if ($azAPICallConf['htParameters'].DoNotShowRoleAssignmentsUserData) {
-                                    $hlpObjectDisplayName = 'scrubbed'
-                                    $hlpObjectSigninName = 'scrubbed'
+                                if ($resolvedIdentity.'@odata.type' -eq '#microsoft.graph.user') {
+                                    if ($azAPICallConf['htParameters'].DoNotShowRoleAssignmentsUserData) {
+                                        $hlpObjectDisplayName = 'scrubbed'
+                                        $hlpObjectSigninName = 'scrubbed'
+                                    }
+                                    else {
+                                        $hlpObjectDisplayName = $resolvedIdentity.displayName
+                                        $hlpObjectSigninName = $resolvedIdentity.userPrincipalName
+                                    }
+                                    $custObjectType = "ObjectType: User, ObjectDisplayName: $hlpObjectDisplayName, ObjectSignInName: $hlpObjectSigninName, ObjectId: $($resolvedIdentity.id) (rp)"
+
+                                    $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).custObjectType = $custObjectType
+                                    $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).obj = $resolvedIdentity
                                 }
-                                else {
-                                    $hlpObjectDisplayName = $resolvedIdentity.displayName
-                                    $hlpObjectSigninName = $resolvedIdentity.userPrincipalName
+
+                                if ($resolvedIdentity.'@odata.type' -ne '#microsoft.graph.user' -and $resolvedIdentity.'@odata.type' -ne '#microsoft.graph.servicePrincipal') {
+                                    Write-Host "!!! * * * IdentityType '$($resolvedIdentity.'@odata.type')' was not considered by AzGovViz - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
                                 }
-                                $custObjectType = "ObjectType: User, ObjectDisplayName: $hlpObjectDisplayName, ObjectSignInName: $hlpObjectSigninName, ObjectId: $($resolvedIdentity.id) (rp)"
-
-                                $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).custObjectType = $custObjectType
-                                $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id).obj = $resolvedIdentity
-                            }
-
-                            if ($resolvedIdentity.'@odata.type' -ne '#microsoft.graph.user' -and $resolvedIdentity.'@odata.type' -ne '#microsoft.graph.servicePrincipal') {
-                                Write-Host "!!! * * * IdentityType '$($resolvedIdentity.'@odata.type')' was not considered by AzGovViz - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
                             }
                         }
                     }
                 }
+                resolveIdentitiesPolicy -currentTask 'resolveObjectbyId PolicyAssignment #1'
             }
-            resolveIdentitiesPolicy -currentTask 'resolveObjectbyId PolicyAssignment #1'
 
             foreach ($policyAssignment in $script:arrayPolicyAssignmentsEnriched.where( { -not [string]::IsNullOrEmpty($_.CreatedBy) -and $_.CreatedBy -notlike 'ObjectType*' })) {
                 if ($htResolvedIdentitiesPolicy.($policyAssignment.CreatedBy)) {

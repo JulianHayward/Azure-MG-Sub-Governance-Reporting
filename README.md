@@ -58,6 +58,10 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
+__Changes__ (2022-Apr-18 / Major)
+
+* Thanks Brooks - Microsoft Graph `v1.0/directoryObjects/getByIds` do batching is exceeds 1000 identities
+
 __Changes__ (2022-Apr-12/13 / Major)
 
 * foreach -parallel import the AzAPICall module instead of $using:
@@ -76,10 +80,10 @@ __Changes__ (2022-Mar-21 / Major)
 * Performance optimization
 * Bugfixes
 
-Passed tests: Powershell Core 7.2.1 on Windows  
-Passed tests: Powershell Core 7.2.1 Azure DevOps hosted agent ubuntu-18.04  
-Passed tests: Powershell Core 7.2.1 Github Actions hosted agent ubuntu-latest  
-Passed tests: Powershell Core 7.2.1 GitHub Codespaces mcr.microsoft.com/powershell:latest  
+Passed tests: Powershell Core 7.2.2 on Windows  
+Passed tests: Powershell Core 7.2.2 Azure DevOps hosted agent ubuntu-18.04  
+Passed tests: Powershell Core 7.2.2 Github Actions hosted agent ubuntu-latest  
+Passed tests: Powershell Core 7.2.2 GitHub Codespaces mcr.microsoft.com/powershell:latest  
 Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
 
 [Release history](history.md)
