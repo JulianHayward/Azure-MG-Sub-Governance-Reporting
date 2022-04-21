@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.8',
 
     [string]
-    $ProductVersion = 'v6_major_20220418_1',
+    $ProductVersion = 'v6_major_20220421_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -9280,6 +9280,8 @@ function processTenantSummary() {
             $ObjectBatchCount = ($ObjectBatch | Measure-Object).Count
             $batchCnt = 0
 
+            $script:htResolvedIdentities = @{}
+
             foreach ($batch in $ObjectBatch) {
                 $batchCnt++
 
@@ -9288,12 +9290,11 @@ function processTenantSummary() {
                 $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/directoryObjects/getByIds"
                 $method = 'POST'
                 $body = @"
-            {
-                "ids":[$($nonResolvedIdentitiesToCheck)]
-            }
+                    {
+                        "ids":[$($nonResolvedIdentitiesToCheck)]
+                    }
 "@
 
-                $script:htResolvedIdentities = @{}
                 function resolveIdentitiesRBAC($currentTask) {
                     $resolvedIdentities = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask
                     $resolvedIdentitiesCount = $resolvedIdentities.Count
@@ -11934,6 +11935,8 @@ extensions: [{ name: 'sort' }]
             $ObjectBatchCount = ($ObjectBatch | Measure-Object).Count
             $batchCnt = 0
 
+            $script:htResolvedIdentitiesPolicy = @{}
+
             foreach ($batch in $ObjectBatch) {
                 $batchCnt++
 
@@ -11942,12 +11945,10 @@ extensions: [{ name: 'sort' }]
                 $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/directoryObjects/getByIds"
                 $method = 'POST'
                 $body = @"
-            {
-                "ids":[$($nonResolvedIdentitiesToCheck)]
-            }
+                    {
+                        "ids":[$($nonResolvedIdentitiesToCheck)]
+                    }
 "@
-
-                $script:htResolvedIdentitiesPolicy = @{}
 
                 function resolveIdentitiesPolicy($currentTask) {
                     $resolvedIdentities = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask
