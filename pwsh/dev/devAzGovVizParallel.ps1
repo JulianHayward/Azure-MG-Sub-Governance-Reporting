@@ -277,10 +277,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.8',
+    $AzAPICallVersion = '1.1.11',
 
     [string]
-    $ProductVersion = 'v6_major_20220421_1',
+    $ProductVersion = 'v6_major_20220425_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -666,9 +666,9 @@ until ($importAzAPICallModuleSuccess)
 #Region initAZAPICall
 Write-Host "Initialize 'AzAPICall'"
 $parameters4AzAPICallModule = @{
-    #DebugAzAPICall = $DebugAzAPICall
-    #SubscriptionId4AzContext = $SubscriptionId4AzContext
-    GithubRepository = $GithubRepository
+    DebugAzAPICall           = $DebugAzAPICall
+    SubscriptionId4AzContext = $SubscriptionId4AzContext
+    GithubRepository         = $GithubRepository
 }
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 Write-Host " Initialize 'AzAPICall' succeeded" -ForegroundColor Green
