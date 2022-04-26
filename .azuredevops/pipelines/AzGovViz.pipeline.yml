@@ -35,7 +35,7 @@ variables:
 #      trigger:
 #        branches:
 #          include:
-#            - master #CHECK: branch 'master' is applicable? - delete me :)
+#            - master #CHECK branch 'master' is applicable? - delete me :)
 
 jobs:
 - job: AzGovViz

@@ -221,10 +221,10 @@ variables:
     # Integer | Default = 5 | example: value: 10
     value:
 
-  # Will show memory usage //pending release
-  #- name: ShowMemoryUsage
-  #  # Switch | example: value: true
-  #  value:
+  # Will show memory usage
+  - name: ShowMemoryUsage
+    # Switch | example: value: true
+    value:
 
 # Dynamic Variables - Do Not Modify Anything Below this line!
   - name: ExcludedResourceTypesDiagnosticsCapable

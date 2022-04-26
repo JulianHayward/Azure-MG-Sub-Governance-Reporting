@@ -1,13 +1,16 @@
-# AzGovViz v6_major_20220116_2
+# AzGovViz v6_major_20220319_1
 name: AzGovViz_OIDC
 
 env:
-  outputpath: wiki
-  ManagementGroupId: <managementGroupId>
+  OutputPath: wiki
+  ManagementGroupId: <Management Group Id>
+  ScriptDir: pwsh #example: 'my folder\pwsh' or 'my folder/pwsh'
+  ScriptPrereqFile: prerequisites.ps1
+  ScriptFile: AzGovVizParallel.ps1
 
 on:
   #schedule:
-  #  - cron:  '45 5,17 * * *'
+  # - cron:  '30 5 * * *'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -28,23 +31,17 @@ jobs:
       - name: Connect Azure OIDC
         uses: azure/login@v1
         with:
-          client-id: ${{secrets.CLIENT_ID}}
-          tenant-id: ${{secrets.TENANT_ID}}
-          subscription-id: ${{secrets.SUBSCRIPTION_ID}} 
+          client-id: ${{secrets.CLIENT_ID}} #create this secret
+          tenant-id: ${{secrets.TENANT_ID}} #create this secret
+          subscription-id: ${{secrets.SUBSCRIPTION_ID}} #create this secret
           enable-AzPSSession: true
        
-      - name: Check prerequisites
-        uses: azure/powershell@v1
-        with:
-          inlineScript: |
-            .\pwsh\prerequisites.ps1
-          azPSVersion: "latest"
-
       - name: Run AzGovViz
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            .\pwsh\AzGovVizParallel.ps1 -ManagementGroupId ${env:ManagementGroupId} -SubscriptionId4AzContext ${{secrets.SUBSCRIPTION_ID}} -outputpath ${env:outputpath}
+            . .\$($env:ScriptDir)\$($env:ScriptPrereqFile)
+            . .\$($env:ScriptDir)\$($env:ScriptFile) -ManagementGroupId ${env:ManagementGroupId} -SubscriptionId4AzContext ${{secrets.SUBSCRIPTION_ID}} -ScriptPath ${env:ScriptDir} -OutputPath ${env:OutputPath}
           azPSVersion: "latest"
       
       - name: Push AzGovViz output to repository

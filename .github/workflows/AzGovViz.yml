@@ -1,13 +1,16 @@
-# AzGovViz v6_major_20220116_2
+# AzGovViz v6_major_20220319_1
 name: AzGovViz
 
 env:
-  outputpath: wiki
-  ManagementGroupId: <managementGroupId>
+  OutputPath: wiki
+  ManagementGroupId: <Management Group Id>
+  ScriptDir: pwsh #example: 'my folder\pwsh' or 'my folder/pwsh'
+  ScriptPrereqFile: prerequisites.ps1
+  ScriptFile: AzGovVizParallel.ps1
 
 on:
   #schedule:
-  #  - cron:  '45 4,16 * * *'
+  #  - cron:  '30 4 * * *'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -17,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout
         uses: actions/checkout@v2
       
@@ -32,19 +36,13 @@ jobs:
           #   "clientId": "<GUID>",
           #   "clientSecret": "<GUID>"
           # }
-       
-      - name: Check prerequisites
-        uses: azure/powershell@v1
-        with:
-          inlineScript: |
-            .\pwsh\prerequisites.ps1
-          azPSVersion: "latest"
 
       - name: Run AzGovViz
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            .\pwsh\AzGovVizParallel.ps1 -ManagementGroupId ${env:ManagementGroupId} -outputpath ${env:outputpath}
+            . .\$($env:ScriptDir)\$($env:ScriptPrereqFile)
+            . .\$($env:ScriptDir)\$($env:ScriptFile) -ManagementGroupId ${env:ManagementGroupId} -ScriptPath ${env:ScriptDir} -OutputPath ${env:OutputPath}
           azPSVersion: "latest"
       
       - name: Push AzGovViz output to repository
