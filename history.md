@@ -4,6 +4,18 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Apr-25 / Major)
+
+* New JSON output *_PolicyAll.json - Contains all relations of Policy/Set definitions and Policy assignments
+* New parameter `-ShowMemoryUsage` - Shows memory usage at memory intense sections of the scripts, this shall help you determine if the the worker is well sized for AzGovViz
+* Leveraging AzAPICall PowerShell module. The AzAPICall function has been removed from the AzGovViz code base and has been published as a module to the [PoweShell Gallery](https://www.powershellgallery.com/packages/AzAPICall) ([GitHub](https://aka.ms/AzAPICall))
+* Foreach -parallel import the AzAPICall module instead of $using:
+* Optimize GitHub Actions workflows (YAML)
+* Added list of [APIs](#api) that are polled by AzGovViz
+* Microsoft Graph `v1.0/directoryObjects/getByIds` do batching is exceeds 1000 identities
+* Performance optimization
+* Bugfixes
+
 __Changes__ (2022-Jan-31 / Major)
 
 * New __TenantSummary | RBAC__ feature - insights on all Role definitions that are capable to write Role assignments

@@ -58,25 +58,15 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Apr-18 / Major)
-
-* Thanks Brooks - Microsoft Graph `v1.0/directoryObjects/getByIds` do batching is exceeds 1000 identities
-
-__Changes__ (2022-Apr-12/13 / Major)
-
-* foreach -parallel import the AzAPICall module instead of $using:
-* Removed dot sourcing (keep it simple) / all functions are contained in the AzGovVizParallel.ps1 script
-* Bugfixes
-
-__Changes__ (2022-Mar-21 / Major)
+__Changes__ (2022-Apr-25 / Major)
 
 * New JSON output *_PolicyAll.json - Contains all relations of Policy/Set definitions and Policy assignments
 * New parameter `-ShowMemoryUsage` - Shows memory usage at memory intense sections of the scripts, this shall help you determine if the the worker is well sized for AzGovViz
-* Refactor Script 
-  * dot sourcing functions
-  * leveraging AzAPICall PowerShell module. The AzAPICall function has been removed from the AzGovViz code base and has been published as a module to the [PoweShell Gallery](https://www.powershellgallery.com/packages/AzAPICall) ([GitHub](https://aka.ms/AzAPICall))
+* Leveraging AzAPICall PowerShell module. The AzAPICall function has been removed from the AzGovViz code base and has been published as a module to the [PoweShell Gallery](https://www.powershellgallery.com/packages/AzAPICall) ([GitHub](https://aka.ms/AzAPICall))
+* Foreach -parallel import the AzAPICall module instead of $using:
 * Optimize GitHub Actions workflows (YAML)
 * Added list of [APIs](#api) that are polled by AzGovViz
+* Microsoft Graph `v1.0/directoryObjects/getByIds` do batching is exceeds 1000 identities
 * Performance optimization
 * Bugfixes
 
