@@ -1,5 +1,10 @@
 #This script should be run in Azure DevOps Pipelines and GitHub Actions only
 
+param(
+    [string]
+    $OutputPath = 'wiki'
+)
+
 if ($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) {
     $codeRunPlatform = 'AzureDevOps'
 }
@@ -17,7 +22,7 @@ if ($codeRunPlatform -eq 'GitHubActions') {
     $repoUri = "https://github.com/$($env:GITHUB_REPOSITORY)"
     Write-Host "Testing if repository '$($repoUri)' is accessible from the public"
     try {
-        $res = Invoke-WebRequest -uri $repoUri
+        $res = Invoke-WebRequest -Uri $repoUri
         $statusCode = $res.StatusCode
     }
     catch {
@@ -25,30 +30,30 @@ if ($codeRunPlatform -eq 'GitHubActions') {
     }
     finally {
         if ($statusCode -eq 404) {
-            Write-Host  "Test returned statusCode: '$statusCode' - '$($repoUri)' seems not accessible from the public - proceed"
+            Write-Host "Test returned statusCode: '$statusCode' - '$($repoUri)' seems not accessible from the public - proceed"
         }
         elseif ($statusCode -eq 200) {
-            Write-Host  "Test returned statusCode: '$statusCode' - '$($repoUri)' is accessible from the public!"
-            Write-Host  'Assuming and insisting that you do not want to publish your tenant insights to the public - throw'
+            Write-Host "Test returned statusCode: '$statusCode' - '$($repoUri)' is accessible from the public!"
+            Write-Host 'Assuming and insisting that you do not want to publish your tenant insights to the public - throw'
             throw
         }
         else {
-            Write-Host  "Test returned statusCode: '$statusCode' - skipping this test"
+            Write-Host "Test returned statusCode: '$statusCode' - skipping this test"
         }
     }
 
-    Write-Host "outputpath is '$($env:Outputpath)'"
-    if (-not (Test-Path -Path ".\$($env:Outputpath)")) {
+    Write-Host "outputpath is '$OutputPath'"
+    if (-not (Test-Path -Path ".\$OutputPath")) {
         #Assuming this is the initial run
 
         #Create the outputpath dir
-        Write-Host "Creating directory '$($env:Outputpath)'"
-        New-Item -ItemType Directory -Force -Path $($env:Outputpath)
+        Write-Host "Creating directory '$OutputPath'"
+        New-Item -ItemType Directory -Force -Path $OutputPath
 
         Get-ChildItem
     }
     else {
-        Write-Host "outputpath dir '$($env:Outputpath)' already exists"
+        Write-Host "outputpath dir '$OutputPath' already exists"
     }
 }
 
@@ -104,7 +109,7 @@ if ($codeRunPlatform -eq 'AzureDevOps') {
             $providerDisplayName = $res.value.providerDisplayName
             $providerDisplayNameProjectCollectionBuildService = $providerDisplayName
             $subjectDescriptor = $res.value.subjectDescriptor
-    
+
             if ($providerDisplayName -ne $buildServiceAccountId) {
                 $buildAccount = "$($project) Build Service ($($organization))"
                 Write-Host "Checking: $buildAccount"
@@ -181,7 +186,7 @@ if ($codeRunPlatform -eq 'AzureDevOps') {
                     Write-Error 'Error'
                 }
                 else {
-                    $timestamp = get-date -format 'yyyy-MM-dd_HH:mm:ss'
+                    $timestamp = Get-Date -Format 'yyyy-MM-dd_HH:mm:ss'
                     $fileContent = @"
         Repository access check result:
         Date: $($timestamp)

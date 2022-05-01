@@ -152,7 +152,6 @@ Proceed with step [__Run AzGovViz from Console__](#run-azgovviz-from-console)
         * [Installing PowerShell on Linux](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-linux)
     * Requires PowerShell Az Modules
         * Az.Accounts
-        * ~~Az.Resources~~
         * [Install the Azure Az PowerShell module](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps)
 
 ### Connecting to Azure as User (Member or Guest)
@@ -417,7 +416,7 @@ Use this workflow if you want leverage the [OIDC (Open ID Connect) feature](http
 
 For the GitHub Actiom to authenticate and connect to Azure we need to create Service Principal (Application)
 
-* Navigate to 'Azure Active Directory'
+In the Azure Portal navigate to 'Azure Active Directory'
 * Click on '__App registrations__'
 * Click on '__New registration__'
 * Name your application (e.g. 'AzGovViz_SC')
@@ -431,11 +430,11 @@ For the GitHub Actiom to authenticate and connect to Azure we need to create Ser
 ### Store the credentials in GitHub (AzGovViz YAML)
 
 In GitHub navigate to 'Settings'
-Click on 'Secrets'
-Click on 'Actions'
-Click 'New repository secret'
-Name: CREDS
-Value:
+* Click on 'Secrets'
+* Click on 'Actions'
+* Click 'New repository secret'
+    * Name: CREDS
+    * Value:  
 ```
 {
    "tenantId": "<GUID>",
@@ -445,18 +444,26 @@ Value:
 }
 ```
 
+### Workflow permissions 
+
+In GitHub navigate to 'Settings'  
+* Click on 'Actions'  
+* Click on 'General'  
+* Under 'Workflow permissions' select '__Read and write permissions__'  
+* Click 'Save'
+
 ### Edit the workflow YAML file (AzGovViz YAML)
 
-In the folder `./github/workflows` edit the YAML file `AzGovViz.yml`
-In the `env` section enter you Management Group ID
-If you want to continuously run AzGovViz then enable the `schedule` in the `on` section
+* In the folder `./github/workflows` edit the YAML file `AzGovViz.yml`
+* In the `env` section enter you Management Group ID
+* If you want to continuously run AzGovViz then enable the `schedule` in the `on` section
 
 ### Run AzGovViz in GitHub Actions (AzGovViz YAML)
 
 In GitHub navigate to 'Actions'
-Click 'Enable GitHub Actions on this repository'
-Select the AzGovViz workflow
-Click 'Run workflow'
+* Click 'Enable GitHub Actions on this repository'
+* Select the AzGovViz workflow
+* Click 'Run workflow'
 
 ## AzGovViz OIDC YAML
 
@@ -482,36 +489,48 @@ For the GitHub Actiom to authenticate and connect to Azure we need to create Ser
 ### Store the credentials in GitHub (AzGovViz OIDC YAML)
 
 In GitHub navigate to 'Settings'
-Click on 'Secrets'
-Click on 'Actions'
-Click 'New repository secret'
-Create the following three secrets:
-* Name: CLIENT_ID
-Value: `Application (client) ID`
-* Name: TENANT_ID
-Value: `Tenant ID`
-* Name: SUBSCRIPTION_ID
-Value: `Subscription ID`
+* Click on 'Secrets'  
+* Click on 'Actions'  
+* Click 'New repository secret'  
+* Create the following three secrets:  
+    * Name: CLIENT_ID  
+      Value: `Application (client) ID`  
+    * Name: TENANT_ID  
+      Value: `Tenant ID`  
+    * Name: SUBSCRIPTION_ID  
+      Value: `Subscription ID`  
+
+### Workflow permissions 
+
+In GitHub navigate to 'Settings'  
+* Click on 'Actions'  
+* Click on 'General'  
+* Under 'Workflow permissions' select '__Read and write permissions__'  
+* Click 'Save'
 
 ### Edit the workflow YAML file (AzGovViz OIDC YAML)
 
-In the folder `./github/workflows` edit the YAML file `AzGovViz_OIDC.yml`
-In the `env` section enter you Management Group ID
-If you want to continuously run AzGovViz then enable the `schedule` in the `on` section
+* In the folder `./github/workflows` edit the YAML file `AzGovViz_OIDC.yml`
+* In the `env` section enter you Management Group ID
+* If you want to continuously run AzGovViz then enable the `schedule` in the `on` section
 
 ### Run AzGovViz in GitHub Actions (AzGovViz OIDC YAML)
 
 In GitHub navigate to 'Actions'
-Click 'Enable GitHub Actions on this repository'
-Select the AzGovViz_OIDC workflow
-Click 'Run workflow'
+* Click 'Enable GitHub Actions on this repository'
+* Select the AzGovViz_OIDC workflow
+* Click 'Run workflow'
 
 # AzGovViz GitHub Codespaces
 
 Note: Codespaces is available for organizations using GitHub Team or GitHub Enterprise Cloud. [Quickstart for Codespaces](https://docs.github.com/en/codespaces/getting-started/quickstart)
 
 ![alt text](img/codespaces0.png "AzGovViz GitHub Codespaces")
+
 ![alt text](img/codespaces1.png "AzGovViz GitHub Codespaces")
+
 ![alt text](img/codespaces2.png "AzGovViz GitHub Codespaces")
+
 ![alt text](img/codespaces3.png "AzGovViz GitHub Codespaces")
+
 ![alt text](img/codespaces4.png "AzGovViz GitHub Codespaces")

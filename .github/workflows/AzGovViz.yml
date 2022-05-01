@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220319_1
+# AzGovViz v6_major_20220501_1
 name: AzGovViz
 
 env:
@@ -37,11 +37,17 @@ jobs:
           #   "clientSecret": "<GUID>"
           # }
 
+      - name: Check prerequisites
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            . .\$($env:ScriptDir)\$($env:ScriptPrereqFile) -OutputPath ${env:OutputPath}
+          azPSVersion: "latest"
+
       - name: Run AzGovViz
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            . .\$($env:ScriptDir)\$($env:ScriptPrereqFile)
             . .\$($env:ScriptDir)\$($env:ScriptFile) -ManagementGroupId ${env:ManagementGroupId} -ScriptPath ${env:ScriptDir} -OutputPath ${env:OutputPath}
           azPSVersion: "latest"
       

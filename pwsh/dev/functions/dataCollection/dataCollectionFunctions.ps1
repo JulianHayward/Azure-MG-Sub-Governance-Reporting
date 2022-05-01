@@ -2256,23 +2256,22 @@ function dataCollectionRoleAssignmentsMG {
     )
 
     $addRowToTableDone = $false
-    #PIM MGRoleAssignmentSchedules
-    $currentTask = "getARMRoleAssignmentSchedules '$($scopeDisplayName)' ('$($scopeId)')"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentSchedules?api-version=2020-10-01-preview"
+    #PIM MGRoleAssignmentScheduleInstances
+    $currentTask = "getARMRoleAssignmentScheduleInstances MG '$($scopeDisplayName)' ('$($scopeId)')"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
     $method = 'GET'
-    $roleAssignmentSchedulesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-    if ($roleAssignmentSchedulesFromAPI -eq 'ResourceNotOnboarded' -or $roleAssignmentSchedulesFromAPI -eq 'TenantNotOnboarded' -or $roleAssignmentSchedulesFromAPI -eq 'InvalidResourceType') {
+    if ($roleAssignmentScheduleInstancesFromAPI -eq 'ResourceNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'TenantNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'InvalidResourceType') {
         #Write-Host "Scope '$($scopeDisplayName)' ('$scopeId') not onboarded in PIM"
     }
     else {
-        $roleAssignmentSchedules = ($roleAssignmentSchedulesFromAPI.where( { -not [string]::IsNullOrEmpty($_.properties.roleAssignmentScheduleRequestId) }))
-        $roleAssignmentSchedulesCount = $roleAssignmentSchedules.Count
-        if ($roleAssignmentSchedulesCount -gt 0) {
+        $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
+        $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
+        if ($roleAssignmentScheduleInstancesCount -gt 0) {
             $htRoleAssignmentsPIM = @{}
-            foreach ($roleAssignmentSchedule in $roleAssignmentSchedules) {
-                $keyName = "$(($roleAssignmentSchedule.properties.scope).ToLower())-$(($roleAssignmentSchedule.properties.expandedProperties.principal.id).ToLower())-$(($roleAssignmentSchedule.properties.expandedProperties.roleDefinition.id).ToLower())"
-                $htRoleAssignmentsPIM.($keyName) = $roleAssignmentSchedule.properties
+            foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
+                $htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
             }
         }
     }
@@ -2318,9 +2317,8 @@ function dataCollectionRoleAssignmentsMG {
     foreach ($L0mgmtGroupRoleAssignment in $L0mgmtGroupRoleAssignments) {
         $roleAssignmentId = ($L0mgmtGroupRoleAssignment.id).ToLower()
 
-        $keyName = "$(($L0mgmtGroupRoleAssignment.properties.scope).ToLower())-$(($L0mgmtGroupRoleAssignment.properties.principalId).ToLower())-$(($L0mgmtGroupRoleAssignment.properties.roleDefinitionId).ToLower())"
-        if ($htRoleAssignmentsPIM.($keyName)) {
-            $hlperPim = $htRoleAssignmentsPIM.($keyName)
+        if ($htRoleAssignmentsPIM.($roleAssignmentId)) {
+            $hlperPim = $htRoleAssignmentsPIM.($roleAssignmentId)
             $pim = 'true'
             $pimAssignmentType = $hlperPim.assignmentType
             $pimSlotStart = $($hlperPim.startDateTime)
@@ -2534,23 +2532,22 @@ function dataCollectionRoleAssignmentsSub {
 
     $script:htSubscriptionsRoleAssignmentLimit.($scopeId) = $roleAssignmentsUsage.roleAssignmentsLimit
 
-    #PIM SubscriptionRoleAssignmentSchedules
-    $currentTask = "Role assignment schedules API '$($scopeDisplayName)' ('$scopeId')"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentSchedules?api-version=2020-10-01-preview"
+    #PIM SubscriptionRoleAssignmentScheduleInstances
+    $currentTask = "getARMRoleAssignmentScheduleInstances Sub '$($scopeDisplayName)' ('$scopeId')"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
     $method = 'GET'
-    $roleAssignmentSchedulesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-    if ($roleAssignmentSchedulesFromAPI -eq 'ResourceNotOnboarded' -or $roleAssignmentSchedulesFromAPI -eq 'TenantNotOnboarded' -or $roleAssignmentSchedulesFromAPI -eq 'InvalidResourceType') {
+    if ($roleAssignmentScheduleInstancesFromAPI -eq 'ResourceNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'TenantNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'InvalidResourceType') {
         #Write-Host "Scope '$($scopeDisplayName)' ('$scopeId') not onboarded in PIM"
     }
     else {
-        $roleAssignmentSchedules = ($roleAssignmentSchedulesFromAPI.where( { -not [string]::IsNullOrEmpty($_.properties.roleAssignmentScheduleRequestId) }))
-        $roleAssignmentSchedulesCount = $roleAssignmentSchedules.Count
-        if ($roleAssignmentSchedulesCount -gt 0) {
+        $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
+        $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
+        if ($roleAssignmentScheduleInstancesCount -gt 0) {
             $htRoleAssignmentsPIM = @{}
-            foreach ($roleAssignmentSchedule in $roleAssignmentSchedules) {
-                $keyName = "$(($roleAssignmentSchedule.properties.scope).ToLower())-$(($roleAssignmentSchedule.properties.expandedProperties.principal.id).ToLower())-$(($roleAssignmentSchedule.properties.expandedProperties.roleDefinition.id).ToLower())"
-                $htRoleAssignmentsPIM.($keyName) = $roleAssignmentSchedule.properties
+            foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
+                $htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
             }
         }
     }
@@ -2687,9 +2684,8 @@ function dataCollectionRoleAssignmentsSub {
             $roleAssignmentScopeRes = $roleAssignmentScopeSplit[8]
         }
 
-        $keyName = "$(($L1mgmtGroupSubRoleAssignment.properties.scope).ToLower())-$(($L1mgmtGroupSubRoleAssignment.properties.principalId).ToLower())-$(($L1mgmtGroupSubRoleAssignment.properties.roleDefinitionId).ToLower())"
-        if ($htRoleAssignmentsPIM.($keyName)) {
-            $hlperPim = $htRoleAssignmentsPIM.($keyName)
+        if ($htRoleAssignmentsPIM.($roleAssignmentId)) {
+            $hlperPim = $htRoleAssignmentsPIM.($roleAssignmentId)
             $pim = 'true'
             $pimAssignmentType = $hlperPim.assignmentType
             $pimSlotStart = $($hlperPim.startDateTime)

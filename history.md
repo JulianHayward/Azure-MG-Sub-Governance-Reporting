@@ -4,6 +4,15 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-May-01 / Major)
+
+* Switch from ARM API endpoint `roleAssignmentSchedules` to `roleAssignmentScheduleInstances`, switch from api-version `2020-10-01-preview` to `2020-10-01`
+* Update GitHub Actions workflows
+* Update `pwsh/prerequisites.ps1` script (relevant for GitHub Actions and Azure DevOps Pipeline)
+* Update __[API reference](#api-reference)__
+* Update __[Setup Guide](setup.md)__
+* Bugfix
+
 __Changes__ (2022-Apr-25 / Major)
 
 * New JSON output *_PolicyAll.json - Contains all relations of Policy/Set definitions and Policy assignments

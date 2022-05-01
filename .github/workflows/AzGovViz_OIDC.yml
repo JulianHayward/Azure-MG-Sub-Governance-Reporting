@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220319_1
+# AzGovViz v6_major_20220501_1
 name: AzGovViz_OIDC
 
 env:
@@ -35,12 +35,18 @@ jobs:
           tenant-id: ${{secrets.TENANT_ID}} #create this secret
           subscription-id: ${{secrets.SUBSCRIPTION_ID}} #create this secret
           enable-AzPSSession: true
-       
+      
+      - name: Check prerequisites
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            . .\$($env:ScriptDir)\$($env:ScriptPrereqFile) -OutputPath ${env:OutputPath}
+          azPSVersion: "latest"
+
       - name: Run AzGovViz
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            . .\$($env:ScriptDir)\$($env:ScriptPrereqFile)
             . .\$($env:ScriptDir)\$($env:ScriptFile) -ManagementGroupId ${env:ManagementGroupId} -SubscriptionId4AzContext ${{secrets.SUBSCRIPTION_ID}} -ScriptPath ${env:ScriptDir} -OutputPath ${env:OutputPath}
           azPSVersion: "latest"
       

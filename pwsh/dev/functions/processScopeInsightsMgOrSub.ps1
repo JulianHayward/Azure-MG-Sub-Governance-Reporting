@@ -2914,13 +2914,13 @@ extensions: [{ name: 'sort' }]
                 if ($roleAssignment.Scope -notlike 'this*') {
                     $rolesAssignedInheritedCount++
                 }
-                if ($roleAssignment.ObjectType -eq 'User') {
+                if ($roleAssignment.ObjectType -like 'User*') {
                     $rolesAssignedUser++
                 }
                 if ($roleAssignment.ObjectType -eq 'Group') {
                     $rolesAssignedGroup++
                 }
-                if ($roleAssignment.ObjectType -eq 'ServicePrincipal') {
+                if ($roleAssignment.ObjectType -like 'SP*') {
                     $rolesAssignedServicePrincipal++
                 }
                 if ($roleAssignment.ObjectType -eq 'Unknown') {

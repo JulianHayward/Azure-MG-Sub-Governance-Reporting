@@ -45,7 +45,7 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
   * [Required permissions in Azure Active Directory](#required-permissions-in-azure-active-directory)
   * [PowerShell](#powershell)
   * [Parameters](#parameters)
-  * [API](#api)
+  * [API reference](#api-reference)
 * [Integrate with AzOps](#integrate-with-azops)
 * [Stats](#stats)
 * [Security](#security)
@@ -58,17 +58,14 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Apr-25 / Major)
+__Changes__ (2022-May-01 / Major)
 
-* New JSON output *_PolicyAll.json - Contains all relations of Policy/Set definitions and Policy assignments
-* New parameter `-ShowMemoryUsage` - Shows memory usage at memory intense sections of the scripts, this shall help you determine if the the worker is well sized for AzGovViz
-* Leveraging AzAPICall PowerShell module. The AzAPICall function has been removed from the AzGovViz code base and has been published as a module to the [PoweShell Gallery](https://www.powershellgallery.com/packages/AzAPICall) ([GitHub](https://aka.ms/AzAPICall))
-* Foreach -parallel import the AzAPICall module instead of $using:
-* Optimize GitHub Actions workflows (YAML)
-* Added list of [APIs](#api) that are polled by AzGovViz
-* Microsoft Graph `v1.0/directoryObjects/getByIds` do batching is exceeds 1000 identities
-* Performance optimization
-* Bugfixes
+* Switch from ARM API endpoint `roleAssignmentSchedules` to `roleAssignmentScheduleInstances`, switch from api-version `2020-10-01-preview` to `2020-10-01`
+* Update GitHub Actions workflows
+* Update `pwsh/prerequisites.ps1` script (relevant for GitHub Actions and Azure DevOps Pipeline)
+* Update __[API reference](#api-reference)__
+* Update __[Setup Guide](setup.md)__
+* Bugfix
 
 Passed tests: Powershell Core 7.2.2 on Windows  
 Passed tests: Powershell Core 7.2.2 Azure DevOps hosted agent ubuntu-18.04  
@@ -452,7 +449,7 @@ AzAPICall resources:
   * `-ManagementGroupsOnly` - Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
   * `-ShowMemoryUsage` - Shows memory usage at memory intense sections of the scripts, this shall help you determine if the the worker is well sized for AzGovViz
 
-### API
+### API reference
 
 AzGovViz polls the following APIs
 
@@ -475,7 +472,7 @@ AzGovViz polls the following APIs
 | ARM |2020-07-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyExemptions |
 | ARM |2021-06-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policySetDefinitions |
 | ARM |2015-07-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignments |
-| ARM |2020-10-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignmentSchedules |
+| ARM |2020-10-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignmentScheduleInstances |
 | ARM |2015-07-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleDefinitions |
 | ARM |2018-11-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Blueprint/blueprints |
 | ARM |2019-11-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.CostManagement/query |
@@ -491,7 +488,7 @@ AzGovViz polls the following APIs
 | ARM |2020-07-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyExemptions |
 | ARM |2021-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policySetDefinitions |
 | ARM |2015-07-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignments |
-| ARM |2020-10-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentSchedules |
+| ARM |2020-10-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentScheduleInstances |
 | ARM |2019-08-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics |
 | ARM |2015-07-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleDefinitions |
 | ARM |2018-11-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprintAssignments |
