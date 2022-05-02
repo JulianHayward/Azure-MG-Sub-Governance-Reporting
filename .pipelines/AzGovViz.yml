@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220319_1
+# AzGovViz v6_minor_20220502_2
 # First things first: 
 # 1. edit line 61 and line 62 
 # 2. check line 76 and 87 if branch 'master' is applicable 
@@ -91,7 +91,7 @@ jobs:
   timeoutInMinutes: 0
 
   pool:
-    vmImage: 'ubuntu-18.04'
+    vmImage: 'ubuntu-20.04'
 
   steps:
   - task: PowerShell@2

@@ -58,28 +58,25 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-May-01 / Major)
+__Changes__ (2022-May-02 / Minor)
 
-* Switch from ARM API endpoint `roleAssignmentSchedules` to `roleAssignmentScheduleInstances`, switch from api-version `2020-10-01-preview` to `2020-10-01`
-* Update GitHub Actions workflows
-* Update `pwsh/prerequisites.ps1` script (relevant for GitHub Actions and Azure DevOps Pipeline)
-* Update __[API reference](#api-reference)__
-* Update __[Setup Guide](setup.md)__
-* Bugfix
+* __Tenant Summary__ Change Tracking - RBAC Role assignments: add PIM (Priviledged Identity Management) information
+* Azure DevOps pipeline YAML - change `vmImage: 'ubuntu-18.04'` to  `vmImage: 'ubuntu-20.04'`
+* Published new HTML [demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)
 
 Passed tests: Powershell Core 7.2.2 on Windows  
-Passed tests: Powershell Core 7.2.2 Azure DevOps hosted agent ubuntu-18.04  
+Passed tests: Powershell Core 7.2.2 Azure DevOps hosted agent ubuntu-20.04  
 Passed tests: Powershell Core 7.2.2 Github Actions hosted agent ubuntu-latest  
 Passed tests: Powershell Core 7.2.2 GitHub Codespaces mcr.microsoft.com/powershell:latest  
 Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
 
-[Release history](history.md)
+[Full release history](history.md)
 
 ## Demo
 
 <a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html" target="_blank">![Demo](img/demo4_66.png)</a>
 
-[Demo (v6_major_20220131_1)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)  
+[Demo (v6_minor_20220502_2)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)  
 Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation
 
 More [demo output](https://github.com/JulianHayward/AzGovViz)

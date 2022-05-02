@@ -4,6 +4,12 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-May-02 / Minor)
+
+* __Tenant Summary__ Change Tracking - RBAC Role assignments: add PIM (Priviledged Identity Management) information
+* Azure DevOps pipeline YAML - change `vmImage: 'ubuntu-18.04'` to  `vmImage: 'ubuntu-20.04'`
+* Published new HTML [demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)
+
 __Changes__ (2022-May-01 / Major)
 
 * Switch from ARM API endpoint `roleAssignmentSchedules` to `roleAssignmentScheduleInstances`, switch from api-version `2020-10-01-preview` to `2020-10-01`

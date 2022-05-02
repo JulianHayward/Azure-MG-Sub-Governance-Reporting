@@ -11010,6 +11010,10 @@ tf.init();}}
 <th>Applicability</th>
 <th>Applies through membership <abbr title="Note: the identity might not be a direct member of the group it could also be member of a nested group"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></th>
 <th>Group Details</th>
+<th>PIM</th>
+<th>PIM assignment type</th>
+<th>PIM start</th>
+<th>PIM end</th>
 <th>Role AssignmentId</th>
 <th>Related Policy Assignment $noteOrNot</th>
 <th>CreatedOn</th>
@@ -11042,10 +11046,14 @@ tf.init();}}
 <td>{9}</td>
 <td>{10}</td>
 <td>{11}</td>
-<td class="breakwordall">{12}</td>
-<td class="breakwordall">{13}</td>
-<td class="breakwordall">{14}</td>
-<td class="breakwordall">{15}</td>
+<td>{12}</td>
+<td>{13}</td>
+<td>{14}</td>
+<td>{15}</td>
+<td class="breakwordall">{16}</td>
+<td class="breakwordall">{17}</td>
+<td class="breakwordall">{18}</td>
+<td class="breakwordall">{19}</td>
 </tr>
 '@, $entry.TenOrMgOrSubOrRGOrRes,
                 $roleName,
@@ -11059,6 +11067,10 @@ tf.init();}}
                 $entry.AssignmentType,
                 $entry.AssignmentInheritFrom,
                 $entry.GroupMembersCount,
+                $entry.RoleAssignmentPIMRelated,
+                $entry.RoleAssignmentPIMAssignmentType,
+                $entry.RoleAssignmentPIMAssignmentSlotStart,
+                $entry.RoleAssignmentPIMAssignmentSlotEnd,
                 $entry.RoleAssignmentId,
                 ($entry.RbacRelatedPolicyAssignment -replace '<', '&lt;' -replace '>', '&gt;'),
                 $entry.CreatedOn,
@@ -11108,6 +11120,8 @@ col_3: 'select',
 col_4: 'select',
 col_8: 'multiple',
 col_9: 'select',
+col_12: 'select',
+col_13: 'select',
 locale: 'en-US',
 col_types: [
     'caseinsensitivestring',
@@ -11122,6 +11136,10 @@ col_types: [
     'caseinsensitivestring',
     'caseinsensitivestring',
     'caseinsensitivestring',
+    'caseinsensitivestring',
+    'caseinsensitivestring',
+    'date',
+    'date',
     'caseinsensitivestring',
     'caseinsensitivestring',
     'date',
