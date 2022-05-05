@@ -23,18 +23,15 @@ function processApplications {
             $currentDateUTC = $using:currentDateUTC
             #fromOtherFunctions
             $azAPICallConf = $using:azAPICallConf
+            $scriptPath = $using:ScriptPath
             #Array&HTs
             $arrayApplicationRequestResourceNotFound = $using:arrayApplicationRequestResourceNotFound
             $htAppDetails = $using:htAppDetails
             $htServicePrincipals = $using:htServicePrincipals
             #Functions
             #AzAPICall
-            # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
-            # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
-            # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
-            # $function:Logging = $using:AzAPICallFunctions.funcLogging
             if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                Import-Module ".\pwsh\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+                Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
             }
             else {
                 Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop

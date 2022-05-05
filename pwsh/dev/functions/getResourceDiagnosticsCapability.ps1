@@ -18,6 +18,7 @@ function getResourceDiagnosticsCapability {
             #region UsingVARs
             #fromOtherFunctions
             $azAPICallConf = $using:azAPICallConf
+            $scriptPath = $using:ScriptPath
             #Array&HTs
             $ExcludedResourceTypesDiagnosticsCapable = $using:ExcludedResourceTypesDiagnosticsCapable
             $resourceTypesDiagnosticsArray = $using:resourceTypesDiagnosticsArray
@@ -25,12 +26,8 @@ function getResourceDiagnosticsCapability {
             $resourceTypesSummarizedArray = $using:resourceTypesSummarizedArray
             #Functions
             #AzAPICall
-            # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
-            # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
-            # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
-            # $function:Logging = $using:AzAPICallFunctions.funcLogging
             if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                Import-Module ".\pwsh\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+                Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
             }
             else {
                 Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop

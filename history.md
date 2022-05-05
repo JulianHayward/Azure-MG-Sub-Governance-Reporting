@@ -4,6 +4,10 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-May-05 / Major)
+
+* fix: `using:scriptPath` variable in foreach parallel (this is only relevant for Azure DevOps and GitHub if you have a non default folder structure in your repository)
+
 __Changes__ (2022-May-02 / Minor)
 
 * __Tenant Summary__ Change Tracking - RBAC Role assignments: add PIM (Priviledged Identity Management) information

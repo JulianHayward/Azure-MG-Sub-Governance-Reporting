@@ -170,6 +170,7 @@ function getConsumption {
                         $SubscriptionQuotaIdWhitelist = $using:SubscriptionQuotaIdWhitelist
                         #fromOtherFunctions
                         $azAPICallConf = $using:azAPICallConf
+                        $scriptPath = $using:ScriptPath
                         #Array&HTs
                         $allConsumptionData = $using:allConsumptionData
                         $htSubscriptionsMgPath = $using:htSubscriptionsMgPath
@@ -177,12 +178,8 @@ function getConsumption {
                         $htConsumptionExceptionLog = $using:htConsumptionExceptionLog
                         #Functions
                         #AzAPICall
-                        # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
-                        # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
-                        # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
-                        # $function:Logging = $using:AzAPICallFunctions.funcLogging
                         if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                            Import-Module ".\pwsh\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+                            Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
                         }
                         else {
                             Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
@@ -374,6 +371,7 @@ function getConsumption {
                         $azureConsumptionEndDate = $using:azureConsumptionEndDate
                         #fromOtherFunctions
                         $azAPICallConf = $using:azAPICallConf
+                        $scriptPath = $using:ScriptPath
                         #Array&HTs
                         $htSubscriptionsMgPath = $using:htSubscriptionsMgPath
                         $htAllSubscriptionsFromAPI = $using:htAllSubscriptionsFromAPI
@@ -381,12 +379,8 @@ function getConsumption {
                         $htConsumptionExceptionLog = $using:htConsumptionExceptionLog
                         #Functions
                         #AzAPICall
-                        # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
-                        # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
-                        # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
-                        # $function:Logging = $using:AzAPICallFunctions.funcLogging
                         if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                            Import-Module ".\pwsh\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+                            Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
                         }
                         else {
                             Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop

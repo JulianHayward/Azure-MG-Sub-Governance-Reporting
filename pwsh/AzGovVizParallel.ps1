@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.11',
 
     [string]
-    $ProductVersion = 'v6_minor_20220502_2',
+    $ProductVersion = 'v6_major_20220505_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -1667,6 +1667,7 @@ function cacheBuiltIn {
         $builtInCapability = $_
         #fromOtherFunctions
         $azAPICallConf = $using:azAPICallConf
+        $scriptPath = $using:ScriptPath
         #Array&HTs
         $htCacheDefinitionsPolicy = $using:htCacheDefinitionsPolicy
         $htCacheDefinitionsPolicySet = $using:htCacheDefinitionsPolicySet
@@ -1674,12 +1675,8 @@ function cacheBuiltIn {
         $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
         #Functions
         #AzAPICall
-        # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
-        # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
-        # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
-        # $function:Logging = $using:AzAPICallFunctions.funcLogging
         if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-            Import-Module ".\pwsh\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+            Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
         }
         else {
             Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
@@ -2150,6 +2147,7 @@ function getConsumption {
                         $SubscriptionQuotaIdWhitelist = $using:SubscriptionQuotaIdWhitelist
                         #fromOtherFunctions
                         $azAPICallConf = $using:azAPICallConf
+                        $scriptPath = $using:ScriptPath
                         #Array&HTs
                         $allConsumptionData = $using:allConsumptionData
                         $htSubscriptionsMgPath = $using:htSubscriptionsMgPath
@@ -2157,12 +2155,8 @@ function getConsumption {
                         $htConsumptionExceptionLog = $using:htConsumptionExceptionLog
                         #Functions
                         #AzAPICall
-                        # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
-                        # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
-                        # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
-                        # $function:Logging = $using:AzAPICallFunctions.funcLogging
                         if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                            Import-Module ".\pwsh\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+                            Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
                         }
                         else {
                             Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
@@ -2354,6 +2348,7 @@ function getConsumption {
                         $azureConsumptionEndDate = $using:azureConsumptionEndDate
                         #fromOtherFunctions
                         $azAPICallConf = $using:azAPICallConf
+                        $scriptPath = $using:ScriptPath
                         #Array&HTs
                         $htSubscriptionsMgPath = $using:htSubscriptionsMgPath
                         $htAllSubscriptionsFromAPI = $using:htAllSubscriptionsFromAPI
@@ -2361,12 +2356,8 @@ function getConsumption {
                         $htConsumptionExceptionLog = $using:htConsumptionExceptionLog
                         #Functions
                         #AzAPICall
-                        # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
-                        # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
-                        # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
-                        # $function:Logging = $using:AzAPICallFunctions.funcLogging
                         if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                            Import-Module ".\pwsh\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+                            Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
                         }
                         else {
                             Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
@@ -2943,6 +2934,7 @@ function getResourceDiagnosticsCapability {
             #region UsingVARs
             #fromOtherFunctions
             $azAPICallConf = $using:azAPICallConf
+            $scriptPath = $using:ScriptPath
             #Array&HTs
             $ExcludedResourceTypesDiagnosticsCapable = $using:ExcludedResourceTypesDiagnosticsCapable
             $resourceTypesDiagnosticsArray = $using:resourceTypesDiagnosticsArray
@@ -2950,12 +2942,8 @@ function getResourceDiagnosticsCapability {
             $resourceTypesSummarizedArray = $using:resourceTypesSummarizedArray
             #Functions
             #AzAPICall
-            # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
-            # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
-            # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
-            # $function:Logging = $using:AzAPICallFunctions.funcLogging
             if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                Import-Module ".\pwsh\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+                Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
             }
             else {
                 Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
@@ -3184,6 +3172,7 @@ function processAADGroups {
             #fromOtherFunctions
             $AADGroupMembersLimit = $using:AADGroupMembersLimit
             $azAPICallConf = $using:azAPICallConf
+            $scriptPath = $using:ScriptPath
             #Array&HTs
             $htAADGroupsDetails = $using:htAADGroupsDetails
             $arrayGroupRoleAssignmentsOnServicePrincipals = $using:arrayGroupRoleAssignmentsOnServicePrincipals
@@ -3195,12 +3184,8 @@ function processAADGroups {
             $htServicePrincipals = $using:htServicePrincipals
             #Functions
             #AzAPICall
-            # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
-            # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
-            # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
-            # $function:Logging = $using:AzAPICallFunctions.funcLogging
             if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                Import-Module ".\pwsh\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+                Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
             }
             else {
                 Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
@@ -3285,18 +3270,15 @@ function processApplications {
             $currentDateUTC = $using:currentDateUTC
             #fromOtherFunctions
             $azAPICallConf = $using:azAPICallConf
+            $scriptPath = $using:ScriptPath
             #Array&HTs
             $arrayApplicationRequestResourceNotFound = $using:arrayApplicationRequestResourceNotFound
             $htAppDetails = $using:htAppDetails
             $htServicePrincipals = $using:htServicePrincipals
             #Functions
             #AzAPICall
-            # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
-            # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
-            # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
-            # $function:Logging = $using:AzAPICallFunctions.funcLogging
             if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                Import-Module ".\pwsh\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+                Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
             }
             else {
                 Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
@@ -3419,6 +3401,7 @@ function processDataCollection {
             $ManagementGroupId = $using:ManagementGroupId
             #fromOtherFunctions
             $azAPICallConf = $using:azAPICallConf
+            $scriptPath = $using:ScriptPath
             #Array&HTs
             $newTable = $using:newTable
             $customDataCollectionDuration = $using:customDataCollectionDuration
@@ -3460,12 +3443,8 @@ function processDataCollection {
             $htUserTypesGuest = $using:htUserTypesGuest
             #Functions
             #AzAPICall
-            # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
-            # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
-            # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
-            # $function:Logging = $using:AzAPICallFunctions.funcLogging
             if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                Import-Module ".\pwsh\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+                Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
             }
             else {
                 Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
@@ -3677,6 +3656,7 @@ function processDataCollection {
                 #Parameters Sub related
                 #fromOtherFunctions
                 $azAPICallConf = $using:azAPICallConf
+                $scriptPath = $using:ScriptPath
                 #Array&HTs
                 $newTable = $using:newTable
                 $resourcesAll = $using:resourcesAll
@@ -3728,12 +3708,8 @@ function processDataCollection {
                 $htSubscriptionsRoleAssignmentLimit = $using:htSubscriptionsRoleAssignmentLimit
                 #Functions
                 #AzAPICall
-                # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
-                # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
-                # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
-                # $function:Logging = $using:AzAPICallFunctions.funcLogging
                 if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                    Import-Module ".\pwsh\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+                    Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
                 }
                 else {
                     Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop

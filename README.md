@@ -58,11 +58,9 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-May-02 / Minor)
+__Changes__ (2022-May-05 / Major)
 
-* __Tenant Summary__ Change Tracking - RBAC Role assignments: add PIM (Priviledged Identity Management) information
-* Azure DevOps pipeline YAML - change `vmImage: 'ubuntu-18.04'` to  `vmImage: 'ubuntu-20.04'`
-* Published new HTML [demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)
+* fix: `using:scriptPath` variable in foreach parallel (this is only relevant for Azure DevOps and GitHub if you have a non default folder structure in your repository)
 
 Passed tests: Powershell Core 7.2.2 on Windows  
 Passed tests: Powershell Core 7.2.2 Azure DevOps hosted agent ubuntu-20.04  
