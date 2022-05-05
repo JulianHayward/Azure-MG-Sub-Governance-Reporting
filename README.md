@@ -634,10 +634,9 @@ Also check <https://www.azadvertizer.net> - AzAdvertizer helps you to keep up wi
 
 ## AzADServicePrincipalInsights
 
-![alt text](img/azadserviceprincipalinsights73.png "example output")
+Also check <https://aka.ms/AzADServicePrincipalInsights> - What about your Azure Active Directory Service Principals? Get deep insights and track your Service Principals with AzADServicePrincipalInsights. Create a HTML overview, export to CSV and JSON and use it for further processing...
 
-Also check <https://aka.ms/AzADServicePrincipalInsights> - Provides deep insights on ServicePrincipals (Enterprise Applications and Applications).  
-__Note:__ AzADServicePrincipalInsights is in proof of concept phase, the repository is not open sourced. However testing the code is explicitly allowed and appreciated.
+![alt text](img/azadserviceprincipalinsights_preview.png "example output")
 
 ## Closing Note
 
