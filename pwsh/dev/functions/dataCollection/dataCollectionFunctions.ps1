@@ -270,12 +270,10 @@ function dataCollectionResources {
 
     #psRule
     if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
-        $script:htPSRule.($childMgSubId) = @{}
         if ($resourcesSubscriptionResult.Count -gt 0) {
             $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure
             Write-Host "PSRule results for sub $childMgSubId $($psruleResults.Count)"
             if ($psruleResults.Count -gt 0) {
-                $script:htPSRule.($childMgSubId) = $psRuleResults
                 $null = $script:arrayPSRule.AddRange($psRuleResults)
             }
         }

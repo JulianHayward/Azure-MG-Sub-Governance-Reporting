@@ -327,7 +327,6 @@ function processDataCollection {
                 $arrayDefenderPlansSubscriptionNotRegistered = $using:arrayDefenderPlansSubscriptionNotRegistered
                 $arrayUserAssignedIdentities4Resources = $using:arrayUserAssignedIdentities4Resources
                 $htSubscriptionsRoleAssignmentLimit = $using:htSubscriptionsRoleAssignmentLimit
-                $htPsRule = $using:htPsRule
                 $arrayPsRule = $using:arrayPsRule
                 #Functions
                 #AzAPICall

@@ -60,15 +60,18 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 __Changes__ (2022-May-08 / Major)
 
-* integrate [PSRule](https://aka.ms/PSRule). This feature is optional, use new parameter `-DoPSRule`. __TenantSummary__ - _Subscriptions, Resources & Defender_ - PSRule results
+> Note: Azure DevOps users must update the YAML file(s) (`.azuredevops/*` or`.pipelines`) and PowerShell files (`AzGovVizParallel.ps1` and `prerequisites.ps1`)
+
+* new feature: integrate [PSRule](https://aka.ms/PSRule). This feature is optional, use new parameter `-DoPSRule`. __TenantSummary__ - _Subscriptions, Resources & Defender_ - PSRule results
+  * new parameter `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
 * fix [#issue92](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/92) -> pipeline .azuredevops/pipelines/AzGovViz.pipeline.yml
 * update Azure DevOps pipelines / use AzurePowershell@5
 * update prerequisites.ps1
 
 Passed tests: Powershell Core 7.2.2 on Windows  
-Passed tests: Powershell Core 7.2.2 Azure DevOps hosted agent ubuntu-20.04  
+Passed tests: Powershell Core 7.2.3 Azure DevOps hosted agent ubuntu-20.04  
 Passed tests: Powershell Core 7.2.2 Github Actions hosted agent ubuntu-latest  
-Passed tests: Powershell Core 7.2.2 GitHub Codespaces mcr.microsoft.com/powershell:latest  
+Passed tests: Powershell Core 7.2.3 GitHub Codespaces mcr.microsoft.com/powershell:latest  
 Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
 
 [Full release history](history.md)
@@ -446,6 +449,9 @@ AzAPICall resources:
   * `-NoSingleSubscriptionOutput` - Single __Scope Insights__ output per Subscription should not be created
   * `-ManagementGroupsOnly` - Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
   * `-ShowMemoryUsage` - Shows memory usage at memory intense sections of the scripts, this shall help you determine if the the worker is well sized for AzGovViz
+  * PSRule 
+    * `-DoPSRule` - Execute [PSRule](https://aka.ms/PSRule). Results are integrated in the HTML output, plus PSRule results are exported to CSV
+    * `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
 
 ### API reference
 

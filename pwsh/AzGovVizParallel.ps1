@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.11',
 
     [string]
-    $ProductVersion = 'v6_major_20220508_4',
+    $ProductVersion = 'v6_major_20220508_5',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -3739,7 +3739,6 @@ function processDataCollection {
                 $arrayDefenderPlansSubscriptionNotRegistered = $using:arrayDefenderPlansSubscriptionNotRegistered
                 $arrayUserAssignedIdentities4Resources = $using:arrayUserAssignedIdentities4Resources
                 $htSubscriptionsRoleAssignmentLimit = $using:htSubscriptionsRoleAssignmentLimit
-                $htPsRule = $using:htPsRule
                 $arrayPsRule = $using:arrayPsRule
                 #Functions
                 #AzAPICall
@@ -21579,7 +21578,6 @@ function stats {
             $statsCountSubscriptions = 'more than 100'
         }
 
-
         $tryCounter = 0
         do {
             if ($tryCounter -gt 0) {
@@ -21625,6 +21623,7 @@ function stats {
                 "statsParametersNoResources": "$($azAPICallConf['htParameters'].NoResources)",
                 "statsParametersPolicyAtScopeOnly": "$($azAPICallConf['htParameters'].PolicyAtScopeOnly)",
                 "statsParametersRBACAtScopeOnly": "$($azAPICallConf['htParameters'].RBACAtScopeOnly)",
+                "statsParametersDoPSRule": "$($azAPICallConf['htParameters'].DoPSRule)",
                 "statsTry": "$($tryCounter)"
             }
         }
@@ -22145,12 +22144,10 @@ function dataCollectionResources {
 
     #psRule
     if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
-        $script:htPSRule.($childMgSubId) = @{}
         if ($resourcesSubscriptionResult.Count -gt 0) {
             $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure
             Write-Host "PSRule results for sub $childMgSubId $($psruleResults.Count)"
             if ($psruleResults.Count -gt 0) {
-                $script:htPSRule.($childMgSubId) = $psRuleResults
                 $null = $script:arrayPSRule.AddRange($psRuleResults)
             }
         }
@@ -25388,7 +25385,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         $allConsumptionData = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     }
 
-    $htPsRule = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $arrayPsRule = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 

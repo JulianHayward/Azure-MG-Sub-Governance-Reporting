@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.11',
 
     [string]
-    $ProductVersion = 'v6_major_20220508_4',
+    $ProductVersion = 'v6_major_20220508_5',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -827,7 +827,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         $allConsumptionData = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     }
 
-    $htPsRule = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $arrayPsRule = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
