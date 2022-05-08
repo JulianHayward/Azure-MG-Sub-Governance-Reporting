@@ -1,4 +1,4 @@
-# AzGovViz v6_minor_20220502_2
+# AzGovViz v6_major_20220508_4
 # First things first: 
 # 1. edit line 61 and line 62 
 # 2. check line 76 and 87 if branch 'master' is applicable 
@@ -62,7 +62,7 @@ variables:
   ManagementGroupId: <YourManagementGroupId>
   SubscriptionQuotaIdWhitelist: ${{ join(',',parameters.subscriptionQuotaIdWhitelistParameters) }}
   ExludedResourceTypesDiagnosticsCapable: ${{ join(',',parameters.exludedResourceTypesDiagnosticsCapableParameters) }}
-  WikiDir: wiki
+  OutputPath: wiki
   CsvDelimiter: ;
   ScriptDir: pwsh
   Script: AzGovVizParallel.ps1
@@ -98,16 +98,17 @@ jobs:
     inputs:
       targetType: 'filePath'
       filePath: $(System.DefaultWorkingDirectory)/$(ScriptDir)/prerequisites.ps1
+      arguments: -OutputPath $(OutputPath)
     displayName: 'Prerequisites check'
     env:
       SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-  - task: AzurePowerShell@4
+  - task: AzurePowerShell@5
     inputs:
       azureSubscription: '$(ServiceConnection)'
       scriptType: filePath
       pwsh: true
       scriptPath: '$(System.DefaultWorkingDirectory)/$(ScriptDir)/$(Script)'
-      scriptArguments: '-ManagementGroupId $(ManagementGroupId) -ScriptPath $(ScriptDir) -OutputPath $(WikiDir) -CsvDelimiter "$(CsvDelimiter)" -SubscriptionQuotaIdWhitelist $(SubscriptionQuotaIdWhitelist) -ExludedResourceTypesDiagnosticsCapable $(ExludedResourceTypesDiagnosticsCapable)'
+      scriptArguments: '-ManagementGroupId $(ManagementGroupId) -ScriptPath $(ScriptDir) -OutputPath $(OutputPath) -CsvDelimiter "$(CsvDelimiter)" -SubscriptionQuotaIdWhitelist $(SubscriptionQuotaIdWhitelist) -ExludedResourceTypesDiagnosticsCapable $(ExludedResourceTypesDiagnosticsCapable)'
       azurePowerShellVersion: latestVersion
     displayName: 'Run AzGovViz v6'
   - powershell: |

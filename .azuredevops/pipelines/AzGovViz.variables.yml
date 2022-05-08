@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220319_1
+# AzGovViz v6_major_20220508_4
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -41,6 +41,18 @@ variables:
     value: '<YourManagementGroupId>'
 
 ### Default Variables - Modify as Needed
+
+  # If you integrate AzGovViz into an existing repository you may need to adjust the script directory
+  - name: ScriptDir
+    #example: YourFolder/pwsh
+    value: pwsh
+
+  - name: Script
+    value: AzGovVizParallel.ps1
+
+  - name: ScriptPrerequisites
+    value: prerequisites.ps1
+
   # The world is split into two kind of delimiters - comma and semicolon - choose yours
   - name: CsvDelimiter
     # String | default = ';' | example: value: ';'

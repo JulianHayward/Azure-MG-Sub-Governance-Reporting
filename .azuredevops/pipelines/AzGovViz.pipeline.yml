@@ -1,4 +1,4 @@
-# AzGovViz v6_minor_20220502_2
+# AzGovViz v6_major_20220508_4
 # First things first:
 # 1. Set needed variables in the AzGovViz.variables.yml file.
 #
@@ -11,12 +11,6 @@ pr: none
 
 variables:
   - template: ./AzGovViz.variables.yml
-
-  - name: ScriptDir
-    value: pwsh
-
-  - name: Script
-    value: AzGovVizParallel.ps1
 
 #schedules:
 #- cron: "0 0,12 * * *"
@@ -49,7 +43,7 @@ jobs:
       Write-Host 'Build Script Arguments String...'
 
       $argumentsString = ''
-      $scriptPath = '$(System.DefaultWorkingDirectory)/$(ScriptDir)/AzGovVizParallel.ps1'
+      $scriptPath = '$(System.DefaultWorkingDirectory)/$(ScriptDir)/$(Script)'
 
       $astTokens = $null
       $astErrors = $null
@@ -59,33 +53,40 @@ jobs:
 
       foreach ($scriptParameter in $scriptParameters) {
         $scriptParameterName = $scriptParameter.Name.VariablePath.UserPath
-        $argument = Get-ChildItem -Path "Env:$( $scriptParameterName.ToUpper() )" -ErrorAction SilentlyContinue
-        if ($argument.value) {
-          if ($scriptParameter.StaticType.Name -eq 'SwitchParameter' -and $argument.Value -eq 'True') {
-            $argumentsString += "-$( $scriptParameterName ) "
-          } else {
-            $argumentsString += "-$( $scriptParameterName ) '$( $argument.Value )' "
-          }
-          if ($scriptParameterName -eq 'outputPath') {
-            $outputPath = "$( $argument.Value )"
+        if ($scriptParameterName -ne 'ScriptDir' -and $scriptParameterName -ne 'Script') {
+          $argument = Get-ChildItem -Path "Env:$( $scriptParameterName.ToUpper() )" -ErrorAction SilentlyContinue
+          if ($argument.value) {
+            if ($scriptParameter.StaticType.Name -eq 'SwitchParameter' -and $argument.Value -eq 'True') {
+              $argumentsString += "-$( $scriptParameterName ) "
+            } else {
+              if ($scriptParameterName -eq 'CsvDelimiter') {
+                $argumentsString += "-$( $scriptParameterName ) '$( $argument.Value )' "
+              }
+              else{
+                $argumentsString += "-$( $scriptParameterName ) $( $argument.Value ) "
+              }
+            }
+            if ($scriptParameterName -eq 'outputPath') {
+              $outputPath = "$( $argument.Value )"
+            }
           }
         }
       }
 
       Write-Host "Arguments String: $( $argumentsString.Trim() )"
       Write-Host "##vso[task.setvariable variable=ScriptArguments]$( $argumentsString.Trim() )"
-      Write-Host "outputPath String: $( $outputPath )"
-      Write-Host "##vso[task.setvariable variable=WIKIDIR]$( $outputPath )"
     displayName: 'Create Arguments String Variable'
+
   - task: PowerShell@2
     inputs:
       targetType: 'filePath'
-      filePath: $(System.DefaultWorkingDirectory)/$(ScriptDir)/prerequisites.ps1
+      filePath: $(System.DefaultWorkingDirectory)/$(ScriptDir)/$(ScriptPrerequisites)
+      arguments: '-OutputPath $(OutputPath)'
     displayName: 'Prerequisites check'
     env:
       SYSTEM_ACCESSTOKEN: $(System.AccessToken)
 
-  - task: AzurePowerShell@4
+  - task: AzurePowerShell@5
     inputs:
       azureSubscription: '$(ServiceConnection)'
       scriptType: filePath

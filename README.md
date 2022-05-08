@@ -58,9 +58,12 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-May-05 / Major)
+__Changes__ (2022-May-08 / Major)
 
-* fix: `using:scriptPath` variable in foreach parallel (this is only relevant for Azure DevOps and GitHub if you have a non default folder structure in your repository)
+* integrate PSRule. This feature is optional, use new parameter `-DoPSRule`. __TenantSummary__ - _Subscriptions, Resources & Defender_ - PSRule results
+* fix [#issue92](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/92) -> pipeline .azuredevops/pipelines/AzGovViz.pipeline.yml
+* update Azure DevOps pipelines / use AzurePowershell@5
+* update prerequisites.ps1
 
 Passed tests: Powershell Core 7.2.2 on Windows  
 Passed tests: Powershell Core 7.2.2 Azure DevOps hosted agent ubuntu-20.04  

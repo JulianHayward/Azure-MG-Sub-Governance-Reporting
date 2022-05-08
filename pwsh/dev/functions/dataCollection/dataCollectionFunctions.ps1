@@ -268,6 +268,19 @@ function dataCollectionResources {
     $method = 'GET'
     $resourcesSubscriptionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
+    #psRule
+    if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
+        $script:htPSRule.($childMgSubId) = @{}
+        if ($resourcesSubscriptionResult.Count -gt 0) {
+            $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure
+            Write-Host "PSRule results for sub $childMgSubId $($psruleResults.Count)"
+            if ($psruleResults.Count -gt 0) {
+                $script:htPSRule.($childMgSubId) = $psRuleResults
+                $null = $script:arrayPSRule.AddRange($psRuleResults)
+            }
+        }
+    }
+
     foreach ($resourceTypeLocation in ($resourcesSubscriptionResult | Group-Object -Property type, location)) {
         $null = $script:resourcesAll.Add([PSCustomObject]@{
                 subscriptionId = $scopeId

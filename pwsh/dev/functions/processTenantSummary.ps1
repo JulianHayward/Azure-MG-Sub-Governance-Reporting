@@ -5676,7 +5676,7 @@ extensions: [{ name: 'sort' }]
 
     showMemoryUsage
 
-    #region tenantSummarySubscriptions
+    #region tenantSummarySubscriptionsResourceDefenderPSRule
     [void]$htmlTenantSummary.AppendLine(@'
 <button type="button" class="collapsible" id="tenantSummarySubscriptions"><hr class="hr-textSubscriptions" data-content="Subscriptions, Resources & Defender" /></button>
 <div class="content TenantSummaryContent">
@@ -7157,12 +7157,169 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         $endUserAssignedIdentities4Resources = Get-Date
         Write-Host "   UserAssigned Managed Identities assigned to Resources processing duration: $((NEW-TIMESPAN -Start $startUserAssignedIdentities4Resources -End $endUserAssignedIdentities4Resources).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startUserAssignedIdentities4Resources -End $endUserAssignedIdentities4Resources).TotalSeconds) seconds)"
         #endregion SUMMARYSubUserAssignedIdentities4Resources
+
+        #region SUMMARYPSRule
+        if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
+            Write-Host '  processing TenantSummary PSRule'
+            $arrayPSRuleCount = $arrayPsRule.Count
+            $tfCount = $arrayPSRuleCount
+            $startPSRule = Get-Date
+
+            if ($arrayPSRuleCount -gt 0) {
+
+                handlePSRuleData
+
+                $htmlTableId = 'TenantSummary_PSRule'
+
+                [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_PSRule"><i class="padlx fa fa-check-square-o" aria-hidden="true"></i> <span class="valignMiddle">PSRule results</span></button>
+<div class="content TenantSummary">
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Learn about </span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Resource Type</th>
+<th>Resource Count</th>
+<th>Subscription Count</th>
+<th>Pillar</th>
+<th>Category</th>
+<th>Severity</th>
+<th>Rule</th>
+<th>Recommendation</th>
+<th>lnk</th>
+<th>State</th>
+"@)
+
+                [void]$htmlTenantSummary.AppendLine(@'
+</tr>
+</thead>
+<tbody>
+'@)
+
+                $grpPSRuleAll = $psRuleDataSelection | group-object -Property resourceType, pillar, category, severity, ruleId, result
+                $tfCount = $grpPSRuleAll.Name.Count
+                foreach ($result in $grpPSRuleAll | sort-Object -Property Name) {
+                    $resultNameSplit = $result.Name.split(', ')
+                    [void]$htmlTenantSummary.AppendLine(@"
+                        <tr>
+                            <td>$($resultNameSplit[0])</td>
+                            <td>$($result.Group.Count)</td>
+                            <td>$(($result.Group.subscriptionId | Sort-Object -Unique).Count)</td>
+                            <td>$($resultNameSplit[1])</td>
+                            <td>$($resultNameSplit[2])</td>
+                            <td>$($resultNameSplit[3])</td>
+                            <td>$(($result.Group[0].rule))</td>
+                            <td>$(($result.Group[0].recommendation))</td>
+                            <td><a href=`"$(($result.Group[0].link))`" target=`"_blank`"><i class="fa fa-external-link" aria-hidden="true"></i></a></td>
+                            <td>$($resultNameSplit[5])</td>
+                        </tr>
+"@)
+
+                    # if (-not $NoCsvExport) {
+                    #     $null = $userAssignedIdentities4Resources4CSVExport.Add([PSCustomObject]@{
+                    #             MIName                = $miResEntry.miResourceName
+                    #             MIMgPath              = $miResEntry.miMgPath
+                    #             MISubscriptionName    = $miResEntry.miSubscriptionName
+                    #             MISubscriptionId      = $miResEntry.miSubscriptionId
+                    #             MIResourceGroup       = $miResEntry.miResourceGroupName
+                    #             MIResourceId          = $miResEntry.miResourceId
+                    #             MIAADSPObjectId       = $miResEntry.miPrincipalId
+                    #             MIAADSPApplicationId  = $miResEntry.miClientId
+                    #             MICountResAssignments = $htUserAssignedIdentitiesAssignedResources.($miResEntry.miPrincipalId).ResourcesCount
+                    #             ResName               = $miResEntry.resourceName
+                    #             ResType               = $miResEntry.resourceType
+                    #             ResMgPath             = $miResEntry.resourceMgPath
+                    #             ResSubscriptionName   = $miResEntry.resourceSubscriptionName
+                    #             ResSubscriptionId     = $miResEntry.resourceSubscriptionId
+                    #             ResResourceGroup      = $miResEntry.resourceResourceGroupName
+                    #             ResId                 = $miResEntry.resourceId
+                    #             ResCountAssignedMIs   = $htResourcesAssignedUserAssignedIdentities.(($miResEntry.resourceId).tolower()).UserAssignedIdentitiesCount
+                    #         })
+                    # }
+
+                }
+
+                # if (-not $NoCsvExport) {
+                #     Write-Host "Exporting UserAssignedIdentities4Resources CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_UserAssignedIdentities4Resources.csv'"
+                #     $userAssignedIdentities4Resources4CSVExport | Sort-Object -Property miResourceId, resourceId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_UserAssignedIdentities4Resources.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                # }
+
+                [void]$htmlTenantSummary.AppendLine(@"
+</tbody>
+</table>
+<script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+                if ($tfCount -gt 10) {
+                    $spectrum = "10, $tfCount"
+                    if ($tfCount -gt 50) {
+                        $spectrum = "10, 25, 50, $tfCount"
+                    }
+                    if ($tfCount -gt 100) {
+                        $spectrum = "10, 30, 50, 100, $tfCount"
+                    }
+                    if ($tfCount -gt 500) {
+                        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                    }
+                    if ($tfCount -gt 1000) {
+                        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                    }
+                    if ($tfCount -gt 2000) {
+                        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                    }
+                    if ($tfCount -gt 3000) {
+                        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                    }
+                    [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            linked_filters: true,
+            col_3: 'select',
+            col_4: 'select',
+            col_5: 'select',
+            col_9: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'number',
+                'number',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+            extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+</div>
+"@)
+            }
+            else {
+                [void]$htmlTenantSummary.AppendLine(@'
+    <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No PSRule results</span></p>
+'@)
+            }
+            $endPSRule = Get-Date
+            Write-Host "   PSRule processing duration: $((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalSeconds) seconds)"
+        }
+        #endregion SUMMARYPSRule
     }
 
     [void]$htmlTenantSummary.AppendLine(@'
     </div>
 '@)
-    #endregion tenantSummarySubscriptions
+    #endregion tenantSummarySubscriptionsResourceDefenderPSRule
 
     showMemoryUsage
 

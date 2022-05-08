@@ -1,3 +1,4 @@
+#20220508_4
 #This script should be run in Azure DevOps Pipelines and GitHub Actions only
 
 param(
@@ -58,13 +59,13 @@ if ($codeRunPlatform -eq 'GitHubActions') {
 }
 
 if ($codeRunPlatform -eq 'AzureDevOps') {
-    Write-Host "outputpath is '$($env:WIKIDIR)'"
-    if (-not (Test-Path -Path "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:WIKIDIR)")) {
+    Write-Host "outputpath is '$($OutputPath)'"
+    if (-not (Test-Path -Path "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($OutputPath)")) {
         #Assuming this is the initial run
 
         #Create the outputpath dir
-        Write-Host "Creating directory '$($env:WIKIDIR)'"
-        New-Item -ItemType Directory -Force -Path "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:WIKIDIR)"
+        Write-Host "Creating directory '$($OutputPath)'"
+        New-Item -ItemType Directory -Force -Path "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($OutputPath)"
 
         #Repository permission check
         Write-Host 'Repository access check'
@@ -200,6 +201,6 @@ if ($codeRunPlatform -eq 'AzureDevOps') {
         }
     }
     else {
-        Write-Host "outputpath dir '$($env:WIKIDIR)' already exists"
+        Write-Host "outputpath dir '$($OutputPath)' already exists"
     }
 }

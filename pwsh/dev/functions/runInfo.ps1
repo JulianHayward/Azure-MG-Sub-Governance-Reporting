@@ -316,7 +316,6 @@ function runInfo {
             #$script:paramsUsed += "ChangeTrackingDays: $ChangeTrackingDays &#13;"
         }
 
-
         if ($azAPICallConf['htParameters'].NoResources) {
             Write-Host " NoResources = $($azAPICallConf['htParameters'].NoResources)" -ForegroundColor Green
             $script:paramsUsed += "NoResources: $($azAPICallConf['htParameters'].NoResources) &#13;"
@@ -324,6 +323,24 @@ function runInfo {
         else {
             Write-Host " NoResources = $($azAPICallConf['htParameters'].NoResources)" -ForegroundColor Yellow
             $script:paramsUsed += "NoResources: $($azAPICallConf['htParameters'].NoResources) &#13;"
+        }
+
+        if ($ShowMemoryUsage) {
+            Write-Host " ShowMemoryUsage = $($ShowMemoryUsage)" -ForegroundColor Green
+            #$script:paramsUsed += "ShowMemoryUsage: $($ShowMemoryUsage) &#13;"
+        }
+        else {
+            Write-Host " ShowMemoryUsage = $($ShowMemoryUsage)" -ForegroundColor Yellow
+            #$script:paramsUsed += "ShowMemoryUsage: $($ShowMemoryUsage) &#13;"
+        }
+
+        if ($azAPICallConf['htParameters'].DoPSRule) {
+            Write-Host " PSRule = $($azAPICallConf['htParameters'].DoPSRule)" -ForegroundColor Green
+            $script:paramsUsed += "PSRule: $($azAPICallConf['htParameters'].DoPSRule) &#13;"
+        }
+        else {
+            Write-Host " PSRule = $($azAPICallConf['htParameters'].DoPSRule)" -ForegroundColor Yellow
+            $script:paramsUsed += "PSRule: $($azAPICallConf['htParameters'].DoPSRule) &#13;"
         }
     }
     #endregion RunInfo

@@ -181,9 +181,6 @@ function getConsumption {
                         if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
                             Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
                         }
-                        else {
-                            Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
-                        }
                         #other
                         $function:addToAllConsumptionData = $using:funcAddToAllConsumptionData
                         #endregion UsingVARs
@@ -381,9 +378,6 @@ function getConsumption {
                         #AzAPICall
                         if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
                             Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-                        }
-                        else {
-                            Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
                         }
                         #other
                         $function:addToAllConsumptionData = $using:funcAddToAllConsumptionData

@@ -34,7 +34,7 @@
     default is 80%, this parameter defines the warning level for approaching Limits (e.g. 80% of Role Assignment limit reached) change as per your preference
 
 .PARAMETER SubscriptionQuotaIdWhitelist
-    default is 'undefined', this parameter defines the QuotaIds the subscriptions must match so that AzGovViz processes them. The script checks if the QuotaId startswith the string that you have put in. Separate multiple strings with backslash e.g. MSDN_,EnterpriseAgreement_
+    default is 'undefined', this parameter defines the QuotaIds the subscriptions must match so that AzGovViz processes them. The script checks if the QuotaId startswith the string that you have put in. Separate multiple strings with comma e.g. MSDN_,EnterpriseAgreement_
 
 .PARAMETER NoPolicyComplianceStates
     use this parameter if policy compliance states should not be queried
@@ -159,8 +159,8 @@
     Define when limits should be highlighted as warning (default is 80 percent)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -LimitCriticalPercentage 90
 
-    Define the QuotaId whitelist by providing strings separated by a backslash
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionQuotaIdWhitelist MSDN_, EnterpriseAgreement_
+    Define the QuotaId whitelist by providing strings separated by a comma
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionQuotaIdWhitelist MSDN_,EnterpriseAgreement_
 
     Define if policy compliance states should be queried
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPolicyComplianceStates
@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.11',
 
     [string]
-    $ProductVersion = 'v6_major_20220505_1',
+    $ProductVersion = 'v6_major_20220508_4',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -425,6 +425,12 @@ Param
     [switch]
     $ShowMemoryUsage,
 
+    [switch]
+    $DoPSRule,
+
+    [string]
+    $PSRuleVersion = '1.14.3',
+
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
     $LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -480,6 +486,7 @@ $startTime = Get-Date -Format 'dd-MMM-yyyy HH:mm:ss'
 Write-Host "Start AzGovViz $($startTime) (#$($ProductVersion))"
 
 #region Functions
+. ".\$($ScriptPath)\functions\apiCallTracking.ps1"
 . ".\$($ScriptPath)\functions\addRowToTable.ps1"
 . ".\$($ScriptPath)\functions\testPowerShellVersion.ps1"
 . ".\$($ScriptPath)\functions\setOutput.ps1"
@@ -522,6 +529,7 @@ Write-Host "Start AzGovViz $($startTime) (#$($ProductVersion))"
 . ".\$($ScriptPath)\functions\processDataCollection.ps1"
 . ".\$($ScriptPath)\functions\exportBaseCSV.ps1"
 . ".\$($ScriptPath)\functions\html\htmlFunctions.ps1"
+. ".\$($ScriptPath)\functions\handlePSRuleData.ps1"
 . ".\$($ScriptPath)\functions\processTenantSummary.ps1"
 . ".\$($ScriptPath)\functions\processDefinitionInsights.ps1"
 . ".\$($ScriptPath)\functions\processScopeInsightsMgOrSub.ps1"
@@ -541,127 +549,153 @@ if ($DoTranscript) {
     setTranscript
 }
 
-#region verifyAzAPICall
-if ($AzAPICallVersion) {
-    Write-Host " Verify 'AzAPICall' ($AzAPICallVersion)"
-}
-else {
-    Write-Host " Verify 'AzAPICall' (latest)"
+#region verifyModules3rd
+$modules = [System.Collections.ArrayList]@()
+$null = $modules.Add([PSCustomObject]@{
+        ModuleName         = 'AzAPICall'
+        ModuleVersion      = $AzAPICallVersion
+        ModuleProductName  = 'AzAPICall'
+        ModulePathPipeline = 'AzAPICallModule'
+    })
+
+if ($DoPSRule) {
+    $null = $modules.Add([PSCustomObject]@{
+            ModuleName         = 'PSRule.Rules.Azure'
+            ModuleVersion      = $PSRuleVersion
+            ModuleProductName  = 'PSRule'
+            ModulePathPipeline = 'PSRuleModule'
+        })
 }
 
-$maxRetry = 3
-$tryCount = 0
-do {
-    $tryCount++
-    if ($tryCount -gt $maxRetry) {
-        Write-Host " Managing 'AzAPICall' failed (tried $($tryCount - 1)x)"
-        throw " Managing 'AzAPICall' failed"
+foreach ($module in $modules) {
+    $moduleVersion = $module.ModuleVersion
+
+    if ($moduleVersion) {
+        Write-Host " Verify '$($module.ModuleName)' ($moduleVersion)"
+    }
+    else {
+        Write-Host " Verify '$($module.ModuleName)' (latest)"
     }
 
-    $importAzAPICallModuleSuccess = $false
-    try {
-
-        if (-not $AzAPICallVersion) {
-            Write-Host '  Check latest module version'
-            try {
-                $AzAPICallVersion = (Find-Module -name AzAPICall).Version
-                Write-Host "  Latest module version: $AzAPICallVersion"
-            }
-            catch {
-                Write-Host '  Check latest module version failed'
-                throw
-            }
+    $maxRetry = 3
+    $tryCount = 0
+    do {
+        $tryCount++
+        if ($tryCount -gt $maxRetry) {
+            Write-Host " Managing '$($module.ModuleName)' failed (tried $($tryCount - 1)x)"
+            throw " Managing '$($module.ModuleName)' failed"
         }
 
+        $importModuleSuccess = $false
         try {
-            $azAPICallModuleDeviation = $false
-            $azAPICallModuleVersionLoaded = ((Get-Module -name AzAPICall).Version)
-            foreach ($moduleLoaded in $azAPICallModuleVersionLoaded) {
-                if ($moduleLoaded.toString() -ne $AzAPICallVersion) {
-                    Write-Host "  Deviating loaded version found ('$($moduleLoaded.toString())' != '$($AzAPICallVersion)')"
-                    $azAPICallModuleDeviation = $true
-                }
-                else {
-                    if ($azAPICallModuleVersionLoaded.count -eq 1) {
-                        Write-Host "  AzAPICall module ($($moduleLoaded.toString())) is already loaded" -ForegroundColor Green
-                        $importAzAPICallModuleSuccess = $true
-                    }
-                }
-            }
 
-            if ($azAPICallModuleDeviation) {
-                $importAzAPICallModuleSuccess = $false
+            if (-not $moduleVersion) {
+                Write-Host '  Check latest module version'
                 try {
-                    Write-Host "  Remove-Module AzAPICall ($(($azAPICallModuleVersionLoaded -join ', ').ToString()))"
-                    Remove-Module -Name AzAPICall -Force
+                    $moduleVersion = (Find-Module -name $($module.ModuleName)).Version
+                    Write-Host "  Latest module version: $moduleVersion"
                 }
                 catch {
-                    Write-Host '  Remove-Module AzAPICall failed'
+                    Write-Host '  Check latest module version failed'
                     throw
                 }
             }
-        }
-        catch {
-            #Write-Host '  AzAPICall module is not loaded'
-        }
 
-        if (-not $importAzAPICallModuleSuccess) {
-            Write-Host "  Try (#$tryCount) importing AzAPICall module ($AzAPICallVersion)"
-            if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
-                Import-Module ".\$($ScriptPath)\AzAPICallModule\AzAPICall\$($AzAPICallVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-                Write-Host "  Import PS module 'AzAPICall' ($($AzAPICallVersion)) succeeded" -ForegroundColor Green
-            }
-            else {
-                Import-Module -Name AzAPICall -RequiredVersion $AzAPICallVersion -Force
-                Write-Host "  Import PS module 'AzAPICall' ($($AzAPICallVersion)) succeeded" -ForegroundColor Green
-            }
-            $importAzAPICallModuleSuccess = $true
-        }
-    }
-    catch {
-        Write-Host '  Importing AzAPICall module failed'
-        if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
-            Write-Host "  Saving AzAPICall module ($($AzAPICallVersion))"
             try {
-                $params = @{
-                    Name            = 'AzAPICall'
-                    Path            = ".\$($ScriptPath)\AzAPICallModule"
-                    Force           = $true
-                    RequiredVersion = $AzAPICallVersion
+                $moduleDeviation = $false
+                $moduleVersionLoaded = ((Get-Module -name $($module.ModuleName)).Version)
+                foreach ($moduleLoaded in $moduleVersionLoaded) {
+                    if ($moduleLoaded.toString() -ne $moduleVersion) {
+                        Write-Host "  Deviating loaded version found ('$($moduleLoaded.toString())' != '$($moduleVersion)')"
+                        $moduleDeviation = $true
+                    }
+                    else {
+                        if ($moduleVersionLoaded.count -eq 1) {
+                            Write-Host "  $($module.ModuleName) module ($($moduleLoaded.toString())) is already loaded" -ForegroundColor Green
+                            $importModuleSuccess = $true
+                        }
+                    }
                 }
-                Save-Module @params
-            }
-            catch {
-                Write-Host "  Saving AzAPICall module ($($AzAPICallVersion)) failed"
-                throw
-            }
-        }
-        else {
-            do {
-                $installAzAPICallModuleUserChoice = Read-Host "  Do you want to install AzAPICall module ($($AzAPICallVersion)) from the PowerShell Gallery? (y/n)"
-                if ($installAzAPICallModuleUserChoice -eq 'y') {
+
+                if ($moduleDeviation) {
+                    $importModuleSuccess = $false
                     try {
-                        Install-Module -Name AzAPICall -RequiredVersion $AzAPICallVersion
+                        Write-Host "  Remove-Module $($module.ModuleName) ($(($moduleVersionLoaded -join ', ').ToString()))"
+                        Remove-Module -Name $($module.ModuleName) -Force
                     }
                     catch {
-                        Write-Host "  Install-Module AzAPICall ($($AzAPICallVersion)) Failed"
+                        Write-Host "  Remove-Module $($module.ModuleName) failed"
                         throw
                     }
                 }
-                elseif ($installAzAPICallModuleUserChoice -eq 'n') {
-                    Write-Host '  AzAPICall module is required, please visit https://aka.ms/AZAPICall or https://www.powershellgallery.com/packages/AzAPICall'
-                    throw '  AzAPICall module is required'
+            }
+            catch {
+                #Write-Host "  $($module.ModuleName) module is not loaded"
+            }
+
+            if (-not $importModuleSuccess) {
+                Write-Host "  Try (#$tryCount) importing $($module.ModuleName) module ($moduleVersion)"
+                if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
+                    if ($module.ModuleName -eq 'PSRule.Rules.Azure') {
+                        Import-Module ".\$($ScriptPath)\$($module.ModulePathPipeline)\$($module.ModuleProductName)" -Force -ErrorAction Stop
+                        Write-Host "  Import PS module '$($module.ModuleProductName)' succeeded" -ForegroundColor Green
+                    }
+                    Import-Module ".\$($ScriptPath)\$($module.ModulePathPipeline)\$($module.ModuleName)\$($moduleVersion)\$($module.ModuleName).psd1" -Force -ErrorAction Stop
+                    Write-Host "  Import PS module '$($module.ModuleName)' ($($moduleVersion)) succeeded" -ForegroundColor Green
                 }
                 else {
-                    Write-Host "  Accepted input 'y' or 'n'; start over.."
+                    Import-Module -Name $($module.ModuleName) -RequiredVersion $moduleVersion -Force
+                    Write-Host "  Import PS module '$($module.ModuleName)' ($($moduleVersion)) succeeded" -ForegroundColor Green
+                }
+                $importModuleSuccess = $true
+            }
+        }
+        catch {
+            Write-Host "  Importing $($module.ModuleName) module failed"
+            if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
+                Write-Host "  Saving $($module.ModuleName) module ($($moduleVersion))"
+                try {
+                    $params = @{
+                        Name            = "$($module.ModuleName)"
+                        Path            = ".\$($ScriptPath)\$($module.ModulePathPipeline)"
+                        Force           = $true
+                        RequiredVersion = $moduleVersion
+                    }
+                    Save-Module @params
+                }
+                catch {
+                    Write-Host "  Saving $($module.ModuleName) module ($($moduleVersion)) failed"
+                    throw
                 }
             }
-            until ($installAzAPICallModuleUserChoice -eq 'y')
+            else {
+                do {
+                    $installModuleUserChoice = $null
+                    $installModuleUserChoice = Read-Host "  Do you want to install $($module.ModuleName) module ($($moduleVersion)) from the PowerShell Gallery? (y/n)"
+                    if ($installModuleUserChoice -eq 'y') {
+                        try {
+                            Install-Module -Name $module.ModuleName -RequiredVersion $moduleVersion
+                        }
+                        catch {
+                            Write-Host "  Install-Module $($module.ModuleName) ($($moduleVersion)) Failed"
+                            throw
+                        }
+                    }
+                    elseif ($installModuleUserChoice -eq 'n') {
+                        Write-Host "  $($module.ModuleName) module is required, please visit https://aka.ms/$($module.ModuleProductName) or https://www.powershellgallery.com/packages/$($module.ModuleProductName)"
+                        throw "  $($module.ModuleName) module is required"
+                    }
+                    else {
+                        Write-Host "  Accepted input 'y' or 'n'; start over.."
+                    }
+                }
+                until ($installModuleUserChoice -eq 'y')
+            }
         }
     }
+    until ($importModuleSuccess)
 }
-until ($importAzAPICallModuleSuccess)
-#endregion verifyAzAPICall
+#endregion verifyModules3rd
 
 #Region initAZAPICall
 Write-Host "Initialize 'AzAPICall'"
@@ -673,9 +707,6 @@ $parameters4AzAPICallModule = @{
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 Write-Host " Initialize 'AzAPICall' succeeded" -ForegroundColor Green
 #EndRegion initAZAPICall
-
-#obsolete
-#$AzAPICallFunctions = getAzAPICallFunctions
 
 handleCloudEnvironment
 addHtParameters
@@ -692,7 +723,6 @@ if ($CsvDelimiter -eq ',') {
 #region runDataCollection
 
 #run
-$arrayAPICallTrackingCustomDataCollection = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 
 validateAccess
 getFileNaming
@@ -796,6 +826,9 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     if ($DoAzureConsumption) {
         $allConsumptionData = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     }
+
+    $htPsRule = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $arrayPsRule = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
 getEntities
@@ -1837,20 +1870,22 @@ showMemoryUsage
 
 #endregion createoutputs
 
-#APITracking
-$APICallTrackingCount = ($azAPICallConf['arrayAPICallTracking']).Count
-$APICallTrackingRetriesCount = ($azAPICallConf['arrayAPICallTracking'].where({ $_.TryCounter -gt 1 } )).Count
-$APICallTrackingGroupedByTargetEndpoint = $azAPICallConf['arrayAPICallTracking'] | Group-Object -Property TargetEndpoint
-$APICallTrackingRestartDueToDuplicateNextlinkCounterCount = ($azAPICallConf['arrayAPICallTracking'].where({ $_.RestartDueToDuplicateNextlinkCounter -gt 0 } )).Count
-Write-Host 'AzGovViz API call stats:'
-$duarationStats = ($azAPICallConf['arrayAPICallTracking'].Duration | Measure-Object -Average -Maximum -Minimum)
-Write-Host " API calls total count: $APICallTrackingCount ($APICallTrackingRetriesCount retries; $APICallTrackingRestartDueToDuplicateNextlinkCounterCount nextLinkReset) | average: $($duarationStats.Average) sec, maximum: $($duarationStats.Maximum) sec, minimum: $($duarationStats.Minimum) sec"
-foreach ($targetEndpoint in $APICallTrackingGroupedByTargetEndpoint | Sort-Object -Property Name) {
-    $APICallTrackingRetriesCount = ($targetEndpoint.Group.where({ $_.TryCounter -gt 1 } )).Count
-    $APICallTrackingRestartDueToDuplicateNextlinkCounterCount = ($targetEndpoint.Group.where({ $_.RestartDueToDuplicateNextlinkCounter -gt 0 } )).Count
-    $duarationStats = ($targetEndpoint.Group.Duration | Measure-Object -Average -Maximum -Minimum)
-    Write-Host " API calls endpoint '$($targetEndpoint.Name) ($($azAPICallConf['azAPIEndpointUrls'].($targetEndpoint.Name)))' count: $($targetEndpoint.Count) ($APICallTrackingRetriesCount retries; $APICallTrackingRestartDueToDuplicateNextlinkCounterCount nextLinkReset) | average: $($duarationStats.Average) sec, maximum: $($duarationStats.Maximum) sec, minimum: $($duarationStats.Minimum) sec"
-}
+# #APITracking
+# $APICallTrackingCount = ($azAPICallConf['arrayAPICallTracking']).Count
+# $APICallTrackingRetriesCount = ($azAPICallConf['arrayAPICallTracking'].where({ $_.TryCounter -gt 1 } )).Count
+# $APICallTrackingGroupedByTargetEndpoint = $azAPICallConf['arrayAPICallTracking'] | Group-Object -Property TargetEndpoint
+# $APICallTrackingRestartDueToDuplicateNextlinkCounterCount = ($azAPICallConf['arrayAPICallTracking'].where({ $_.RestartDueToDuplicateNextlinkCounter -gt 0 } )).Count
+# Write-Host 'AzGovViz API call stats:'
+# $duarationStats = ($azAPICallConf['arrayAPICallTracking'].Duration | Measure-Object -Average -Maximum -Minimum)
+# Write-Host " API calls total count: $APICallTrackingCount ($APICallTrackingRetriesCount retries; $APICallTrackingRestartDueToDuplicateNextlinkCounterCount nextLinkReset) | average: $($duarationStats.Average) sec, maximum: $($duarationStats.Maximum) sec, minimum: $($duarationStats.Minimum) sec"
+# foreach ($targetEndpoint in $APICallTrackingGroupedByTargetEndpoint | Sort-Object -Property Name) {
+#     $APICallTrackingRetriesCount = ($targetEndpoint.Group.where({ $_.TryCounter -gt 1 } )).Count
+#     $APICallTrackingRestartDueToDuplicateNextlinkCounterCount = ($targetEndpoint.Group.where({ $_.RestartDueToDuplicateNextlinkCounter -gt 0 } )).Count
+#     $duarationStats = ($targetEndpoint.Group.Duration | Measure-Object -Average -Maximum -Minimum)
+#     Write-Host " API calls endpoint '$($targetEndpoint.Name) ($($azAPICallConf['azAPIEndpointUrls'].($targetEndpoint.Name)))' count: $($targetEndpoint.Count) ($APICallTrackingRetriesCount retries; $APICallTrackingRestartDueToDuplicateNextlinkCounterCount nextLinkReset) | average: $($duarationStats.Average) sec, maximum: $($duarationStats.Maximum) sec, minimum: $($duarationStats.Minimum) sec"
+# }
+apiCallTracking -stage 'Summary' -spacing ''
+
 $endAzGovViz = Get-Date
 $durationProduct = (NEW-TIMESPAN -Start $startAzGovViz -End $endAzGovViz)
 Write-Host "AzGovViz duration: $($durationProduct.TotalMinutes) minutes"

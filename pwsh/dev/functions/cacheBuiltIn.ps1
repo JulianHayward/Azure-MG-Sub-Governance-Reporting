@@ -20,9 +20,6 @@ function cacheBuiltIn {
         if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
             Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
         }
-        else {
-            Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
-        }
 
         if ($builtInCapability -eq 'PolicyDefinitions') {
             $currentTask = 'Caching built-in Policy definitions'
