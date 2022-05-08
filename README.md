@@ -60,7 +60,7 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 __Changes__ (2022-May-08 / Major)
 
-* integrate PSRule. This feature is optional, use new parameter `-DoPSRule`. __TenantSummary__ - _Subscriptions, Resources & Defender_ - PSRule results
+* integrate [PSRule](https://aka.ms/PSRule). This feature is optional, use new parameter `-DoPSRule`. __TenantSummary__ - _Subscriptions, Resources & Defender_ - PSRule results
 * fix [#issue92](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/92) -> pipeline .azuredevops/pipelines/AzGovViz.pipeline.yml
 * update Azure DevOps pipelines / use AzurePowershell@5
 * update prerequisites.ps1
