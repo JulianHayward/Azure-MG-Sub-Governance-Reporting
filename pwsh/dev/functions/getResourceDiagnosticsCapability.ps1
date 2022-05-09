@@ -24,11 +24,6 @@ function getResourceDiagnosticsCapability {
             $resourceTypesDiagnosticsArray = $using:resourceTypesDiagnosticsArray
             $htResourceTypesUniqueResource = $using:htResourceTypesUniqueResource
             $resourceTypesSummarizedArray = $using:resourceTypesSummarizedArray
-            #Functions
-            #AzAPICall
-            if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-            }
             #endregion UsingVARs
 
             $skipThisResourceType = $false

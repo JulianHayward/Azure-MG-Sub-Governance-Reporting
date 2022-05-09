@@ -271,7 +271,20 @@ function dataCollectionResources {
     #psRule
     if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
         if ($resourcesSubscriptionResult.Count -gt 0) {
-            $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure
+            $startPSRule = Get-Date
+            try {
+                $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure -ErrorAction Stop
+            }
+            catch {
+                $_
+                Write-Host " Skipping PSRule for subscriptionId '$scopeId'"
+            }
+            $endPSRule = Get-Date
+            $durationPSRule = $((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalSeconds)
+            $null = $script:arrayPSRuleTracking.Add([PSCustomObject]@{
+                    subscriptionId = $scopeId
+                    duration       = $durationPSRule
+                })
             Write-Host "PSRule results for sub $childMgSubId $($psruleResults.Count)"
             if ($psruleResults.Count -gt 0) {
                 $null = $script:arrayPSRule.AddRange($psRuleResults)

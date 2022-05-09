@@ -64,11 +64,6 @@ function processDataCollection {
             $htPrincipals = $using:htPrincipals
             $htServicePrincipals = $using:htServicePrincipals
             $htUserTypesGuest = $using:htUserTypesGuest
-            #Functions
-            #AzAPICall
-            if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-            }
             #other
             $function:addRowToTable = $using:funcAddRowToTable
             $function:namingValidation = $using:funcNamingValidation
@@ -327,19 +322,9 @@ function processDataCollection {
                 $arrayDefenderPlansSubscriptionNotRegistered = $using:arrayDefenderPlansSubscriptionNotRegistered
                 $arrayUserAssignedIdentities4Resources = $using:arrayUserAssignedIdentities4Resources
                 $htSubscriptionsRoleAssignmentLimit = $using:htSubscriptionsRoleAssignmentLimit
+                $PSRuleVersion = $using:PSRuleVersion
                 $arrayPsRule = $using:arrayPsRule
-                #Functions
-                #AzAPICall
-                if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                    Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-                }
-                #PSRule
-                if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
-                    if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                        Import-Module ".\$($scriptPath)\PSRuleModule\PSRule" -Force -ErrorAction Stop
-                        Import-Module ".\$($scriptPath)\PSRuleModule\PSRule.Rules.Azure" -Force -ErrorAction Stop
-                    }
-                }
+                $arrayPSRuleTracking = $using:arrayPSRuleTracking
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation
@@ -552,7 +537,12 @@ function processDataCollection {
 
         $endSubLoop = Get-Date
         Write-Host " CustomDataCollection Subscriptions processing duration: $((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds) seconds)"
-
+        if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
+            if ($arrayPSRuleTracking.Count -gt 0) {
+                $durationPSRuleTotalSeconds = (($arrayPSRuleTracking.duration | Measure-Object -Sum).Sum)
+                Write-Host "  CustomDataCollection Subscriptions PSRule processing duration: $($durationPSRuleTotalSeconds / 60) minutes ($($durationPSRuleTotalSeconds) seconds)"
+            }
+        }
         #test
         Write-Host " built-in PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq 'BuiltIn'}).Count)"
         Write-Host " custom PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq 'Custom'}).Count)"

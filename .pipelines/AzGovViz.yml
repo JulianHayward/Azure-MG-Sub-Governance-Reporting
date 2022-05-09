@@ -1,11 +1,11 @@
-# AzGovViz v6_major_20220508_4
+# AzGovViz v6_major_20220509_4
 # First things first: 
-# 1. edit line 61 and line 62 
-# 2. check line 76 and 87 if branch 'master' is applicable 
+# 1. edit line 64 and line 65 
+# 2. check line 79 and 90 if branch 'master' is applicable 
 # Documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 # Also check https://www.azadvertizer.net - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
 # 
-# Parameters reference (use in line 110)
+# Parameters reference (use in line 114)
 # LimitCriticalPercentage | default is '80' | example: -LimitCriticalPercentage 90  | WhatDoesItDo? marks capabilities that approch limits e.g. limit 100, usage 80 will mark with warning
 # SubscriptionQuotaIdWhitelist | default is 'undefined' | example: -SubscriptionQuotaIdWhitelist MSDN_, EnterpriseAgreement_ | WhatDoesItDo? processes only Subscriptions that startWith the given QuotaIds
 # HierarchyMapOnly | switch | example: -HierarchyMapOnly | WhatDoesItDo? only creates the Hierarchy Tree
@@ -42,6 +42,9 @@
 # StatsOptOut | example: -StatsOptOut | WhatDoesItDo? Will opt-out sending stats
 # NoSingleSubscriptionOutput | example: -NoSingleSubscriptionOutput | WhatDoesItDo? Single Scope Insights output per Subscription should not be created
 # ManagementGroupsOnly | example: -ManagementGroupsOnly | WhatDoesItDo? Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
+# ShowMemoryUsage | example: -ShowMemoryUsage | WhatDoesItDo? Shows memory usage at memory intense sections of the scripts, this shall help you determine if the the worker is well sized for AzGovViz
+# DoPSRule | example: -DoPSRule | WhatDoesItDo? Execute PSRule (https://aka.ms/PSRule). Results are integrated in the HTML output, plus PSRule results are exported to CSV
+# PSRuleVersion | example: -PSRuleVersion '1.14.3' | WhatDoesItDo? Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
 
 trigger: none
 

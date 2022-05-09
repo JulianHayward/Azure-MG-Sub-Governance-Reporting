@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.11',
 
     [string]
-    $ProductVersion = 'v6_major_20220508_5',
+    $ProductVersion = 'v6_major_20220509_4',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -429,7 +429,7 @@ Param
     $DoPSRule,
 
     [string]
-    $PSRuleVersion = '1.14.3',
+    $PSRuleVersion,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
@@ -1700,11 +1700,6 @@ function cacheBuiltIn {
         $htCacheDefinitionsPolicySet = $using:htCacheDefinitionsPolicySet
         $htCacheDefinitionsRole = $using:htCacheDefinitionsRole
         $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
-        #Functions
-        #AzAPICall
-        if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-            Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-        }
 
         if ($builtInCapability -eq 'PolicyDefinitions') {
             $currentTask = 'Caching built-in Policy definitions'
@@ -2177,11 +2172,6 @@ function getConsumption {
                         $htSubscriptionsMgPath = $using:htSubscriptionsMgPath
                         $htAllSubscriptionsFromAPI = $using:htAllSubscriptionsFromAPI
                         $htConsumptionExceptionLog = $using:htConsumptionExceptionLog
-                        #Functions
-                        #AzAPICall
-                        if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                            Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-                        }
                         #other
                         $function:addToAllConsumptionData = $using:funcAddToAllConsumptionData
                         #endregion UsingVARs
@@ -2375,11 +2365,6 @@ function getConsumption {
                         $htAllSubscriptionsFromAPI = $using:htAllSubscriptionsFromAPI
                         $allConsumptionData = $using:allConsumptionData
                         $htConsumptionExceptionLog = $using:htConsumptionExceptionLog
-                        #Functions
-                        #AzAPICall
-                        if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                            Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-                        }
                         #other
                         $function:addToAllConsumptionData = $using:funcAddToAllConsumptionData
                         #endregion UsingVARs
@@ -2958,11 +2943,6 @@ function getResourceDiagnosticsCapability {
             $resourceTypesDiagnosticsArray = $using:resourceTypesDiagnosticsArray
             $htResourceTypesUniqueResource = $using:htResourceTypesUniqueResource
             $resourceTypesSummarizedArray = $using:resourceTypesSummarizedArray
-            #Functions
-            #AzAPICall
-            if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-            }
             #endregion UsingVARs
 
             $skipThisResourceType = $false
@@ -3223,11 +3203,6 @@ function processAADGroups {
             $indicator = $using:indicator
             $htUserTypesGuest = $using:htUserTypesGuest
             $htServicePrincipals = $using:htServicePrincipals
-            #Functions
-            #AzAPICall
-            if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-            }
             #other
             $function:getGroupmembers = $using:funcGetGroupmembers
             #endregion UsingVARs
@@ -3313,11 +3288,6 @@ function processApplications {
             $arrayApplicationRequestResourceNotFound = $using:arrayApplicationRequestResourceNotFound
             $htAppDetails = $using:htAppDetails
             $htServicePrincipals = $using:htServicePrincipals
-            #Functions
-            #AzAPICall
-            if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-            }
             #endregion UsingVARs
 
             $sp = $htServicePrincipals.($_)
@@ -3476,11 +3446,6 @@ function processDataCollection {
             $htPrincipals = $using:htPrincipals
             $htServicePrincipals = $using:htServicePrincipals
             $htUserTypesGuest = $using:htUserTypesGuest
-            #Functions
-            #AzAPICall
-            if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-            }
             #other
             $function:addRowToTable = $using:funcAddRowToTable
             $function:namingValidation = $using:funcNamingValidation
@@ -3739,19 +3704,9 @@ function processDataCollection {
                 $arrayDefenderPlansSubscriptionNotRegistered = $using:arrayDefenderPlansSubscriptionNotRegistered
                 $arrayUserAssignedIdentities4Resources = $using:arrayUserAssignedIdentities4Resources
                 $htSubscriptionsRoleAssignmentLimit = $using:htSubscriptionsRoleAssignmentLimit
+                $PSRuleVersion = $using:PSRuleVersion
                 $arrayPsRule = $using:arrayPsRule
-                #Functions
-                #AzAPICall
-                if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                    Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-                }
-                #PSRule
-                if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
-                    if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                        Import-Module ".\$($scriptPath)\PSRuleModule\PSRule" -Force -ErrorAction Stop
-                        Import-Module ".\$($scriptPath)\PSRuleModule\PSRule.Rules.Azure" -Force -ErrorAction Stop
-                    }
-                }
+                $arrayPSRuleTracking = $using:arrayPSRuleTracking
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation
@@ -3964,7 +3919,12 @@ function processDataCollection {
 
         $endSubLoop = Get-Date
         Write-Host " CustomDataCollection Subscriptions processing duration: $((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds) seconds)"
-
+        if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
+            if ($arrayPSRuleTracking.Count -gt 0) {
+                $durationPSRuleTotalSeconds = (($arrayPSRuleTracking.duration | Measure-Object -Sum).Sum)
+                Write-Host "  CustomDataCollection Subscriptions PSRule processing duration: $($durationPSRuleTotalSeconds / 60) minutes ($($durationPSRuleTotalSeconds) seconds)"
+            }
+        }
         #test
         Write-Host " built-in PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq 'BuiltIn'}).Count)"
         Write-Host " custom PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq 'Custom'}).Count)"
@@ -6572,7 +6532,7 @@ extensions: [{ name: 'sort' }]
         if (($htDiagnosticSettingsMgSub).mg.($mgChild)) {
             $diagnosticsMgCount = (($htDiagnosticSettingsMgSub).mg.($mgChild).Values.Count)
             $tfCount = $diagnosticsMgCount
-            $htmlTableId = "ScopeInsights_DiagnosticsMg_$($mgChild -replace '-','_')"
+            $htmlTableId = "ScopeInsights_DiagnosticsMg_$($mgChild -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
             $randomFunctionName = "func_$htmlTableId"
             [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $diagnosticsMgCount Management Group Diagnostic settings</p></button>
@@ -6758,7 +6718,7 @@ extensions: [{ name: 'sort' }]
                     }
 
                     $tfCount = ($arrayConsumptionData).Count
-                    $htmlTableId = "ScopeInsights_Consumption_$($mgChild -replace '-','_')"
+                    $htmlTableId = "ScopeInsights_Consumption_$($mgChild -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
                     $randomFunctionName = "func_$htmlTableId"
                     [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-credit-card blue" aria-hidden="true"></i> Total cost $($arrayTotalCostSummaryMg -join "$CsvDelimiterOpposite ") last $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)</button>
@@ -6884,7 +6844,7 @@ tf.init();}}
         if ($mgOrSub -eq 'mg') {
             if ($resourcesAllChildSubscriptionLocationCount -gt 0) {
                 $tfCount = ($resourcesAllChildSubscriptionsArray).count
-                $htmlTableId = "ScopeInsights_Resources_$($mgChild -replace '-','_')"
+                $htmlTableId = "ScopeInsights_Resources_$($mgChild -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $resourcesAllChildSubscriptionResourceTypeCount ResourceTypes ($resourcesAllChildSubscriptionTotal Resources) in $resourcesAllChildSubscriptionLocationCount Locations (all Subscriptions below this scope)</p></button>
@@ -7093,7 +7053,7 @@ extensions: [{ name: 'sort' }]
 
             if ($resourcesAllChildSubscriptionResourceTypeCount -gt 0) {
                 $tfCount = $resourcesAllChildSubscriptionResourceTypeCount
-                $htmlTableId = "ScopeInsights_resourcesDiagnosticsCapable_$($mgchild -replace '-','_')"
+                $htmlTableId = "ScopeInsights_resourcesDiagnosticsCapable_$($mgchild -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesAllChildSubscriptionResourceTypeCount ResourceTypes (1st party) Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs) (all Subscriptions below this scope)</p></button>
@@ -7360,8 +7320,8 @@ extensions: [{ name: 'sort' }]
 </thead>
 <tbody>
 "@)
-                $htmlScopeInsightsTags = $null
-                $htmlScopeInsightsTags = foreach ($miResEntry in $arrayUserAssignedIdentities4ResourcesSubscription | Sort-Object -Property miResourceId, resourceId) {
+                $htmlScopeInsightsUserAssignedIdentities4Resource = $null
+                $htmlScopeInsightsUserAssignedIdentities4Resource = foreach ($miResEntry in $arrayUserAssignedIdentities4ResourcesSubscription | Sort-Object -Property miResourceId, resourceId) {
                     @"
 <tr>
     <td>$($miResEntry.miResourceName)</td>
@@ -7384,7 +7344,7 @@ extensions: [{ name: 'sort' }]
 </tr>
 "@
                 }
-                [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsTags)
+                [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsUserAssignedIdentities4Resource)
                 [void]$htmlScopeInsights.AppendLine(@"
             </tbody>
         </table>
@@ -7459,6 +7419,264 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         <tr><!--y--><td class="detailstd"><!--y-->
 '@)
             #endregion ScopeInsightsUserAssignedIdentities4Resources
+        }
+    }
+
+    #ScopeInsightsPSRule
+    if ($azAPICallConf['htParameters'].NoResources -eq $false) {
+        if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
+            #region ScopeInsightsPSRule
+
+            if ($mgOrSub -eq 'mg') {
+
+                $allPSRuleResultsUnderThisMg = [system.collections.ArrayList]@()
+                foreach ($mg in $grpPSRuleManagementGroups) {
+                    if ($htManagementGroupsMgPath.($mg.name -replace '.*/').path -contains $mgchild) {
+                        $allPSRuleResultsUnderThisMg.AddRange($mg.Group)
+                    }
+                }
+
+                $grpThisManagementGroup = $allPSRuleResultsUnderThisMg | group-object -Property resourceType, pillar, category, severity, ruleId, result
+
+                if ($grpThisManagementGroup) {
+                    $grpThisManagementGroupCount = $grpThisManagementGroup.Count
+                    $tfCount = $grpThisManagementGroupCount
+                    $htmlTableId = "ScopeInsights_PSRule_$($mgchild -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
+                    $randomFunctionName = "func_$htmlTableId"
+                    [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
+<p><i class="fa fa-check-square-o" aria-hidden="true"></i> $grpThisManagementGroupCount PSRule results</p></button>
+<div class="content contentSISub">
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="$cssClass">
+<thead>
+<tr>
+<th>Resource Type</th>
+<th>Resource Count</th>
+<th>Subscription Count</th>
+<th>Pillar</th>
+<th>Category</th>
+<th>Severity</th>
+<th>Rule</th>
+<th>Recommendation</th>
+<th>lnk</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+"@)
+                    $htmlScopeInsightsPSRuleMG = $null
+                    $htmlScopeInsightsPSRuleMG = foreach ($result in $grpThisManagementGroup) {
+                        $resultNameSplit = $result.Name.split(', ')
+                        @"
+                        <tr>
+                            <td>$($resultNameSplit[0])</td>
+                            <td>$($result.Group.Count)</td>
+                            <td>$(($result.Group.subscriptionId | Sort-Object -Unique).Count)</td>
+                            <td>$($resultNameSplit[1])</td>
+                            <td>$($resultNameSplit[2])</td>
+                            <td>$($resultNameSplit[3])</td>
+                            <td>$(($result.Group[0].rule))</td>
+                            <td>$(($result.Group[0].recommendation))</td>
+                            <td><a href=`"$(($result.Group[0].link))`" target=`"_blank`"><i class="fa fa-external-link" aria-hidden="true"></i></a></td>
+                            <td>$($resultNameSplit[5])</td>
+                        </tr>
+"@
+                    }
+                    [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsPSRuleMG)
+                    [void]$htmlScopeInsights.AppendLine(@"
+            </tbody>
+        </table>
+        <script>
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+                    if ($tfCount -gt 10) {
+                        $spectrum = "10, $tfCount"
+                        if ($tfCount -gt 50) {
+                            $spectrum = "10, 25, 50, $tfCount"
+                        }
+                        if ($tfCount -gt 100) {
+                            $spectrum = "10, 30, 50, 100, $tfCount"
+                        }
+                        if ($tfCount -gt 500) {
+                            $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                        }
+                        if ($tfCount -gt 1000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                        }
+                        if ($tfCount -gt 2000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                        }
+                        if ($tfCount -gt 3000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                        }
+                        [void]$htmlScopeInsights.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+                    }
+                    [void]$htmlScopeInsights.AppendLine(@"
+                btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+                linked_filters: true,
+                col_3: 'select',
+                col_4: 'select',
+                col_5: 'select',
+                col_9: 'select',
+                col_types: [
+                    'caseinsensitivestring',
+                    'number',
+                    'number',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring'
+                ],
+                extensions: [{ name: 'sort' }]
+            };
+            var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+            tf.init();}}
+        </script>
+    </div>
+"@)
+                    
+                }
+                else {
+                    [void]$htmlScopeInsights.AppendLine(@'
+                    <p><i class="fa fa-ban" aria-hidden="true"></i> No PSRule results</p>
+'@)
+                }
+                [void]$htmlScopeInsights.AppendLine(@'
+                </td></tr>
+                <tr><!--y--><td class="detailstd"><!--y-->
+'@)
+            }
+
+            if ($mgOrSub -eq 'sub') {
+                $grpThisSubscription = $grpPSRuleSubscriptions.where({ $_.Name -eq $subscriptionId })
+                $grpThisSubscriptionGrouped = $grpThisSubscription.Group | group-object -Property resourceType, pillar, category, severity, ruleId, result
+
+                if ($grpThisSubscriptionGrouped) {
+                    $grpThisSubscriptionGroupedCount = $grpThisSubscriptionGrouped.Count
+                    $tfCount = $grpThisSubscriptionGroupedCount
+                    $htmlTableId = "ScopeInsights_PSRule_$($subscriptionId -replace '-','_')"
+                    $randomFunctionName = "func_$htmlTableId"
+                    [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
+<p><i class="fa fa-check-square-o" aria-hidden="true"></i> $grpThisSubscriptionGroupedCount PSRule results</p></button>
+<div class="content contentSISub">
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="$cssClass">
+<thead>
+<tr>
+<th>Resource Type</th>
+<th>Resource Count</th>
+<th>Pillar</th>
+<th>Category</th>
+<th>Severity</th>
+<th>Rule</th>
+<th>Recommendation</th>
+<th>lnk</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+"@)
+                    $htmlScopeInsightsPSRuleSub = $null
+                    $htmlScopeInsightsPSRuleSub = foreach ($result in $grpThisSubscriptionGrouped) {
+                        $resultNameSplit = $result.Name.split(', ')
+                        @"
+                        <tr>
+                            <td>$($resultNameSplit[0])</td>
+                            <td>$($result.Group.Count)</td>
+                            <td>$($resultNameSplit[1])</td>
+                            <td>$($resultNameSplit[2])</td>
+                            <td>$($resultNameSplit[3])</td>
+                            <td>$(($result.Group[0].rule))</td>
+                            <td>$(($result.Group[0].recommendation))</td>
+                            <td><a href=`"$(($result.Group[0].link))`" target=`"_blank`"><i class="fa fa-external-link" aria-hidden="true"></i></a></td>
+                            <td>$($resultNameSplit[5])</td>
+                        </tr>
+"@
+                    }
+                    [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsPSRuleSub)
+                    [void]$htmlScopeInsights.AppendLine(@"
+            </tbody>
+        </table>
+        <script>
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+                    if ($tfCount -gt 10) {
+                        $spectrum = "10, $tfCount"
+                        if ($tfCount -gt 50) {
+                            $spectrum = "10, 25, 50, $tfCount"
+                        }
+                        if ($tfCount -gt 100) {
+                            $spectrum = "10, 30, 50, 100, $tfCount"
+                        }
+                        if ($tfCount -gt 500) {
+                            $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                        }
+                        if ($tfCount -gt 1000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                        }
+                        if ($tfCount -gt 2000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                        }
+                        if ($tfCount -gt 3000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                        }
+                        [void]$htmlScopeInsights.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+                    }
+                    [void]$htmlScopeInsights.AppendLine(@"
+                btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+                linked_filters: true,
+                col_2: 'select',
+                col_3: 'select',
+                col_4: 'select',
+                col_8: 'select',
+                col_types: [
+                    'caseinsensitivestring',
+                    'number',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring'
+                ],
+                extensions: [{ name: 'sort' }]
+            };
+            var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+            tf.init();}}
+        </script>
+    </div>
+"@)
+                    
+                }
+                else {
+                    [void]$htmlScopeInsights.AppendLine(@'
+                    <p><i class="fa fa-ban" aria-hidden="true"></i> No PSRule results</p>
+'@)
+                }
+                [void]$htmlScopeInsights.AppendLine(@'
+                </td></tr>
+                <tr><!--y--><td class="detailstd"><!--y-->
+'@)
+            }
+            #endregion ScopeInsightsPSRule
         }
     }
 
@@ -14864,9 +15082,7 @@ extensions: [{ name: 'sort' }]
         $endSUMMARYResources = Get-Date
         Write-Host "   SUMMARY Resources processing duration: $((NEW-TIMESPAN -Start $startSUMMARYResources -End $endSUMMARYResources).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYResources -End $endSUMMARYResources).TotalSeconds) seconds)"
         #endregion SUMMARYResources
-    }
 
-    if ($azAPICallConf['htParameters'].NoResources -eq $false) {
         #region SUMMARYResourcesByLocation
         $startSUMMARYResources = Get-Date
         Write-Host '  processing TenantSummary Subscriptions Resources by Location'
@@ -15900,19 +16116,20 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 
         #region SUMMARYPSRule
         if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
+            $startPSRule = Get-Date
             Write-Host '  processing TenantSummary PSRule'
             $arrayPSRuleCount = $arrayPsRule.Count
-            $tfCount = $arrayPSRuleCount
-            $startPSRule = Get-Date
 
             if ($arrayPSRuleCount -gt 0) {
 
                 handlePSRuleData
+                $grpPSRuleAll = $psRuleDataSelection | group-object -Property resourceType, pillar, category, severity, ruleId, result
+                $tfCount = $grpPSRuleAll.Name.Count
 
                 $htmlTableId = 'TenantSummary_PSRule'
 
                 [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_PSRule"><i class="padlx fa fa-check-square-o" aria-hidden="true"></i> <span class="valignMiddle">PSRule results</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_PSRule"><i class="padlx fa fa-check-square-o" aria-hidden="true"></i> <span class="valignMiddle">$tfCount PSRule results</span></button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Learn about </span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -15929,16 +16146,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>Recommendation</th>
 <th>lnk</th>
 <th>State</th>
-"@)
-
-                [void]$htmlTenantSummary.AppendLine(@'
 </tr>
 </thead>
 <tbody>
-'@)
+"@)
 
-                $grpPSRuleAll = $psRuleDataSelection | group-object -Property resourceType, pillar, category, severity, ruleId, result
-                $tfCount = $grpPSRuleAll.Name.Count
                 foreach ($result in $grpPSRuleAll | sort-Object -Property Name) {
                     $resultNameSplit = $result.Name.split(', ')
                     [void]$htmlTenantSummary.AppendLine(@"
@@ -15956,34 +16168,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         </tr>
 "@)
 
-                    # if (-not $NoCsvExport) {
-                    #     $null = $userAssignedIdentities4Resources4CSVExport.Add([PSCustomObject]@{
-                    #             MIName                = $miResEntry.miResourceName
-                    #             MIMgPath              = $miResEntry.miMgPath
-                    #             MISubscriptionName    = $miResEntry.miSubscriptionName
-                    #             MISubscriptionId      = $miResEntry.miSubscriptionId
-                    #             MIResourceGroup       = $miResEntry.miResourceGroupName
-                    #             MIResourceId          = $miResEntry.miResourceId
-                    #             MIAADSPObjectId       = $miResEntry.miPrincipalId
-                    #             MIAADSPApplicationId  = $miResEntry.miClientId
-                    #             MICountResAssignments = $htUserAssignedIdentitiesAssignedResources.($miResEntry.miPrincipalId).ResourcesCount
-                    #             ResName               = $miResEntry.resourceName
-                    #             ResType               = $miResEntry.resourceType
-                    #             ResMgPath             = $miResEntry.resourceMgPath
-                    #             ResSubscriptionName   = $miResEntry.resourceSubscriptionName
-                    #             ResSubscriptionId     = $miResEntry.resourceSubscriptionId
-                    #             ResResourceGroup      = $miResEntry.resourceResourceGroupName
-                    #             ResId                 = $miResEntry.resourceId
-                    #             ResCountAssignedMIs   = $htResourcesAssignedUserAssignedIdentities.(($miResEntry.resourceId).tolower()).UserAssignedIdentitiesCount
-                    #         })
-                    # }
-
                 }
-
-                # if (-not $NoCsvExport) {
-                #     Write-Host "Exporting UserAssignedIdentities4Resources CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_UserAssignedIdentities4Resources.csv'"
-                #     $userAssignedIdentities4Resources4CSVExport | Sort-Object -Property miResourceId, resourceId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_UserAssignedIdentities4Resources.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
-                # }
 
                 [void]$htmlTenantSummary.AppendLine(@"
 </tbody>
@@ -21346,12 +21531,12 @@ function runInfo {
         }
 
         if ($azAPICallConf['htParameters'].DoPSRule) {
-            Write-Host " PSRule = $($azAPICallConf['htParameters'].DoPSRule)" -ForegroundColor Green
-            $script:paramsUsed += "PSRule: $($azAPICallConf['htParameters'].DoPSRule) &#13;"
+            Write-Host " DoPSRule = $($azAPICallConf['htParameters'].DoPSRule)" -ForegroundColor Green
+            $script:paramsUsed += "DoPSRule: $($azAPICallConf['htParameters'].DoPSRule) &#13;"
         }
         else {
-            Write-Host " PSRule = $($azAPICallConf['htParameters'].DoPSRule)" -ForegroundColor Yellow
-            $script:paramsUsed += "PSRule: $($azAPICallConf['htParameters'].DoPSRule) &#13;"
+            Write-Host " DoPSRule = $($azAPICallConf['htParameters'].DoPSRule)" -ForegroundColor Yellow
+            $script:paramsUsed += "DoPSRule: $($azAPICallConf['htParameters'].DoPSRule) &#13;"
         }
     }
     #endregion RunInfo
@@ -22145,7 +22330,20 @@ function dataCollectionResources {
     #psRule
     if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
         if ($resourcesSubscriptionResult.Count -gt 0) {
-            $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure
+            $startPSRule = Get-Date
+            try {
+                $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure -ErrorAction Stop
+            }
+            catch {
+                $_
+                Write-Host " Skipping PSRule for subscriptionId '$scopeId'"
+            }
+            $endPSRule = Get-Date
+            $durationPSRule = $((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalSeconds)
+            $null = $script:arrayPSRuleTracking.Add([PSCustomObject]@{
+                    subscriptionId = $scopeId
+                    duration       = $durationPSRule
+                })
             Write-Host "PSRule results for sub $childMgSubId $($psruleResults.Count)"
             if ($psruleResults.Count -gt 0) {
                 $null = $script:arrayPSRule.AddRange($psRuleResults)
@@ -25144,7 +25342,7 @@ foreach ($module in $modules) {
             throw " Managing '$($module.ModuleName)' failed"
         }
 
-        $importModuleSuccess = $false
+        $installModuleSuccess = $false
         try {
 
             if (-not $moduleVersion) {
@@ -25152,6 +25350,9 @@ foreach ($module in $modules) {
                 try {
                     $moduleVersion = (Find-Module -name $($module.ModuleName)).Version
                     Write-Host "  Latest module version: $moduleVersion"
+                    if ($module.ModuleName -eq 'PSRule.Rules.Azure') {
+                        $PSRuleVersion = $moduleVersion
+                    }
                 }
                 catch {
                     Write-Host '  Check latest module version failed'
@@ -25161,7 +25362,7 @@ foreach ($module in $modules) {
 
             try {
                 $moduleDeviation = $false
-                $moduleVersionLoaded = ((Get-Module -name $($module.ModuleName)).Version)
+                $moduleVersionLoaded = ((Get-InstalledModule -name $($module.ModuleName)).Version)
                 foreach ($moduleLoaded in $moduleVersionLoaded) {
                     if ($moduleLoaded.toString() -ne $moduleVersion) {
                         Write-Host "  Deviating loaded version found ('$($moduleLoaded.toString())' != '$($moduleVersion)')"
@@ -25169,14 +25370,14 @@ foreach ($module in $modules) {
                     }
                     else {
                         if ($moduleVersionLoaded.count -eq 1) {
-                            Write-Host "  $($module.ModuleName) module ($($moduleLoaded.toString())) is already loaded" -ForegroundColor Green
-                            $importModuleSuccess = $true
+                            Write-Host "  $($module.ModuleName) module ($($moduleLoaded.toString())) is loaded" -ForegroundColor Green
+                            $installModuleSuccess = $true
                         }
                     }
                 }
 
                 if ($moduleDeviation) {
-                    $importModuleSuccess = $false
+                    $installModuleSuccess = $false
                     try {
                         Write-Host "  Remove-Module $($module.ModuleName) ($(($moduleVersionLoaded -join ', ').ToString()))"
                         Remove-Module -Name $($module.ModuleName) -Force
@@ -25191,38 +25392,30 @@ foreach ($module in $modules) {
                 #Write-Host "  $($module.ModuleName) module is not loaded"
             }
 
-            if (-not $importModuleSuccess) {
-                Write-Host "  Try (#$tryCount) importing $($module.ModuleName) module ($moduleVersion)"
-                if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
-                    if ($module.ModuleName -eq 'PSRule.Rules.Azure') {
-                        Import-Module ".\$($ScriptPath)\$($module.ModulePathPipeline)\$($module.ModuleProductName)" -Force -ErrorAction Stop
-                        Write-Host "  Import PS module '$($module.ModuleProductName)' succeeded" -ForegroundColor Green
-                    }
-                    Import-Module ".\$($ScriptPath)\$($module.ModulePathPipeline)\$($module.ModuleName)\$($moduleVersion)\$($module.ModuleName).psd1" -Force -ErrorAction Stop
-                    Write-Host "  Import PS module '$($module.ModuleName)' ($($moduleVersion)) succeeded" -ForegroundColor Green
+            if (-not $installModuleSuccess) {
+                $moduleVersionLoaded = (Get-InstalledModule -name $($module.ModuleName)).Version
+                if ($moduleVersionLoaded -eq $moduleVersion) {
+                    $installModuleSuccess = $true
                 }
                 else {
-                    Import-Module -Name $($module.ModuleName) -RequiredVersion $moduleVersion -Force
-                    Write-Host "  Import PS module '$($module.ModuleName)' ($($moduleVersion)) succeeded" -ForegroundColor Green
+                    throw
                 }
-                $importModuleSuccess = $true
             }
         }
         catch {
-            Write-Host "  Importing $($module.ModuleName) module failed"
+            Write-Host "  '$($module.ModuleName)' not installed"
             if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
-                Write-Host "  Saving $($module.ModuleName) module ($($moduleVersion))"
+                Write-Host "  Installing $($module.ModuleName) module ($($moduleVersion))"
                 try {
                     $params = @{
                         Name            = "$($module.ModuleName)"
-                        Path            = ".\$($ScriptPath)\$($module.ModulePathPipeline)"
                         Force           = $true
                         RequiredVersion = $moduleVersion
                     }
-                    Save-Module @params
+                    Install-Module @params
                 }
                 catch {
-                    Write-Host "  Saving $($module.ModuleName) module ($($moduleVersion)) failed"
+                    Write-Host "  Installing '$($module.ModuleName)' module ($($moduleVersion)) failed"
                     throw
                 }
             }
@@ -25251,7 +25444,7 @@ foreach ($module in $modules) {
             }
         }
     }
-    until ($importModuleSuccess)
+    until ($installModuleSuccess)
 }
 #endregion verifyModules3rd
 
@@ -25386,6 +25579,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     }
 
     $arrayPsRule = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayPSRuleTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
 getEntities
@@ -26350,6 +26544,12 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
         $startHierarchyTable = Get-Date
         $script:scopescnter = 0
+        if ($azAPICallConf['htParameters'].NoResources -eq $false) {
+            if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
+                $grpPSRuleSubscriptions = $psRuleDataSelection | group-object -Property subscriptionId
+                $grpPSRuleManagementGroups = $psRuleDataSelection | group-object -Property mgPath
+            }
+        }
         processScopeInsights -mgChild $ManagementGroupId -mgChildOf $getMgParentId
         showMemoryUsage
         #[System.GC]::Collect()
@@ -26427,20 +26627,6 @@ showMemoryUsage
 
 #endregion createoutputs
 
-# #APITracking
-# $APICallTrackingCount = ($azAPICallConf['arrayAPICallTracking']).Count
-# $APICallTrackingRetriesCount = ($azAPICallConf['arrayAPICallTracking'].where({ $_.TryCounter -gt 1 } )).Count
-# $APICallTrackingGroupedByTargetEndpoint = $azAPICallConf['arrayAPICallTracking'] | Group-Object -Property TargetEndpoint
-# $APICallTrackingRestartDueToDuplicateNextlinkCounterCount = ($azAPICallConf['arrayAPICallTracking'].where({ $_.RestartDueToDuplicateNextlinkCounter -gt 0 } )).Count
-# Write-Host 'AzGovViz API call stats:'
-# $duarationStats = ($azAPICallConf['arrayAPICallTracking'].Duration | Measure-Object -Average -Maximum -Minimum)
-# Write-Host " API calls total count: $APICallTrackingCount ($APICallTrackingRetriesCount retries; $APICallTrackingRestartDueToDuplicateNextlinkCounterCount nextLinkReset) | average: $($duarationStats.Average) sec, maximum: $($duarationStats.Maximum) sec, minimum: $($duarationStats.Minimum) sec"
-# foreach ($targetEndpoint in $APICallTrackingGroupedByTargetEndpoint | Sort-Object -Property Name) {
-#     $APICallTrackingRetriesCount = ($targetEndpoint.Group.where({ $_.TryCounter -gt 1 } )).Count
-#     $APICallTrackingRestartDueToDuplicateNextlinkCounterCount = ($targetEndpoint.Group.where({ $_.RestartDueToDuplicateNextlinkCounter -gt 0 } )).Count
-#     $duarationStats = ($targetEndpoint.Group.Duration | Measure-Object -Average -Maximum -Minimum)
-#     Write-Host " API calls endpoint '$($targetEndpoint.Name) ($($azAPICallConf['azAPIEndpointUrls'].($targetEndpoint.Name)))' count: $($targetEndpoint.Count) ($APICallTrackingRetriesCount retries; $APICallTrackingRestartDueToDuplicateNextlinkCounterCount nextLinkReset) | average: $($duarationStats.Average) sec, maximum: $($duarationStats.Maximum) sec, minimum: $($duarationStats.Minimum) sec"
-# }
 apiCallTracking -stage 'Summary' -spacing ''
 
 $endAzGovViz = Get-Date

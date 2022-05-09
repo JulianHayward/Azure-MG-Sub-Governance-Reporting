@@ -37,11 +37,6 @@ function processAADGroups {
             $indicator = $using:indicator
             $htUserTypesGuest = $using:htUserTypesGuest
             $htServicePrincipals = $using:htServicePrincipals
-            #Functions
-            #AzAPICall
-            if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-            }
             #other
             $function:getGroupmembers = $using:funcGetGroupmembers
             #endregion UsingVARs

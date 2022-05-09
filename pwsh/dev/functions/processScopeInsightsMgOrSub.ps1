@@ -987,7 +987,7 @@ extensions: [{ name: 'sort' }]
         if (($htDiagnosticSettingsMgSub).mg.($mgChild)) {
             $diagnosticsMgCount = (($htDiagnosticSettingsMgSub).mg.($mgChild).Values.Count)
             $tfCount = $diagnosticsMgCount
-            $htmlTableId = "ScopeInsights_DiagnosticsMg_$($mgChild -replace '-','_')"
+            $htmlTableId = "ScopeInsights_DiagnosticsMg_$($mgChild -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
             $randomFunctionName = "func_$htmlTableId"
             [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $diagnosticsMgCount Management Group Diagnostic settings</p></button>
@@ -1173,7 +1173,7 @@ extensions: [{ name: 'sort' }]
                     }
 
                     $tfCount = ($arrayConsumptionData).Count
-                    $htmlTableId = "ScopeInsights_Consumption_$($mgChild -replace '-','_')"
+                    $htmlTableId = "ScopeInsights_Consumption_$($mgChild -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
                     $randomFunctionName = "func_$htmlTableId"
                     [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-credit-card blue" aria-hidden="true"></i> Total cost $($arrayTotalCostSummaryMg -join "$CsvDelimiterOpposite ") last $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)</button>
@@ -1299,7 +1299,7 @@ tf.init();}}
         if ($mgOrSub -eq 'mg') {
             if ($resourcesAllChildSubscriptionLocationCount -gt 0) {
                 $tfCount = ($resourcesAllChildSubscriptionsArray).count
-                $htmlTableId = "ScopeInsights_Resources_$($mgChild -replace '-','_')"
+                $htmlTableId = "ScopeInsights_Resources_$($mgChild -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $resourcesAllChildSubscriptionResourceTypeCount ResourceTypes ($resourcesAllChildSubscriptionTotal Resources) in $resourcesAllChildSubscriptionLocationCount Locations (all Subscriptions below this scope)</p></button>
@@ -1508,7 +1508,7 @@ extensions: [{ name: 'sort' }]
 
             if ($resourcesAllChildSubscriptionResourceTypeCount -gt 0) {
                 $tfCount = $resourcesAllChildSubscriptionResourceTypeCount
-                $htmlTableId = "ScopeInsights_resourcesDiagnosticsCapable_$($mgchild -replace '-','_')"
+                $htmlTableId = "ScopeInsights_resourcesDiagnosticsCapable_$($mgchild -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesAllChildSubscriptionResourceTypeCount ResourceTypes (1st party) Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs) (all Subscriptions below this scope)</p></button>
@@ -1775,8 +1775,8 @@ extensions: [{ name: 'sort' }]
 </thead>
 <tbody>
 "@)
-                $htmlScopeInsightsTags = $null
-                $htmlScopeInsightsTags = foreach ($miResEntry in $arrayUserAssignedIdentities4ResourcesSubscription | Sort-Object -Property miResourceId, resourceId) {
+                $htmlScopeInsightsUserAssignedIdentities4Resource = $null
+                $htmlScopeInsightsUserAssignedIdentities4Resource = foreach ($miResEntry in $arrayUserAssignedIdentities4ResourcesSubscription | Sort-Object -Property miResourceId, resourceId) {
                     @"
 <tr>
     <td>$($miResEntry.miResourceName)</td>
@@ -1799,7 +1799,7 @@ extensions: [{ name: 'sort' }]
 </tr>
 "@
                 }
-                [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsTags)
+                [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsUserAssignedIdentities4Resource)
                 [void]$htmlScopeInsights.AppendLine(@"
             </tbody>
         </table>
@@ -1874,6 +1874,264 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         <tr><!--y--><td class="detailstd"><!--y-->
 '@)
             #endregion ScopeInsightsUserAssignedIdentities4Resources
+        }
+    }
+
+    #ScopeInsightsPSRule
+    if ($azAPICallConf['htParameters'].NoResources -eq $false) {
+        if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
+            #region ScopeInsightsPSRule
+
+            if ($mgOrSub -eq 'mg') {
+
+                $allPSRuleResultsUnderThisMg = [system.collections.ArrayList]@()
+                foreach ($mg in $grpPSRuleManagementGroups) {
+                    if ($htManagementGroupsMgPath.($mg.name -replace '.*/').path -contains $mgchild) {
+                        $allPSRuleResultsUnderThisMg.AddRange($mg.Group)
+                    }
+                }
+
+                $grpThisManagementGroup = $allPSRuleResultsUnderThisMg | group-object -Property resourceType, pillar, category, severity, ruleId, result
+
+                if ($grpThisManagementGroup) {
+                    $grpThisManagementGroupCount = $grpThisManagementGroup.Count
+                    $tfCount = $grpThisManagementGroupCount
+                    $htmlTableId = "ScopeInsights_PSRule_$($mgchild -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
+                    $randomFunctionName = "func_$htmlTableId"
+                    [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
+<p><i class="fa fa-check-square-o" aria-hidden="true"></i> $grpThisManagementGroupCount PSRule results</p></button>
+<div class="content contentSISub">
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="$cssClass">
+<thead>
+<tr>
+<th>Resource Type</th>
+<th>Resource Count</th>
+<th>Subscription Count</th>
+<th>Pillar</th>
+<th>Category</th>
+<th>Severity</th>
+<th>Rule</th>
+<th>Recommendation</th>
+<th>lnk</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+"@)
+                    $htmlScopeInsightsPSRuleMG = $null
+                    $htmlScopeInsightsPSRuleMG = foreach ($result in $grpThisManagementGroup) {
+                        $resultNameSplit = $result.Name.split(', ')
+                        @"
+                        <tr>
+                            <td>$($resultNameSplit[0])</td>
+                            <td>$($result.Group.Count)</td>
+                            <td>$(($result.Group.subscriptionId | Sort-Object -Unique).Count)</td>
+                            <td>$($resultNameSplit[1])</td>
+                            <td>$($resultNameSplit[2])</td>
+                            <td>$($resultNameSplit[3])</td>
+                            <td>$(($result.Group[0].rule))</td>
+                            <td>$(($result.Group[0].recommendation))</td>
+                            <td><a href=`"$(($result.Group[0].link))`" target=`"_blank`"><i class="fa fa-external-link" aria-hidden="true"></i></a></td>
+                            <td>$($resultNameSplit[5])</td>
+                        </tr>
+"@
+                    }
+                    [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsPSRuleMG)
+                    [void]$htmlScopeInsights.AppendLine(@"
+            </tbody>
+        </table>
+        <script>
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+                    if ($tfCount -gt 10) {
+                        $spectrum = "10, $tfCount"
+                        if ($tfCount -gt 50) {
+                            $spectrum = "10, 25, 50, $tfCount"
+                        }
+                        if ($tfCount -gt 100) {
+                            $spectrum = "10, 30, 50, 100, $tfCount"
+                        }
+                        if ($tfCount -gt 500) {
+                            $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                        }
+                        if ($tfCount -gt 1000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                        }
+                        if ($tfCount -gt 2000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                        }
+                        if ($tfCount -gt 3000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                        }
+                        [void]$htmlScopeInsights.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+                    }
+                    [void]$htmlScopeInsights.AppendLine(@"
+                btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+                linked_filters: true,
+                col_3: 'select',
+                col_4: 'select',
+                col_5: 'select',
+                col_9: 'select',
+                col_types: [
+                    'caseinsensitivestring',
+                    'number',
+                    'number',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring'
+                ],
+                extensions: [{ name: 'sort' }]
+            };
+            var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+            tf.init();}}
+        </script>
+    </div>
+"@)
+                    
+                }
+                else {
+                    [void]$htmlScopeInsights.AppendLine(@'
+                    <p><i class="fa fa-ban" aria-hidden="true"></i> No PSRule results</p>
+'@)
+                }
+                [void]$htmlScopeInsights.AppendLine(@'
+                </td></tr>
+                <tr><!--y--><td class="detailstd"><!--y-->
+'@)
+            }
+
+            if ($mgOrSub -eq 'sub') {
+                $grpThisSubscription = $grpPSRuleSubscriptions.where({ $_.Name -eq $subscriptionId })
+                $grpThisSubscriptionGrouped = $grpThisSubscription.Group | group-object -Property resourceType, pillar, category, severity, ruleId, result
+
+                if ($grpThisSubscriptionGrouped) {
+                    $grpThisSubscriptionGroupedCount = $grpThisSubscriptionGrouped.Count
+                    $tfCount = $grpThisSubscriptionGroupedCount
+                    $htmlTableId = "ScopeInsights_PSRule_$($subscriptionId -replace '-','_')"
+                    $randomFunctionName = "func_$htmlTableId"
+                    [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
+<p><i class="fa fa-check-square-o" aria-hidden="true"></i> $grpThisSubscriptionGroupedCount PSRule results</p></button>
+<div class="content contentSISub">
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="$cssClass">
+<thead>
+<tr>
+<th>Resource Type</th>
+<th>Resource Count</th>
+<th>Pillar</th>
+<th>Category</th>
+<th>Severity</th>
+<th>Rule</th>
+<th>Recommendation</th>
+<th>lnk</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+"@)
+                    $htmlScopeInsightsPSRuleSub = $null
+                    $htmlScopeInsightsPSRuleSub = foreach ($result in $grpThisSubscriptionGrouped) {
+                        $resultNameSplit = $result.Name.split(', ')
+                        @"
+                        <tr>
+                            <td>$($resultNameSplit[0])</td>
+                            <td>$($result.Group.Count)</td>
+                            <td>$($resultNameSplit[1])</td>
+                            <td>$($resultNameSplit[2])</td>
+                            <td>$($resultNameSplit[3])</td>
+                            <td>$(($result.Group[0].rule))</td>
+                            <td>$(($result.Group[0].recommendation))</td>
+                            <td><a href=`"$(($result.Group[0].link))`" target=`"_blank`"><i class="fa fa-external-link" aria-hidden="true"></i></a></td>
+                            <td>$($resultNameSplit[5])</td>
+                        </tr>
+"@
+                    }
+                    [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsPSRuleSub)
+                    [void]$htmlScopeInsights.AppendLine(@"
+            </tbody>
+        </table>
+        <script>
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+                    if ($tfCount -gt 10) {
+                        $spectrum = "10, $tfCount"
+                        if ($tfCount -gt 50) {
+                            $spectrum = "10, 25, 50, $tfCount"
+                        }
+                        if ($tfCount -gt 100) {
+                            $spectrum = "10, 30, 50, 100, $tfCount"
+                        }
+                        if ($tfCount -gt 500) {
+                            $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                        }
+                        if ($tfCount -gt 1000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                        }
+                        if ($tfCount -gt 2000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                        }
+                        if ($tfCount -gt 3000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                        }
+                        [void]$htmlScopeInsights.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+                    }
+                    [void]$htmlScopeInsights.AppendLine(@"
+                btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+                linked_filters: true,
+                col_2: 'select',
+                col_3: 'select',
+                col_4: 'select',
+                col_8: 'select',
+                col_types: [
+                    'caseinsensitivestring',
+                    'number',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
+                    'caseinsensitivestring'
+                ],
+                extensions: [{ name: 'sort' }]
+            };
+            var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+            tf.init();}}
+        </script>
+    </div>
+"@)
+                    
+                }
+                else {
+                    [void]$htmlScopeInsights.AppendLine(@'
+                    <p><i class="fa fa-ban" aria-hidden="true"></i> No PSRule results</p>
+'@)
+                }
+                [void]$htmlScopeInsights.AppendLine(@'
+                </td></tr>
+                <tr><!--y--><td class="detailstd"><!--y-->
+'@)
+            }
+            #endregion ScopeInsightsPSRule
         }
     }
 

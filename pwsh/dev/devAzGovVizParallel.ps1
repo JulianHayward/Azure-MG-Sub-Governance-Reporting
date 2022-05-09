@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.11',
 
     [string]
-    $ProductVersion = 'v6_major_20220508_5',
+    $ProductVersion = 'v6_major_20220509_4',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -429,7 +429,7 @@ Param
     $DoPSRule,
 
     [string]
-    $PSRuleVersion = '1.14.3',
+    $PSRuleVersion,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
@@ -586,7 +586,7 @@ foreach ($module in $modules) {
             throw " Managing '$($module.ModuleName)' failed"
         }
 
-        $importModuleSuccess = $false
+        $installModuleSuccess = $false
         try {
 
             if (-not $moduleVersion) {
@@ -594,6 +594,9 @@ foreach ($module in $modules) {
                 try {
                     $moduleVersion = (Find-Module -name $($module.ModuleName)).Version
                     Write-Host "  Latest module version: $moduleVersion"
+                    if ($module.ModuleName -eq 'PSRule.Rules.Azure') {
+                        $PSRuleVersion = $moduleVersion
+                    }
                 }
                 catch {
                     Write-Host '  Check latest module version failed'
@@ -603,7 +606,7 @@ foreach ($module in $modules) {
 
             try {
                 $moduleDeviation = $false
-                $moduleVersionLoaded = ((Get-Module -name $($module.ModuleName)).Version)
+                $moduleVersionLoaded = ((Get-InstalledModule -name $($module.ModuleName)).Version)
                 foreach ($moduleLoaded in $moduleVersionLoaded) {
                     if ($moduleLoaded.toString() -ne $moduleVersion) {
                         Write-Host "  Deviating loaded version found ('$($moduleLoaded.toString())' != '$($moduleVersion)')"
@@ -611,14 +614,14 @@ foreach ($module in $modules) {
                     }
                     else {
                         if ($moduleVersionLoaded.count -eq 1) {
-                            Write-Host "  $($module.ModuleName) module ($($moduleLoaded.toString())) is already loaded" -ForegroundColor Green
-                            $importModuleSuccess = $true
+                            Write-Host "  $($module.ModuleName) module ($($moduleLoaded.toString())) is loaded" -ForegroundColor Green
+                            $installModuleSuccess = $true
                         }
                     }
                 }
 
                 if ($moduleDeviation) {
-                    $importModuleSuccess = $false
+                    $installModuleSuccess = $false
                     try {
                         Write-Host "  Remove-Module $($module.ModuleName) ($(($moduleVersionLoaded -join ', ').ToString()))"
                         Remove-Module -Name $($module.ModuleName) -Force
@@ -633,38 +636,30 @@ foreach ($module in $modules) {
                 #Write-Host "  $($module.ModuleName) module is not loaded"
             }
 
-            if (-not $importModuleSuccess) {
-                Write-Host "  Try (#$tryCount) importing $($module.ModuleName) module ($moduleVersion)"
-                if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
-                    if ($module.ModuleName -eq 'PSRule.Rules.Azure') {
-                        Import-Module ".\$($ScriptPath)\$($module.ModulePathPipeline)\$($module.ModuleProductName)" -Force -ErrorAction Stop
-                        Write-Host "  Import PS module '$($module.ModuleProductName)' succeeded" -ForegroundColor Green
-                    }
-                    Import-Module ".\$($ScriptPath)\$($module.ModulePathPipeline)\$($module.ModuleName)\$($moduleVersion)\$($module.ModuleName).psd1" -Force -ErrorAction Stop
-                    Write-Host "  Import PS module '$($module.ModuleName)' ($($moduleVersion)) succeeded" -ForegroundColor Green
+            if (-not $installModuleSuccess) {
+                $moduleVersionLoaded = (Get-InstalledModule -name $($module.ModuleName)).Version
+                if ($moduleVersionLoaded -eq $moduleVersion) {
+                    $installModuleSuccess = $true
                 }
                 else {
-                    Import-Module -Name $($module.ModuleName) -RequiredVersion $moduleVersion -Force
-                    Write-Host "  Import PS module '$($module.ModuleName)' ($($moduleVersion)) succeeded" -ForegroundColor Green
+                    throw
                 }
-                $importModuleSuccess = $true
             }
         }
         catch {
-            Write-Host "  Importing $($module.ModuleName) module failed"
+            Write-Host "  '$($module.ModuleName)' not installed"
             if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
-                Write-Host "  Saving $($module.ModuleName) module ($($moduleVersion))"
+                Write-Host "  Installing $($module.ModuleName) module ($($moduleVersion))"
                 try {
                     $params = @{
                         Name            = "$($module.ModuleName)"
-                        Path            = ".\$($ScriptPath)\$($module.ModulePathPipeline)"
                         Force           = $true
                         RequiredVersion = $moduleVersion
                     }
-                    Save-Module @params
+                    Install-Module @params
                 }
                 catch {
-                    Write-Host "  Saving $($module.ModuleName) module ($($moduleVersion)) failed"
+                    Write-Host "  Installing '$($module.ModuleName)' module ($($moduleVersion)) failed"
                     throw
                 }
             }
@@ -693,7 +688,7 @@ foreach ($module in $modules) {
             }
         }
     }
-    until ($importModuleSuccess)
+    until ($installModuleSuccess)
 }
 #endregion verifyModules3rd
 
@@ -828,6 +823,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     }
 
     $arrayPsRule = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayPSRuleTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
 getEntities
@@ -1792,6 +1788,12 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
         $startHierarchyTable = Get-Date
         $script:scopescnter = 0
+        if ($azAPICallConf['htParameters'].NoResources -eq $false) {
+            if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
+                $grpPSRuleSubscriptions = $psRuleDataSelection | group-object -Property subscriptionId
+                $grpPSRuleManagementGroups = $psRuleDataSelection | group-object -Property mgPath
+            }
+        }
         processScopeInsights -mgChild $ManagementGroupId -mgChildOf $getMgParentId
         showMemoryUsage
         #[System.GC]::Collect()
@@ -1869,20 +1871,6 @@ showMemoryUsage
 
 #endregion createoutputs
 
-# #APITracking
-# $APICallTrackingCount = ($azAPICallConf['arrayAPICallTracking']).Count
-# $APICallTrackingRetriesCount = ($azAPICallConf['arrayAPICallTracking'].where({ $_.TryCounter -gt 1 } )).Count
-# $APICallTrackingGroupedByTargetEndpoint = $azAPICallConf['arrayAPICallTracking'] | Group-Object -Property TargetEndpoint
-# $APICallTrackingRestartDueToDuplicateNextlinkCounterCount = ($azAPICallConf['arrayAPICallTracking'].where({ $_.RestartDueToDuplicateNextlinkCounter -gt 0 } )).Count
-# Write-Host 'AzGovViz API call stats:'
-# $duarationStats = ($azAPICallConf['arrayAPICallTracking'].Duration | Measure-Object -Average -Maximum -Minimum)
-# Write-Host " API calls total count: $APICallTrackingCount ($APICallTrackingRetriesCount retries; $APICallTrackingRestartDueToDuplicateNextlinkCounterCount nextLinkReset) | average: $($duarationStats.Average) sec, maximum: $($duarationStats.Maximum) sec, minimum: $($duarationStats.Minimum) sec"
-# foreach ($targetEndpoint in $APICallTrackingGroupedByTargetEndpoint | Sort-Object -Property Name) {
-#     $APICallTrackingRetriesCount = ($targetEndpoint.Group.where({ $_.TryCounter -gt 1 } )).Count
-#     $APICallTrackingRestartDueToDuplicateNextlinkCounterCount = ($targetEndpoint.Group.where({ $_.RestartDueToDuplicateNextlinkCounter -gt 0 } )).Count
-#     $duarationStats = ($targetEndpoint.Group.Duration | Measure-Object -Average -Maximum -Minimum)
-#     Write-Host " API calls endpoint '$($targetEndpoint.Name) ($($azAPICallConf['azAPIEndpointUrls'].($targetEndpoint.Name)))' count: $($targetEndpoint.Count) ($APICallTrackingRetriesCount retries; $APICallTrackingRestartDueToDuplicateNextlinkCounterCount nextLinkReset) | average: $($duarationStats.Average) sec, maximum: $($duarationStats.Maximum) sec, minimum: $($duarationStats.Minimum) sec"
-# }
 apiCallTracking -stage 'Summary' -spacing ''
 
 $endAzGovViz = Get-Date

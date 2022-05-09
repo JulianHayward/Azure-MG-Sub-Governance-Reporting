@@ -15,11 +15,6 @@ function cacheBuiltIn {
         $htCacheDefinitionsPolicySet = $using:htCacheDefinitionsPolicySet
         $htCacheDefinitionsRole = $using:htCacheDefinitionsRole
         $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
-        #Functions
-        #AzAPICall
-        if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-            Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-        }
 
         if ($builtInCapability -eq 'PolicyDefinitions') {
             $currentTask = 'Caching built-in Policy definitions'
