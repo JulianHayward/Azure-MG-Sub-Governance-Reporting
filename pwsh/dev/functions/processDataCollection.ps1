@@ -540,7 +540,7 @@ function processDataCollection {
         if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
             if ($arrayPSRuleTracking.Count -gt 0) {
                 $durationPSRuleTotalSeconds = (($arrayPSRuleTracking.duration | Measure-Object -Sum).Sum)
-                Write-Host "  CustomDataCollection Subscriptions PSRule processing duration: $($durationPSRuleTotalSeconds / 60) minutes ($($durationPSRuleTotalSeconds) seconds)"
+                Write-Host "  CustomDataCollection Subscriptions PSRule processing duration (in sum): $($durationPSRuleTotalSeconds / 60) minutes ($($durationPSRuleTotalSeconds) seconds)"
             }
         }
         #test

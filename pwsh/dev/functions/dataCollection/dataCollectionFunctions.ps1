@@ -273,7 +273,7 @@ function dataCollectionResources {
         if ($resourcesSubscriptionResult.Count -gt 0) {
             $startPSRule = Get-Date
             try {
-                $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure -ErrorAction Stop
+                $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure -Culture en-us -ErrorAction Stop
             }
             catch {
                 $_

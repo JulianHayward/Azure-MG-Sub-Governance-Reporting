@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.11',
 
     [string]
-    $ProductVersion = 'v6_major_20220509_4',
+    $ProductVersion = 'v6_major_20220510_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -604,45 +604,13 @@ foreach ($module in $modules) {
                 }
             }
 
-            try {
-                $moduleDeviation = $false
-                $moduleVersionLoaded = ((Get-InstalledModule -name $($module.ModuleName)).Version)
-                foreach ($moduleLoaded in $moduleVersionLoaded) {
-                    if ($moduleLoaded.toString() -ne $moduleVersion) {
-                        Write-Host "  Deviating loaded version found ('$($moduleLoaded.toString())' != '$($moduleVersion)')"
-                        $moduleDeviation = $true
-                    }
-                    else {
-                        if ($moduleVersionLoaded.count -eq 1) {
-                            Write-Host "  $($module.ModuleName) module ($($moduleLoaded.toString())) is loaded" -ForegroundColor Green
-                            $installModuleSuccess = $true
-                        }
-                    }
-                }
-
-                if ($moduleDeviation) {
-                    $installModuleSuccess = $false
-                    try {
-                        Write-Host "  Remove-Module $($module.ModuleName) ($(($moduleVersionLoaded -join ', ').ToString()))"
-                        Remove-Module -Name $($module.ModuleName) -Force
-                    }
-                    catch {
-                        Write-Host "  Remove-Module $($module.ModuleName) failed"
-                        throw
-                    }
-                }
-            }
-            catch {
-                #Write-Host "  $($module.ModuleName) module is not loaded"
-            }
-
             if (-not $installModuleSuccess) {
                 $moduleVersionLoaded = (Get-InstalledModule -name $($module.ModuleName)).Version
                 if ($moduleVersionLoaded -eq $moduleVersion) {
                     $installModuleSuccess = $true
                 }
                 else {
-                    throw
+                    throw "  '(Get-InstalledModule -name $($module.ModuleName)).Version' returned null"
                 }
             }
         }
@@ -659,8 +627,7 @@ foreach ($module in $modules) {
                     Install-Module @params
                 }
                 catch {
-                    Write-Host "  Installing '$($module.ModuleName)' module ($($moduleVersion)) failed"
-                    throw
+                    throw "  Installing '$($module.ModuleName)' module ($($moduleVersion)) failed"
                 }
             }
             else {
@@ -672,8 +639,7 @@ foreach ($module in $modules) {
                             Install-Module -Name $module.ModuleName -RequiredVersion $moduleVersion
                         }
                         catch {
-                            Write-Host "  Install-Module $($module.ModuleName) ($($moduleVersion)) Failed"
-                            throw
+                            throw "  'Install-Module -Name $module.ModuleName -RequiredVersion $moduleVersion' failed"
                         }
                     }
                     elseif ($installModuleUserChoice -eq 'n') {
