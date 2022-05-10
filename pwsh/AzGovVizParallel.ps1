@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.11',
 
     [string]
-    $ProductVersion = 'v6_major_20220510_1',
+    $ProductVersion = 'v6_major_20220510_2',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -3106,8 +3106,9 @@ function handlePSRuleData {
     @{label = "recommendation"; Expression = { $_.Info.Recommendation } }, `
     @{label = "link"; Expression = { $_.Info.Annotations.'online version' } }, `
     @{label = "ruleId"; Expression = { $_.RuleId } }, `
-    @{label = "result"; Expression = { $_.Outcome } }
-    
+    @{label = "result"; Expression = { $_.Outcome } }, `
+    @{label = "errorMsg"; Expression = { $_.Error.Message } }
+
     if (-not $NoCsvExport) {
         Write-Host "Exporting PSRule CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv'"
         $psRuleDataSelection | Sort-Object -Property resourceId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
@@ -22327,29 +22328,25 @@ function dataCollectionResources {
     $method = 'GET'
     $resourcesSubscriptionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-    #psRule
+    #region PSRule
     if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
         if ($resourcesSubscriptionResult.Count -gt 0) {
             $startPSRule = Get-Date
-            try {
-                $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure -Culture en-us -ErrorAction Stop
-            }
-            catch {
-                $_
-                Write-Host " Skipping PSRule for subscriptionId '$scopeId'"
-            }
+            $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
             $endPSRule = Get-Date
             $durationPSRule = $((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalSeconds)
+
             $null = $script:arrayPSRuleTracking.Add([PSCustomObject]@{
                     subscriptionId = $scopeId
                     duration       = $durationPSRule
                 })
-            Write-Host "PSRule results for sub $childMgSubId $($psruleResults.Count)"
+
             if ($psruleResults.Count -gt 0) {
                 $null = $script:arrayPSRule.AddRange($psRuleResults)
             }
         }
     }
+    #endregion PSRule
 
     foreach ($resourceTypeLocation in ($resourcesSubscriptionResult | Group-Object -Property type, location)) {
         $null = $script:resourcesAll.Add([PSCustomObject]@{
@@ -26620,9 +26617,27 @@ if ($DoTranscript) {
 
 Write-Host ''
 Write-Host '--------------------'
-Write-Host 'Completed successful' -ForegroundColor Green
+Write-Host 'AzGovViz completed successful' -ForegroundColor Green
+
 showMemoryUsage
+
 if ($Error.Count -gt 0) {
     Write-Host "Don't bother about dumped errors"
 }
 
+if ($DoPSRule) {
+    $psRuleErrors = $psRuleDataSelection.where({ -not [string]::IsNullOrWhiteSpace($_.errorMsg) })
+    if ($psRuleErrors) {
+        Write-Host ''
+        Write-Host "$($psRuleErrors.Count) PSRule error(s) encountered"
+        Write-Host "Please review the error(s) and consider filing an issue at the PSRule.Rules.Azure GitHub repository https://github.com/Azure/PSRule.Rules.Azure - thank you"
+        $psRuleErrorsGrouped = $psRuleErrors | Group-Object -Property resourceType, errorMsg
+        foreach ($errorGroupedByResourceTypeAndMessage in $psRuleErrorsGrouped) {
+            Write-Host "$($errorGroupedByResourceTypeAndMessage.Count) x $($errorGroupedByResourceTypeAndMessage.Name)"
+            Write-Host 'Resources:'
+            foreach ($resourceId in $errorGroupedByResourceTypeAndMessage.Group.resourceId) {
+                Write-Host " -$resourceId"
+            }
+        }
+    }
+}

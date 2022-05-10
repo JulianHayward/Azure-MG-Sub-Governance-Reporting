@@ -268,29 +268,25 @@ function dataCollectionResources {
     $method = 'GET'
     $resourcesSubscriptionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-    #psRule
+    #region PSRule
     if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
         if ($resourcesSubscriptionResult.Count -gt 0) {
             $startPSRule = Get-Date
-            try {
-                $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure -Culture en-us -ErrorAction Stop
-            }
-            catch {
-                $_
-                Write-Host " Skipping PSRule for subscriptionId '$scopeId'"
-            }
+            $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
             $endPSRule = Get-Date
             $durationPSRule = $((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalSeconds)
+
             $null = $script:arrayPSRuleTracking.Add([PSCustomObject]@{
                     subscriptionId = $scopeId
                     duration       = $durationPSRule
                 })
-            Write-Host "PSRule results for sub $childMgSubId $($psruleResults.Count)"
+
             if ($psruleResults.Count -gt 0) {
                 $null = $script:arrayPSRule.AddRange($psRuleResults)
             }
         }
     }
+    #endregion PSRule
 
     foreach ($resourceTypeLocation in ($resourcesSubscriptionResult | Group-Object -Property type, location)) {
         $null = $script:resourcesAll.Add([PSCustomObject]@{

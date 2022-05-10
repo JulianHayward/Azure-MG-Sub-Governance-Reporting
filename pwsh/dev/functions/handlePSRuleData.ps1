@@ -14,8 +14,9 @@ function handlePSRuleData {
     @{label = "recommendation"; Expression = { $_.Info.Recommendation } }, `
     @{label = "link"; Expression = { $_.Info.Annotations.'online version' } }, `
     @{label = "ruleId"; Expression = { $_.RuleId } }, `
-    @{label = "result"; Expression = { $_.Outcome } }
-    
+    @{label = "result"; Expression = { $_.Outcome } }, `
+    @{label = "errorMsg"; Expression = { $_.Error.Message } }
+
     if (-not $NoCsvExport) {
         Write-Host "Exporting PSRule CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv'"
         $psRuleDataSelection | Sort-Object -Property resourceId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
