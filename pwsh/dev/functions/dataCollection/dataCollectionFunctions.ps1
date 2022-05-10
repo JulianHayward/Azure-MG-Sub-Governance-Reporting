@@ -272,7 +272,7 @@ function dataCollectionResources {
     if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
         if ($resourcesSubscriptionResult.Count -gt 0) {
             $startPSRule = Get-Date
-            $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
+            $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
             $endPSRule = Get-Date
             $durationPSRule = $((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalSeconds)
 
