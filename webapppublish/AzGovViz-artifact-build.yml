@@ -1,0 +1,29 @@
+# Row 22 will need to be updated with the location to the HTML output
+
+trigger:
+  branches:
+    include:
+    - refs/heads/working
+resources:
+  repositories:
+  - repository: self
+    type: git
+    ref: refs/heads/working
+jobs:
+- job: Job_1
+  displayName: Agent job 1
+  pool:
+    vmImage: ubuntu-18.04
+  steps:
+  - checkout: self
+  - task: ArchiveFiles@2
+    displayName: ArchiveHTML
+    inputs:
+      rootFolderOrFile: 'enter location to AzGovViz HTML output' #example: wiki/AzGovViz_xxxxx-xxxx-xxxxx-xxxxx-xxxxxxxxx.html
+      archiveFile: webapp/output.zip
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Artifact: drop'
+    inputs:
+      PathtoPublish: webapp
+      TargetPath: webapp/output.zip
+...
