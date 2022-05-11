@@ -534,3 +534,38 @@ Note: Codespaces is available for organizations using GitHub Team or GitHub Ente
 ![alt text](img/codespaces3.png "AzGovViz GitHub Codespaces")
 
 ![alt text](img/codespaces4.png "AzGovViz GitHub Codespaces")
+
+# Optional: Publishing the AzGovViz HTML to a webapp
+
+There are instances where you may want to publish the HTML output to a webapp so that anybody in the business can see up to date status of the Azure governance.
+
+There are a few models to do this, the option below is one way to get you started.
+
+## Prerequisites 
+* Deploy a simple webapp on Azure. This can be the smallest SKU or a FREE SKU. It doesn't matter whether you choose Windows or Linux as the platform.
+* In the webapp _Configuration_ add the name of the HTML output file to the _Default Documents_
+![alt text](img/webappdefaultdocs.png "Default documents")
+
+The deployment will be broken down into 2 phases, there is an artifact build phase and then a deploy to webapp phase.
+
+### Phase1: Building the artifact
+* Using the AzGovViz-artifact-build.yml file in the _webapppublish_ folder, create a new build pipeline. 
+![alt text](img/buildpipeline.png "Build Pipeline")
+* Add the location of the HTML output file to the pipeline.
+![alt text](img/buildpipeline2.png "Configure HTML location")
+* Update the drop location for the archive
+![alt text](img/buildpipeline3.png "Archive location")
+* Run the pipeline
+
+Optional: in the AzGovViz-artifact-build pipeline, create a trigger from the AzGovViz pipeline. This will ensure that when AzGovViz runs the artifact is refreshed and updated and ready to be deployed to the webapp.
+
+### Phase2: Deploying the code to the webapp
+* Create a release pipeline with a _Azure App Service Deploy_ task
+![alt text](img/releasepipeline.png "Release pipeline")
+* In the pipeline configure the _Artifacts_ to point to the build from Phase 1.
+![alt text](img/releaseartifactconfig.png "Release pipeline")
+* Configure the _Azure App Service deploy_ task, set the _subscription_, _app service type_ and _app service name_.
+![alt text](img/azureappdeployconfig.png "Release pipeline")
+* Create a release to deploy the code to the webapp.
+
+Note: ensure that your _App Service Type_ is the same as the _App Service Plan_ for the webapp you deployed. Doing this will ensure that your _App Service Name_ is in the drop list.
