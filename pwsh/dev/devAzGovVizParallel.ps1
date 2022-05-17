@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.11',
 
     [string]
-    $ProductVersion = 'v6_major_20220510_2',
+    $ProductVersion = 'v6_major_20220517_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -737,14 +737,15 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $resourcesIdsAll = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $resourceGroupsAll = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htResourceProvidersAll = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $arrayFeaturesAll = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htResourceTypesUniqueResource = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $arrayDataCollectionProgressMg = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayDataCollectionProgressSub = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arraySubResourcesAddArrayDuration = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayDiagnosticSettingsMgSub = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htDiagnosticSettingsMgSub = @{}
-    ($htDiagnosticSettingsMgSub).mg = @{}
-    ($htDiagnosticSettingsMgSub).sub = @{}
+    $htDiagnosticSettingsMgSub.mg = @{}
+    $htDiagnosticSettingsMgSub.sub = @{}
     $htMgAtScopePolicyAssignments = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htMgAtScopePoliciesScoped = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htMgAtScopeRoleAssignments = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
@@ -1760,6 +1761,9 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
                 $grpPSRuleManagementGroups = $psRuleDataSelection | group-object -Property mgPath
             }
         }
+        if ($arrayFeaturesAll.Count -gt 0) {
+            $script:subFeaturesGroupedBySubscription = $arrayFeaturesAll | Group-Object -property subscriptionId
+        }
         processScopeInsights -mgChild $ManagementGroupId -mgChildOf $getMgParentId
         showMemoryUsage
         #[System.GC]::Collect()
@@ -1876,7 +1880,7 @@ if ($DoPSRule) {
     $psRuleErrors = $psRuleDataSelection.where({ -not [string]::IsNullOrWhiteSpace($_.errorMsg) })
     if ($psRuleErrors) {
         Write-Host ''
-        Write-Host "$($psRuleErrors.Count) PSRule error(s) encountered"
+        Write-Host "$($psRuleErrors.Count) 'PSRule for Azure' error(s) encountered"
         Write-Host "Please review the error(s) and consider filing an issue at the PSRule.Rules.Azure GitHub repository https://github.com/Azure/PSRule.Rules.Azure - thank you"
         $psRuleErrorsGrouped = $psRuleErrors | Group-Object -Property resourceType, errorMsg
         foreach ($errorGroupedByResourceTypeAndMessage in $psRuleErrorsGrouped) {

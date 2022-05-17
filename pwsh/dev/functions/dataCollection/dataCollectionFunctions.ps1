@@ -455,6 +455,33 @@ function dataCollectionResourceProviders {
 }
 $funcDataCollectionResourceProviders = $function:dataCollectionResourceProviders.ToString()
 
+function dataCollectionFeatures {
+    [CmdletBinding()]Param(
+        [string]$scopeId,
+        [string]$scopeDisplayname,
+        [object]$MgParentNameChain
+    )
+
+    $currentTask = "Getting Features for Subscription: '$($scopeDisplayname)' ('$scopeId')"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Features/features?api-version=2021-07-01"
+    $method = 'GET'
+    $featuresResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+
+    $featuresResultRegistered = $featuresResult.where({ $_.properties.state -eq 'Registered' })
+
+    if ($featuresResultRegistered.Count -gt 0) {
+        foreach ($registeredFeature in $featuresResultRegistered) {
+            $null = $script:arrayFeaturesAll.Add([PSCustomObject]@{
+                    subscriptionId = $registeredFeature.id.split('/')[2]
+                    mgPathArray    = $MgParentNameChain
+                    mgPath         = ($MgParentNameChain -join ',')
+                    feature        = $registeredFeature.name
+                })
+        }
+    }
+}
+$funcDataCollectionFeatures = $function:dataCollectionFeatures.ToString()
+
 function dataCollectionResourceLocks {
     [CmdletBinding()]Param(
         [string]$scopeId,

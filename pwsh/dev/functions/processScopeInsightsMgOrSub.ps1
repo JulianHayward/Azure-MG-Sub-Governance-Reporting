@@ -112,6 +112,10 @@ function processScopeInsightsMgOrSub($mgOrSub, $mgChild, $subscriptionId, $subsc
         $arrayUserAssignedIdentities4ResourcesSubscription = $arrayUserAssignedIdentities4Resources.where( { $_.resourceSubscriptionId -eq $subscriptionId -or $_.miSubscriptionId -eq $subscriptionId } )
         $arrayUserAssignedIdentities4ResourcesSubscriptionCount = $arrayUserAssignedIdentities4ResourcesSubscription.Count
 
+        if ($subFeaturesGroupedBySubscription) {
+            $subscriptionFeatures = $subFeaturesGroupedBySubscription.where({ $_.name -eq $subscriptionId })
+        }
+        
         $cssClass = 'subDetailsTable'
 
         #$endScopeInsightsPreQuerySub = Get-Date
@@ -874,6 +878,93 @@ extensions: [{ name: 'sort' }]
 '@)
         }
         #endregion ScopeInsightsResourceProvidersDetailed
+
+        #region ScopeInsightsSubscriptionFeatures
+        if ($subscriptionFeatures) {
+            $subscriptionFeaturesCount = $subscriptionFeatures.Group.Count
+
+            $tfCount = $subscriptionFeaturesCount
+            $htmlTableId = "ScopeInsights_SubscriptionFeatures_$($subscriptionId -replace '-','_')"
+            $randomFunctionName = "func_$htmlTableId"
+
+            [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
+<p><i class="fa fa-cube" aria-hidden="true"></i> $tfCount enabled Subscription Features</p></button>
+<div class="content contentSISub">
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Set up preview features in Azure subscription</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/preview-features" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
+<table id="$htmlTableId" class="$cssClass">
+<thead>
+<tr>
+<th>Feature</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+            foreach ($feature in $subscriptionFeatures.Group | Sort-Object -Property feature) {
+                [void]$htmlScopeInsights.AppendLine(@"
+    <tr><td>$($feature.feature)</td></tr>
+"@)
+            }
+
+
+            [void]$htmlScopeInsights.AppendLine(@"
+</tbody>
+</table>
+<script>
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlScopeInsights.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlScopeInsights.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            linked_filters: true,
+            col_types: [
+                'caseinsensitivestring'
+            ],
+extensions: [{ name: 'sort' }]
+            };
+            var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+            tf.init();}}
+        </script>
+</div>
+"@)
+        }
+        else {
+            [void]$htmlScopeInsights.AppendLine(@'
+            <p><i class="fa fa-ban" aria-hidden="true"></i> 0 enabled Subscription Features <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/preview-features" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+'@)
+        }
+        [void]$htmlScopeInsights.AppendLine(@'
+        </td></tr>
+        <tr><!--y--><td class="detailstd"><!--y-->
+'@)
+        #endregion ScopeInsightsSubscriptionFeatures
 
         #ResourceLocks
         #region ScopeInsightsResourceLocks
@@ -1900,9 +1991,9 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                     $randomFunctionName = "func_$htmlTableId"
                     [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
-<p><i class="fa fa-check-square-o" aria-hidden="true"></i> $grpThisManagementGroupCount PSRule results</p></button>
+<p><i class="fa fa-check-square-o" aria-hidden="true"></i> $grpThisManagementGroupCount 'PSRule for Azure' results</p></button>
 <div class="content contentSISub">
-&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
 <thead>
@@ -2003,7 +2094,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                 }
                 else {
                     [void]$htmlScopeInsights.AppendLine(@'
-                    <p><i class="fa fa-ban" aria-hidden="true"></i> No PSRule results</p>
+                    <p><i class="fa fa-ban" aria-hidden="true"></i> No PSRule for Azure results</p>
 '@)
                 }
                 [void]$htmlScopeInsights.AppendLine(@'
@@ -2023,9 +2114,9 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                     $randomFunctionName = "func_$htmlTableId"
                     [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
-<p><i class="fa fa-check-square-o" aria-hidden="true"></i> $grpThisSubscriptionGroupedCount PSRule results</p></button>
+<p><i class="fa fa-check-square-o" aria-hidden="true"></i> $grpThisSubscriptionGroupedCount PSRule for Azure results</p></button>
 <div class="content contentSISub">
-&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
 <thead>

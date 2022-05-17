@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.11',
 
     [string]
-    $ProductVersion = 'v6_major_20220510_2',
+    $ProductVersion = 'v6_major_20220517_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -3110,7 +3110,7 @@ function handlePSRuleData {
     @{label = "errorMsg"; Expression = { $_.Error.Message } }
 
     if (-not $NoCsvExport) {
-        Write-Host "Exporting PSRule CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv'"
+        Write-Host "Exporting 'PSRule for Azure' CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv'"
         $psRuleDataSelection | Sort-Object -Property resourceId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
     }
 
@@ -3666,6 +3666,7 @@ function processDataCollection {
                 $htSubscriptionsMgPath = $using:htSubscriptionsMgPath
                 $htManagementGroupsMgPath = $using:htManagementGroupsMgPath
                 $htResourceProvidersAll = $using:htResourceProvidersAll
+                $arrayFeaturesAll = $using:arrayFeaturesAll
                 $htSubscriptionTagList = $using:htSubscriptionTagList
                 $htResourceTypesUniqueResource = $using:htResourceTypesUniqueResource
                 $htAllTagList = $using:htAllTagList
@@ -3718,6 +3719,7 @@ function processDataCollection {
                 $function:dataCollectionResources = $using:funcDataCollectionResources
                 $function:dataCollectionResourceGroups = $using:funcDataCollectionResourceGroups
                 $function:dataCollectionResourceProviders = $using:funcDataCollectionResourceProviders
+                $function:dataCollectionFeatures = $using:funcDataCollectionFeatures
                 $function:dataCollectionResourceLocks = $using:funcDataCollectionResourceLocks
                 $function:dataCollectionTags = $using:funcDataCollectionTags
                 $function:dataCollectionPolicyComplianceStates = $using:funcDataCollectionPolicyComplianceStates
@@ -3741,6 +3743,7 @@ function processDataCollection {
                 $childMgId = $hierarchyInfo.Parent
                 $childMgDisplayName = $hierarchyInfo.ParentName
                 $childMgMgPath = $hierarchyInfo.pathDelimited
+                $childMgParentNameChain = $hierarchyInfo.ParentNameChain
                 $childMgParentInfo = $htManagementGroupsMgPath.($childMgId)
                 $childMgParentId = $childMgParentInfo.Parent
                 $childMgParentName = $htManagementGroupsMgPath.($childMgParentInfo.Parent).DisplayName
@@ -3800,6 +3803,9 @@ function processDataCollection {
 
                         #resourceProviders
                         DataCollectionResourceProviders @baseParameters
+
+                        #features
+                        DataCollectionFeatures @baseParameters -MgParentNameChain $childMgParentNameChain
 
                         #resourceLocks
                         DataCollectionResourceLocks @baseParameters
@@ -3923,7 +3929,7 @@ function processDataCollection {
         if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
             if ($arrayPSRuleTracking.Count -gt 0) {
                 $durationPSRuleTotalSeconds = (($arrayPSRuleTracking.duration | Measure-Object -Sum).Sum)
-                Write-Host "  CustomDataCollection Subscriptions PSRule processing duration (in sum): $($durationPSRuleTotalSeconds / 60) minutes ($($durationPSRuleTotalSeconds) seconds)"
+                Write-Host "  CustomDataCollection Subscriptions 'PSRule for Azure' processing duration (in sum): $($durationPSRuleTotalSeconds / 60) minutes ($($durationPSRuleTotalSeconds) seconds)"
             }
         }
         #test
@@ -5658,6 +5664,10 @@ function processScopeInsightsMgOrSub($mgOrSub, $mgChild, $subscriptionId, $subsc
         $arrayUserAssignedIdentities4ResourcesSubscription = $arrayUserAssignedIdentities4Resources.where( { $_.resourceSubscriptionId -eq $subscriptionId -or $_.miSubscriptionId -eq $subscriptionId } )
         $arrayUserAssignedIdentities4ResourcesSubscriptionCount = $arrayUserAssignedIdentities4ResourcesSubscription.Count
 
+        if ($subFeaturesGroupedBySubscription) {
+            $subscriptionFeatures = $subFeaturesGroupedBySubscription.where({ $_.name -eq $subscriptionId })
+        }
+        
         $cssClass = 'subDetailsTable'
 
         #$endScopeInsightsPreQuerySub = Get-Date
@@ -6420,6 +6430,93 @@ extensions: [{ name: 'sort' }]
 '@)
         }
         #endregion ScopeInsightsResourceProvidersDetailed
+
+        #region ScopeInsightsSubscriptionFeatures
+        if ($subscriptionFeatures) {
+            $subscriptionFeaturesCount = $subscriptionFeatures.Group.Count
+
+            $tfCount = $subscriptionFeaturesCount
+            $htmlTableId = "ScopeInsights_SubscriptionFeatures_$($subscriptionId -replace '-','_')"
+            $randomFunctionName = "func_$htmlTableId"
+
+            [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
+<p><i class="fa fa-cube" aria-hidden="true"></i> $tfCount enabled Subscription Features</p></button>
+<div class="content contentSISub">
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Set up preview features in Azure subscription</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/preview-features" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
+<table id="$htmlTableId" class="$cssClass">
+<thead>
+<tr>
+<th>Feature</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+            foreach ($feature in $subscriptionFeatures.Group | Sort-Object -Property feature) {
+                [void]$htmlScopeInsights.AppendLine(@"
+    <tr><td>$($feature.feature)</td></tr>
+"@)
+            }
+
+
+            [void]$htmlScopeInsights.AppendLine(@"
+</tbody>
+</table>
+<script>
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlScopeInsights.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlScopeInsights.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            linked_filters: true,
+            col_types: [
+                'caseinsensitivestring'
+            ],
+extensions: [{ name: 'sort' }]
+            };
+            var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+            tf.init();}}
+        </script>
+</div>
+"@)
+        }
+        else {
+            [void]$htmlScopeInsights.AppendLine(@'
+            <p><i class="fa fa-ban" aria-hidden="true"></i> 0 enabled Subscription Features <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/preview-features" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+'@)
+        }
+        [void]$htmlScopeInsights.AppendLine(@'
+        </td></tr>
+        <tr><!--y--><td class="detailstd"><!--y-->
+'@)
+        #endregion ScopeInsightsSubscriptionFeatures
 
         #ResourceLocks
         #region ScopeInsightsResourceLocks
@@ -7446,9 +7543,9 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                     $randomFunctionName = "func_$htmlTableId"
                     [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
-<p><i class="fa fa-check-square-o" aria-hidden="true"></i> $grpThisManagementGroupCount PSRule results</p></button>
+<p><i class="fa fa-check-square-o" aria-hidden="true"></i> $grpThisManagementGroupCount 'PSRule for Azure' results</p></button>
 <div class="content contentSISub">
-&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
 <thead>
@@ -7549,7 +7646,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                 }
                 else {
                     [void]$htmlScopeInsights.AppendLine(@'
-                    <p><i class="fa fa-ban" aria-hidden="true"></i> No PSRule results</p>
+                    <p><i class="fa fa-ban" aria-hidden="true"></i> No PSRule for Azure results</p>
 '@)
                 }
                 [void]$htmlScopeInsights.AppendLine(@'
@@ -7569,9 +7666,9 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                     $randomFunctionName = "func_$htmlTableId"
                     [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
-<p><i class="fa fa-check-square-o" aria-hidden="true"></i> $grpThisSubscriptionGroupedCount PSRule results</p></button>
+<p><i class="fa fa-check-square-o" aria-hidden="true"></i> $grpThisSubscriptionGroupedCount PSRule for Azure results</p></button>
 <div class="content contentSISub">
-&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
 <thead>
@@ -15499,6 +15596,110 @@ extensions: [{ name: 'sort' }]
     }
     #endregion SUMMARYSubResourceProvidersDetailed
 
+    #region SUMMARYSubFeatures
+    Write-Host '  processing TenantSummary Subscriptions Features'
+    $startSubFeatures = Get-Date
+    $subFeaturesAllCount = $arrayFeaturesAll.count
+    if ($subFeaturesAllCount -gt 0) {
+
+        #region exportCSV
+        if (-not $NoCsvExport) {
+            $csvFilename = "$($filename)_SubscriptionsFeatures"
+            Write-Host "   Exporting SubscriptionsFeatures CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
+            ($arrayFeaturesAll | Select-Object -ExcludeProperty mgPathArray | Sort-Object -Property feature) | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+        }
+        #endregion exportCSV
+
+        $subFeaturesGroupedByFeature = $arrayFeaturesAll | Group-Object -property feature
+        $tfCount = ($subFeaturesGroupedByFeature | Measure-Object).Count
+        $htmlTableId = 'TenantSummary_SubFeatures'
+        [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubFeatures"><i class="padlx fa fa-cube" aria-hidden="true"></i> <span class="valignMiddle">$tfCount enabled Subscriptions Features</span></button>
+<div class="content TenantSummary">
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Set up preview features in Azure subscription</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/preview-features" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Feature</th>
+<th>Subscriptions</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+        
+        $cnter = 0
+        $startResProvDetailed = Get-Date
+        $htmlSUMMARYSubFeatures = $null
+        $htmlSUMMARYSubFeatures = foreach ($feature in $subFeaturesGroupedByFeature | Sort-Object -Property name) {
+            @"
+<tr>
+<td>$($feature.name)</td>
+<td>$($feature.Count)</td>
+</tr>
+"@
+        }
+
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYSubFeatures)
+        [void]$htmlTenantSummary.AppendLine(@"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+
+"@)
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_types: [
+                'caseinsensitivestring',
+                'number'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+"@)
+
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No enabled Subscriptions Features</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/preview-features" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+"@)
+    }
+    $endSubFeatures = Get-Date
+    Write-Host "   Subscriptions Features processing duration: $((NEW-TIMESPAN -Start $startSubFeatures -End $endSubFeatures).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSubFeatures -End $endSubFeatures).TotalSeconds) seconds)"
+    #endregion SUMMARYSubFeatures
+
     #region SUMMARYSubResourceLocks
     Write-Host '  processing TenantSummary Subscriptions Resource Locks'
     $tfCount = 6
@@ -16130,9 +16331,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 $htmlTableId = 'TenantSummary_PSRule'
 
                 [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_PSRule"><i class="padlx fa fa-check-square-o" aria-hidden="true"></i> <span class="valignMiddle">$tfCount PSRule results</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_PSRule"><i class="padlx fa fa-check-square-o" aria-hidden="true"></i> <span class="valignMiddle">$tfCount PSRule for Azure results</span></button>
 <div class="content TenantSummary">
-<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Learn about </span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Learn about </span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
 <thead>
@@ -16233,11 +16434,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             }
             else {
                 [void]$htmlTenantSummary.AppendLine(@'
-    <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No PSRule results</span></p>
+    <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No PSRule for Azure results</span></p>
 '@)
             }
             $endPSRule = Get-Date
-            Write-Host "   PSRule processing duration: $((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalSeconds) seconds)"
+            Write-Host "   PSRule for Azure processing duration: $((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalSeconds) seconds)"
         }
         #endregion SUMMARYPSRule
     }
@@ -22515,6 +22716,33 @@ function dataCollectionResourceProviders {
 }
 $funcDataCollectionResourceProviders = $function:dataCollectionResourceProviders.ToString()
 
+function dataCollectionFeatures {
+    [CmdletBinding()]Param(
+        [string]$scopeId,
+        [string]$scopeDisplayname,
+        [object]$MgParentNameChain
+    )
+
+    $currentTask = "Getting Features for Subscription: '$($scopeDisplayname)' ('$scopeId')"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Features/features?api-version=2021-07-01"
+    $method = 'GET'
+    $featuresResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+
+    $featuresResultRegistered = $featuresResult.where({ $_.properties.state -eq 'Registered' })
+
+    if ($featuresResultRegistered.Count -gt 0) {
+        foreach ($registeredFeature in $featuresResultRegistered) {
+            $null = $script:arrayFeaturesAll.Add([PSCustomObject]@{
+                    subscriptionId = $registeredFeature.id.split('/')[2]
+                    mgPathArray    = $MgParentNameChain
+                    mgPath         = ($MgParentNameChain -join ',')
+                    feature        = $registeredFeature.name
+                })
+        }
+    }
+}
+$funcDataCollectionFeatures = $function:dataCollectionFeatures.ToString()
+
 function dataCollectionResourceLocks {
     [CmdletBinding()]Param(
         [string]$scopeId,
@@ -25490,14 +25718,15 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $resourcesIdsAll = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $resourceGroupsAll = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htResourceProvidersAll = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $arrayFeaturesAll = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htResourceTypesUniqueResource = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $arrayDataCollectionProgressMg = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayDataCollectionProgressSub = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arraySubResourcesAddArrayDuration = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayDiagnosticSettingsMgSub = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htDiagnosticSettingsMgSub = @{}
-    ($htDiagnosticSettingsMgSub).mg = @{}
-    ($htDiagnosticSettingsMgSub).sub = @{}
+    $htDiagnosticSettingsMgSub.mg = @{}
+    $htDiagnosticSettingsMgSub.sub = @{}
     $htMgAtScopePolicyAssignments = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htMgAtScopePoliciesScoped = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htMgAtScopeRoleAssignments = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
@@ -26513,6 +26742,9 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
                 $grpPSRuleManagementGroups = $psRuleDataSelection | group-object -Property mgPath
             }
         }
+        if ($arrayFeaturesAll.Count -gt 0) {
+            $script:subFeaturesGroupedBySubscription = $arrayFeaturesAll | Group-Object -property subscriptionId
+        }
         processScopeInsights -mgChild $ManagementGroupId -mgChildOf $getMgParentId
         showMemoryUsage
         #[System.GC]::Collect()
@@ -26629,7 +26861,7 @@ if ($DoPSRule) {
     $psRuleErrors = $psRuleDataSelection.where({ -not [string]::IsNullOrWhiteSpace($_.errorMsg) })
     if ($psRuleErrors) {
         Write-Host ''
-        Write-Host "$($psRuleErrors.Count) PSRule error(s) encountered"
+        Write-Host "$($psRuleErrors.Count) 'PSRule for Azure' error(s) encountered"
         Write-Host "Please review the error(s) and consider filing an issue at the PSRule.Rules.Azure GitHub repository https://github.com/Azure/PSRule.Rules.Azure - thank you"
         $psRuleErrorsGrouped = $psRuleErrors | Group-Object -Property resourceType, errorMsg
         foreach ($errorGroupedByResourceTypeAndMessage in $psRuleErrorsGrouped) {

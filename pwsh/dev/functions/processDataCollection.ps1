@@ -283,6 +283,7 @@ function processDataCollection {
                 $htSubscriptionsMgPath = $using:htSubscriptionsMgPath
                 $htManagementGroupsMgPath = $using:htManagementGroupsMgPath
                 $htResourceProvidersAll = $using:htResourceProvidersAll
+                $arrayFeaturesAll = $using:arrayFeaturesAll
                 $htSubscriptionTagList = $using:htSubscriptionTagList
                 $htResourceTypesUniqueResource = $using:htResourceTypesUniqueResource
                 $htAllTagList = $using:htAllTagList
@@ -335,6 +336,7 @@ function processDataCollection {
                 $function:dataCollectionResources = $using:funcDataCollectionResources
                 $function:dataCollectionResourceGroups = $using:funcDataCollectionResourceGroups
                 $function:dataCollectionResourceProviders = $using:funcDataCollectionResourceProviders
+                $function:dataCollectionFeatures = $using:funcDataCollectionFeatures
                 $function:dataCollectionResourceLocks = $using:funcDataCollectionResourceLocks
                 $function:dataCollectionTags = $using:funcDataCollectionTags
                 $function:dataCollectionPolicyComplianceStates = $using:funcDataCollectionPolicyComplianceStates
@@ -358,6 +360,7 @@ function processDataCollection {
                 $childMgId = $hierarchyInfo.Parent
                 $childMgDisplayName = $hierarchyInfo.ParentName
                 $childMgMgPath = $hierarchyInfo.pathDelimited
+                $childMgParentNameChain = $hierarchyInfo.ParentNameChain
                 $childMgParentInfo = $htManagementGroupsMgPath.($childMgId)
                 $childMgParentId = $childMgParentInfo.Parent
                 $childMgParentName = $htManagementGroupsMgPath.($childMgParentInfo.Parent).DisplayName
@@ -417,6 +420,9 @@ function processDataCollection {
 
                         #resourceProviders
                         DataCollectionResourceProviders @baseParameters
+
+                        #features
+                        DataCollectionFeatures @baseParameters -MgParentNameChain $childMgParentNameChain
 
                         #resourceLocks
                         DataCollectionResourceLocks @baseParameters
@@ -540,7 +546,7 @@ function processDataCollection {
         if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
             if ($arrayPSRuleTracking.Count -gt 0) {
                 $durationPSRuleTotalSeconds = (($arrayPSRuleTracking.duration | Measure-Object -Sum).Sum)
-                Write-Host "  CustomDataCollection Subscriptions PSRule processing duration (in sum): $($durationPSRuleTotalSeconds / 60) minutes ($($durationPSRuleTotalSeconds) seconds)"
+                Write-Host "  CustomDataCollection Subscriptions 'PSRule for Azure' processing duration (in sum): $($durationPSRuleTotalSeconds / 60) minutes ($($durationPSRuleTotalSeconds) seconds)"
             }
         }
         #test
