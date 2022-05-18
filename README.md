@@ -531,7 +531,7 @@ You can integrate AzGovViz (same project as AzOps).
             - master
 ```
 
-# Integrate PSRule for Azure
+## Integrate PSRule for Azure
 
 Let´s use [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure) and leverage over 260 pre-built rules to validate Azure resources based on the Microsoft Well-Architected Framework (WAF) principles.  
 PSRule for Azure is listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/architecture/framework/security/monitor-tools) in the Microsoft Well-Architected Framework.
