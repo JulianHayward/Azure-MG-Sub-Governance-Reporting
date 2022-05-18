@@ -1,14 +1,15 @@
+# Row 7 & 12, if you are running off a branch other than Master you will need to update that here.
 # Row 22 will need to be updated with the location to the HTML output
 
 trigger:
   branches:
     include:
-    - refs/heads/working
+    - refs/heads/master #replace Master if you are running off a different branch
 resources:
   repositories:
   - repository: self
     type: git
-    ref: refs/heads/working
+    ref: refs/heads/master #replace Master if you are running off a different branch
 jobs:
 - job: Job_1
   displayName: Agent job 1
