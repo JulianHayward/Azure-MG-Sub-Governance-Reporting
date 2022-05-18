@@ -7277,7 +7277,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_PSRule"><i class="padlx fa fa-check-square-o" aria-hidden="true"></i> <span class="valignMiddle">$tfCount PSRule for Azure results</span></button>
 <div class="content TenantSummary">
-<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Learn about </span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Learn about </span> <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
 <thead>

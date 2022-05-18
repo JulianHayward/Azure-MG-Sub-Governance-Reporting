@@ -1993,7 +1993,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
 <p><i class="fa fa-check-square-o" aria-hidden="true"></i> $grpThisManagementGroupCount 'PSRule for Azure' results</p></button>
 <div class="content contentSISub">
-&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
 <thead>
@@ -2116,7 +2116,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
 <p><i class="fa fa-check-square-o" aria-hidden="true"></i> $grpThisSubscriptionGroupedCount PSRule for Azure results</p></button>
 <div class="content contentSISub">
-&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://aka.ms/PSRule" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
 <thead>

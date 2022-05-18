@@ -47,6 +47,7 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
   * [Parameters](#parameters)
   * [API reference](#api-reference)
 * [Integrate with AzOps](#integrate-with-azops)
+* [Integrate PSRule for Azure](#integrate-psrule-for-azure)
 * [Stats](#stats)
 * [Security](#security)
 * [Known issues](#known-issues)
@@ -66,7 +67,7 @@ __Changes__ (2022-May-08 / Major)
 
 > Note: Azure DevOps users must update the YAML file(s) (`.azuredevops/*` or`.pipelines`) and PowerShell files (`AzGovVizParallel.ps1` and `prerequisites.ps1`)
 
-* integration of [PSRule for Azure](https://aka.ms/ps-rule-azure). This feature is optional, use new parameter `-DoPSRule`
+* integration of [PSRule for Azure](#integrate-psrule-for-azure). This feature is optional, use new parameter `-DoPSRule`
   * Provides a [Azure Well-Architected Framework](https://docs.microsoft.com/en-gb/azure/architecture/framework/) aligned suite of rules for validating Azure resources
   * Provides meaningful information to allow remediation
 * new parameter `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
@@ -530,6 +531,23 @@ You can integrate AzGovViz (same project as AzOps).
             - master
 ```
 
+# Integrate PSRule for Azure
+
+Let´s use [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure) and leverage over 260 pre-built rules to validate Azure resources based on the Microsoft Well-Architected Framework (WAF) principles.  
+PSRule for Azure is listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/architecture/framework/security/monitor-tools) in the Microsoft Well-Architected Framework.
+
+Parameter: `-DoPSRule` (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule`)
+Outputs:
+* HTML (summarized)
+  * TenantSummary
+  * ScopeInsights
+    * Management Group (all resources below that scope)
+    * Subscription
+* CSV (detailed, per resource)
+
+TenantSummary HTML output example:     
+![alt text](img/PSRuleForAzure_preview.png "PSRule for Azure / AzGovViz TenantSummary")
+
 ## Stats
 
 In order to better understand the AzGovViz usage and to optimize the product accordingly some stats will be ingested to Azure Application Insights. Results of stats analysis may be shared at a later stage. 
@@ -636,8 +654,11 @@ Special thanks to Tim Wanierke, Brooks Vaughn and Friedrich Weinmann (Microsoft)
 
 And another big thanks to Wayne Meyer (Microsoft) for constant support and building bridges.
 
-Kudos to the [TableFilter](https://www.tablefilter.com) Project Team!  
+Kudos to the [TableFilter](https://www.tablefilter.com) Project Team!
+
 Kudos to [LorDOniX](https://github.com/LorDOniX/json-viewer) for JSON-viewer!
+
+Kudos to Bernie White and [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure) team!
 
 ## AzAdvertizer
 
