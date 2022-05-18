@@ -543,13 +543,19 @@ There are a few models to do this, the option below is one way to get you starte
 
 ## Prerequisites 
 * Deploy a simple webapp on Azure. This can be the smallest SKU or a FREE SKU. It doesn't matter whether you choose Windows or Linux as the platform.
+![alt text](img/createwebapp.png "Default documents")
+* Step through the configuration. I typically use the Code for the publish and then select the Runtime stack that you standardize on. Remember the _Operating System_ as this will be used when creating the deployment in Azure DevOps.
+![alt text](img/configurewebapp.png "Default documents")
+* No need to configure anything, unless your organization policies require you to do so.  
+NOTE: it is a good practice to tag your resource for operational and finance reasons.
 * In the webapp _Configuration_ add the name of the HTML output file to the _Default Documents_
 ![alt text](img/webappdefaultdocs.png "Default documents")
 
 The deployment will be broken down into 2 phases, there is an artifact build phase and then a deploy to webapp phase.
 
 ### Phase1: Building the artifact
-* Using the AzGovViz-artifact-build.yml file in the _webapppublish_ folder, create a new build pipeline. 
+* Using the AzGovViz-artifact-build.yml file in the _webapppublish_ folder, create a new build pipeline.  
+NOTE: check the YML file to ensure that you are building off the correct branch, _default is Master_
 ![alt text](img/buildpipeline.png "Build Pipeline")
 * Add the location of the HTML output file to the pipeline.
 ![alt text](img/buildpipeline2.png "Configure HTML location")
@@ -569,3 +575,6 @@ Optional: in the AzGovViz-artifact-build pipeline, create a trigger from the AzG
 * Create a release to deploy the code to the webapp.
 
 Note: ensure that your _App Service Type_ is the same as the _App Service Plan_ for the webapp you deployed. Doing this will ensure that your _App Service Name_ is in the drop list.
+* In your release pipeline you can either run your build on a schedule or you can set a trigger to automatically release off a successful build.
+![alt text](img/releaseschedule.png "Release schedule")
+![alt text](img/releasetrigger.png "Release trigger")
