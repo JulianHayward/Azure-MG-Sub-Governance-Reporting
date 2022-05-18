@@ -537,6 +537,7 @@ Let´s use [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure) and le
 PSRule for Azure is listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/architecture/framework/security/monitor-tools) in the Microsoft Well-Architected Framework.
 
 Parameter: `-DoPSRule` (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule`)
+
 Outputs:
 * HTML (summarized)
   * TenantSummary
@@ -545,7 +546,7 @@ Outputs:
     * Subscription
 * CSV (detailed, per resource)
 
-TenantSummary HTML output example:     
+TenantSummary HTML output example:  
 ![alt text](img/PSRuleForAzure_preview.png "PSRule for Azure / AzGovViz TenantSummary")
 
 ## Stats
