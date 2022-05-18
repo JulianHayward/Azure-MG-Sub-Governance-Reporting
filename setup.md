@@ -45,6 +45,8 @@ This guide will help you to setup and run AzGovViz
 
 * [__AzGovViz in GitHub Codespaces__](#azgovviz-github-codespaces)
 
+* [__Optional Publishing the AzGovViz HTML to a webapp__](#optional-publishing-the-azgovviz-html-to-a-webapp)
+
 # AzGovViz from Console
 
 ## Grant permissions in Azure
@@ -535,7 +537,7 @@ Note: Codespaces is available for organizations using GitHub Team or GitHub Ente
 
 ![alt text](img/codespaces4.png "AzGovViz GitHub Codespaces")
 
-# Optional: Publishing the AzGovViz HTML to a webapp
+# Optional Publishing the AzGovViz HTML to a webapp
 
 There are instances where you may want to publish the HTML output to a webapp so that anybody in the business can see up to date status of the Azure governance.
 
