@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220319_1
+# AzGovViz v6_major_20220521_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -29,7 +29,8 @@ parameters:
       - undefined
 
 variables:
-### Required Variables - Modify as Needed
+### Required Variables
+
   # Name of the Azure DevOps Service Connection used to access Azure resources
   - name: ServiceConnection
     # String | example: value: 'azure-ado-serviceconnection'
@@ -41,6 +42,18 @@ variables:
     value: '<YourManagementGroupId>'
 
 ### Default Variables - Modify as Needed
+
+  # If you integrate AzGovViz into an existing repository you may need to adjust the script directory
+  - name: ScriptDir
+    #example: YourFolder/pwsh
+    value: pwsh
+
+  - name: Script
+    value: AzGovVizParallel.ps1
+
+  - name: ScriptPrerequisites
+    value: prerequisites.ps1
+
   # The world is split into two kind of delimiters - comma and semicolon - choose yours
   - name: CsvDelimiter
     # String | default = ';' | example: value: ';'
@@ -52,6 +65,7 @@ variables:
     value: 'wiki'
 
 ### Optional Variables - Modify as Needed
+
   # Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved
   - name: AADGroupMembersLimit
     # Integer | default = 500 | example: value: 333
@@ -196,7 +210,7 @@ variables:
     # Switch | example: value: true
     value:
 
-  #
+  # Removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants
   - name: PolicyAtScopeOnly
     # Switch | example: value: true
     value:
@@ -225,6 +239,25 @@ variables:
   - name: ShowMemoryUsage
     # Switch | example: value: true
     value:
+
+# Execute PSRule
+  - name: DoPSRule
+    # Switch | example: value: true
+    value: true
+
+# WebApp publish
+  - name: WebAppPublish
+    # Switch | example: value: true
+    value:
+  - name: WebAppSubscriptionId
+    # String | example: value: "<Subscription-Id of the WebApp>"
+    value: <subscriptionId> e.g. 2674403a-4acd-40e6-a694-2ac7b968761e
+  - name: WebAppResourceGroup
+    # String | example: value: "<ResourceGroup name of the WebApp>"
+    value: <ResourceGroupName> e.g. MyWebAppResourceGroup
+  - name: WebAppName
+    # String | example: value: "<Name of the WebApp>"
+    value: <Name> e.g. MyAzGovVizWebApp
 
 # Dynamic Variables - Do Not Modify Anything Below this line!
   - name: ExcludedResourceTypesDiagnosticsCapable

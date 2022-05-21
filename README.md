@@ -47,6 +47,7 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
   * [Parameters](#parameters)
   * [API reference](#api-reference)
 * [Integrate with AzOps](#integrate-with-azops)
+* [Integrate PSRule for Azure](#integrate-psrule-for-azure)
 * [Stats](#stats)
 * [Security](#security)
 * [Known issues](#known-issues)
@@ -58,14 +59,25 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-May-05 / Major)
+__Changes__ (2022-May-21 / Major)
 
-* fix: `using:scriptPath` variable in foreach parallel (this is only relevant for Azure DevOps and GitHub if you have a non default folder structure in your repository)
+> Note: Azure DevOps and GitHub users must update the YAML file(s) and PowerShell files (`AzGovVizParallel.ps1` and `prerequisites.ps1`)
 
-Passed tests: Powershell Core 7.2.2 on Windows  
-Passed tests: Powershell Core 7.2.2 Azure DevOps hosted agent ubuntu-20.04  
-Passed tests: Powershell Core 7.2.2 Github Actions hosted agent ubuntu-latest  
-Passed tests: Powershell Core 7.2.2 GitHub Codespaces mcr.microsoft.com/powershell:latest  
+* Integration of [PSRule for Azure](#integrate-psrule-for-azure). This feature is optional, use new parameter `-DoPSRule`
+  * Provides a [Azure Well-Architected Framework](https://docs.microsoft.com/en-gb/azure/architecture/framework/) aligned suite of rules for validating Azure resources
+  * Provides meaningful information to allow remediation
+  * New parameter `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
+* Optional feature: publish HTML to Azure Web App (check the __[Setup Guide](setup.md)__) in Azure DevOps or GitHub Actions - thanks Wayne Meyer
+* New feature / report on [enabled Subscription Features](https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/preview-features) TenantSummary, ScopeInsights and CSV export
+* Decomissioned Azure DevOps `.pipelines` - use the new YAML files `.azuredevops/pipelines/*` 
+* Fix [#issue92](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/92) -> pipeline .azuredevops/pipelines/AzGovViz.pipeline.yml
+* Update Azure DevOps pipelines / use AzurePowershell@5
+* Update prerequisites.ps1
+
+Passed tests: Powershell Core 7.2.3 on Windows  
+Passed tests: Powershell Core 7.2.3 Azure DevOps hosted agent ubuntu-20.04  
+Passed tests: Powershell Core 7.2.3 Github Actions hosted agent ubuntu-latest  
+Passed tests: Powershell Core 7.2.3 GitHub Codespaces mcr.microsoft.com/powershell:latest  
 Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
 
 [Full release history](history.md)
@@ -443,6 +455,9 @@ AzAPICall resources:
   * `-NoSingleSubscriptionOutput` - Single __Scope Insights__ output per Subscription should not be created
   * `-ManagementGroupsOnly` - Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
   * `-ShowMemoryUsage` - Shows memory usage at memory intense sections of the scripts, this shall help you determine if the the worker is well sized for AzGovViz
+  * PSRule 
+    * `-DoPSRule` - Execute [PSRule](https://aka.ms/PSRule). Results are integrated in the HTML output, plus PSRule results are exported to CSV
+    * `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
 
 ### API reference
 
@@ -514,6 +529,24 @@ You can integrate AzGovViz (same project as AzOps).
           include:
             - master
 ```
+
+## Integrate PSRule for Azure
+
+Let´s use [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure) and leverage over 260 pre-built rules to validate Azure resources based on the Microsoft Well-Architected Framework (WAF) principles.  
+PSRule for Azure is listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/architecture/framework/security/monitor-tools) in the Microsoft Well-Architected Framework.
+
+Parameter: `-DoPSRule` (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule`)
+
+Outputs:
+* HTML (summarized)
+  * TenantSummary
+  * ScopeInsights
+    * Management Group (all resources below that scope)
+    * Subscription
+* CSV (detailed, per resource)
+
+TenantSummary HTML output example:  
+![alt text](img/PSRuleForAzure_preview.png "PSRule for Azure / AzGovViz TenantSummary")
 
 ## Stats
 
@@ -621,8 +654,11 @@ Special thanks to Tim Wanierke, Brooks Vaughn and Friedrich Weinmann (Microsoft)
 
 And another big thanks to Wayne Meyer (Microsoft) for constant support and building bridges.
 
-Kudos to the [TableFilter](https://www.tablefilter.com) Project Team!  
+Kudos to the [TableFilter](https://www.tablefilter.com) Project Team!
+
 Kudos to [LorDOniX](https://github.com/LorDOniX/json-viewer) for JSON-viewer!
+
+Kudos to Bernie White and [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure) team!
 
 ## AzAdvertizer
 

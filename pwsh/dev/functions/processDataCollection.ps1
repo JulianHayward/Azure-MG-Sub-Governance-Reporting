@@ -8,7 +8,8 @@ function processDataCollection {
 
     $allManagementGroupsFromEntitiesChildOfRequestedMg = $arrayEntitiesFromAPI.where( { $_.type -eq 'Microsoft.Management/managementGroups' -and ($_.Name -eq $mgId -or $_.properties.parentNameChain -contains $mgId) })
     $allManagementGroupsFromEntitiesChildOfRequestedMgCount = ($allManagementGroupsFromEntitiesChildOfRequestedMg).Count
-
+    Write-Host " $allManagementGroupsFromEntitiesChildOfRequestedMgCount Management Groups: $(($allManagementGroupsFromEntitiesChildOfRequestedMg.Name | Sort-Object) -join ', ')"
+    
     $mgBatch = ($allManagementGroupsFromEntitiesChildOfRequestedMg | Group-Object -Property { ($_.properties.parentNameChain).Count }) | Sort-Object -Property Name
     foreach ($batchLevel in $mgBatch) {
         Write-Host "  Processing Management Groups L$($batchLevel.Name) ($($batchLevel.Count) Management Groups)"
@@ -53,7 +54,6 @@ function processDataCollection {
             $arrayEntitiesFromAPI = $using:arrayEntitiesFromAPI
             $allManagementGroupsFromEntitiesChildOfRequestedMgCount = $using:allManagementGroupsFromEntitiesChildOfRequestedMgCount
             $arrayDataCollectionProgressMg = $using:arrayDataCollectionProgressMg
-            $arrayAPICallTrackingCustomDataCollection = $using:arrayAPICallTrackingCustomDataCollection
             $arrayDiagnosticSettingsMgSub = $using:arrayDiagnosticSettingsMgSub
             $htMgAtScopePolicyAssignments = $using:htMgAtScopePolicyAssignments
             $htMgAtScopePoliciesScoped = $using:htMgAtScopePoliciesScoped
@@ -64,14 +64,6 @@ function processDataCollection {
             $htPrincipals = $using:htPrincipals
             $htServicePrincipals = $using:htServicePrincipals
             $htUserTypesGuest = $using:htUserTypesGuest
-            #Functions
-            #AzAPICall
-            if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-            }
-            else {
-                Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
-            }
             #other
             $function:addRowToTable = $using:funcAddRowToTable
             $function:namingValidation = $using:funcNamingValidation
@@ -228,6 +220,8 @@ function processDataCollection {
     $endMgLoop = Get-Date
     Write-Host " CustomDataCollection ManagementGroups processing duration: $((NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startMgLoop -End $endMgLoop).TotalSeconds) seconds)"
 
+    apiCallTracking -stage 'CustomDataCollection ManagementGroups' -spacing ' '
+
     #test
     if ($builtInPolicyDefinitionsCount -ne ($($htCacheDefinitionsPolicy).Values.where({ $_.Type -eq 'BuiltIn' }).Count) -or $builtInPolicyDefinitionsCount -ne ((($htCacheDefinitionsPolicy).Values.where( { $_.Type -eq 'BuiltIn' } )).Count)) {
         Write-Host "$builtInPolicyDefinitionsCount -ne $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq 'BuiltIn'}).Count) OR $builtInPolicyDefinitionsCount -ne $((($htCacheDefinitionsPolicy).Values.where( {$_.Type -eq 'BuiltIn'} )).Count)"
@@ -289,6 +283,7 @@ function processDataCollection {
                 $htSubscriptionsMgPath = $using:htSubscriptionsMgPath
                 $htManagementGroupsMgPath = $using:htManagementGroupsMgPath
                 $htResourceProvidersAll = $using:htResourceProvidersAll
+                $arrayFeaturesAll = $using:arrayFeaturesAll
                 $htSubscriptionTagList = $using:htSubscriptionTagList
                 $htResourceTypesUniqueResource = $using:htResourceTypesUniqueResource
                 $htAllTagList = $using:htAllTagList
@@ -317,7 +312,6 @@ function processDataCollection {
                 $arraySubResourcesAddArrayDuration = $using:arraySubResourcesAddArrayDuration
                 $htAllSubscriptionsFromAPI = $using:htAllSubscriptionsFromAPI
                 $arrayEntitiesFromAPI = $using:arrayEntitiesFromAPI
-                $arrayAPICallTrackingCustomDataCollection = $using:arrayAPICallTrackingCustomDataCollection
                 $arrayDiagnosticSettingsMgSub = $using:arrayDiagnosticSettingsMgSub
                 $htMgASCSecureScore = $using:htMgASCSecureScore
                 $htRoleAssignmentsFromAPIInheritancePrevention = $using:htRoleAssignmentsFromAPIInheritancePrevention
@@ -329,14 +323,9 @@ function processDataCollection {
                 $arrayDefenderPlansSubscriptionNotRegistered = $using:arrayDefenderPlansSubscriptionNotRegistered
                 $arrayUserAssignedIdentities4Resources = $using:arrayUserAssignedIdentities4Resources
                 $htSubscriptionsRoleAssignmentLimit = $using:htSubscriptionsRoleAssignmentLimit
-                #Functions
-                #AzAPICall
-                if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                    Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-                }
-                else {
-                    Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
-                }
+                $PSRuleVersion = $using:PSRuleVersion
+                $arrayPsRule = $using:arrayPsRule
+                $arrayPSRuleTracking = $using:arrayPSRuleTracking
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation
@@ -347,6 +336,7 @@ function processDataCollection {
                 $function:dataCollectionResources = $using:funcDataCollectionResources
                 $function:dataCollectionResourceGroups = $using:funcDataCollectionResourceGroups
                 $function:dataCollectionResourceProviders = $using:funcDataCollectionResourceProviders
+                $function:dataCollectionFeatures = $using:funcDataCollectionFeatures
                 $function:dataCollectionResourceLocks = $using:funcDataCollectionResourceLocks
                 $function:dataCollectionTags = $using:funcDataCollectionTags
                 $function:dataCollectionPolicyComplianceStates = $using:funcDataCollectionPolicyComplianceStates
@@ -370,6 +360,7 @@ function processDataCollection {
                 $childMgId = $hierarchyInfo.Parent
                 $childMgDisplayName = $hierarchyInfo.ParentName
                 $childMgMgPath = $hierarchyInfo.pathDelimited
+                $childMgParentNameChain = $hierarchyInfo.ParentNameChain
                 $childMgParentInfo = $htManagementGroupsMgPath.($childMgId)
                 $childMgParentId = $childMgParentInfo.Parent
                 $childMgParentName = $htManagementGroupsMgPath.($childMgParentInfo.Parent).DisplayName
@@ -429,6 +420,9 @@ function processDataCollection {
 
                         #resourceProviders
                         DataCollectionResourceProviders @baseParameters
+
+                        #features
+                        DataCollectionFeatures @baseParameters -MgParentNameChain $childMgParentNameChain
 
                         #resourceLocks
                         DataCollectionResourceLocks @baseParameters
@@ -549,7 +543,12 @@ function processDataCollection {
 
         $endSubLoop = Get-Date
         Write-Host " CustomDataCollection Subscriptions processing duration: $((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds) seconds)"
-
+        if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
+            if ($arrayPSRuleTracking.Count -gt 0) {
+                $durationPSRuleTotalSeconds = (($arrayPSRuleTracking.duration | Measure-Object -Sum).Sum)
+                Write-Host "  CustomDataCollection Subscriptions 'PSRule for Azure' processing duration (in sum): $($durationPSRuleTotalSeconds / 60) minutes ($($durationPSRuleTotalSeconds) seconds)"
+            }
+        }
         #test
         Write-Host " built-in PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq 'BuiltIn'}).Count)"
         Write-Host " custom PolicyDefinitions: $($($htCacheDefinitionsPolicy).Values.where({$_.Type -eq 'Custom'}).Count)"
@@ -564,11 +563,7 @@ function processDataCollection {
     Write-Host "Collecting custom data for $($arrayEntitiesFromAPIManagementGroupsCount) ManagementGroups Avg/Max/Min duration in seconds: Average: $([math]::Round($durationMGAverageMaxMin.Average,4)); Maximum: $([math]::Round($durationMGAverageMaxMin.Maximum,4)); Minimum: $([math]::Round($durationMGAverageMaxMin.Minimum,4))"
     Write-Host "Collecting custom data for $($arrayEntitiesFromAPISubscriptionsCount) Subscriptions Avg/Max/Min duration in seconds: Average: $([math]::Round($durationSUBAverageMaxMin.Average,4)); Maximum: $([math]::Round($durationSUBAverageMaxMin.Maximum,4)); Minimum: $([math]::Round($durationSUBAverageMaxMin.Minimum,4))"
 
-    #APITracking
-    $APICallTrackingCount = ($arrayAPICallTrackingCustomDataCollection).Count
-    $APICallTrackingRetriesCount = ($arrayAPICallTrackingCustomDataCollection.where( { $_.TryCounter -gt 1 } )).Count
-    $APICallTrackingRestartDueToDuplicateNextlinkCounterCount = ($arrayAPICallTrackingCustomDataCollection.where( { $_.RestartDueToDuplicateNextlinkCounter -gt 0 } )).Count
-    Write-Host "Collecting custom data APICalls (Management) total count: $APICallTrackingCount ($APICallTrackingRetriesCount retries; $APICallTrackingRestartDueToDuplicateNextlinkCounterCount nextLinkReset)"
+    apiCallTracking -stage 'CustomDataCollection ManagementGroups and Subscriptions' -spacing ' '
 
     if ($azAPICallConf['htParameters'].NoResources -eq $false) {
 

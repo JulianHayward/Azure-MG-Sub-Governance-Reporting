@@ -176,14 +176,6 @@ function getConsumption {
                         $htSubscriptionsMgPath = $using:htSubscriptionsMgPath
                         $htAllSubscriptionsFromAPI = $using:htAllSubscriptionsFromAPI
                         $htConsumptionExceptionLog = $using:htConsumptionExceptionLog
-                        #Functions
-                        #AzAPICall
-                        if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                            Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-                        }
-                        else {
-                            Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
-                        }
                         #other
                         $function:addToAllConsumptionData = $using:funcAddToAllConsumptionData
                         #endregion UsingVARs
@@ -377,14 +369,6 @@ function getConsumption {
                         $htAllSubscriptionsFromAPI = $using:htAllSubscriptionsFromAPI
                         $allConsumptionData = $using:allConsumptionData
                         $htConsumptionExceptionLog = $using:htConsumptionExceptionLog
-                        #Functions
-                        #AzAPICall
-                        if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-                            Import-Module ".\$($scriptPath)\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-                        }
-                        else {
-                            Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
-                        }
                         #other
                         $function:addToAllConsumptionData = $using:funcAddToAllConsumptionData
                         #endregion UsingVARs

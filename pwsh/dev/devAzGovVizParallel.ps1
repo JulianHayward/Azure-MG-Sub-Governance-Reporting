@@ -34,7 +34,7 @@
     default is 80%, this parameter defines the warning level for approaching Limits (e.g. 80% of Role Assignment limit reached) change as per your preference
 
 .PARAMETER SubscriptionQuotaIdWhitelist
-    default is 'undefined', this parameter defines the QuotaIds the subscriptions must match so that AzGovViz processes them. The script checks if the QuotaId startswith the string that you have put in. Separate multiple strings with backslash e.g. MSDN_,EnterpriseAgreement_
+    default is 'undefined', this parameter defines the QuotaIds the subscriptions must match so that AzGovViz processes them. The script checks if the QuotaId startswith the string that you have put in. Separate multiple strings with comma e.g. MSDN_,EnterpriseAgreement_
 
 .PARAMETER NoPolicyComplianceStates
     use this parameter if policy compliance states should not be queried
@@ -159,8 +159,8 @@
     Define when limits should be highlighted as warning (default is 80 percent)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -LimitCriticalPercentage 90
 
-    Define the QuotaId whitelist by providing strings separated by a backslash
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionQuotaIdWhitelist MSDN_, EnterpriseAgreement_
+    Define the QuotaId whitelist by providing strings separated by a comma
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionQuotaIdWhitelist MSDN_,EnterpriseAgreement_
 
     Define if policy compliance states should be queried
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPolicyComplianceStates
@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.11',
 
     [string]
-    $ProductVersion = 'v6_major_20220505_1',
+    $ProductVersion = 'v6_major_20220521_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -425,6 +425,12 @@ Param
     [switch]
     $ShowMemoryUsage,
 
+    [switch]
+    $DoPSRule,
+
+    [string]
+    $PSRuleVersion,
+
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
     $LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -480,10 +486,12 @@ $startTime = Get-Date -Format 'dd-MMM-yyyy HH:mm:ss'
 Write-Host "Start AzGovViz $($startTime) (#$($ProductVersion))"
 
 #region Functions
+. ".\$($ScriptPath)\functions\apiCallTracking.ps1"
 . ".\$($ScriptPath)\functions\addRowToTable.ps1"
 . ".\$($ScriptPath)\functions\testPowerShellVersion.ps1"
 . ".\$($ScriptPath)\functions\setOutput.ps1"
 . ".\$($ScriptPath)\functions\setTranscript.ps1"
+. ".\$($ScriptPath)\functions\verifyModules3rd.ps1"
 . ".\$($ScriptPath)\functions\handleCloudEnvironment.ps1"
 . ".\$($ScriptPath)\functions\addHtParameters.ps1"
 . ".\$($ScriptPath)\functions\selectMg.ps1"
@@ -522,6 +530,7 @@ Write-Host "Start AzGovViz $($startTime) (#$($ProductVersion))"
 . ".\$($ScriptPath)\functions\processDataCollection.ps1"
 . ".\$($ScriptPath)\functions\exportBaseCSV.ps1"
 . ".\$($ScriptPath)\functions\html\htmlFunctions.ps1"
+. ".\$($ScriptPath)\functions\handlePSRuleData.ps1"
 . ".\$($ScriptPath)\functions\processTenantSummary.ps1"
 . ".\$($ScriptPath)\functions\processDefinitionInsights.ps1"
 . ".\$($ScriptPath)\functions\processScopeInsightsMgOrSub.ps1"
@@ -541,127 +550,25 @@ if ($DoTranscript) {
     setTranscript
 }
 
-#region verifyAzAPICall
-if ($AzAPICallVersion) {
-    Write-Host " Verify 'AzAPICall' ($AzAPICallVersion)"
+#region verifyModules3rd
+$modules = [System.Collections.ArrayList]@()
+$null = $modules.Add([PSCustomObject]@{
+        ModuleName         = 'AzAPICall'
+        ModuleVersion      = $AzAPICallVersion
+        ModuleProductName  = 'AzAPICall'
+        ModulePathPipeline = 'AzAPICallModule'
+    })
+
+if ($DoPSRule) {
+    $null = $modules.Add([PSCustomObject]@{
+            ModuleName         = 'PSRule.Rules.Azure'
+            ModuleVersion      = $PSRuleVersion
+            ModuleProductName  = 'PSRule'
+            ModulePathPipeline = 'PSRuleModule'
+        })
 }
-else {
-    Write-Host " Verify 'AzAPICall' (latest)"
-}
-
-$maxRetry = 3
-$tryCount = 0
-do {
-    $tryCount++
-    if ($tryCount -gt $maxRetry) {
-        Write-Host " Managing 'AzAPICall' failed (tried $($tryCount - 1)x)"
-        throw " Managing 'AzAPICall' failed"
-    }
-
-    $importAzAPICallModuleSuccess = $false
-    try {
-
-        if (-not $AzAPICallVersion) {
-            Write-Host '  Check latest module version'
-            try {
-                $AzAPICallVersion = (Find-Module -name AzAPICall).Version
-                Write-Host "  Latest module version: $AzAPICallVersion"
-            }
-            catch {
-                Write-Host '  Check latest module version failed'
-                throw
-            }
-        }
-
-        try {
-            $azAPICallModuleDeviation = $false
-            $azAPICallModuleVersionLoaded = ((Get-Module -name AzAPICall).Version)
-            foreach ($moduleLoaded in $azAPICallModuleVersionLoaded) {
-                if ($moduleLoaded.toString() -ne $AzAPICallVersion) {
-                    Write-Host "  Deviating loaded version found ('$($moduleLoaded.toString())' != '$($AzAPICallVersion)')"
-                    $azAPICallModuleDeviation = $true
-                }
-                else {
-                    if ($azAPICallModuleVersionLoaded.count -eq 1) {
-                        Write-Host "  AzAPICall module ($($moduleLoaded.toString())) is already loaded" -ForegroundColor Green
-                        $importAzAPICallModuleSuccess = $true
-                    }
-                }
-            }
-
-            if ($azAPICallModuleDeviation) {
-                $importAzAPICallModuleSuccess = $false
-                try {
-                    Write-Host "  Remove-Module AzAPICall ($(($azAPICallModuleVersionLoaded -join ', ').ToString()))"
-                    Remove-Module -Name AzAPICall -Force
-                }
-                catch {
-                    Write-Host '  Remove-Module AzAPICall failed'
-                    throw
-                }
-            }
-        }
-        catch {
-            #Write-Host '  AzAPICall module is not loaded'
-        }
-
-        if (-not $importAzAPICallModuleSuccess) {
-            Write-Host "  Try (#$tryCount) importing AzAPICall module ($AzAPICallVersion)"
-            if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
-                Import-Module ".\$($ScriptPath)\AzAPICallModule\AzAPICall\$($AzAPICallVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
-                Write-Host "  Import PS module 'AzAPICall' ($($AzAPICallVersion)) succeeded" -ForegroundColor Green
-            }
-            else {
-                Import-Module -Name AzAPICall -RequiredVersion $AzAPICallVersion -Force
-                Write-Host "  Import PS module 'AzAPICall' ($($AzAPICallVersion)) succeeded" -ForegroundColor Green
-            }
-            $importAzAPICallModuleSuccess = $true
-        }
-    }
-    catch {
-        Write-Host '  Importing AzAPICall module failed'
-        if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
-            Write-Host "  Saving AzAPICall module ($($AzAPICallVersion))"
-            try {
-                $params = @{
-                    Name            = 'AzAPICall'
-                    Path            = ".\$($ScriptPath)\AzAPICallModule"
-                    Force           = $true
-                    RequiredVersion = $AzAPICallVersion
-                }
-                Save-Module @params
-            }
-            catch {
-                Write-Host "  Saving AzAPICall module ($($AzAPICallVersion)) failed"
-                throw
-            }
-        }
-        else {
-            do {
-                $installAzAPICallModuleUserChoice = Read-Host "  Do you want to install AzAPICall module ($($AzAPICallVersion)) from the PowerShell Gallery? (y/n)"
-                if ($installAzAPICallModuleUserChoice -eq 'y') {
-                    try {
-                        Install-Module -Name AzAPICall -RequiredVersion $AzAPICallVersion
-                    }
-                    catch {
-                        Write-Host "  Install-Module AzAPICall ($($AzAPICallVersion)) Failed"
-                        throw
-                    }
-                }
-                elseif ($installAzAPICallModuleUserChoice -eq 'n') {
-                    Write-Host '  AzAPICall module is required, please visit https://aka.ms/AZAPICall or https://www.powershellgallery.com/packages/AzAPICall'
-                    throw '  AzAPICall module is required'
-                }
-                else {
-                    Write-Host "  Accepted input 'y' or 'n'; start over.."
-                }
-            }
-            until ($installAzAPICallModuleUserChoice -eq 'y')
-        }
-    }
-}
-until ($importAzAPICallModuleSuccess)
-#endregion verifyAzAPICall
+verifyModules3rd -modules $modules
+#endregion verifyModules3rd
 
 #Region initAZAPICall
 Write-Host "Initialize 'AzAPICall'"
@@ -674,10 +581,22 @@ $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 Write-Host " Initialize 'AzAPICall' succeeded" -ForegroundColor Green
 #EndRegion initAZAPICall
 
-#obsolete
-#$AzAPICallFunctions = getAzAPICallFunctions
-
 handleCloudEnvironment
+
+#region recommendPSRule
+if (-not $azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
+    if (-not $DoPSRule) {
+        Write-Host ""
+        Write-Host " * * * RECOMMENDATION: PSRule for Azure * * *" -ForegroundColor Magenta
+        Write-Host "Parameter -DoPSRule == '$DoPSRule'"
+        Write-Host "'PSRule for Azure' based ouputs provide aggregated Microsoft Azure Well-Architected Framework (WAF) aligned resource analysis results including guidance for remediation."
+        Write-Host "Consider running AzGovViz with the parameter -DoPSRule (example: .\pwsh\AzGovVizParallel.ps1 -DoPSRule)"
+        Write-Host " * * * * * * * * * * * * * * * * * * * * * *" -ForegroundColor Magenta
+        pause
+    }
+}
+#endregion recommendPSRule
+
 addHtParameters
 
 #region delimiterOpposite
@@ -692,7 +611,6 @@ if ($CsvDelimiter -eq ',') {
 #region runDataCollection
 
 #run
-$arrayAPICallTrackingCustomDataCollection = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 
 validateAccess
 getFileNaming
@@ -746,14 +664,15 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $resourcesIdsAll = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $resourceGroupsAll = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htResourceProvidersAll = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $arrayFeaturesAll = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htResourceTypesUniqueResource = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $arrayDataCollectionProgressMg = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayDataCollectionProgressSub = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arraySubResourcesAddArrayDuration = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayDiagnosticSettingsMgSub = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htDiagnosticSettingsMgSub = @{}
-    ($htDiagnosticSettingsMgSub).mg = @{}
-    ($htDiagnosticSettingsMgSub).sub = @{}
+    $htDiagnosticSettingsMgSub.mg = @{}
+    $htDiagnosticSettingsMgSub.sub = @{}
     $htMgAtScopePolicyAssignments = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htMgAtScopePoliciesScoped = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htMgAtScopeRoleAssignments = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
@@ -796,6 +715,9 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     if ($DoAzureConsumption) {
         $allConsumptionData = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     }
+
+    $arrayPsRule = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayPSRuleTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
 getEntities
@@ -1760,6 +1682,15 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
         $startHierarchyTable = Get-Date
         $script:scopescnter = 0
+        if ($azAPICallConf['htParameters'].NoResources -eq $false) {
+            if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
+                $grpPSRuleSubscriptions = $psRuleDataSelection | group-object -Property subscriptionId
+                $grpPSRuleManagementGroups = $psRuleDataSelection | group-object -Property mgPath
+            }
+        }
+        if ($arrayFeaturesAll.Count -gt 0) {
+            $script:subFeaturesGroupedBySubscription = $arrayFeaturesAll | Group-Object -property subscriptionId
+        }
         processScopeInsights -mgChild $ManagementGroupId -mgChildOf $getMgParentId
         showMemoryUsage
         #[System.GC]::Collect()
@@ -1837,20 +1768,8 @@ showMemoryUsage
 
 #endregion createoutputs
 
-#APITracking
-$APICallTrackingCount = ($azAPICallConf['arrayAPICallTracking']).Count
-$APICallTrackingRetriesCount = ($azAPICallConf['arrayAPICallTracking'].where({ $_.TryCounter -gt 1 } )).Count
-$APICallTrackingGroupedByTargetEndpoint = $azAPICallConf['arrayAPICallTracking'] | Group-Object -Property TargetEndpoint
-$APICallTrackingRestartDueToDuplicateNextlinkCounterCount = ($azAPICallConf['arrayAPICallTracking'].where({ $_.RestartDueToDuplicateNextlinkCounter -gt 0 } )).Count
-Write-Host 'AzGovViz API call stats:'
-$duarationStats = ($azAPICallConf['arrayAPICallTracking'].Duration | Measure-Object -Average -Maximum -Minimum)
-Write-Host " API calls total count: $APICallTrackingCount ($APICallTrackingRetriesCount retries; $APICallTrackingRestartDueToDuplicateNextlinkCounterCount nextLinkReset) | average: $($duarationStats.Average) sec, maximum: $($duarationStats.Maximum) sec, minimum: $($duarationStats.Minimum) sec"
-foreach ($targetEndpoint in $APICallTrackingGroupedByTargetEndpoint | Sort-Object -Property Name) {
-    $APICallTrackingRetriesCount = ($targetEndpoint.Group.where({ $_.TryCounter -gt 1 } )).Count
-    $APICallTrackingRestartDueToDuplicateNextlinkCounterCount = ($targetEndpoint.Group.where({ $_.RestartDueToDuplicateNextlinkCounter -gt 0 } )).Count
-    $duarationStats = ($targetEndpoint.Group.Duration | Measure-Object -Average -Maximum -Minimum)
-    Write-Host " API calls endpoint '$($targetEndpoint.Name) ($($azAPICallConf['azAPIEndpointUrls'].($targetEndpoint.Name)))' count: $($targetEndpoint.Count) ($APICallTrackingRetriesCount retries; $APICallTrackingRestartDueToDuplicateNextlinkCounterCount nextLinkReset) | average: $($duarationStats.Average) sec, maximum: $($duarationStats.Maximum) sec, minimum: $($duarationStats.Minimum) sec"
-}
+apiCallTracking -stage 'Summary' -spacing ''
+
 $endAzGovViz = Get-Date
 $durationProduct = (NEW-TIMESPAN -Start $startAzGovViz -End $endAzGovViz)
 Write-Host "AzGovViz duration: $($durationProduct.TotalMinutes) minutes"
@@ -1876,8 +1795,27 @@ if ($DoTranscript) {
 
 Write-Host ''
 Write-Host '--------------------'
-Write-Host 'Completed successful' -ForegroundColor Green
+Write-Host 'AzGovViz completed successful' -ForegroundColor Green
+
 showMemoryUsage
+
 if ($Error.Count -gt 0) {
     Write-Host "Don't bother about dumped errors"
+}
+
+if ($DoPSRule) {
+    $psRuleErrors = $psRuleDataSelection.where({ -not [string]::IsNullOrWhiteSpace($_.errorMsg) })
+    if ($psRuleErrors) {
+        Write-Host ''
+        Write-Host "$($psRuleErrors.Count) 'PSRule for Azure' error(s) encountered"
+        Write-Host "Please review the error(s) and consider filing an issue at the PSRule.Rules.Azure GitHub repository https://github.com/Azure/PSRule.Rules.Azure - thank you"
+        $psRuleErrorsGrouped = $psRuleErrors | Group-Object -Property resourceType, errorMsg
+        foreach ($errorGroupedByResourceTypeAndMessage in $psRuleErrorsGrouped) {
+            Write-Host "$($errorGroupedByResourceTypeAndMessage.Count) x $($errorGroupedByResourceTypeAndMessage.Name)"
+            Write-Host 'Resources:'
+            foreach ($resourceId in $errorGroupedByResourceTypeAndMessage.Group.resourceId) {
+                Write-Host " -$resourceId"
+            }
+        }
+    }
 }

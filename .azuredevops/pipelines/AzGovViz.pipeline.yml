@@ -1,9 +1,8 @@
-# AzGovViz v6_minor_20220502_2
+# AzGovViz v6_major_20220521_1
 # First things first:
-# 1. Set needed variables in the AzGovViz.variables.yml file.
-#
+# 1. Mandatory: Set needed variables 'ServiceConnection' and 'ManagementGroupId' in the AzGovViz.variables.yml file.
+# 2. Mandatory: Check line 20  
 # Documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
-# Also check https://www.azadvertizer.net - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
 
 trigger: none
 
@@ -12,19 +11,13 @@ pr: none
 variables:
   - template: ./AzGovViz.variables.yml
 
-  - name: ScriptDir
-    value: pwsh
-
-  - name: Script
-    value: AzGovVizParallel.ps1
-
-#schedules:
-#- cron: "0 0,12 * * *"
-#  displayName: every 12h
-#  always: true
-#  branches:
-#    include:
-#    - master #CHECK branch 'master' is applicable? - delete me :)
+schedules:
+- cron: "0 0,12 * * *"
+  displayName: every 12h
+  always: true
+  branches:
+    include:
+    - master #CHECK branch 'master' is applicable? - delete me :)
 
 #Running AzOps? Run AzGovViz after 'AzOps - Push' ..
 #AzOps Accellerator https://github.com/Azure/AzOps-Accelerator
@@ -49,7 +42,7 @@ jobs:
       Write-Host 'Build Script Arguments String...'
 
       $argumentsString = ''
-      $scriptPath = '$(System.DefaultWorkingDirectory)/$(ScriptDir)/AzGovVizParallel.ps1'
+      $scriptPath = '$(System.DefaultWorkingDirectory)/$(ScriptDir)/$(Script)'
 
       $astTokens = $null
       $astErrors = $null
@@ -59,33 +52,48 @@ jobs:
 
       foreach ($scriptParameter in $scriptParameters) {
         $scriptParameterName = $scriptParameter.Name.VariablePath.UserPath
-        $argument = Get-ChildItem -Path "Env:$( $scriptParameterName.ToUpper() )" -ErrorAction SilentlyContinue
-        if ($argument.value) {
-          if ($scriptParameter.StaticType.Name -eq 'SwitchParameter' -and $argument.Value -eq 'True') {
-            $argumentsString += "-$( $scriptParameterName ) "
-          } else {
-            $argumentsString += "-$( $scriptParameterName ) '$( $argument.Value )' "
-          }
-          if ($scriptParameterName -eq 'outputPath') {
-            $outputPath = "$( $argument.Value )"
+        if ($scriptParameterName -ne 'ScriptDir' -and $scriptParameterName -ne 'Script') {
+          $argument = Get-ChildItem -Path "Env:$( $scriptParameterName.ToUpper() )" -ErrorAction SilentlyContinue
+          if ($argument.value) {
+            if ($scriptParameter.StaticType.Name -eq 'SwitchParameter' -and $argument.Value -eq 'True') {
+              if ($scriptParameterName -eq 'WebAppPublish') {
+                #skipping
+              }
+              else {
+                $argumentsString += "-$( $scriptParameterName ) "
+              }
+            } else {
+              if ($scriptParameterName -eq 'CsvDelimiter') {
+                $argumentsString += "-$( $scriptParameterName ) '$( $argument.Value )' "
+              }
+              elseif ($scriptParameterName -eq 'WebAppSubscriptionId' -or $scriptParameterName -eq 'WebAppResourceGroup' -or $scriptParameterName -eq 'WebAppName') {
+                #skipping
+              }
+              else{
+                $argumentsString += "-$( $scriptParameterName ) $( $argument.Value ) "
+              }
+            }
+            if ($scriptParameterName -eq 'outputPath') {
+              $outputPath = "$( $argument.Value )"
+            }
           }
         }
       }
 
       Write-Host "Arguments String: $( $argumentsString.Trim() )"
       Write-Host "##vso[task.setvariable variable=ScriptArguments]$( $argumentsString.Trim() )"
-      Write-Host "outputPath String: $( $outputPath )"
-      Write-Host "##vso[task.setvariable variable=WIKIDIR]$( $outputPath )"
     displayName: 'Create Arguments String Variable'
+
   - task: PowerShell@2
     inputs:
       targetType: 'filePath'
-      filePath: $(System.DefaultWorkingDirectory)/$(ScriptDir)/prerequisites.ps1
+      filePath: $(System.DefaultWorkingDirectory)/$(ScriptDir)/$(ScriptPrerequisites)
+      arguments: '-OutputPath $(OutputPath)'
     displayName: 'Prerequisites check'
     env:
       SYSTEM_ACCESSTOKEN: $(System.AccessToken)
 
-  - task: AzurePowerShell@4
+  - task: AzurePowerShell@5
     inputs:
       azureSubscription: '$(ServiceConnection)'
       scriptType: filePath
@@ -93,7 +101,7 @@ jobs:
       scriptPath: '$(System.DefaultWorkingDirectory)/$(ScriptDir)/$(Script)'
       scriptArguments: $(ScriptArguments) -ScriptPath $(ScriptDir)
       azurePowerShellVersion: latestVersion
-    displayName: 'Run AzGovViz v6'
+    displayName: 'Run AzGovViz'
 
   - pwsh: |
       write-host "#################################"
@@ -101,17 +109,49 @@ jobs:
       write-host "#################################"
       $executionDateTimeInternationalReadable = get-date -format "dd-MMM-yyyy HH:mm:ss"
       $currentTimeZone = (Get-TimeZone).Id
-      write-host "dbg: git config --global user.email"
       git config --global user.email "AzGovVizPipeline@azdo.com"
       $PipelineInfo = "Pipeline: '$(Build.DefinitionName)' 'rev $(Build.BuildNumber)' (Project: $([uri]::EscapeDataString("$(System.TeamProject)")); Repository: $(Build.Repository.Name); Branch: $(Build.SourceBranchName) Commit: $(Build.SourceVersion))"
-      write-host "dbg: git config --global user.name PipelineInfo"
       git config --global user.name "$PipelineInfo"
-      write-host "dbg: git config pull.rebase false"
       git config pull.rebase false
-      write-host "dbg: git add --all"
       git add --all
-      write-host "dbg: git commit -m 'wiki $executionDateTimeInternationalReadable ($currentTimeZone)'"
       git commit -m "wiki $executionDateTimeInternationalReadable ($currentTimeZone)"
-      write-host "dbg: git -c http.extraheader='AUTHORIZATION: bearer System.AccessToken' push origin HEAD:$(Build.SourceBranchName)"
       git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" push origin HEAD:$(Build.SourceBranchName)
-    displayName: 'Push AzGovViz v6 output to repository'
+    displayName: 'Push AzGovViz output to repository'
+
+  - task: AzurePowerShell@5
+    condition: eq(variables['WebAppPublish'], 'true')
+    inputs:
+      azureSubscription: '$(ServiceConnection)'
+      ScriptType: 'InlineScript'
+      pwsh: true
+      Inline: |
+        $azAPICallConf = initAzAPICall -DebugAZAPICall $true
+        $currentTask = "AzAPICall - Check if WebApp ($($env:WEBAPPNAME)) has Authentication enabled"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($env:WEBAPPSUBSCRIPTIONID)/resourceGroups/$($env:WEBAPPRESOURCEGROUP)/providers/Microsoft.Web/sites/$($env:WEBAPPNAME)/config/authsettings/list?api-version=2021-02-01"
+        $method = 'POST'
+        $request = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -listenOn 'Content'
+
+        $authStatus = $request.properties.enabled
+        Write-Host "WebApp ($($env:WEBAPPNAME)) has Authentication enabled: $authStatus"
+        if ($authStatus) {
+            try {
+                Compress-Archive -Path "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID).html" -DestinationPath "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID).zip"
+                $null = Select-AzSubscription -SubscriptionId $($env:WEBAPPSUBSCRIPTIONID)
+                if (Publish-AzWebApp -ResourceGroupName $($env:WEBAPPRESOURCEGROUP) -Name $($env:WEBAPPNAME) -ArchivePath "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID).zip" -Force) {
+                    Write-Host "HTML published"
+                }
+            }
+            catch {
+                $_
+                Write-Host "HTML NOT published"
+                Write-Host "RBAC Role 'Website Contributor' is required"
+                exit 1
+            }
+        }
+        else {
+            Write-Host "Assuming and insisting that you do not want to publish your tenant insights to the public"
+            Write-Host "HTML NOT published. Please configure authentication on the webApp ($($env:WEBAPPNAME))"
+            exit 1
+        }
+      azurePowerShellVersion: latestVersion
+    displayName: 'Publish HTML to WebApp'  

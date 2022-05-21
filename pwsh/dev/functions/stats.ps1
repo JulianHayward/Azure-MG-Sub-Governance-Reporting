@@ -64,7 +64,6 @@ function stats {
             $statsCountSubscriptions = 'more than 100'
         }
 
-
         $tryCounter = 0
         do {
             if ($tryCounter -gt 0) {
@@ -110,6 +109,7 @@ function stats {
                 "statsParametersNoResources": "$($azAPICallConf['htParameters'].NoResources)",
                 "statsParametersPolicyAtScopeOnly": "$($azAPICallConf['htParameters'].PolicyAtScopeOnly)",
                 "statsParametersRBACAtScopeOnly": "$($azAPICallConf['htParameters'].RBACAtScopeOnly)",
+                "statsParametersDoPSRule": "$($azAPICallConf['htParameters'].DoPSRule)",
                 "statsTry": "$($tryCounter)"
             }
         }

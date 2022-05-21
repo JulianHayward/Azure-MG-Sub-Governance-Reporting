@@ -268,6 +268,26 @@ function dataCollectionResources {
     $method = 'GET'
     $resourcesSubscriptionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
+    #region PSRule
+    if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
+        if ($resourcesSubscriptionResult.Count -gt 0) {
+            $startPSRule = Get-Date
+            $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
+            $endPSRule = Get-Date
+            $durationPSRule = $((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalSeconds)
+
+            $null = $script:arrayPSRuleTracking.Add([PSCustomObject]@{
+                    subscriptionId = $scopeId
+                    duration       = $durationPSRule
+                })
+
+            if ($psruleResults.Count -gt 0) {
+                $null = $script:arrayPSRule.AddRange($psRuleResults)
+            }
+        }
+    }
+    #endregion PSRule
+
     foreach ($resourceTypeLocation in ($resourcesSubscriptionResult | Group-Object -Property type, location)) {
         $null = $script:resourcesAll.Add([PSCustomObject]@{
                 subscriptionId = $scopeId
@@ -434,6 +454,33 @@ function dataCollectionResourceProviders {
     ($script:htResourceProvidersAll).($scopeId).Providers = $resProvResult | Select-Object namespace, registrationState
 }
 $funcDataCollectionResourceProviders = $function:dataCollectionResourceProviders.ToString()
+
+function dataCollectionFeatures {
+    [CmdletBinding()]Param(
+        [string]$scopeId,
+        [string]$scopeDisplayname,
+        [object]$MgParentNameChain
+    )
+
+    $currentTask = "Getting Features for Subscription: '$($scopeDisplayname)' ('$scopeId')"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Features/features?api-version=2021-07-01"
+    $method = 'GET'
+    $featuresResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+
+    $featuresResultRegistered = $featuresResult.where({ $_.properties.state -eq 'Registered' })
+
+    if ($featuresResultRegistered.Count -gt 0) {
+        foreach ($registeredFeature in $featuresResultRegistered) {
+            $null = $script:arrayFeaturesAll.Add([PSCustomObject]@{
+                    subscriptionId = $registeredFeature.id.split('/')[2]
+                    mgPathArray    = $MgParentNameChain
+                    mgPath         = ($MgParentNameChain -join ',')
+                    feature        = $registeredFeature.name
+                })
+        }
+    }
+}
+$funcDataCollectionFeatures = $function:dataCollectionFeatures.ToString()
 
 function dataCollectionResourceLocks {
     [CmdletBinding()]Param(
