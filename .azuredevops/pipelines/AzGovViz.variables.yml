@@ -243,7 +243,7 @@ variables:
 # Execute PSRule
   - name: DoPSRule
     # Switch | example: value: true
-    value: true
+    value:
 
 # WebApp publish
   - name: WebAppPublish

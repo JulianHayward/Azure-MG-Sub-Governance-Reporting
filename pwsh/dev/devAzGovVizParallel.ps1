@@ -277,7 +277,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.11',
+    $AzAPICallVersion = '1.1.12',
 
     [string]
     $ProductVersion = 'v6_major_20220521_1',
