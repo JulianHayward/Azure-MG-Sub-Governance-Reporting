@@ -1,4 +1,9 @@
-# AzGovViz v6_major_20220501_1
+# AzGovViz v6_major_20220521_1
+# First things first:
+# 1. Mandatory: define <Management Group Id> in line 11 (e.g. be992f89-5615-4745-baca-16e5d7b72a50)
+# 2. Optional: enable the schedule (line 22,23)
+# Documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
+
 name: AzGovViz_OIDC
 
 env:
@@ -7,6 +12,11 @@ env:
   ScriptDir: pwsh #example: 'my folder\pwsh' or 'my folder/pwsh'
   ScriptPrereqFile: prerequisites.ps1
   ScriptFile: AzGovVizParallel.ps1
+  #optional
+  WebAppPublish: false #set to true and define the Web App details in the next 3 lines
+  WebAppSubscriptionId: <subscriptionId> e.g. 2674403a-4acd-40e6-a694-2ac7b968761e
+  WebAppResourceGroup: <ResourceGroupName> e.g. MyWebAppResourceGroup
+  WebAppName: <Name> e.g. MyAzGovVizWebApp
 
 on:
   #schedule:
@@ -58,3 +68,38 @@ jobs:
           git add --all
           git commit -m "$GITHUB_WORKFLOW $GITHUB_JOB"
           git push
+
+      - name: Publish HTML to WebApp
+        if: env.WebAppPublish == 'true'
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            $azAPICallConf = initAzAPICall -DebugAZAPICall $true
+            $currentTask = "AzAPICall - Check if WebApp ($($env:WebAppName)) has Authentication enabled"
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($env:WebAppSubscriptionId)/resourceGroups/$($env:WebAppResourceGroup)/providers/Microsoft.Web/sites/$($env:WebAppName)/config/authsettings/list?api-version=2021-02-01"
+            $method = 'POST'
+            $request = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -listenOn 'Content'
+
+            $authStatus = $request.properties.enabled
+            Write-Host "WebApp ($($env:WebAppName)) has Authentication enabled: $authStatus"
+            if ($authStatus) {
+                try {
+                    Compress-Archive -Path "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).html" -DestinationPath "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).zip"
+                    $null = Select-AzSubscription -SubscriptionId $($env:WebAppSubscriptionId)
+                    if (Publish-AzWebApp -ResourceGroupName $($env:WebAppResourceGroup) -Name $($env:WebAppName) -ArchivePath "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).zip" -Force) {
+                        Write-Host "HTML published"
+                    }
+                }
+                catch {
+                    $_
+                    Write-Host "HTML NOT published"
+                    Write-Host "RBAC Role 'Website Contributor' is required"
+                    exit 1
+                }
+            }
+            else {
+                Write-Host "Assuming and insisting that you do not want to publish your tenant insights to the public"
+                Write-Host "HTML NOT published. Please configure authentication on the webApp ($($env:WebAppName))"
+                exit 1
+            }
+          azPSVersion: "latest"

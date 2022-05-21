@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220509_4
+# AzGovViz v6_major_20220521_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -244,6 +244,20 @@ variables:
   - name: DoPSRule
     # Switch | example: value: true
     value: true
+
+# WebApp publish
+  - name: WebAppPublish
+    # Switch | example: value: true
+    value:
+  - name: WebAppSubscriptionId
+    # String | example: value: "<Subscription-Id of the WebApp>"
+    value: <subscriptionId> e.g. 2674403a-4acd-40e6-a694-2ac7b968761e
+  - name: WebAppResourceGroup
+    # String | example: value: "<ResourceGroup name of the WebApp>"
+    value: <ResourceGroupName> e.g. MyWebAppResourceGroup
+  - name: WebAppName
+    # String | example: value: "<Name of the WebApp>"
+    value: <Name> e.g. MyAzGovVizWebApp
 
 # Dynamic Variables - Do Not Modify Anything Below this line!
   - name: ExcludedResourceTypesDiagnosticsCapable

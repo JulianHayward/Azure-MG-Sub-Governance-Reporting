@@ -1,4 +1,4 @@
-#20220508_4
+#20220521_1
 #This script should be run in Azure DevOps Pipelines and GitHub Actions only
 
 param(

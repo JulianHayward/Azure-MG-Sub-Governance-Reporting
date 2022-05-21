@@ -45,7 +45,7 @@ This guide will help you to setup and run AzGovViz
 
 * [__AzGovViz in GitHub Codespaces__](#azgovviz-github-codespaces)
 
-* [__Optional Publishing the AzGovViz HTML to a webapp__](#optional-publishing-the-azgovviz-html-to-a-webapp)
+* [__Optional Publishing the AzGovViz HTML to a Azure Web App__](#optional-publishing-the-azgovviz-html-to-a-azure-web-app)
 
 # AzGovViz from Console
 
@@ -537,46 +537,32 @@ Note: Codespaces is available for organizations using GitHub Team or GitHub Ente
 
 ![alt text](img/codespaces4.png "AzGovViz GitHub Codespaces")
 
-# Optional Publishing the AzGovViz HTML to a webapp
+# Optional Publishing the AzGovViz HTML to a Azure Web App
 
 There are instances where you may want to publish the HTML output to a webapp so that anybody in the business can see up to date status of the Azure governance.
 
 There are a few models to do this, the option below is one way to get you started.
 
 ## Prerequisites 
-* Deploy a simple webapp on Azure. This can be the smallest SKU or a FREE SKU. It doesn't matter whether you choose Windows or Linux as the platform.
-![alt text](img/createwebapp.png "Default documents")
-* Step through the configuration. I typically use the Code for the publish and then select the Runtime stack that you standardize on. Remember the _Operating System_ as this will be used when creating the deployment in Azure DevOps.
-![alt text](img/configurewebapp.png "Default documents")
-* No need to configure anything, unless your organization policies require you to do so.  
-NOTE: it is a good practice to tag your resource for operational and finance reasons.
-* In the webapp _Configuration_ add the name of the HTML output file to the _Default Documents_
-![alt text](img/webappdefaultdocs.png "Default documents")
+* Deploy a simple webapp on Azure. This can be the smallest SKU or a FREE SKU. It doesn't matter whether you choose Windows or Linux as the platform  
+![alt text](img/webapp_create.png "Web App Create")
+* Step through the configuration. I typically use the Code for the publish and then select the Runtime stack that you standardize on 
+![alt text](img/webapp_configure.png "Web App Configure")
+* No need to configure anything, unless your organization policies require you to do so  
+NOTE: it is a good practice to tag your resource for operational and finance reasons
+* In the webapp _Configuration_ add the name of the HTML output file to the _Default Documents_  
+![alt text](img/webapp_defaultdocs.png "Web App Default documents")
+* Make sure to configure Authentication!  
+![alt text](img/webapp_authentication.png "Web App Authentication")
 
-The deployment will be broken down into 2 phases, there is an artifact build phase and then a deploy to webapp phase.
+## Azure DevOps
 
-### Phase1: Building the artifact
-* Using the AzGovViz-artifact-build.yml file in the _webapppublish_ folder, create a new build pipeline.  
-NOTE: check the YML file to ensure that you are building off the correct branch, _default is Master_
-![alt text](img/buildpipeline.png "Build Pipeline")
-* Add the location of the HTML output file to the pipeline.
-![alt text](img/buildpipeline2.png "Configure HTML location")
-* Update the drop location for the archive
-![alt text](img/buildpipeline3.png "Archive location")
-* Run the pipeline
+* Assign the Azure DevOps Service Connection´s Service Principal with RBAC Role __Website Contributor__ on the Azure Web App
+* Edit the `.azuredevops/AzGovViz.variables.yml` file  
+![alt text](img/webapp_AzDO_yml.png "Azure DevOps YAML variables")
 
-Optional: in the AzGovViz-artifact-build pipeline, create a trigger from the AzGovViz pipeline. This will ensure that when AzGovViz runs the artifact is refreshed and updated and ready to be deployed to the webapp.
+## GitHub Actions
 
-### Phase2: Deploying the code to the webapp
-* Create a release pipeline with a _Azure App Service Deploy_ task
-![alt text](img/releasepipeline.png "Release pipeline")
-* In the pipeline configure the _Artifacts_ to point to the build from Phase 1.
-![alt text](img/releaseartifactconfig.png "Release pipeline")
-* Configure the _Azure App Service deploy_ task, set the _subscription_, _app service type_ and _app service name_.
-![alt text](img/azureappdeployconfig.png "Release pipeline")
-* Create a release to deploy the code to the webapp.
-
-Note: ensure that your _App Service Type_ is the same as the _App Service Plan_ for the webapp you deployed. Doing this will ensure that your _App Service Name_ is in the drop list.
-* In your release pipeline you can either run your build on a schedule or you can set a trigger to automatically release off a successful build.
-![alt text](img/releaseschedule.png "Release schedule")
-![alt text](img/releasetrigger.png "Release trigger")
+* Assign the Service Principal used in GitHub with RBAC Role __Website Contributor__ on the Azure Web App
+* Edit the `.github/workflows/AzGovViz_OIDC.yml` or `.github/workflows/AzGovViz.yml` file  
+![alt text](img/webapp_GitHub_yml.png "GitHub YAML variables")
