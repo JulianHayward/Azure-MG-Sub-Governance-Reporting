@@ -588,7 +588,7 @@ checkAzGovVizVersion
 if ($azGovVizNewerVersionAvailable) {
     if (-not $azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
         Write-Host ""
-        Write-Host " * * * This AzGovViz version ($ProductVersion) is not up to date. Get the latest AzGovViz Version ($azGovVizVersionOnRepositoryFull)! * * *" -ForegroundColor Green
+        Write-Host " * * * This AzGovViz version ($ProductVersion) is not up to date. Get the latest AzGovViz version ($azGovVizVersionOnRepositoryFull)! * * *" -ForegroundColor Green
         Write-Host "Check the AzGovViz history: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md"
         Write-Host " * * * * * * * * * * * * * * * * * * * * * *" -ForegroundColor Green
         pause
@@ -1838,7 +1838,7 @@ if ($DoPSRule) {
 #region infoNewAzGovVizVersionAvailable
 if ($azGovVizNewerVersionAvailable) {
     if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-        Write-Host "This AzGovViz version ($ProductVersion) is not up to date. Get the latest AzGovViz Version ($azGovVizVersionOnRepositoryFull)!"
+        Write-Host "This AzGovViz version ($ProductVersion) is not up to date. Get the latest AzGovViz version ($azGovVizVersionOnRepositoryFull)!"
         Write-Host "Check the AzGovViz history: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md"
     }
 }
