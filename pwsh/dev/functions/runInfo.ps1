@@ -10,16 +10,16 @@ function runInfo {
         $script:paramsUsed += "Date: $startTimeUTC (UTC); Version: $ProductVersion &#13;"
 
         if ($azAPICallConf['htParameters'].accountType -eq 'ServicePrincipal') {
-            $script:paramsUsed += "ExecutedBy: $($azAPICallConf['accountId']) (App/ClientId) ($($azAPICallConf['htParameters'].accountType)) &#13;"
+            $script:paramsUsed += "ExecutedBy: $($azAPICallConf['checkContext'].Account.Id) (App/ClientId) ($($azAPICallConf['htParameters'].accountType)) &#13;"
         }
         elseif ($azAPICallConf['htParameters'].accountType -eq 'ManagedService') {
-            $script:paramsUsed += "ExecutedBy: $($azAPICallConf['accountId']) (Id) ($($azAPICallConf['htParameters'].accountType)) &#13;"
+            $script:paramsUsed += "ExecutedBy: $($azAPICallConf['checkContext'].Account.Id) (Id) ($($azAPICallConf['htParameters'].accountType)) &#13;"
         }
         elseif ($azAPICallConf['htParameters'].accountType -eq 'ClientAssertion') {
-            $script:paramsUsed += "ExecutedBy: $($azAPICallConf['accountId']) (App/ClientId) ($($azAPICallConf['htParameters'].accountType)) &#13;"
+            $script:paramsUsed += "ExecutedBy: $($azAPICallConf['checkContext'].Account.Id) (App/ClientId) ($($azAPICallConf['htParameters'].accountType)) &#13;"
         }
         else {
-            $script:paramsUsed += "ExecutedBy: $($azAPICallConf['accountId']) ($($azAPICallConf['htParameters'].accountType), $($azAPICallConf['htParameters'].userType)) &#13;"
+            $script:paramsUsed += "ExecutedBy: $($azAPICallConf['checkContext'].Account.Id) ($($azAPICallConf['htParameters'].accountType), $($azAPICallConf['htParameters'].userType)) &#13;"
         }
         #$script:paramsUsed += "ManagementGroupId: $($ManagementGroupId) &#13;"
         $script:paramsUsed += 'HierarchyMapOnly: false &#13;'

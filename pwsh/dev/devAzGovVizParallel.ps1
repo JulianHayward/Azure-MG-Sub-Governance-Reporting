@@ -492,6 +492,7 @@ Write-Host "Start AzGovViz $($startTime) (#$($ProductVersion))"
 . ".\$($ScriptPath)\functions\setOutput.ps1"
 . ".\$($ScriptPath)\functions\setTranscript.ps1"
 . ".\$($ScriptPath)\functions\verifyModules3rd.ps1"
+. ".\$($ScriptPath)\functions\checkAzGovVizVersion.ps1"
 . ".\$($ScriptPath)\functions\handleCloudEnvironment.ps1"
 . ".\$($ScriptPath)\functions\addHtParameters.ps1"
 . ".\$($ScriptPath)\functions\selectMg.ps1"
@@ -580,6 +581,20 @@ $parameters4AzAPICallModule = @{
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 Write-Host " Initialize 'AzAPICall' succeeded" -ForegroundColor Green
 #EndRegion initAZAPICall
+
+checkAzGovVizVersion
+
+#region promptNewAzGovVizVersionAvailable
+if ($azGovVizNewerVersionAvailable) {
+    if (-not $azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
+        Write-Host ""
+        Write-Host " * * * This AzGovViz version ($ProductVersion) is not up to date. Get the latest AzGovViz Version ($azGovVizVersionOnRepositoryFull)! * * *" -ForegroundColor Green
+        Write-Host "Check the AzGovViz history: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md"
+        Write-Host " * * * * * * * * * * * * * * * * * * * * * *" -ForegroundColor Green
+        pause
+    }
+}
+#endregion promptNewAzGovVizVersionAvailable
 
 handleCloudEnvironment
 
@@ -1370,7 +1385,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_001.js"></script>
+    <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_002.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/autocorrectOff_v004_001.js"></script>
     <script>
         fitty('#fitme', {
@@ -1720,13 +1735,13 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $paramsUsed += "Creation duration: $AzGovVizHTMLDuration minutes &#13;"
     if (-not $NoScopeInsights) {
         $html += @"
-        <abbr style="text-decoration:none" title="$($paramsUsed)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr> <button id="hierarchyTreeShowHide" onclick="toggleHierarchyTree()">Hide HierarchyMap</button> <button id="summaryShowHide" onclick="togglesummprnt()">Hide TenantSummary</button> <button id="definitionInsightsShowHide" onclick="toggledefinitioninsightsprnt()">Hide DefinitionInsights</button> <button id="hierprntShowHide" onclick="togglehierprnt()">Hide ScopeInsights</button>
+        <abbr style="text-decoration:none" title="$($paramsUsed)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr> <button id="hierarchyTreeShowHide" onclick="toggleHierarchyTree()">Hide HierarchyMap</button> <button id="summaryShowHide" onclick="togglesummprnt()">Hide TenantSummary</button> <button id="definitionInsightsShowHide" onclick="toggledefinitioninsightsprnt()">Hide DefinitionInsights</button> <button id="hierprntShowHide" onclick="togglehierprnt()">Hide ScopeInsights</button> $azGovVizNewerVersionAvailableHTML
         <hr>
 "@
     }
     else {
         $html += @"
-        <abbr style="text-decoration:none" title="$($paramsUsed)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr> <button id="hierarchyTreeShowHide" onclick="toggleHierarchyTree()">Hide HierarchyMap</button> <button id="summaryShowHide" onclick="togglesummprnt()">Hide TenantSummary</button> <button id="definitionInsightsShowHide" onclick="toggledefinitioninsightsprnt()">Hide DefinitionInsights</button>
+        <abbr style="text-decoration:none" title="$($paramsUsed)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr> <button id="hierarchyTreeShowHide" onclick="toggleHierarchyTree()">Hide HierarchyMap</button> <button id="summaryShowHide" onclick="togglesummprnt()">Hide TenantSummary</button> <button id="definitionInsightsShowHide" onclick="toggledefinitioninsightsprnt()">Hide DefinitionInsights</button> $azGovVizNewerVersionAvailableHTML
 "@
 
     }
@@ -1737,7 +1752,7 @@ $html += @'
     <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_001.js"></script>
+    <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_002.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/autocorrectOff_v004_001.js"></script>
     <script>
         fitty('#fitme', {
@@ -1819,3 +1834,12 @@ if ($DoPSRule) {
         }
     }
 }
+
+#region infoNewAzGovVizVersionAvailable
+if ($azGovVizNewerVersionAvailable) {
+    if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
+        Write-Host "This AzGovViz version ($ProductVersion) is not up to date. Get the latest AzGovViz Version ($azGovVizVersionOnRepositoryFull)!"
+        Write-Host "Check the AzGovViz history: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md"
+    }
+}
+#endregion infoNewAzGovVizVersionAvailable
