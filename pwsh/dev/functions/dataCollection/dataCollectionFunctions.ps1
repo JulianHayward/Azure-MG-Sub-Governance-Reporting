@@ -272,7 +272,18 @@ function dataCollectionResources {
     if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
         if ($resourcesSubscriptionResult.Count -gt 0) {
             $startPSRule = Get-Date
-            $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
+            try {
+                <#
+                $path = (Get-Module PSRule.Rules.Azure -ListAvailable | Sort-Object Version -Descending -Top 1).ModuleBase
+                Write-Host "Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')"
+                Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')
+                #>
+                $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
+            }
+            catch {
+                Write-Host "   Please report 'PSRule for Azure' error '$($scopeDisplayName)' ('$scopeId'): $_"
+            }
+            
             $endPSRule = Get-Date
             $durationPSRule = $((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalSeconds)
 
@@ -2903,5 +2914,43 @@ function dataCollectionRoleAssignmentsSub {
     return $returnObject
 }
 $funcDataCollectionRoleAssignmentsSub = $function:dataCollectionRoleAssignmentsSub.ToString()
+
+function dataCollectionClassicAdministratorsSub {
+    [CmdletBinding()]Param(
+        [string]$scopeId,
+        [string]$scopeDisplayName,
+        [string]$subscriptionMgPath
+    )
+
+    $apiEndPoint = $azAPICallConf['azAPIEndpointUrls'].ARM
+    $api = "/subscriptions/$($scopeId)/providers/Microsoft.Authorization/classicAdministrators"
+    $apiVersion = '?api-version=2015-07-01'
+    $uri = $apiEndPoint + $api + $apiVersion
+    $azAPICallPayload = @{
+        uri                    = $uri
+        method                 = 'GET'
+        currentTask            = "classicAdministrators '$($scopeDisplayName)' ('$scopeId')"
+        AzAPICallConfiguration = $azAPICallConf
+    }
+
+    $AzApiCallResult = AzAPICall @azAPICallPayload
+    $arrayClassicAdministrators = [System.Collections.ArrayList]@()
+    foreach ($roleAll in $AzApiCallResult) {
+        $splitPropertiesRole = $roleAll.properties.role.Split(';')
+        foreach ($role in $splitPropertiesRole) {
+            $null = $arrayClassicAdministrators.Add([PSCustomObject]@{
+                    Subscription       = $scopeDisplayName
+                    SubscriptionId     = $scopeId
+                    SubscriptionMgPath = $subscriptionMgPath
+                    Identity           = $roleAll.properties.emailAddress
+                    Role               = $role
+                    Id                 = $roleAll.id
+                }) 
+        }
+    }
+    $script:htClassicAdministrators.($scopeId) = @{}
+    $script:htClassicAdministrators.($scopeId).ClassicAdministrators = $arrayClassicAdministrators
+}
+$funcDataCollectionClassicAdministratorsSub = $function:dataCollectionClassicAdministratorsSub.ToString()
 
 #endregion functions4DataCollection

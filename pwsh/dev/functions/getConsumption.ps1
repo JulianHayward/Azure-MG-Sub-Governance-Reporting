@@ -78,7 +78,7 @@ function getConsumption {
         },
         {
             "type": "Dimension",
-            "name": "ConsumedService"
+            "name": "ResourceType"
         },
         {
             "type": "Dimension",
@@ -108,7 +108,7 @@ function getConsumption {
                 }
                 #>
 
-                if ($mgConsumptionData -eq 'Unauthorized' -or $mgConsumptionData -eq 'OfferNotSupported') {
+                if ($mgConsumptionData -eq 'Unauthorized' -or $mgConsumptionData -eq 'OfferNotSupported' -or $mgConsumptionData -eq 'NoValidSubscriptions') {
                     if (-not $script:htConsumptionExceptionLog.Mg.($ManagementGroupId)) {
                         $script:htConsumptionExceptionLog.Mg.($ManagementGroupId) = @{}
                     }
@@ -139,7 +139,7 @@ function getConsumption {
         },
         {
             "type": "Dimension",
-            "name": "ConsumedService"
+            "name": "ResourceType"
         },
         {
             "type": "Dimension",
@@ -269,7 +269,7 @@ function getConsumption {
             },
             {
                 "type": "Dimension",
-                "name": "ConsumedService"
+                "name": "ResourceType"
             },
             {
                 "type": "Dimension",
@@ -295,17 +295,16 @@ function getConsumption {
             #test
             #$allConsumptionData = "OfferNotSupported"
 
-            if ($allConsumptionDataAPIResult -eq 'AccountCostDisabled' -or $allConsumptionDataAPIResult -eq 'NoValidSubscriptions') {
-                $generalShowStopperResult = $true
+            if ($allConsumptionDataAPIResult -eq 'AccountCostDisabled' <#-or $allConsumptionDataAPIResult -eq 'NoValidSubscriptions'#>) {
                 if ($allConsumptionDataAPIResult -eq 'AccountCostDisabled') {
                     $detailShowStopperResult = $allConsumptionDataAPIResult
                 }
-                if ($allConsumptionDataAPIResult -eq 'NoValidSubscriptions') {
+                <#if ($allConsumptionDataAPIResult -eq 'NoValidSubscriptions') {
                     $detailShowStopperResult = $allConsumptionDataAPIResult
-                }
+                }#>
             }
             else {
-                if ($allConsumptionDataAPIResult -eq 'Unauthorized' -or $allConsumptionDataAPIResult -eq 'OfferNotSupported') {
+                if ($allConsumptionDataAPIResult -eq 'Unauthorized' -or $allConsumptionDataAPIResult -eq 'OfferNotSupported' -or $allConsumptionDataAPIResult -eq 'NoValidSubscriptions') {
                     $script:htConsumptionExceptionLog.Mg.($ManagementGroupId) = @{}
                     $script:htConsumptionExceptionLog.Mg.($ManagementGroupId).Exception = $allConsumptionDataAPIResult
                     Write-Host " Switching to 'foreach Subscription' mode. Getting Consumption data using Management Group scope failed."
@@ -332,7 +331,7 @@ function getConsumption {
             },
             {
                 "type": "Dimension",
-                "name": "ConsumedService"
+                "name": "ResourceType"
             },
             {
                 "type": "Dimension",
@@ -465,7 +464,7 @@ function getConsumption {
                         $script:htAzureConsumptionSubscriptions.($subscriptionId.Name).ConsumptionData = $subscriptionId.group
                         $script:htAzureConsumptionSubscriptions.($subscriptionId.Name).TotalCost = $subTotalCost
                         $script:htAzureConsumptionSubscriptions.($subscriptionId.Name).Currency = $currency.Name
-                        $resourceTypes = $subscriptionId.Group.ConsumedService | Sort-Object -Unique
+                        $resourceTypes = $subscriptionId.Group.ResourceType | Sort-Object -Unique
 
                         foreach ($parentMg in $htSubscriptionsMgPath.($subscriptionId.Name).ParentNameChain) {
 
@@ -532,9 +531,9 @@ function getConsumption {
                     }
 
                     $totalCost = 0
-                    $script:tenantSummaryConsumptionDataGrouped = $currency.group | Group-Object -property ConsumedService, ChargeType, MeterCategory
+                    $script:tenantSummaryConsumptionDataGrouped = $currency.group | Group-Object -property ResourceType, ChargeType, MeterCategory
                     $subsCount = ($tenantSummaryConsumptionDataGrouped.group.subscriptionId | Sort-Object -Unique | Measure-Object).Count
-                    $consumedServiceCount = ($tenantSummaryConsumptionDataGrouped.group.consumedService | Sort-Object -Unique | Measure-Object).Count
+                    $consumedServiceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceType | Sort-Object -Unique | Measure-Object).Count
                     $resourceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceId | Sort-Object -Unique | Measure-Object).Count
                     foreach ($consumptionline in $tenantSummaryConsumptionDataGrouped) {
 
@@ -548,7 +547,7 @@ function getConsumption {
                         }
 
                         $null = $script:arrayConsumptionData.Add([PSCustomObject]@{
-                                ConsumedService              = ($consumptionline.name).split(', ')[0]
+                                ResourceType                 = ($consumptionline.name).split(', ')[0]
                                 ConsumedServiceChargeType    = ($consumptionline.name).split(', ')[1]
                                 ConsumedServiceCategory      = ($consumptionline.name).split(', ')[2]
                                 ConsumedServiceInstanceCount = $consumptionline.Count

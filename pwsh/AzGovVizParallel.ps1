@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.12',
 
     [string]
-    $ProductVersion = 'v6_major_20220521_1',
+    $ProductVersion = 'v6_major_20220531_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -2090,7 +2090,7 @@ function getConsumption {
         },
         {
             "type": "Dimension",
-            "name": "ConsumedService"
+            "name": "ResourceType"
         },
         {
             "type": "Dimension",
@@ -2120,7 +2120,7 @@ function getConsumption {
                 }
                 #>
 
-                if ($mgConsumptionData -eq 'Unauthorized' -or $mgConsumptionData -eq 'OfferNotSupported') {
+                if ($mgConsumptionData -eq 'Unauthorized' -or $mgConsumptionData -eq 'OfferNotSupported' -or $mgConsumptionData -eq 'NoValidSubscriptions') {
                     if (-not $script:htConsumptionExceptionLog.Mg.($ManagementGroupId)) {
                         $script:htConsumptionExceptionLog.Mg.($ManagementGroupId) = @{}
                     }
@@ -2151,7 +2151,7 @@ function getConsumption {
         },
         {
             "type": "Dimension",
-            "name": "ConsumedService"
+            "name": "ResourceType"
         },
         {
             "type": "Dimension",
@@ -2281,7 +2281,7 @@ function getConsumption {
             },
             {
                 "type": "Dimension",
-                "name": "ConsumedService"
+                "name": "ResourceType"
             },
             {
                 "type": "Dimension",
@@ -2307,17 +2307,16 @@ function getConsumption {
             #test
             #$allConsumptionData = "OfferNotSupported"
 
-            if ($allConsumptionDataAPIResult -eq 'AccountCostDisabled' -or $allConsumptionDataAPIResult -eq 'NoValidSubscriptions') {
-                $generalShowStopperResult = $true
+            if ($allConsumptionDataAPIResult -eq 'AccountCostDisabled' <#-or $allConsumptionDataAPIResult -eq 'NoValidSubscriptions'#>) {
                 if ($allConsumptionDataAPIResult -eq 'AccountCostDisabled') {
                     $detailShowStopperResult = $allConsumptionDataAPIResult
                 }
-                if ($allConsumptionDataAPIResult -eq 'NoValidSubscriptions') {
+                <#if ($allConsumptionDataAPIResult -eq 'NoValidSubscriptions') {
                     $detailShowStopperResult = $allConsumptionDataAPIResult
-                }
+                }#>
             }
             else {
-                if ($allConsumptionDataAPIResult -eq 'Unauthorized' -or $allConsumptionDataAPIResult -eq 'OfferNotSupported') {
+                if ($allConsumptionDataAPIResult -eq 'Unauthorized' -or $allConsumptionDataAPIResult -eq 'OfferNotSupported' -or $allConsumptionDataAPIResult -eq 'NoValidSubscriptions') {
                     $script:htConsumptionExceptionLog.Mg.($ManagementGroupId) = @{}
                     $script:htConsumptionExceptionLog.Mg.($ManagementGroupId).Exception = $allConsumptionDataAPIResult
                     Write-Host " Switching to 'foreach Subscription' mode. Getting Consumption data using Management Group scope failed."
@@ -2344,7 +2343,7 @@ function getConsumption {
             },
             {
                 "type": "Dimension",
-                "name": "ConsumedService"
+                "name": "ResourceType"
             },
             {
                 "type": "Dimension",
@@ -2477,7 +2476,7 @@ function getConsumption {
                         $script:htAzureConsumptionSubscriptions.($subscriptionId.Name).ConsumptionData = $subscriptionId.group
                         $script:htAzureConsumptionSubscriptions.($subscriptionId.Name).TotalCost = $subTotalCost
                         $script:htAzureConsumptionSubscriptions.($subscriptionId.Name).Currency = $currency.Name
-                        $resourceTypes = $subscriptionId.Group.ConsumedService | Sort-Object -Unique
+                        $resourceTypes = $subscriptionId.Group.ResourceType | Sort-Object -Unique
 
                         foreach ($parentMg in $htSubscriptionsMgPath.($subscriptionId.Name).ParentNameChain) {
 
@@ -2544,9 +2543,9 @@ function getConsumption {
                     }
 
                     $totalCost = 0
-                    $script:tenantSummaryConsumptionDataGrouped = $currency.group | Group-Object -property ConsumedService, ChargeType, MeterCategory
+                    $script:tenantSummaryConsumptionDataGrouped = $currency.group | Group-Object -property ResourceType, ChargeType, MeterCategory
                     $subsCount = ($tenantSummaryConsumptionDataGrouped.group.subscriptionId | Sort-Object -Unique | Measure-Object).Count
-                    $consumedServiceCount = ($tenantSummaryConsumptionDataGrouped.group.consumedService | Sort-Object -Unique | Measure-Object).Count
+                    $consumedServiceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceType | Sort-Object -Unique | Measure-Object).Count
                     $resourceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceId | Sort-Object -Unique | Measure-Object).Count
                     foreach ($consumptionline in $tenantSummaryConsumptionDataGrouped) {
 
@@ -2560,7 +2559,7 @@ function getConsumption {
                         }
 
                         $null = $script:arrayConsumptionData.Add([PSCustomObject]@{
-                                ConsumedService              = ($consumptionline.name).split(', ')[0]
+                                ResourceType                 = ($consumptionline.name).split(', ')[0]
                                 ConsumedServiceChargeType    = ($consumptionline.name).split(', ')[1]
                                 ConsumedServiceCategory      = ($consumptionline.name).split(', ')[2]
                                 ConsumedServiceInstanceCount = $consumptionline.Count
@@ -3722,9 +3721,9 @@ function processDataCollection {
                 $arrayDefenderPlansSubscriptionNotRegistered = $using:arrayDefenderPlansSubscriptionNotRegistered
                 $arrayUserAssignedIdentities4Resources = $using:arrayUserAssignedIdentities4Resources
                 $htSubscriptionsRoleAssignmentLimit = $using:htSubscriptionsRoleAssignmentLimit
-                $PSRuleVersion = $using:PSRuleVersion
                 $arrayPsRule = $using:arrayPsRule
                 $arrayPSRuleTracking = $using:arrayPSRuleTracking
+                $htClassicAdministrators = $using:htClassicAdministrators
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation
@@ -3748,6 +3747,7 @@ function processDataCollection {
                 $function:dataCollectionPolicyAssignmentsSub = $using:funcDataCollectionPolicyAssignmentsSub
                 $function:dataCollectionRoleDefinitions = $using:funcDataCollectionRoleDefinitions
                 $function:dataCollectionRoleAssignmentsSub = $using:funcDataCollectionRoleAssignmentsSub
+                $function:dataCollectionClassicAdministratorsSub = $using:funcDataCollectionClassicAdministratorsSub
                 #endregion UsingVARs
 
                 $addRowToTableDone = $false
@@ -3895,6 +3895,9 @@ function processDataCollection {
                         if ($functionReturn.'addRowToTableDone') {
                             $addRowToTableDone = $true
                         }
+
+                        #SubscriptionClassicAdministrators
+                        dataCollectionClassicAdministratorsSub @baseParameters -SubscriptionMgPath $childMgMgPath
                     }
 
                     if ($addRowToTableDone -ne $true) {
@@ -6200,9 +6203,9 @@ extensions: [{ name: 'sort' }]
                 $totalCost = 0
 
                 $currency = $htAzureConsumptionSubscriptions.($subscriptionId).Currency
-                $consumedServiceCount = ($consumptionData.consumedService | Sort-Object -Unique | Measure-Object).Count
+                $consumedServiceCount = ($consumptionData.ResourceType | Sort-Object -Unique | Measure-Object).Count
                 $resourceCount = ($consumptionData.ResourceId | Sort-Object -Unique | Measure-Object).Count
-                $subConsumptionDataGrouped = $consumptionData | Group-Object -property ConsumedService, ChargeType, MeterCategory
+                $subConsumptionDataGrouped = $consumptionData | Group-Object -property ResourceType, ChargeType, MeterCategory
 
                 foreach ($consumptionline in $subConsumptionDataGrouped) {
 
@@ -6215,7 +6218,7 @@ extensions: [{ name: 'sort' }]
                     }
 
                     $null = $arrayConsumptionData.Add([PSCustomObject]@{
-                            ConsumedService              = ($consumptionline.name).split(', ')[0]
+                            ResourceType                 = ($consumptionline.name).split(', ')[0]
                             ConsumedServiceChargeType    = ($consumptionline.name).split(', ')[1]
                             ConsumedServiceCategory      = ($consumptionline.name).split(', ')[2]
                             ConsumedServiceInstanceCount = $consumptionline.Count
@@ -6259,7 +6262,7 @@ extensions: [{ name: 'sort' }]
                     @"
 <tr>
 <td>$($consumptionLine.ConsumedServiceChargeType)</td>
-<td>$($consumptionLine.ConsumedService)</td>
+<td>$($consumptionLine.ResourceType)</td>
 <td>$($consumptionLine.ConsumedServiceCategory)</td>
 <td>$($consumptionLine.ConsumedServiceInstanceCount)</td>
 <td>$($consumptionLine.ConsumedServiceCost)</td>
@@ -6796,9 +6799,9 @@ extensions: [{ name: 'sort' }]
                     $consumptionDataGroupedByCurrency = $consumptionData | Group-Object -property Currency
                     foreach ($currency in $consumptionDataGroupedByCurrency) {
                         $totalCost = 0
-                        $tenantSummaryConsumptionDataGrouped = $currency.group | Group-Object -property ConsumedService, ChargeType, MeterCategory
+                        $tenantSummaryConsumptionDataGrouped = $currency.group | Group-Object -property ResourceType, ChargeType, MeterCategory
                         $subsCount = ($tenantSummaryConsumptionDataGrouped.group.subscriptionId | Sort-Object -Unique).Count
-                        $consumedServiceCount = ($tenantSummaryConsumptionDataGrouped.group.consumedService | Sort-Object -Unique).Count
+                        $consumedServiceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceType | Sort-Object -Unique).Count
                         $resourceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceId | Sort-Object -Unique).Count
                         foreach ($consumptionline in $tenantSummaryConsumptionDataGrouped) {
 
@@ -6811,7 +6814,7 @@ extensions: [{ name: 'sort' }]
                             }
 
                             $null = $arrayConsumptionData.Add([PSCustomObject]@{
-                                    ConsumedService              = ($consumptionline.name).split(', ')[0]
+                                    ResourceType                 = ($consumptionline.name).split(', ')[0]
                                     ConsumedServiceChargeType    = ($consumptionline.name).split(', ')[1]
                                     ConsumedServiceCategory      = ($consumptionline.name).split(', ')[2]
                                     ConsumedServiceInstanceCount = $consumptionline.Count
@@ -6859,7 +6862,7 @@ extensions: [{ name: 'sort' }]
                         @"
 <tr>
 <td>$($consumptionLine.ConsumedServiceChargeType)</td>
-<td>$($consumptionLine.ConsumedService)</td>
+<td>$($consumptionLine.ResourceType)</td>
 <td>$($consumptionLine.ConsumedServiceCategory)</td>
 <td>$($consumptionLine.ConsumedServiceInstanceCount)</td>
 <td>$($consumptionLine.ConsumedServiceCost)</td>
@@ -8805,6 +8808,94 @@ extensions: [{ name: 'sort' }]
 <tr><td class="detailstd">
 '@)
     #endregion ScopeInsightsBlueprintsScoped
+
+    if ($mgOrSub -eq 'sub') {
+        #region ScopeInsightsClassicAdministrators
+        if ($htClassicAdministrators.($subscriptionId).ClassicAdministrators.Count -gt 0) {
+            $tfCount = $htClassicAdministrators.($subscriptionId).ClassicAdministrators.Count
+            $htmlTableId = "ScopeInsights_ClassicAdministrators_$($subscriptionId -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
+            $randomFunctionName = "func_$htmlTableId"
+            [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $tfCount Classic Administrators</p></button>
+<div class="content $SIDivContentClass">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="$cssClass">
+<thead>
+<tr>
+<th>Role</th>
+<th>Identity</th>
+</tr>
+</thead>
+<tbody>
+"@)
+            $htmlScopeInsightsClassicAdministrators = $null
+            $htmlScopeInsightsClassicAdministrators = foreach ($classicAdministrator in $htClassicAdministrators.($subscriptionId).ClassicAdministrators | Sort-Object -Property Role, Identity) {
+                @"
+<tr>
+<td>$($classicAdministrator.Role)</td>
+<td>$($classicAdministrator.Identity)</td>
+</tr>
+"@
+            }
+            [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsClassicAdministrators)
+            [void]$htmlScopeInsights.AppendLine(@"
+                </tbody>
+            </table>
+        </div>
+        <script>
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlScopeInsights.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlScopeInsights.AppendLine(@"
+                btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+                col_types: [
+                    'caseinsensitivestring',
+                    'caseinsensitivestring'
+                ],
+                extensions: [{ name: 'sort' }]
+            };
+            var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+            tf.init();}}
+        </script>
+"@)
+        }
+        else {
+            [void]$htmlScopeInsights.AppendLine(@"
+                    <p><i class="fa fa-ban" aria-hidden="true"></i> No Classic Administrators</p>
+"@)
+        }
+        [void]$htmlScopeInsights.AppendLine(@'
+</td></tr>
+<tr><td class="detailstd">
+'@)
+        #endregion ScopeInsightsClassicAdministrators
+    }
 
     #RoleAssignments
     #region ScopeInsightsRoleAssignments
@@ -13212,6 +13303,106 @@ extensions: [{ name: 'sort' }]
 "@)
     }
     #endregion SUMMARYOrphanedRoleAssignments
+
+    #region SUMMARYClassicAdministrators
+    Write-Host '  processing TenantSummary ClassicAdministrators'
+
+    if ($htClassicAdministrators.Keys.Count -gt 0) {
+        $tfCount = $htClassicAdministrators.Values.ClassicAdministrators.Count
+        $htmlTableId = 'TenantSummary_ClassicAdministrators'
+        [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ClassicAdministrators"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($tfCount) Classic Administrators</span>
+</button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id= "$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Subscription</th>
+<th>SubscriptionId</th>
+<th>MgPath</th>
+<th>Role</th>
+<th>Identity</th>
+</tr>
+</thead>
+<tbody>
+"@)
+        $htmlSUMMARYClassicAdministrators = $null
+        $classicAdministrators = $htClassicAdministrators.Values.ClassicAdministrators | Sort-Object -Property Subscription, Role, Identity
+        if (-not $NoCsvExport) {
+            $csvFilename = "$($filename)_ClassicAdministrators"
+            Write-Host "   Exporting ClassicAdministrators CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
+            $classicAdministrators | Select-Object -ExcludeProperty Id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+        }
+        $htmlSUMMARYClassicAdministrators = foreach ($classicAdministrator in $classicAdministrators) {
+            @"
+<tr>
+<td>$($classicAdministrator.Subscription)</td>
+<td>$($classicAdministrator.SubscriptionId)</td>
+<td>$($classicAdministrator.SubscriptionMgPath)</td>
+<td>$($classicAdministrator.Role)</td>
+<td>$($classicAdministrator.Identity)</td>
+</tr>
+"@
+        }
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYClassicAdministrators)
+        [void]$htmlTenantSummary.AppendLine(@"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_3: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+"@)
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No ClassicAdministrators</span></p>
+"@)
+    }
+    #endregion SUMMARYClassicAdministrators
 
     #region SUMMARYRoleAssignmentsAll
     $startRoleAssignmentsAll = Get-Date
@@ -19273,7 +19464,7 @@ tf.init();}}
                 @"
 <tr>
 <td>$($consumptionLine.ConsumedServiceChargeType)</td>
-<td>$($consumptionLine.ConsumedService)</td>
+<td>$($consumptionLine.ResourceType)</td>
 <td>$($consumptionLine.ConsumedServiceCategory)</td>
 <td>$($consumptionLine.ConsumedServiceInstanceCount)</td>
 <td>$($consumptionLine.ConsumedServiceCost)</td>
@@ -22307,9 +22498,6 @@ function verifyModules3rd {
                     try {
                         $moduleVersion = (Find-Module -name $($module.ModuleName)).Version
                         Write-Host "  Latest module version: $moduleVersion"
-                        if ($module.ModuleName -eq 'PSRule.Rules.Azure') {
-                            $PSRuleVersion = $moduleVersion
-                        }
                     }
                     catch {
                         Write-Host '  Check latest module version failed'
@@ -22338,6 +22526,16 @@ function verifyModules3rd {
                             RequiredVersion = $moduleVersion
                         }
                         Install-Module @params
+                        <#
+                        if ($module.ModuleName -eq 'PSRule.Rules.Azure') {
+                            if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID)) {
+                                #Azure DevOps /noDeps
+                                $path = (Get-Module PSRule.Rules.Azure -ListAvailable | Sort-Object Version -Descending -Top 1).ModuleBase
+                                Write-Host "Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')"
+                                Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')
+                            }
+                        }
+                        #>
                     }
                     catch {
                         throw "  Installing '$($module.ModuleName)' module ($($moduleVersion)) failed"
@@ -22644,7 +22842,18 @@ function dataCollectionResources {
     if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
         if ($resourcesSubscriptionResult.Count -gt 0) {
             $startPSRule = Get-Date
-            $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
+            try {
+                <#
+                $path = (Get-Module PSRule.Rules.Azure -ListAvailable | Sort-Object Version -Descending -Top 1).ModuleBase
+                Write-Host "Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')"
+                Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')
+                #>
+                $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
+            }
+            catch {
+                Write-Host "   Please report 'PSRule for Azure' error '$($scopeDisplayName)' ('$scopeId'): $_"
+            }
+            
             $endPSRule = Get-Date
             $durationPSRule = $((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalSeconds)
 
@@ -25276,6 +25485,44 @@ function dataCollectionRoleAssignmentsSub {
 }
 $funcDataCollectionRoleAssignmentsSub = $function:dataCollectionRoleAssignmentsSub.ToString()
 
+function dataCollectionClassicAdministratorsSub {
+    [CmdletBinding()]Param(
+        [string]$scopeId,
+        [string]$scopeDisplayName,
+        [string]$subscriptionMgPath
+    )
+
+    $apiEndPoint = $azAPICallConf['azAPIEndpointUrls'].ARM
+    $api = "/subscriptions/$($scopeId)/providers/Microsoft.Authorization/classicAdministrators"
+    $apiVersion = '?api-version=2015-07-01'
+    $uri = $apiEndPoint + $api + $apiVersion
+    $azAPICallPayload = @{
+        uri                    = $uri
+        method                 = 'GET'
+        currentTask            = "classicAdministrators '$($scopeDisplayName)' ('$scopeId')"
+        AzAPICallConfiguration = $azAPICallConf
+    }
+
+    $AzApiCallResult = AzAPICall @azAPICallPayload
+    $arrayClassicAdministrators = [System.Collections.ArrayList]@()
+    foreach ($roleAll in $AzApiCallResult) {
+        $splitPropertiesRole = $roleAll.properties.role.Split(';')
+        foreach ($role in $splitPropertiesRole) {
+            $null = $arrayClassicAdministrators.Add([PSCustomObject]@{
+                    Subscription       = $scopeDisplayName
+                    SubscriptionId     = $scopeId
+                    SubscriptionMgPath = $subscriptionMgPath
+                    Identity           = $roleAll.properties.emailAddress
+                    Role               = $role
+                    Id                 = $roleAll.id
+                }) 
+        }
+    }
+    $script:htClassicAdministrators.($scopeId) = @{}
+    $script:htClassicAdministrators.($scopeId).ClassicAdministrators = $arrayClassicAdministrators
+}
+$funcDataCollectionClassicAdministratorsSub = $function:dataCollectionClassicAdministratorsSub.ToString()
+
 #endregion functions4DataCollection
 #region HTML
 function HierarchyMgHTML($mgChild) {
@@ -25651,6 +25898,13 @@ $null = $modules.Add([PSCustomObject]@{
     })
 
 if ($DoPSRule) {
+    
+    #temporary workaround / PSRule/Azure DevOps Az.Resources module requirements
+    if ($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) {
+        $PSRuleVersion = '1.14.3'
+        Write-Host "Running in Azure DevOps; enforce PSRule version '$PSRuleVersion' (Az.Resources dependency on latest PSRule)"
+    }
+
     $null = $modules.Add([PSCustomObject]@{
             ModuleName         = 'PSRule.Rules.Azure'
             ModuleVersion      = $PSRuleVersion
@@ -25807,7 +26061,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htPolicyAssignmentManagedIdentity = @{}
     $htManagedIdentityDisplayName = @{}
     $htAppDetails = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-
     if (-not $NoAADGroupsResolveMembers) {
 
         $htAADGroupsDetails = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
@@ -25816,13 +26069,12 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         $arrayGroupRequestResourceNotFound = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
         $arrayProgressedAADGroups = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     }
-
     if ($DoAzureConsumption) {
         $allConsumptionData = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     }
-
     $arrayPsRule = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayPSRuleTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $htClassicAdministrators = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
 }
 
 getEntities

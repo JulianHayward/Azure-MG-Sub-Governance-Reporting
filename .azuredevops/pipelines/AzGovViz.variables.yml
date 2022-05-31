@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220521_1
+# AzGovViz v6_major_20220531_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -76,11 +76,6 @@ variables:
     # Integer | default = 14 | example: value: 21
     value:
 
-  # Define for which time period Azure Consumption data should be gathered
-  - name: AzureConsumptionPeriod
-    # Integer | default = 1 | example: value: 7
-    value:
-
   # Define the direction the Hierarchy should be built in Azure DevOps WikiAsCode (Markdown) TD = TopDown (Horizontal), LR = LeftRight (Vertical)
   - name: AzureDevOpsWikiHierarchyDirection
     # String | default = 'TD' | example: value: 'LR'
@@ -94,6 +89,11 @@ variables:
   # Define if Azure Consumption data should be reported
   - name: DoAzureConsumption
     # Switch | example: value: true
+    value:
+
+  # If DoAzureConsumption == true then you may define for which time period (days) Azure Consumption data should be gathered
+  - name: AzureConsumptionPeriod
+    # Integer | default = 1 | example: value: 7
     value:
 
   # Do not include Role assignments on ResourceGroups and Resources

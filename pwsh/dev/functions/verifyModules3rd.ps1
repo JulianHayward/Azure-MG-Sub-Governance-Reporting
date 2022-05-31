@@ -30,9 +30,6 @@ function verifyModules3rd {
                     try {
                         $moduleVersion = (Find-Module -name $($module.ModuleName)).Version
                         Write-Host "  Latest module version: $moduleVersion"
-                        if ($module.ModuleName -eq 'PSRule.Rules.Azure') {
-                            $PSRuleVersion = $moduleVersion
-                        }
                     }
                     catch {
                         Write-Host '  Check latest module version failed'
@@ -61,6 +58,16 @@ function verifyModules3rd {
                             RequiredVersion = $moduleVersion
                         }
                         Install-Module @params
+                        <#
+                        if ($module.ModuleName -eq 'PSRule.Rules.Azure') {
+                            if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID)) {
+                                #Azure DevOps /noDeps
+                                $path = (Get-Module PSRule.Rules.Azure -ListAvailable | Sort-Object Version -Descending -Top 1).ModuleBase
+                                Write-Host "Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')"
+                                Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')
+                            }
+                        }
+                        #>
                     }
                     catch {
                         throw "  Installing '$($module.ModuleName)' module ($($moduleVersion)) failed"

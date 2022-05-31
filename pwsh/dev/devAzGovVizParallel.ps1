@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.12',
 
     [string]
-    $ProductVersion = 'v6_major_20220521_1',
+    $ProductVersion = 'v6_major_20220531_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -561,6 +561,13 @@ $null = $modules.Add([PSCustomObject]@{
     })
 
 if ($DoPSRule) {
+    
+    #temporary workaround / PSRule/Azure DevOps Az.Resources module requirements
+    if ($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) {
+        $PSRuleVersion = '1.14.3'
+        Write-Host "Running in Azure DevOps; enforce PSRule version '$PSRuleVersion' (Az.Resources dependency on latest PSRule)"
+    }
+
     $null = $modules.Add([PSCustomObject]@{
             ModuleName         = 'PSRule.Rules.Azure'
             ModuleVersion      = $PSRuleVersion
@@ -717,7 +724,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htPolicyAssignmentManagedIdentity = @{}
     $htManagedIdentityDisplayName = @{}
     $htAppDetails = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-
     if (-not $NoAADGroupsResolveMembers) {
 
         $htAADGroupsDetails = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
@@ -726,13 +732,12 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         $arrayGroupRequestResourceNotFound = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
         $arrayProgressedAADGroups = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     }
-
     if ($DoAzureConsumption) {
         $allConsumptionData = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     }
-
     $arrayPsRule = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayPSRuleTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $htClassicAdministrators = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
 }
 
 getEntities

@@ -323,9 +323,9 @@ function processDataCollection {
                 $arrayDefenderPlansSubscriptionNotRegistered = $using:arrayDefenderPlansSubscriptionNotRegistered
                 $arrayUserAssignedIdentities4Resources = $using:arrayUserAssignedIdentities4Resources
                 $htSubscriptionsRoleAssignmentLimit = $using:htSubscriptionsRoleAssignmentLimit
-                $PSRuleVersion = $using:PSRuleVersion
                 $arrayPsRule = $using:arrayPsRule
                 $arrayPSRuleTracking = $using:arrayPSRuleTracking
+                $htClassicAdministrators = $using:htClassicAdministrators
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation
@@ -349,6 +349,7 @@ function processDataCollection {
                 $function:dataCollectionPolicyAssignmentsSub = $using:funcDataCollectionPolicyAssignmentsSub
                 $function:dataCollectionRoleDefinitions = $using:funcDataCollectionRoleDefinitions
                 $function:dataCollectionRoleAssignmentsSub = $using:funcDataCollectionRoleAssignmentsSub
+                $function:dataCollectionClassicAdministratorsSub = $using:funcDataCollectionClassicAdministratorsSub
                 #endregion UsingVARs
 
                 $addRowToTableDone = $false
@@ -496,6 +497,9 @@ function processDataCollection {
                         if ($functionReturn.'addRowToTableDone') {
                             $addRowToTableDone = $true
                         }
+
+                        #SubscriptionClassicAdministrators
+                        dataCollectionClassicAdministratorsSub @baseParameters -SubscriptionMgPath $childMgMgPath
                     }
 
                     if ($addRowToTableDone -ne $true) {

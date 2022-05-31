@@ -4141,6 +4141,106 @@ extensions: [{ name: 'sort' }]
     }
     #endregion SUMMARYOrphanedRoleAssignments
 
+    #region SUMMARYClassicAdministrators
+    Write-Host '  processing TenantSummary ClassicAdministrators'
+
+    if ($htClassicAdministrators.Keys.Count -gt 0) {
+        $tfCount = $htClassicAdministrators.Values.ClassicAdministrators.Count
+        $htmlTableId = 'TenantSummary_ClassicAdministrators'
+        [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ClassicAdministrators"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($tfCount) Classic Administrators</span>
+</button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id= "$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Subscription</th>
+<th>SubscriptionId</th>
+<th>MgPath</th>
+<th>Role</th>
+<th>Identity</th>
+</tr>
+</thead>
+<tbody>
+"@)
+        $htmlSUMMARYClassicAdministrators = $null
+        $classicAdministrators = $htClassicAdministrators.Values.ClassicAdministrators | Sort-Object -Property Subscription, Role, Identity
+        if (-not $NoCsvExport) {
+            $csvFilename = "$($filename)_ClassicAdministrators"
+            Write-Host "   Exporting ClassicAdministrators CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
+            $classicAdministrators | Select-Object -ExcludeProperty Id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+        }
+        $htmlSUMMARYClassicAdministrators = foreach ($classicAdministrator in $classicAdministrators) {
+            @"
+<tr>
+<td>$($classicAdministrator.Subscription)</td>
+<td>$($classicAdministrator.SubscriptionId)</td>
+<td>$($classicAdministrator.SubscriptionMgPath)</td>
+<td>$($classicAdministrator.Role)</td>
+<td>$($classicAdministrator.Identity)</td>
+</tr>
+"@
+        }
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYClassicAdministrators)
+        [void]$htmlTenantSummary.AppendLine(@"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_3: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+"@)
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No ClassicAdministrators</span></p>
+"@)
+    }
+    #endregion SUMMARYClassicAdministrators
+
     #region SUMMARYRoleAssignmentsAll
     $startRoleAssignmentsAll = Get-Date
     Write-Host '  processing TenantSummary RoleAssignments'
@@ -10201,7 +10301,7 @@ tf.init();}}
                 @"
 <tr>
 <td>$($consumptionLine.ConsumedServiceChargeType)</td>
-<td>$($consumptionLine.ConsumedService)</td>
+<td>$($consumptionLine.ResourceType)</td>
 <td>$($consumptionLine.ConsumedServiceCategory)</td>
 <td>$($consumptionLine.ConsumedServiceInstanceCount)</td>
 <td>$($consumptionLine.ConsumedServiceCost)</td>
