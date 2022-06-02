@@ -2934,22 +2934,24 @@ function dataCollectionClassicAdministratorsSub {
     }
 
     $AzApiCallResult = AzAPICall @azAPICallPayload
-    $arrayClassicAdministrators = [System.Collections.ArrayList]@()
-    foreach ($roleAll in $AzApiCallResult) {
-        $splitPropertiesRole = $roleAll.properties.role.Split(';')
-        foreach ($role in $splitPropertiesRole) {
-            $null = $arrayClassicAdministrators.Add([PSCustomObject]@{
-                    Subscription       = $scopeDisplayName
-                    SubscriptionId     = $scopeId
-                    SubscriptionMgPath = $subscriptionMgPath
-                    Identity           = $roleAll.properties.emailAddress
-                    Role               = $role
-                    Id                 = $roleAll.id
-                }) 
+    if ($AzApiCallResult -ne 'ClassicAdministratorListFailed') {
+        $arrayClassicAdministrators = [System.Collections.ArrayList]@()
+        foreach ($roleAll in $AzApiCallResult) {
+            $splitPropertiesRole = $roleAll.properties.role.Split(';')
+            foreach ($role in $splitPropertiesRole) {
+                $null = $arrayClassicAdministrators.Add([PSCustomObject]@{
+                        Subscription       = $scopeDisplayName
+                        SubscriptionId     = $scopeId
+                        SubscriptionMgPath = $subscriptionMgPath
+                        Identity           = $roleAll.properties.emailAddress
+                        Role               = $role
+                        Id                 = $roleAll.id
+                    }) 
+            }
         }
+        $script:htClassicAdministrators.($scopeId) = @{}
+        $script:htClassicAdministrators.($scopeId).ClassicAdministrators = $arrayClassicAdministrators
     }
-    $script:htClassicAdministrators.($scopeId) = @{}
-    $script:htClassicAdministrators.($scopeId).ClassicAdministrators = $arrayClassicAdministrators
 }
 $funcDataCollectionClassicAdministratorsSub = $function:dataCollectionClassicAdministratorsSub.ToString()
 

@@ -277,10 +277,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.12',
+    $AzAPICallVersion = '1.1.13',
 
     [string]
-    $ProductVersion = 'v6_major_20220531_1',
+    $ProductVersion = 'v6_major_20220602_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -25504,22 +25504,24 @@ function dataCollectionClassicAdministratorsSub {
     }
 
     $AzApiCallResult = AzAPICall @azAPICallPayload
-    $arrayClassicAdministrators = [System.Collections.ArrayList]@()
-    foreach ($roleAll in $AzApiCallResult) {
-        $splitPropertiesRole = $roleAll.properties.role.Split(';')
-        foreach ($role in $splitPropertiesRole) {
-            $null = $arrayClassicAdministrators.Add([PSCustomObject]@{
-                    Subscription       = $scopeDisplayName
-                    SubscriptionId     = $scopeId
-                    SubscriptionMgPath = $subscriptionMgPath
-                    Identity           = $roleAll.properties.emailAddress
-                    Role               = $role
-                    Id                 = $roleAll.id
-                }) 
+    if ($AzApiCallResult -ne 'ClassicAdministratorListFailed') {
+        $arrayClassicAdministrators = [System.Collections.ArrayList]@()
+        foreach ($roleAll in $AzApiCallResult) {
+            $splitPropertiesRole = $roleAll.properties.role.Split(';')
+            foreach ($role in $splitPropertiesRole) {
+                $null = $arrayClassicAdministrators.Add([PSCustomObject]@{
+                        Subscription       = $scopeDisplayName
+                        SubscriptionId     = $scopeId
+                        SubscriptionMgPath = $subscriptionMgPath
+                        Identity           = $roleAll.properties.emailAddress
+                        Role               = $role
+                        Id                 = $roleAll.id
+                    }) 
+            }
         }
+        $script:htClassicAdministrators.($scopeId) = @{}
+        $script:htClassicAdministrators.($scopeId).ClassicAdministrators = $arrayClassicAdministrators
     }
-    $script:htClassicAdministrators.($scopeId) = @{}
-    $script:htClassicAdministrators.($scopeId).ClassicAdministrators = $arrayClassicAdministrators
 }
 $funcDataCollectionClassicAdministratorsSub = $function:dataCollectionClassicAdministratorsSub.ToString()
 

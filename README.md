@@ -59,11 +59,10 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-May-31 / Major)
+__Changes__ (2022-Jun-02 / Major)
 
-* New feature - Report on 'Classic Administrators' for Subscriptions -> TenantSummary, ScopeInsights and CSV export
-* Fix consumption reporting (issue #101 - handle error: 'Management group `<ManagementGroupId>` does not have any valid subscriptions')
-* PSRule for Azure / Azure DevOps dependencies (Az.Resources) workaround -> use PSRule for Azure version 1.14.3 (else latest)
+* Fix ClassicAdministrators for non applicable Subscription offers
+* Use AzAPICall version 1.1.13
 
 Passed tests: Powershell Core 7.2.3 on Windows  
 Passed tests: Powershell Core 7.2.3 Azure DevOps hosted agent ubuntu-20.04  

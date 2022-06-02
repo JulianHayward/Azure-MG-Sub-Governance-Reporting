@@ -4,6 +4,11 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Jun-02 / Major)
+
+* Fix ClassicAdministrators for non applicable Subscription offers
+* Use AzAPICall version 1.1.13
+
 __Changes__ (2022-May-31 / Major)
 
 * New feature - Report on 'Classic Administrators' for Subscriptions -> TenantSummary, ScopeInsights and CSV export
