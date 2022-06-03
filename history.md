@@ -4,6 +4,12 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Jun-03 / Major)
+
+* Optimize Policy Exemption output (HTML TenantSummary, CSV output)
+* Update Azure DevOps variables YAML - add parameter `-DebugAzAPICall`
+* Update PSRule CSV output sorting
+
 __Changes__ (2022-Jun-02 / Major)
 
 * Fix ClassicAdministrators for non applicable Subscription offers

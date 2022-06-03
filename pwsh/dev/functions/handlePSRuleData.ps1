@@ -19,7 +19,7 @@ function handlePSRuleData {
 
     if (-not $NoCsvExport) {
         Write-Host "Exporting 'PSRule for Azure' CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv'"
-        $psRuleDataSelection | Sort-Object -Property resourceId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        $psRuleDataSelection | Sort-Object -Property resourceId, pillar, category, severity, rule | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
     }
 
     $end = Get-Date

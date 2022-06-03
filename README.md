@@ -59,10 +59,11 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Jun-02 / Major)
+__Changes__ (2022-Jun-03 / Major)
 
-* Fix ClassicAdministrators for non applicable Subscription offers
-* Use AzAPICall version 1.1.13
+* Optimize Policy Exemption output (HTML TenantSummary, CSV output)
+* Update Azure DevOps variables YAML - add parameter `-DebugAzAPICall`
+* Update PSRule CSV output sorting
 
 Passed tests: Powershell Core 7.2.3 on Windows  
 Passed tests: Powershell Core 7.2.3 Azure DevOps hosted agent ubuntu-20.04  

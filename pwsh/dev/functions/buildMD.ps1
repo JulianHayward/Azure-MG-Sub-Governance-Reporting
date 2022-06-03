@@ -1,8 +1,5 @@
 function buildMD {
     Write-Host 'Building Markdown'
-    #test
-    Write-Host 'htParameters.onAzureDevOpsOrGitHubActions:' $azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions
-    Write-Host 'htParameters.codeRunPlatform:' $azAPICallConf['htParameters'].codeRunPlatform
     $startBuildMD = Get-Date
     $script:arrayMgs = [System.Collections.ArrayList]@()
     $script:arraySubs = [System.Collections.ArrayList]@()

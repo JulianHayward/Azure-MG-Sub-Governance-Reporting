@@ -2385,11 +2385,19 @@ extensions: [{ name: 'sort' }]
 <th>Subscription Name</th>
 <th>ResourceGroup</th>
 <th>ResourceName / ResourceType</th>
-<th>DisplayName</th>
+<th>Exemption name</th>
+<th>Exemption description</th>
 <th>Category</th>
 <th>ExpiresOn (UTC)</th>
-<th>Id</th>
+<th>Exemption Id</th>
 <th>Policy AssignmentId</th>
+<th>Policy Type</th>
+<th>Policy</th>
+<th>Exempted Set Policies</th>
+<th>CreatedBy</th>
+<th>CreatedAt</th>
+<th>LastModifiedBy</th>
+<th>LastModifiedAt</th>
 </tr>
 </thead>
 <tbody>
@@ -2464,6 +2472,81 @@ extensions: [{ name: 'sort' }]
                 $resName = ''
             }
 
+            $policyType = 'unknown'
+            $policy = 'unknown'
+            $arrayExemptedPolicies = @()
+            $arrayExemptedPoliciesCSV = @()
+            $policiesExempted = $null
+            $policiesExemptedCSV = $null
+            $policiesExemptedCSVCount = $null
+            $policiesTotalCount = $null
+            if ($htCacheAssignmentsPolicy.(($exemption.properties.policyAssignmentId).tolower()).Assignment.properties.policyDefinitionId) {
+                $policyDefinitionId = $htCacheAssignmentsPolicy.(($exemption.properties.policyAssignmentId).tolower()).Assignment.properties.policyDefinitionId
+                
+                if ($policyDefinitionId -like "*/providers/Microsoft.Authorization/policyDefinitions/*") {
+                    $policyType = 'Policy'
+                    if ($htCacheDefinitionsPolicy.($policyDefinitionId.tolower())) {
+                        $policyDetail = $htCacheDefinitionsPolicy.($policyDefinitionId.tolower())
+                        if ($policyDetail.Type -eq 'BuiltIn') {
+                            $policy = $policyDetail.LinkToAzAdvertizer
+                        }
+                        else {
+                            $policy = "$($policyDetail.DisplayName) ($($policyDetail.Id))"
+                        }
+                        $policiesExempted = $null
+                        $policyClear = "$($policyDetail.DisplayName) ($($policyDetail.Id))"
+                    }
+                }
+
+                if ($policyDefinitionId -like "*/providers/Microsoft.Authorization/policySetDefinitions/*") {
+                    $policyType = 'PolicySet'
+                    if ($htCacheDefinitionsPolicySet.($policyDefinitionId.tolower())) {
+                        $policyDetail = $htCacheDefinitionsPolicySet.($policyDefinitionId.tolower())
+                        if ($policyDetail.Type -eq 'BuiltIn') {
+                            $policy = $policyDetail.LinkToAzAdvertizer
+                        }
+                        else {
+                            $policy = "$($policyDetail.DisplayName) ($($policyDetail.Id))"
+                        }
+                        $policiesTotalCount = $htCacheDefinitionsPolicySet.($policyDefinitionId.tolower()).PolicySetPolicyRefIds.Count
+                        if ($exemption.properties.policyDefinitionReferenceIds.Count -gt 0) {
+                            foreach ($exemptedRefId in $exemption.properties.policyDefinitionReferenceIds) {
+                                $policyExempted = 'unknown'
+                                $policyExemptedCSV = 'unknown'
+                                if ($htCacheDefinitionsPolicySet.($policyDefinitionId.tolower()).PolicySetPolicyRefIds.($exemptedRefId)) {
+                                    $exemptedPolicyId = $htCacheDefinitionsPolicySet.($policyDefinitionId.tolower()).PolicySetPolicyRefIds.($exemptedRefId)
+                                    if ($htCacheDefinitionsPolicy.($exemptedPolicyId.tolower())) {
+                                        $policyExemptedDetail = $htCacheDefinitionsPolicy.($exemptedPolicyId.tolower())
+                                        if ($policyExemptedDetail.Type -eq 'BuiltIn') {
+                                            $policyExempted = $policyExemptedDetail.LinkToAzAdvertizer
+                                        }
+                                        else {
+                                            $policyExempted = "$($policyExemptedDetail.DisplayName) ($($policyExemptedDetail.Id))"
+                                        }
+                                        $policyExemptedCSV = "$($policyExemptedDetail.DisplayName) ($($policyExemptedDetail.Id))"
+                                        
+                                    }
+                                }
+                                $arrayExemptedPolicies += $policyExempted
+                                $arrayExemptedPoliciesCSV += $policyExemptedCSV
+                            }
+                            
+                            $policiesExempted = "$($arrayExemptedPolicies.Count)/$($policiesTotalCount) (<br>$(($arrayExemptedPolicies | Sort-Object) -join "<br>"))"
+                            $policiesExemptedCSV = ($arrayExemptedPoliciesCSV | Sort-Object) -join "$CsvDelimiterOpposite "
+                            $policiesExemptedCSVCount = $arrayExemptedPoliciesCSV.Count
+                        }
+                        else {
+                            $policiesExempted = "all $policiesTotalCount"
+                            $policiesExemptedCSV = "all $policiesTotalCount"
+                            $policiesExemptedCSVCount = $policiesTotalCount
+                        }
+                        
+                        $policyClear = "$($policyDetail.DisplayName) ($($policyDetail.Id))"
+                    }
+                }
+
+            }
+
             if (-not $NoCsvExport) {
                 $null = $exemptionData4CSVExport.Add([PSCustomObject]@{
                         Scope                     = $exemptionScope
@@ -2473,11 +2556,21 @@ extensions: [{ name: 'sort' }]
                         SubscriptionName          = $subName
                         ResourceGroup             = $rgName
                         ResourceName_ResourceType = $resName
-                        DisplayName               = $exemption.properties.DisplayName
+                        ExemptionName             = $exemption.properties.DisplayName
+                        ExemptionDescription      = $exemption.properties.Description
                         Category                  = $exemption.properties.exemptionCategory
                         ExpiresOn_UTC             = $exemptionExpiresOn
-                        Id                        = $exemption.Id
+                        ExemptionId               = $exemption.Id
                         PolicyAssignmentId        = $exemption.properties.policyAssignmentId
+                        PolicyType                = $policyType
+                        Policy                    = $policyClear
+                        PoliciesTotalCount        = $policiesTotalCount            
+                        PoliciesExemptedCount     = $policiesExemptedCSVCount
+                        PoliciesExempted          = $policiesExemptedCSV
+                        CreatedBy                 = "$($exemption.systemData.createdBy) ($($exemption.systemData.createdByType))"
+                        CreatedAt                 = $exemption.systemData.createdAt.ToString('yyyy-MM-dd HH:mm:ss')
+                        LastModifiedBy            = "$($exemption.systemData.lastModifiedBy) ($($exemption.systemData.lastModifiedByType))"
+                        LastModifiedAt            = $exemption.systemData.lastModifiedAt.ToString('yyyy-MM-dd HH:mm:ss')
                     })
             }
 
@@ -2491,10 +2584,18 @@ extensions: [{ name: 'sort' }]
 <td>$($rgName)</td>
 <td>$($resName)</td>
 <td>$($exemption.properties.DisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($exemption.properties.Description -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($exemption.properties.exemptionCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($exemptionExpiresOn)</td>
 <td class="breakwordall">$($exemption.Id)</td>
 <td class="breakwordall">$($exemption.properties.policyAssignmentId -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($policyType)</td>
+<td class="breakwordall">$($policy)</td>
+<td class="breakwordall">$($policiesExempted)</td>
+<td>$($exemption.systemData.createdBy) ($($exemption.systemData.createdByType))</td>
+<td>$($exemption.systemData.createdAt.ToString('yyyy-MM-dd HH:mm:ss'))</td>
+<td>$($exemption.systemData.lastModifiedBy) ($($exemption.systemData.lastModifiedByType))</td>
+<td>$($exemption.systemData.lastModifiedAt.ToString('yyyy-MM-dd HH:mm:ss'))</td>
 </tr>
 "@
         }
@@ -2542,6 +2643,8 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_0: 'select',
+            col_9: 'select',
+            col_13: 'select',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -2554,7 +2657,15 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
-                'caseinsensitivestring'
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'date',
+                'caseinsensitivestring',
+                'date'
             ],
 extensions: [{ name: 'sort' }]
         };

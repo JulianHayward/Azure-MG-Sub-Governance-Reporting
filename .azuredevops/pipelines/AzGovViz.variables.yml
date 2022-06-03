@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220531_1
+# AzGovViz v6_major_20220603_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -53,6 +53,11 @@ variables:
 
   - name: ScriptPrerequisites
     value: prerequisites.ps1
+
+  # Enable Debug output
+  - name: DebugAzAPICall
+    # Switch | example: value: true
+    value:
 
   # The world is split into two kind of delimiters - comma and semicolon - choose yours
   - name: CsvDelimiter

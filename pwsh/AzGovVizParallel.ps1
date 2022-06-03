@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.13',
 
     [string]
-    $ProductVersion = 'v6_major_20220602_1',
+    $ProductVersion = 'v6_major_20220603_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -1186,9 +1186,6 @@ function buildJSON {
 }
 function buildMD {
     Write-Host 'Building Markdown'
-    #test
-    Write-Host 'htParameters.onAzureDevOpsOrGitHubActions:' $azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions
-    Write-Host 'htParameters.codeRunPlatform:' $azAPICallConf['htParameters'].codeRunPlatform
     $startBuildMD = Get-Date
     $script:arrayMgs = [System.Collections.ArrayList]@()
     $script:arraySubs = [System.Collections.ArrayList]@()
@@ -1810,10 +1807,13 @@ function cacheBuiltIn {
                 ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).PolicyDefinitionId = ($builtinPolicySetDefinition.Id).ToLower()
                 ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$(($builtinPolicySetDefinition.Id -replace '.*/')).html`" target=`"_blank`" rel=`"noopener`">$($builtinPolicySetDefinition.Properties.displayname)</a>"
                 $arrayPolicySetPolicyIdsToLower = @()
-                $arrayPolicySetPolicyIdsToLower = foreach ($policySetPolicy in $builtinPolicySetDefinition.properties.policydefinitions.policyDefinitionId) {
-                    ($policySetPolicy).ToLower()
+                $htPolicySetPolicyRefIds = @{}
+                $arrayPolicySetPolicyIdsToLower = foreach ($policySetPolicy in $builtinPolicySetDefinition.properties.policydefinitions) {
+                    ($policySetPolicy.policyDefinitionId).ToLower()
+                    $htPolicySetPolicyRefIds.($policySetPolicy.policyDefinitionReferenceId) = ($policySetPolicy.policyDefinitionId)
                 }
                 ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
+                ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).PolicySetPolicyRefIds = $htPolicySetPolicyRefIds
                 if ($builtinPolicySetDefinition.Properties.metadata.deprecated -eq $true -or $builtinPolicySetDefinition.Properties.displayname -like "``[Deprecated``]*") {
                     ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).Deprecated = $builtinPolicySetDefinition.Properties.metadata.deprecated
                 }
@@ -2942,111 +2942,118 @@ function getResourceDiagnosticsCapability {
         $endGroupResourceIdsByType = Get-Date
         Write-Host " GroupResourceIdsByType processing duration: $((NEW-TIMESPAN -Start $startGroupResourceIdsByType -End $endGroupResourceIdsByType).TotalSeconds) seconds)"
         $resourceTypesUniqueCount = ($resourceTypesUnique | Measure-Object).count
-        Write-Host " $($resourceTypesUniqueCount) unique Resource Types to process"
+        Write-Host " $($resourceTypesUniqueCount) unique Resource Types"
         $script:resourceTypesSummarizedArray = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 
         $script:resourceTypesDiagnosticsArray = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-        $resourceTypesUnique.where( { $_.Name -like 'microsoft.*' }) | ForEach-Object -Parallel {
-            $resourceTypesUniqueGroup = $_
-            $resourcetype = $resourceTypesUniqueGroup.Name
-            #region UsingVARs
-            #fromOtherFunctions
-            $azAPICallConf = $using:azAPICallConf
-            $scriptPath = $using:ScriptPath
-            #Array&HTs
-            $ExcludedResourceTypesDiagnosticsCapable = $using:ExcludedResourceTypesDiagnosticsCapable
-            $resourceTypesDiagnosticsArray = $using:resourceTypesDiagnosticsArray
-            $htResourceTypesUniqueResource = $using:htResourceTypesUniqueResource
-            $resourceTypesSummarizedArray = $using:resourceTypesSummarizedArray
-            #endregion UsingVARs
-
-            $skipThisResourceType = $false
-            if (($ExcludedResourceTypesDiagnosticsCapable).Count -gt 0) {
-                foreach ($excludedResourceType in $ExcludedResourceTypesDiagnosticsCapable) {
-                    if ($excludedResourceType -eq $resourcetype) {
-                        $skipThisResourceType = $true
+        $microsoftResourceTypes = $resourceTypesUnique.where({ $_.Name.StartsWith('microsoft') })
+        if ($microsoftResourceTypes.Count -gt 0) {
+            $microsoftResourceTypes | ForEach-Object -Parallel {
+                $resourceTypesUniqueGroup = $_
+                $resourcetype = $resourceTypesUniqueGroup.Name
+                #region UsingVARs
+                #fromOtherFunctions
+                $azAPICallConf = $using:azAPICallConf
+                $scriptPath = $using:ScriptPath
+                #Array&HTs
+                $ExcludedResourceTypesDiagnosticsCapable = $using:ExcludedResourceTypesDiagnosticsCapable
+                $resourceTypesDiagnosticsArray = $using:resourceTypesDiagnosticsArray
+                $htResourceTypesUniqueResource = $using:htResourceTypesUniqueResource
+                $resourceTypesSummarizedArray = $using:resourceTypesSummarizedArray
+                #endregion UsingVARs
+    
+                $skipThisResourceType = $false
+                if (($ExcludedResourceTypesDiagnosticsCapable).Count -gt 0) {
+                    foreach ($excludedResourceType in $ExcludedResourceTypesDiagnosticsCapable) {
+                        if ($excludedResourceType -eq $resourcetype) {
+                            $skipThisResourceType = $true
+                        }
                     }
                 }
-            }
-
-            if ($skipThisResourceType -eq $false) {
-                $resourceCount = $resourceTypesUniqueGroup.Count
-
-                #thx @Jim Britt (Microsoft) https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts Create-AzDiagPolicy.ps1
-                $responseJSON = ''
-                $logCategories = @()
-                $metrics = $false
-                $logs = $false
-
-                $resourceAvailability = ($resourceCount - 1)
-                $counterTryForResourceType = 0
-                do {
-                    $counterTryForResourceType++
-                    if ($resourceCount -gt 1) {
-                        $resourceId = $resourceTypesUniqueGroup.Group.Id[$resourceAvailability]
-                    }
-                    else {
-                        $resourceId = $resourceTypesUniqueGroup.Group.Id
-                    }
-
-                    $resourceAvailability = $resourceAvailability - 1
-                    $currentTask = "Checking if ResourceType '$resourceType' is capable for Resource Diagnostics using $counterTryForResourceType ResourceId: '$($resourceId)'"
-                    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/$($resourceId)/providers/microsoft.insights/diagnosticSettingsCategories?api-version=2021-05-01-preview"
-                    $method = 'GET'
-
-                    $responseJSON = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
-                    if ($responseJSON -notlike 'meanwhile_deleted*') {
-                        if ($responseJSON -eq 'ResourceTypeOrResourceProviderNotSupported') {
-                            Write-Host "  ResourceTypeOrResourceProviderNotSupported | The resource type '$($resourcetype)' does not support diagnostic settings."
-
+    
+                if ($skipThisResourceType -eq $false) {
+                    $resourceCount = $resourceTypesUniqueGroup.Count
+    
+                    #thx @Jim Britt (Microsoft) https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts Create-AzDiagPolicy.ps1
+                    $responseJSON = ''
+                    $logCategories = @()
+                    $metrics = $false
+                    $logs = $false
+    
+                    $resourceAvailability = ($resourceCount - 1)
+                    $counterTryForResourceType = 0
+                    do {
+                        $counterTryForResourceType++
+                        if ($resourceCount -gt 1) {
+                            $resourceId = $resourceTypesUniqueGroup.Group.Id[$resourceAvailability]
                         }
                         else {
-                            Write-Host "  ResourceTypeSupported | The resource type '$($resourcetype)' supports diagnostic settings."
+                            $resourceId = $resourceTypesUniqueGroup.Group.Id
                         }
+    
+                        $resourceAvailability = $resourceAvailability - 1
+                        $currentTask = "Checking if ResourceType '$resourceType' is capable for Resource Diagnostics using $counterTryForResourceType ResourceId: '$($resourceId)'"
+                        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/$($resourceId)/providers/microsoft.insights/diagnosticSettingsCategories?api-version=2021-05-01-preview"
+                        $method = 'GET'
+    
+                        $responseJSON = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
+                        if ($responseJSON -notlike 'meanwhile_deleted*') {
+                            if ($responseJSON -eq 'ResourceTypeOrResourceProviderNotSupported') {
+                                Write-Host "  ResourceTypeOrResourceProviderNotSupported | The resource type '$($resourcetype)' does not support diagnostic settings."
+    
+                            }
+                            else {
+                                Write-Host "  ResourceTypeSupported | The resource type '$($resourcetype)' supports diagnostic settings."
+                            }
+                        }
+                        else {
+                            Write-Host "resId '$resourceId' meanwhile deleted"
+                        }
+                    }
+                    until ($resourceAvailability -lt 0 -or $responseJSON -notlike 'meanwhile_deleted*')
+    
+                    if ($resourceAvailability -lt 0 -and $responseJSON -like 'meanwhile_deleted*') {
+                        Write-Host "tried for all available resourceIds ($($resourceCount)) for resourceType $resourceType, but seems all resources meanwhile have been deleted"
+                        $null = $script:resourceTypesDiagnosticsArray.Add([PSCustomObject]@{
+                                ResourceType  = $resourcetype
+                                Metrics       = "n/a - $responseJSON"
+                                Logs          = "n/a - $responseJSON"
+                                LogCategories = 'n/a'
+                                ResourceCount = $resourceCount
+                            })
                     }
                     else {
-                        Write-Host "resId '$resourceId' meanwhile deleted"
-                    }
-                }
-                until ($resourceAvailability -lt 0 -or $responseJSON -notlike 'meanwhile_deleted*')
-
-                if ($resourceAvailability -lt 0 -and $responseJSON -like 'meanwhile_deleted*') {
-                    Write-Host "tried for all available resourceIds ($($resourceCount)) for resourceType $resourceType, but seems all resources meanwhile have been deleted"
-                    $null = $script:resourceTypesDiagnosticsArray.Add([PSCustomObject]@{
-                            ResourceType  = $resourcetype
-                            Metrics       = "n/a - $responseJSON"
-                            Logs          = "n/a - $responseJSON"
-                            LogCategories = 'n/a'
-                            ResourceCount = $resourceCount
-                        })
-                }
-                else {
-                    if ($responseJSON) {
-                        foreach ($response in $responseJSON) {
-                            if ($response.properties.categoryType -eq 'Metrics') {
-                                $metrics = $true
-                            }
-                            if ($response.properties.categoryType -eq 'Logs') {
-                                $logs = $true
-                                $logCategories += $response.name
+                        if ($responseJSON) {
+                            foreach ($response in $responseJSON) {
+                                if ($response.properties.categoryType -eq 'Metrics') {
+                                    $metrics = $true
+                                }
+                                if ($response.properties.categoryType -eq 'Logs') {
+                                    $logs = $true
+                                    $logCategories += $response.name
+                                }
                             }
                         }
+    
+                        $null = $script:resourceTypesDiagnosticsArray.Add([PSCustomObject]@{
+                                ResourceType  = $resourcetype
+                                Metrics       = $metrics
+                                Logs          = $logs
+                                LogCategories = $logCategories
+                                ResourceCount = $resourceCount
+                            })
                     }
-
-                    $null = $script:resourceTypesDiagnosticsArray.Add([PSCustomObject]@{
-                            ResourceType  = $resourcetype
-                            Metrics       = $metrics
-                            Logs          = $logs
-                            LogCategories = $logCategories
-                            ResourceCount = $resourceCount
-                        })
                 }
-            }
-            else {
-                Write-Host "Skipping ResourceType $($resourcetype) as per parameter '-ExcludedResourceTypesDiagnosticsCapable'"
-            }
-        } -ThrottleLimit $ThrottleLimit
-        #[System.GC]::Collect()
+                else {
+                    Write-Host "Skipping ResourceType $($resourcetype) as per parameter '-ExcludedResourceTypesDiagnosticsCapable'"
+                }
+            } -ThrottleLimit $ThrottleLimit
+            #[System.GC]::Collect()
+        }
+        else {
+            Write-Host ' No 1st party Resource Types at all'
+        }
+
     }
     else {
         Write-Host ' No Resources at all'
@@ -3126,7 +3133,7 @@ function handlePSRuleData {
 
     if (-not $NoCsvExport) {
         Write-Host "Exporting 'PSRule for Azure' CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv'"
-        $psRuleDataSelection | Sort-Object -Property resourceId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        $psRuleDataSelection | Sort-Object -Property resourceId, pillar, category, severity, rule | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
     }
 
     $end = Get-Date
@@ -11548,11 +11555,19 @@ extensions: [{ name: 'sort' }]
 <th>Subscription Name</th>
 <th>ResourceGroup</th>
 <th>ResourceName / ResourceType</th>
-<th>DisplayName</th>
+<th>Exemption name</th>
+<th>Exemption description</th>
 <th>Category</th>
 <th>ExpiresOn (UTC)</th>
-<th>Id</th>
+<th>Exemption Id</th>
 <th>Policy AssignmentId</th>
+<th>Policy Type</th>
+<th>Policy</th>
+<th>Exempted Set Policies</th>
+<th>CreatedBy</th>
+<th>CreatedAt</th>
+<th>LastModifiedBy</th>
+<th>LastModifiedAt</th>
 </tr>
 </thead>
 <tbody>
@@ -11627,6 +11642,81 @@ extensions: [{ name: 'sort' }]
                 $resName = ''
             }
 
+            $policyType = 'unknown'
+            $policy = 'unknown'
+            $arrayExemptedPolicies = @()
+            $arrayExemptedPoliciesCSV = @()
+            $policiesExempted = $null
+            $policiesExemptedCSV = $null
+            $policiesExemptedCSVCount = $null
+            $policiesTotalCount = $null
+            if ($htCacheAssignmentsPolicy.(($exemption.properties.policyAssignmentId).tolower()).Assignment.properties.policyDefinitionId) {
+                $policyDefinitionId = $htCacheAssignmentsPolicy.(($exemption.properties.policyAssignmentId).tolower()).Assignment.properties.policyDefinitionId
+                
+                if ($policyDefinitionId -like "*/providers/Microsoft.Authorization/policyDefinitions/*") {
+                    $policyType = 'Policy'
+                    if ($htCacheDefinitionsPolicy.($policyDefinitionId.tolower())) {
+                        $policyDetail = $htCacheDefinitionsPolicy.($policyDefinitionId.tolower())
+                        if ($policyDetail.Type -eq 'BuiltIn') {
+                            $policy = $policyDetail.LinkToAzAdvertizer
+                        }
+                        else {
+                            $policy = "$($policyDetail.DisplayName) ($($policyDetail.Id))"
+                        }
+                        $policiesExempted = $null
+                        $policyClear = "$($policyDetail.DisplayName) ($($policyDetail.Id))"
+                    }
+                }
+
+                if ($policyDefinitionId -like "*/providers/Microsoft.Authorization/policySetDefinitions/*") {
+                    $policyType = 'PolicySet'
+                    if ($htCacheDefinitionsPolicySet.($policyDefinitionId.tolower())) {
+                        $policyDetail = $htCacheDefinitionsPolicySet.($policyDefinitionId.tolower())
+                        if ($policyDetail.Type -eq 'BuiltIn') {
+                            $policy = $policyDetail.LinkToAzAdvertizer
+                        }
+                        else {
+                            $policy = "$($policyDetail.DisplayName) ($($policyDetail.Id))"
+                        }
+                        $policiesTotalCount = $htCacheDefinitionsPolicySet.($policyDefinitionId.tolower()).PolicySetPolicyRefIds.Count
+                        if ($exemption.properties.policyDefinitionReferenceIds.Count -gt 0) {
+                            foreach ($exemptedRefId in $exemption.properties.policyDefinitionReferenceIds) {
+                                $policyExempted = 'unknown'
+                                $policyExemptedCSV = 'unknown'
+                                if ($htCacheDefinitionsPolicySet.($policyDefinitionId.tolower()).PolicySetPolicyRefIds.($exemptedRefId)) {
+                                    $exemptedPolicyId = $htCacheDefinitionsPolicySet.($policyDefinitionId.tolower()).PolicySetPolicyRefIds.($exemptedRefId)
+                                    if ($htCacheDefinitionsPolicy.($exemptedPolicyId.tolower())) {
+                                        $policyExemptedDetail = $htCacheDefinitionsPolicy.($exemptedPolicyId.tolower())
+                                        if ($policyExemptedDetail.Type -eq 'BuiltIn') {
+                                            $policyExempted = $policyExemptedDetail.LinkToAzAdvertizer
+                                        }
+                                        else {
+                                            $policyExempted = "$($policyExemptedDetail.DisplayName) ($($policyExemptedDetail.Id))"
+                                        }
+                                        $policyExemptedCSV = "$($policyExemptedDetail.DisplayName) ($($policyExemptedDetail.Id))"
+                                        
+                                    }
+                                }
+                                $arrayExemptedPolicies += $policyExempted
+                                $arrayExemptedPoliciesCSV += $policyExemptedCSV
+                            }
+                            
+                            $policiesExempted = "$($arrayExemptedPolicies.Count)/$($policiesTotalCount) (<br>$(($arrayExemptedPolicies | Sort-Object) -join "<br>"))"
+                            $policiesExemptedCSV = ($arrayExemptedPoliciesCSV | Sort-Object) -join "$CsvDelimiterOpposite "
+                            $policiesExemptedCSVCount = $arrayExemptedPoliciesCSV.Count
+                        }
+                        else {
+                            $policiesExempted = "all $policiesTotalCount"
+                            $policiesExemptedCSV = "all $policiesTotalCount"
+                            $policiesExemptedCSVCount = $policiesTotalCount
+                        }
+                        
+                        $policyClear = "$($policyDetail.DisplayName) ($($policyDetail.Id))"
+                    }
+                }
+
+            }
+
             if (-not $NoCsvExport) {
                 $null = $exemptionData4CSVExport.Add([PSCustomObject]@{
                         Scope                     = $exemptionScope
@@ -11636,11 +11726,21 @@ extensions: [{ name: 'sort' }]
                         SubscriptionName          = $subName
                         ResourceGroup             = $rgName
                         ResourceName_ResourceType = $resName
-                        DisplayName               = $exemption.properties.DisplayName
+                        ExemptionName             = $exemption.properties.DisplayName
+                        ExemptionDescription      = $exemption.properties.Description
                         Category                  = $exemption.properties.exemptionCategory
                         ExpiresOn_UTC             = $exemptionExpiresOn
-                        Id                        = $exemption.Id
+                        ExemptionId               = $exemption.Id
                         PolicyAssignmentId        = $exemption.properties.policyAssignmentId
+                        PolicyType                = $policyType
+                        Policy                    = $policyClear
+                        PoliciesTotalCount        = $policiesTotalCount            
+                        PoliciesExemptedCount     = $policiesExemptedCSVCount
+                        PoliciesExempted          = $policiesExemptedCSV
+                        CreatedBy                 = "$($exemption.systemData.createdBy) ($($exemption.systemData.createdByType))"
+                        CreatedAt                 = $exemption.systemData.createdAt.ToString('yyyy-MM-dd HH:mm:ss')
+                        LastModifiedBy            = "$($exemption.systemData.lastModifiedBy) ($($exemption.systemData.lastModifiedByType))"
+                        LastModifiedAt            = $exemption.systemData.lastModifiedAt.ToString('yyyy-MM-dd HH:mm:ss')
                     })
             }
 
@@ -11654,10 +11754,18 @@ extensions: [{ name: 'sort' }]
 <td>$($rgName)</td>
 <td>$($resName)</td>
 <td>$($exemption.properties.DisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($exemption.properties.Description -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($exemption.properties.exemptionCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($exemptionExpiresOn)</td>
 <td class="breakwordall">$($exemption.Id)</td>
 <td class="breakwordall">$($exemption.properties.policyAssignmentId -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($policyType)</td>
+<td class="breakwordall">$($policy)</td>
+<td class="breakwordall">$($policiesExempted)</td>
+<td>$($exemption.systemData.createdBy) ($($exemption.systemData.createdByType))</td>
+<td>$($exemption.systemData.createdAt.ToString('yyyy-MM-dd HH:mm:ss'))</td>
+<td>$($exemption.systemData.lastModifiedBy) ($($exemption.systemData.lastModifiedByType))</td>
+<td>$($exemption.systemData.lastModifiedAt.ToString('yyyy-MM-dd HH:mm:ss'))</td>
 </tr>
 "@
         }
@@ -11705,6 +11813,8 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_0: 'select',
+            col_9: 'select',
+            col_13: 'select',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -11717,7 +11827,15 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
-                'caseinsensitivestring'
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'date',
+                'caseinsensitivestring',
+                'date'
             ],
 extensions: [{ name: 'sort' }]
         };
@@ -21952,7 +22070,7 @@ function runInfo {
 }
 function selectMg() {
     Write-Host 'Please select a Management Group from the list below:'
-    $MgtGroupArray | Select-Object '#', Name, DisplayName, Id | Format-Table
+    $MgtGroupArray | Select-Object '#', Name, @{Expression = { $_.properties.displayName } }, Id | Format-Table
     Write-Host "If you don't see your ManagementGroupID try using the parameter -ManagementGroupID" -ForegroundColor Yellow
     if ($msg) {
         Write-Host $msg -ForegroundColor Red
@@ -23783,10 +23901,13 @@ function dataCollectionPolicySetDefinitions {
             $htTemp.Category = $($scopePolicySetDefinition.Properties.metadata.category)
             $htTemp.PolicyDefinitionId = $hlpPolicySetDefinitionId
             $arrayPolicySetPolicyIdsToLower = @()
-            $arrayPolicySetPolicyIdsToLower = foreach ($policySetPolicy in $scopePolicySetDefinition.properties.policydefinitions.policyDefinitionId) {
-                    ($policySetPolicy).ToLower()
+            $htPolicySetPolicyRefIds = @{}
+            $arrayPolicySetPolicyIdsToLower = foreach ($policySetPolicy in $scopePolicySetDefinition.properties.policydefinitions) {
+                $($policySetPolicy.policyDefinitionId).ToLower()
+                $htPolicySetPolicyRefIds.($policySetPolicy.policyDefinitionReferenceId) = ($policySetPolicy.policyDefinitionId)
             }
             $htTemp.PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
+            $htTemp.PolicySetPolicyRefIds = $htPolicySetPolicyRefIds
             $htTemp.Json = $scopePolicySetDefinition
             if ($scopePolicySetDefinition.Properties.metadata.deprecated -eq $true -or $scopePolicySetDefinition.Properties.displayname -like "``[Deprecated``]*") {
                 $htTemp.Deprecated = $scopePolicySetDefinition.Properties.metadata.deprecated

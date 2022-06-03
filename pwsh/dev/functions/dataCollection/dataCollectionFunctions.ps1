@@ -1213,10 +1213,13 @@ function dataCollectionPolicySetDefinitions {
             $htTemp.Category = $($scopePolicySetDefinition.Properties.metadata.category)
             $htTemp.PolicyDefinitionId = $hlpPolicySetDefinitionId
             $arrayPolicySetPolicyIdsToLower = @()
-            $arrayPolicySetPolicyIdsToLower = foreach ($policySetPolicy in $scopePolicySetDefinition.properties.policydefinitions.policyDefinitionId) {
-                    ($policySetPolicy).ToLower()
+            $htPolicySetPolicyRefIds = @{}
+            $arrayPolicySetPolicyIdsToLower = foreach ($policySetPolicy in $scopePolicySetDefinition.properties.policydefinitions) {
+                $($policySetPolicy.policyDefinitionId).ToLower()
+                $htPolicySetPolicyRefIds.($policySetPolicy.policyDefinitionReferenceId) = ($policySetPolicy.policyDefinitionId)
             }
             $htTemp.PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
+            $htTemp.PolicySetPolicyRefIds = $htPolicySetPolicyRefIds
             $htTemp.Json = $scopePolicySetDefinition
             if ($scopePolicySetDefinition.Properties.metadata.deprecated -eq $true -or $scopePolicySetDefinition.Properties.displayname -like "``[Deprecated``]*") {
                 $htTemp.Deprecated = $scopePolicySetDefinition.Properties.metadata.deprecated
