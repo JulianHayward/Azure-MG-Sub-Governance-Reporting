@@ -280,7 +280,7 @@ Param
     $AzAPICallVersion = '1.1.15',
 
     [string]
-    $ProductVersion = 'v6_major_20220610_1',
+    $ProductVersion = 'v6_major_20220610_2',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -26040,11 +26040,12 @@ $null = $modules.Add([PSCustomObject]@{
 
 if ($DoPSRule) {
     
-    #temporary workaround / PSRule/Azure DevOps Az.Resources module requirements
+    <#temporary workaround / PSRule/Azure DevOps Az.Resources module requirements
     if ($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) {
         $PSRuleVersion = '1.14.3'
         Write-Host "Running in Azure DevOps; enforce PSRule version '$PSRuleVersion' (Az.Resources dependency on latest PSRule)"
     }
+    #>
 
     $null = $modules.Add([PSCustomObject]@{
             ModuleName         = 'PSRule.Rules.Azure'
