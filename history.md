@@ -4,6 +4,12 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Jun-10 / Major)
+
+* Fix issue #110 / handle `DisallowedProvider` errorCode (Microsoft Defender for Cloud plans for Subscriptions)
+* Use AzAPICall PowerShell module version 1.1.15
+* Remove Azure DevOps 'PSRule for Azure' workaround / use latest PSRule.Rules.Azure PowerShell module version (current: 1.16.0)
+
 __Changes__ (2022-Jun-03 / Major)
 
 * Optimize Policy Exemption output (HTML TenantSummary, CSV output)

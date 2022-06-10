@@ -59,15 +59,15 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Jun-03 / Major)
+__Changes__ (2022-Jun-10 / Major)
 
-* Optimize Policy Exemption output (HTML TenantSummary, CSV output)
-* Update Azure DevOps variables YAML - add parameter `-DebugAzAPICall`
-* Update PSRule CSV output sorting
+* Fix issue #110 / handle `DisallowedProvider` errorCode (Microsoft Defender for Cloud plans for Subscriptions)
+* Use AzAPICall PowerShell module version 1.1.15
+* Remove Azure DevOps 'PSRule for Azure' workaround / use latest PSRule.Rules.Azure PowerShell module version (current: 1.16.0)
 
 Passed tests: Powershell Core 7.2.3 on Windows  
-Passed tests: Powershell Core 7.2.3 Azure DevOps hosted agent ubuntu-20.04  
-Passed tests: Powershell Core 7.2.3 Github Actions hosted agent ubuntu-latest  
+Passed tests: Powershell Core 7.2.4 Azure DevOps hosted agent ubuntu-20.04  
+Passed tests: Powershell Core 7.2.4 Github Actions hosted agent ubuntu-latest  
 Passed tests: Powershell Core 7.2.3 GitHub Codespaces mcr.microsoft.com/powershell:latest  
 Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
 

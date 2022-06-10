@@ -22,7 +22,8 @@ function dataCollectionDefenderPlans {
     [CmdletBinding()]Param(
         [string]$scopeId,
         [string]$scopeDisplayName,
-        $ChildMgMgPath
+        $ChildMgMgPath,
+        $SubscriptionQuotaId
     )
 
     $currentTask = "Getting Microsoft Defender for Cloud plans for Subscription: '$($scopeDisplayName)' ('$scopeId')"
@@ -31,12 +32,14 @@ function dataCollectionDefenderPlans {
     $method = 'GET'
     $defenderPlansResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-    if ($defenderPlansResult -eq 'SubScriptionNotRegistered') {
+    if ($defenderPlansResult -eq 'SubScriptionNotRegistered' -or $defenderPlansResult -eq 'DisallowedProvider') {
         #Subscription skipped for MDfC
-        $null = $script:arrayDefenderPlansSubscriptionNotRegistered.Add([PSCustomObject]@{
-                subscriptionId     = $scopeId
-                subscriptionName   = $scopeDisplayName
-                subscriptionMgPath = $childMgMgPath
+        $null = $script:arrayDefenderPlansSubscriptionsSkipped.Add([PSCustomObject]@{
+                subscriptionId      = $scopeId
+                subscriptionName    = $scopeDisplayName
+                subscriptionQuotaId = $subscriptionQuotaId
+                subscriptionMgPath  = $childMgMgPath
+                reason              = $defenderPlansResult
             })
     }
     else {

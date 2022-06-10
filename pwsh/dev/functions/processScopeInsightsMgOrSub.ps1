@@ -263,11 +263,19 @@ tf.init();}}
 "@)
         }
         else {
-            $subscriptionNotregisteredMDfC = $arrayDefenderPlansSubscriptionNotRegistered.where( { $_.subscriptionId -eq $subscriptionId } )
-            if ($subscriptionNotregisteredMDfC.Count -gt 0) {
-                [void]$htmlScopeInsights.AppendLine(@'
-<p><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud plans - Subscription not registered (ResourceProvider: Microsoft.Security) <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
-'@)
+            $subscriptionSkippedMDfC = $arrayDefenderPlansSubscriptionsSkipped.where( { $_.subscriptionId -eq $subscriptionId } )
+            if ($subscriptionSkippedMDfC.Count -gt 0) {
+                if ($subscriptionSkippedMDfC.reason -eq 'SubScriptionNotRegistered') {
+                    [void]$htmlScopeInsights.AppendLine(@"
+                    <p><i class=`"fa fa-shield`" aria-hidden=`"true`"></i> Microsoft Defender for Cloud plans - Subscription skipped ($($subscriptionSkippedMDfC.reason)) (ResourceProvider: Microsoft.Security) <a class=`"externallink`" href=`"https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider`" target=`"_blank`" rel=`"noopener`">docs <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a></p>
+"@)
+                }
+                else {
+                    [void]$htmlScopeInsights.AppendLine(@"
+                    <p><i class=`"fa fa-shield`" aria-hidden=`"true`"></i> Microsoft Defender for Cloud plans - Subscription skipped ($($subscriptionSkippedMDfC.reason))</p>
+"@)   
+                }
+
             }
             else {
                 [void]$htmlScopeInsights.AppendLine(@'

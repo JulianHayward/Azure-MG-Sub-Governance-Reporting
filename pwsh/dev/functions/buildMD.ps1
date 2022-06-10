@@ -14,7 +14,7 @@ function buildMD {
             $markdown += @"
 # AzGovViz - Management Group Hierarchy
 
-## Hierarchy Diagram (Mermaid)
+## HierarchyMap (Mermaid)
 
 ::: mermaid
     graph $($MermaidDirection.ToUpper());`n
@@ -25,7 +25,7 @@ function buildMD {
             $markdown += @"
 # AzGovViz - Management Group Hierarchy
 
-## Hierarchy Diagram (Mermaid)
+## HierarchyMap (Mermaid)
 
 $($marks)mermaid
     graph $($MermaidDirection.ToUpper());`n
@@ -39,7 +39,7 @@ $($marks)mermaid
 
 $executionDateTimeInternationalReadable ($currentTimeZone)
 
-## Hierarchy Diagram (Mermaid)
+## HierarchyMap (Mermaid)
 
 ::: mermaid
     graph $($MermaidDirection.ToUpper());`n
