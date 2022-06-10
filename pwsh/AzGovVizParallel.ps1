@@ -277,10 +277,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.13',
+    $AzAPICallVersion = '1.1.15',
 
     [string]
-    $ProductVersion = 'v6_major_20220603_1',
+    $ProductVersion = 'v6_major_20220610_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -1200,7 +1200,7 @@ function buildMD {
             $markdown += @"
 # AzGovViz - Management Group Hierarchy
 
-## Hierarchy Diagram (Mermaid)
+## HierarchyMap (Mermaid)
 
 ::: mermaid
     graph $($MermaidDirection.ToUpper());`n
@@ -1211,7 +1211,7 @@ function buildMD {
             $markdown += @"
 # AzGovViz - Management Group Hierarchy
 
-## Hierarchy Diagram (Mermaid)
+## HierarchyMap (Mermaid)
 
 $($marks)mermaid
     graph $($MermaidDirection.ToUpper());`n
@@ -1225,7 +1225,7 @@ $($marks)mermaid
 
 $executionDateTimeInternationalReadable ($currentTimeZone)
 
-## Hierarchy Diagram (Mermaid)
+## HierarchyMap (Mermaid)
 
 ::: mermaid
     graph $($MermaidDirection.ToUpper());`n
@@ -3725,7 +3725,7 @@ function processDataCollection {
                 $htServicePrincipals = $using:htServicePrincipals
                 $htUserTypesGuest = $using:htUserTypesGuest
                 $arrayDefenderPlans = $using:arrayDefenderPlans
-                $arrayDefenderPlansSubscriptionNotRegistered = $using:arrayDefenderPlansSubscriptionNotRegistered
+                $arrayDefenderPlansSubscriptionsSkipped = $using:arrayDefenderPlansSubscriptionsSkipped
                 $arrayUserAssignedIdentities4Resources = $using:arrayUserAssignedIdentities4Resources
                 $htSubscriptionsRoleAssignmentLimit = $using:htSubscriptionsRoleAssignmentLimit
                 $arrayPsRule = $using:arrayPsRule
@@ -3801,7 +3801,8 @@ function processDataCollection {
 
                         #defenderPlans
                         $dataCollectionDefenderPlansParameters = @{
-                            ChildMgMgPath = $childMgMgPath
+                            ChildMgMgPath       = $childMgMgPath
+                            SubscriptionQuotaId = $subscriptionQuotaId
                         }
                         DataCollectionDefenderPlans @baseParameters @dataCollectionDefenderPlansParameters
 
@@ -5841,11 +5842,19 @@ tf.init();}}
 "@)
         }
         else {
-            $subscriptionNotregisteredMDfC = $arrayDefenderPlansSubscriptionNotRegistered.where( { $_.subscriptionId -eq $subscriptionId } )
-            if ($subscriptionNotregisteredMDfC.Count -gt 0) {
-                [void]$htmlScopeInsights.AppendLine(@'
-<p><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud plans - Subscription not registered (ResourceProvider: Microsoft.Security) <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
-'@)
+            $subscriptionSkippedMDfC = $arrayDefenderPlansSubscriptionsSkipped.where( { $_.subscriptionId -eq $subscriptionId } )
+            if ($subscriptionSkippedMDfC.Count -gt 0) {
+                if ($subscriptionSkippedMDfC.reason -eq 'SubScriptionNotRegistered') {
+                    [void]$htmlScopeInsights.AppendLine(@"
+                    <p><i class=`"fa fa-shield`" aria-hidden=`"true`"></i> Microsoft Defender for Cloud plans - Subscription skipped ($($subscriptionSkippedMDfC.reason)) (ResourceProvider: Microsoft.Security) <a class=`"externallink`" href=`"https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider`" target=`"_blank`" rel=`"noopener`">docs <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a></p>
+"@)
+                }
+                else {
+                    [void]$htmlScopeInsights.AppendLine(@"
+                    <p><i class=`"fa fa-shield`" aria-hidden=`"true`"></i> Microsoft Defender for Cloud plans - Subscription skipped ($($subscriptionSkippedMDfC.reason))</p>
+"@)   
+                }
+
             }
             else {
                 [void]$htmlScopeInsights.AppendLine(@'
@@ -16120,18 +16129,18 @@ extensions: [{ name: 'sort' }]
     Write-Host "   ResourceLocks processing duration: $((NEW-TIMESPAN -Start $startResourceLocks -End $endResourceLocks).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startResourceLocks -End $endResourceLocks).TotalSeconds) seconds)"
     #endregion SUMMARYSubResourceLocks
 
-    #SUMMARYSubDefenderPlansSubscriptionNotRegistered
-    if ($arrayDefenderPlansSubscriptionNotRegistered.Count -gt 0) {
-        #region SUMMARYSubDefenderPlansSubscriptionNotRegistered
-        Write-Host '  processing TenantSummary Subscriptions Microsoft Defender for Cloud plans SubscriptionNotRegistered'
+    #SUMMARYSubDefenderPlansSubscriptionsSkipped
+    if ($arrayDefenderPlansSubscriptionsSkipped.Count -gt 0) {
+        #region SUMMARYSubDefenderPlansSubscriptionsSkipped
+        Write-Host '  processing TenantSummary Subscriptions Microsoft Defender for Cloud plans SubscriptionsSkipped'
 
         $tfCount = $defenderPlansGroupedByPlanCount
         $startDefenderPlans = Get-Date
 
-        $htmlTableId = 'TenantSummary_DefenderPlansSubscriptionNotRegistered'
+        $htmlTableId = 'TenantSummary_DefenderPlansSubscriptionsSkipped'
 
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_DefenderPlansSubscriptionNotRegistered"><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans - Subscriptions not registered</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_DefenderPlansSubscriptionsSkipped"><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans - Subscriptions skipped</span></button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Register Resource Provider 'Microsoft.Security'</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Microsoft Defender for Cloud's enhanced security features</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
@@ -16141,18 +16150,22 @@ extensions: [{ name: 'sort' }]
 <tr>
 <th>Subscription Name</th>
 <th>Subscription Id</th>
+<th>Subscription QuotaId</th>
 <th>Subscription MG path</th>
+<th>reason</th>
 </tr>
 </thead>
 <tbody>
 "@)
 
-        foreach ($subscription in $arrayDefenderPlansSubscriptionNotRegistered | Sort-Object -Property subscriptionName) {
+        foreach ($subscription in $arrayDefenderPlansSubscriptionsSkipped | Sort-Object -Property subscriptionName) {
             [void]$htmlTenantSummary.AppendLine(@"
                 <tr>
                 <td>$($subscription.subscriptionName)</td>
                 <td>$($subscription.subscriptionId)</td>
+                <td>$($subscription.subscriptionQuotaId)</td>
                 <td>$($subscription.subscriptionMgPath)</td>
+                <td>$($subscription.reason)</td>
                 </tr>
 "@)
         }
@@ -16195,6 +16208,8 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
                 'caseinsensitivestring'
             ],
             extensions: [{ name: 'sort' }]
@@ -16206,8 +16221,8 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 "@)
 
         $endDefenderPlans = Get-Date
-        Write-Host "   Microsoft Defender for Cloud plans by plan processing duration: $((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalSeconds) seconds)"
-        #endregion SUMMARYSubDefenderPlansSubscriptionNotRegistered
+        Write-Host "   Microsoft Defender for Cloud plans SubscriptionsSkipped processing duration: $((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalSeconds) seconds)"
+        #endregion SUMMARYSubDefenderPlansSubscriptionsSkipped
     }
 
     #region SUMMARYSubDefenderPlansByPlan
@@ -22710,7 +22725,8 @@ function dataCollectionDefenderPlans {
     [CmdletBinding()]Param(
         [string]$scopeId,
         [string]$scopeDisplayName,
-        $ChildMgMgPath
+        $ChildMgMgPath,
+        $SubscriptionQuotaId
     )
 
     $currentTask = "Getting Microsoft Defender for Cloud plans for Subscription: '$($scopeDisplayName)' ('$scopeId')"
@@ -22719,12 +22735,14 @@ function dataCollectionDefenderPlans {
     $method = 'GET'
     $defenderPlansResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-    if ($defenderPlansResult -eq 'SubScriptionNotRegistered') {
+    if ($defenderPlansResult -eq 'SubScriptionNotRegistered' -or $defenderPlansResult -eq 'DisallowedProvider') {
         #Subscription skipped for MDfC
-        $null = $script:arrayDefenderPlansSubscriptionNotRegistered.Add([PSCustomObject]@{
-                subscriptionId     = $scopeId
-                subscriptionName   = $scopeDisplayName
-                subscriptionMgPath = $childMgMgPath
+        $null = $script:arrayDefenderPlansSubscriptionsSkipped.Add([PSCustomObject]@{
+                subscriptionId      = $scopeId
+                subscriptionName    = $scopeDisplayName
+                subscriptionQuotaId = $subscriptionQuotaId
+                subscriptionMgPath  = $childMgMgPath
+                reason              = $defenderPlansResult
             })
     }
     else {
@@ -26174,7 +26192,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htServicePrincipals = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htDailySummary = @{}
     $arrayDefenderPlans = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-    $arrayDefenderPlansSubscriptionNotRegistered = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayDefenderPlansSubscriptionsSkipped = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayUserAssignedIdentities4Resources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htSubscriptionsRoleAssignmentLimit = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     if ($azAPICallConf['htParameters'].NoMDfCSecureScore -eq $false) {

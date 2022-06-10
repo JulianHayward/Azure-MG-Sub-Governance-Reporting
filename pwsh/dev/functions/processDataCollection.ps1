@@ -320,7 +320,7 @@ function processDataCollection {
                 $htServicePrincipals = $using:htServicePrincipals
                 $htUserTypesGuest = $using:htUserTypesGuest
                 $arrayDefenderPlans = $using:arrayDefenderPlans
-                $arrayDefenderPlansSubscriptionNotRegistered = $using:arrayDefenderPlansSubscriptionNotRegistered
+                $arrayDefenderPlansSubscriptionsSkipped = $using:arrayDefenderPlansSubscriptionsSkipped
                 $arrayUserAssignedIdentities4Resources = $using:arrayUserAssignedIdentities4Resources
                 $htSubscriptionsRoleAssignmentLimit = $using:htSubscriptionsRoleAssignmentLimit
                 $arrayPsRule = $using:arrayPsRule
@@ -396,7 +396,8 @@ function processDataCollection {
 
                         #defenderPlans
                         $dataCollectionDefenderPlansParameters = @{
-                            ChildMgMgPath = $childMgMgPath
+                            ChildMgMgPath       = $childMgMgPath
+                            SubscriptionQuotaId = $subscriptionQuotaId
                         }
                         DataCollectionDefenderPlans @baseParameters @dataCollectionDefenderPlansParameters
 

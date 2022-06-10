@@ -277,10 +277,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.13',
+    $AzAPICallVersion = '1.1.15',
 
     [string]
-    $ProductVersion = 'v6_major_20220603_1',
+    $ProductVersion = 'v6_major_20220610_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -714,7 +714,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htServicePrincipals = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htDailySummary = @{}
     $arrayDefenderPlans = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-    $arrayDefenderPlansSubscriptionNotRegistered = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayDefenderPlansSubscriptionsSkipped = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayUserAssignedIdentities4Resources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htSubscriptionsRoleAssignmentLimit = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     if ($azAPICallConf['htParameters'].NoMDfCSecureScore -eq $false) {

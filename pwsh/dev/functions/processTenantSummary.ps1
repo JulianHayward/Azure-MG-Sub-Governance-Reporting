@@ -6950,18 +6950,18 @@ extensions: [{ name: 'sort' }]
     Write-Host "   ResourceLocks processing duration: $((NEW-TIMESPAN -Start $startResourceLocks -End $endResourceLocks).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startResourceLocks -End $endResourceLocks).TotalSeconds) seconds)"
     #endregion SUMMARYSubResourceLocks
 
-    #SUMMARYSubDefenderPlansSubscriptionNotRegistered
-    if ($arrayDefenderPlansSubscriptionNotRegistered.Count -gt 0) {
-        #region SUMMARYSubDefenderPlansSubscriptionNotRegistered
-        Write-Host '  processing TenantSummary Subscriptions Microsoft Defender for Cloud plans SubscriptionNotRegistered'
+    #SUMMARYSubDefenderPlansSubscriptionsSkipped
+    if ($arrayDefenderPlansSubscriptionsSkipped.Count -gt 0) {
+        #region SUMMARYSubDefenderPlansSubscriptionsSkipped
+        Write-Host '  processing TenantSummary Subscriptions Microsoft Defender for Cloud plans SubscriptionsSkipped'
 
         $tfCount = $defenderPlansGroupedByPlanCount
         $startDefenderPlans = Get-Date
 
-        $htmlTableId = 'TenantSummary_DefenderPlansSubscriptionNotRegistered'
+        $htmlTableId = 'TenantSummary_DefenderPlansSubscriptionsSkipped'
 
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_DefenderPlansSubscriptionNotRegistered"><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans - Subscriptions not registered</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_DefenderPlansSubscriptionsSkipped"><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans - Subscriptions skipped</span></button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Register Resource Provider 'Microsoft.Security'</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Microsoft Defender for Cloud's enhanced security features</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
@@ -6971,18 +6971,22 @@ extensions: [{ name: 'sort' }]
 <tr>
 <th>Subscription Name</th>
 <th>Subscription Id</th>
+<th>Subscription QuotaId</th>
 <th>Subscription MG path</th>
+<th>reason</th>
 </tr>
 </thead>
 <tbody>
 "@)
 
-        foreach ($subscription in $arrayDefenderPlansSubscriptionNotRegistered | Sort-Object -Property subscriptionName) {
+        foreach ($subscription in $arrayDefenderPlansSubscriptionsSkipped | Sort-Object -Property subscriptionName) {
             [void]$htmlTenantSummary.AppendLine(@"
                 <tr>
                 <td>$($subscription.subscriptionName)</td>
                 <td>$($subscription.subscriptionId)</td>
+                <td>$($subscription.subscriptionQuotaId)</td>
                 <td>$($subscription.subscriptionMgPath)</td>
+                <td>$($subscription.reason)</td>
                 </tr>
 "@)
         }
@@ -7025,6 +7029,8 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
                 'caseinsensitivestring'
             ],
             extensions: [{ name: 'sort' }]
@@ -7036,8 +7042,8 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 "@)
 
         $endDefenderPlans = Get-Date
-        Write-Host "   Microsoft Defender for Cloud plans by plan processing duration: $((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalSeconds) seconds)"
-        #endregion SUMMARYSubDefenderPlansSubscriptionNotRegistered
+        Write-Host "   Microsoft Defender for Cloud plans SubscriptionsSkipped processing duration: $((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalSeconds) seconds)"
+        #endregion SUMMARYSubDefenderPlansSubscriptionsSkipped
     }
 
     #region SUMMARYSubDefenderPlansByPlan
