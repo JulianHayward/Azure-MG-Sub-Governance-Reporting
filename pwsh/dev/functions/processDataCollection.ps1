@@ -386,8 +386,9 @@ function processDataCollection {
 
                     $targetMgOrSub = 'Sub'
                     $baseParameters = @{
-                        scopeId          = $childMgSubId
-                        scopeDisplayName = $childMgSubDisplayName
+                        scopeId             = $childMgSubId
+                        scopeDisplayName    = $childMgSubDisplayName
+                        subscriptionQuotaId = $subscriptionQuotaId
                     }
 
                     if (-not $azAPICallConf['htParameters'].ManagementGroupsOnly) {
@@ -396,8 +397,7 @@ function processDataCollection {
 
                         #defenderPlans
                         $dataCollectionDefenderPlansParameters = @{
-                            ChildMgMgPath       = $childMgMgPath
-                            SubscriptionQuotaId = $subscriptionQuotaId
+                            ChildMgMgPath = $childMgMgPath
                         }
                         DataCollectionDefenderPlans @baseParameters @dataCollectionDefenderPlansParameters
 
@@ -449,7 +449,7 @@ function processDataCollection {
                             childMgParentId            = $childMgParentId
                             childMgParentName          = $childMgParentName
                             mgAscSecureScoreResult     = $mgAscSecureScoreResult
-                            subscriptionQuotaId        = $subscriptionQuotaId
+                            #subscriptionQuotaId        = $subscriptionQuotaId
                             subscriptionState          = $subscriptionState
                             subscriptionASCSecureScore = $subscriptionASCSecureScore
                             subscriptionTags           = $subscriptionTags

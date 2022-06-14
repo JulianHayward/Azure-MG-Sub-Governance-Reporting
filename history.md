@@ -4,6 +4,12 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Jun-14 / Major)
+
+* Fix issue #110 / handle `DisallowedProvider` errorCode (Blueprints, PolicyInsights)
+* Fix issue #111 / replace .AddRange with foreach/.Add
+* Use AzAPICall PowerShell module version 1.1.16
+
 __Changes__ (2022-Jun-10 / Major)
 
 * Fix issue #110 / handle `DisallowedProvider` errorCode (Microsoft Defender for Cloud plans for Subscriptions)

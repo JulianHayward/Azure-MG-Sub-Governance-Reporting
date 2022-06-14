@@ -137,6 +137,9 @@
 .PARAMETER ManagementGroupsOnly
     Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
 
+.PARAMETER ExcludedResourceTypesDiagnosticsCapable
+    Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
+
 .EXAMPLE
     Define the ManagementGroup ID
     PS C:\> .\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>
@@ -261,6 +264,9 @@
     Define if data should be collected for Management Groups only (Subscription data such as e.g. Policy assignments etc. will not be collected)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ManagementGroupsOnly
 
+    Define Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ExcludedResourceTypesDiagnosticsCapable @('microsoft.web/certificates')
+
     .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
@@ -277,10 +283,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.15',
+    $AzAPICallVersion = '1.1.16',
 
     [string]
-    $ProductVersion = 'v6_major_20220610_2',
+    $ProductVersion = 'v6_major_20220614_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',

@@ -8,7 +8,7 @@
 # Also check https://www.azadvertizer.net - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's policy definitions, initiatives (set definitions), aliases and Azure RBAC's role definitions and resource provider operations.
 
 parameters:
-  # Resource Types to be excluded from processing
+  # Resource Types to be excluded from processing analysis for diagnostic settings capability
   - name: ExcludedResourceTypesDiagnosticsCapableParameters
     type: object
     # example:

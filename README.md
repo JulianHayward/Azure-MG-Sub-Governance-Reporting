@@ -59,16 +59,16 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Jun-10 / Major)
+__Changes__ (2022-Jun-14 / Major)
 
-* Fix issue #110 / handle `DisallowedProvider` errorCode (Microsoft Defender for Cloud plans for Subscriptions)
-* Use AzAPICall PowerShell module version 1.1.15
-* Remove Azure DevOps 'PSRule for Azure' workaround / use latest PSRule.Rules.Azure PowerShell module version (current: 1.16.0)
+* Fix issue #110 / handle `DisallowedProvider` errorCode (Blueprints, PolicyInsights)
+* Fix issue #111 / replace .AddRange with foreach/.Add
+* Use AzAPICall PowerShell module version 1.1.16
 
-Passed tests: Powershell Core 7.2.3 on Windows  
+Passed tests: Powershell Core 7.2.4 on Windows  
 Passed tests: Powershell Core 7.2.4 Azure DevOps hosted agent ubuntu-20.04  
 Passed tests: Powershell Core 7.2.4 Github Actions hosted agent ubuntu-latest  
-Passed tests: Powershell Core 7.2.3 GitHub Codespaces mcr.microsoft.com/powershell:latest  
+Passed tests: Powershell Core 7.2.4 GitHub Codespaces mcr.microsoft.com/powershell:latest  
 Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
 
 [Full release history](history.md)
@@ -446,6 +446,7 @@ AzAPICall resources:
   * `-NoSingleSubscriptionOutput` - Single __Scope Insights__ output per Subscription should not be created
   * `-ManagementGroupsOnly` - Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
   * `-ShowMemoryUsage` - Shows memory usage at memory intense sections of the scripts, this shall help you determine if the the worker is well sized for AzGovViz
+  * `-ExcludedResourceTypesDiagnosticsCapable` - Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
   * PSRule 
     * `-DoPSRule` - Execute [PSRule](https://aka.ms/PSRule). Results are integrated in the HTML output, plus PSRule results are exported to CSV
     * `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used

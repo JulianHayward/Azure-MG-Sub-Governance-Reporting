@@ -26,7 +26,7 @@ function dataCollectionDefenderPlans {
         $SubscriptionQuotaId
     )
 
-    $currentTask = "Getting Microsoft Defender for Cloud plans for Subscription: '$($scopeDisplayName)' ('$scopeId')"
+    $currentTask = "Getting Microsoft Defender for Cloud plans for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
     #https://docs.microsoft.com/en-us/rest/api/securitycenter/pricings
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/pricings?api-version=2018-06-01"
     $method = 'GET'
@@ -63,10 +63,11 @@ function dataCollectionDiagnosticsSub {
         [string]$scopeId,
         [string]$scopeDisplayName,
         $ChildMgMgPath,
-        $ChildMgId
+        $ChildMgId,
+        $subscriptionQuotaId
     )
 
-    $currentTask = "getDiagnosticSettingsSub for Subscription: '$($scopeDisplayName)' ('$scopeId')"
+    $currentTask = "Getting Diagnostic Settings for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/microsoft.insights/diagnosticSettings?api-version=2021-05-01-preview"
     $method = 'GET'
     $getDiagnosticSettingsSub = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
@@ -162,7 +163,7 @@ function dataCollectionDiagnosticsMG {
     )
 
     $mgPath = $htManagementGroupsMgPath.($scopeId).pathDelimited
-    $currentTask = "getARMDiagnosticSettingsMg '$($scopeDisplayName)' ('$($scopeId)')"
+    $currentTask = "Getting Diagnostic Settings for Management Group: '$($scopeDisplayName)' ('$($scopeId)')"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/providers/microsoft.insights/diagnosticSettings?api-version=2020-01-01-preview"
     $method = 'GET'
     $getDiagnosticSettingsMg = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
@@ -264,9 +265,10 @@ function dataCollectionResources {
     [CmdletBinding()]Param(
         [string]$scopeId,
         [string]$scopeDisplayName,
-        $ChildMgMgPath
+        $ChildMgMgPath,
+        $subscriptionQuotaId
     )
-    $currentTask = "Getting ResourceTypes for Subscription: '$($scopeDisplayName)' ('$scopeId')"
+    $currentTask = "Getting ResourceTypes for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime&api-version=2021-04-01"
     $method = 'GET'
     $resourcesSubscriptionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
@@ -296,7 +298,11 @@ function dataCollectionResources {
                 })
 
             if ($psruleResults.Count -gt 0) {
-                $null = $script:arrayPSRule.AddRange($psRuleResults)
+                #fix issue #111
+                #$null = $script:arrayPSRule.AddRange($psRuleResults)
+                foreach ($psRuleResult in $psRuleResults) {
+                    $null = $arrayPSRule.Add($psRuleResult)
+                }
             }
         }
     }
@@ -402,11 +408,12 @@ $funcDataCollectionResources = $function:dataCollectionResources.ToString()
 function dataCollectionResourceGroups {
     [CmdletBinding()]Param(
         [string]$scopeId,
-        [string]$scopeDisplayName
+        [string]$scopeDisplayName,
+        $subscriptionQuotaId
     )
 
     #https://management.azure.com/subscriptions/{subscriptionId}/resourcegroups?api-version=2020-06-01
-    $currentTask = "Getting ResourceGroups for Subscription: '$($scopeDisplayName)' ('$scopeId')"
+    $currentTask = "Getting ResourceGroups for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/resourcegroups?api-version=2021-04-01"
     $method = 'GET'
     $resourceGroupsSubscriptionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
@@ -456,11 +463,12 @@ $funcDataCollectionResourceGroups = $function:dataCollectionResourceGroups.ToStr
 function dataCollectionResourceProviders {
     [CmdletBinding()]Param(
         [string]$scopeId,
-        [string]$scopeDisplayname
+        [string]$scopeDisplayname,
+        $subscriptionQuotaId
     )
 
     ($script:htResourceProvidersAll).($scopeId) = @{}
-    $currentTask = "Getting ResourceProviders for Subscription: '$($scopeDisplayname)' ('$scopeId')"
+    $currentTask = "Getting ResourceProviders for Subscription: '$($scopeDisplayname)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers?api-version=2019-10-01"
     $method = 'GET'
     $resProvResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
@@ -473,10 +481,11 @@ function dataCollectionFeatures {
     [CmdletBinding()]Param(
         [string]$scopeId,
         [string]$scopeDisplayname,
-        [object]$MgParentNameChain
+        [object]$MgParentNameChain,
+        $subscriptionQuotaId
     )
 
-    $currentTask = "Getting Features for Subscription: '$($scopeDisplayname)' ('$scopeId')"
+    $currentTask = "Getting Features for Subscription: '$($scopeDisplayname)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Features/features?api-version=2021-07-01"
     $method = 'GET'
     $featuresResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
@@ -499,10 +508,11 @@ $funcDataCollectionFeatures = $function:dataCollectionFeatures.ToString()
 function dataCollectionResourceLocks {
     [CmdletBinding()]Param(
         [string]$scopeId,
-        [string]$scopeDisplayname
+        [string]$scopeDisplayname,
+        $subscriptionQuotaId
     )
 
-    $currentTask = "Subscription ResourceLocks '$($scopeDisplayname)' ('$scopeId')"
+    $currentTask = "Getting ResourceLocks for Subscription: '$($scopeDisplayname)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/locks?api-version=2016-09-01"
     $method = 'GET'
     $requestSubscriptionResourceLocks = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
@@ -597,10 +607,11 @@ $funcDataCollectionResourceLocks = $function:dataCollectionResourceLocks.ToStrin
 function dataCollectionTags {
     [CmdletBinding()]Param(
         [string]$scopeId,
-        [string]$scopeDisplayName
+        [string]$scopeDisplayName,
+        $subscriptionQuotaId
     )
 
-    $currentTask = "Subscription Tags '$($scopeDisplayName)' ('$scopeId')"
+    $currentTask = "Getting Tags for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Resources/tags/default?api-version=2020-06-01"
     $method = 'GET'
     $requestSubscriptionTags = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -caller 'CustomDataCollection'
@@ -658,20 +669,32 @@ function dataCollectionPolicyComplianceStates {
     [CmdletBinding()]Param(
         [string]$TargetMgOrSub,
         [string]$scopeId,
-        [string]$scopeDisplayName
+        [string]$scopeDisplayName,
+        $subscriptionQuotaId
     )
-
-    $currentTask = "Policy Compliance $($TargetMgOrSub) '$($scopeDisplayName)' ('$scopeId')"
-    if ($TargetMgOrSub -eq 'Sub') { $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01" }
-    if ($TargetMgOrSub -eq 'MG') { $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01" }
+    
+    
+    if ($TargetMgOrSub -eq 'Sub') { 
+        $currentTask = "Getting Policy Compliance for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01" 
+    }
+    if ($TargetMgOrSub -eq 'MG') {
+        $currentTask = "Getting Policy Compliance for Management Group: '$($scopeDisplayName)' ('$scopeId')"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01" 
+    }
     $method = 'POST'
     $policyComplianceResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     if ($policyComplianceResult -eq 'ResponseTooLarge') {
-        if ($TargetMgOrSub -eq 'Sub') { ($script:htCachePolicyComplianceResponseTooLargeSUB).($scopeId) = @{} }
-        if ($TargetMgOrSub -eq 'MG') {
- ($script:htCachePolicyComplianceResponseTooLargeMG).($scopeId) = @{}
+        if ($TargetMgOrSub -eq 'Sub') { 
+            $script:htCachePolicyComplianceResponseTooLargeSUB.($scopeId) = @{} 
         }
+        if ($TargetMgOrSub -eq 'MG') {
+            $script:htCachePolicyComplianceResponseTooLargeMG.($scopeId) = @{}
+        }
+    }
+    elseif ($policyComplianceResult -eq 'DisallowedProvider') {
+        #nothing to do
     }
     else {
         if ($TargetMgOrSub -eq 'Sub') { ($script:htCachePolicyComplianceSUB).($scopeId) = @{} }
@@ -715,21 +738,28 @@ $funcDataCollectionPolicyComplianceStates = $function:dataCollectionPolicyCompli
 function dataCollectionASCSecureScoreSub {
     [CmdletBinding()]Param(
         [string]$scopeId,
-        [string]$scopeDisplayName
+        [string]$scopeDisplayName,
+        $subscriptionQuotaId
     )
 
     if ($azAPICallConf['htParameters'].NoMDfCSecureScore -eq $false) {
-        $currentTask = "Microsoft Defender for Cloud Secure Score Sub: '$($scopeDisplayName)' ('$scopeId')"
+        $currentTask = "Getting Microsoft Defender for Cloud Secure Score for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/securescores?api-version=2020-01-01"
         $method = 'GET'
         $subASCSecureScoreResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-        if (($subASCSecureScoreResult).count -gt 0) {
-            $subscriptionASCSecureScore = "$($subASCSecureScoreResult.properties.score.current) of $($subASCSecureScoreResult.properties.score.max) points"
+        if ($subASCSecureScoreResult -ne 'DisallowedProvider') {
+            if (($subASCSecureScoreResult).count -gt 0) {
+                $subscriptionASCSecureScore = "$($subASCSecureScoreResult.properties.score.current) of $($subASCSecureScoreResult.properties.score.max) points"
+            }
+            else {
+                $subscriptionASCSecureScore = 'n/a'
+            }
         }
         else {
             $subscriptionASCSecureScore = 'n/a'
         }
+
     }
     else {
         $subscriptionASCSecureScore = "excluded (-NoMDfCSecureScore $($azAPICallConf['htParameters'].NoMDfCSecureScore))"
@@ -748,7 +778,7 @@ function dataCollectionBluePrintDefinitionsMG {
         $mgAscSecureScoreResult
     )
 
-    $currentTask = "Blueprint definitions MG '$($scopeDisplayName)' ('$scopeId')"
+    $currentTask = "Getting Blueprint definitions for Management Group: '$($scopeDisplayName)' ('$scopeId')"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
     $method = 'GET'
     $scopeBlueprintDefinitionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
@@ -808,45 +838,47 @@ function dataCollectionBluePrintDefinitionsSub {
         $subscriptionTagsCount
     )
 
-    $currentTask = "Blueprint definitions Sub '$($scopeDisplayName)' ('$scopeId')"
+    $currentTask = "Getting Blueprint definitions for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Blueprint/blueprints?api-version=2018-11-01-preview"
     $method = 'GET'
     $scopeBlueprintDefinitionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     $addRowToTableDone = $false
-    if (($scopeBlueprintDefinitionResult).count -gt 0) {
-        foreach ($blueprint in $scopeBlueprintDefinitionResult) {
+    if ($scopeBlueprintDefinitionResult -ne 'DisallowedProvider') {
+        if (($scopeBlueprintDefinitionResult).count -gt 0) {
+            foreach ($blueprint in $scopeBlueprintDefinitionResult) {
 
-            if (-not $($htCacheDefinitionsBlueprint).($blueprint.Id)) {
+                if (-not $($htCacheDefinitionsBlueprint).($blueprint.Id)) {
                 ($script:htCacheDefinitionsBlueprint).($blueprint.Id) = @{}
+                }
+
+                $blueprintName = $blueprint.name
+                $blueprintId = $blueprint.Id
+                $blueprintDisplayName = $blueprint.properties.displayName
+                $blueprintDescription = $blueprint.properties.description
+                $blueprintScoped = "/subscriptions/$($scopeId)"
+
+                $addRowToTableDone = $true
+                addRowToTable `
+                    -level $hierarchyLevel `
+                    -mgName $childMgDisplayName `
+                    -mgId $childMgId `
+                    -mgParentId $childMgParentId `
+                    -mgParentName $childMgParentName `
+                    -mgASCSecureScore $mgAscSecureScoreResult `
+                    -Subscription $scopeDisplayName `
+                    -SubscriptionId $scopeId `
+                    -SubscriptionQuotaId $subscriptionQuotaId `
+                    -SubscriptionState $subscriptionState `
+                    -SubscriptionASCSecureScore $subscriptionASCSecureScore `
+                    -SubscriptionTags $subscriptionTags `
+                    -SubscriptionTagsCount $subscriptionTagsCount `
+                    -BlueprintName $blueprintName `
+                    -BlueprintId $blueprintId `
+                    -BlueprintDisplayName $blueprintDisplayName `
+                    -BlueprintDescription $blueprintDescription `
+                    -BlueprintScoped $blueprintScoped
             }
-
-            $blueprintName = $blueprint.name
-            $blueprintId = $blueprint.Id
-            $blueprintDisplayName = $blueprint.properties.displayName
-            $blueprintDescription = $blueprint.properties.description
-            $blueprintScoped = "/subscriptions/$($scopeId)"
-
-            $addRowToTableDone = $true
-            addRowToTable `
-                -level $hierarchyLevel `
-                -mgName $childMgDisplayName `
-                -mgId $childMgId `
-                -mgParentId $childMgParentId `
-                -mgParentName $childMgParentName `
-                -mgASCSecureScore $mgAscSecureScoreResult `
-                -Subscription $scopeDisplayName `
-                -SubscriptionId $scopeId `
-                -SubscriptionQuotaId $subscriptionQuotaId `
-                -SubscriptionState $subscriptionState `
-                -SubscriptionASCSecureScore $subscriptionASCSecureScore `
-                -SubscriptionTags $subscriptionTags `
-                -SubscriptionTagsCount $subscriptionTagsCount `
-                -BlueprintName $blueprintName `
-                -BlueprintId $blueprintId `
-                -BlueprintDisplayName $blueprintDisplayName `
-                -BlueprintDescription $blueprintDescription `
-                -BlueprintScoped $blueprintScoped
         }
     }
 
@@ -875,75 +907,77 @@ function dataCollectionBluePrintAssignmentsSub {
         $subscriptionTagsCount
     )
 
-    $currentTask = "Blueprint assignments '$($scopeDisplayName)' ('$scopeId')"
+    $currentTask = "Getting Blueprint assignments for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Blueprint/blueprintAssignments?api-version=2018-11-01-preview"
     $method = 'GET'
     $subscriptionBlueprintAssignmentsResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     $addRowToTableDone = $false
-    if (($subscriptionBlueprintAssignmentsResult).count -gt 0) {
-        foreach ($subscriptionBlueprintAssignment in $subscriptionBlueprintAssignmentsResult) {
+    if ($subscriptionBlueprintAssignmentsResult -ne 'DisallowedProvider') {
+        if (($subscriptionBlueprintAssignmentsResult).count -gt 0) {
+            foreach ($subscriptionBlueprintAssignment in $subscriptionBlueprintAssignmentsResult) {
 
-            if (-not ($htCacheAssignmentsBlueprint).($subscriptionBlueprintAssignment.Id)) {
+                if (-not ($htCacheAssignmentsBlueprint).($subscriptionBlueprintAssignment.Id)) {
                 ($script:htCacheAssignmentsBlueprint).($subscriptionBlueprintAssignment.Id) = @{}
                 ($script:htCacheAssignmentsBlueprint).($subscriptionBlueprintAssignment.Id) = $subscriptionBlueprintAssignment
-            }
+                }
 
-            if (($subscriptionBlueprintAssignment.properties.blueprintId) -like '/subscriptions/*') {
-                $blueprintScope = $subscriptionBlueprintAssignment.properties.blueprintId -replace '/providers/Microsoft.Blueprint/blueprints/.*', ''
-                $blueprintName = $subscriptionBlueprintAssignment.properties.blueprintId -replace '.*/blueprints/', '' -replace '/versions/.*', ''
-            }
-            if (($subscriptionBlueprintAssignment.properties.blueprintId) -like '/providers/Microsoft.Management/managementGroups/*') {
-                $blueprintScope = $subscriptionBlueprintAssignment.properties.blueprintId -replace '/providers/Microsoft.Blueprint/blueprints/.*', ''
-                $blueprintName = $subscriptionBlueprintAssignment.properties.blueprintId -replace '.*/blueprints/', '' -replace '/versions/.*', ''
-            }
+                if (($subscriptionBlueprintAssignment.properties.blueprintId) -like '/subscriptions/*') {
+                    $blueprintScope = $subscriptionBlueprintAssignment.properties.blueprintId -replace '/providers/Microsoft.Blueprint/blueprints/.*', ''
+                    $blueprintName = $subscriptionBlueprintAssignment.properties.blueprintId -replace '.*/blueprints/', '' -replace '/versions/.*', ''
+                }
+                if (($subscriptionBlueprintAssignment.properties.blueprintId) -like '/providers/Microsoft.Management/managementGroups/*') {
+                    $blueprintScope = $subscriptionBlueprintAssignment.properties.blueprintId -replace '/providers/Microsoft.Blueprint/blueprints/.*', ''
+                    $blueprintName = $subscriptionBlueprintAssignment.properties.blueprintId -replace '.*/blueprints/', '' -replace '/versions/.*', ''
+                }
 
-            $currentTask = "   Blueprint definitions related to Blueprint assignments '$($scopeDisplayName)' ('$scopeId')"
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/$($blueprintScope)/providers/Microsoft.Blueprint/blueprints/$($blueprintName)?api-version=2018-11-01-preview"
-            $method = 'GET'
-            $subscriptionBlueprintDefinitionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -caller 'CustomDataCollection'
+                $currentTask = "Getting Blueprint definitions related to Blueprint assignments for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/$($blueprintScope)/providers/Microsoft.Blueprint/blueprints/$($blueprintName)?api-version=2018-11-01-preview"
+                $method = 'GET'
+                $subscriptionBlueprintDefinitionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -caller 'CustomDataCollection'
 
-            if ($subscriptionBlueprintDefinitionResult -eq 'BlueprintNotFound') {
-                $blueprintName = 'BlueprintNotFound'
-                $blueprintId = 'BlueprintNotFound'
-                $blueprintAssignmentVersion = $subscriptionBlueprintAssignment.properties.blueprintId -replace '.*/'
-                $blueprintDisplayName = 'BlueprintNotFound'
-                $blueprintDescription = 'BlueprintNotFound'
-                $blueprintScoped = $blueprintScope
-                $blueprintAssignmentId = $subscriptionBlueprintAssignmentsResult.Id
-            }
-            else {
-                $blueprintName = $subscriptionBlueprintDefinitionResult.name
-                $blueprintId = $subscriptionBlueprintDefinitionResult.Id
-                $blueprintAssignmentVersion = $subscriptionBlueprintAssignment.properties.blueprintId -replace '.*/'
-                $blueprintDisplayName = $subscriptionBlueprintDefinitionResult.properties.displayName
-                $blueprintDescription = $subscriptionBlueprintDefinitionResult.properties.description
-                $blueprintScoped = $blueprintScope
-                $blueprintAssignmentId = $subscriptionBlueprintAssignmentsResult.Id
-            }
+                if ($subscriptionBlueprintDefinitionResult -eq 'BlueprintNotFound') {
+                    $blueprintName = 'BlueprintNotFound'
+                    $blueprintId = 'BlueprintNotFound'
+                    $blueprintAssignmentVersion = $subscriptionBlueprintAssignment.properties.blueprintId -replace '.*/'
+                    $blueprintDisplayName = 'BlueprintNotFound'
+                    $blueprintDescription = 'BlueprintNotFound'
+                    $blueprintScoped = $blueprintScope
+                    $blueprintAssignmentId = $subscriptionBlueprintAssignmentsResult.Id
+                }
+                else {
+                    $blueprintName = $subscriptionBlueprintDefinitionResult.name
+                    $blueprintId = $subscriptionBlueprintDefinitionResult.Id
+                    $blueprintAssignmentVersion = $subscriptionBlueprintAssignment.properties.blueprintId -replace '.*/'
+                    $blueprintDisplayName = $subscriptionBlueprintDefinitionResult.properties.displayName
+                    $blueprintDescription = $subscriptionBlueprintDefinitionResult.properties.description
+                    $blueprintScoped = $blueprintScope
+                    $blueprintAssignmentId = $subscriptionBlueprintAssignmentsResult.Id
+                }
 
-            $addRowToTableDone = $true
-            addRowToTable `
-                -level $hierarchyLevel `
-                -mgName $childMgDisplayName `
-                -mgId $childMgId `
-                -mgParentId $childMgParentId `
-                -mgParentName $childMgParentName `
-                -mgASCSecureScore $mgAscSecureScoreResult `
-                -Subscription $scopeDisplayName `
-                -SubscriptionId $scopeId `
-                -SubscriptionQuotaId $subscriptionQuotaId `
-                -SubscriptionState $subscriptionState `
-                -SubscriptionASCSecureScore $subscriptionASCSecureScore `
-                -SubscriptionTags $subscriptionTags `
-                -SubscriptionTagsCount $subscriptionTagsCount `
-                -BlueprintName $blueprintName `
-                -BlueprintId $blueprintId `
-                -BlueprintDisplayName $blueprintDisplayName `
-                -BlueprintDescription $blueprintDescription `
-                -BlueprintScoped $blueprintScoped `
-                -BlueprintAssignmentVersion $blueprintAssignmentVersion `
-                -BlueprintAssignmentId $blueprintAssignmentId
+                $addRowToTableDone = $true
+                addRowToTable `
+                    -level $hierarchyLevel `
+                    -mgName $childMgDisplayName `
+                    -mgId $childMgId `
+                    -mgParentId $childMgParentId `
+                    -mgParentName $childMgParentName `
+                    -mgASCSecureScore $mgAscSecureScoreResult `
+                    -Subscription $scopeDisplayName `
+                    -SubscriptionId $scopeId `
+                    -SubscriptionQuotaId $subscriptionQuotaId `
+                    -SubscriptionState $subscriptionState `
+                    -SubscriptionASCSecureScore $subscriptionASCSecureScore `
+                    -SubscriptionTags $subscriptionTags `
+                    -SubscriptionTagsCount $subscriptionTagsCount `
+                    -BlueprintName $blueprintName `
+                    -BlueprintId $blueprintId `
+                    -BlueprintDisplayName $blueprintDisplayName `
+                    -BlueprintDescription $blueprintDescription `
+                    -BlueprintScoped $blueprintScoped `
+                    -BlueprintAssignmentVersion $blueprintAssignmentVersion `
+                    -BlueprintAssignmentId $blueprintAssignmentId
+            }
         }
     }
 
@@ -959,14 +993,16 @@ function dataCollectionPolicyExemptions {
     [CmdletBinding()]Param(
         [string]$TargetMgOrSub,
         [string]$scopeId,
-        [string]$scopeDisplayName
+        [string]$scopeDisplayName,
+        $subscriptionQuotaId
     )
 
-    $currentTask = "Policy exemptions $($TargetMgOrSub) '$($scopeDisplayName)' ('$scopeId')"
     if ($TargetMgOrSub -eq 'Sub') {
+        $currentTask = "Getting Policy exemptions for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/policyExemptions?api-version=2020-07-01-preview"
     }
     if ($TargetMgOrSub -eq 'MG') {
+        $currentTask = "Getting Policy exemptions for Management Group: '$($scopeDisplayName)' ('$scopeId')"
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/policyExemptions?api-version=2020-07-01-preview&`$filter=atScope()"
     }
     $method = 'GET'
@@ -988,14 +1024,16 @@ function dataCollectionPolicyDefinitions {
     [CmdletBinding()]Param(
         [string]$TargetMgOrSub,
         [string]$scopeId,
-        [string]$scopeDisplayName
+        [string]$scopeDisplayName,
+        $subscriptionQuotaId
     )
 
-    $currentTask = "Policy definitions $($TargetMgOrSub) '$($scopeDisplayName)' ('$scopeId')"
     if ($TargetMgOrSub -eq 'Sub') {
+        $currentTask = "Getting Policy definitions for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/policyDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Custom'"
     }
     if ($TargetMgOrSub -eq 'MG') {
+        $currentTask = "Getting Policy definitions for Management Group: '$($scopeDisplayName)' ('$scopeId')"
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementgroups/$($scopeId)/providers/Microsoft.Authorization/policyDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Custom'"
     }
     $method = 'GET'
@@ -1153,14 +1191,16 @@ function dataCollectionPolicySetDefinitions {
     [CmdletBinding()]Param(
         [string]$TargetMgOrSub,
         [string]$scopeId,
-        [string]$scopeDisplayName
+        [string]$scopeDisplayName,
+        $subscriptionQuotaId
     )
 
-    $currentTask = "PolicySet definitions $($TargetMgOrSub) '$($scopeDisplayName)' ('$scopeId')"
     if ($TargetMgOrSub -eq 'Sub') {
+        $currentTask = "Getting PolicySet definitions for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Custom'"
     }
     if ($TargetMgOrSub -eq 'MG') {
+        $currentTask = "Getting PolicySet definitions for Management Group: '$($scopeDisplayName)' ('$scopeId')"
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementgroups/$($scopeId)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Custom'"
     }
     $method = 'GET'
@@ -1281,7 +1321,7 @@ function dataCollectionPolicyAssignmentsMG {
     )
 
     $addRowToTableDone = $false
-    $currentTask = "Policy assignments '$($scopeDisplayName)' ('$($scopeId)')"
+    $currentTask = "Getting Policy assignments for Management Group: '$($scopeDisplayName)' ('$($scopeId)')"
     if ($azAPICallConf['htParameters'].LargeTenant -eq $false -or $azAPICallConf['htParameters'].PolicyAtScopeOnly -eq $false) {
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementgroups/$($scopeId)/providers/Microsoft.Authorization/policyAssignments?`$filter=atscope()&api-version=2021-06-01"
     }
@@ -1719,7 +1759,7 @@ function dataCollectionPolicyAssignmentsSub {
         $PolicySetDefinitionsScopedCount
     )
 
-    $currentTask = "Policy assignments '$($scopeDisplayName)' ('$scopeId')"
+    $currentTask = "Getting Policy assignments for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/policyAssignments?api-version=2021-06-01"
     $method = 'GET'
 
@@ -2243,14 +2283,16 @@ function dataCollectionRoleDefinitions {
     [CmdletBinding()]Param(
         [string]$TargetMgOrSub,
         [string]$scopeId,
-        [string]$scopeDisplayName
+        [string]$scopeDisplayName,
+        $subscriptionQuotaId
     )
 
-    $currentTask = "Custom Role definitions $($TargetMgOrSub) '$($scopeDisplayName)' ('$scopeId')"
     if ($TargetMgOrSub -eq 'Sub') {
+        $currentTask = "Getting Custom Role definitions for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2015-07-01&`$filter=type eq 'CustomRole'"
     }
     if ($TargetMgOrSub -eq 'MG') {
+        $currentTask = "Getting Custom Role definitions for Management Group: '$($scopeDisplayName)' ('$scopeId')"
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2015-07-01&`$filter=type eq 'CustomRole'"
     }
     $method = 'GET'
@@ -2321,7 +2363,7 @@ function dataCollectionRoleAssignmentsMG {
 
     $addRowToTableDone = $false
     #PIM MGRoleAssignmentScheduleInstances
-    $currentTask = "getARMRoleAssignmentScheduleInstances MG '$($scopeDisplayName)' ('$($scopeId)')"
+    $currentTask = "Getting ARM RoleAssignment ScheduleInstances for Management Group: '$($scopeDisplayName)' ('$($scopeId)')"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
     $method = 'GET'
     $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
@@ -2341,7 +2383,7 @@ function dataCollectionRoleAssignmentsMG {
     }
 
     #RoleAssignment API MG
-    $currentTask = "Role assignments API '$($scopeDisplayName)' ('$($scopeId)')"
+    $currentTask = "Getting Role assignments API for Management Group: '$($scopeDisplayName)' ('$($scopeId)')"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleAssignments?api-version=2015-07-01"
     $method = 'GET'
     $roleAssignmentsFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
@@ -2589,7 +2631,7 @@ function dataCollectionRoleAssignmentsSub {
 
     $addRowToTableDone = $false
     #Usage
-    $currentTask = "Role assignments usage metrics '$($scopeDisplayName)' ('$scopeId')"
+    $currentTask = "Getting Role assignments usage metrics for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics?api-version=2019-08-01-preview"
     $method = 'GET'
     $roleAssignmentsUsage = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -caller 'CustomDataCollection'
@@ -2597,7 +2639,7 @@ function dataCollectionRoleAssignmentsSub {
     $script:htSubscriptionsRoleAssignmentLimit.($scopeId) = $roleAssignmentsUsage.roleAssignmentsLimit
 
     #PIM SubscriptionRoleAssignmentScheduleInstances
-    $currentTask = "getARMRoleAssignmentScheduleInstances Sub '$($scopeDisplayName)' ('$scopeId')"
+    $currentTask = "Getting ARM RoleAssignment ScheduleInstances for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
     $method = 'GET'
     $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
@@ -2617,7 +2659,7 @@ function dataCollectionRoleAssignmentsSub {
     }
 
     #RoleAssignment API Sub
-    $currentTask = "Role assignments API '$($scopeDisplayName)' ('$scopeId')"
+    $currentTask = "Getting Role assignments API for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleAssignments?api-version=2015-07-01"
     $method = 'GET'
     $roleAssignmentsFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
@@ -2925,7 +2967,8 @@ function dataCollectionClassicAdministratorsSub {
     [CmdletBinding()]Param(
         [string]$scopeId,
         [string]$scopeDisplayName,
-        [string]$subscriptionMgPath
+        [string]$subscriptionMgPath,
+        $subscriptionQuotaId
     )
 
     $apiEndPoint = $azAPICallConf['azAPIEndpointUrls'].ARM
@@ -2935,7 +2978,7 @@ function dataCollectionClassicAdministratorsSub {
     $azAPICallPayload = @{
         uri                    = $uri
         method                 = 'GET'
-        currentTask            = "classicAdministrators '$($scopeDisplayName)' ('$scopeId')"
+        currentTask            = "classicAdministrators '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
         AzAPICallConfiguration = $azAPICallConf
     }
 
