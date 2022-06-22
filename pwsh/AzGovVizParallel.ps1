@@ -283,10 +283,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.16',
+    $AzAPICallVersion = '1.1.17',
 
     [string]
-    $ProductVersion = 'v6_major_20220614_1',
+    $ProductVersion = 'v6_major_20220622_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -2926,7 +2926,7 @@ function getMDfCSecureScoreMG {
             Write-Host '  Microsoft Defender for Cloud SecureScore for Management Groups will not be available' -ForegroundColor Yellow
         }
         else {
-            foreach ($entry in $getMgAscSecureScore.data) {
+            foreach ($entry in $getMgAscSecureScore) {
                 $script:htMgASCSecureScore.($entry.mgId) = @{}
                 if ($entry.secureScore -eq 404) {
                     $script:htMgASCSecureScore.($entry.mgId).SecureScore = 'n/a'
@@ -2937,6 +2937,110 @@ function getMDfCSecureScoreMG {
             }
         }
     }
+}
+function getOrphanedResources {
+    $start = Get-Date
+    Write-Host 'Getting orphaned resources (ARG)'
+
+    $queries = [System.Collections.ArrayList]@()
+    $intent = 'clean up'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.resources/subscriptions/resourceGroups'
+            query     = "ResourceContainers | where type =~ 'microsoft.resources/subscriptions/resourceGroups' | extend rgAndSub = strcat(resourceGroup, '--', subscriptionId) | join kind=leftouter (Resources | extend rgAndSub = strcat(resourceGroup, '--', subscriptionId) | summarize count() by rgAndSub) on rgAndSub | where isnull(count_) | project type, subscriptionId, Resource=id, Intent='$intent'"
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/networkSecurityGroups'
+            query     = "Resources | where type =~ 'microsoft.network/networkSecurityGroups' and isnull(properties.networkInterfaces) and isnull(properties.subnets) | project type, subscriptionId, Resource=id, Intent='$intent'"
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/routeTables'
+            query     = "resources | where type =~ 'microsoft.network/routeTables' | where isnull(properties.subnets) | project type, subscriptionId, Resource=id, Intent='$intent'"
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/networkInterfaces'
+            query     = "Resources | where type =~ 'microsoft.network/networkInterfaces' | where isnull(properties.privateEndpoint) | where isnull(properties.privateLinkService) | where properties.hostedWorkloads == '[]' | where properties !has 'virtualmachine' | project type, subscriptionId, Resource=id, Intent='$intent'"
+        })
+
+    $intent = 'cost savings'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.compute/disks'
+            query     = "Resources | where type =~ 'microsoft.compute/disks' | extend diskState = tostring(properties.diskState) | where managedBy == '' | where not(name endswith '-ASRReplica' or name startswith 'ms-asr-') | project type, subscriptionId, Resource=id, Intent='$intent'"
+        })
+
+    $intent = 'cost savings'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/publicIpAddresses'
+            query     = "Resources | where type =~ 'microsoft.network/publicIpAddresses' | where properties.ipConfiguration == '' | project type, subscriptionId, Resource=id, Intent='$intent'"
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.compute/availabilitySets'
+            query     = "Resources | where type =~ 'microsoft.compute/availabilitySets' | where properties.virtualMachines == '[]' | project type, subscriptionId, Resource=id, Intent='$intent'"
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/loadBalancers'
+            query     = "Resources | where type =~ 'microsoft.network/loadBalancers' | where properties.backendAddressPools == '[]' | project type, subscriptionId, Resource=id, Intent='$intent'"
+        })
+
+    $intent = 'clean up'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.web/serverfarms'
+            query     = "Resources | where type =~ 'microsoft.web/serverfarms' | where properties.numberOfSites == 0 | project type, subscriptionId, Resource=id, Intent='$intent'"
+        })
+
+    $queries | foreach-object -Parallel {
+        $queryDetail = $_
+        $arrayOrphanedResources = $using:arrayOrphanedResources
+        $subsToProcessInCustomDataCollection = $using:subsToProcessInCustomDataCollection
+        $azAPICallConf = $using:azAPICallConf
+
+        #Batching: https://docs.microsoft.com/en-us/azure/governance/resource-graph/troubleshoot/general#toomanysubscription
+        $counterBatch = [PSCustomObject] @{ Value = 0 }
+        $batchSize = 1000    
+        $subscriptionsBatch = $subsToProcessInCustomDataCollection | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
+
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01"
+        $method = "POST"
+        foreach ($batch in $subscriptionsBatch) { 
+            " Getting orphaned $($queryDetail.queryName) for $($batch.Group.subscriptionId.Count) Subscriptions"
+            $subscriptions = '"{0}"' -f ($batch.Group.subscriptionId -join '","')
+            $body = @"
+{
+"query": "$($queryDetail.query)",
+"subscriptions": [$($subscriptions)]
+}
+"@
+
+            $res = (AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -listenOn 'Content' -currentTask "Getting orphaned $($queryDetail.queryName)")
+            #Write-Host '$res.count:' $res.count
+            if ($res.count -gt 0) {
+                foreach ($resource in $res) {
+                    $null = $script:arrayOrphanedResources.Add($resource)
+                }
+            }
+        }
+    } -ThrottleLimit ($queries.Count)
+
+    if ($arrayOrphanedResources.Count -gt 0) {
+        Write-Host " Found $($arrayOrphanedResources.Count) orphaned Resources"
+        Write-Host " Exporting OrphanedResources CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesOrphaned.csv'"
+        $arrayOrphanedResources | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesOrphaned.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+    }
+    else {
+        Write-Host " No orphaned Resources found"
+    }
+
+    $end = Get-Date
+    Write-Host "Getting orphaned resources (ARG) processing duration: $((NEW-TIMESPAN -Start $start -End $end).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds)"
 }
 function getResourceDiagnosticsCapability {
     Write-Host 'Checking Resource Types Diagnostics capability (1st party only)'
@@ -3990,6 +4094,204 @@ function processDataCollection {
 
         if (-not $azAPICallConf['htParameters'].HierarchyMapOnly -and -not $azAPICallConf['htParameters'].ManagementGroupsOnly) {
             if (-not $NoCsvExport) {
+
+                #fluctuation
+                Write-Host "Process Resource fluctuation"
+                $start = get-date
+                if (Test-Path -Filter "*$($ManagementGroupId)_ResourcesAll.csv" -LiteralPath "$($outputPath)") {
+                    $startImportPrevious = get-date
+                    $doResourceFluctuation = $true
+                    
+                    try {
+                        $previous = Get-ChildItem -Path $outputPath -Filter "*$($ManagementGroupId)_ResourcesAll.csv" | Sort-Object -Descending -Property LastWriteTime | Select-Object -First 1 -ErrorAction Stop
+                        $importPrevious = Import-Csv -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($previous.Name)" -Encoding utf8 -Delimiter ";" | Select-Object -ExpandProperty id
+                        Write-Host " Import previous ($($previous.Name)) duration: $((NEW-TIMESPAN -Start $startImportPrevious -End (get-date)).TotalSeconds)"
+                    }
+                    catch {
+                        Write-Host " FAILED: Import-Csv '$($outputPath)$($DirectorySeparatorChar)$($previous.Name)'"
+                        $doResourceFluctuation = $false
+
+                    }
+
+                    if ($doResourceFluctuation) {
+                        #$importPrevious.Count
+
+                        #https://gist.github.com/fatherjack/4c91cc6832b8b02d1b7319716a5fba52
+                        function Compare-StringSet {
+                            <#
+                        .SYNOPSIS
+                        Compare two sets of strings and see the matched and unmatched elements from each input
+                        
+                        .DESCRIPTION
+                        Compares sets of 
+                        
+                        .PARAMETER Ref
+                        The reference set of values to be compared
+                        
+                        .PARAMETER Diff
+                        The difference set of values to be compared
+                        
+                        .PARAMETER CaseSensitive
+                        Enables a case-sensitive comparison
+                        
+                        .EXAMPLE
+                        $ref, $dif = @(
+                            , @('a', 'b', 'c')
+                            , @('b', 'c', 'd')
+                        )
+                        $Sets = Compare-StringSet $ref $dif
+                        $Sets.RefOnly
+                        
+                        $Sets.DiffOnly
+                        
+                        $Sets.Both
+                        
+                        This example sets up two arrays with some similar values and then passes them both to the Compare-StringSet function. the results of this are stored in the variable $Sets.
+                        $Sets is an object that has three properties - RefOnly, DiffOnly, and Both. These are sets of the incoming values where they intersect or not.
+                        
+                        .EXAMPLE
+                        $ref, $dif = @(
+                            , @('tree', 'house', 'football')
+                            , @('dog', 'cat', 'tree', 'house', 'Football')
+                        )
+                        $Sets = Compare-StringSet $ref $dif -CaseSensitive
+                        $Sets.RefOnly
+                        $Sets.DiffOnly
+                        $Sets.Both
+                        
+                        This example sets up two arrays with some similar values and then passes them both to the Compare-StringSet function using the -CaseSensitive switch. The results of this are stored in the variable $Sets.
+                        $Sets is an object that has three properties - RefOnly, DiffOnly, and Both. 
+                        
+                        Because of the -CaseSensitive switch usage 'football' is shown as in RefOnly and 'Football' is shown as in DiffOnly.
+                        
+                        .NOTES
+                        From https://gist.github.com/IISResetMe/57ce7b76e1001974a4f7170e10775875
+                        #>
+                        
+                            param(
+                                [string[]]$Ref,
+                                [string[]]$Diff,
+
+                                [switch]$CaseSensitive
+                            )
+
+                            $Comparer = if ($CaseSensitive) {
+                                [System.StringComparer]::InvariantCulture
+                            }
+                            else {
+                                [System.StringComparer]::InvariantCultureIgnoreCase
+                            }
+
+                            $Results = [ordered]@{
+                                RefOnly  = @()
+                                Both     = @()
+                                DiffOnly = @()
+                            }
+
+                            $temp = [System.Collections.Generic.HashSet[string]]::new($Ref, $Comparer)
+                            $temp.IntersectWith($Diff)
+                            $Results['Both'] = $temp
+
+                            #$temp = [System.Collections.Generic.HashSet[string]]::new($Ref, [System.StringComparer]::CurrentCultureIgnoreCase)
+                            $temp = [System.Collections.Generic.HashSet[string]]::new($Ref, $Comparer)
+                            $temp.ExceptWith($Diff)
+                            $Results['RefOnly'] = $temp
+
+                            #$temp = [System.Collections.Generic.HashSet[string]]::new($Diff, [System.StringComparer]::CurrentCultureIgnoreCase)
+                            $temp = [System.Collections.Generic.HashSet[string]]::new($Diff, $Comparer)
+                            $temp.ExceptWith($Ref)
+                            $Results['DiffOnly'] = $temp
+
+                            return [pscustomobject]$Results
+                        }
+
+                        Write-Host " Comparing previous ($($importPrevious.Count)) with latest ($($resourcesIdsAll.Count))"
+                        $start = get-date
+                        $x = Compare-StringSet $importPrevious $resourcesIdsAll.id
+                        Write-Host " unique values in previous (deleted):" $x.RefOnly.Count
+                        Write-Host " values that are contained in previous and latest: $($x.Both.Count)"
+                        Write-Host " unique values in latest (added):" $x.DiffOnly.Count
+                        $end = get-date
+                        Write-Host " Compare previous with latest duration: $((NEW-TIMESPAN -Start $start -End $end).TotalMinutes) mins ($((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) sec)"
+
+                        $script:arrayResourceFluctuationFinal = [System.Collections.ArrayList]@()
+
+                        #ADDED
+                        $arrayAdded = [System.Collections.ArrayList]@()
+                        foreach ($resource in $x.DiffOnly) {
+                            $resourceSplitted = $resource.split('/')
+                            #$resourceSplitted
+
+                            $null = $arrayAdded.Add([PSCustomObject]@{
+                                    subscriptionId = $resourceSplitted[2]
+                                    resourceType0  = $resourceSplitted[6]
+                                    resourceType1  = $resourceSplitted[7]
+                                    resourceType2  = $resourceSplitted[9]
+                                    resourceType3  = $resourceSplitted[11]
+                                })
+                            if ($resourceSplitted.Count -gt 13) {
+                                Write-Host " Unforeseen Resource type!"
+                                Write-Host " Please report this Resource type at $($GithubRepository): '$resource'"
+                            }
+                        }
+
+                        if ($arrayAdded.Count -gt 0) {
+                            $arrayGroupedByResourceType = $arrayAdded | group-object -Property resourceType0, resourceType1, resourceType2, resourceType3
+                            foreach ($resourceType in $arrayGroupedByResourceType) {
+                                $arrayGroupedBySubscription = $arrayGroupedByResourceType.where({ $_.Name -eq $resourceType.Name }).Group | Group-Object -Property subscriptionId | Select-Object -ExcludeProperty Group
+                                $null = $arrayResourceFluctuationFinal.Add([PSCustomObject]@{
+                                        Event                = 'Added'
+                                        ResourceType         = $resourceType.Name
+                                        'Resource count'     = $resourceType.Count
+                                        'Subscription count' = ($arrayGroupedBySubscription | Measure-Object).Count
+                                    })
+                            }
+                        }
+
+                        #REMOVED
+                        $arrayRemoved = [System.Collections.ArrayList]@()
+                        foreach ($resource in $x.RefOnly) {
+                            $resourceSplitted = $resource.split('/')
+                            #$resourceSplitted
+
+                            $null = $arrayRemoved.Add([PSCustomObject]@{
+                                    subscriptionId = $resourceSplitted[2]
+                                    resourceType0  = $resourceSplitted[6]
+                                    resourceType1  = $resourceSplitted[7]
+                                    resourceType2  = $resourceSplitted[9]
+                                    resourceType3  = $resourceSplitted[11]
+                                })
+                            if ($resourceSplitted.Count -gt 13) {
+                                Write-Host " Unforeseen Resource type!"
+                                Write-Host " Please report this Resource type at $($GithubRepository): '$resource'"
+                            }
+                        }
+
+                        if ($arrayRemoved.Count -gt 0) {
+                            $arrayGroupedByResourceType = $arrayRemoved | group-object -Property resourceType0, resourceType1, resourceType2, resourceType3
+                            foreach ($resourceType in $arrayGroupedByResourceType) {
+                                $arrayGroupedBySubscription = $arrayGroupedByResourceType.where({ $_.Name -eq $resourceType.Name }).Group | Group-Object -Property subscriptionId | Select-Object -ExcludeProperty Group
+                                $null = $arrayResourceFluctuationFinal.Add([PSCustomObject]@{
+                                        Event                = 'Removed'
+                                        ResourceType         = $resourceType.Name
+                                        'Resource count'     = $resourceType.Count
+                                        'Subscription count' = ($arrayGroupedBySubscription | Measure-Object).Count
+                                    })
+                            }
+                        }
+                    }
+                }
+                else {
+                    Write-Host " Process Resource fluctuation skipped, no previous output (*$($ManagementGroupId)_ResourcesAll.csv) found"
+                }
+
+                if ($arrayResourceFluctuationFinal.Count -gt 0 -and $doResourceFluctuation) {
+                    #DataCollection Export of Resource fluctuation
+                    Write-Host "Exporting ResourceFluctuation CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuation.csv'"
+                    $arrayResourceFluctuationFinal | Sort-Object -Property ResourceType | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuation.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                }
+                Write-Host "Process Resource fluctuation duration: $((NEW-TIMESPAN -Start $start -End (get-date)).TotalSeconds) seconds"
+
                 #DataCollection Export of All Resources
                 Write-Host "Exporting ResourcesAll CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv'"
                 $resourcesIdsAll | Sort-Object -Property id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
@@ -7160,6 +7462,110 @@ extensions: [{ name: 'sort' }]
         #endregion ScopeInsightsResources
     }
 
+    #region ScopeInsightsOrphanedResources
+    if ($mgOrSub -eq 'sub') {
+        if ($arrayOrphanedResourcesGroupedBySubscription) {
+            $orphanedResourcesThisSubscription = $arrayOrphanedResourcesGroupedBySubscription.where({ $_.Name -eq $subscriptionId })
+            if ($orphanedResourcesThisSubscription) {
+                $orphanedResourcesThisSubscriptionCount = $orphanedResourcesThisSubscription.Group.count
+                $orphanedResourcesThisSubscriptionGroupedByType = $orphanedResourcesThisSubscription.Group | Group-Object -Property type
+                $orphanedResourcesThisSubscriptionGroupedByTypeCount = ($orphanedResourcesThisSubscriptionGroupedByType | Measure-Object).Count
+                $tfCount = $orphanedResourcesThisSubscriptionGroupedByTypeCount
+                $htmlTableId = "ScopeInsights_OrphanedResources_$($subscriptionId -replace '-','_')"
+                $randomFunctionName = "func_$htmlTableId"
+                [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-trash-o" aria-hidden="true"></i> Resources orphaned $orphanedResourcesThisSubscriptionCount ($orphanedResourcesThisSubscriptionGroupedByTypeCount ResourceTypes)</p></button>
+<div class="content contentSISub">
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">'Azure Orphan Resources' ARG queries and workbooks by Dolev Shor</span> <a class="externallink" href="https://github.com/dolevshor/azure-orphan-resources" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="$cssClass">
+<thead>
+<tr>
+<th>ResourceType</th>
+<th>Resource count</th>
+<th>Intent</th>
+</tr>
+</thead>
+<tbody>
+"@)
+                $htmlScopeInsightsOrphanedResources = $null
+                $htmlScopeInsightsOrphanedResources = foreach ($resourceType in $orphanedResourcesThisSubscriptionGroupedByType | Sort-Object -Property Name) {
+                    @"
+<tr>
+<td>$($resourceType.Name)</td>
+<td>$($resourceType.Group.Count)</td>
+<td>$($resourceType.Group[0].Intent)</td>
+</tr>
+"@
+                }
+                [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsOrphanedResources)
+                [void]$htmlScopeInsights.AppendLine(@"
+            </tbody>
+        </table>
+        <script>
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+                if ($tfCount -gt 10) {
+                    $spectrum = "10, $tfCount"
+                    if ($tfCount -gt 50) {
+                        $spectrum = "10, 25, 50, $tfCount"
+                    }
+                    if ($tfCount -gt 100) {
+                        $spectrum = "10, 30, 50, 100, $tfCount"
+                    }
+                    if ($tfCount -gt 500) {
+                        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                    }
+                    if ($tfCount -gt 1000) {
+                        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                    }
+                    if ($tfCount -gt 2000) {
+                        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                    }
+                    if ($tfCount -gt 3000) {
+                        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                    }
+                    [void]$htmlScopeInsights.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+                }
+                [void]$htmlScopeInsights.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+                col_2: 'select',                
+                col_types: [
+                    'caseinsensitivestring',
+                    'number',
+                    'caseinsensitivestring'
+                ],
+extensions: [{ name: 'sort' }]
+            };
+            var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+            tf.init();}}
+        </script>
+    </div>
+"@)
+            }
+            else {
+                [void]$htmlScopeInsights.AppendLine(@"
+                <p><i class="fa fa-ban" aria-hidden="true"></i> No Resources orphaned</p>
+"@)
+            }
+        }
+        else {
+            [void]$htmlScopeInsights.AppendLine(@"
+            <p><i class="fa fa-ban" aria-hidden="true"></i> No Resources orphaned</p>
+"@)
+        }
+        [void]$htmlScopeInsights.AppendLine(@'
+</td></tr>
+<tr><td class="detailstd">
+'@)
+    }
+    #endregion ScopeInsightsOrphanedResources
+
     #ScopeInsightsDiagnosticsCapable
     if ($azAPICallConf['htParameters'].NoResources -eq $false) {
         #resourcesDiagnosticsCapable
@@ -10081,7 +10487,6 @@ function processTenantSummary() {
         if ($tenantCustomPoliciesCount -gt 0) {
             $tfCount = $tenantCustomPoliciesCount
             $htmlTableId = 'TenantSummary_customPolicies'
-            $randomFunctionName = "func_$htmlTableId"
             [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_customPolicies"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tenantCustomPoliciesCount Custom Policy definitions ($scopeNamingSummary)</span></button>
 <div class="content TenantSummary">
@@ -10244,7 +10649,6 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         if ($tenantCustomPoliciesCount -gt 0) {
             $tfCount = $tenantCustomPoliciesCount
             $htmlTableId = 'TenantSummary_customPolicies'
-            $randomFunctionName = "func_$htmlTableId"
             [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_customPolicies"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tenantCustomPoliciesCount Custom Policy definitions $scopeNamingSummary ($customPoliciesFromSuperiorMGs from superior scopes)</span></button>
 <div class="content TenantSummary">
@@ -15626,7 +16030,205 @@ extensions: [{ name: 'sort' }]
         $endSUMMARYResources = Get-Date
         Write-Host "   SUMMARY Resources ByLocation processing duration: $((NEW-TIMESPAN -Start $startSUMMARYResources -End $endSUMMARYResources).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYResources -End $endSUMMARYResources).TotalSeconds) seconds)"
         #endregion SUMMARYResourcesByLocation
+
+        #region SUMMARYResourceFluctuation
+        $startSUMMARYResourceFluctuation = Get-Date
+        Write-Host '  processing TenantSummary Resource fluctuation'
+        if (($arrayResourceFluctuationFinal).count -gt 0) {
+            $resourceTypesCount = ($arrayResourceFluctuationFinal | Group-Object -Property ResourceType | Measure-Object).Count
+            $addedCount = ($arrayResourceFluctuationFinal.where({$_.Event -eq 'Added'}).'Resource count' | Measure-Object -Sum).Sum
+            $removedCount = ($arrayResourceFluctuationFinal.where({$_.Event -eq 'Removed'}).'Resource count' | Measure-Object -Sum).Sum
+
+            $tfCount = ($arrayResourceFluctuationFinal).count
+            $htmlTableId = 'TenantSummary_resourceFluctuation'
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_resourceFluctuation"><i class="padlx fa fa-history" aria-hidden="true"></i> <span class="valignMiddle">Resource fluctuation - $resourceTypesCount Resource types (Resources: $addedCount added, $removedCount removed)</span>
+</button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Event</th>
+<th>ResourceType</th>
+<th>Resource count</th>
+<th>Subscription count</th>
+</tr>
+</thead>
+<tbody>
+"@)
+            $htmlSUMMARYResourceFluctuation = $null
+            $htmlSUMMARYResourceFluctuation = foreach ($entry in $arrayResourceFluctuationFinal | Sort-Object -Property ResourceType, Event) {
+                @"
+<tr>
+<td>$($entry.Event)</td>
+<td>$($entry.ResourceType)</td>
+<td>$($entry.'Resource count')</td>
+<td>$($entry.'Subscription count')</td>
+</tr>
+"@
+
+            }
+            [void]$htmlTenantSummary.AppendLine($htmlSUMMARYResourceFluctuation)
+            [void]$htmlTenantSummary.AppendLine(@"
+        </tbody>
+    </table>
+</div>
+<script>
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
+        base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+        col_0: 'select',  
+        col_types: [
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'number',
+            'number'
+        ],
+extensions: [{ name: 'sort' }]
+    };
+    var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+    tf.init();}}
+</script>
+"@)
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@'
+                <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No Resource fluctuation since last run</p>
+'@)
+        }
+        $endSUMMARYResourceFluctuation = Get-Date
+        Write-Host "   SUMMARY Resource fluctuation processing duration: $((NEW-TIMESPAN -Start $startSUMMARYResourceFluctuation -End $endSUMMARYResourceFluctuation).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYResourceFluctuation -End $endSUMMARYResourceFluctuation).TotalSeconds) seconds)"
+        #endregion SUMMARYResourceFluctuation
     }
+
+    #region SUMMARYOrphanedResources
+    $startSUMMARYOrphanedResources = Get-Date
+    Write-Host '  processing TenantSummary Orphaned Resources'
+    if ($arrayOrphanedResources.count -gt 0) {
+        $script:arrayOrphanedResourcesSlim = $arrayOrphanedResources | Sort-Object -Property type | Select-Object -Property type, subscriptionId, intent
+        $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type
+        $orphanedResourceTypesCount = ($arrayOrphanedResourcesGroupedByType | Measure-Object).Count
+
+        $tfCount = $orphanedResourceTypesCount
+        $htmlTableId = 'TenantSummary_orphanedResources'
+        [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_orphanedResources"><i class="padlx fa fa-trash-o" aria-hidden="true"></i> <span class="valignMiddle">Resources orphaned $($arrayOrphanedResources.count) ($orphanedResourceTypesCount ResourceTypes)</span>
+</button>
+<div class="content TenantSummary">
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> 'Azure Orphan Resources' ARG queries and workbooks by Dolev Shor</span> <a class="externallink" href="https://github.com/dolevshor/azure-orphan-resources" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>ResourceType</th>
+<th>Resource count</th>
+<th>Subscriptions count</th>
+<th>Intent</th>
+</tr>
+</thead>
+<tbody>
+"@)
+        $htmlSUMMARYOrphanedResources = $null
+        $htmlSUMMARYOrphanedResources = foreach ($orphanedResourceType in $arrayOrphanedResourcesGroupedByType | Sort-Object -Property Name) {
+            $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)" = ($orphanedResourceType.count)
+            @"
+<tr>
+<td>$($orphanedResourceType.Name)</td>
+<td>$($orphanedResourceType.count)</td>
+<td>$(($orphanedResourceType.Group.SubscriptionId | Sort-Object -Unique).Count)</td>
+<td>$($orphanedResourceType.Group[0].Intent)</td>
+</tr>
+"@
+
+        }
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYOrphanedResources)
+        [void]$htmlTenantSummary.AppendLine(@"
+        </tbody>
+    </table>
+</div>
+<script>
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
+        base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+        col_3: 'select',        
+        col_types: [
+            'caseinsensitivestring',
+            'number',
+            'number',
+            'caseinsensitivestring'
+        ],
+extensions: [{ name: 'sort' }]
+    };
+    var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+    tf.init();}}
+</script>
+"@)
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@'
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No Resources orphaned</p>
+'@)
+    }
+    $endSUMMARYOrphanedResources = Get-Date
+    Write-Host "   SUMMARY Orphaned Resources processing duration: $((NEW-TIMESPAN -Start $startSUMMARYOrphanedResources -End $endSUMMARYOrphanedResources).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYOrphanedResources -End $endSUMMARYOrphanedResources).TotalSeconds) seconds)"
+    #endregion SUMMARYOrphanedResources
 
     #region SUMMARYSubResourceProviders
     $startSUMMARYSubResourceProviders = Get-Date
@@ -22631,7 +23233,6 @@ function verifyModules3rd {
 
             $installModuleSuccess = $false
             try {
-
                 if (-not $moduleVersion) {
                     Write-Host '  Check latest module version'
                     try {
@@ -22645,17 +23246,23 @@ function verifyModules3rd {
                 }
 
                 if (-not $installModuleSuccess) {
-                    $moduleVersionLoaded = (Get-InstalledModule -name $($module.ModuleName)).Version
-                    if ($moduleVersionLoaded -eq $moduleVersion) {
-                        $installModuleSuccess = $true
+                    try {
+                        $moduleVersionLoaded = (Get-InstalledModule -name $($module.ModuleName)).Version
+                        if ($moduleVersionLoaded -eq $moduleVersion) {
+                            $installModuleSuccess = $true
+                        }
+                        else {
+                            Write-Host "  Deviating module version $moduleVersionLoaded"
+                            throw
+                        }
                     }
-                    else {
-                        throw "  '(Get-InstalledModule -name $($module.ModuleName)).Version' returned null"
+                    catch {
+                        throw
                     }
                 }
             }
             catch {
-                Write-Host "  '$($module.ModuleName)' not installed"
+                Write-Host "  '$($module.ModuleName) $moduleVersion' not installed"
                 if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
                     Write-Host "  Installing $($module.ModuleName) module ($($moduleVersion))"
                     try {
@@ -22687,9 +23294,15 @@ function verifyModules3rd {
                         if ($installModuleUserChoice -eq 'y') {
                             try {
                                 Install-Module -Name $module.ModuleName -RequiredVersion $moduleVersion
+                                try {
+                                    Import-Module -Name $module.ModuleName -RequiredVersion $moduleVersion -Force
+                                }
+                                catch {
+                                    throw "  'Import-Module -Name $($module.ModuleName) -RequiredVersion $moduleVersion -Force' failed"
+                                }
                             }
                             catch {
-                                throw "  'Install-Module -Name $module.ModuleName -RequiredVersion $moduleVersion' failed"
+                                throw "  'Install-Module -Name $($module.ModuleName) -RequiredVersion $moduleVersion' failed"
                             }
                         }
                         elseif ($installModuleUserChoice -eq 'n') {
@@ -25077,7 +25690,7 @@ function dataCollectionRoleAssignmentsMG {
     $method = 'GET'
     $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-    if ($roleAssignmentScheduleInstancesFromAPI -eq 'ResourceNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'TenantNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'InvalidResourceType') {
+    if ($roleAssignmentScheduleInstancesFromAPI -eq 'ResourceNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'TenantNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'InvalidResourceType' -or $roleAssignmentScheduleInstancesFromAPI -eq 'RoleAssignmentScheduleInstancesError') {
         #Write-Host "Scope '$($scopeDisplayName)' ('$scopeId') not onboarded in PIM"
     }
     else {
@@ -25353,7 +25966,7 @@ function dataCollectionRoleAssignmentsSub {
     $method = 'GET'
     $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-    if ($roleAssignmentScheduleInstancesFromAPI -eq 'ResourceNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'TenantNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'InvalidResourceType') {
+    if ($roleAssignmentScheduleInstancesFromAPI -eq 'ResourceNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'TenantNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'InvalidResourceType' -or $roleAssignmentScheduleInstancesFromAPI -eq 'RoleAssignmentScheduleInstancesError') {
         #Write-Host "Scope '$($scopeDisplayName)' ('$scopeId') not onboarded in PIM"
     }
     else {
@@ -26266,6 +26879,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $arrayPsRule = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayPSRuleTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htClassicAdministrators = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $arrayOrphanedResources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
 getEntities
@@ -26286,6 +26900,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     #testAzContext
     getSubscriptions
     detailSubscriptions
+    showMemoryUsage
+    getOrphanedResources
     showMemoryUsage
 
     if ($azAPICallConf['htParameters'].NoMDfCSecureScore -eq $false) {
@@ -27238,6 +27854,9 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         }
         if ($arrayFeaturesAll.Count -gt 0) {
             $script:subFeaturesGroupedBySubscription = $arrayFeaturesAll | Group-Object -property subscriptionId
+        }
+        if ($arrayOrphanedResourcesSlim.Count -gt 0) {
+            $arrayOrphanedResourcesGroupedBySubscription = $arrayOrphanedResourcesSlim | Group-Object subscriptionId
         }
         processScopeInsights -mgChild $ManagementGroupId -mgChildOf $getMgParentId
         showMemoryUsage

@@ -1575,6 +1575,110 @@ extensions: [{ name: 'sort' }]
         #endregion ScopeInsightsResources
     }
 
+    #region ScopeInsightsOrphanedResources
+    if ($mgOrSub -eq 'sub') {
+        if ($arrayOrphanedResourcesGroupedBySubscription) {
+            $orphanedResourcesThisSubscription = $arrayOrphanedResourcesGroupedBySubscription.where({ $_.Name -eq $subscriptionId })
+            if ($orphanedResourcesThisSubscription) {
+                $orphanedResourcesThisSubscriptionCount = $orphanedResourcesThisSubscription.Group.count
+                $orphanedResourcesThisSubscriptionGroupedByType = $orphanedResourcesThisSubscription.Group | Group-Object -Property type
+                $orphanedResourcesThisSubscriptionGroupedByTypeCount = ($orphanedResourcesThisSubscriptionGroupedByType | Measure-Object).Count
+                $tfCount = $orphanedResourcesThisSubscriptionGroupedByTypeCount
+                $htmlTableId = "ScopeInsights_OrphanedResources_$($subscriptionId -replace '-','_')"
+                $randomFunctionName = "func_$htmlTableId"
+                [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-trash-o" aria-hidden="true"></i> Resources orphaned $orphanedResourcesThisSubscriptionCount ($orphanedResourcesThisSubscriptionGroupedByTypeCount ResourceTypes)</p></button>
+<div class="content contentSISub">
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">'Azure Orphan Resources' ARG queries and workbooks by Dolev Shor</span> <a class="externallink" href="https://github.com/dolevshor/azure-orphan-resources" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="$cssClass">
+<thead>
+<tr>
+<th>ResourceType</th>
+<th>Resource count</th>
+<th>Intent</th>
+</tr>
+</thead>
+<tbody>
+"@)
+                $htmlScopeInsightsOrphanedResources = $null
+                $htmlScopeInsightsOrphanedResources = foreach ($resourceType in $orphanedResourcesThisSubscriptionGroupedByType | Sort-Object -Property Name) {
+                    @"
+<tr>
+<td>$($resourceType.Name)</td>
+<td>$($resourceType.Group.Count)</td>
+<td>$($resourceType.Group[0].Intent)</td>
+</tr>
+"@
+                }
+                [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsOrphanedResources)
+                [void]$htmlScopeInsights.AppendLine(@"
+            </tbody>
+        </table>
+        <script>
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+                if ($tfCount -gt 10) {
+                    $spectrum = "10, $tfCount"
+                    if ($tfCount -gt 50) {
+                        $spectrum = "10, 25, 50, $tfCount"
+                    }
+                    if ($tfCount -gt 100) {
+                        $spectrum = "10, 30, 50, 100, $tfCount"
+                    }
+                    if ($tfCount -gt 500) {
+                        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                    }
+                    if ($tfCount -gt 1000) {
+                        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                    }
+                    if ($tfCount -gt 2000) {
+                        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                    }
+                    if ($tfCount -gt 3000) {
+                        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                    }
+                    [void]$htmlScopeInsights.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+                }
+                [void]$htmlScopeInsights.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+                col_2: 'select',                
+                col_types: [
+                    'caseinsensitivestring',
+                    'number',
+                    'caseinsensitivestring'
+                ],
+extensions: [{ name: 'sort' }]
+            };
+            var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+            tf.init();}}
+        </script>
+    </div>
+"@)
+            }
+            else {
+                [void]$htmlScopeInsights.AppendLine(@"
+                <p><i class="fa fa-ban" aria-hidden="true"></i> No Resources orphaned</p>
+"@)
+            }
+        }
+        else {
+            [void]$htmlScopeInsights.AppendLine(@"
+            <p><i class="fa fa-ban" aria-hidden="true"></i> No Resources orphaned</p>
+"@)
+        }
+        [void]$htmlScopeInsights.AppendLine(@'
+</td></tr>
+<tr><td class="detailstd">
+'@)
+    }
+    #endregion ScopeInsightsOrphanedResources
+
     #ScopeInsightsDiagnosticsCapable
     if ($azAPICallConf['htParameters'].NoResources -eq $false) {
         #resourcesDiagnosticsCapable

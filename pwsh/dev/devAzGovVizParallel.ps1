@@ -283,10 +283,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.16',
+    $AzAPICallVersion = '1.1.17',
 
     [string]
-    $ProductVersion = 'v6_major_20220614_1',
+    $ProductVersion = 'v6_major_20220622_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -511,6 +511,7 @@ Write-Host "Start AzGovViz $($startTime) (#$($ProductVersion))"
 . ".\$($ScriptPath)\functions\processHierarchyMapOnly.ps1"
 . ".\$($ScriptPath)\functions\getSubscriptions.ps1"
 . ".\$($ScriptPath)\functions\detailSubscriptions.ps1"
+. ".\$($ScriptPath)\functions\getOrphanedResources.ps1"
 . ".\$($ScriptPath)\functions\getMDfCSecureScoreMG.ps1"
 . ".\$($ScriptPath)\functions\getConsumption.ps1"
 . ".\$($ScriptPath)\functions\cacheBuiltIn.ps1"
@@ -745,6 +746,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $arrayPsRule = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayPSRuleTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htClassicAdministrators = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $arrayOrphanedResources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
 getEntities
@@ -765,6 +767,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     #testAzContext
     getSubscriptions
     detailSubscriptions
+    showMemoryUsage
+    getOrphanedResources
     showMemoryUsage
 
     if ($azAPICallConf['htParameters'].NoMDfCSecureScore -eq $false) {
@@ -1717,6 +1721,9 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         }
         if ($arrayFeaturesAll.Count -gt 0) {
             $script:subFeaturesGroupedBySubscription = $arrayFeaturesAll | Group-Object -property subscriptionId
+        }
+        if ($arrayOrphanedResourcesSlim.Count -gt 0) {
+            $arrayOrphanedResourcesGroupedBySubscription = $arrayOrphanedResourcesSlim | Group-Object subscriptionId
         }
         processScopeInsights -mgChild $ManagementGroupId -mgChildOf $getMgParentId
         showMemoryUsage

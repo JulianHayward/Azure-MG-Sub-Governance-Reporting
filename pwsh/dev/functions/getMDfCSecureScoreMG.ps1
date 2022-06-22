@@ -41,7 +41,7 @@ function getMDfCSecureScoreMG {
             Write-Host '  Microsoft Defender for Cloud SecureScore for Management Groups will not be available' -ForegroundColor Yellow
         }
         else {
-            foreach ($entry in $getMgAscSecureScore.data) {
+            foreach ($entry in $getMgAscSecureScore) {
                 $script:htMgASCSecureScore.($entry.mgId) = @{}
                 if ($entry.secureScore -eq 404) {
                     $script:htMgASCSecureScore.($entry.mgId).SecureScore = 'n/a'

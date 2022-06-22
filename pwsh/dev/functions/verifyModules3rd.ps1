@@ -24,7 +24,6 @@ function verifyModules3rd {
 
             $installModuleSuccess = $false
             try {
-
                 if (-not $moduleVersion) {
                     Write-Host '  Check latest module version'
                     try {
@@ -38,17 +37,23 @@ function verifyModules3rd {
                 }
 
                 if (-not $installModuleSuccess) {
-                    $moduleVersionLoaded = (Get-InstalledModule -name $($module.ModuleName)).Version
-                    if ($moduleVersionLoaded -eq $moduleVersion) {
-                        $installModuleSuccess = $true
+                    try {
+                        $moduleVersionLoaded = (Get-InstalledModule -name $($module.ModuleName)).Version
+                        if ($moduleVersionLoaded -eq $moduleVersion) {
+                            $installModuleSuccess = $true
+                        }
+                        else {
+                            Write-Host "  Deviating module version $moduleVersionLoaded"
+                            throw
+                        }
                     }
-                    else {
-                        throw "  '(Get-InstalledModule -name $($module.ModuleName)).Version' returned null"
+                    catch {
+                        throw
                     }
                 }
             }
             catch {
-                Write-Host "  '$($module.ModuleName)' not installed"
+                Write-Host "  '$($module.ModuleName) $moduleVersion' not installed"
                 if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
                     Write-Host "  Installing $($module.ModuleName) module ($($moduleVersion))"
                     try {
@@ -80,9 +85,15 @@ function verifyModules3rd {
                         if ($installModuleUserChoice -eq 'y') {
                             try {
                                 Install-Module -Name $module.ModuleName -RequiredVersion $moduleVersion
+                                try {
+                                    Import-Module -Name $module.ModuleName -RequiredVersion $moduleVersion -Force
+                                }
+                                catch {
+                                    throw "  'Import-Module -Name $($module.ModuleName) -RequiredVersion $moduleVersion -Force' failed"
+                                }
                             }
                             catch {
-                                throw "  'Install-Module -Name $module.ModuleName -RequiredVersion $moduleVersion' failed"
+                                throw "  'Install-Module -Name $($module.ModuleName) -RequiredVersion $moduleVersion' failed"
                             }
                         }
                         elseif ($installModuleUserChoice -eq 'n') {

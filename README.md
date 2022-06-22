@@ -59,11 +59,13 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Jun-14 / Major)
+__Changes__ (2022-Jun-22 / Major)
 
-* Fix issue #110 / handle `DisallowedProvider` errorCode (Blueprints, PolicyInsights)
-* Fix issue #111 / replace .AddRange with foreach/.Add
-* Use AzAPICall PowerShell module version 1.1.16
+* New feature 'Orphaned Resources' - Azure Resource Graph based reporting on orphaned resources (TenantSummary, ScopeInsights, CSV export). [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources) ARG queries and workbooks by Dolev Shor
+* New feature 'Resource fluctuation' - Compare against Resources from previous run and output aggregated summary of the Resource fluctuation (TenantSummary, ScopeInsights, CSV export)
+* Fix `/providers/Microsoft.Authorization/roleAssignmentScheduleInstances` AzAPICall errorhandling (error 400, 500)
+* Optimize procedure to update the AzAPICall module
+* Use AzAPICall PowerShell module version 1.1.17
 
 Passed tests: Powershell Core 7.2.4 on Windows  
 Passed tests: Powershell Core 7.2.4 Azure DevOps hosted agent ubuntu-20.04  
@@ -174,7 +176,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
   * Hierarchy Settings | Require authorization for Management Group creation
 * __Subscriptions, Resources & Defender__
   * Subscription insights
-    * QuotaId, State, Tags, Microsoft Defender for Cloud Secure Score, Cost, Management Group path, Role assignment limit
+    * QuotaId, State, Tags, Microsoft Defender for Cloud Secure Score, Cost, Management Group path, Role assignment limit, enabled Preview features
   * Tag Name usage
     * Insights on usage of Tag Names on Subscriptions, ResourceGroups and Resources
   * Resources
@@ -185,6 +187,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
         * Explicit Resource Provider state per Subscription
       * Resource Locks
         * Aggregated insights for Lock and respective Lock-type usage on Subscriptions, ResourceGroups and Resources
+      * Orphaned Resources (ARG)
   * Microsoft Defender for Cloud
     * Summary of Microsoft Defender for Cloud coverage by plan (count of Subscription per plan/tier)
     * Summary of Microsoft Defender for Cloud plans coverage by Subscription (plan/tier)
@@ -192,6 +195,8 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
   * UserAssigned Managed Identities assigned to Resources / vice versa
     * Summary of all UserAssigned Managed Identities assigned to Resources
     * Summary of Resources that have an UserAssigned Managed Identity assigned
+  * PSRule for Azure
+    * Well-Architected Framework aligned best practice analysis for resources, including guidance for remediation
 * __Diagnostics__
   * Management Groups Diagnostic settings report
     * Management Group, Diagnostic setting name, target type (LA, SA, EH), target Id, Log Category status
