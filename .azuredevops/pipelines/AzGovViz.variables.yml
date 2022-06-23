@@ -88,7 +88,7 @@ variables:
 
   # Tracks newly created and updated custom Policy, PolicySet and RBAC Role definitions, Policy/RBAC Role assignments and Resources that occurred within the last 14 days (default)
   - name: ChangeTrackingDays
-    # Integer | example: value: 30
+    # Integer | default = 14 | example: value: 21
     value:
 
   # Define if Azure Consumption data should be reported

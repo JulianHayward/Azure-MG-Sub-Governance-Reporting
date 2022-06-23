@@ -62,10 +62,11 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 __Changes__ (2022-Jun-22 / Major)
 
 * New feature 'Orphaned Resources' - Azure Resource Graph based reporting on orphaned resources (TenantSummary, ScopeInsights, CSV export). [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources) ARG queries and workbooks by Dolev Shor
-* New feature 'Resource fluctuation' - Compare against Resources from previous run and output aggregated summary of the Resource fluctuation (TenantSummary, ScopeInsights, CSV export)
+* New feature 'Resource fluctuation' - Compare against Resources from previous run and output aggregated summary of the Resource fluctuation (TenantSummary, CSV export)
 * Fix `/providers/Microsoft.Authorization/roleAssignmentScheduleInstances` AzAPICall errorhandling (error 400, 500)
 * Optimize procedure to update the AzAPICall module
 * Use AzAPICall PowerShell module version 1.1.17
+* Updated [HTML Demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)
 
 Passed tests: Powershell Core 7.2.4 on Windows  
 Passed tests: Powershell Core 7.2.4 Azure DevOps hosted agent ubuntu-20.04  
@@ -79,7 +80,7 @@ Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
 
 <a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html" target="_blank">![Demo](img/demo4_66.png)</a>
 
-[Demo (v6_major_20220521_1)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)  
+[Demo (v6_major_20220622_2)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)  
 Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation
 
 More [demo output](https://github.com/JulianHayward/AzGovViz)

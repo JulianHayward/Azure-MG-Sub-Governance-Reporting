@@ -1589,7 +1589,8 @@ extensions: [{ name: 'sort' }]
                 [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-trash-o" aria-hidden="true"></i> Resources orphaned $orphanedResourcesThisSubscriptionCount ($orphanedResourcesThisSubscriptionGroupedByTypeCount ResourceTypes)</p></button>
 <div class="content contentSISub">
-&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">'Azure Orphan Resources' ARG queries and workbooks by Dolev Shor</span> <a class="externallink" href="https://github.com/dolevshor/azure-orphan-resources" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">'Azure Orphan Resources' ARG queries and workbooks</span> <a class="externallink" href="https://github.com/dolevshor/azure-orphan-resources" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> Resource details can be found in the CSV output *_ResourcesOrphaned.csv<br>
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
 <thead>
