@@ -59,14 +59,9 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Jun-22 / Major)
+__Changes__ (2022-Jul-01 / Major)
 
-* New feature 'Orphaned Resources' - Azure Resource Graph based reporting on orphaned resources (TenantSummary, ScopeInsights, CSV export). [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources) ARG queries and workbooks by Dolev Shor
-* New feature 'Resource fluctuation' - Compare against Resources from previous run and output aggregated summary of the Resource fluctuation (TenantSummary, CSV export)
-* Fix `/providers/Microsoft.Authorization/roleAssignmentScheduleInstances` AzAPICall errorhandling (error 400, 500)
-* Optimize procedure to update the AzAPICall module
-* Use AzAPICall PowerShell module version 1.1.17
-* Updated [HTML Demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)
+* Fix change tracking date conversion issue with certain date format (removed ToString)
 
 Passed tests: Powershell Core 7.2.4 on Windows  
 Passed tests: Powershell Core 7.2.4 Azure DevOps hosted agent ubuntu-20.04  

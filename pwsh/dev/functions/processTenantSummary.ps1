@@ -1517,7 +1517,7 @@ extensions: [{ name: 'sort' }]
             $updatedBy = ''
             $updatedByJson = ''
             if ($tenantPolicySet.Json.properties.metadata.createdOn) {
-                $createdOn = $tenantPolicySet.Json.properties.metadata.createdOn.ToString('yyyy-MM-dd HH:mm:ss')
+                $createdOn = $tenantPolicySet.Json.properties.metadata.createdOn
             }
             if ($tenantPolicySet.Json.properties.metadata.createdBy) {
                 $createdBy = $tenantPolicySet.Json.properties.metadata.createdBy
@@ -1528,7 +1528,7 @@ extensions: [{ name: 'sort' }]
                 }
             }
             if ($tenantPolicySet.Json.properties.metadata.updatedOn) {
-                $updatedOn = $tenantPolicySet.Json.properties.metadata.updatedOn.ToString('yyyy-MM-dd HH:mm:ss')
+                $updatedOn = $tenantPolicySet.Json.properties.metadata.updatedOn
             }
             if ($tenantPolicySet.Json.properties.metadata.updatedBy) {
                 $updatedBy = $tenantPolicySet.Json.properties.metadata.updatedBy
