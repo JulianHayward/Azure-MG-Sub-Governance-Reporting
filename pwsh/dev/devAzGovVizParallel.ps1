@@ -286,7 +286,7 @@ Param
     $AzAPICallVersion = '1.1.17',
 
     [string]
-    $ProductVersion = 'v6_major_20220701_1',
+    $ProductVersion = 'v6_major_20220701_2',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -934,11 +934,15 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
     #region create array Policy definitions
     $tenantAllPoliciesCount = (($htCacheDefinitionsPolicy).Values).count
+    $tenantBuiltInPolicies = (($htCacheDefinitionsPolicy).Values).where({ $_.Type -eq 'BuiltIn' } )
+    $tenantBuiltInPoliciesCount = ($tenantBuiltInPolicies).count
     $tenantCustomPolicies = (($htCacheDefinitionsPolicy).Values).where({ $_.Type -eq 'Custom' } )
     $tenantCustomPoliciesCount = ($tenantCustomPolicies).count
     #endregion create array Policy definitions
 
     #region create array PolicySet definitions
+    $tenantBuiltInPolicySets = $tenantAllPolicySets.where({ $_.Type -eq 'Builtin' } )
+    $tenantBuiltInPolicySetsCount = ($tenantBuiltInPolicySets).count
     $tenantCustomPolicySets = $tenantAllPolicySets.where({ $_.Type -eq 'Custom' } )
     $tenantCustompolicySetsCount = ($tenantCustomPolicySets).count
     #endregion create array PolicySet definitions
@@ -1149,8 +1153,12 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     Write-Host " Total Subscriptions: $totalSubIncludedAndExcludedCount ($totalSubCount included; $totalSubOutOfScopeCount out-of-scope)"
     $htDailySummary.'Subscriptions' = $totalSubCount
     $htDailySummary.'SubscriptionsOutOfScope' = $totalSubOutOfScopeCount
+    Write-Host " Total BuiltIn Policy definitions: $tenantBuiltInPoliciesCount"
+    $htDailySummary.'PolicyDefinitionsBuiltIn' = $tenantBuiltInPoliciesCount
     Write-Host " Total Custom Policy definitions: $tenantCustomPoliciesCount"
     $htDailySummary.'PolicyDefinitionsCustom' = $tenantCustomPoliciesCount
+    Write-Host " Total BuiltIn PolicySet definitions: $tenantBuiltInPolicySetsCount"
+    $htDailySummary.'PolicySetDefinitionsBuiltIn' = $tenantBuiltInPolicySetsCount
     Write-Host " Total Custom PolicySet definitions: $tenantCustompolicySetsCount"
     $htDailySummary.'PolicySetDefinitionsCustom' = $tenantCustompolicySetsCount
     Write-Host " Total Policy assignments: $($totalPolicyAssignmentsCount)"

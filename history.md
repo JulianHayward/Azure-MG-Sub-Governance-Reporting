@@ -7,6 +7,7 @@
 __Changes__ (2022-Jul-01 / Major)
 
 * Fix change tracking date conversion issue with certain date format (removed ToString)
+* Minor optimizations
 
 __Changes__ (2022-Jun-22 / Major)
 

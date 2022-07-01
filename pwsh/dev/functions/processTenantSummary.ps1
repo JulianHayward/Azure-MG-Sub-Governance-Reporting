@@ -1572,6 +1572,7 @@ extensions: [{ name: 'sort' }]
                     PoliciesUsedCount       = $policySetPoliciesCount
                     PoliciesUsed            = $policySetPoliciesArrayClean
                     PoliciesUsed4JSON       = $policySetPoliciesArrayIdOnly
+                    PoliciesUsed4CSV        = $policySetPoliciesArrayIdOnly -join "$CsvDelimiterOpposite "
                     CreatedOn               = $createdOn
                     CreatedBy               = $createdBy
                     CreatedByJson           = $createdByJson
@@ -1598,6 +1599,7 @@ extensions: [{ name: 'sort' }]
                     PoliciesUsedCount       = $policySetPoliciesCount
                     PoliciesUsed            = $policySetPoliciesArrayClean
                     PoliciesUsed4JSON       = $policySetPoliciesArrayIdOnly
+                    PoliciesUsed4CSV        = $policySetPoliciesArrayIdOnly -join "$CsvDelimiterOpposite "
                     CreatedOn               = ''
                     CreatedBy               = ''
                     CreatedByJson           = $null
@@ -1613,7 +1615,7 @@ extensions: [{ name: 'sort' }]
     if (-not $NoCsvExport) {
         $csvFilename = "$($filename)_PolicySetDefinitions"
         Write-Host "   Exporting PolicySetDefinitions CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-        $tenantPolicySetsDetailed | Select-Object -ExcludeProperty UniqueAssignments, PoliciesUsed, CreatedByJson, UpdatedByJson, Json | Sort-Object -Property Type, Scope, PolicySetDefinitionId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+        $tenantPolicySetsDetailed | Select-Object -ExcludeProperty UniqueAssignments, PoliciesUsed, PoliciesUsed4JSON, CreatedByJson, UpdatedByJson, Json | Sort-Object -Property Type, Scope, PolicySetDefinitionId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
     }
 
     if ($getMgParentName -eq 'Tenant Root') {

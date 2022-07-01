@@ -62,6 +62,7 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 __Changes__ (2022-Jul-01 / Major)
 
 * Fix change tracking date conversion issue with certain date format (removed ToString)
+* Minor optimizations
 
 Passed tests: Powershell Core 7.2.4 on Windows  
 Passed tests: Powershell Core 7.2.4 Azure DevOps hosted agent ubuntu-20.04  

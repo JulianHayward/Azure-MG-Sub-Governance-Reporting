@@ -93,7 +93,7 @@ function getOrphanedResources {
     if ($arrayOrphanedResources.Count -gt 0) {
         Write-Host " Found $($arrayOrphanedResources.Count) orphaned Resources"
         Write-Host " Exporting OrphanedResources CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesOrphaned.csv'"
-        $arrayOrphanedResources | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesOrphaned.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        $arrayOrphanedResources | Sort-Object -Property Resource | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesOrphaned.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
     }
     else {
         Write-Host " No orphaned Resources found"
