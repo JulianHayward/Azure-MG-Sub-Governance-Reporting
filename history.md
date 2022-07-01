@@ -4,6 +4,10 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Jul-01 / Major)
+
+* Fix change tracking date conversion issue with certain date format (removed ToString)
+
 __Changes__ (2022-Jun-22 / Major)
 
 * New feature 'Orphaned Resources' - Azure Resource Graph based reporting on orphaned resources (TenantSummary, ScopeInsights, CSV export). [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources) ARG queries and workbooks by Dolev Shor
