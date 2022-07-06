@@ -19,7 +19,7 @@ env:
   WebAppName: nhdoc
 
 on:
-  #schedule:
+  schedule:
   - cron:  '30 5 * * *'
 
   # Allows you to run this workflow manually from the Actions tab
@@ -57,7 +57,7 @@ jobs:
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            . .\$($env:ScriptDir)\$($env:ScriptFile) -ManagementGroupId ${env:ManagementGroupId} -SubscriptionId4AzContext ${{secrets.SUBSCRIPTION_ID}} -ScriptPath ${env:ScriptDir} -OutputPath ${env:OutputPath}
+            . .\$($env:ScriptDir)\$($env:ScriptFile) -ManagementGroupId ${env:ManagementGroupId} -SubscriptionId4AzContext ${{secrets.SUBSCRIPTION_ID}} -ScriptPath ${env:ScriptDir} -OutputPath ${env:OutputPath} -DoPSRule
           azPSVersion: "latest"
       
       - name: Push AzGovViz output to repository
