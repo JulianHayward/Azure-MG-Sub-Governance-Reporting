@@ -8,19 +8,19 @@ name: AzGovViz_OIDC
 
 env:
   OutputPath: wiki
-  ManagementGroupId: <Management Group Id>
+  ManagementGroupId: 8619c67c-945a-48ae-8e77-35b1b71c9b98
   ScriptDir: pwsh #example: 'my folder\pwsh' or 'my folder/pwsh'
   ScriptPrereqFile: prerequisites.ps1
   ScriptFile: AzGovVizParallel.ps1
   #optional
-  WebAppPublish: false #set to true and define the Web App details in the next 3 lines
-  WebAppSubscriptionId: <subscriptionId> e.g. 2674403a-4acd-40e6-a694-2ac7b968761e
-  WebAppResourceGroup: <ResourceGroupName> e.g. MyWebAppResourceGroup
-  WebAppName: <Name> e.g. MyAzGovVizWebApp
+  WebAppPublish: true #set to true and define the Web App details in the next 3 lines
+  WebAppSubscriptionId: d4acc67e-26ec-4d83-8c11-14a434131193
+  WebAppResourceGroup: Axpo-SandBox-NewHome-Documentation
+  WebAppName: nhdoc
 
 on:
   #schedule:
-  # - cron:  '30 5 * * *'
+  - cron:  '30 5 * * *'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
