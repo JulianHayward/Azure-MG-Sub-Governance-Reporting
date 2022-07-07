@@ -69,6 +69,15 @@ jobs:
           git commit -m "$GITHUB_WORKFLOW $GITHUB_JOB"
           git push
 
+      #log again to avoid timeout before web publishing
+      - name: Connect Azure OIDC
+        uses: azure/login@v1
+        with:
+          client-id: ${{secrets.CLIENT_ID}} #create this secret
+          tenant-id: ${{secrets.TENANT_ID}} #create this secret
+          subscription-id: ${{secrets.SUBSCRIPTION_ID}} #create this secret
+          enable-AzPSSession: true
+
       - name: Publish HTML to WebApp
         if: env.WebAppPublish == 'true'
         uses: azure/powershell@v1
