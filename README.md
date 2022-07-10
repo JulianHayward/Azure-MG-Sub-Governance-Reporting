@@ -662,6 +662,8 @@ Kudos to [LorDOniX](https://github.com/LorDOniX/json-viewer) for JSON-viewer!
 
 Kudos to Bernie White and [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure) team!
 
+Kudos to Dolev Shor for [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources) _ARG queries and workbooks_!
+
 ## AzAdvertizer
 
 ![alt text](img/azadvertizer70.png "example output")
