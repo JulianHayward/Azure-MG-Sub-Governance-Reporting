@@ -1584,10 +1584,20 @@ extensions: [{ name: 'sort' }]
                 $orphanedResourcesThisSubscriptionGroupedByType = $orphanedResourcesThisSubscription.Group | Group-Object -Property type
                 $orphanedResourcesThisSubscriptionGroupedByTypeCount = ($orphanedResourcesThisSubscriptionGroupedByType | Measure-Object).Count
                 $tfCount = $orphanedResourcesThisSubscriptionGroupedByTypeCount
+
+                if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
+                    $orphanedIncludingCost = $true
+                    $hintTableTH = " ($($AzureConsumptionPeriod) days)"
+                }
+                else {
+                    $orphanedIncludingCost = $false
+                    $hintTableTH = ""
+                }
+
                 $htmlTableId = "ScopeInsights_OrphanedResources_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-trash-o" aria-hidden="true"></i> Resources orphaned $orphanedResourcesThisSubscriptionCount ($orphanedResourcesThisSubscriptionGroupedByTypeCount ResourceTypes)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-trash-o" aria-hidden="true"></i> $orphanedResourcesThisSubscriptionCount Orphaned Resources ($orphanedResourcesThisSubscriptionGroupedByTypeCount ResourceTypes)</p></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">'Azure Orphan Resources' ARG queries and workbooks</span> <a class="externallink" href="https://github.com/dolevshor/azure-orphan-resources" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> Resource details can be found in the CSV output *_ResourcesOrphaned.csv<br>
@@ -1598,17 +1608,43 @@ extensions: [{ name: 'sort' }]
 <th>ResourceType</th>
 <th>Resource count</th>
 <th>Intent</th>
+<th>Cost$($hintTableTH)</th>
+<th>Currency</th>
 </tr>
 </thead>
 <tbody>
 "@)
                 $htmlScopeInsightsOrphanedResources = $null
                 $htmlScopeInsightsOrphanedResources = foreach ($resourceType in $orphanedResourcesThisSubscriptionGroupedByType | Sort-Object -Property Name) {
+                    
+                    if ($orphanedIncludingCost) {
+                        if ($resourceType.Group.Intent[0] -eq "cost savings") {
+                            $orphCost = ($resourceType.Group.Cost | Measure-Object -Sum).Sum
+                            $orphCurrency = $resourceType.Group.Currency[0]
+                        }
+                        else {
+                            $orphCost = ""
+                            $orphCurrency = ""
+                        }
+                    }
+                    else {
+                        if ($resourceType.Group.Intent[0] -eq "cost savings") {
+                            $orphCost = "<span class=`"info`">use parameter <b>-DoAzureConsumption</b> to show potential savings</span>"
+                            $orphCurrency = ""
+                        }
+                        else {
+                            $orphCost = ""
+                            $orphCurrency = ""
+                        }
+                    }
+
                     @"
 <tr>
 <td>$($resourceType.Name)</td>
 <td>$($resourceType.Group.Count)</td>
 <td>$($resourceType.Group[0].Intent)</td>
+<td>$($orphCost)</td>
+<td>$($orphCurrency)</td>
 </tr>
 "@
                 }
@@ -1648,8 +1684,11 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                 }
                 [void]$htmlScopeInsights.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-                col_2: 'select',                
+                col_2: 'select',   
+                col_4: 'select',             
                 col_types: [
+                    'caseinsensitivestring',
+                    'number',
                     'caseinsensitivestring',
                     'number',
                     'caseinsensitivestring'
@@ -1664,13 +1703,13 @@ extensions: [{ name: 'sort' }]
             }
             else {
                 [void]$htmlScopeInsights.AppendLine(@"
-                <p><i class="fa fa-ban" aria-hidden="true"></i> No Resources orphaned</p>
+                <p><i class="fa fa-ban" aria-hidden="true"></i> 0 Orphaned Resources</p>
 "@)
             }
         }
         else {
             [void]$htmlScopeInsights.AppendLine(@"
-            <p><i class="fa fa-ban" aria-hidden="true"></i> No Resources orphaned</p>
+            <p><i class="fa fa-ban" aria-hidden="true"></i> 0 Orphaned Resources</p>
 "@)
         }
         [void]$htmlScopeInsights.AppendLine(@'
@@ -2336,6 +2375,11 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 '@)
             }
             #endregion ScopeInsightsPSRule
+        }
+        else {
+            [void]$htmlScopeInsights.AppendLine(@'
+            <p><i class="fa fa-check-square-o" aria-hidden="true"></i> PSRule for Azure - <span class="info">use parameter <b>-DoPSRule</b></span> - <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure/integrations" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+'@)
         }
     }
 

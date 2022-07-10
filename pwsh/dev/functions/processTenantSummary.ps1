@@ -555,7 +555,7 @@ function processTenantSummary() {
             foreach ($batch in $ObjectBatch) {
                 $batchCnt++
 
-                $nonResolvedIdentitiesToCheck = '"{0}"' -f ($batch.Group -join '","')
+                $nonResolvedIdentitiesToCheck = '"{0}"' -f ($batch.Group.where({ testGuid $_ }) -join '","')
                 Write-Host "     IdentitiesToCheck: Batch #$batchCnt/$($ObjectBatchCount) ($(($batch.Group).Count))"
                 $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/directoryObjects/getByIds"
                 $method = 'POST'
@@ -3321,7 +3321,7 @@ extensions: [{ name: 'sort' }]
             foreach ($batch in $ObjectBatch) {
                 $batchCnt++
 
-                $nonResolvedIdentitiesToCheck = '"{0}"' -f ($batch.Group -join '","')
+                $nonResolvedIdentitiesToCheck = '"{0}"' -f ($batch.Group.where({ testGuid $_ }) -join '","')
                 Write-Host "     IdentitiesToCheck: Batch #$batchCnt/$($ObjectBatchCount) ($(($batch.Group).Count))"
                 $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/directoryObjects/getByIds"
                 $method = 'POST'
@@ -4280,7 +4280,7 @@ extensions: [{ name: 'sort' }]
         if (-not $NoCsvExport) {
             $csvFilename = "$($filename)_ClassicAdministrators"
             Write-Host "   Exporting ClassicAdministrators CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-            $classicAdministrators | Select-Object -ExcludeProperty Id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+            $classicAdministrators | Select-Object -ExcludeProperty Id | Sort-Object -Property Subscription, SubscriptionId, Role | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
         }
         $htmlSUMMARYClassicAdministrators = foreach ($classicAdministrator in $classicAdministrators) {
             @"
@@ -6447,8 +6447,8 @@ extensions: [{ name: 'sort' }]
         Write-Host '  processing TenantSummary Resource fluctuation'
         if (($arrayResourceFluctuationFinal).count -gt 0) {
             $resourceTypesCount = ($arrayResourceFluctuationFinal | Group-Object -Property ResourceType | Measure-Object).Count
-            $addedCount = ($arrayResourceFluctuationFinal.where({$_.Event -eq 'Added'}).'Resource count' | Measure-Object -Sum).Sum
-            $removedCount = ($arrayResourceFluctuationFinal.where({$_.Event -eq 'Removed'}).'Resource count' | Measure-Object -Sum).Sum
+            $addedCount = ($arrayResourceFluctuationFinal.where({ $_.Event -eq 'Added' }).'Resource count' | Measure-Object -Sum).Sum
+            $removedCount = ($arrayResourceFluctuationFinal.where({ $_.Event -eq 'Removed' }).'Resource count' | Measure-Object -Sum).Sum
 
             $tfCount = ($arrayResourceFluctuationFinal).count
             $htmlTableId = 'TenantSummary_resourceFluctuation'
@@ -6545,14 +6545,23 @@ extensions: [{ name: 'sort' }]
     $startSUMMARYOrphanedResources = Get-Date
     Write-Host '  processing TenantSummary Orphaned Resources'
     if ($arrayOrphanedResources.count -gt 0) {
-        $script:arrayOrphanedResourcesSlim = $arrayOrphanedResources | Sort-Object -Property type | Select-Object -Property type, subscriptionId, intent
+        $script:arrayOrphanedResourcesSlim = $arrayOrphanedResources | Sort-Object -Property type
         $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type
         $orphanedResourceTypesCount = ($arrayOrphanedResourcesGroupedByType | Measure-Object).Count
+
+        if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
+            $orphanedIncludingCost = $true
+            $hintTableTH = " ($($AzureConsumptionPeriod) days)"
+        }
+        else {
+            $orphanedIncludingCost = $false
+            $hintTableTH = ""
+        }
 
         $tfCount = $orphanedResourceTypesCount
         $htmlTableId = 'TenantSummary_orphanedResources'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_orphanedResources"><i class="padlx fa fa-trash-o" aria-hidden="true"></i> <span class="valignMiddle">Resources orphaned $($arrayOrphanedResources.count) ($orphanedResourceTypesCount ResourceTypes)</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_orphanedResources"><i class="padlx fa fa-trash-o" aria-hidden="true"></i> <span class="valignMiddle">$($arrayOrphanedResources.count) Orphaned Resources ($orphanedResourceTypesCount ResourceTypes)</span>
 </button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> 'Azure Orphan Resources' ARG queries and workbooks</span> <a class="externallink" href="https://github.com/dolevshor/azure-orphan-resources" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
@@ -6565,19 +6574,46 @@ extensions: [{ name: 'sort' }]
 <th>Resource count</th>
 <th>Subscriptions count</th>
 <th>Intent</th>
+<th>Cost$($hintTableTH)</th>
+<th>Currency</th>
 </tr>
 </thead>
 <tbody>
 "@)
+
         $htmlSUMMARYOrphanedResources = $null
         $htmlSUMMARYOrphanedResources = foreach ($orphanedResourceType in $arrayOrphanedResourcesGroupedByType | Sort-Object -Property Name) {
             $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)" = ($orphanedResourceType.count)
+            
+            if ($orphanedIncludingCost) {
+                if ($orphanedResourceType.Group.Intent[0] -eq "cost savings") {
+                    $orphCost = ($orphanedResourceType.Group.Cost | Measure-Object -Sum).Sum
+                    $orphCurrency = $orphanedResourceType.Group.Currency[0]
+                }
+                else {
+                    $orphCost = ""
+                    $orphCurrency = ""
+                }
+            }
+            else {
+                if ($orphanedResourceType.Group.Intent[0] -eq "cost savings") {
+                    $orphCost = "<span class=`"info`">use parameter <b>-DoAzureConsumption</b> to show potential savings</span>"
+                    $orphCurrency = ""
+                }
+                else {
+                    $orphCost = ""
+                    $orphCurrency = ""
+                }
+            }
+
             @"
 <tr>
 <td>$($orphanedResourceType.Name)</td>
 <td>$($orphanedResourceType.count)</td>
 <td>$(($orphanedResourceType.Group.SubscriptionId | Sort-Object -Unique).Count)</td>
 <td>$($orphanedResourceType.Group[0].Intent)</td>
+<td>$($orphCost)</td>
+<td>$($orphCurrency)</td>
 </tr>
 "@
 
@@ -6619,10 +6655,13 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         }
         [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-        col_3: 'select',        
+        col_3: 'select',  
+        col_5: 'select',      
         col_types: [
             'caseinsensitivestring',
             'number',
+            'number',
+            'caseinsensitivestring',
             'number',
             'caseinsensitivestring'
         ],
@@ -6635,7 +6674,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@'
-    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No Resources orphaned</p>
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No Orphaned Resources</p>
 '@)
     }
     $endSUMMARYOrphanedResources = Get-Date
@@ -6960,7 +6999,7 @@ extensions: [{ name: 'sort' }]
         if (-not $NoCsvExport) {
             $csvFilename = "$($filename)_SubscriptionsFeatures"
             Write-Host "   Exporting SubscriptionsFeatures CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-            ($arrayFeaturesAll | Select-Object -ExcludeProperty mgPathArray | Sort-Object -Property feature) | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+            ($arrayFeaturesAll | Select-Object -ExcludeProperty mgPathArray | Sort-Object -Property feature, subscriptionId) | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
         }
         #endregion exportCSV
 
@@ -7600,7 +7639,7 @@ extensions: [{ name: 'sort' }]
 
             if (-not $NoCsvExport) {
                 Write-Host "Exporting UserAssignedIdentities4Resources CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_UserAssignedIdentities4Resources.csv'"
-                $userAssignedIdentities4Resources4CSVExport | Sort-Object -Property miResourceId, resourceId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_UserAssignedIdentities4Resources.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                $userAssignedIdentities4Resources4CSVExport | Sort-Object -Property MIResourceId, ResId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_UserAssignedIdentities4Resources.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
             }
 
             [void]$htmlTenantSummary.AppendLine(@"
@@ -7799,6 +7838,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             }
             $endPSRule = Get-Date
             Write-Host "   PSRule for Azure processing duration: $((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalSeconds) seconds)"
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@"
+            <i class="padlx fa fa-check-square-o" aria-hidden="true"></i> <span class="valignMiddle">PSRule for Azure - </span><span class="info">use parameter <b>-DoPSRule</b></span> - <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure/integrations" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a>
+"@)
         }
         #endregion SUMMARYPSRule
     }
@@ -11716,7 +11760,8 @@ tf.init();}}
                 $entry.RoleAssignmentPIMAssignmentSlotStart,
                 $entry.RoleAssignmentPIMAssignmentSlotEnd,
                 $entry.RoleAssignmentId,
-                ($entry.RbacRelatedPolicyAssignment -replace '<', '&lt;' -replace '>', '&gt;'),
+                #($entry.RbacRelatedPolicyAssignment -replace '<', '&lt;' -replace '>', '&gt;'),
+                $entry.RbacRelatedPolicyAssignment,
                 $entry.CreatedOn,
                 $entry.CreatedBy
             )

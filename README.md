@@ -59,15 +59,21 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Jul-01 / Major)
+__Changes__ (2022-Jul-10 / Major)
 
-* Fix change tracking date conversion issue with certain date format (removed ToString)
+* Enhanced the 'Orphaned Resources' feature: if you run AzGovViz with parameter -DoAzureConsumption then the orphaned resources output will show you potential cost savings for orphaned resources with intent 'cost savings':  
+![alt text](img/orphanedResourcesCostSavings.png "orphanedResourcesCostSavings")  
+&#x1F4A1; use parameter `-AzureConsumptionPeriod 14` to get consumption data for the last 14 days (default = 1 day)
+* New feature HierarchyMap (HTML): save the HierarchyMap as image (.jpeg)
+* 2022-Jul-07 PR #117 - Updated GitHub Actions OIDC (Open ID Connect) workflow: establish new connection to Azure before the 'HTML to WebApp' publishing task - thanks Dimitri Zilber
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.18
+* Bugfixes
 * Minor optimizations
 
-Passed tests: Powershell Core 7.2.4 on Windows  
-Passed tests: Powershell Core 7.2.4 Azure DevOps hosted agent ubuntu-20.04  
-Passed tests: Powershell Core 7.2.4 Github Actions hosted agent ubuntu-latest  
-Passed tests: Powershell Core 7.2.4 GitHub Codespaces mcr.microsoft.com/powershell:latest  
+Passed tests: Powershell Core 7.2.5 on Windows  
+Passed tests: Powershell Core 7.2.5 Azure DevOps hosted agent ubuntu-20.04  
+Passed tests: Powershell Core 7.2.5 Github Actions hosted agent ubuntu-latest  
+Passed tests: Powershell Core 7.2.5 GitHub Codespaces mcr.microsoft.com/powershell:latest  
 Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
 
 [Full release history](history.md)
@@ -185,6 +191,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
       * Resource Locks
         * Aggregated insights for Lock and respective Lock-type usage on Subscriptions, ResourceGroups and Resources
       * Orphaned Resources (ARG)
+        * if you run AzGovViz with parameter -DoAzureConsumption then the orphaned resources output will show you potential cost savings for orphaned resources with intent 'cost savings'
   * Microsoft Defender for Cloud
     * Summary of Microsoft Defender for Cloud coverage by plan (count of Subscription per plan/tier)
     * Summary of Microsoft Defender for Cloud plans coverage by Subscription (plan/tier)

@@ -9,8 +9,24 @@ function processDataCollection {
     $allManagementGroupsFromEntitiesChildOfRequestedMg = $arrayEntitiesFromAPI.where( { $_.type -eq 'Microsoft.Management/managementGroups' -and ($_.Name -eq $mgId -or $_.properties.parentNameChain -contains $mgId) })
     $allManagementGroupsFromEntitiesChildOfRequestedMgCount = ($allManagementGroupsFromEntitiesChildOfRequestedMg).Count
     Write-Host " $allManagementGroupsFromEntitiesChildOfRequestedMgCount Management Groups: $(($allManagementGroupsFromEntitiesChildOfRequestedMg.Name | Sort-Object) -join ', ')"
-    
     $mgBatch = ($allManagementGroupsFromEntitiesChildOfRequestedMg | Group-Object -Property { ($_.properties.parentNameChain).Count }) | Sort-Object -Property Name
+    Write-Host "  $(($mgBatch | Measure-Object).Count) batches of Management Groups to process:"
+    
+    $btchCnt = 0
+    foreach ($btch in $mgBatch) {
+        $btchCnt++
+        $listOfMGs = @()
+        foreach ($btchMg in $btch.Group | Sort-Object -Property name){
+            if ($btchMg.name -eq $btchMg.Properties.displayName){
+                $listOfMGs += $btchMg.name
+            }
+            else{
+                $listOfMGs += "$($btchMg.name) ($($btchMg.Properties.displayName))"
+            }
+        }
+        Write-Host "   Batch#$($btchCnt) - $($listOfMGs.Count) Management Groups: $($listOfMGs -join ', ')"
+    }
+
     foreach ($batchLevel in $mgBatch) {
         Write-Host "  Processing Management Groups L$($batchLevel.Name) ($($batchLevel.Count) Management Groups)"
 
@@ -68,8 +84,7 @@ function processDataCollection {
             $function:addRowToTable = $using:funcAddRowToTable
             $function:namingValidation = $using:funcNamingValidation
             $function:resolveObjectIds = $using:funcResolveObjectIds
-
-            #$function:dataCollectionFunctions = $using:funcdataCollectionFunctions
+            $function:testGuid = $using:funcTestGuid
 
             $function:dataCollectionMGSecureScore = $using:funcDataCollectionMGSecureScore
             $function:dataCollectionDiagnosticsMG = $using:funcDataCollectionDiagnosticsMG
@@ -211,7 +226,7 @@ function processDataCollection {
 
             $null = $script:arrayDataCollectionProgressMg.Add($mgdetail.Name)
             $progressCount = ($arrayDataCollectionProgressMg).Count
-            Write-Host "  $($progressCount)/$($allManagementGroupsFromEntitiesChildOfRequestedMgCount) Management Groups processed"
+            Write-Host "   $($progressCount)/$($allManagementGroupsFromEntitiesChildOfRequestedMgCount) Management Groups processed"
 
         } -ThrottleLimit $ThrottleLimit
         #[System.GC]::Collect()
@@ -330,6 +345,7 @@ function processDataCollection {
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation
                 $function:resolveObjectIds = $using:funcResolveObjectIds
+                $function:testGuid = $using:funcTestGuid
                 $function:dataCollectionMGSecureScore = $using:funcDataCollectionMGSecureScore
                 $function:dataCollectionDefenderPlans = $using:funcDataCollectionDefenderPlans
                 $function:dataCollectionDiagnosticsSub = $using:funcDataCollectionDiagnosticsSub

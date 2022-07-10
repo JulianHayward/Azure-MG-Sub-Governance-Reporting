@@ -4,6 +4,17 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Jul-10 / Major)
+
+* Enhanced the 'Orphaned Resources' feature: if you run AzGovViz with parameter -DoAzureConsumption then the orphaned resources output will show you potential cost savings for orphaned resources with intent 'cost savings':  
+![alt text](img/orphanedResourcesCostSavings.png "orphanedResourcesCostSavings")  
+&#x1F4A1; use parameter `-AzureConsumptionPeriod 14` to get consumption data for the last 14 days (default = 1 day)
+* New feature HierarchyMap (HTML): save the HierarchyMap as image (.jpeg)
+* 2022-Jul-07 PR #117 - Updated GitHub Actions OIDC (Open ID Connect) workflow: establish new connection to Azure before the 'HTML to WebApp' publishing task - thanks Dimitri Zilber
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.18
+* Bugfixes
+* Minor optimizations
+
 __Changes__ (2022-Jul-01 / Major)
 
 * Fix change tracking date conversion issue with certain date format (removed ToString)

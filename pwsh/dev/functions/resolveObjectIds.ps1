@@ -20,7 +20,7 @@ function ResolveObjectIds($objectIds) {
 
         foreach ($batch in $ObjectBatch) {
             $batchCnt++
-            $objectsToProcess = '"{0}"' -f ($batch.Group -join '","')
+            $objectsToProcess = '"{0}"' -f ($batch.Group.where({testGuid $_}) -join '","')
             $currentTask = " Resolving ObjectIds - Batch #$batchCnt/$($ObjectBatchCount) ($(($batch.Group).Count)"
             $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/directoryObjects/getByIds"
             $method = 'POST'

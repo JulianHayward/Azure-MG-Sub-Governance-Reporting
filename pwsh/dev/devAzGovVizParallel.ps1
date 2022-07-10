@@ -283,10 +283,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.17',
+    $AzAPICallVersion = '1.1.18',
 
     [string]
-    $ProductVersion = 'v6_major_20220701_2',
+    $ProductVersion = 'v6_major_20220710_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -492,6 +492,7 @@ $startTime = Get-Date -Format 'dd-MMM-yyyy HH:mm:ss'
 Write-Host "Start AzGovViz $($startTime) (#$($ProductVersion))"
 
 #region Functions
+. ".\$($ScriptPath)\functions\testGuid.ps1"
 . ".\$($ScriptPath)\functions\apiCallTracking.ps1"
 . ".\$($ScriptPath)\functions\addRowToTable.ps1"
 . ".\$($ScriptPath)\functions\testPowerShellVersion.ps1"
@@ -550,6 +551,7 @@ $funcAddRowToTable = $function:addRowToTable.ToString()
 $funcGetGroupmembers = $function:GetGroupmembers.ToString()
 $funcResolveObjectIds = $function:ResolveObjectIds.ToString()
 $funcNamingValidation = $function:NamingValidation.ToString()
+$funcTestGuid = $function:testGuid.ToString()
 
 testPowerShellVersion
 showMemoryUsage
@@ -614,15 +616,17 @@ if ($azGovVizNewerVersionAvailable) {
 handleCloudEnvironment
 
 #region recommendPSRule
-if (-not $azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-    if (-not $DoPSRule) {
-        Write-Host ""
-        Write-Host " * * * RECOMMENDATION: PSRule for Azure * * *" -ForegroundColor Magenta
-        Write-Host "Parameter -DoPSRule == '$DoPSRule'"
-        Write-Host "'PSRule for Azure' based ouputs provide aggregated Microsoft Azure Well-Architected Framework (WAF) aligned resource analysis results including guidance for remediation."
-        Write-Host "Consider running AzGovViz with the parameter -DoPSRule (example: .\pwsh\AzGovVizParallel.ps1 -DoPSRule)"
-        Write-Host " * * * * * * * * * * * * * * * * * * * * * *" -ForegroundColor Magenta
-        pause
+if (-not $HierarchyMapOnly) {
+    if (-not $azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
+        if (-not $DoPSRule) {
+            Write-Host ""
+            Write-Host " * * * RECOMMENDATION: PSRule for Azure * * *" -ForegroundColor Magenta
+            Write-Host "Parameter -DoPSRule == '$DoPSRule'"
+            Write-Host "'PSRule for Azure' based ouputs provide aggregated Microsoft Azure Well-Architected Framework (WAF) aligned resource analysis results including guidance for remediation."
+            Write-Host "Consider running AzGovViz with the parameter -DoPSRule (example: .\pwsh\AzGovVizParallel.ps1 -DoPSRule)"
+            Write-Host " * * * * * * * * * * * * * * * * * * * * * *" -ForegroundColor Magenta
+            pause
+        }
     }
 }
 #endregion recommendPSRule
@@ -768,8 +772,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     getSubscriptions
     detailSubscriptions
     showMemoryUsage
-    getOrphanedResources
-    showMemoryUsage
 
     if ($azAPICallConf['htParameters'].NoMDfCSecureScore -eq $false) {
         getMDfCSecureScoreMG
@@ -779,6 +781,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         getConsumption
     }
 
+    getOrphanedResources
+    showMemoryUsage
     cacheBuiltIn
     showMemoryUsage
 
@@ -1258,7 +1262,7 @@ $html = @"
     <script>hljs.initHighlightingOnLoad();</script>
     <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/jsonviewer_v01.css">
     <script type="text/javascript" src="https://www.azadvertizer.net/azgovvizv4/js/jsonviewer_v02.js"></script>
-
+    <script src="https://www.azadvertizer.net/azgovvizv4/js/dom-to-image.min.js"></script>
     <script>
         `$(window).on('load', function () {
             // Animate loader off screen
@@ -1397,7 +1401,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
                 <table class="subTable">
 '@
 
-        $htmlSubscriptionOnlyEnd = @'
+        $htmlSubscriptionOnlyEnd = @"
 </table>
 </div>
     </div>
@@ -1417,16 +1421,37 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
             maxSize: 10
         });
     </script>
+    <script>
+        `$("#getImage").on('click', function () {
+
+        element = document.getElementById('first')
+        var images = element.getElementsByTagName('img');
+        var l = images.length;
+        for (var i = 0; i < l; i++) {
+            images[0].parentNode.removeChild(images[0]);
+        }
+
+        domtoimage.toJpeg(element)
+            .then(function (dataUrl) {
+                var link = document.createElement('a');
+                link.download = '$($fileName)';
+                link.href = dataUrl;
+                link.click();
+            });
+                
+        })
+    </script>
 </body>
 
 </html>
-'@
+"@
     }
 
     $htmlShowHideScopeInfo =
     @"
 <p>
-    <button id="showHideScopeInfo">Hide<br>ScopeInfo</button>
+    <button id="showHideScopeInfo">Hide<br>ScopeInfo</button><br>
+    <a id="getImage" href="#"><button>save image</button></a>
     <script>
         `$("#showHideScopeInfo").click(function() {
             if (`$(this).html() == "Hide<br>ScopeInfo") {
@@ -1442,7 +1467,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 "@
 }
 else {
-    $htmlShowHideScopeInfo = ''
+    $htmlShowHideScopeInfo = '<p><a id="getImage" href="#"><button>save image</button></a></p>'
 }
 
 $html += @"
@@ -1458,7 +1483,7 @@ $html += @"
 
 $html += @'
 <ul>
-    <li id="first">
+    <li id="first" style="background-color:white">
 '@
 
 if ($tenantDisplayName) {
@@ -1774,7 +1799,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     }
 }
 
-$html += @'
+$html += @"
     </div>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
@@ -1787,9 +1812,30 @@ $html += @'
             maxSize: 10
         });
     </script>
+
+    <script>
+        `$("#getImage").on('click', function () {
+    
+        element = document.getElementById('first')
+        var images = element.getElementsByTagName('img');
+        var l = images.length;
+        for (var i = 0; i < l; i++) {
+            images[0].parentNode.removeChild(images[0]);
+        }
+
+        domtoimage.toJpeg(element)
+            .then(function (dataUrl) {
+                var link = document.createElement('a');
+                link.download = '$($fileName).jpeg';
+                link.href = dataUrl;
+                link.click();
+            });
+                
+        })
+    </script>
 </body>
 </html>
-'@
+"@
 
 $html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
 
@@ -1805,7 +1851,9 @@ if (-not $azAPICallConf['htParameters'].NoJsonExport) {
     showMemoryUsage
 }
 
-buildPolicyAllJSON
+if (-not $HierarchyMapOnly) {
+    buildPolicyAllJSON
+}
 showMemoryUsage
 
 #endregion createoutputs
