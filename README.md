@@ -191,7 +191,8 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
       * Resource Locks
         * Aggregated insights for Lock and respective Lock-type usage on Subscriptions, ResourceGroups and Resources
       * Orphaned Resources (ARG)
-        * if you run AzGovViz with parameter -DoAzureConsumption then the orphaned resources output will show you potential cost savings for orphaned resources with intent 'cost savings'
+        * If you run AzGovViz with parameter -DoAzureConsumption then the orphaned resources output will show you potential cost savings for orphaned resources with intent 'cost savings'
+        * The orphaned resources feature is based on [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources) ARG queries and workbooks by Dolev Shor
   * Microsoft Defender for Cloud
     * Summary of Microsoft Defender for Cloud coverage by plan (count of Subscription per plan/tier)
     * Summary of Microsoft Defender for Cloud plans coverage by Subscription (plan/tier)
