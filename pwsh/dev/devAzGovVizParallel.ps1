@@ -286,7 +286,7 @@ Param
     $AzAPICallVersion = '1.1.18',
 
     [string]
-    $ProductVersion = 'v6_major_20220710_1',
+    $ProductVersion = 'v6_major_20220714_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -491,6 +491,12 @@ $startAzGovViz = Get-Date
 $startTime = Get-Date -Format 'dd-MMM-yyyy HH:mm:ss'
 Write-Host "Start AzGovViz $($startTime) (#$($ProductVersion))"
 
+if ($ManagementGroupId -match " ") {
+    Write-Host "Provided Management Group ID: '$($ManagementGroupId)'" -ForegroundColor Yellow
+    Write-Host "The Management Group ID may not contain spaces - provide the Management Group ID, not the displayName." -ForegroundColor DarkRed
+    throw "Management Group ID validation failed!"
+}
+
 #region Functions
 . ".\$($ScriptPath)\functions\testGuid.ps1"
 . ".\$($ScriptPath)\functions\apiCallTracking.ps1"
@@ -539,7 +545,6 @@ Write-Host "Start AzGovViz $($startTime) (#$($ProductVersion))"
 . ".\$($ScriptPath)\functions\processDataCollection.ps1"
 . ".\$($ScriptPath)\functions\exportBaseCSV.ps1"
 . ".\$($ScriptPath)\functions\html\htmlFunctions.ps1"
-. ".\$($ScriptPath)\functions\handlePSRuleData.ps1"
 . ".\$($ScriptPath)\functions\processTenantSummary.ps1"
 . ".\$($ScriptPath)\functions\processDefinitionInsights.ps1"
 . ".\$($ScriptPath)\functions\processScopeInsightsMgOrSub.ps1"
@@ -1748,8 +1753,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         $script:scopescnter = 0
         if ($azAPICallConf['htParameters'].NoResources -eq $false) {
             if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
-                $grpPSRuleSubscriptions = $psRuleDataSelection | group-object -Property subscriptionId
-                $grpPSRuleManagementGroups = $psRuleDataSelection | group-object -Property mgPath
+                $grpPSRuleSubscriptions = $arrayPsRule | group-object -Property subscriptionId
+                $grpPSRuleManagementGroups = $arrayPsRule | group-object -Property mgPath
             }
         }
         if ($arrayFeaturesAll.Count -gt 0) {
@@ -1758,6 +1763,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         if ($arrayOrphanedResourcesSlim.Count -gt 0) {
             $arrayOrphanedResourcesGroupedBySubscription = $arrayOrphanedResourcesSlim | Group-Object subscriptionId
         }
+        $resourcesIdsAllCAFNamingRelevantGroupedBySubscription = $resourcesIdsAllCAFNamingRelevant | Group-Object -Property subscriptionId
+
         processScopeInsights -mgChild $ManagementGroupId -mgChildOf $getMgParentId
         showMemoryUsage
         #[System.GC]::Collect()
@@ -1894,7 +1901,7 @@ if ($Error.Count -gt 0) {
 }
 
 if ($DoPSRule) {
-    $psRuleErrors = $psRuleDataSelection.where({ -not [string]::IsNullOrWhiteSpace($_.errorMsg) })
+    $psRuleErrors = $arrayPsRule.where({ -not [string]::IsNullOrWhiteSpace($_.errorMsg) })
     if ($psRuleErrors) {
         Write-Host ''
         Write-Host "$($psRuleErrors.Count) 'PSRule for Azure' error(s) encountered"

@@ -378,6 +378,7 @@ function processDataCollection {
                 $childMgDisplayName = $hierarchyInfo.ParentName
                 $childMgMgPath = $hierarchyInfo.pathDelimited
                 $childMgParentNameChain = $hierarchyInfo.ParentNameChain
+                $childMgParentNameChainDelimited = $hierarchyInfo.ParentNameChainDelimited
                 $childMgParentInfo = $htManagementGroupsMgPath.($childMgId)
                 $childMgParentId = $childMgParentInfo.Parent
                 $childMgParentName = $htManagementGroupsMgPath.($childMgParentInfo.Parent).DisplayName
@@ -429,6 +430,7 @@ function processDataCollection {
                             #resources
                             $dataCollectionResourcesParameters = @{
                                 ChildMgMgPath = $childMgMgPath
+                                ChildMgParentNameChainDelimited = $childMgParentNameChainDelimited
                             }
                             DataCollectionResources @baseParameters @dataCollectionResourcesParameters
                         }

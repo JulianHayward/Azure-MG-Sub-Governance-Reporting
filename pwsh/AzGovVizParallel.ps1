@@ -286,7 +286,7 @@ Param
     $AzAPICallVersion = '1.1.18',
 
     [string]
-    $ProductVersion = 'v6_major_20220710_1',
+    $ProductVersion = 'v6_major_20220714_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -490,6 +490,12 @@ Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings 'true'
 $startAzGovViz = Get-Date
 $startTime = Get-Date -Format 'dd-MMM-yyyy HH:mm:ss'
 Write-Host "Start AzGovViz $($startTime) (#$($ProductVersion))"
+
+if ($ManagementGroupId -match " ") {
+    Write-Host "Provided Management Group ID: '$($ManagementGroupId)'" -ForegroundColor Yellow
+    Write-Host "The Management Group ID may not contain spaces - provide the Management Group ID, not the displayName." -ForegroundColor DarkRed
+    throw "Management Group ID validation failed!"
+}
 
 #region Functions
 function addHtParameters {
@@ -3298,33 +3304,6 @@ function handleCloudEnvironment {
         }
     }
 }
-function handlePSRuleData {
-    $start = Get-Date
-
-    $script:psRuleDataSelection = $arrayPsRule | select-object `
-    @{label = "resourceType"; Expression = { $_.TargetType } }, `
-    @{label = "subscriptionId"; Expression = { ($_.TargetObject.id.split('/')[2]) } }, `
-    @{label = "mgPath"; Expression = { ($htSubscriptionsMgPath.($_.TargetObject.id.split('/')[2])).ParentNameChainDelimited } }, `
-    @{label = "resourceId"; Expression = { ($_.TargetObject.id) } }, `
-    @{label = "pillar"; Expression = { $_.Info.Annotations.pillar } }, `
-    @{label = "category"; Expression = { $_.Info.Annotations.category } }, `
-    @{label = "severity"; Expression = { $_.Info.Annotations.severity } }, `
-    @{label = "rule"; Expression = { $_.Info.DisplayName } }, `
-    @{label = "description"; Expression = { $_.Info.Description } }, `
-    @{label = "recommendation"; Expression = { $_.Info.Recommendation } }, `
-    @{label = "link"; Expression = { $_.Info.Annotations.'online version' } }, `
-    @{label = "ruleId"; Expression = { $_.RuleId } }, `
-    @{label = "result"; Expression = { $_.Outcome } }, `
-    @{label = "errorMsg"; Expression = { $_.Error.Message } }
-
-    if (-not $NoCsvExport) {
-        Write-Host "Exporting 'PSRule for Azure' CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv'"
-        $psRuleDataSelection | Sort-Object -Property resourceId, pillar, category, severity, rule, recommendation | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
-    }
-
-    $end = Get-Date
-    Write-Host "   handlePSRuleData processing duration: $((NEW-TIMESPAN -Start $start -End $end).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds)"
-}
 function NamingValidation($toCheck) {
     $checks = @(':', '/', '\', '<', '>', '|', '"')
     $array = @()
@@ -3969,6 +3948,7 @@ function processDataCollection {
                 $childMgDisplayName = $hierarchyInfo.ParentName
                 $childMgMgPath = $hierarchyInfo.pathDelimited
                 $childMgParentNameChain = $hierarchyInfo.ParentNameChain
+                $childMgParentNameChainDelimited = $hierarchyInfo.ParentNameChainDelimited
                 $childMgParentInfo = $htManagementGroupsMgPath.($childMgId)
                 $childMgParentId = $childMgParentInfo.Parent
                 $childMgParentName = $htManagementGroupsMgPath.($childMgParentInfo.Parent).DisplayName
@@ -4020,6 +4000,7 @@ function processDataCollection {
                             #resources
                             $dataCollectionResourcesParameters = @{
                                 ChildMgMgPath = $childMgMgPath
+                                ChildMgParentNameChainDelimited = $childMgParentNameChainDelimited
                             }
                             DataCollectionResources @baseParameters @dataCollectionResourcesParameters
                         }
@@ -7552,6 +7533,146 @@ extensions: [{ name: 'sort' }]
 '@)
         }
         #endregion ScopeInsightsResources
+    }
+
+    if ($azAPICallConf['htParameters'].NoResources -eq $false) {
+        #region ScopeInsightsCAFResourceNamingALL
+        if ($mgOrSub -eq 'sub') {
+            $resourcesIdsAllCAFNamingRelevantThisSubscription = $resourcesIdsAllCAFNamingRelevantGroupedBySubscription.where({ $_.Name -eq $subscriptionId })
+            if ($resourcesIdsAllCAFNamingRelevantThisSubscription) {
+                $resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByType = $resourcesIdsAllCAFNamingRelevantThisSubscription.Group | Group-Object -Property type
+                $resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByTypeCount = ($resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByType | Measure-Object).Count
+                
+                $tfCount = $resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByTypeCount
+                $htmlTableId = "ScopeInsights_CAFResourceNamingALL_$($subscriptionId -replace '-','_')"
+                $randomFunctionName = "func_$htmlTableId"
+                [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-star-o" aria-hidden="true"></i> CAF Naming Recommendation Compliance</p></button>
+<div class="content contentSISub">
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">CAF - Recommended abbreviations for Azure resource types</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> Resource details can be found in the CSV output *_ResourcesAll.csv<br>
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="$cssClass">
+<thead>
+<tr>
+<th>ResourceType</th>
+<th>Recommendation</th>
+<th>ResourceFriendlyName</th>
+<th>passed</th>
+<th>failed</th>
+<th>passed percentage</th>
+</tr>
+</thead>
+<tbody>
+"@)
+                $htmlScopeInsightsCAFResourceNamingALL = $null
+                $htmlScopeInsightsCAFResourceNamingALL = foreach ($entry in $resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByType) {
+                    
+                    $resourceTypeGroupedByCAFResourceNamingResult = $entry.Group | Group-Object -Property cafResourceNamingResult, cafResourceNaming
+                    if ($entry.Group.cafResourceNaming.Count -gt 1) {
+                        $namingConvention = ($entry.Group.cafResourceNaming)[0]
+                        $namingConventionFriendlyName = ($entry.Group.cafResourceNamingFriendlyName)[0]
+                    }
+                    else {
+                        $namingConvention = $entry.Group.cafResourceNaming
+                        $namingConventionFriendlyName = $entry.Group.cafResourceNamingFriendlyName
+                    }
+                        
+                    $passed = 0
+                    $failed = 0
+                    foreach ($result in $resourceTypeGroupedByCAFResourceNamingResult) {
+                        $resultNameSplitted = $result.Name -split ", "
+                        if ($resultNameSplitted[0] -eq 'passed') {
+                            $passed = $result.Count
+                        }
+                            
+                        if ($resultNameSplitted[0] -eq 'failed') {
+                            $failed = $result.Count
+                        }        
+                    }
+    
+                    if ($passed -gt 0) {
+                        $percentage = [math]::Round(($passed / ($passed + $failed) * 100), 2)
+                    }
+                    else {
+                        $percentage = 0
+                    }
+
+                    @"
+<tr>
+<td>$($entry.Name)</td>
+<td>$($namingConvention)</td>
+<td>$($namingConventionFriendlyName)</td>
+<td>$($passed)</td>
+<td>$($failed)</td>
+<td>$($percentage)%</td>
+</tr>
+"@
+                }
+                [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsCAFResourceNamingALL)
+                [void]$htmlScopeInsights.AppendLine(@"
+            </tbody>
+        </table>
+        <script>
+            function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+                window.helpertfConfig4$htmlTableId =1;
+                var tfConfig4$htmlTableId = {
+                base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+                if ($tfCount -gt 10) {
+                    $spectrum = "10, $tfCount"
+                    if ($tfCount -gt 50) {
+                        $spectrum = "10, 25, 50, $tfCount"
+                    }
+                    if ($tfCount -gt 100) {
+                        $spectrum = "10, 30, 50, 100, $tfCount"
+                    }
+                    if ($tfCount -gt 500) {
+                        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                    }
+                    if ($tfCount -gt 1000) {
+                        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                    }
+                    if ($tfCount -gt 2000) {
+                        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                    }
+                    if ($tfCount -gt 3000) {
+                        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                    }
+                    [void]$htmlScopeInsights.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+                }
+                [void]$htmlScopeInsights.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number',
+                'number',
+                'number'
+            ],
+            extensions: [{ name: 'sort' }]
+            };
+            var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+            tf.init();}}
+        </script>
+    </div>
+"@)
+            }
+            else {
+                [void]$htmlScopeInsights.AppendLine(@"
+                <p><i class="fa fa-ban" aria-hidden="true"></i> No CAF Naming Recommendation Compliance data available</p>
+"@)
+            }
+
+            [void]$htmlScopeInsights.AppendLine(@'
+</td></tr>
+<tr><td class="detailstd">
+'@)
+        }
+        #endregion ScopeInsightsCAFResourceNamingALL
     }
 
     #region ScopeInsightsOrphanedResources
@@ -16267,6 +16388,144 @@ extensions: [{ name: 'sort' }]
         $endSUMMARYResourceFluctuation = Get-Date
         Write-Host "   SUMMARY Resource fluctuation processing duration: $((NEW-TIMESPAN -Start $startSUMMARYResourceFluctuation -End $endSUMMARYResourceFluctuation).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYResourceFluctuation -End $endSUMMARYResourceFluctuation).TotalSeconds) seconds)"
         #endregion SUMMARYResourceFluctuation
+
+        #region SUMMARYCAFResourceNamingALL
+        $startSUMMARYCAFResourceNamingALL = Get-Date
+        Write-Host '  processing TenantSummary CAFResourceNamingALL'
+        $script:resourcesIdsAllCAFNamingRelevant = $resourcesIdsAll.where({ $_.cafResourceNamingResult -ne 'n/a' })
+        $resourcesIdsAllCAFNamingRelevantGroupedByType = $resourcesIdsAllCAFNamingRelevant | Group-Object -Property type
+        $resourcesIdsAllCAFNamingRelevantGroupedByTypeCount = ($resourcesIdsAllCAFNamingRelevantGroupedByType | Measure-Object).Count
+
+        if ($resourcesIdsAllCAFNamingRelevantGroupedByTypeCount -gt 0) {
+
+            $tfCount = $resourcesIdsAllCAFNamingRelevantGroupedByTypeCount
+            $htmlTableId = 'TenantSummary_CAFResourceNamingALL'
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_CAFResourceNamingALL"><i class="padlx fa fa-star-o" aria-hidden="true"></i> <span class="valignMiddle">CAF Naming Recommendation Compliance</span>
+</button>
+<div class="content TenantSummary">
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> CAF - Recommended abbreviations for Azure resource types</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<span class="padlxx"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Resource details can be found in the CSV output *_ResourcesAll.csv</span><br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>ResourceType</th>
+<th>Recommendation</th>
+<th>ResourceFriendlyName</th>
+<th>passed</th>
+<th>failed</th>
+<th>passed percentage</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+            $htmlSUMMARYCAFResourceNamingALL = $null
+            $htmlSUMMARYCAFResourceNamingALL = foreach ($entry in $resourcesIdsAllCAFNamingRelevantGroupedByType) {
+                    
+                $resourceTypeGroupedByCAFResourceNamingResult = $entry.Group | Group-Object -Property cafResourceNamingResult, cafResourceNaming
+                if ($entry.Group.cafResourceNaming.Count -gt 1) {
+                    $namingConvention = ($entry.Group.cafResourceNaming)[0]
+                    $namingConventionFriendlyName = ($entry.Group.cafResourceNamingFriendlyName)[0]
+                }
+                else {
+                    $namingConvention = $entry.Group.cafResourceNaming
+                    $namingConventionFriendlyName = $entry.Group.cafResourceNamingFriendlyName
+                }
+                    
+                $passed = 0
+                $failed = 0
+                foreach ($result in $resourceTypeGroupedByCAFResourceNamingResult) {
+                    $resultNameSplitted = $result.Name -split ", "
+                    if ($resultNameSplitted[0] -eq 'passed') {
+                        $passed = $result.Count
+                    }
+                        
+                    if ($resultNameSplitted[0] -eq 'failed') {
+                        $failed = $result.Count
+                    }        
+                }
+
+                if ($passed -gt 0) {
+                    $percentage = [math]::Round(($passed / ($passed + $failed) * 100), 2)
+                }
+                else {
+                    $percentage = 0
+                }
+
+                @"
+<tr>
+<td>$($entry.Name)</td>
+<td>$($namingConvention)</td>
+<td>$($namingConventionFriendlyName)</td>
+<td>$($passed)</td>
+<td>$($failed)</td>
+<td>$($percentage)%</td>
+</tr>
+"@
+            
+            }
+            [void]$htmlTenantSummary.AppendLine($htmlSUMMARYCAFResourceNamingALL)
+            [void]$htmlTenantSummary.AppendLine(@"
+        </tbody>
+    </table>
+</div>
+<script>
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
+        base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true, 
+        col_types: [
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'number',
+            'number',
+            'number'
+        ],
+extensions: [{ name: 'sort' }]
+    };
+    var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+    tf.init();}}
+</script>
+"@)
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@'
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No CAF Naming Recommendation Compliance data</p>
+'@)
+        }
+        $endSUMMARYCAFResourceNamingALL = Get-Date
+        Write-Host "   SUMMARY CAFResourceNamingALL processing duration: $((NEW-TIMESPAN -Start $startSUMMARYCAFResourceNamingALL -End $endSUMMARYCAFResourceNamingALL).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYCAFResourceNamingALL -End $endSUMMARYCAFResourceNamingALL).TotalSeconds) seconds)"
+        #endregion SUMMARYCAFResourceNamingALL
     }
 
     #region SUMMARYOrphanedResources
@@ -17366,7 +17625,7 @@ extensions: [{ name: 'sort' }]
             }
 
             if (-not $NoCsvExport) {
-                Write-Host "Exporting UserAssignedIdentities4Resources CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_UserAssignedIdentities4Resources.csv'"
+                Write-Host "   Exporting UserAssignedIdentities4Resources CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_UserAssignedIdentities4Resources.csv'"
                 $userAssignedIdentities4Resources4CSVExport | Sort-Object -Property MIResourceId, ResId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_UserAssignedIdentities4Resources.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
             }
 
@@ -17451,8 +17710,12 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 
             if ($arrayPSRuleCount -gt 0) {
 
-                handlePSRuleData
-                $grpPSRuleAll = $psRuleDataSelection | group-object -Property resourceType, pillar, category, severity, ruleId, result
+                if (-not $NoCsvExport) {
+                    Write-Host "   Exporting 'PSRule for Azure' CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv'"
+                    $arrayPsRule | Sort-Object -Property resourceId, pillar, category, severity, rule, recommendation | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                }
+
+                $grpPSRuleAll = $arrayPsRule | group-object -Property resourceType, pillar, category, severity, ruleId, result
                 $tfCount = $grpPSRuleAll.Name.Count
 
                 $htmlTableId = 'TenantSummary_PSRule'
@@ -23036,6 +23299,11 @@ function stats {
     #region Stats
     if (-not $StatsOptOut) {
 
+        $dur = 0
+        if ($durationProduct -lt 5) {
+            $dur = 5
+        }
+        
         if ($azAPICallConf['htParameters'].onAzureDevOps) {
             if ($env:BUILD_REPOSITORY_ID) {
                 $hashTenantIdOrRepositoryId = [string]($env:BUILD_REPOSITORY_ID)
@@ -23144,7 +23412,8 @@ function stats {
                 "statsParametersPolicyAtScopeOnly": "$($azAPICallConf['htParameters'].PolicyAtScopeOnly)",
                 "statsParametersRBACAtScopeOnly": "$($azAPICallConf['htParameters'].RBACAtScopeOnly)",
                 "statsParametersDoPSRule": "$($azAPICallConf['htParameters'].DoPSRule)",
-                "statsTry": "$($tryCounter)"
+                "statsTry": "$($tryCounter)",
+                "statsDurationProduct": "$($dur)"
             }
         }
     }
@@ -23784,8 +24053,10 @@ function dataCollectionResources {
         [string]$scopeId,
         [string]$scopeDisplayName,
         $ChildMgMgPath,
+        $ChildMgParentNameChainDelimited,
         $subscriptionQuotaId
     )
+
     $currentTask = "Getting ResourceTypes for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime&api-version=2021-04-01"
     $method = 'GET'
@@ -23816,10 +24087,23 @@ function dataCollectionResources {
                 })
 
             if ($psruleResults.Count -gt 0) {
-                #fix issue #111
-                #$null = $script:arrayPSRule.AddRange($psRuleResults)
                 foreach ($psRuleResult in $psRuleResults) {
-                    $null = $arrayPSRule.Add($psRuleResult)
+                    $null = $script:arrayPSRule.Add([PSCustomObject]@{
+                            resourceType   = $psRuleResult.TargetType
+                            subscriptionId = $scopeId
+                            mgPath         = $ChildMgParentNameChainDelimited
+                            resourceId     = $psRuleResult.TargetObject.id
+                            pillar         = $psRuleResult.Info.Annotations.pillar
+                            category       = $psRuleResult.Info.Annotations.category
+                            severity       = $psRuleResult.Info.Annotations.severity
+                            rule           = $psRuleResult.Info.DisplayName
+                            description    = $psRuleResult.Info.Description
+                            recommendation = $psRuleResult.Info.Recommendation
+                            link           = $psRuleResult.Info.Annotations.'online version'
+                            ruleId         = $psRuleResult.RuleId
+                            result         = $psRuleResult.Outcome
+                            errorMsg       = $psRuleResult.Error.Message
+                        })
                 }
             }
         }
@@ -23843,42 +24127,645 @@ function dataCollectionResources {
     }
 
     $startSubResourceIdsThis = Get-Date
-    foreach ($resource in ($resourcesSubscriptionResult)) {
-        $null = $script:resourcesIdsAll.Add([PSCustomObject]@{
-                subscriptionId = $scopeId
-                mgPath         = $childMgMgPath
-                type           = ($resource.type).ToLower()
-                id             = ($resource.Id).ToLower()
-                name           = ($resource.name).ToLower()
-                location       = ($resource.location).ToLower()
-                tags           = ($resource.tags)
-                createdTime    = ($resource.createdTime)
-                changedTime    = ($resource.changedTime)
-            })
 
-        if ($resource.identity.userAssignedIdentities) {
-            $resource.identity.userAssignedIdentities.psobject.properties | ForEach-Object {
-                if ((-not [string]::IsNullOrEmpty($resource.Id)) -and (-not [string]::IsNullOrEmpty($_.Value.principalId))) {
-                    $hlp = ($_.Name.split('/'))
-                    $hlpMiSubId = $hlp[2]
-                    $null = $script:arrayUserAssignedIdentities4Resources.Add([PSCustomObject]@{
-                            resourceId                = $resource.Id
-                            resourceName              = $resource.name
-                            resourceMgPath            = $childMgMgPath
-                            resourceSubscriptionName  = $scopeDisplayName
-                            resourceSubscriptionId    = $scopeId
-                            resourceResourceGroupName = ($resource.Id -split ('/'))[4]
-                            resourceType              = $resource.type
-                            resourceLocation          = $resource.location
-                            miPrincipalId             = $_.Value.principalId
-                            miClientId                = $_.Value.clientId
-                            miMgPath                  = $htSubscriptionsMgPath.($hlpMiSubId).pathDelimited
-                            miSubscriptionName        = $htSubscriptionsMgPath.($hlpMiSubId).DisplayName
-                            miSubscriptionId          = $hlpMiSubId
-                            miResourceGroupName       = $hlp[4]
-                            miResourceId              = $_.Name
-                            miResourceName            = $_.Name -replace '.*/'
-                        })
+    <# Build the $JSONcafResourceNaming #pending PR https://github.com/MicrosoftDocs/cloud-adoption-framework/pull/916
+    $arrayCAFNamingConvention = [System.Collections.ArrayList]@()
+    $htCAFNamingConvention = @{}
+    #$cafNamingFromFile = Get-Content -Path .\cafNaming.md -Encoding utf8
+    $CAFFileName = 'resource-abbreviations.md'
+    Invoke-webrequest -OutFile .\$($CAFFileName) -URI "https://raw.githubusercontent.com/MicrosoftDocs/cloud-adoption-framework/main/docs/ready/azure-best-practices/resource-abbreviations.md"
+    $cafNamingFromFile = Get-Content -Path .\$($CAFFileName) -Encoding utf8
+    $cafNamingFromFile.count
+    foreach ($line in $cafNamingFromFile) {
+        #$line
+        if ($line -match "microsoft.") {
+            $tranformed = $line -replace '`' -split " \| "
+            $friendlyName =  $($tranformed[0] -replace "\| ")
+            $resourceType = $($tranformed[1])
+            $namingConvention = $($tranformed[2] -replace " \|" -replace "\|")
+            $null = $arrayCAFNamingConvention.Add([PSCustomObject]@{
+                resourceType = $resourceType
+                friendlyName = $friendlyName
+                namingConvention = $namingConvention
+            })
+        }
+    } 
+
+    $htCAFNamingConvention = [ordered]@{}
+    $arrayCAFNamingConventionGroupedByType = $arrayCAFNamingConvention | Sort-Object -Property resourceType | Group-Object -Property resourceType
+    foreach ($entry in $arrayCAFNamingConventionGroupedByType){
+        $htCAFNamingConvention.($entry.name) = @{}
+        $htCAFNamingConvention.($entry.name).friendlyName = $entry.group.friendlyName
+        $htCAFNamingConvention.($entry.name).namingConvention = $entry.group.namingConvention
+    }
+    $htCAFNamingConvention | ConvertTo-Json
+#>
+
+    $JSONcafResourceNaming = @'
+    {
+        "Microsoft.AnalysisServices/servers": {
+          "friendlyName": "Azure Analysis Services server",
+          "namingConvention": "as"
+        },
+        "Microsoft.ApiManagement/service": {
+          "friendlyName": "API management service instance",
+          "namingConvention": "apim-"
+        },
+        "Microsoft.AppConfiguration/configurationStores": {
+          "friendlyName": "App Configuration store",
+          "namingConvention": "appcs-"
+        },
+        "Microsoft.Authorization/policyDefinitions": {
+          "friendlyName": "Policy definition",
+          "namingConvention": "policy-"
+        },
+        "Microsoft.Automation/automationAccounts": {
+          "friendlyName": "Automation account",
+          "namingConvention": "aa-"
+        },
+        "Microsoft.Blueprint/blueprints": {
+          "friendlyName": "Blueprint",
+          "namingConvention": "bp-"
+        },
+        "Microsoft.Blueprint/blueprints/artifacts": {
+          "friendlyName": "Blueprint assignment",
+          "namingConvention": "bpa-"
+        },
+        "Microsoft.Cache/Redis": {
+          "friendlyName": "Azure Cache for Redis instance",
+          "namingConvention": "redis-"
+        },
+        "Microsoft.Cdn/profiles": {
+          "friendlyName": "CDN profile",
+          "namingConvention": "cdnp-"
+        },
+        "Microsoft.Cdn/profiles/endpoints": {
+          "friendlyName": "CDN endpoint",
+          "namingConvention": "cdne-"
+        },
+        "Microsoft.CognitiveServices/accounts": {
+          "friendlyName": "Azure Cognitive Services",
+          "namingConvention": "cog-"
+        },
+        "Microsoft.Compute/availabilitySets": {
+          "friendlyName": "Availability set",
+          "namingConvention": "avail-"
+        },
+        "Microsoft.Compute/cloudServices": {
+          "friendlyName": "Cloud service",
+          "namingConvention": "cld-"
+        },
+        "Microsoft.Compute/diskEncryptionSets": {
+          "friendlyName": "Disk encryption set",
+          "namingConvention": "des"
+        },
+        "Microsoft.Compute/disks": {
+          "friendlyName": [
+            "Managed disk (data)",
+            "Managed disk (OS)"
+          ],
+          "namingConvention": [
+            "disk",
+            "osdisk"
+          ]
+        },
+        "Microsoft.Compute/galleries": {
+          "friendlyName": "Gallery",
+          "namingConvention": "gal"
+        },
+        "Microsoft.Compute/snapshots": {
+          "friendlyName": "Snapshot",
+          "namingConvention": "snap-"
+        },
+        "Microsoft.Compute/virtualMachines": {
+          "friendlyName": "Virtual machine",
+          "namingConvention": "vm"
+        },
+        "Microsoft.Compute/virtualMachineScaleSets": {
+          "friendlyName": "Virtual machine scale set",
+          "namingConvention": "vmss-"
+        },
+        "Microsoft.ContainerInstance/containerGroups": {
+          "friendlyName": "Container instance",
+          "namingConvention": "ci"
+        },
+        "Microsoft.ContainerRegistry/registries": {
+          "friendlyName": "Container registry",
+          "namingConvention": "cr"
+        },
+        "Microsoft.ContainerService/managedClusters": {
+          "friendlyName": "AKS cluster",
+          "namingConvention": "aks-"
+        },
+        "Microsoft.Databricks/workspaces": {
+          "friendlyName": "Azure Databricks workspace",
+          "namingConvention": "dbw-"
+        },
+        "Microsoft.DataFactory/factories": {
+          "friendlyName": "Azure Data Factory",
+          "namingConvention": "adf-"
+        },
+        "Microsoft.DataLakeAnalytics/accounts": {
+          "friendlyName": "Data Lake Analytics account",
+          "namingConvention": "dla"
+        },
+        "Microsoft.DataLakeStore/accounts": {
+          "friendlyName": "Data Lake Store account",
+          "namingConvention": "dls"
+        },
+        "Microsoft.DataMigration/services": {
+          "friendlyName": "Database Migration Service instance",
+          "namingConvention": "dms-"
+        },
+        "Microsoft.DataProtection/BackupVaults": {
+          "friendlyName": "Backup vault",
+          "namingConvention": "bv-"
+        },
+        "Microsoft.DBforMySQL/servers": {
+          "friendlyName": "MySQL database",
+          "namingConvention": "mysql-"
+        },
+        "Microsoft.DBforPostgreSQL/servers": {
+          "friendlyName": "PostgreSQL database",
+          "namingConvention": "psql-"
+        },
+        "Microsoft.Devices/IotHubs": {
+          "friendlyName": "IoT hub",
+          "namingConvention": "iot-"
+        },
+        "Microsoft.Devices/provisioningServices": {
+          "friendlyName": "Provisioning services",
+          "namingConvention": "provs-"
+        },
+        "Microsoft.Devices/provisioningServices/certificates": {
+          "friendlyName": "Provisioning services certificate",
+          "namingConvention": "pcert-"
+        },
+        "Microsoft.DocumentDB/databaseAccounts/sqlDatabases": {
+          "friendlyName": "Azure Cosmos DB database",
+          "namingConvention": "cosmos-"
+        },
+        "Microsoft.EventGrid/domains": {
+          "friendlyName": "Event Grid domain",
+          "namingConvention": "evgd-"
+        },
+        "Microsoft.EventGrid/domains/topics": {
+          "friendlyName": "Event Grid topic",
+          "namingConvention": "evgt-"
+        },
+        "Microsoft.EventGrid/eventSubscriptions": {
+          "friendlyName": "Event Grid subscriptions",
+          "namingConvention": "evgs-"
+        },
+        "Microsoft.EventHub/namespaces": {
+          "friendlyName": "Event Hubs namespace",
+          "namingConvention": "evhns-"
+        },
+        "Microsoft.EventHub/namespaces/eventHubs": {
+          "friendlyName": "Event hub",
+          "namingConvention": "evh-"
+        },
+        "Microsoft.HDInsight/clusters": {
+          "friendlyName": [
+            "HDInsight - Hadoop cluster",
+            "HDInsight - Kafka cluster",
+            "HDInsight - Spark cluster",
+            "HDInsight - Storm cluster",
+            "HDInsight - ML Services cluster",
+            "HDInsight - HBase cluster"
+          ],
+          "namingConvention": [
+            "hadoop-",
+            "kafka-",
+            "spark-",
+            "storm-",
+            "mls-",
+            "hbase-"
+          ]
+        },
+        "Microsoft.HybridCompute/machines": {
+          "friendlyName": "Azure Arc enabled server",
+          "namingConvention": "arcs-"
+        },
+        "Microsoft.Insights/actionGroups": {
+          "friendlyName": "Azure Monitor action group",
+          "namingConvention": "ag-"
+        },
+        "Microsoft.Insights/components": {
+          "friendlyName": "Application Insights",
+          "namingConvention": "appi-"
+        },
+        "Microsoft.KeyVault/vaults": {
+          "friendlyName": "Key vault",
+          "namingConvention": "kv-"
+        },
+        "Microsoft.Kubernetes/connectedClusters": {
+          "friendlyName": "Azure Arc enabled Kubernetes cluster",
+          "namingConvention": "arck"
+        },
+        "Microsoft.Kusto/clusters": {
+          "friendlyName": "Azure Data Explorer cluster",
+          "namingConvention": "dec"
+        },
+        "Microsoft.Kusto/clusters/databases": {
+          "friendlyName": "Azure Data Explorer cluster database",
+          "namingConvention": "dedb"
+        },
+        "Microsoft.Logic/integrationAccounts": {
+          "friendlyName": "Integration account",
+          "namingConvention": "ia-"
+        },
+        "Microsoft.Logic/workflows": {
+          "friendlyName": "Logic apps",
+          "namingConvention": "logic-"
+        },
+        "Microsoft.MachineLearningServices/workspaces": {
+          "friendlyName": "Azure Machine Learning workspace",
+          "namingConvention": "mlw-"
+        },
+        "Microsoft.ManagedIdentity/userAssignedIdentities": {
+          "friendlyName": "Managed Identity",
+          "namingConvention": "id-"
+        },
+        "Microsoft.Management/managementGroups": {
+          "friendlyName": "Management group",
+          "namingConvention": "mg-"
+        },
+        "Microsoft.Migrate/assessmentProjects": {
+          "friendlyName": "Azure Migrate project",
+          "namingConvention": "migr-"
+        },
+        "Microsoft.Network/applicationGateways": {
+          "friendlyName": "Application gateway",
+          "namingConvention": "agw-"
+        },
+        "Microsoft.Network/applicationSecurityGroups": {
+          "friendlyName": "Application security group (ASG)",
+          "namingConvention": "asg-"
+        },
+        "Microsoft.Network/azureFirewalls": {
+          "friendlyName": "Firewall",
+          "namingConvention": "afw-"
+        },
+        "Microsoft.Network/bastionHosts": {
+          "friendlyName": "Bastion",
+          "namingConvention": "bas-"
+        },
+        "Microsoft.Network/connections": {
+          "friendlyName": "Connections",
+          "namingConvention": "con-"
+        },
+        "Microsoft.Network/dnsZones": {
+          "friendlyName": "DNS",
+          "namingConvention": "dnsz-"
+        },
+        "Microsoft.Network/expressRouteCircuits": {
+          "friendlyName": "ExpressRoute circuit",
+          "namingConvention": "erc-"
+        },
+        "Microsoft.Network/firewallPolicies": {
+          "friendlyName": [
+            "Web Application Firewall (WAF) policy",
+            "Firewall policy"
+          ],
+          "namingConvention": [
+            "waf",
+            "afwp-"
+          ]
+        },
+        "Microsoft.Network/firewallPolicies/ruleGroups": {
+          "friendlyName": "Web Application Firewall (WAF) policy rule group",
+          "namingConvention": "wafrg"
+        },
+        "Microsoft.Network/frontDoors": {
+          "friendlyName": "Front Door instance",
+          "namingConvention": "fd-"
+        },
+        "Microsoft.Network/frontdoorWebApplicationFirewallPolicies": {
+          "friendlyName": "Front Door firewall policy",
+          "namingConvention": "fdfp-"
+        },
+        "Microsoft.Network/loadBalancers": {
+          "friendlyName": [
+            "Load balancer (external)",
+            "Load balancer (internal)"
+          ],
+          "namingConvention": [
+            "lbe-",
+            "lbi-"
+          ]
+        },
+        "Microsoft.Network/loadBalancers/inboundNatRules": {
+          "friendlyName": "Load balancer rule",
+          "namingConvention": "rule-"
+        },
+        "Microsoft.Network/localNetworkGateways": {
+          "friendlyName": "Local network gateway",
+          "namingConvention": "lgw-"
+        },
+        "Microsoft.Network/natGateways": {
+          "friendlyName": "NAT gateway",
+          "namingConvention": "ng-"
+        },
+        "Microsoft.Network/networkInterfaces": {
+          "friendlyName": "Network interface (NIC)",
+          "namingConvention": "nic-"
+        },
+        "Microsoft.Network/networkSecurityGroups": {
+          "friendlyName": "Network security group (NSG)",
+          "namingConvention": "nsg-"
+        },
+        "Microsoft.Network/networkSecurityGroups/securityRules": {
+          "friendlyName": "Network security group (NSG) security rules",
+          "namingConvention": "nsgsr-"
+        },
+        "Microsoft.Network/networkWatchers": {
+          "friendlyName": "Network Watcher",
+          "namingConvention": "nw-"
+        },
+        "Microsoft.Network/privateDnsZones": {
+          "friendlyName": "DNS zone",
+          "namingConvention": "pdnsz-"
+        },
+        "Microsoft.Network/privateLinkServices": {
+          "friendlyName": "Private Link",
+          "namingConvention": "pl-"
+        },
+        "Microsoft.Network/publicIPAddresses": {
+          "friendlyName": "Public IP address",
+          "namingConvention": "pip-"
+        },
+        "Microsoft.Network/publicIPPrefixes": {
+          "friendlyName": "Public IP address prefix",
+          "namingConvention": "ippre-"
+        },
+        "Microsoft.Network/routeFilters": {
+          "friendlyName": "Route filter",
+          "namingConvention": "rf-"
+        },
+        "Microsoft.Network/routeTables": {
+          "friendlyName": "Route table",
+          "namingConvention": "rt-"
+        },
+        "Microsoft.Network/routeTables/routes": {
+          "friendlyName": "User defined route (UDR)",
+          "namingConvention": "udr-"
+        },
+        "Microsoft.Network/trafficManagerProfiles": {
+          "friendlyName": "Traffic Manager profile",
+          "namingConvention": "traf-"
+        },
+        "Microsoft.Network/virtualNetworkGateways": {
+          "friendlyName": "Virtual network gateway",
+          "namingConvention": "vgw-"
+        },
+        "Microsoft.Network/virtualNetworks": {
+          "friendlyName": "Virtual network",
+          "namingConvention": "vnet-"
+        },
+        "Microsoft.Network/virtualNetworks/subnets": {
+          "friendlyName": "Virtual network subnet",
+          "namingConvention": "snet-"
+        },
+        "Microsoft.Network/virtualNetworks/virtualNetworkPeerings": {
+          "friendlyName": "Virtual network peering",
+          "namingConvention": "peer-"
+        },
+        "Microsoft.Network/virtualWans": {
+          "friendlyName": "Virtual WAN",
+          "namingConvention": "vwan-"
+        },
+        "Microsoft.Network/vpnGateways": {
+          "friendlyName": "VPN Gateway",
+          "namingConvention": "vpng-"
+        },
+        "Microsoft.Network/vpnGateways/vpnConnections": {
+          "friendlyName": "VPN connection",
+          "namingConvention": "vcn-"
+        },
+        "Microsoft.Network/vpnGateways/vpnSites": {
+          "friendlyName": "VPN site",
+          "namingConvention": "vst-"
+        },
+        "Microsoft.NotificationHubs/namespaces": {
+          "friendlyName": "Notification Hubs namespace",
+          "namingConvention": "ntfns-"
+        },
+        "Microsoft.NotificationHubs/namespaces/notificationHubs": {
+          "friendlyName": "Notification Hubs",
+          "namingConvention": "ntf-"
+        },
+        "Microsoft.OperationalInsights/workspaces": {
+          "friendlyName": "Log Analytics workspace",
+          "namingConvention": "log-"
+        },
+        "Microsoft.PowerBIDedicated/capacities": {
+          "friendlyName": "Power BI Embedded",
+          "namingConvention": "pbi-"
+        },
+        "Microsoft.Purview/accounts": {
+          "friendlyName": "Azure Purview instance",
+          "namingConvention": "pview-"
+        },
+        "Microsoft.RecoveryServices/vaults": {
+          "friendlyName": "Recovery Services vault",
+          "namingConvention": "rsv-"
+        },
+        "Microsoft.RecoveryServices/vaults/backupPolicies": {
+          "friendlyName": "Recovery Services vault backup policy",
+          "namingConvention": "rsvbp-"
+        },
+        "Microsoft.Resources/resourceGroups": {
+          "friendlyName": "Resource group",
+          "namingConvention": "rg-"
+        },
+        "Microsoft.Search/searchServices": {
+          "friendlyName": "Azure Cognitive Search",
+          "namingConvention": "srch-"
+        },
+        "Microsoft.ServiceBus/namespaces": {
+          "friendlyName": "Service Bus",
+          "namingConvention": "sb-"
+        },
+        "Microsoft.ServiceBus/namespaces/queues": {
+          "friendlyName": "Service Bus queue",
+          "namingConvention": "sbq-"
+        },
+        "Microsoft.ServiceBus/namespaces/topics": {
+          "friendlyName": "Service Bus topic",
+          "namingConvention": "sbt-"
+        },
+        "Microsoft.serviceEndPointPolicies": {
+          "friendlyName": "Service endpoint",
+          "namingConvention": "se-"
+        },
+        "Microsoft.ServiceFabric/clusters": {
+          "friendlyName": "Service Fabric cluster",
+          "namingConvention": "sf-"
+        },
+        "Microsoft.SignalRService/SignalR": {
+          "friendlyName": "SignalR",
+          "namingConvention": "sigr"
+        },
+        "Microsoft.Sql/managedInstances": {
+          "friendlyName": "SQL Managed Instance",
+          "namingConvention": "sqlmi-"
+        },
+        "Microsoft.Sql/servers": {
+          "friendlyName": [
+            "Azure SQL Data Warehouse",
+            "Azure SQL Database server"
+          ],
+          "namingConvention": [
+            "sqldw-",
+            "sql-"
+          ]
+        },
+        "Microsoft.Sql/servers/databases": {
+          "friendlyName": [
+            "SQL Server Stretch Database",
+            "Azure SQL database"
+          ],
+          "namingConvention": [
+            "sqlstrdb-",
+            "sqldb-"
+          ]
+        },
+        "Microsoft.Storage/storageAccounts": {
+          "friendlyName": [
+            "Storage account",
+            "VM storage account"
+          ],
+          "namingConvention": [
+            "st",
+            "stvm"
+          ]
+        },
+        "Microsoft.StorSimple/managers": {
+          "friendlyName": "Azure StorSimple",
+          "namingConvention": "ssimp"
+        },
+        "Microsoft.StreamAnalytics/cluster": {
+          "friendlyName": "Azure Stream Analytics",
+          "namingConvention": "asa-"
+        },
+        "Microsoft.Synapse/workspaces": {
+          "friendlyName": [
+            "Azure Synapse Analytics Workspaces",
+            "Azure Synapse Analytics"
+          ],
+          "namingConvention": [
+            "synw",
+            "syn"
+          ]
+        },
+        "Microsoft.Synapse/workspaces/sqlPools": {
+          "friendlyName": [
+            "Azure Synapse Analytics Spark Pool",
+            "Azure Synapse Analytics SQL Dedicated Pool"
+          ],
+          "namingConvention": [
+            "synsp",
+            "syndp"
+          ]
+        },
+        "Microsoft.TimeSeriesInsights/environments": {
+          "friendlyName": "Time Series Insights environment",
+          "namingConvention": "tsi-"
+        },
+        "Microsoft.Web/serverFarms": {
+          "friendlyName": "App Service plan",
+          "namingConvention": "plan-"
+        },
+        "Microsoft.Web/sites": {
+          "friendlyName": [
+            "Web app",
+            "Function app",
+            "App Service environment"
+          ],
+          "namingConvention": [
+            "app-",
+            "func-",
+            "ase-"
+          ]
+        },
+        "Microsoft.Web/staticSites": {
+          "friendlyName": "Static web app",
+          "namingConvention": "stapp-"
+        }
+      }
+'@
+    $htCAFNamingConvention = $JSONcafResourceNaming | ConvertFrom-Json
+
+    $resourcesSubscriptionResultGroupedByType = $resourcesSubscriptionResult | Group-Object -Property type
+    foreach ($entry in $resourcesSubscriptionResultGroupedByType) {
+
+        if ($htCAFNamingConvention.($entry.Name)) {
+            $doCAFResourceNamingCheck = $true
+            $namingConvention = $htCAFNamingConvention.($entry.Name).namingConvention
+            $namingConventionFriendlyName = $htCAFNamingConvention.($entry.Name).friendlyName
+        }
+        else {
+            $doCAFResourceNamingCheck = $false
+            $namingConvention = 'n/a'
+            $namingConventionFriendlyName = 'n/a'
+        }
+
+        foreach ($resource in ($entry.Group)) {
+            
+            if ($doCAFResourceNamingCheck) {
+                $cafResourceNamingCheck = "failed"
+                $applicableNaming = $namingConvention -join "$CsvDelimiterOpposite "
+                foreach ($naming in $namingConvention) {
+                    if (($resource.name).StartsWith($naming, 'CurrentCultureIgnoreCase')) {
+                        $cafResourceNamingCheck = "passed"
+                        #$applicableNaming = $naming
+                    }
+                }
+            }
+            else {
+                $cafResourceNamingCheck = 'n/a'
+                $applicableNaming = "n/a"
+            }
+            $null = $script:resourcesIdsAll.Add([PSCustomObject]@{
+                    subscriptionId                = $scopeId
+                    mgPath                        = $childMgMgPath
+                    type                          = ($resource.type).ToLower()
+                    id                            = ($resource.Id).ToLower()
+                    name                          = ($resource.name).ToLower()
+                    location                      = ($resource.location).ToLower()
+                    tags                          = ($resource.tags)
+                    createdTime                   = ($resource.createdTime)
+                    changedTime                   = ($resource.changedTime)
+                    cafResourceNamingResult       = $cafResourceNamingCheck
+                    cafResourceNaming             = $applicableNaming
+                    cafResourceNamingFriendlyName = $namingConventionFriendlyName -join "$CSVDelimiterOpposite "
+                })
+
+            if ($resource.identity.userAssignedIdentities) {
+                $resource.identity.userAssignedIdentities.psobject.properties | ForEach-Object {
+                    if ((-not [string]::IsNullOrEmpty($resource.Id)) -and (-not [string]::IsNullOrEmpty($_.Value.principalId))) {
+                        $hlp = ($_.Name.split('/'))
+                        $hlpMiSubId = $hlp[2]
+                        $null = $script:arrayUserAssignedIdentities4Resources.Add([PSCustomObject]@{
+                                resourceId                = $resource.Id
+                                resourceName              = $resource.name
+                                resourceMgPath            = $childMgMgPath
+                                resourceSubscriptionName  = $scopeDisplayName
+                                resourceSubscriptionId    = $scopeId
+                                resourceResourceGroupName = ($resource.Id -split ('/'))[4]
+                                resourceType              = $resource.type
+                                resourceLocation          = $resource.location
+                                miPrincipalId             = $_.Value.principalId
+                                miClientId                = $_.Value.clientId
+                                miMgPath                  = $htSubscriptionsMgPath.($hlpMiSubId).pathDelimited
+                                miSubscriptionName        = $htSubscriptionsMgPath.($hlpMiSubId).DisplayName
+                                miSubscriptionId          = $hlpMiSubId
+                                miResourceGroupName       = $hlp[4]
+                                miResourceId              = $_.Name
+                                miResourceName            = $_.Name -replace '.*/'
+                            })
+                    }
                 }
             }
         }
@@ -28076,8 +28963,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         $script:scopescnter = 0
         if ($azAPICallConf['htParameters'].NoResources -eq $false) {
             if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
-                $grpPSRuleSubscriptions = $psRuleDataSelection | group-object -Property subscriptionId
-                $grpPSRuleManagementGroups = $psRuleDataSelection | group-object -Property mgPath
+                $grpPSRuleSubscriptions = $arrayPsRule | group-object -Property subscriptionId
+                $grpPSRuleManagementGroups = $arrayPsRule | group-object -Property mgPath
             }
         }
         if ($arrayFeaturesAll.Count -gt 0) {
@@ -28086,6 +28973,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         if ($arrayOrphanedResourcesSlim.Count -gt 0) {
             $arrayOrphanedResourcesGroupedBySubscription = $arrayOrphanedResourcesSlim | Group-Object subscriptionId
         }
+        $resourcesIdsAllCAFNamingRelevantGroupedBySubscription = $resourcesIdsAllCAFNamingRelevant | Group-Object -Property subscriptionId
+
         processScopeInsights -mgChild $ManagementGroupId -mgChildOf $getMgParentId
         showMemoryUsage
         #[System.GC]::Collect()
@@ -28222,7 +29111,7 @@ if ($Error.Count -gt 0) {
 }
 
 if ($DoPSRule) {
-    $psRuleErrors = $psRuleDataSelection.where({ -not [string]::IsNullOrWhiteSpace($_.errorMsg) })
+    $psRuleErrors = $arrayPsRule.where({ -not [string]::IsNullOrWhiteSpace($_.errorMsg) })
     if ($psRuleErrors) {
         Write-Host ''
         Write-Host "$($psRuleErrors.Count) 'PSRule for Azure' error(s) encountered"

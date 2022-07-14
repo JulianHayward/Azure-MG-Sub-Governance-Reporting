@@ -59,15 +59,10 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Jul-10 / Major)
+__Changes__ (2022-Jul-14 / Major)
 
-* Enhanced the 'Orphaned Resources' feature: if you run AzGovViz with parameter -DoAzureConsumption then the orphaned resources output will show you potential cost savings for orphaned resources with intent 'cost savings':  
-![alt text](img/orphanedResourcesCostSavings.png "orphanedResourcesCostSavings")  
-&#x1F4A1; use parameter `-AzureConsumptionPeriod 14` to get consumption data for the last 14 days (default = 1 day)
-* New feature HierarchyMap (HTML): save the HierarchyMap as image (.jpeg)
-* 2022-Jul-07 PR #117 - Updated GitHub Actions OIDC (Open ID Connect) workflow: establish new connection to Azure before the 'HTML to WebApp' publishing task - thanks Dimitri Zilber
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.18
-* Bugfixes
+* New faeture - CLoud Adoption Framework (CAF) [Recommended abbreviations for Azure resource types](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations) compliance (HTML TenantSummary, ScopeInsights and CSV output)
+* Optimize PSRule data handling
 * Minor optimizations
 
 Passed tests: Powershell Core 7.2.5 on Windows  
@@ -162,7 +157,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
       * System metadata 'createdOn, createdBy' ('createdBy' identity is fully resolved)
       * Determine if the Role assignment is 'standing' or PIM (Privileged Identity Management) managed
       * Determine if the Role assignmet's Role definition is capable to write Role assignments
-  * ~~Role assignments ClassicAdministrators~~
+  * Role assignments ClassicAdministrators
   * Security & Best practice analysis
     * Existence of custom Role definition that reflect 'Owner' permissions
     * Report all Role definitions that are capable to write Role assignements, list all Role assignments for those Role definitions

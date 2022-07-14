@@ -266,8 +266,10 @@ function dataCollectionResources {
         [string]$scopeId,
         [string]$scopeDisplayName,
         $ChildMgMgPath,
+        $ChildMgParentNameChainDelimited,
         $subscriptionQuotaId
     )
+
     $currentTask = "Getting ResourceTypes for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime&api-version=2021-04-01"
     $method = 'GET'
@@ -298,10 +300,23 @@ function dataCollectionResources {
                 })
 
             if ($psruleResults.Count -gt 0) {
-                #fix issue #111
-                #$null = $script:arrayPSRule.AddRange($psRuleResults)
                 foreach ($psRuleResult in $psRuleResults) {
-                    $null = $arrayPSRule.Add($psRuleResult)
+                    $null = $script:arrayPSRule.Add([PSCustomObject]@{
+                            resourceType   = $psRuleResult.TargetType
+                            subscriptionId = $scopeId
+                            mgPath         = $ChildMgParentNameChainDelimited
+                            resourceId     = $psRuleResult.TargetObject.id
+                            pillar         = $psRuleResult.Info.Annotations.pillar
+                            category       = $psRuleResult.Info.Annotations.category
+                            severity       = $psRuleResult.Info.Annotations.severity
+                            rule           = $psRuleResult.Info.DisplayName
+                            description    = $psRuleResult.Info.Description
+                            recommendation = $psRuleResult.Info.Recommendation
+                            link           = $psRuleResult.Info.Annotations.'online version'
+                            ruleId         = $psRuleResult.RuleId
+                            result         = $psRuleResult.Outcome
+                            errorMsg       = $psRuleResult.Error.Message
+                        })
                 }
             }
         }
@@ -325,42 +340,645 @@ function dataCollectionResources {
     }
 
     $startSubResourceIdsThis = Get-Date
-    foreach ($resource in ($resourcesSubscriptionResult)) {
-        $null = $script:resourcesIdsAll.Add([PSCustomObject]@{
-                subscriptionId = $scopeId
-                mgPath         = $childMgMgPath
-                type           = ($resource.type).ToLower()
-                id             = ($resource.Id).ToLower()
-                name           = ($resource.name).ToLower()
-                location       = ($resource.location).ToLower()
-                tags           = ($resource.tags)
-                createdTime    = ($resource.createdTime)
-                changedTime    = ($resource.changedTime)
-            })
 
-        if ($resource.identity.userAssignedIdentities) {
-            $resource.identity.userAssignedIdentities.psobject.properties | ForEach-Object {
-                if ((-not [string]::IsNullOrEmpty($resource.Id)) -and (-not [string]::IsNullOrEmpty($_.Value.principalId))) {
-                    $hlp = ($_.Name.split('/'))
-                    $hlpMiSubId = $hlp[2]
-                    $null = $script:arrayUserAssignedIdentities4Resources.Add([PSCustomObject]@{
-                            resourceId                = $resource.Id
-                            resourceName              = $resource.name
-                            resourceMgPath            = $childMgMgPath
-                            resourceSubscriptionName  = $scopeDisplayName
-                            resourceSubscriptionId    = $scopeId
-                            resourceResourceGroupName = ($resource.Id -split ('/'))[4]
-                            resourceType              = $resource.type
-                            resourceLocation          = $resource.location
-                            miPrincipalId             = $_.Value.principalId
-                            miClientId                = $_.Value.clientId
-                            miMgPath                  = $htSubscriptionsMgPath.($hlpMiSubId).pathDelimited
-                            miSubscriptionName        = $htSubscriptionsMgPath.($hlpMiSubId).DisplayName
-                            miSubscriptionId          = $hlpMiSubId
-                            miResourceGroupName       = $hlp[4]
-                            miResourceId              = $_.Name
-                            miResourceName            = $_.Name -replace '.*/'
-                        })
+    <# Build the $JSONcafResourceNaming #pending PR https://github.com/MicrosoftDocs/cloud-adoption-framework/pull/916
+    $arrayCAFNamingConvention = [System.Collections.ArrayList]@()
+    $htCAFNamingConvention = @{}
+    #$cafNamingFromFile = Get-Content -Path .\cafNaming.md -Encoding utf8
+    $CAFFileName = 'resource-abbreviations.md'
+    Invoke-webrequest -OutFile .\$($CAFFileName) -URI "https://raw.githubusercontent.com/MicrosoftDocs/cloud-adoption-framework/main/docs/ready/azure-best-practices/resource-abbreviations.md"
+    $cafNamingFromFile = Get-Content -Path .\$($CAFFileName) -Encoding utf8
+    $cafNamingFromFile.count
+    foreach ($line in $cafNamingFromFile) {
+        #$line
+        if ($line -match "microsoft.") {
+            $tranformed = $line -replace '`' -split " \| "
+            $friendlyName =  $($tranformed[0] -replace "\| ")
+            $resourceType = $($tranformed[1])
+            $namingConvention = $($tranformed[2] -replace " \|" -replace "\|")
+            $null = $arrayCAFNamingConvention.Add([PSCustomObject]@{
+                resourceType = $resourceType
+                friendlyName = $friendlyName
+                namingConvention = $namingConvention
+            })
+        }
+    } 
+
+    $htCAFNamingConvention = [ordered]@{}
+    $arrayCAFNamingConventionGroupedByType = $arrayCAFNamingConvention | Sort-Object -Property resourceType | Group-Object -Property resourceType
+    foreach ($entry in $arrayCAFNamingConventionGroupedByType){
+        $htCAFNamingConvention.($entry.name) = @{}
+        $htCAFNamingConvention.($entry.name).friendlyName = $entry.group.friendlyName
+        $htCAFNamingConvention.($entry.name).namingConvention = $entry.group.namingConvention
+    }
+    $htCAFNamingConvention | ConvertTo-Json
+#>
+
+    $JSONcafResourceNaming = @'
+    {
+        "Microsoft.AnalysisServices/servers": {
+          "friendlyName": "Azure Analysis Services server",
+          "namingConvention": "as"
+        },
+        "Microsoft.ApiManagement/service": {
+          "friendlyName": "API management service instance",
+          "namingConvention": "apim-"
+        },
+        "Microsoft.AppConfiguration/configurationStores": {
+          "friendlyName": "App Configuration store",
+          "namingConvention": "appcs-"
+        },
+        "Microsoft.Authorization/policyDefinitions": {
+          "friendlyName": "Policy definition",
+          "namingConvention": "policy-"
+        },
+        "Microsoft.Automation/automationAccounts": {
+          "friendlyName": "Automation account",
+          "namingConvention": "aa-"
+        },
+        "Microsoft.Blueprint/blueprints": {
+          "friendlyName": "Blueprint",
+          "namingConvention": "bp-"
+        },
+        "Microsoft.Blueprint/blueprints/artifacts": {
+          "friendlyName": "Blueprint assignment",
+          "namingConvention": "bpa-"
+        },
+        "Microsoft.Cache/Redis": {
+          "friendlyName": "Azure Cache for Redis instance",
+          "namingConvention": "redis-"
+        },
+        "Microsoft.Cdn/profiles": {
+          "friendlyName": "CDN profile",
+          "namingConvention": "cdnp-"
+        },
+        "Microsoft.Cdn/profiles/endpoints": {
+          "friendlyName": "CDN endpoint",
+          "namingConvention": "cdne-"
+        },
+        "Microsoft.CognitiveServices/accounts": {
+          "friendlyName": "Azure Cognitive Services",
+          "namingConvention": "cog-"
+        },
+        "Microsoft.Compute/availabilitySets": {
+          "friendlyName": "Availability set",
+          "namingConvention": "avail-"
+        },
+        "Microsoft.Compute/cloudServices": {
+          "friendlyName": "Cloud service",
+          "namingConvention": "cld-"
+        },
+        "Microsoft.Compute/diskEncryptionSets": {
+          "friendlyName": "Disk encryption set",
+          "namingConvention": "des"
+        },
+        "Microsoft.Compute/disks": {
+          "friendlyName": [
+            "Managed disk (data)",
+            "Managed disk (OS)"
+          ],
+          "namingConvention": [
+            "disk",
+            "osdisk"
+          ]
+        },
+        "Microsoft.Compute/galleries": {
+          "friendlyName": "Gallery",
+          "namingConvention": "gal"
+        },
+        "Microsoft.Compute/snapshots": {
+          "friendlyName": "Snapshot",
+          "namingConvention": "snap-"
+        },
+        "Microsoft.Compute/virtualMachines": {
+          "friendlyName": "Virtual machine",
+          "namingConvention": "vm"
+        },
+        "Microsoft.Compute/virtualMachineScaleSets": {
+          "friendlyName": "Virtual machine scale set",
+          "namingConvention": "vmss-"
+        },
+        "Microsoft.ContainerInstance/containerGroups": {
+          "friendlyName": "Container instance",
+          "namingConvention": "ci"
+        },
+        "Microsoft.ContainerRegistry/registries": {
+          "friendlyName": "Container registry",
+          "namingConvention": "cr"
+        },
+        "Microsoft.ContainerService/managedClusters": {
+          "friendlyName": "AKS cluster",
+          "namingConvention": "aks-"
+        },
+        "Microsoft.Databricks/workspaces": {
+          "friendlyName": "Azure Databricks workspace",
+          "namingConvention": "dbw-"
+        },
+        "Microsoft.DataFactory/factories": {
+          "friendlyName": "Azure Data Factory",
+          "namingConvention": "adf-"
+        },
+        "Microsoft.DataLakeAnalytics/accounts": {
+          "friendlyName": "Data Lake Analytics account",
+          "namingConvention": "dla"
+        },
+        "Microsoft.DataLakeStore/accounts": {
+          "friendlyName": "Data Lake Store account",
+          "namingConvention": "dls"
+        },
+        "Microsoft.DataMigration/services": {
+          "friendlyName": "Database Migration Service instance",
+          "namingConvention": "dms-"
+        },
+        "Microsoft.DataProtection/BackupVaults": {
+          "friendlyName": "Backup vault",
+          "namingConvention": "bv-"
+        },
+        "Microsoft.DBforMySQL/servers": {
+          "friendlyName": "MySQL database",
+          "namingConvention": "mysql-"
+        },
+        "Microsoft.DBforPostgreSQL/servers": {
+          "friendlyName": "PostgreSQL database",
+          "namingConvention": "psql-"
+        },
+        "Microsoft.Devices/IotHubs": {
+          "friendlyName": "IoT hub",
+          "namingConvention": "iot-"
+        },
+        "Microsoft.Devices/provisioningServices": {
+          "friendlyName": "Provisioning services",
+          "namingConvention": "provs-"
+        },
+        "Microsoft.Devices/provisioningServices/certificates": {
+          "friendlyName": "Provisioning services certificate",
+          "namingConvention": "pcert-"
+        },
+        "Microsoft.DocumentDB/databaseAccounts/sqlDatabases": {
+          "friendlyName": "Azure Cosmos DB database",
+          "namingConvention": "cosmos-"
+        },
+        "Microsoft.EventGrid/domains": {
+          "friendlyName": "Event Grid domain",
+          "namingConvention": "evgd-"
+        },
+        "Microsoft.EventGrid/domains/topics": {
+          "friendlyName": "Event Grid topic",
+          "namingConvention": "evgt-"
+        },
+        "Microsoft.EventGrid/eventSubscriptions": {
+          "friendlyName": "Event Grid subscriptions",
+          "namingConvention": "evgs-"
+        },
+        "Microsoft.EventHub/namespaces": {
+          "friendlyName": "Event Hubs namespace",
+          "namingConvention": "evhns-"
+        },
+        "Microsoft.EventHub/namespaces/eventHubs": {
+          "friendlyName": "Event hub",
+          "namingConvention": "evh-"
+        },
+        "Microsoft.HDInsight/clusters": {
+          "friendlyName": [
+            "HDInsight - Hadoop cluster",
+            "HDInsight - Kafka cluster",
+            "HDInsight - Spark cluster",
+            "HDInsight - Storm cluster",
+            "HDInsight - ML Services cluster",
+            "HDInsight - HBase cluster"
+          ],
+          "namingConvention": [
+            "hadoop-",
+            "kafka-",
+            "spark-",
+            "storm-",
+            "mls-",
+            "hbase-"
+          ]
+        },
+        "Microsoft.HybridCompute/machines": {
+          "friendlyName": "Azure Arc enabled server",
+          "namingConvention": "arcs-"
+        },
+        "Microsoft.Insights/actionGroups": {
+          "friendlyName": "Azure Monitor action group",
+          "namingConvention": "ag-"
+        },
+        "Microsoft.Insights/components": {
+          "friendlyName": "Application Insights",
+          "namingConvention": "appi-"
+        },
+        "Microsoft.KeyVault/vaults": {
+          "friendlyName": "Key vault",
+          "namingConvention": "kv-"
+        },
+        "Microsoft.Kubernetes/connectedClusters": {
+          "friendlyName": "Azure Arc enabled Kubernetes cluster",
+          "namingConvention": "arck"
+        },
+        "Microsoft.Kusto/clusters": {
+          "friendlyName": "Azure Data Explorer cluster",
+          "namingConvention": "dec"
+        },
+        "Microsoft.Kusto/clusters/databases": {
+          "friendlyName": "Azure Data Explorer cluster database",
+          "namingConvention": "dedb"
+        },
+        "Microsoft.Logic/integrationAccounts": {
+          "friendlyName": "Integration account",
+          "namingConvention": "ia-"
+        },
+        "Microsoft.Logic/workflows": {
+          "friendlyName": "Logic apps",
+          "namingConvention": "logic-"
+        },
+        "Microsoft.MachineLearningServices/workspaces": {
+          "friendlyName": "Azure Machine Learning workspace",
+          "namingConvention": "mlw-"
+        },
+        "Microsoft.ManagedIdentity/userAssignedIdentities": {
+          "friendlyName": "Managed Identity",
+          "namingConvention": "id-"
+        },
+        "Microsoft.Management/managementGroups": {
+          "friendlyName": "Management group",
+          "namingConvention": "mg-"
+        },
+        "Microsoft.Migrate/assessmentProjects": {
+          "friendlyName": "Azure Migrate project",
+          "namingConvention": "migr-"
+        },
+        "Microsoft.Network/applicationGateways": {
+          "friendlyName": "Application gateway",
+          "namingConvention": "agw-"
+        },
+        "Microsoft.Network/applicationSecurityGroups": {
+          "friendlyName": "Application security group (ASG)",
+          "namingConvention": "asg-"
+        },
+        "Microsoft.Network/azureFirewalls": {
+          "friendlyName": "Firewall",
+          "namingConvention": "afw-"
+        },
+        "Microsoft.Network/bastionHosts": {
+          "friendlyName": "Bastion",
+          "namingConvention": "bas-"
+        },
+        "Microsoft.Network/connections": {
+          "friendlyName": "Connections",
+          "namingConvention": "con-"
+        },
+        "Microsoft.Network/dnsZones": {
+          "friendlyName": "DNS",
+          "namingConvention": "dnsz-"
+        },
+        "Microsoft.Network/expressRouteCircuits": {
+          "friendlyName": "ExpressRoute circuit",
+          "namingConvention": "erc-"
+        },
+        "Microsoft.Network/firewallPolicies": {
+          "friendlyName": [
+            "Web Application Firewall (WAF) policy",
+            "Firewall policy"
+          ],
+          "namingConvention": [
+            "waf",
+            "afwp-"
+          ]
+        },
+        "Microsoft.Network/firewallPolicies/ruleGroups": {
+          "friendlyName": "Web Application Firewall (WAF) policy rule group",
+          "namingConvention": "wafrg"
+        },
+        "Microsoft.Network/frontDoors": {
+          "friendlyName": "Front Door instance",
+          "namingConvention": "fd-"
+        },
+        "Microsoft.Network/frontdoorWebApplicationFirewallPolicies": {
+          "friendlyName": "Front Door firewall policy",
+          "namingConvention": "fdfp-"
+        },
+        "Microsoft.Network/loadBalancers": {
+          "friendlyName": [
+            "Load balancer (external)",
+            "Load balancer (internal)"
+          ],
+          "namingConvention": [
+            "lbe-",
+            "lbi-"
+          ]
+        },
+        "Microsoft.Network/loadBalancers/inboundNatRules": {
+          "friendlyName": "Load balancer rule",
+          "namingConvention": "rule-"
+        },
+        "Microsoft.Network/localNetworkGateways": {
+          "friendlyName": "Local network gateway",
+          "namingConvention": "lgw-"
+        },
+        "Microsoft.Network/natGateways": {
+          "friendlyName": "NAT gateway",
+          "namingConvention": "ng-"
+        },
+        "Microsoft.Network/networkInterfaces": {
+          "friendlyName": "Network interface (NIC)",
+          "namingConvention": "nic-"
+        },
+        "Microsoft.Network/networkSecurityGroups": {
+          "friendlyName": "Network security group (NSG)",
+          "namingConvention": "nsg-"
+        },
+        "Microsoft.Network/networkSecurityGroups/securityRules": {
+          "friendlyName": "Network security group (NSG) security rules",
+          "namingConvention": "nsgsr-"
+        },
+        "Microsoft.Network/networkWatchers": {
+          "friendlyName": "Network Watcher",
+          "namingConvention": "nw-"
+        },
+        "Microsoft.Network/privateDnsZones": {
+          "friendlyName": "DNS zone",
+          "namingConvention": "pdnsz-"
+        },
+        "Microsoft.Network/privateLinkServices": {
+          "friendlyName": "Private Link",
+          "namingConvention": "pl-"
+        },
+        "Microsoft.Network/publicIPAddresses": {
+          "friendlyName": "Public IP address",
+          "namingConvention": "pip-"
+        },
+        "Microsoft.Network/publicIPPrefixes": {
+          "friendlyName": "Public IP address prefix",
+          "namingConvention": "ippre-"
+        },
+        "Microsoft.Network/routeFilters": {
+          "friendlyName": "Route filter",
+          "namingConvention": "rf-"
+        },
+        "Microsoft.Network/routeTables": {
+          "friendlyName": "Route table",
+          "namingConvention": "rt-"
+        },
+        "Microsoft.Network/routeTables/routes": {
+          "friendlyName": "User defined route (UDR)",
+          "namingConvention": "udr-"
+        },
+        "Microsoft.Network/trafficManagerProfiles": {
+          "friendlyName": "Traffic Manager profile",
+          "namingConvention": "traf-"
+        },
+        "Microsoft.Network/virtualNetworkGateways": {
+          "friendlyName": "Virtual network gateway",
+          "namingConvention": "vgw-"
+        },
+        "Microsoft.Network/virtualNetworks": {
+          "friendlyName": "Virtual network",
+          "namingConvention": "vnet-"
+        },
+        "Microsoft.Network/virtualNetworks/subnets": {
+          "friendlyName": "Virtual network subnet",
+          "namingConvention": "snet-"
+        },
+        "Microsoft.Network/virtualNetworks/virtualNetworkPeerings": {
+          "friendlyName": "Virtual network peering",
+          "namingConvention": "peer-"
+        },
+        "Microsoft.Network/virtualWans": {
+          "friendlyName": "Virtual WAN",
+          "namingConvention": "vwan-"
+        },
+        "Microsoft.Network/vpnGateways": {
+          "friendlyName": "VPN Gateway",
+          "namingConvention": "vpng-"
+        },
+        "Microsoft.Network/vpnGateways/vpnConnections": {
+          "friendlyName": "VPN connection",
+          "namingConvention": "vcn-"
+        },
+        "Microsoft.Network/vpnGateways/vpnSites": {
+          "friendlyName": "VPN site",
+          "namingConvention": "vst-"
+        },
+        "Microsoft.NotificationHubs/namespaces": {
+          "friendlyName": "Notification Hubs namespace",
+          "namingConvention": "ntfns-"
+        },
+        "Microsoft.NotificationHubs/namespaces/notificationHubs": {
+          "friendlyName": "Notification Hubs",
+          "namingConvention": "ntf-"
+        },
+        "Microsoft.OperationalInsights/workspaces": {
+          "friendlyName": "Log Analytics workspace",
+          "namingConvention": "log-"
+        },
+        "Microsoft.PowerBIDedicated/capacities": {
+          "friendlyName": "Power BI Embedded",
+          "namingConvention": "pbi-"
+        },
+        "Microsoft.Purview/accounts": {
+          "friendlyName": "Azure Purview instance",
+          "namingConvention": "pview-"
+        },
+        "Microsoft.RecoveryServices/vaults": {
+          "friendlyName": "Recovery Services vault",
+          "namingConvention": "rsv-"
+        },
+        "Microsoft.RecoveryServices/vaults/backupPolicies": {
+          "friendlyName": "Recovery Services vault backup policy",
+          "namingConvention": "rsvbp-"
+        },
+        "Microsoft.Resources/resourceGroups": {
+          "friendlyName": "Resource group",
+          "namingConvention": "rg-"
+        },
+        "Microsoft.Search/searchServices": {
+          "friendlyName": "Azure Cognitive Search",
+          "namingConvention": "srch-"
+        },
+        "Microsoft.ServiceBus/namespaces": {
+          "friendlyName": "Service Bus",
+          "namingConvention": "sb-"
+        },
+        "Microsoft.ServiceBus/namespaces/queues": {
+          "friendlyName": "Service Bus queue",
+          "namingConvention": "sbq-"
+        },
+        "Microsoft.ServiceBus/namespaces/topics": {
+          "friendlyName": "Service Bus topic",
+          "namingConvention": "sbt-"
+        },
+        "Microsoft.serviceEndPointPolicies": {
+          "friendlyName": "Service endpoint",
+          "namingConvention": "se-"
+        },
+        "Microsoft.ServiceFabric/clusters": {
+          "friendlyName": "Service Fabric cluster",
+          "namingConvention": "sf-"
+        },
+        "Microsoft.SignalRService/SignalR": {
+          "friendlyName": "SignalR",
+          "namingConvention": "sigr"
+        },
+        "Microsoft.Sql/managedInstances": {
+          "friendlyName": "SQL Managed Instance",
+          "namingConvention": "sqlmi-"
+        },
+        "Microsoft.Sql/servers": {
+          "friendlyName": [
+            "Azure SQL Data Warehouse",
+            "Azure SQL Database server"
+          ],
+          "namingConvention": [
+            "sqldw-",
+            "sql-"
+          ]
+        },
+        "Microsoft.Sql/servers/databases": {
+          "friendlyName": [
+            "SQL Server Stretch Database",
+            "Azure SQL database"
+          ],
+          "namingConvention": [
+            "sqlstrdb-",
+            "sqldb-"
+          ]
+        },
+        "Microsoft.Storage/storageAccounts": {
+          "friendlyName": [
+            "Storage account",
+            "VM storage account"
+          ],
+          "namingConvention": [
+            "st",
+            "stvm"
+          ]
+        },
+        "Microsoft.StorSimple/managers": {
+          "friendlyName": "Azure StorSimple",
+          "namingConvention": "ssimp"
+        },
+        "Microsoft.StreamAnalytics/cluster": {
+          "friendlyName": "Azure Stream Analytics",
+          "namingConvention": "asa-"
+        },
+        "Microsoft.Synapse/workspaces": {
+          "friendlyName": [
+            "Azure Synapse Analytics Workspaces",
+            "Azure Synapse Analytics"
+          ],
+          "namingConvention": [
+            "synw",
+            "syn"
+          ]
+        },
+        "Microsoft.Synapse/workspaces/sqlPools": {
+          "friendlyName": [
+            "Azure Synapse Analytics Spark Pool",
+            "Azure Synapse Analytics SQL Dedicated Pool"
+          ],
+          "namingConvention": [
+            "synsp",
+            "syndp"
+          ]
+        },
+        "Microsoft.TimeSeriesInsights/environments": {
+          "friendlyName": "Time Series Insights environment",
+          "namingConvention": "tsi-"
+        },
+        "Microsoft.Web/serverFarms": {
+          "friendlyName": "App Service plan",
+          "namingConvention": "plan-"
+        },
+        "Microsoft.Web/sites": {
+          "friendlyName": [
+            "Web app",
+            "Function app",
+            "App Service environment"
+          ],
+          "namingConvention": [
+            "app-",
+            "func-",
+            "ase-"
+          ]
+        },
+        "Microsoft.Web/staticSites": {
+          "friendlyName": "Static web app",
+          "namingConvention": "stapp-"
+        }
+      }
+'@
+    $htCAFNamingConvention = $JSONcafResourceNaming | ConvertFrom-Json
+
+    $resourcesSubscriptionResultGroupedByType = $resourcesSubscriptionResult | Group-Object -Property type
+    foreach ($entry in $resourcesSubscriptionResultGroupedByType) {
+
+        if ($htCAFNamingConvention.($entry.Name)) {
+            $doCAFResourceNamingCheck = $true
+            $namingConvention = $htCAFNamingConvention.($entry.Name).namingConvention
+            $namingConventionFriendlyName = $htCAFNamingConvention.($entry.Name).friendlyName
+        }
+        else {
+            $doCAFResourceNamingCheck = $false
+            $namingConvention = 'n/a'
+            $namingConventionFriendlyName = 'n/a'
+        }
+
+        foreach ($resource in ($entry.Group)) {
+            
+            if ($doCAFResourceNamingCheck) {
+                $cafResourceNamingCheck = "failed"
+                $applicableNaming = $namingConvention -join "$CsvDelimiterOpposite "
+                foreach ($naming in $namingConvention) {
+                    if (($resource.name).StartsWith($naming, 'CurrentCultureIgnoreCase')) {
+                        $cafResourceNamingCheck = "passed"
+                        #$applicableNaming = $naming
+                    }
+                }
+            }
+            else {
+                $cafResourceNamingCheck = 'n/a'
+                $applicableNaming = "n/a"
+            }
+            $null = $script:resourcesIdsAll.Add([PSCustomObject]@{
+                    subscriptionId                = $scopeId
+                    mgPath                        = $childMgMgPath
+                    type                          = ($resource.type).ToLower()
+                    id                            = ($resource.Id).ToLower()
+                    name                          = ($resource.name).ToLower()
+                    location                      = ($resource.location).ToLower()
+                    tags                          = ($resource.tags)
+                    createdTime                   = ($resource.createdTime)
+                    changedTime                   = ($resource.changedTime)
+                    cafResourceNamingResult       = $cafResourceNamingCheck
+                    cafResourceNaming             = $applicableNaming
+                    cafResourceNamingFriendlyName = $namingConventionFriendlyName -join "$CSVDelimiterOpposite "
+                })
+
+            if ($resource.identity.userAssignedIdentities) {
+                $resource.identity.userAssignedIdentities.psobject.properties | ForEach-Object {
+                    if ((-not [string]::IsNullOrEmpty($resource.Id)) -and (-not [string]::IsNullOrEmpty($_.Value.principalId))) {
+                        $hlp = ($_.Name.split('/'))
+                        $hlpMiSubId = $hlp[2]
+                        $null = $script:arrayUserAssignedIdentities4Resources.Add([PSCustomObject]@{
+                                resourceId                = $resource.Id
+                                resourceName              = $resource.name
+                                resourceMgPath            = $childMgMgPath
+                                resourceSubscriptionName  = $scopeDisplayName
+                                resourceSubscriptionId    = $scopeId
+                                resourceResourceGroupName = ($resource.Id -split ('/'))[4]
+                                resourceType              = $resource.type
+                                resourceLocation          = $resource.location
+                                miPrincipalId             = $_.Value.principalId
+                                miClientId                = $_.Value.clientId
+                                miMgPath                  = $htSubscriptionsMgPath.($hlpMiSubId).pathDelimited
+                                miSubscriptionName        = $htSubscriptionsMgPath.($hlpMiSubId).DisplayName
+                                miSubscriptionId          = $hlpMiSubId
+                                miResourceGroupName       = $hlp[4]
+                                miResourceId              = $_.Name
+                                miResourceName            = $_.Name -replace '.*/'
+                            })
+                    }
                 }
             }
         }

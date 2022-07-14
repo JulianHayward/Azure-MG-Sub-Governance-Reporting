@@ -6539,6 +6539,144 @@ extensions: [{ name: 'sort' }]
         $endSUMMARYResourceFluctuation = Get-Date
         Write-Host "   SUMMARY Resource fluctuation processing duration: $((NEW-TIMESPAN -Start $startSUMMARYResourceFluctuation -End $endSUMMARYResourceFluctuation).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYResourceFluctuation -End $endSUMMARYResourceFluctuation).TotalSeconds) seconds)"
         #endregion SUMMARYResourceFluctuation
+
+        #region SUMMARYCAFResourceNamingALL
+        $startSUMMARYCAFResourceNamingALL = Get-Date
+        Write-Host '  processing TenantSummary CAFResourceNamingALL'
+        $script:resourcesIdsAllCAFNamingRelevant = $resourcesIdsAll.where({ $_.cafResourceNamingResult -ne 'n/a' })
+        $resourcesIdsAllCAFNamingRelevantGroupedByType = $resourcesIdsAllCAFNamingRelevant | Group-Object -Property type
+        $resourcesIdsAllCAFNamingRelevantGroupedByTypeCount = ($resourcesIdsAllCAFNamingRelevantGroupedByType | Measure-Object).Count
+
+        if ($resourcesIdsAllCAFNamingRelevantGroupedByTypeCount -gt 0) {
+
+            $tfCount = $resourcesIdsAllCAFNamingRelevantGroupedByTypeCount
+            $htmlTableId = 'TenantSummary_CAFResourceNamingALL'
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_CAFResourceNamingALL"><i class="padlx fa fa-star-o" aria-hidden="true"></i> <span class="valignMiddle">CAF Naming Recommendation Compliance</span>
+</button>
+<div class="content TenantSummary">
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> CAF - Recommended abbreviations for Azure resource types</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<span class="padlxx"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Resource details can be found in the CSV output *_ResourcesAll.csv</span><br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>ResourceType</th>
+<th>Recommendation</th>
+<th>ResourceFriendlyName</th>
+<th>passed</th>
+<th>failed</th>
+<th>passed percentage</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+            $htmlSUMMARYCAFResourceNamingALL = $null
+            $htmlSUMMARYCAFResourceNamingALL = foreach ($entry in $resourcesIdsAllCAFNamingRelevantGroupedByType) {
+                    
+                $resourceTypeGroupedByCAFResourceNamingResult = $entry.Group | Group-Object -Property cafResourceNamingResult, cafResourceNaming
+                if ($entry.Group.cafResourceNaming.Count -gt 1) {
+                    $namingConvention = ($entry.Group.cafResourceNaming)[0]
+                    $namingConventionFriendlyName = ($entry.Group.cafResourceNamingFriendlyName)[0]
+                }
+                else {
+                    $namingConvention = $entry.Group.cafResourceNaming
+                    $namingConventionFriendlyName = $entry.Group.cafResourceNamingFriendlyName
+                }
+                    
+                $passed = 0
+                $failed = 0
+                foreach ($result in $resourceTypeGroupedByCAFResourceNamingResult) {
+                    $resultNameSplitted = $result.Name -split ", "
+                    if ($resultNameSplitted[0] -eq 'passed') {
+                        $passed = $result.Count
+                    }
+                        
+                    if ($resultNameSplitted[0] -eq 'failed') {
+                        $failed = $result.Count
+                    }        
+                }
+
+                if ($passed -gt 0) {
+                    $percentage = [math]::Round(($passed / ($passed + $failed) * 100), 2)
+                }
+                else {
+                    $percentage = 0
+                }
+
+                @"
+<tr>
+<td>$($entry.Name)</td>
+<td>$($namingConvention)</td>
+<td>$($namingConventionFriendlyName)</td>
+<td>$($passed)</td>
+<td>$($failed)</td>
+<td>$($percentage)%</td>
+</tr>
+"@
+            
+            }
+            [void]$htmlTenantSummary.AppendLine($htmlSUMMARYCAFResourceNamingALL)
+            [void]$htmlTenantSummary.AppendLine(@"
+        </tbody>
+    </table>
+</div>
+<script>
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
+        base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true, 
+        col_types: [
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'number',
+            'number',
+            'number'
+        ],
+extensions: [{ name: 'sort' }]
+    };
+    var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+    tf.init();}}
+</script>
+"@)
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@'
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No CAF Naming Recommendation Compliance data</p>
+'@)
+        }
+        $endSUMMARYCAFResourceNamingALL = Get-Date
+        Write-Host "   SUMMARY CAFResourceNamingALL processing duration: $((NEW-TIMESPAN -Start $startSUMMARYCAFResourceNamingALL -End $endSUMMARYCAFResourceNamingALL).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYCAFResourceNamingALL -End $endSUMMARYCAFResourceNamingALL).TotalSeconds) seconds)"
+        #endregion SUMMARYCAFResourceNamingALL
     }
 
     #region SUMMARYOrphanedResources
@@ -7638,7 +7776,7 @@ extensions: [{ name: 'sort' }]
             }
 
             if (-not $NoCsvExport) {
-                Write-Host "Exporting UserAssignedIdentities4Resources CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_UserAssignedIdentities4Resources.csv'"
+                Write-Host "   Exporting UserAssignedIdentities4Resources CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_UserAssignedIdentities4Resources.csv'"
                 $userAssignedIdentities4Resources4CSVExport | Sort-Object -Property MIResourceId, ResId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_UserAssignedIdentities4Resources.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
             }
 
@@ -7723,8 +7861,12 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 
             if ($arrayPSRuleCount -gt 0) {
 
-                handlePSRuleData
-                $grpPSRuleAll = $psRuleDataSelection | group-object -Property resourceType, pillar, category, severity, ruleId, result
+                if (-not $NoCsvExport) {
+                    Write-Host "   Exporting 'PSRule for Azure' CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv'"
+                    $arrayPsRule | Sort-Object -Property resourceId, pillar, category, severity, rule, recommendation | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                }
+
+                $grpPSRuleAll = $arrayPsRule | group-object -Property resourceType, pillar, category, severity, ruleId, result
                 $tfCount = $grpPSRuleAll.Name.Count
 
                 $htmlTableId = 'TenantSummary_PSRule'
