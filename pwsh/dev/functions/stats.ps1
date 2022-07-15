@@ -3,7 +3,7 @@ function stats {
     if (-not $StatsOptOut) {
 
         $dur = 0
-        if ($durationProduct -lt 5) {
+        if ($durationProduct.TotalMinutes -lt 5) {
             $dur = 5
         }
         
