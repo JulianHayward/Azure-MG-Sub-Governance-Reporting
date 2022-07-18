@@ -229,7 +229,6 @@ function processDataCollection {
             Write-Host "   $($progressCount)/$($allManagementGroupsFromEntitiesChildOfRequestedMgCount) Management Groups processed"
 
         } -ThrottleLimit $ThrottleLimit
-        #[System.GC]::Collect()
     }
 
     $endMgLoop = Get-Date
@@ -272,7 +271,6 @@ function processDataCollection {
         $subscriptionsBatch = $subsToProcessInCustomDataCollection | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
         $batchCnt = 0
         foreach ($batch in $subscriptionsBatch) {
-            #[System.GC]::Collect()
             $startBatch = Get-Date
             $batchCnt++
             Write-Host " processing Batch #$batchCnt/$(($subscriptionsBatch | Measure-Object).Count) ($(($batch.Group | Measure-Object).Count) Subscriptions)"
@@ -562,7 +560,6 @@ function processDataCollection {
             $endBatch = Get-Date
             Write-Host " Batch #$batchCnt processing duration: $((NEW-TIMESPAN -Start $startBatch -End $endBatch).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startBatch -End $endBatch).TotalSeconds) seconds)"
         }
-        #[System.GC]::Collect()
 
         $endSubLoop = Get-Date
         Write-Host " CustomDataCollection Subscriptions processing duration: $((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds) seconds)"
@@ -744,7 +741,7 @@ function processDataCollection {
                                 $arrayGroupedBySubscription = $arrayGroupedByResourceType.where({ $_.Name -eq $resourceType.Name }).Group | Group-Object -Property subscriptionId | Select-Object -ExcludeProperty Group
                                 $null = $arrayResourceFluctuationFinal.Add([PSCustomObject]@{
                                         Event                = 'Added'
-                                        ResourceType         = $resourceType.Name
+                                        ResourceType         = ($resourceType.Name -replace ", ", "/")
                                         'Resource count'     = $resourceType.Count
                                         'Subscription count' = ($arrayGroupedBySubscription | Measure-Object).Count
                                     })
@@ -776,7 +773,7 @@ function processDataCollection {
                                 $arrayGroupedBySubscription = $arrayGroupedByResourceType.where({ $_.Name -eq $resourceType.Name }).Group | Group-Object -Property subscriptionId | Select-Object -ExcludeProperty Group
                                 $null = $arrayResourceFluctuationFinal.Add([PSCustomObject]@{
                                         Event                = 'Removed'
-                                        ResourceType         = $resourceType.Name
+                                        ResourceType         = ($resourceType.Name -replace ", ", "/")
                                         'Resource count'     = $resourceType.Count
                                         'Subscription count' = ($arrayGroupedBySubscription | Measure-Object).Count
                                     })

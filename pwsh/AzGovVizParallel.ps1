@@ -286,7 +286,7 @@ Param
     $AzAPICallVersion = '1.1.18',
 
     [string]
-    $ProductVersion = 'v6_major_20220714_1',
+    $ProductVersion = 'v6_major_20220717_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -430,6 +430,9 @@ Param
 
     [switch]
     $ShowMemoryUsage,
+
+    [int]
+    $CriticalMemoryUsage = 90,
 
     [switch]
     $DoPSRule,
@@ -3240,7 +3243,6 @@ function getResourceDiagnosticsCapability {
                     Write-Host "Skipping ResourceType $($resourcetype) as per parameter '-ExcludedResourceTypesDiagnosticsCapable'"
                 }
             } -ThrottleLimit $ThrottleLimit
-            #[System.GC]::Collect()
         }
         else {
             Write-Host ' No 1st party Resource Types at all'
@@ -3430,7 +3432,6 @@ function processAADGroups {
                 }
             }
         } -ThrottleLimit ($ThrottleLimit * 2)
-        #[System.GC]::Collect()
     }
     else {
         Write-Host " processing $($aadGroupsCount) AAD Groups with Role assignments"
@@ -3799,7 +3800,6 @@ function processDataCollection {
             Write-Host "   $($progressCount)/$($allManagementGroupsFromEntitiesChildOfRequestedMgCount) Management Groups processed"
 
         } -ThrottleLimit $ThrottleLimit
-        #[System.GC]::Collect()
     }
 
     $endMgLoop = Get-Date
@@ -3842,7 +3842,6 @@ function processDataCollection {
         $subscriptionsBatch = $subsToProcessInCustomDataCollection | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
         $batchCnt = 0
         foreach ($batch in $subscriptionsBatch) {
-            #[System.GC]::Collect()
             $startBatch = Get-Date
             $batchCnt++
             Write-Host " processing Batch #$batchCnt/$(($subscriptionsBatch | Measure-Object).Count) ($(($batch.Group | Measure-Object).Count) Subscriptions)"
@@ -4132,7 +4131,6 @@ function processDataCollection {
             $endBatch = Get-Date
             Write-Host " Batch #$batchCnt processing duration: $((NEW-TIMESPAN -Start $startBatch -End $endBatch).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startBatch -End $endBatch).TotalSeconds) seconds)"
         }
-        #[System.GC]::Collect()
 
         $endSubLoop = Get-Date
         Write-Host " CustomDataCollection Subscriptions processing duration: $((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSubLoop -End $endSubLoop).TotalSeconds) seconds)"
@@ -4314,7 +4312,7 @@ function processDataCollection {
                                 $arrayGroupedBySubscription = $arrayGroupedByResourceType.where({ $_.Name -eq $resourceType.Name }).Group | Group-Object -Property subscriptionId | Select-Object -ExcludeProperty Group
                                 $null = $arrayResourceFluctuationFinal.Add([PSCustomObject]@{
                                         Event                = 'Added'
-                                        ResourceType         = $resourceType.Name
+                                        ResourceType         = ($resourceType.Name -replace ", ", "/")
                                         'Resource count'     = $resourceType.Count
                                         'Subscription count' = ($arrayGroupedBySubscription | Measure-Object).Count
                                     })
@@ -4346,7 +4344,7 @@ function processDataCollection {
                                 $arrayGroupedBySubscription = $arrayGroupedByResourceType.where({ $_.Name -eq $resourceType.Name }).Group | Group-Object -Property subscriptionId | Select-Object -ExcludeProperty Group
                                 $null = $arrayResourceFluctuationFinal.Add([PSCustomObject]@{
                                         Event                = 'Removed'
-                                        ResourceType         = $resourceType.Name
+                                        ResourceType         = ($resourceType.Name -replace ", ", "/")
                                         'Resource count'     = $resourceType.Count
                                         'Subscription count' = ($arrayGroupedBySubscription | Measure-Object).Count
                                     })
@@ -8234,7 +8232,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                     }
                 }
 
-                $grpThisManagementGroup = $allPSRuleResultsUnderThisMg | group-object -Property resourceType, pillar, category, severity, ruleId, result
+                $grpThisManagementGroup = $allPSRuleResultsUnderThisMg | group-object -Property resourceType, pillar, category, severity, rule, result
 
                 if ($grpThisManagementGroup) {
                     $grpThisManagementGroupCount = $grpThisManagementGroup.Count
@@ -8357,7 +8355,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 
             if ($mgOrSub -eq 'sub') {
                 $grpThisSubscription = $grpPSRuleSubscriptions.where({ $_.Name -eq $subscriptionId })
-                $grpThisSubscriptionGrouped = $grpThisSubscription.Group | group-object -Property resourceType, pillar, category, severity, ruleId, result
+                $grpThisSubscriptionGrouped = $grpThisSubscription.Group | group-object -Property resourceType, pillar, category, severity, result
 
                 if ($grpThisSubscriptionGrouped) {
                     $grpThisSubscriptionGroupedCount = $grpThisSubscriptionGrouped.Count
@@ -9842,8 +9840,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             $script:scopescnter = 0
             Write-Host '   append file duration: '(Measure-Command { $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force }).TotalSeconds 'seconds'
             $script:html = $null
-            #[System.GC]::Collect()
         }
+    }
+
+    if ($scopescnter % 50 -eq 0) {
+        showMemoryUsage
     }
 
 }
@@ -9962,9 +9963,6 @@ function processTenantSummary() {
         if ($cnter % 1000 -eq 0) {
             $etappeRoleAssignmentsAll = Get-Date
             Write-Host "   $cnter of $roleAssignmentsallCount RoleAssignments processed; $((NEW-TIMESPAN -Start $startRoleAssignmentsAllPre -End $etappeRoleAssignmentsAll).TotalSeconds) seconds"
-            #if ($cnter % 5000 -eq 0) {
-            #[System.GC]::Collect()
-            #}
         }
         $scope = $null
 
@@ -12772,9 +12770,6 @@ extensions: [{ name: 'sort' }]
         if ($cnter % 1000 -eq 0) {
             $etappeSummaryPolicyAssignmentsAll = Get-Date
             Write-Host "    $cnter of $allPolicyAssignments PolicyAssignments processed: $((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAll -End $etappeSummaryPolicyAssignmentsAll).TotalSeconds) seconds"
-            #if ($cnter % 5000 -eq 0) {
-            #[System.GC]::Collect()
-            #}
         }
 
         #region AzAdvertizerLinkOrNot
@@ -13441,7 +13436,6 @@ extensions: [{ name: 'sort' }]
             $htmlTenantSummary = [System.Text.StringBuilder]::new()
             $end = Get-Date
             Write-Host "    html append file duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
-            #[System.GC]::Collect()
 
             [void]$htmlTenantSummary.AppendLine(@"
             </tbody>
@@ -14335,7 +14329,6 @@ extensions: [{ name: 'sort' }]
                         Write-Host '     appending..'
                         $htmlSummaryRoleAssignmentsAll | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
                         $htmlSummaryRoleAssignmentsAll = [System.Text.StringBuilder]::new()
-                        #[System.GC]::Collect()
                     }
                 }
 
@@ -17711,11 +17704,39 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             if ($arrayPSRuleCount -gt 0) {
 
                 if (-not $NoCsvExport) {
-                    Write-Host "   Exporting 'PSRule for Azure' CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv'"
-                    $arrayPsRule | Sort-Object -Property resourceId, pillar, category, severity, rule, recommendation | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                    $PSRuleCSVPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv"
+                    Write-Host "   Exporting 'PSRule for Azure' CSV '$PSRuleCSVPath'"
+                    $arrayPsRule | Sort-Object -Property resourceId, pillar, category, severity, rule, recommendation | Export-Csv -Path $PSRuleCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
+                    
+                    if ($azAPICallConf['htParameters'].onGitHubActions -eq $true) {
+                        $exportCSVPSRuleFileSize = (Get-Item -Path $PSRuleCSVPath).length / 1MB
+                        if ($exportCSVPSRuleFileSize -gt 100) {
+                            Write-Host "   The exported 'PSRule for Azure' CSV '$PSRuleCSVPath' exceeds the GitHub file limit of 100MB"
+                            Write-Host "   more info: https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits"
+                            Write-Host "   Re-Exporting 'PSRule for Azure' CSV '$PSRuleCSVPath' excluding column 'description'"
+                            $arrayPsRule | Select-Object -ExcludeProperty description | Sort-Object -Property resourceId, pillar, category, severity, rule, recommendation | Export-Csv -Path "$PSRuleCSVPath" -Delimiter "$csvDelimiter" -NoTypeInformation
+
+                            $exportCSVPSRuleFileSize = (Get-Item -Path $PSRuleCSVPath).length / 1MB
+                            if ($exportCSVPSRuleFileSize -gt 100) {
+                                Write-Host "   The exported 'PSRule for Azure' CSV '$PSRuleCSVPath' still exceeds the GitHub file limit of 100MB"
+                                Write-Host "   Re-Exporting 'PSRule for Azure' CSV '$PSRuleCSVPath' excluding column 'description', 'recommendation'"
+                                $arrayPsRule | Select-Object -ExcludeProperty description, recommendation | Sort-Object -Property resourceId, pillar, category, severity, rule | Export-Csv -Path "$PSRuleCSVPath" -Delimiter "$csvDelimiter" -NoTypeInformation
+                            }
+
+                            $exportCSVPSRuleFileSize = (Get-Item -Path $PSRuleCSVPath).length / 1MB
+                            if ($exportCSVPSRuleFileSize -gt 100) {
+                                Write-Host "   The exported 'PSRule for Azure' CSV '$PSRuleCSVPath' still exceeds the GitHub file limit of 100MB"
+                                Write-Host "   Deleting 'PSRule for Azure' CSV '$PSRuleCSVPath' in order to prevent the workflow from failing at push to repo"
+                                Remove-Item -Path $PSRuleCSVPath
+                            }
+                        }
+                        else {
+                            Write-Host "   Info: The exported 'PSRule for Azure' CSV '$PSRuleCSVPath' does not exceed the GitHub file limit of 100MB"
+                        }
+                    }
                 }
 
-                $grpPSRuleAll = $arrayPsRule | group-object -Property resourceType, pillar, category, severity, ruleId, result
+                $grpPSRuleAll = $arrayPsRule | group-object -Property resourceType, pillar, category, severity, rule, result
                 $tfCount = $grpPSRuleAll.Name.Count
 
                 $htmlTableId = 'TenantSummary_PSRule'
@@ -23128,6 +23149,15 @@ function runInfo {
             #$script:paramsUsed += "ShowMemoryUsage: $($ShowMemoryUsage) &#13;"
         }
 
+        if ($CriticalMemoryUsage -ne 90) {
+            Write-Host " CriticalMemoryUsage = $($CriticalMemoryUsage)%" -ForegroundColor green
+            #$script:paramsUsed += "ShowMemoryUsage: $($ShowMemoryUsage) &#13;"
+        }
+        else {
+            Write-Host " CriticalMemoryUsage = $($CriticalMemoryUsage)%" -ForegroundColor Yellow
+            #$script:paramsUsed += "ShowMemoryUsage: $($ShowMemoryUsage) &#13;"
+        }
+
         if ($azAPICallConf['htParameters'].DoPSRule) {
             Write-Host " DoPSRule = $($azAPICallConf['htParameters'].DoPSRule)" -ForegroundColor Green
             $script:paramsUsed += "DoPSRule: $($azAPICallConf['htParameters'].DoPSRule) &#13;"
@@ -23256,43 +23286,58 @@ function setTranscript {
     Start-Transcript -Path "$($outputPath)$($DirectorySeparatorChar)$($fileNameTranscript)"
 }
 function showMemoryUsage {
-    if ($ShowMemoryUsage) {
-        function makeDouble {
-            [CmdletBinding()]
-            Param
-            (
-                [Parameter(Mandatory = $true)]$MemoryUsed
-            )
 
-            try {
-                $memoryUsedDouble = [double]($memoryUsed -replace ',', '.')
-            }
-            catch {
-                $memoryUsedDouble = [string]$MemoryUsed
-            }
-            return $memoryUsedDouble
+    function makeDouble {
+        [CmdletBinding()]
+        Param
+        (
+            [Parameter(Mandatory = $true)]$MemoryUsed
+        )
+
+        try {
+            $memoryUsedDouble = [double]($memoryUsed -replace ',', '.')
         }
+        catch {
+            $memoryUsedDouble = [string]$MemoryUsed
+        }
+        return $memoryUsedDouble
+    }
 
+    function getMemoryUsage {
         if ($IsLinux) {
             $memoryUsed = 100 - (free | grep Mem | awk '{print $4/$2 * 100.0}')
-            $memoryUsed = makeDouble $memoryUsed
+            makeDouble $memoryUsed
         }
         if ($IsWindows) {
             $memoryUsed = (Get-CimInstance win32_operatingsystem | ForEach-Object { '{0:N2}' -f ((($_.TotalVisibleMemorySize - $_.FreePhysicalMemory) * 100) / $_.TotalVisibleMemorySize) })
-            $memoryUsed = makeDouble $memoryUsed
+            makeDouble $memoryUsed
         }
+    }
+    $memoryUsed = getMemoryUsage
 
-        if ($memoryUsed -is [double]) {
-            if ($memoryUsed -gt 90) {
-                Write-Host "Memory utilization HIGH: $([math]::Round($memoryUsed))%" -ForegroundColor Magenta
-            }
-            else {
-                Write-Host "Memory utilization: $([math]::Round($memoryUsed))%"
-            }
+    if ($memoryUsed -is [double]) {
+        if ($memoryUsed -gt $CriticalMemoryUsage) {
+            Write-Host "System memory utilization HIGH: $([math]::Round($memoryUsed))%" -ForegroundColor Magenta
+            Write-Host "Init garbage collection (GC)"
+            $PSMemoryBefore = [System.GC]::GetTotalMemory($false)
+            Write-Host " PS memory used before GC: $($PSMemoryBefore /1MB)MB ($PSMemoryBefore)"
+            $startGC = Get-Date
+            $PSMemoryAfter = [System.GC]::GetTotalMemory($true)
+            $endGC = Get-Date
+            $PSMemoryDiff = $PSMemoryBefore - $PSMemoryAfter
+            Write-Host " PS memory used after GC: $($PSMemoryAfter /1MB)MB ($PSMemoryAfter)"
+            Write-Host " GC cleared $($PSMemoryDiff /1MB)MB ($PSMemoryDiff)" -ForegroundColor Green
+            Write-Host " GC duration: $((NEW-TIMESPAN -Start $startGC -End $endGC).TotalSeconds) seconds"
+            Write-Host " System memory utilization after GC: $(getMemoryUsage)%"
         }
         else {
-            Write-Host "Memory utilization: $($memoryUsed)%"
+            if ($ShowMemoryUsage) {
+                Write-Host "System memory utilization: $([math]::Round($memoryUsed))%"
+            }
         }
+    }
+    else {
+        Write-Host "System memory utilization: $($memoryUsed)% (not double)"
     }
 }
 function stats {
@@ -24100,7 +24145,6 @@ function dataCollectionResources {
                             description    = $psRuleResult.Info.Description
                             recommendation = $psRuleResult.Info.Recommendation
                             link           = $psRuleResult.Info.Annotations.'online version'
-                            ruleId         = $psRuleResult.RuleId
                             result         = $psRuleResult.Outcome
                             errorMsg       = $psRuleResult.Error.Message
                         })
@@ -28870,7 +28914,6 @@ Write-Host ' Building HierarchyMap'
 
 HierarchyMgHTML -mgChild $ManagementGroupId
 showMemoryUsage
-#[System.GC]::Collect()
 
 $endhierarchyMap = Get-Date
 Write-Host " Building HierarchyMap duration: $((NEW-TIMESPAN -Start $starthierarchyMap -End $endhierarchyMap).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $starthierarchyMap -End $endhierarchyMap).TotalSeconds) seconds)"
@@ -28923,8 +28966,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $dailySummary4ExportToCSV | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_DailySummary.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
     #endregion BuildDailySummaryCSV
 
-    #[System.GC]::Collect()
-
     $endSummary = Get-Date
     Write-Host " Building TenantSummary duration: $((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalSeconds) seconds)"
 
@@ -28940,7 +28981,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
     processDefinitionInsights
     showMemoryUsage
-    #[System.GC]::Collect()
 
     $html += @'
     </div><!--definitionInsights-->
@@ -28977,7 +29017,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
         processScopeInsights -mgChild $ManagementGroupId -mgChildOf $getMgParentId
         showMemoryUsage
-        #[System.GC]::Collect()
 
         $endHierarchyTable = Get-Date
         Write-Host " Building ScopeInsights duration: $((NEW-TIMESPAN -Start $startHierarchyTable -End $endHierarchyTable).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startHierarchyTable -End $endHierarchyTable).TotalSeconds) seconds)"
@@ -29071,8 +29110,6 @@ if (-not $azAPICallConf['htParameters'].NoJsonExport) {
 if (-not $HierarchyMapOnly) {
     buildPolicyAllJSON
 }
-showMemoryUsage
-
 #endregion createoutputs
 
 apiCallTracking -stage 'Summary' -spacing ''
@@ -29103,8 +29140,6 @@ if ($DoTranscript) {
 Write-Host ''
 Write-Host '--------------------'
 Write-Host 'AzGovViz completed successful' -ForegroundColor Green
-
-showMemoryUsage
 
 if ($Error.Count -gt 0) {
     Write-Host "Don't bother about dumped errors"

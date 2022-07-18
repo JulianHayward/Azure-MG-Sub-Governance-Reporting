@@ -76,7 +76,6 @@ function processAADGroups {
                 }
             }
         } -ThrottleLimit ($ThrottleLimit * 2)
-        #[System.GC]::Collect()
     }
     else {
         Write-Host " processing $($aadGroupsCount) AAD Groups with Role assignments"

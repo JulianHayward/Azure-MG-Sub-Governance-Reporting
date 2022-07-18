@@ -114,7 +114,6 @@ function getResourceDiagnosticsCapability {
                     Write-Host "Skipping ResourceType $($resourcetype) as per parameter '-ExcludedResourceTypesDiagnosticsCapable'"
                 }
             } -ThrottleLimit $ThrottleLimit
-            #[System.GC]::Collect()
         }
         else {
             Write-Host ' No 1st party Resource Types at all'

@@ -113,9 +113,6 @@ function processTenantSummary() {
         if ($cnter % 1000 -eq 0) {
             $etappeRoleAssignmentsAll = Get-Date
             Write-Host "   $cnter of $roleAssignmentsallCount RoleAssignments processed; $((NEW-TIMESPAN -Start $startRoleAssignmentsAllPre -End $etappeRoleAssignmentsAll).TotalSeconds) seconds"
-            #if ($cnter % 5000 -eq 0) {
-            #[System.GC]::Collect()
-            #}
         }
         $scope = $null
 
@@ -2923,9 +2920,6 @@ extensions: [{ name: 'sort' }]
         if ($cnter % 1000 -eq 0) {
             $etappeSummaryPolicyAssignmentsAll = Get-Date
             Write-Host "    $cnter of $allPolicyAssignments PolicyAssignments processed: $((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAll -End $etappeSummaryPolicyAssignmentsAll).TotalSeconds) seconds"
-            #if ($cnter % 5000 -eq 0) {
-            #[System.GC]::Collect()
-            #}
         }
 
         #region AzAdvertizerLinkOrNot
@@ -3592,7 +3586,6 @@ extensions: [{ name: 'sort' }]
             $htmlTenantSummary = [System.Text.StringBuilder]::new()
             $end = Get-Date
             Write-Host "    html append file duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
-            #[System.GC]::Collect()
 
             [void]$htmlTenantSummary.AppendLine(@"
             </tbody>
@@ -4486,7 +4479,6 @@ extensions: [{ name: 'sort' }]
                         Write-Host '     appending..'
                         $htmlSummaryRoleAssignmentsAll | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
                         $htmlSummaryRoleAssignmentsAll = [System.Text.StringBuilder]::new()
-                        #[System.GC]::Collect()
                     }
                 }
 
@@ -7862,11 +7854,39 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             if ($arrayPSRuleCount -gt 0) {
 
                 if (-not $NoCsvExport) {
-                    Write-Host "   Exporting 'PSRule for Azure' CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv'"
-                    $arrayPsRule | Sort-Object -Property resourceId, pillar, category, severity, rule, recommendation | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                    $PSRuleCSVPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv"
+                    Write-Host "   Exporting 'PSRule for Azure' CSV '$PSRuleCSVPath'"
+                    $arrayPsRule | Sort-Object -Property resourceId, pillar, category, severity, rule, recommendation | Export-Csv -Path $PSRuleCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
+                    
+                    if ($azAPICallConf['htParameters'].onGitHubActions -eq $true) {
+                        $exportCSVPSRuleFileSize = (Get-Item -Path $PSRuleCSVPath).length / 1MB
+                        if ($exportCSVPSRuleFileSize -gt 100) {
+                            Write-Host "   The exported 'PSRule for Azure' CSV '$PSRuleCSVPath' exceeds the GitHub file limit of 100MB"
+                            Write-Host "   more info: https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits"
+                            Write-Host "   Re-Exporting 'PSRule for Azure' CSV '$PSRuleCSVPath' excluding column 'description'"
+                            $arrayPsRule | Select-Object -ExcludeProperty description | Sort-Object -Property resourceId, pillar, category, severity, rule, recommendation | Export-Csv -Path "$PSRuleCSVPath" -Delimiter "$csvDelimiter" -NoTypeInformation
+
+                            $exportCSVPSRuleFileSize = (Get-Item -Path $PSRuleCSVPath).length / 1MB
+                            if ($exportCSVPSRuleFileSize -gt 100) {
+                                Write-Host "   The exported 'PSRule for Azure' CSV '$PSRuleCSVPath' still exceeds the GitHub file limit of 100MB"
+                                Write-Host "   Re-Exporting 'PSRule for Azure' CSV '$PSRuleCSVPath' excluding column 'description', 'recommendation'"
+                                $arrayPsRule | Select-Object -ExcludeProperty description, recommendation | Sort-Object -Property resourceId, pillar, category, severity, rule | Export-Csv -Path "$PSRuleCSVPath" -Delimiter "$csvDelimiter" -NoTypeInformation
+                            }
+
+                            $exportCSVPSRuleFileSize = (Get-Item -Path $PSRuleCSVPath).length / 1MB
+                            if ($exportCSVPSRuleFileSize -gt 100) {
+                                Write-Host "   The exported 'PSRule for Azure' CSV '$PSRuleCSVPath' still exceeds the GitHub file limit of 100MB"
+                                Write-Host "   Deleting 'PSRule for Azure' CSV '$PSRuleCSVPath' in order to prevent the workflow from failing at push to repo"
+                                Remove-Item -Path $PSRuleCSVPath
+                            }
+                        }
+                        else {
+                            Write-Host "   Info: The exported 'PSRule for Azure' CSV '$PSRuleCSVPath' does not exceed the GitHub file limit of 100MB"
+                        }
+                    }
                 }
 
-                $grpPSRuleAll = $arrayPsRule | group-object -Property resourceType, pillar, category, severity, ruleId, result
+                $grpPSRuleAll = $arrayPsRule | group-object -Property resourceType, pillar, category, severity, rule, result
                 $tfCount = $grpPSRuleAll.Name.Count
 
                 $htmlTableId = 'TenantSummary_PSRule'

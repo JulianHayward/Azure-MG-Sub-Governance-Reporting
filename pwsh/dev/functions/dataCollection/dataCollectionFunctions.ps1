@@ -313,7 +313,6 @@ function dataCollectionResources {
                             description    = $psRuleResult.Info.Description
                             recommendation = $psRuleResult.Info.Recommendation
                             link           = $psRuleResult.Info.Annotations.'online version'
-                            ruleId         = $psRuleResult.RuleId
                             result         = $psRuleResult.Outcome
                             errorMsg       = $psRuleResult.Error.Message
                         })

@@ -286,7 +286,7 @@ Param
     $AzAPICallVersion = '1.1.18',
 
     [string]
-    $ProductVersion = 'v6_major_20220714_1',
+    $ProductVersion = 'v6_major_20220717_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -430,6 +430,9 @@ Param
 
     [switch]
     $ShowMemoryUsage,
+
+    [int]
+    $CriticalMemoryUsage = 90,
 
     [switch]
     $DoPSRule,
@@ -1660,7 +1663,6 @@ Write-Host ' Building HierarchyMap'
 
 HierarchyMgHTML -mgChild $ManagementGroupId
 showMemoryUsage
-#[System.GC]::Collect()
 
 $endhierarchyMap = Get-Date
 Write-Host " Building HierarchyMap duration: $((NEW-TIMESPAN -Start $starthierarchyMap -End $endhierarchyMap).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $starthierarchyMap -End $endhierarchyMap).TotalSeconds) seconds)"
@@ -1713,8 +1715,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $dailySummary4ExportToCSV | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_DailySummary.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
     #endregion BuildDailySummaryCSV
 
-    #[System.GC]::Collect()
-
     $endSummary = Get-Date
     Write-Host " Building TenantSummary duration: $((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalSeconds) seconds)"
 
@@ -1730,7 +1730,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
     processDefinitionInsights
     showMemoryUsage
-    #[System.GC]::Collect()
 
     $html += @'
     </div><!--definitionInsights-->
@@ -1767,7 +1766,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
         processScopeInsights -mgChild $ManagementGroupId -mgChildOf $getMgParentId
         showMemoryUsage
-        #[System.GC]::Collect()
 
         $endHierarchyTable = Get-Date
         Write-Host " Building ScopeInsights duration: $((NEW-TIMESPAN -Start $startHierarchyTable -End $endHierarchyTable).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startHierarchyTable -End $endHierarchyTable).TotalSeconds) seconds)"
@@ -1861,8 +1859,6 @@ if (-not $azAPICallConf['htParameters'].NoJsonExport) {
 if (-not $HierarchyMapOnly) {
     buildPolicyAllJSON
 }
-showMemoryUsage
-
 #endregion createoutputs
 
 apiCallTracking -stage 'Summary' -spacing ''
@@ -1893,8 +1889,6 @@ if ($DoTranscript) {
 Write-Host ''
 Write-Host '--------------------'
 Write-Host 'AzGovViz completed successful' -ForegroundColor Green
-
-showMemoryUsage
 
 if ($Error.Count -gt 0) {
     Write-Host "Don't bother about dumped errors"

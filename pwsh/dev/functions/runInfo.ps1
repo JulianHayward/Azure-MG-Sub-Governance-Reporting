@@ -334,6 +334,15 @@ function runInfo {
             #$script:paramsUsed += "ShowMemoryUsage: $($ShowMemoryUsage) &#13;"
         }
 
+        if ($CriticalMemoryUsage -ne 90) {
+            Write-Host " CriticalMemoryUsage = $($CriticalMemoryUsage)%" -ForegroundColor green
+            #$script:paramsUsed += "ShowMemoryUsage: $($ShowMemoryUsage) &#13;"
+        }
+        else {
+            Write-Host " CriticalMemoryUsage = $($CriticalMemoryUsage)%" -ForegroundColor Yellow
+            #$script:paramsUsed += "ShowMemoryUsage: $($ShowMemoryUsage) &#13;"
+        }
+
         if ($azAPICallConf['htParameters'].DoPSRule) {
             Write-Host " DoPSRule = $($azAPICallConf['htParameters'].DoPSRule)" -ForegroundColor Green
             $script:paramsUsed += "DoPSRule: $($azAPICallConf['htParameters'].DoPSRule) &#13;"

@@ -2274,7 +2274,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                     }
                 }
 
-                $grpThisManagementGroup = $allPSRuleResultsUnderThisMg | group-object -Property resourceType, pillar, category, severity, ruleId, result
+                $grpThisManagementGroup = $allPSRuleResultsUnderThisMg | group-object -Property resourceType, pillar, category, severity, rule, result
 
                 if ($grpThisManagementGroup) {
                     $grpThisManagementGroupCount = $grpThisManagementGroup.Count
@@ -2397,7 +2397,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 
             if ($mgOrSub -eq 'sub') {
                 $grpThisSubscription = $grpPSRuleSubscriptions.where({ $_.Name -eq $subscriptionId })
-                $grpThisSubscriptionGrouped = $grpThisSubscription.Group | group-object -Property resourceType, pillar, category, severity, ruleId, result
+                $grpThisSubscriptionGrouped = $grpThisSubscription.Group | group-object -Property resourceType, pillar, category, severity, result
 
                 if ($grpThisSubscriptionGrouped) {
                     $grpThisSubscriptionGroupedCount = $grpThisSubscriptionGrouped.Count
@@ -3882,8 +3882,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             $script:scopescnter = 0
             Write-Host '   append file duration: '(Measure-Command { $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force }).TotalSeconds 'seconds'
             $script:html = $null
-            #[System.GC]::Collect()
         }
+    }
+
+    if ($scopescnter % 50 -eq 0) {
+        showMemoryUsage
     }
 
 }
