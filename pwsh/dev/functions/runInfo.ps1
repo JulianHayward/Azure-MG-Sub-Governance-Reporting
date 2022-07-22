@@ -346,11 +346,21 @@ function runInfo {
         if ($azAPICallConf['htParameters'].DoPSRule) {
             Write-Host " DoPSRule = $($azAPICallConf['htParameters'].DoPSRule)" -ForegroundColor Green
             $script:paramsUsed += "DoPSRule: $($azAPICallConf['htParameters'].DoPSRule) &#13;"
+
+            if ($azAPICallConf['htParameters'].PSRuleFailedOnly) {
+                Write-Host " PSRuleFailedOnly = $($azAPICallConf['htParameters'].PSRuleFailedOnly)" -ForegroundColor Green
+                $script:paramsUsed += "PSRuleFailedOnly: $($azAPICallConf['htParameters'].PSRuleFailedOnly) &#13;"
+            }
+            else {
+                Write-Host " PSRuleFailedOnly = $($azAPICallConf['htParameters'].PSRuleFailedOnly)" -ForegroundColor Yellow
+                $script:paramsUsed += "PSRuleFailedOnly: $($azAPICallConf['htParameters'].PSRuleFailedOnly) &#13;"
+            }
         }
         else {
             Write-Host " DoPSRule = $($azAPICallConf['htParameters'].DoPSRule)" -ForegroundColor Yellow
             $script:paramsUsed += "DoPSRule: $($azAPICallConf['htParameters'].DoPSRule) &#13;"
         }
+
     }
     #endregion RunInfo
 }

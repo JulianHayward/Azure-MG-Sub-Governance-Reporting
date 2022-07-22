@@ -286,7 +286,7 @@ Param
     $AzAPICallVersion = '1.1.18',
 
     [string]
-    $ProductVersion = 'v6_major_20220717_1',
+    $ProductVersion = 'v6_minor_20220722_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -437,6 +437,9 @@ Param
     [switch]
     $DoPSRule,
 
+    [switch]
+    $PSRuleFailedOnly,
+
     [string]
     $PSRuleVersion,
 
@@ -535,6 +538,7 @@ function addHtParameters {
         PolicyAtScopeOnly                            = [bool]$PolicyAtScopeOnly
         RBACAtScopeOnly                              = [bool]$RBACAtScopeOnly
         DoPSRule                                     = [bool]$DoPSRule
+        PSRuleFailedOnly                             = [bool]$PSRuleFailedOnly 
     }
     Write-Host 'htParameters:'
     $azAPICallConf['htParameters'] | format-table -AutoSize | Out-String
@@ -17713,6 +17717,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         if ($exportCSVPSRuleFileSize -gt 100) {
                             Write-Host "   The exported 'PSRule for Azure' CSV '$PSRuleCSVPath' exceeds the GitHub file limit of 100MB"
                             Write-Host "   more info: https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits"
+                            Write-Host "   ! ---> Hint: Consider using additional parameter -PSRuleFailedOnly / results will only include failed resources"
                             Write-Host "   Re-Exporting 'PSRule for Azure' CSV '$PSRuleCSVPath' excluding column 'description'"
                             $arrayPsRule | Select-Object -ExcludeProperty description | Sort-Object -Property resourceId, pillar, category, severity, rule, recommendation | Export-Csv -Path "$PSRuleCSVPath" -Delimiter "$csvDelimiter" -NoTypeInformation
 
@@ -23161,11 +23166,21 @@ function runInfo {
         if ($azAPICallConf['htParameters'].DoPSRule) {
             Write-Host " DoPSRule = $($azAPICallConf['htParameters'].DoPSRule)" -ForegroundColor Green
             $script:paramsUsed += "DoPSRule: $($azAPICallConf['htParameters'].DoPSRule) &#13;"
+
+            if ($azAPICallConf['htParameters'].PSRuleFailedOnly) {
+                Write-Host " PSRuleFailedOnly = $($azAPICallConf['htParameters'].PSRuleFailedOnly)" -ForegroundColor Green
+                $script:paramsUsed += "PSRuleFailedOnly: $($azAPICallConf['htParameters'].PSRuleFailedOnly) &#13;"
+            }
+            else {
+                Write-Host " PSRuleFailedOnly = $($azAPICallConf['htParameters'].PSRuleFailedOnly)" -ForegroundColor Yellow
+                $script:paramsUsed += "PSRuleFailedOnly: $($azAPICallConf['htParameters'].PSRuleFailedOnly) &#13;"
+            }
         }
         else {
             Write-Host " DoPSRule = $($azAPICallConf['htParameters'].DoPSRule)" -ForegroundColor Yellow
             $script:paramsUsed += "DoPSRule: $($azAPICallConf['htParameters'].DoPSRule) &#13;"
         }
+
     }
     #endregion RunInfo
 }
@@ -24117,7 +24132,12 @@ function dataCollectionResources {
                 Write-Host "Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')"
                 Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')
                 #>
-                $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
+                if ($azAPICallConf['htParameters'].PSRuleFailedOnly -eq $true) {
+                    $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue -outcome Fail,Error
+                }
+                else {
+                    $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
+                }
             }
             catch {
                 Write-Host "   Please report 'PSRule for Azure' error '$($scopeDisplayName)' ('$scopeId'): $_"

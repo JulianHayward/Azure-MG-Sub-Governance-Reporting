@@ -286,7 +286,7 @@ Param
     $AzAPICallVersion = '1.1.18',
 
     [string]
-    $ProductVersion = 'v6_major_20220717_1',
+    $ProductVersion = 'v6_minor_20220722_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -436,6 +436,9 @@ Param
 
     [switch]
     $DoPSRule,
+
+    [switch]
+    $PSRuleFailedOnly,
 
     [string]
     $PSRuleVersion,

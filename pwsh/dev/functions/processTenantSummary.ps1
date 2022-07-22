@@ -7863,6 +7863,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         if ($exportCSVPSRuleFileSize -gt 100) {
                             Write-Host "   The exported 'PSRule for Azure' CSV '$PSRuleCSVPath' exceeds the GitHub file limit of 100MB"
                             Write-Host "   more info: https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits"
+                            Write-Host "   ! ---> Hint: Consider using additional parameter -PSRuleFailedOnly / results will only include failed resources"
                             Write-Host "   Re-Exporting 'PSRule for Azure' CSV '$PSRuleCSVPath' excluding column 'description'"
                             $arrayPsRule | Select-Object -ExcludeProperty description | Sort-Object -Property resourceId, pillar, category, severity, rule, recommendation | Export-Csv -Path "$PSRuleCSVPath" -Delimiter "$csvDelimiter" -NoTypeInformation
 

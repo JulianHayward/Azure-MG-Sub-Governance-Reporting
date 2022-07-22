@@ -59,12 +59,9 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Jul-17 / Major)
+__Changes__ (2022-Jul-22 / Minor)
 
-* This change impacts __GitHub Actions only__: As the PSRule CSV output can become quite big and GitHub is actively blocking files larger than 100MB ([reference](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits)), the file size of the export will be validated and in case the 100MB limit is exceeded a new export excluding the column 'description' will be initiated. If that still is too large then also the column 'recommendation' will be exluded. If even then the export is exceeding the limit then the export will be deleted in order not to break the workflow at push to repo. Issue ref: #121
-* New parameter `-CriticalMemoryUsage` - Define at what percentage of memory usage the garbage collection should kick in (default=90). Example: `.\pwsh\AzGovVizParallel.ps1 -CriticalMemoryUsage 70`   
-![alt text](img/criticalMemoryUsage.png "CriticalMemoryUsage")
-* Minor optimizations
+* New parameter `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise). (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule -PSRuleFailedOnly`)
 
 Passed tests: Powershell Core 7.2.5 on Windows  
 Passed tests: Powershell Core 7.2.5 Azure DevOps hosted agent ubuntu-20.04  
@@ -197,7 +194,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
   * UserAssigned Managed Identities assigned to Resources / vice versa
     * Summary of all UserAssigned Managed Identities assigned to Resources
     * Summary of Resources that have an UserAssigned Managed Identity assigned
-  * PSRule for Azure
+  * [Integrate PSRule for Azure](#integrate-psrule-for-azure)
     * Well-Architected Framework aligned best practice analysis for resources, including guidance for remediation
 * __Diagnostics__
   * Management Groups Diagnostic settings report
@@ -455,9 +452,10 @@ AzAPICall resources:
   * `-ShowMemoryUsage` - Shows memory usage at memory intense sections of the scripts, this shall help you determine if the the worker is well sized for AzGovViz
   * `-CriticalMemoryUsage` - Define at what percentage of memory usage the garbage collection should kick in (default=90)
   * `-ExcludedResourceTypesDiagnosticsCapable` - Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
-  * PSRule 
-    * `-DoPSRule` - Execute [PSRule](https://aka.ms/PSRule). Results are integrated in the HTML output, plus PSRule results are exported to CSV
+  * PSRule for Azure
+    * `-DoPSRule` - Execute [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure). Aggregated results are integrated in the HTML output, detailed results (per resource) are exported to CSV
     * `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
+    * `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise). (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule -PSRuleFailedOnly`)
 
 ### API reference
 
@@ -535,7 +533,10 @@ You can integrate AzGovViz (same project as AzOps).
 Let´s use [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure) and leverage over 260 pre-built rules to validate Azure resources based on the Microsoft Well-Architected Framework (WAF) principles.  
 PSRule for Azure is listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/architecture/framework/security/monitor-tools) in the Microsoft Well-Architected Framework.
 
-Parameter: `-DoPSRule` (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule`)
+Parameter: `-DoPSRule` (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule`)  
+Optional parameters:  
+  * `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
+  * `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise). (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule -PSRuleFailedOnly`)
 
 Outputs:
 * HTML (summarized)
