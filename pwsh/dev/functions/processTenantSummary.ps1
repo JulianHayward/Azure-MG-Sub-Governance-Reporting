@@ -5381,14 +5381,14 @@ extensions: [{ name: 'sort' }]
     #region SUMMARYSecurityGuestUserHighPriviledgesAssignments
 
     $startSUMMARYSecurityGuestUserHighPriviledgesAssignments = Get-Date
-    Write-Host '  processing TenantSummary RoleAssignments security (high priviledged Guest User)'
-    $highPriviledgedGuestUserRoleAssignments = $rbacAll.where( { ($_.RoleId -eq '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' -or $_.RoleId -eq '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9') -and $_.ObjectType -eq 'User Guest' }) | Sort-Object -property RoleAssignmentId, ObjectId -Unique
-    $highPriviledgedGuestUserRoleAssignmentsCount = ($highPriviledgedGuestUserRoleAssignments).Count
-    if ($highPriviledgedGuestUserRoleAssignmentsCount -gt 0) {
-        $tfCount = $highPriviledgedGuestUserRoleAssignmentsCount
+    Write-Host '  processing TenantSummary RoleAssignments security (high privileged Guest User)'
+    $highPrivilegedGuestUserRoleAssignments = $rbacAll.where( { ($_.RoleId -eq '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' -or $_.RoleId -eq '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9') -and $_.ObjectType -eq 'User Guest' }) | Sort-Object -property RoleAssignmentId, ObjectId -Unique
+    $highPrivilegedGuestUserRoleAssignmentsCount = ($highPrivilegedGuestUserRoleAssignments).Count
+    if ($highPrivilegedGuestUserRoleAssignmentsCount -gt 0) {
+        $tfCount = $highPrivilegedGuestUserRoleAssignmentsCount
         $htmlTableId = 'TenantSummary_SecurityGuestUserHighPriviledgesAssignments'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SecurityGuestUserHighPriviledgesAssignments"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$($highPriviledgedGuestUserRoleAssignmentsCount) Guest Users with high permissions ($scopeNamingSummary)</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SecurityGuestUserHighPriviledgesAssignments"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$($highPrivilegedGuestUserRoleAssignmentsCount) Guest Users with high permissions ($scopeNamingSummary)</span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -5408,22 +5408,22 @@ extensions: [{ name: 'sort' }]
 <tbody>
 "@)
         $htmlSUMMARYSecurityGuestUserHighPriviledgesAssignments = $null
-        $htmlSUMMARYSecurityGuestUserHighPriviledgesAssignments = foreach ($highPriviledgedGuestUserRoleAssignment in ($highPriviledgedGuestUserRoleAssignments)) {
-            if ($highPriviledgedGuestUserRoleAssignment.AssignmentType -eq 'indirect') {
-                $assignmentInfo = "indirect / AAD Group Membership '$($highPriviledgedGuestUserRoleAssignment.AssignmentInheritFrom)'"
+        $htmlSUMMARYSecurityGuestUserHighPriviledgesAssignments = foreach ($highPrivilegedGuestUserRoleAssignment in ($highPrivilegedGuestUserRoleAssignments)) {
+            if ($highPrivilededGuestUserRoleAssignment.AssignmentType -eq 'indirect') {
+                $assignmentInfo = "indirect / AAD Group Membership '$($highPrivilededGuestUserRoleAssignment.AssignmentInheritFrom)'"
             }
             else {
                 $assignmentInfo = 'direct'
             }
             @"
 <tr>
-<td>$($highPriviledgedGuestUserRoleAssignment.Role <#-replace "<", "&lt;" -replace ">", "&gt;"#>)</td>
-<td>$($highPriviledgedGuestUserRoleAssignment.RoleId)</td>
-<td class="breakwordall">$($highPriviledgedGuestUserRoleAssignment.RoleAssignmentId)</td>
-<td>$($highPriviledgedGuestUserRoleAssignment.ObjectType)</td>
-<td>$($highPriviledgedGuestUserRoleAssignment.ObjectDisplayName)</td>
-<td class="breakwordall">$($highPriviledgedGuestUserRoleAssignment.ObjectSignInName)</td>
-<td class="breakwordall">$($highPriviledgedGuestUserRoleAssignment.ObjectId)</td>
+<td>$($highPrivilegedGuestUserRoleAssignment.Role <#-replace "<", "&lt;" -replace ">", "&gt;"#>)</td>
+<td>$($highPrivilegedGuestUserRoleAssignment.RoleId)</td>
+<td class="breakwordall">$($highPrivilegedGuestUserRoleAssignment.RoleAssignmentId)</td>
+<td>$($highPrivilegedGuestUserRoleAssignment.ObjectType)</td>
+<td>$($highPrivilegedGuestUserRoleAssignment.ObjectDisplayName)</td>
+<td class="breakwordall">$($highPrivilegedGuestUserRoleAssignment.ObjectSignInName)</td>
+<td class="breakwordall">$($highPrivilegedGuestUserRoleAssignment.ObjectId)</td>
 <td>$assignmentInfo</td>
 </tr>
 "@
@@ -5485,11 +5485,11 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$($highPriviledgedGuestUserRoleAssignmentsCount) Guest Users with high permissions ($scopeNamingSummary)</span></p>
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$($highPrivilegedGuestUserRoleAssignmentsCount) Guest Users with high permissions ($scopeNamingSummary)</span></p>
 "@)
     }
     $endSUMMARYSecurityGuestUserHighPriviledgesAssignments = Get-Date
-    Write-Host "   TenantSummary RoleAssignments security (high priviledged Guest User) duration: $((NEW-TIMESPAN -Start $startSUMMARYSecurityGuestUserHighPriviledgesAssignments -End $endSUMMARYSecurityGuestUserHighPriviledgesAssignments).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYSecurityGuestUserHighPriviledgesAssignments -End $endSUMMARYSecurityGuestUserHighPriviledgesAssignments).TotalSeconds) seconds)"
+    Write-Host "   TenantSummary RoleAssignments security (high privileged Guest User) duration: $((NEW-TIMESPAN -Start $startSUMMARYSecurityGuestUserHighPriviledgesAssignments -End $endSUMMARYSecurityGuestUserHighPriviledgesAssignments).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYSecurityGuestUserHighPriviledgesAssignments -End $endSUMMARYSecurityGuestUserHighPriviledgesAssignments).TotalSeconds) seconds)"
     #endregion SUMMARYSecurityGuestUserHighPriviledgesAssignments
 
 

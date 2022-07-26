@@ -141,7 +141,7 @@
     Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
 
 .PARAMETER NoPIMEligibility
-    Do not report on PIM (Priviledged Identity Management) eligible Role assignments
+    Do not report on PIM (Privileged Identity Management) eligible Role assignments
     Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
 
 .EXAMPLE
@@ -271,7 +271,7 @@
     Define Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ExcludedResourceTypesDiagnosticsCapable @('microsoft.web/certificates')
 
-    Define if report on PIM (Priviledged Identity Management) eligible Role assignments should be created. Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+    Define if report on PIM (Privileged Identity Management) eligible Role assignments should be created. Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibility
 
 .NOTES
@@ -657,7 +657,7 @@ if (-not $HierarchyMapOnly) {
 if ($azAPICallConf['htParameters'].accountType -eq 'User') {
     if (-not $NoPIMEligibility) {
         Write-Host ""
-        Write-Host " * * * HINT: PIM (Priviledged Identity Management) Eligibility reporting * * *" -ForegroundColor DarkBlue
+        Write-Host " * * * HINT: PIM (Privileged Identity Management) Eligibility reporting * * *" -ForegroundColor DarkBlue
         Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
         Write-Host "Executing principal accountType: '$($azAPICallConf['htParameters'].accountType)'"
         Write-Host "PIM Eligibility reporting requires to execute the script as ServicePrincipal. API Permission 'PrivilegedAccess.Read.AzureResources' is required"
