@@ -6,7 +6,7 @@
 
 __Changes__ (2022-Jul-26 / Major)
 
-* New feature 'PIM (Priviledged Identity Management) eligible Role assignments' (TenantSummary)  
+* New feature 'PIM (Privileged Identity Management) eligible Role assignments' (TenantSummary)  
 &#x26D4; ___Breaking Change!___ requires API permissions update!
     * Get a full report of all PIM eligible Role assignments for Management Groups and Subscriptions, including resolved User members of AAD Groups that have assigned eligibility
     * Spoiler: Next iteration will include ScopeInsights, showing entire eligible Role assignments on Subscriptions including from upper Management Group scopes
@@ -106,7 +106,7 @@ __Changes__ (2022-May-05 / Major)
 
 __Changes__ (2022-May-02 / Minor)
 
-* __Tenant Summary__ Change Tracking - RBAC Role assignments: add PIM (Priviledged Identity Management) information
+* __Tenant Summary__ Change Tracking - RBAC Role assignments: add PIM (Privileged Identity Management) information
 * Azure DevOps pipeline YAML - change `vmImage: 'ubuntu-18.04'` to  `vmImage: 'ubuntu-20.04'`
 * Published new HTML [demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)
 
@@ -252,7 +252,7 @@ __Changes__ (2021-Sep-01 / Major)
 
 __Changes__ (2021-Aug-30 / Major)
 
-* Adding feature for RBAC Role assignments: determine 'standing' from PIM (Priviledged Identity Mangement) managed Role assignments
+* Adding feature for RBAC Role assignments: determine 'standing' from PIM (Privileged Identity Mangement) managed Role assignments
 * New parameter `-NoResources` - this will speed up the processing time but information like Resource diagnostics capability and resource type stats will not be made available (featured for large tenants)
 * Integrate AzGovViz with AzOps (after 'AzOps - Push' run AzGovViz) - (line 77 AzGovViz.yml). Checkout [AzOps Accellerator](https://github.com/Azure/AzOps-Accelerator)
 * Performance optimization

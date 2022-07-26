@@ -264,7 +264,7 @@ variables:
     # String | example: value: "<Name of the WebApp>"
     value: <Name> e.g. MyAzGovVizWebApp
 
-# Do not report on PIM (Priviledged Identity Management) Eligible Role assignments
+# Do not report on PIM (Privileged Identity Management) Eligible Role assignments
   - name: NoPIMEligibility
     # Switch | example: value: true
     value:
