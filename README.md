@@ -59,9 +59,15 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Jul-22 / Minor)
+__Changes__ (2022-Jul-26 / Major)
 
-* New parameter `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise). (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule -PSRuleFailedOnly`)
+* New feature 'PIM (Priviledged Identity Management) eligible Role assignments' (TenantSummary)  
+&#x26D4; ___Breaking Change!___ requires API permissions update!
+    * Get a full report of all PIM eligible Role assignments for Management Groups and Subscriptions, including resolved User members of AAD Groups that have assigned eligibility
+    * Spoiler: Next iteration will include ScopeInsights, showing entire eligible Role assignments on Subscriptions including from upper Management Group scopes
+    * &#x1F4A1; Note: this feature requires to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.19
+* Bugfixes
 
 Passed tests: Powershell Core 7.2.5 on Windows  
 Passed tests: Powershell Core 7.2.5 Azure DevOps hosted agent ubuntu-20.04  
@@ -155,6 +161,9 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
       * System metadata 'createdOn, createdBy' ('createdBy' identity is fully resolved)
       * Determine if the Role assignment is 'standing' or PIM (Privileged Identity Management) managed
       * Determine if the Role assignmet's Role definition is capable to write Role assignments
+  * PIM (Privileged Identity Management) eligibility for Role assignments
+    * Get a full report of all PIM eligible Role assignments for Management Groups and Subscriptions, including resolved User members of AAD Groups that have assigned eligibility
+    * &#x1F4A1; Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources``PrivilegedAccess.Read.AzureResources`
   * Role assignments ClassicAdministrators
   * Security & Best practice analysis
     * Existence of custom Role definition that reflect 'Owner' permissions
@@ -351,6 +360,10 @@ This permission is <b>mandatory</b> in each and every scenario!
               <td>Get AAD<br>SP/App</td>
               <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a></td>
             </tr>
+            <tr>
+              <td>Get PIM Eligibility<br>SP/App</td>
+              <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / PrivilegedAccess / PrivilegedAccess.Read.AzureResources<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/resources/privilegedaccess?view=graph-rest-beta" target="_blank">Get privilegedAccess for AzureResources</a><br>If you cannot grant this permission then use parameter <i>-NoPIMEligibility</i></td>
+            </tr>
           </tbody>
         </table>
         Optional: AAD Role 'Directory readers' could be used instead of API permissions (more 'read' than required)
@@ -376,6 +389,10 @@ This permission is <b>mandatory</b> in each and every scenario!
             <tr>
               <td>Get AAD<br>SP/App</td>
               <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a></td>
+            </tr>
+            <tr>
+              <td>Get PIM Eligibility<br>SP/App</td>
+              <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / PrivilegedAccess / PrivilegedAccess.Read.AzureResources<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/resources/privilegedaccess?view=graph-rest-beta" target="_blank">Get privilegedAccess for AzureResources</a><br>If you cannot grant this permission then use parameter <i>-NoPIMEligibility</i></td>
             </tr>
           </tbody>
         </table>
@@ -456,6 +473,7 @@ AzAPICall resources:
     * `-DoPSRule` - Execute [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure). Aggregated results are integrated in the HTML output, detailed results (per resource) are exported to CSV
     * `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
     * `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise). (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule -PSRuleFailedOnly`)
+  * `-NoPIMEligibility` - Do not report on PIM (Priviledged Identity Management) eligible Role assignments
 
 ### API reference
 
@@ -464,6 +482,8 @@ AzGovViz polls the following APIs
 | Endpoint | API version | API name |
 | --- | --- | --- |
 | MS Graph | beta | /groups/`aadGroupId`/transitiveMembers |
+| MS Graph | beta | /privilegedAccess/azureResources/resources |
+| MS Graph | beta | /privilegedAccess/azureResources/roleAssignments |
 | MS Graph | v1.0 | /applications |
 | MS Graph | v1.0 | /directoryObjects/getByIds |
 | MS Graph | v1.0 | /users |

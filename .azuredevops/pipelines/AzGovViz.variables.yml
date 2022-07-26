@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220603_1
+# AzGovViz v6_major_20220726_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -94,12 +94,12 @@ variables:
   # Define if Azure Consumption data should be reported
   - name: DoAzureConsumption
     # Switch | example: value: true
-    value:
+    value: true
 
   # If DoAzureConsumption == true then you may define for which time period (days) Azure Consumption data should be gathered
   - name: AzureConsumptionPeriod
     # Integer | default = 1 | example: value: 7
-    value:
+    value: 14
 
   # Do not include Role assignments on ResourceGroups and Resources
   - name: DoNotIncludeResourceGroupsAndResourcesOnRBAC
@@ -263,6 +263,11 @@ variables:
   - name: WebAppName
     # String | example: value: "<Name of the WebApp>"
     value: <Name> e.g. MyAzGovVizWebApp
+
+# Do not report on PIM (Priviledged Identity Management) Eligible Role assignments
+  - name: NoPIMEligibility
+    # Switch | example: value: true
+    value:
 
 # Dynamic Variables - Do Not Modify Anything Below this line!
   - name: ExcludedResourceTypesDiagnosticsCapable

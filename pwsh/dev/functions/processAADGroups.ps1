@@ -1,10 +1,36 @@
 function processAADGroups {
-    Write-Host 'Resolving AAD Groups (for which a RBAC Role assignment exists)'
+    if ($NoPIMEligibility) {
+        Write-Host 'Resolving AAD Groups (for which a RBAC Role assignment exists)'
+    }
+    else{
+        Write-Host 'Resolving AAD Groups (for which a RBAC Role assignment or PIM Eligibility exists)'
+    }
+
     Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (before Resolving AAD Groups)"
     $startAADGroupsResolveMembers = Get-Date
 
-    $optimizedTableForAADGroupsQuery = ($roleAssignmentsUniqueById.where( { $_.RoleAssignmentIdentityObjectType -eq 'Group' } ) | Select-Object -Property RoleAssignmentIdentityObjectId, RoleAssignmentIdentityDisplayname) | Sort-Object -Property RoleAssignmentIdentityObjectId -Unique
+    [System.Collections.ArrayList]$optimizedTableForAADGroupsQuery = ($roleAssignmentsUniqueById.where( { $_.RoleAssignmentIdentityObjectType -eq 'Group' } ) | Select-Object -Property RoleAssignmentIdentityObjectId, RoleAssignmentIdentityDisplayname) | Sort-Object -Property RoleAssignmentIdentityObjectId -Unique
     $aadGroupsCount = ($optimizedTableForAADGroupsQuery).Count
+    Write-Host " $aadGroupsCount Groups from RoleAssignments"
+
+    if (-not $NoPIMEligibility) {
+        $PIMEligibleGroups = $arrayPIMEligible.where({$_.IdentityType -eq 'Group'}) | Select-Object IdentityObjectId, IdentityDisplayName | Sort-Object -Property IdentityObjectId -Unique
+        $cntPIMEligibleGroupsTotal = 0
+        $cntPIMEligibleGroupsNotCoveredFromRoleAssignments = 0
+        foreach ($PIMEligibleGroup in  $PIMEligibleGroups) {
+            $cntPIMEligibleGroupsTotal++
+            if ($optimizedTableForAADGroupsQuery.RoleAssignmentIdentityObjectId -notcontains $PIMEligibleGroup.IdentityObjectId){
+                $cntPIMEligibleGroupsNotCoveredFromRoleAssignments++
+                $null = $optimizedTableForAADGroupsQuery.Add([PSCustomObject]@{
+                    RoleAssignmentIdentityObjectId = $PIMEligibleGroup.IdentityObjectId
+                    RoleAssignmentIdentityDisplayname = $PIMEligibleGroup.IdentityDisplayName
+                })
+            }
+        }
+        Write-Host " $cntPIMEligibleGroupsTotal Groups from PIM Eligibility; $cntPIMEligibleGroupsNotCoveredFromRoleAssignments Groups added ($($cntPIMEligibleGroupsTotal - $cntPIMEligibleGroupsNotCoveredFromRoleAssignments) already covered in RoleAssignments)"
+        $aadGroupsCount = ($optimizedTableForAADGroupsQuery).Count
+        Write-Host " $aadGroupsCount Groups from RoleAssignments and PIM Eligibility"
+    }
 
     if ($aadGroupsCount -gt 0) {
 
@@ -19,7 +45,7 @@ function processAADGroups {
             { $_ -gt 10000 } { $indicator = 250 }
         }
 
-        Write-Host " processing $($aadGroupsCount) AAD Groups with Role assignments (indicating progress in steps of $indicator)"
+        Write-Host " processing $($aadGroupsCount) AAD Groups (indicating progress in steps of $indicator)"
 
         $optimizedTableForAADGroupsQuery | ForEach-Object -Parallel {
             $aadGroupIdWithRoleAssignment = $_
@@ -78,7 +104,7 @@ function processAADGroups {
         } -ThrottleLimit ($ThrottleLimit * 2)
     }
     else {
-        Write-Host " processing $($aadGroupsCount) AAD Groups with Role assignments"
+        Write-Host " processing $($aadGroupsCount) AAD Groups"
     }
 
     $arrayGroupRequestResourceNotFoundCount = ($arrayGroupRequestResourceNotFound).Count
@@ -86,7 +112,7 @@ function processAADGroups {
         Write-Host "$arrayGroupRequestResourceNotFoundCount Groups could not be checked for Memberships"
     }
 
-    Write-Host " Collected $($arrayProgressedAADGroups.Count) AAD Groups"
+    Write-Host " processed $($arrayProgressedAADGroups.Count) AAD Groups"
     $endAADGroupsResolveMembers = Get-Date
     Write-Host "Resolving AAD Groups duration: $((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
     Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (after Resolving AAD Groups)"

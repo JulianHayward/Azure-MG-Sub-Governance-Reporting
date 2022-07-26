@@ -361,6 +361,15 @@ function runInfo {
             $script:paramsUsed += "DoPSRule: $($azAPICallConf['htParameters'].DoPSRule) &#13;"
         }
 
+        if ($NoPIMEligibility) {
+            Write-Host " NoPIMEligibility = $($NoPIMEligibility)" -ForegroundColor Green
+            $script:paramsUsed += "NoPIMEligibility: $($NoPIMEligibility) &#13;"
+        }
+        else {
+            Write-Host " NoPIMEligibility = $($NoPIMEligibility)" -ForegroundColor Yellow
+            $script:paramsUsed += "NoPIMEligibility: $($NoPIMEligibility) &#13;"
+        }
+
     }
     #endregion RunInfo
 }

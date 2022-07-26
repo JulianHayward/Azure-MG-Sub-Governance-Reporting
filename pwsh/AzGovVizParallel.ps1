@@ -140,6 +140,10 @@
 .PARAMETER ExcludedResourceTypesDiagnosticsCapable
     Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
 
+.PARAMETER NoPIMEligibility
+    Do not report on PIM (Priviledged Identity Management) eligible Role assignments
+    Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+
 .EXAMPLE
     Define the ManagementGroup ID
     PS C:\> .\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>
@@ -267,7 +271,10 @@
     Define Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ExcludedResourceTypesDiagnosticsCapable @('microsoft.web/certificates')
 
-    .NOTES
+    Define if report on PIM (Priviledged Identity Management) eligible Role assignments should be created. Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibility
+
+.NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
 .LINK
@@ -283,10 +290,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.18',
+    $AzAPICallVersion = '1.1.19',
 
     [string]
-    $ProductVersion = 'v6_minor_20220722_1',
+    $ProductVersion = 'v6_major_20220726_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -442,6 +449,9 @@ Param
 
     [string]
     $PSRuleVersion,
+
+    [switch]
+    $NoPIMEligibility,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
@@ -2703,6 +2713,7 @@ function getEntities {
             $array += $entity.name
             $script:htManagementGroupsMgPath.($entity.name).path = $array
             $script:htManagementGroupsMgPath.($entity.name).pathDelimited = $array -join '/'
+            $script:htManagementGroupsMgPath.($entity.name).level = $array.Count
         }
 
         $script:htEntities.($entity.name) = @{}
@@ -3131,6 +3142,111 @@ function getOrphanedResources {
     $end = Get-Date
     Write-Host "Getting orphaned resources (ARG) processing duration: $((NEW-TIMESPAN -Start $start -End $end).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds)"
 }
+function getPIMEligible {
+    $start = Get-Date
+        
+    $currentTask = "Get PIM onboarded Subscriptions and Management Groups"
+    Write-Host $currentTask
+    $uriExt = "&`$expand=parent&`$filter=(type eq 'subscription' or type eq 'managementgroup')"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/privilegedAccess/azureResources/resources?`$select=id,displayName,type,externalId" + $uriExt
+    $res = AzAPICall -AzAPICallConfiguration $azapicallConf -uri $uri -currentTask $currentTask
+
+    if ($res.Count -gt 0) {
+        $res | ForEach-Object -parallel {
+            $scope = $_
+            $azAPICallConf = $using:azAPICallConf
+            $arrayPIMEligible = $using:arrayPIMEligible
+            if ($scope.type -eq 'managementgroup') { $htManagementGroupsMgPath = $using:htManagementGroupsMgPath }
+            if ($scope.type -eq 'subscription') { $htSubscriptionsMgPath = $using:htSubscriptionsMgPath }
+            $htPrincipals = $using:htPrincipals
+            $function:resolveObjectIds = $using:funcResolveObjectIds
+            $function:testGuid = $using:funcTestGuid
+            #Write-Host "$($scope.type) $($scope.externalId -replace '.*/') - $($scope.id)"
+    
+            $currentTask = "Get Eligible assignments for Scope $($scope.type): $($scope.externalId -replace '.*/')"
+            $extUri = "?`$expand=linkedEligibleRoleAssignment,subject,roleDefinition(`$expand=resource)&`$count=true&`$filter=(roleDefinition/resource/id eq '$($scope.id)')+and+(assignmentState eq 'Eligible')&`$top=100"
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/privilegedAccess/azureResources/roleAssignments" + $extUri
+            $resx = AzAPICall -AzAPICallConfiguration $azapicallConf -currentTask $currentTask -uri $uri
+
+            if ($resx.Count -gt 0) {
+
+                $users = $resx.where({ $_.subject.type -eq 'user' })
+                if ($users.Count -gt 0) {
+                    ResolveObjectIds -objectIds $users.subject.id
+                }
+
+                foreach ($entry in $resx) {
+                    $scopeId = $scope.externalId -replace '.*/'
+                    if ($scope.type -eq 'managementgroup') {
+                        $ScopeType = 'MG'
+                        $ManagementGroupId = $scopeId
+                        $SubscriptionId = ''
+                        $MgDetails = $htManagementGroupsMgPath.($scopeId)
+                        $ManagementGroupDisplayName = $MgDetails.DisplayName
+                        $SubscriptionDisplayName = ''
+                        $ScopeDisplayName = $MgDetails.DisplayName
+                        $MgPath = $MgDetails.path
+                        $MgLevel = $MgDetails.level 
+                    }
+                    if ($scope.type -eq 'subscription') {
+                        $ScopeType = 'Sub'
+                        $ManagementGroupId = ''
+                        $SubscriptionId = $scopeId
+                        $MgDetails = $htSubscriptionsMgPath.($scopeId)
+                        $ManagementGroupDisplayName = ''
+                        $SubscriptionDisplayName = $MgDetails.DisplayName
+                        $ScopeDisplayName = $MgDetails.DisplayName
+                        $MgPath = $MgDetails.path[0..(($MgDetails.path.Count) - 2)]
+                        $MgLevel = $MgDetails.level 
+                    }
+
+                    if ($entry.subject.type -eq 'user') {
+                        if ($htPrincipals.($entry.subject.id)) {
+                            $userDetail = $htPrincipals.($entry.subject.id)
+                            $principalType = "$($userDetail.type) $($userDetail.userType)"
+                        }
+                        else {
+                            $principalType = $entry.subject.type
+                        }
+                    }
+                    else {
+                        $principalType = $entry.subject.type
+                    }
+
+                    $null = $script:arrayPIMEligible.Add([PSCustomObject]@{
+                            ScopeType                  = $ScopeType
+                            ScopeId                    = $scopeId
+                            ScopeDisplayName           = $ScopeDisplayName
+                            ManagementGroupId          = $ManagementGroupId
+                            ManagementGroupDisplayName = $ManagementGroupDisplayName
+                            SubscriptionId             = $SubscriptionId
+                            SubscriptionDisplayName    = $SubscriptionDisplayName
+                            MgPath                     = $MgPath
+                            MgLevel                    = $MgLevel
+                            IdentityObjectId           = $entry.subject.id
+                            IdentityType               = $principalType
+                            IdentityDisplayName        = $entry.subject.displayName
+                            IdentityPrincipalName      = $entry.subject.principalName
+                            RoleId                     = $entry.roleDefinition.externalId
+                            RoleIdGuid                 = $entry.roleDefinition.externalId -replace '.*/'
+                            RoleType                   = $entry.roleDefinition.type
+                            RoleName                   = $entry.roleDefinition.displayName
+                            Eligibility                = 'direct'
+                        })
+                    #Write-Host "  - eligible: $($scope.externalId -replace '.*/') $($entry.subject.id) $($entry.subject.displayName) ($($entry.subject.type)) -> $($entry.roleDefinition.displayName)"
+                }
+            }
+        } -ThrottleLimit $ThrottleLimit
+
+        $script:arrayPIMEligibleGrouped = $arrayPIMEligible | Group-Object -Property ScopeType
+        foreach ($entry in $arrayPIMEligibleGrouped) {
+            Write-Host " $($entry.Name)s: $($entry.Count)"
+        }
+    }
+
+    $end = Get-Date
+    Write-Host "Getting PIM Eligible assignments processing duration: $((NEW-TIMESPAN -Start $start -End $end).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds)"
+}
 function getResourceDiagnosticsCapability {
     Write-Host 'Checking Resource Types Diagnostics capability (1st party only)'
     $startResourceDiagnosticsCheck = Get-Date
@@ -3359,12 +3475,38 @@ function prepareData {
     Write-Host "Preparing Arrays duration: $((NEW-TIMESPAN -Start $startPreparingArrays -End $endPreparingArrays).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPreparingArrays -End $endPreparingArrays).TotalSeconds) seconds)"
 }
 function processAADGroups {
-    Write-Host 'Resolving AAD Groups (for which a RBAC Role assignment exists)'
+    if ($NoPIMEligibility) {
+        Write-Host 'Resolving AAD Groups (for which a RBAC Role assignment exists)'
+    }
+    else{
+        Write-Host 'Resolving AAD Groups (for which a RBAC Role assignment or PIM Eligibility exists)'
+    }
+
     Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (before Resolving AAD Groups)"
     $startAADGroupsResolveMembers = Get-Date
 
-    $optimizedTableForAADGroupsQuery = ($roleAssignmentsUniqueById.where( { $_.RoleAssignmentIdentityObjectType -eq 'Group' } ) | Select-Object -Property RoleAssignmentIdentityObjectId, RoleAssignmentIdentityDisplayname) | Sort-Object -Property RoleAssignmentIdentityObjectId -Unique
+    [System.Collections.ArrayList]$optimizedTableForAADGroupsQuery = ($roleAssignmentsUniqueById.where( { $_.RoleAssignmentIdentityObjectType -eq 'Group' } ) | Select-Object -Property RoleAssignmentIdentityObjectId, RoleAssignmentIdentityDisplayname) | Sort-Object -Property RoleAssignmentIdentityObjectId -Unique
     $aadGroupsCount = ($optimizedTableForAADGroupsQuery).Count
+    Write-Host " $aadGroupsCount Groups from RoleAssignments"
+
+    if (-not $NoPIMEligibility) {
+        $PIMEligibleGroups = $arrayPIMEligible.where({$_.IdentityType -eq 'Group'}) | Select-Object IdentityObjectId, IdentityDisplayName | Sort-Object -Property IdentityObjectId -Unique
+        $cntPIMEligibleGroupsTotal = 0
+        $cntPIMEligibleGroupsNotCoveredFromRoleAssignments = 0
+        foreach ($PIMEligibleGroup in  $PIMEligibleGroups) {
+            $cntPIMEligibleGroupsTotal++
+            if ($optimizedTableForAADGroupsQuery.RoleAssignmentIdentityObjectId -notcontains $PIMEligibleGroup.IdentityObjectId){
+                $cntPIMEligibleGroupsNotCoveredFromRoleAssignments++
+                $null = $optimizedTableForAADGroupsQuery.Add([PSCustomObject]@{
+                    RoleAssignmentIdentityObjectId = $PIMEligibleGroup.IdentityObjectId
+                    RoleAssignmentIdentityDisplayname = $PIMEligibleGroup.IdentityDisplayName
+                })
+            }
+        }
+        Write-Host " $cntPIMEligibleGroupsTotal Groups from PIM Eligibility; $cntPIMEligibleGroupsNotCoveredFromRoleAssignments Groups added ($($cntPIMEligibleGroupsTotal - $cntPIMEligibleGroupsNotCoveredFromRoleAssignments) already covered in RoleAssignments)"
+        $aadGroupsCount = ($optimizedTableForAADGroupsQuery).Count
+        Write-Host " $aadGroupsCount Groups from RoleAssignments and PIM Eligibility"
+    }
 
     if ($aadGroupsCount -gt 0) {
 
@@ -3379,7 +3521,7 @@ function processAADGroups {
             { $_ -gt 10000 } { $indicator = 250 }
         }
 
-        Write-Host " processing $($aadGroupsCount) AAD Groups with Role assignments (indicating progress in steps of $indicator)"
+        Write-Host " processing $($aadGroupsCount) AAD Groups (indicating progress in steps of $indicator)"
 
         $optimizedTableForAADGroupsQuery | ForEach-Object -Parallel {
             $aadGroupIdWithRoleAssignment = $_
@@ -3438,7 +3580,7 @@ function processAADGroups {
         } -ThrottleLimit ($ThrottleLimit * 2)
     }
     else {
-        Write-Host " processing $($aadGroupsCount) AAD Groups with Role assignments"
+        Write-Host " processing $($aadGroupsCount) AAD Groups"
     }
 
     $arrayGroupRequestResourceNotFoundCount = ($arrayGroupRequestResourceNotFound).Count
@@ -3446,7 +3588,7 @@ function processAADGroups {
         Write-Host "$arrayGroupRequestResourceNotFoundCount Groups could not be checked for Memberships"
     }
 
-    Write-Host " Collected $($arrayProgressedAADGroups.Count) AAD Groups"
+    Write-Host " processed $($arrayProgressedAADGroups.Count) AAD Groups"
     $endAADGroupsResolveMembers = Get-Date
     Write-Host "Resolving AAD Groups duration: $((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
     Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (after Resolving AAD Groups)"
@@ -4183,9 +4325,8 @@ function processDataCollection {
                         Write-Host " Import previous ($($previous.Name)) duration: $((NEW-TIMESPAN -Start $startImportPrevious -End (get-date)).TotalSeconds)"
                     }
                     catch {
-                        Write-Host " FAILED: Import-Csv '$($outputPath)$($DirectorySeparatorChar)$($previous.Name)'"
+                        Write-Host " FAILED: importing previous CSV '$($outputPath)$($DirectorySeparatorChar)$($previous.Name)' OR it does not exist (*$($ManagementGroupId)_ResourcesAll.csv)"
                         $doResourceFluctuation = $false
-
                     }
 
                     if ($doResourceFluctuation) {
@@ -4368,8 +4509,13 @@ function processDataCollection {
                 Write-Host "Process Resource fluctuation duration: $((NEW-TIMESPAN -Start $start -End (get-date)).TotalSeconds) seconds"
 
                 #DataCollection Export of All Resources
-                Write-Host "Exporting ResourcesAll CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv'"
-                $resourcesIdsAll | Sort-Object -Property id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                if ($resourcesIdsAll.Count -gt 0) {
+                    Write-Host "Exporting ResourcesAll CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv'"
+                    $resourcesIdsAll | Sort-Object -Property id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                }
+                else {
+                    Write-Host "Not Exporting ResourcesAll CSV, as there are $($resourcesIdsAll.Count) resources"
+                }
             }
         }
     }
@@ -14507,6 +14653,182 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     Write-Host "   SummaryRoleAssignmentsAll duration: $((NEW-TIMESPAN -Start $startRoleAssignmentsAll -End $endRoleAssignmentsAll).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startRoleAssignmentsAll -End $endRoleAssignmentsAll).TotalSeconds) seconds)"
     #endregion SUMMARYRoleAssignmentsAll
 
+    #region SUMMARYPIMEligibility
+    if (-not $NoPIMEligibility) {
+    $startPIMEligibility = Get-Date
+    Write-Host '  processing TenantSummary PIMEligibility'
+
+    if ($arrayPIMEligible.Count -gt 0) {
+        $tfCount = $arrayPIMEligible.Count
+        $htmlTableId = 'TenantSummary_PIMEligibility'
+        [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_PIMEligibility"><i class="padlx fa fa-universal-access" aria-hidden="true"></i> <span class="valignMiddle">$($tfCount) direct PIM Eligible assignments</span>
+</button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id= "$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Scope</th>
+<th>ScopeId</th>
+<th>ScopeName</th>
+<th>MgPath</th>
+<th>MgLevel</th>
+<th>Role</th>
+<th>Role type</th>
+<th>Identity ObjectId</th>
+<th>Identity DisplayName</th>
+<th>Identity SignInName</th>
+<th>Identity Type</th>
+<th>Applicability</th>
+<th>Applies through</th>
+</tr>
+</thead>
+<tbody>
+"@)
+        $htmlSUMMARYPIMEligibility = $null
+        <#if (-not $NoCsvExport) {
+            $csvFilename = "$($filename)_ClassicAdministrators"
+            Write-Host "   Exporting ClassicAdministrators CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
+            $classicAdministrators | Select-Object -ExcludeProperty Id | Sort-Object -Property Subscription, SubscriptionId, Role | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+        }
+        #>
+        $tfCountCnt = 0
+        $htmlSUMMARYPIMEligibility = foreach ($PIMEligible in $arrayPIMEligible | Sort-Object -Property ScopeType, MgLevel, ScopeDisplayName) {
+            $tfCountCnt++
+            if ($PIMEligible.RoleType -eq 'BuiltInRole') {
+                $roleName = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($PIMEligible.RoleIdGuid).html`" target=`"_blank`" rel=`"noopener`">$($PIMEligible.RoleName)</a>"
+            }
+            else {
+                $roleName = $PIMEligible.RoleName
+            }
+            @"
+<tr>
+<td>$($PIMEligible.ScopeType)</td>
+<td>$($PIMEligible.ScopeId)</td>
+<td>$($PIMEligible.ScopeDisplayName)</td>
+<td>$($PIMEligible.MgPath -join "/")</td>
+<td>$($PIMEligible.MgLevel)</td>
+<td>$($roleName)</td>
+<td>$($PIMEligible.RoleType)</td>
+<td>$($PIMEligible.IdentityObjectId)</td>
+<td>$($PIMEligible.IdentityDisplayName)</td>
+<td>$($PIMEligible.IdentityPrincipalName)</td>
+<td>$($PIMEligible.IdentityType)</td>
+<td>direct</td>
+<td></td>
+</tr>
+"@
+            if (-not $NoAADGroupsResolveMembers) {
+                if ($PIMEligible.IdentityType -eq 'Group') {
+                    if ($htAADGroupsDetails.($PIMEligible.IdentityObjectId)) {
+                        foreach ($groupMemberUser in $htAADGroupsDetails.($PIMEligible.IdentityObjectId).MembersUsers) {
+                            $tfCountCnt++
+                            @"
+                            <tr>
+                            <td>$($PIMEligible.ScopeType)</td>
+                            <td>$($PIMEligible.ScopeId)</td>
+                            <td>$($PIMEligible.ScopeDisplayName)</td>
+                            <td>$($PIMEligible.MgPath -join "/")</td>
+                            <td>$($PIMEligible.MgLevel)</td>
+                            <td>$($roleName)</td>
+                            <td>$($PIMEligible.RoleType)</td>
+                            <td>$($groupMemberUser.id)</td>
+                            <td>$($groupMemberUser.displayName)</td>
+                            <td>$($groupMemberUser.userPrincipalName)</td>
+                            <td>User $($groupMemberUser.userType)</td>
+                            <td>indirect</td>
+                            <td>$($PIMEligible.IdentityDisplayName) ($($PIMEligible.IdentityObjectId))</td>
+                            </tr>
+"@
+                        }
+                    }
+                    else {
+                        Write-Host "!! Unexpected: Group $($PIMEligible.IdentityDisplayName) ($($PIMEligible.IdentityObjectId)) not found in `$htAADGroupsDetails - please report back!"
+                    }
+                }
+            }
+        }
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYPIMEligibility)
+        [void]$htmlTenantSummary.AppendLine(@"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCountCnt"
+            if ($tfCountCnt -gt 50) {
+                $spectrum = "10, 25, 50, $tfCountCnt"
+            }
+            if ($tfCountCnt -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCountCnt"
+            }
+            if ($tfCountCnt -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCountCnt"
+            }
+            if ($tfCountCnt -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCountCnt"
+            }
+            if ($tfCountCnt -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCountCnt"
+            }
+            if ($tfCountCnt -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCountCnt"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_0: 'select',
+            col_4: 'select',
+            col_6: 'select',
+            col_10: 'select',
+            col_11: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+"@)
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No PIM Eligibility</span></p>
+"@)
+    }
+
+    $endPIMEligibility = Get-Date
+    Write-Host "   TenantSummary PIMEligibility duration: $((NEW-TIMESPAN -Start $startPIMEligibility -End $endPIMEligibility).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPIMEligibility -End $endPIMEligibility).TotalSeconds) seconds)"
+}
+else {
+    [void]$htmlTenantSummary.AppendLine(@"
+<p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No PIM Eligibility</span></p>
+"@)
+}
+    #endregion SUMMARYPIMEligibility
+
     #region SUMMARYSecurityCustomRoles
     Write-Host '  processing TenantSummary Custom Roles security (owner permissions)'
     $customRolesOwnerAll = ($rbacBaseQuery.where( { $_.RoleSecurityCustomRoleOwner -eq 1 })) | Sort-Object -Property RoleDefinitionId
@@ -23181,12 +23503,21 @@ function runInfo {
             $script:paramsUsed += "DoPSRule: $($azAPICallConf['htParameters'].DoPSRule) &#13;"
         }
 
+        if ($NoPIMEligibility) {
+            Write-Host " NoPIMEligibility = $($NoPIMEligibility)" -ForegroundColor Green
+            $script:paramsUsed += "NoPIMEligibility: $($NoPIMEligibility) &#13;"
+        }
+        else {
+            Write-Host " NoPIMEligibility = $($NoPIMEligibility)" -ForegroundColor Yellow
+            $script:paramsUsed += "NoPIMEligibility: $($NoPIMEligibility) &#13;"
+        }
+
     }
     #endregion RunInfo
 }
 function selectMg() {
     Write-Host 'Please select a Management Group from the list below:'
-    $MgtGroupArray | Select-Object '#', Name, @{Expression = { $_.properties.displayName } }, Id | Format-Table
+    $MgtGroupArray | Select-Object '#', Name, @{Name = 'displayName'; Expression = { $_.properties.displayName } }, Id | Format-Table
     Write-Host "If you don't see your ManagementGroupID try using the parameter -ManagementGroupID" -ForegroundColor Yellow
     if ($msg) {
         Write-Host $msg -ForegroundColor Red
@@ -23599,8 +23930,7 @@ function validateAccess {
         $currentTask = 'Test MSGraph Users Read permission'
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/users?`$count=true&`$top=1"
         $method = 'GET'
-        $res = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -consistencyLevel 'eventual' -validateAccess -noPaging
-
+        $res = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -consistencyLevel 'eventual' -validateAccess
         if ($res -eq 'failed') {
             $permissionCheckResults += "MSGraph API 'Users Read' permission - check FAILED"
             $permissionsCheckFailed = $true
@@ -23612,8 +23942,7 @@ function validateAccess {
         $currentTask = 'Test MSGraph Groups Read permission'
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/groups?`$count=true&`$top=1"
         $method = 'GET'
-        $res = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -consistencyLevel 'eventual' -validateAccess -noPaging
-
+        $res = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -consistencyLevel 'eventual' -validateAccess
         if ($res -eq 'failed') {
             $permissionCheckResults += "MSGraph API 'Groups Read' permission - check FAILED"
             $permissionsCheckFailed = $true
@@ -23625,28 +23954,40 @@ function validateAccess {
         $currentTask = 'Test MSGraph ServicePrincipals Read permission'
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/servicePrincipals?`$count=true&`$top=1"
         $method = 'GET'
-        $res = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -consistencyLevel 'eventual' -validateAccess -noPaging
-
+        $res = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -consistencyLevel 'eventual' -validateAccess
         if ($res -eq 'failed') {
             $permissionCheckResults += "MSGraph API 'ServicePrincipals Read' permission - check FAILED"
             $permissionsCheckFailed = $true
         }
         else {
-            $permissionCheckResults += "MSGraph API 'ServicePrincipals' Read permission - check PASSED"
+            $permissionCheckResults += "MSGraph API 'ServicePrincipals Read' permission - check PASSED"
+        }
+
+        if (-not $NoPIMEligibility) {
+            $currentTask = 'Test MSGraph PrivilegedAccess.Read.AzureResources permission'
+            $uriExt = "&`$expand=parent&`$filter=(type eq 'subscription' or type eq 'managementgroup')&`$top=1"
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/privilegedAccess/azureResources/resources?`$select=id,displayName,type,externalId" + $uriExt
+            $res = AzAPICall -AzAPICallConfiguration $azapicallConf -uri $uri -currentTask $currentTask -validateAccess
+            if ($res -eq 'failed') {
+                $permissionCheckResults += "MSGraph API 'PrivilegedAccess.Read.AzureResources' permission - check FAILED - if you cannot grant this permission then use parameter -NoPIMEligibility"
+                $permissionsCheckFailed = $true
+            }
+            else {
+                $permissionCheckResults += "MSGraph API 'PrivilegedAccess.Read.AzureResources' permission - check PASSED"
+            }
         }
     }
     #endregion validationAccess
 
     #ManagementGroup helper
     #region managementGroupHelper
-    #thx @Jim Britt https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts Create-AzDiagPolicy.ps1
     if (-not $ManagementGroupId) {
         #$catchResult = "letscheck"
         $currentTask = 'Getting all Management Groups'
         #Write-Host $currentTask
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups?api-version=2020-05-01"
         $method = 'GET'
-        $getAzManagementGroups = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -validateAccess -noPaging
+        $getAzManagementGroups = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -validateAccess
 
         if ($getAzManagementGroups -eq 'failed') {
             $permissionCheckResults += "'Reader' permissions on Management Group - check FAILED"
@@ -23702,7 +24043,7 @@ function validateAccess {
         Write-Host $currentTask
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)?api-version=2020-05-01"
         $method = 'GET'
-        $selectedManagementGroupId = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -validateAccess -noPaging
+        $selectedManagementGroupId = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -validateAccess
 
         if ($selectedManagementGroupId -eq 'failed') {
             $permissionCheckResults += "'Reader' permissions on Management Group '$($ManagementGroupId)' - check FAILED"
@@ -23725,7 +24066,7 @@ function validateAccess {
         }
 
         if ($permissionsCheckFailed -eq $true) {
-            Write-Host "Please consult the documentation: https://$($GithubRepository)#required-permissions-in-azure"
+            Write-Host "Please consult the documentation for permission requirements: https://$($GithubRepository)#technical-documentation"
             Throw 'Error - AzGovViz: check the last console output for details'
         }
 
@@ -27910,6 +28251,23 @@ if (-not $HierarchyMapOnly) {
 }
 #endregion recommendPSRule
 
+#region hintPIMEligibility
+if ($azAPICallConf['htParameters'].accountType -eq 'User') {
+    if (-not $NoPIMEligibility) {
+        Write-Host ""
+        Write-Host " * * * HINT: PIM (Priviledged Identity Management) Eligibility reporting * * *" -ForegroundColor DarkBlue
+        Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
+        Write-Host "Executing principal accountType: '$($azAPICallConf['htParameters'].accountType)'"
+        Write-Host "PIM Eligibility reporting requires to execute the script as ServicePrincipal. API Permission 'PrivilegedAccess.Read.AzureResources' is required"
+        Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
+        $NoPIMEligibility = $true
+        Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
+        Write-Host " * * * * * * * * * * * * * * * * * * * * * *" -ForegroundColor DarkBlue
+        pause
+    }
+}
+#endregion hintPIMEligibility
+
 addHtParameters
 
 #region delimiterOpposite
@@ -28030,6 +28388,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $arrayPSRuleTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htClassicAdministrators = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $arrayOrphanedResources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayPIMEligible = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
 getEntities
@@ -28046,8 +28405,6 @@ runInfo
 
 if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
-    #checkContextSubscriptionQuotaId -AADQuotaId $AADQuotaId
-    #testAzContext
     getSubscriptions
     detailSubscriptions
     showMemoryUsage
@@ -28070,6 +28427,11 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
     processDataCollection -mgId $ManagementGroupId
     showMemoryUsage
+
+    if (-not $NoPIMEligibility) {
+        getPIMEligible
+        showMemoryUsage
+    }
 
     exportBaseCSV
 

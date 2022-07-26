@@ -59,6 +59,7 @@ function getEntities {
             $array += $entity.name
             $script:htManagementGroupsMgPath.($entity.name).path = $array
             $script:htManagementGroupsMgPath.($entity.name).pathDelimited = $array -join '/'
+            $script:htManagementGroupsMgPath.($entity.name).level = $array.Count
         }
 
         $script:htEntities.($entity.name) = @{}

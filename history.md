@@ -4,6 +4,16 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Jul-26 / Major)
+
+* New feature 'PIM (Priviledged Identity Management) eligible Role assignments' (TenantSummary)  
+&#x26D4; ___Breaking Change!___ requires API permissions update!
+    * Get a full report of all PIM eligible Role assignments for Management Groups and Subscriptions, including resolved User members of AAD Groups that have assigned eligibility
+    * Spoiler: Next iteration will include ScopeInsights, showing entire eligible Role assignments on Subscriptions including from upper Management Group scopes
+    * &#x1F4A1; Note: this feature requires to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.19
+* Bugfixes
+
 __Changes__ (2022-Jul-22 / Minor)
 
 * New parameter `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise)

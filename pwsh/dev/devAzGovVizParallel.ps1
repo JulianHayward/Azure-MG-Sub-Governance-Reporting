@@ -140,6 +140,10 @@
 .PARAMETER ExcludedResourceTypesDiagnosticsCapable
     Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
 
+.PARAMETER NoPIMEligibility
+    Do not report on PIM (Priviledged Identity Management) eligible Role assignments
+    Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+
 .EXAMPLE
     Define the ManagementGroup ID
     PS C:\> .\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>
@@ -267,7 +271,10 @@
     Define Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ExcludedResourceTypesDiagnosticsCapable @('microsoft.web/certificates')
 
-    .NOTES
+    Define if report on PIM (Priviledged Identity Management) eligible Role assignments should be created. Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibility
+
+.NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
 .LINK
@@ -283,10 +290,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.18',
+    $AzAPICallVersion = '1.1.19',
 
     [string]
-    $ProductVersion = 'v6_minor_20220722_1',
+    $ProductVersion = 'v6_major_20220726_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -443,6 +450,9 @@ Param
     [string]
     $PSRuleVersion,
 
+    [switch]
+    $NoPIMEligibility,
+
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
     $LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -504,6 +514,7 @@ if ($ManagementGroupId -match " ") {
 }
 
 #region Functions
+. ".\$($ScriptPath)\functions\getPIMEligible.ps1"
 . ".\$($ScriptPath)\functions\testGuid.ps1"
 . ".\$($ScriptPath)\functions\apiCallTracking.ps1"
 . ".\$($ScriptPath)\functions\addRowToTable.ps1"
@@ -642,6 +653,23 @@ if (-not $HierarchyMapOnly) {
 }
 #endregion recommendPSRule
 
+#region hintPIMEligibility
+if ($azAPICallConf['htParameters'].accountType -eq 'User') {
+    if (-not $NoPIMEligibility) {
+        Write-Host ""
+        Write-Host " * * * HINT: PIM (Priviledged Identity Management) Eligibility reporting * * *" -ForegroundColor DarkBlue
+        Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
+        Write-Host "Executing principal accountType: '$($azAPICallConf['htParameters'].accountType)'"
+        Write-Host "PIM Eligibility reporting requires to execute the script as ServicePrincipal. API Permission 'PrivilegedAccess.Read.AzureResources' is required"
+        Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
+        $NoPIMEligibility = $true
+        Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
+        Write-Host " * * * * * * * * * * * * * * * * * * * * * *" -ForegroundColor DarkBlue
+        pause
+    }
+}
+#endregion hintPIMEligibility
+
 addHtParameters
 
 #region delimiterOpposite
@@ -762,6 +790,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $arrayPSRuleTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htClassicAdministrators = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $arrayOrphanedResources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayPIMEligible = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
 getEntities
@@ -778,8 +807,6 @@ runInfo
 
 if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
-    #checkContextSubscriptionQuotaId -AADQuotaId $AADQuotaId
-    #testAzContext
     getSubscriptions
     detailSubscriptions
     showMemoryUsage
@@ -802,6 +829,11 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
     processDataCollection -mgId $ManagementGroupId
     showMemoryUsage
+
+    if (-not $NoPIMEligibility) {
+        getPIMEligible
+        showMemoryUsage
+    }
 
     exportBaseCSV
 
