@@ -167,7 +167,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
   * Role assignments ClassicAdministrators
   * Security & Best practice analysis
     * Existence of custom Role definition that reflect 'Owner' permissions
-    * Report all Role definitions that are capable to write Role assignements, list all Role assignments for those Role definitions
+    * Report all Role definitions that are capable to write Role assignments, list all Role assignments for those Role definitions
     * Role assignments for 'Owner' permissions on identity-type == 'ServicePrincipal' 
     * Role assignments for 'Owner' permissions on identity-type != 'Group'
     * Role assignments for 'User Access Administrator' permissions on identity-type != 'Group'
