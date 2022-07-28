@@ -10,7 +10,7 @@ __Changes__ (2022-Jul-28 / Major)
     * new parameter `-PIMEligibilityIgnoreScope` - By default will only report for PIM Elibility for the scope (`ManagementGroupId`) that was provided. If you use the new switch parameter then PIM Eligibility for all onboarded scopes (Management Groups and Subscriptions) will be reported.
     * Add CSV output
     * Add inheritance information
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.20
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.21
 * Bugfixes
 
 __Changes__ (2022-Jul-26 / Major)
