@@ -109,14 +109,14 @@ function validateAccess {
         selectMg
 
         if ($($MgtGroupArray[$SelectedMG - 1].Name)) {
-            $script:ManagementGroupId = $($MgtGroupArray[$SelectedMG - 1].Name)
-            $script:ManagementGroupName = $($MgtGroupArray[$SelectedMG - 1].DisplayName)
+            $script:ManagementGroupId = $($MgtGroupArray[$SelectedMG - 1].name)
+            $script:ManagementGroupName = $($MgtGroupArray[$SelectedMG - 1].properties.displayName)
         }
         else {
             Write-Host 's.th. unexpected happened' -ForegroundColor Red
             return
         }
-        Write-Host "Selected Management Group: $ManagementGroupName (Id: $ManagementGroupId)" -ForegroundColor Green
+        Write-Host "Selected Management Group: #$($SelectedMG) $ManagementGroupName (Id: $ManagementGroupId)" -ForegroundColor Green
         Write-Host '_______________________________________'
     }
     else {

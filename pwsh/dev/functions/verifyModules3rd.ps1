@@ -84,7 +84,7 @@ function verifyModules3rd {
                         $installModuleUserChoice = Read-Host "  Do you want to install $($module.ModuleName) module ($($moduleVersion)) from the PowerShell Gallery? (y/n)"
                         if ($installModuleUserChoice -eq 'y') {
                             try {
-                                Install-Module -Name $module.ModuleName -RequiredVersion $moduleVersion
+                                Install-Module -Name $module.ModuleName -RequiredVersion $moduleVersion -Force
                                 try {
                                     Import-Module -Name $module.ModuleName -RequiredVersion $moduleVersion -Force
                                 }

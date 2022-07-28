@@ -59,6 +59,15 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
+__Changes__ (2022-Jul-28 / Major)
+
+* Update on feature 'PIM (Privileged Identity Management) eligible Role assignments'
+    * new parameter `-PIMEligibilityIgnoreScope` - By default will only report for PIM Elibility for the scope (`ManagementGroupId`) that was provided. If you use the new switch parameter then PIM Eligibility for all onboarded scopes (Management Groups and Subscriptions) will be reported.
+    * Add CSV output
+    * Add inheritance information
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.20
+* Bugfixes
+
 __Changes__ (2022-Jul-26 / Major)
 
 * New feature 'PIM (Privileged Identity Management) eligible Role assignments' (TenantSummary)  
@@ -473,7 +482,9 @@ AzAPICall resources:
     * `-DoPSRule` - Execute [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure). Aggregated results are integrated in the HTML output, detailed results (per resource) are exported to CSV
     * `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
     * `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise). (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule -PSRuleFailedOnly`)
-  * `-NoPIMEligibility` - Do not report on PIM (Privileged Identity Management) eligible Role assignments
+  * PIM (Privileged Identity Management) Eligibility
+    * `-NoPIMEligibility` - Do not report on PIM eligible Role assignments
+    * `-PIMEligibilityIgnoreScope` - By default will only report for PIM Elibility for the scope (`ManagementGroupId`) that was provided. If you use the new switch parameter then PIM Eligibility for all onboarded scopes (Management Groups and Subscriptions) will be reported
 
 ### API reference
 

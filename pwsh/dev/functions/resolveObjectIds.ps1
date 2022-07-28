@@ -1,4 +1,11 @@
-function ResolveObjectIds($objectIds) {
+function ResolveObjectIds {
+    [CmdletBinding()]Param(
+        [object]
+        $objectIds,
+
+        [switch]
+        $showActivity
+    )
 
     $arrayObjectIdsToCheck = @()
     $arrayObjectIdsToCheck = foreach ($objectToCheckIfAlreadyResolved in $objectIds) {
@@ -21,7 +28,10 @@ function ResolveObjectIds($objectIds) {
         foreach ($batch in $ObjectBatch) {
             $batchCnt++
             $objectsToProcess = '"{0}"' -f ($batch.Group.where({testGuid $_}) -join '","')
-            $currentTask = " Resolving ObjectIds - Batch #$batchCnt/$($ObjectBatchCount) ($(($batch.Group).Count)"
+            $currentTask = " Resolving ObjectIds - Batch #$batchCnt/$($ObjectBatchCount) ($(($batch.Group).Count))"
+            if ($showActivity) {
+                Write-Host $currentTask
+            }
             $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/directoryObjects/getByIds"
             $method = 'POST'
             $body = @"

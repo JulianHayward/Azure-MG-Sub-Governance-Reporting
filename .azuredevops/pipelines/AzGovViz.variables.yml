@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220726_1
+# AzGovViz v6_major_20220728_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -266,6 +266,11 @@ variables:
 
 # Do not report on PIM (Privileged Identity Management) Eligible Role assignments
   - name: NoPIMEligibility
+    # Switch | example: value: true
+    value:
+
+# Ignore the current scope (ManagementGrouId) and get all PIM (Privileged Identity Management) eligible Role assignments
+  - name: PIMEligibilityIgnoreScope
     # Switch | example: value: true
     value:
 

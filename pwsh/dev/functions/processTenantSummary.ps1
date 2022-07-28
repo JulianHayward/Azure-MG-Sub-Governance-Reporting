@@ -4655,13 +4655,13 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 
     #region SUMMARYPIMEligibility
     if (-not $NoPIMEligibility) {
-    $startPIMEligibility = Get-Date
-    Write-Host '  processing TenantSummary PIMEligibility'
+        $startPIMEligibility = Get-Date
+        Write-Host '  processing TenantSummary PIMEligibility'
 
-    if ($arrayPIMEligible.Count -gt 0) {
-        $tfCount = $arrayPIMEligible.Count
-        $htmlTableId = 'TenantSummary_PIMEligibility'
-        [void]$htmlTenantSummary.AppendLine(@"
+        if ($arrayPIMEligible.Count -gt 0) {
+            $tfCount = $arrayPIMEligible.Count
+            $htmlTableId = 'TenantSummary_PIMEligibility'
+            [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_PIMEligibility"><i class="padlx fa fa-universal-access" aria-hidden="true"></i> <span class="valignMiddle">$($tfCount) direct PIM Eligible assignments</span>
 </button>
 <div class="content TenantSummary">
@@ -4680,29 +4680,46 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>Identity DisplayName</th>
 <th>Identity SignInName</th>
 <th>Identity Type</th>
-<th>Applicability</th>
-<th>Applies through</th>
+<th class="uamiresaltbgc">Identity Applicability</th>
+<th class="uamiresaltbgc">Applies through (AAD Grp)</th>
+<th>PIM Eligibility Id</th>
+<th>PIM Eligibility</th>
+<th>PIM Eligibility inhherted (MG)</th>
 </tr>
 </thead>
 <tbody>
 "@)
-        $htmlSUMMARYPIMEligibility = $null
-        <#if (-not $NoCsvExport) {
-            $csvFilename = "$($filename)_ClassicAdministrators"
-            Write-Host "   Exporting ClassicAdministrators CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-            $classicAdministrators | Select-Object -ExcludeProperty Id | Sort-Object -Property Subscription, SubscriptionId, Role | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
-        }
-        #>
-        $tfCountCnt = 0
-        $htmlSUMMARYPIMEligibility = foreach ($PIMEligible in $arrayPIMEligible | Sort-Object -Property ScopeType, MgLevel, ScopeDisplayName) {
-            $tfCountCnt++
-            if ($PIMEligible.RoleType -eq 'BuiltInRole') {
-                $roleName = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($PIMEligible.RoleIdGuid).html`" target=`"_blank`" rel=`"noopener`">$($PIMEligible.RoleName)</a>"
-            }
-            else {
-                $roleName = $PIMEligible.RoleName
-            }
-            @"
+            $htmlSUMMARYPIMEligibility = $null
+            $arrayPIMEligibleSorted = $arrayPIMEligible | Sort-Object -Property ScopeType, MgLevel, ScopeDisplayName
+            $PIMCSV = [System.Collections.ArrayList]@()
+            $tfCountCnt = 0
+            $htmlSUMMARYPIMEligibility = foreach ($PIMEligible in $arrayPIMEligibleSorted) {
+                $tfCountCnt++
+                if ($PIMEligible.RoleType -eq 'BuiltInRole') {
+                    $roleName = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($PIMEligible.RoleIdGuid).html`" target=`"_blank`" rel=`"noopener`">$($PIMEligible.RoleName)</a>"
+                }
+                else {
+                    $roleName = $PIMEligible.RoleName
+                }
+                $null = $PIMCSV.Add([PSCustomObject]@{
+                        Scope                       = $PIMEligible.ScopeType
+                        ScopeId                     = $PIMEligible.ScopeId
+                        ScopeName                   = $PIMEligible.ScopeDisplayName
+                        MgPath                      = $PIMEligible.MgPath -join "/"
+                        MgLevel                     = $PIMEligible.MgLevel
+                        Role                        = $PIMEligible.RoleName
+                        RoleType                    = $PIMEligible.RoleType
+                        IdentityObjectId            = $PIMEligible.IdentityObjectId
+                        IdentityDisplayName         = $PIMEligible.IdentityDisplayName
+                        IdentitySignInName          = $PIMEligible.IdentityPrincipalName
+                        IdentityType                = $PIMEligible.IdentityType
+                        IdentityApplicability       = 'direct'
+                        AppliesThrough              = ''
+                        PIMEligibilityId            = $PIMEligible.PIMId
+                        PIMEligibility              = $PIMEligible.PIMInheritance
+                        PIMEligibilityInhhertedFrom = $PIMEligible.PIMInheritedFrom
+                    })
+                @"
 <tr>
 <td>$($PIMEligible.ScopeType)</td>
 <td>$($PIMEligible.ScopeId)</td>
@@ -4717,14 +4734,35 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <td>$($PIMEligible.IdentityType)</td>
 <td>direct</td>
 <td></td>
+<td>$($PIMEligible.PIMId)</td>
+<td>$($PIMEligible.PIMInheritance)</td>
+<td>$($PIMEligible.PIMInheritedFrom)</td>
 </tr>
 "@
-            if (-not $NoAADGroupsResolveMembers) {
-                if ($PIMEligible.IdentityType -eq 'Group') {
-                    if ($htAADGroupsDetails.($PIMEligible.IdentityObjectId)) {
-                        foreach ($groupMemberUser in $htAADGroupsDetails.($PIMEligible.IdentityObjectId).MembersUsers) {
-                            $tfCountCnt++
-                            @"
+                if (-not $NoAADGroupsResolveMembers) {
+                    if ($PIMEligible.IdentityType -eq 'Group') {
+                        if ($htAADGroupsDetails.($PIMEligible.IdentityObjectId)) {
+                            foreach ($groupMemberUser in $htAADGroupsDetails.($PIMEligible.IdentityObjectId).MembersUsers) {
+                                $tfCountCnt++
+                                $null = $PIMCSV.Add([PSCustomObject]@{
+                                        Scope                       = $PIMEligible.ScopeType
+                                        ScopeId                     = $PIMEligible.ScopeId
+                                        ScopeName                   = $PIMEligible.ScopeDisplayName
+                                        MgPath                      = $PIMEligible.MgPath -join "/"
+                                        MgLevel                     = $PIMEligible.MgLevel
+                                        Role                        = $PIMEligible.RoleName
+                                        RoleType                    = $PIMEligible.RoleType
+                                        IdentityObjectId            = $PIMEligible.IdentityObjectId
+                                        IdentityDisplayName         = $PIMEligible.IdentityDisplayName
+                                        IdentitySignInName          = $PIMEligible.IdentityPrincipalName
+                                        IdentityType                = "User $($groupMemberUser.userType)"
+                                        IdentityApplicability       = 'nested'
+                                        AppliesThrough              = "$($PIMEligible.IdentityDisplayName) ($($PIMEligible.IdentityObjectId))"
+                                        PIMEligibilityId            = $PIMEligible.PIMId
+                                        PIMEligibility              = $PIMEligible.PIMInheritance
+                                        PIMEligibilityInhhertedFrom = $PIMEligible.PIMInheritedFrom
+                                    })
+                                @"
                             <tr>
                             <td>$($PIMEligible.ScopeType)</td>
                             <td>$($PIMEligible.ScopeId)</td>
@@ -4739,18 +4777,28 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                             <td>User $($groupMemberUser.userType)</td>
                             <td>indirect</td>
                             <td>$($PIMEligible.IdentityDisplayName) ($($PIMEligible.IdentityObjectId))</td>
+                            <td>$($PIMEligible.PIMId)</td>
+                            <td>$($PIMEligible.PIMInheritance)</td>
+                            <td>$($PIMEligible.PIMInheritedFrom)</td>
                             </tr>
 "@
+                            }
                         }
-                    }
-                    else {
-                        Write-Host "!! Unexpected: Group $($PIMEligible.IdentityDisplayName) ($($PIMEligible.IdentityObjectId)) not found in `$htAADGroupsDetails - please report back!"
+                        else {
+                            Write-Host "!! Unexpected: Group $($PIMEligible.IdentityDisplayName) ($($PIMEligible.IdentityObjectId)) not found in `$htAADGroupsDetails - please report back!"
+                        }
                     }
                 }
             }
-        }
-        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYPIMEligibility)
-        [void]$htmlTenantSummary.AppendLine(@"
+
+            if (-not $NoCsvExport) {
+                $csvFilename = "$($filename)_PIMEligibility"
+                Write-Host "   Exporting PIMEligibility CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
+                $PIMCSV | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+            }
+
+            [void]$htmlTenantSummary.AppendLine($htmlSUMMARYPIMEligibility)
+            [void]$htmlTenantSummary.AppendLine(@"
             </tbody>
         </table>
     </div>
@@ -4760,43 +4808,47 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
-        if ($tfCount -gt 10) {
-            $spectrum = "10, $tfCountCnt"
-            if ($tfCountCnt -gt 50) {
-                $spectrum = "10, 25, 50, $tfCountCnt"
-            }
-            if ($tfCountCnt -gt 100) {
-                $spectrum = "10, 30, 50, 100, $tfCountCnt"
-            }
-            if ($tfCountCnt -gt 500) {
-                $spectrum = "10, 30, 50, 100, 250, $tfCountCnt"
-            }
-            if ($tfCountCnt -gt 1000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCountCnt"
-            }
-            if ($tfCountCnt -gt 2000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCountCnt"
-            }
-            if ($tfCountCnt -gt 3000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCountCnt"
-            }
-            [void]$htmlTenantSummary.AppendLine(@"
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCountCnt"
+                if ($tfCountCnt -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCountCnt"
+                }
+                if ($tfCountCnt -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCountCnt"
+                }
+                if ($tfCountCnt -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCountCnt"
+                }
+                if ($tfCountCnt -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCountCnt"
+                }
+                if ($tfCountCnt -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCountCnt"
+                }
+                if ($tfCountCnt -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCountCnt"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
 paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
 "@)
-        }
-        [void]$htmlTenantSummary.AppendLine(@"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_0: 'select',
             col_4: 'select',
             col_6: 'select',
             col_10: 'select',
             col_11: 'select',
+            col_14: 'select',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'number',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -4812,21 +4864,21 @@ extensions: [{ name: 'sort' }]
         tf.init();}}
     </script>
 "@)
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No PIM Eligibility</span></p>
+"@)
+        }
+
+        $endPIMEligibility = Get-Date
+        Write-Host "   TenantSummary PIMEligibility duration: $((NEW-TIMESPAN -Start $startPIMEligibility -End $endPIMEligibility).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPIMEligibility -End $endPIMEligibility).TotalSeconds) seconds)"
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No PIM Eligibility</span></p>
-"@)
-    }
-
-    $endPIMEligibility = Get-Date
-    Write-Host "   TenantSummary PIMEligibility duration: $((NEW-TIMESPAN -Start $startPIMEligibility -End $endPIMEligibility).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPIMEligibility -End $endPIMEligibility).TotalSeconds) seconds)"
-}
-else {
-    [void]$htmlTenantSummary.AppendLine(@"
 <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No PIM Eligibility</span></p>
 "@)
-}
+    }
     #endregion SUMMARYPIMEligibility
 
     #region SUMMARYSecurityCustomRoles

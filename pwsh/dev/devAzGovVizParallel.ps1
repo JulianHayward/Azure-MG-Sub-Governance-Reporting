@@ -144,6 +144,10 @@
     Do not report on PIM (Privileged Identity Management) eligible Role assignments
     Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
 
+.PARAMETER PIMEligibilityIgnoreScope
+    Ignore the current scope (ManagementGrouId) and get all PIM (Privileged Identity Management) eligible Role assignments
+    By default will only report for PIM Elibility for the scope (ManagementGroupId) that was provided. If you use the new switch parameter then PIM Eligibility for all onboarded scopes (Management Groups and Subscriptions) will be reported
+
 .EXAMPLE
     Define the ManagementGroup ID
     PS C:\> .\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>
@@ -274,6 +278,9 @@
     Define if report on PIM (Privileged Identity Management) eligible Role assignments should be created. Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibility
 
+    Define if the current scope (ManagementGroupId) should be ignored and therefore and get all PIM (Privileged Identity Management) eligible Role assignments. Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -PIMEligibilityIgnoreScope
+
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
@@ -290,10 +297,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.19',
+    $AzAPICallVersion = '1.1.21',
 
     [string]
-    $ProductVersion = 'v6_major_20220726_1',
+    $ProductVersion = 'v6_major_20220728_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -452,6 +459,9 @@ Param
 
     [switch]
     $NoPIMEligibility,
+
+    [switch]
+    $PIMEligibilityIgnoreScope,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
@@ -776,7 +786,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htManagedIdentityDisplayName = @{}
     $htAppDetails = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     if (-not $NoAADGroupsResolveMembers) {
-
         $htAADGroupsDetails = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
         $htAADGroupsExeedingMemberLimit = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
         $arrayGroupRoleAssignmentsOnServicePrincipals = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))

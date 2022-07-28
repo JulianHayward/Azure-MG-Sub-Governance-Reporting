@@ -370,6 +370,15 @@ function runInfo {
             $script:paramsUsed += "NoPIMEligibility: $($NoPIMEligibility) &#13;"
         }
 
+        if ($PIMEligibilityIgnoreScope) {
+            Write-Host " PIMEligibilityIgnoreScope = $($PIMEligibilityIgnoreScope)" -ForegroundColor Green
+            #$script:paramsUsed += "PIMEligibilityIgnoreScope: $($PIMEligibilityIgnoreScope) &#13;"
+        }
+        else {
+            Write-Host " PIMEligibilityIgnoreScope = $($PIMEligibilityIgnoreScope)" -ForegroundColor Yellow
+            #$script:paramsUsed += "PIMEligibilityIgnoreScope: $($PIMEligibilityIgnoreScope) &#13;"
+        }
+
     }
     #endregion RunInfo
 }
