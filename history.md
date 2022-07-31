@@ -4,6 +4,15 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Jul-31 / Major)
+
+* Update on feature 'PIM (Privileged Identity Management) eligible Role assignments'
+    * Integrate with RoleAssignmentsAll (HTML, CSV)  
+    ![alt text](img/pimeligibilityIntegrateRoleassignmentsall.png "PIMEligibleIntegrationRoleAssignmentsAll")  
+    * New parameter `-NoPIMEligibilityIntegrationRoleAssignmentsAll` - Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
+* Fix: PIM 'Assigned' and 'Activated' Role assignments now also reflect inheritance for lower scopes
+* Bugfixes & optimizations
+
 __Changes__ (2022-Jul-28 / Major)
 
 * Update on feature 'PIM (Privileged Identity Management) eligible Role assignments'

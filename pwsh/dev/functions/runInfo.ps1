@@ -379,6 +379,15 @@ function runInfo {
             #$script:paramsUsed += "PIMEligibilityIgnoreScope: $($PIMEligibilityIgnoreScope) &#13;"
         }
 
+        if ($NoPIMEligibilityIntegrationRoleAssignmentsAll) {
+            Write-Host " NoPIMEligibilityIntegrationRoleAssignmentsAll = $($NoPIMEligibilityIntegrationRoleAssignmentsAll)" -ForegroundColor Green
+            #$script:paramsUsed += "NoPIMEligibilityIntegrationRoleAssignmentsAll: $($NoPIMEligibilityIntegrationRoleAssignmentsAll) &#13;"
+        }
+        else {
+            Write-Host " NoPIMEligibilityIntegrationRoleAssignmentsAll = $($NoPIMEligibilityIntegrationRoleAssignmentsAll)" -ForegroundColor Yellow
+            #$script:paramsUsed += "NoPIMEligibilityIntegrationRoleAssignmentsAll: $($NoPIMEligibilityIntegrationRoleAssignmentsAll) &#13;"
+        }
+
     }
     #endregion RunInfo
 }

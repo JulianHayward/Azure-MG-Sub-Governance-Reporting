@@ -148,6 +148,10 @@
     Ignore the current scope (ManagementGrouId) and get all PIM (Privileged Identity Management) eligible Role assignments
     By default will only report for PIM Elibility for the scope (ManagementGroupId) that was provided. If you use the new switch parameter then PIM Eligibility for all onboarded scopes (Management Groups and Subscriptions) will be reported
 
+.PARAMETER NoPIMEligibilityIntegrationRoleAssignmentsAll
+    Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibilityIntegrationRoleAssignmentsAll
+
 .EXAMPLE
     Define the ManagementGroup ID
     PS C:\> .\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>
@@ -281,6 +285,9 @@
     Define if the current scope (ManagementGroupId) should be ignored and therefore and get all PIM (Privileged Identity Management) eligible Role assignments. Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -PIMEligibilityIgnoreScope
 
+    Define if PIM Eligible assignments should not be integrated with RoleAssignmentsAll outputs (HTML, CSV)
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibilityIntegrationRoleAssignmentsAll
+
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
@@ -300,7 +307,7 @@ Param
     $AzAPICallVersion = '1.1.21',
 
     [string]
-    $ProductVersion = 'v6_major_20220728_1',
+    $ProductVersion = 'v6_major_20220731_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -462,6 +469,9 @@ Param
 
     [switch]
     $PIMEligibilityIgnoreScope,
+
+    [switch]
+    $NoPIMEligibilityIntegrationRoleAssignmentsAll,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
@@ -711,6 +721,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htCacheDefinitionsRole = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htCacheDefinitionsBlueprint = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htRoleDefinitionIdsUsedInPolicy = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $htRoleAssignmentsPIM = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htPoliciesUsedInPolicySets = @{}
     $htSubscriptionTags = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htCacheAssignmentsPolicyOnResourceGroupsAndResources = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}

@@ -59,6 +59,15 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
+__Changes__ (2022-Jul-31 / Major)
+
+* Update on feature 'PIM (Privileged Identity Management) eligible Role assignments'
+    * Integrate with RoleAssignmentsAll (HTML, CSV)  
+    ![alt text](img/pimeligibilityIntegrateRoleassignmentsall.png "PIMEligibleIntegrationRoleAssignmentsAll")  
+    * New parameter `-NoPIMEligibilityIntegrationRoleAssignmentsAll` - Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
+* Fix: PIM 'Assigned' and 'Activated' Role assignments now also reflect inheritance for lower scopes
+* Bugfixes & optimizations
+
 __Changes__ (2022-Jul-28 / Major)
 
 * Update on feature 'PIM (Privileged Identity Management) eligible Role assignments'
@@ -485,6 +494,7 @@ AzAPICall resources:
   * PIM (Privileged Identity Management) Eligibility
     * `-NoPIMEligibility` - Do not report on PIM eligible Role assignments
     * `-PIMEligibilityIgnoreScope` - By default will only report for PIM Elibility for the scope (`ManagementGroupId`) that was provided. If you use the new switch parameter then PIM Eligibility for all onboarded scopes (Management Groups and Subscriptions) will be reported
+    * `-NoPIMEligibilityIntegrationRoleAssignmentsAll` - Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
 
 ### API reference
 

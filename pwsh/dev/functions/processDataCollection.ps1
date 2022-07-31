@@ -80,6 +80,7 @@ function processDataCollection {
             $htPrincipals = $using:htPrincipals
             $htServicePrincipals = $using:htServicePrincipals
             $htUserTypesGuest = $using:htUserTypesGuest
+            $htRoleAssignmentsPIM = $using:htRoleAssignmentsPIM
             #other
             $function:addRowToTable = $using:funcAddRowToTable
             $function:namingValidation = $using:funcNamingValidation
@@ -339,6 +340,7 @@ function processDataCollection {
                 $arrayPsRule = $using:arrayPsRule
                 $arrayPSRuleTracking = $using:arrayPSRuleTracking
                 $htClassicAdministrators = $using:htClassicAdministrators
+                $htRoleAssignmentsPIM = $using:htRoleAssignmentsPIM
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation

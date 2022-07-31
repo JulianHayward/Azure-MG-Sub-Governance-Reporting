@@ -119,8 +119,8 @@ function processTenantSummary() {
         if ($rbac.RoleAssignmentPIM -eq 'true') {
             $pim = $true
             $pimAssignmentType = $rbac.RoleAssignmentPIMAssignmentType
-            $pimSlotStart = $($rbac.RoleAssignmentPIMSlotStart)
-            $pimSlotEnd = $($rbac.RoleAssignmentPIMSlotEnd)
+            $pimSlotStart = [string]$($rbac.RoleAssignmentPIMSlotStart)
+            $pimSlotEnd = [string]$($rbac.RoleAssignmentPIMSlotEnd)
         }
         else {
             $pim = $false
@@ -481,6 +481,163 @@ function processTenantSummary() {
     }
     #endregion createRBACAll
 
+    #region PIMEligible
+    if (-not $NoPIMEligibility) {
+        $startPIMEnrichment = Get-Date
+        Write-Host "   Processing PIMEnrichment"
+        $PIMEligibleEnriched = [System.Collections.ArrayList]@()
+        #$tfCountCnt = 0
+        foreach ($PIMEligible in $arrayPIMEligible) {
+            #$tfCountCnt++
+            if ($PIMEligible.RoleType -eq 'BuiltInRole') {
+                $roleName = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($PIMEligible.RoleIdGuid).html`" target=`"_blank`" rel=`"noopener`">$($PIMEligible.RoleName)</a>"
+            }
+            else {
+                $roleName = $PIMEligible.RoleName
+            }
+            $null = $PIMEligibleEnriched.Add([PSCustomObject]@{
+                    Scope                            = $PIMEligible.ScopeType
+                    ScopeId                          = $PIMEligible.ScopeId
+                    ScopeName                        = $PIMEligible.ScopeDisplayName
+                    ManagementGroupId                = $PIMEligible.ManagementGroupId
+                    ManagementGroupDisplayName       = $PIMEligible.ManagementGroupDisplayName
+                    SubscriptionId                   = $PIMEligible.SubscriptionId
+                    SubscriptionDisplayName          = $PIMEligible.SubscriptionDisplayName
+                    MgPath                           = $PIMEligible.MgPath -join "/"
+                    MgLevel                          = $PIMEligible.MgLevel
+                    Role                             = $roleName
+                    RoleClear                        = $PIMEligible.RoleName
+                    RoleId                           = $PIMEligible.RoleId
+                    RoleIdGuid                       = $PIMEligible.RoleIdGuid
+                    RoleType                         = $PIMEligible.RoleType
+                    IdentityObjectId                 = $PIMEligible.IdentityObjectId
+                    IdentityDisplayName              = $PIMEligible.IdentityDisplayName
+                    IdentitySignInName               = $PIMEligible.IdentityPrincipalName
+                    IdentityType                     = $PIMEligible.IdentityType
+                    IdentityApplicability            = 'direct'
+                    AppliesThrough                   = ''
+                    PIMEligibilityId                 = $PIMEligible.PIMId
+                    PIMEligibility                   = $PIMEligible.PIMInheritance
+                    PIMEligibilityInheritedFrom      = $PIMEligible.PIMInheritedFrom
+                    PIMEligibilityInheritedFromClear = $PIMEligible.PIMInheritedFromClear
+                    PIMEligibilityStartDateTime      = [string]$PIMEligible.PIMStartDateTime
+                    PIMEligibilityEndDateTime        = [string]$PIMEligible.PIMEndDateTime
+                })
+        
+            if (-not $NoAADGroupsResolveMembers) {
+                if ($PIMEligible.IdentityType -eq 'Group') {
+                    if ($htAADGroupsDetails.($PIMEligible.IdentityObjectId)) {
+                        foreach ($groupMemberUser in $htAADGroupsDetails.($PIMEligible.IdentityObjectId).MembersUsers) {
+                            #$tfCountCnt++
+                            $null = $PIMEligibleEnriched.Add([PSCustomObject]@{
+                                    Scope                            = $PIMEligible.ScopeType
+                                    ScopeId                          = $PIMEligible.ScopeId
+                                    ScopeName                        = $PIMEligible.ScopeDisplayName
+                                    ManagementGroupId                = $PIMEligible.ManagementGroupId
+                                    ManagementGroupDisplayName       = $PIMEligible.ManagementGroupDisplayName
+                                    SubscriptionId                   = $PIMEligible.SubscriptionId
+                                    SubscriptionDisplayName          = $PIMEligible.SubscriptionDisplayName
+                                    MgPath                           = $PIMEligible.MgPath -join "/"
+                                    MgLevel                          = $PIMEligible.MgLevel
+                                    Role                             = $roleName
+                                    RoleClear                        = $PIMEligible.RoleName
+                                    RoleId                           = $PIMEligible.RoleId
+                                    RoleIdGuid                       = $PIMEligible.RoleIdGuid
+                                    RoleType                         = $PIMEligible.RoleType
+                                    IdentityObjectId                 = $groupMemberUser.id
+                                    IdentityDisplayName              = $groupMemberUser.displayName
+                                    IdentitySignInName               = $groupMemberUser.userPrincipalName
+                                    IdentityType                     = "User $($groupMemberUser.userType)"
+                                    IdentityApplicability            = 'nested'
+                                    AppliesThrough                   = "$($PIMEligible.IdentityDisplayName) ($($PIMEligible.IdentityObjectId))"
+                                    PIMEligibilityId                 = $PIMEligible.PIMId
+                                    PIMEligibility                   = $PIMEligible.PIMInheritance
+                                    PIMEligibilityInheritedFrom      = $PIMEligible.PIMInheritedFrom
+                                    PIMEligibilityInheritedFromClear = $PIMEligible.PIMInheritedFromClear
+                                    PIMEligibilityStartDateTime      = [string]$PIMEligible.PIMStartDateTime
+                                    PIMEligibilityEndDateTime        = [string]$PIMEligible.PIMEndDateTime
+                                })
+                        }
+                    }
+                    else {
+                        Write-Host "!! Unexpected: Group $($PIMEligible.IdentityDisplayName) ($($PIMEligible.IdentityObjectId)) not found in `$htAADGroupsDetails - please report back!"
+                    }
+                }
+            }
+        }
+        $endPIMEnrichment = Get-Date
+        Write-Host "    PIMEnrichment duration: $((NEW-TIMESPAN -Start $startPIMEnrichment -End $endPIMEnrichment).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPIMEnrichment -End $endPIMEnrichment).TotalSeconds) seconds)"
+
+        if (-not $NoPIMEligibilityIntegrationRoleAssignmentsAll) {
+            $startPIMEnrichmentToRBACAll = Get-Date
+            Write-Host "   Processing PIMEnrichment to RBACAll"
+            foreach ($PIMEligibleRoleAssignment in $PIMEligibleEnriched) {
+                if ($PIMEligibleRoleAssignment.PIMEligibility -eq 'Inherited') {
+                    $scope = "inherited $($PIMEligibleRoleAssignment.PIMEligibilityInheritedFromClear)"
+                }
+                else {
+                    $scope = "thisScope $($PIMEligibleRoleAssignment.Scope)"
+                }
+
+                if (-not [string]::IsNullOrEmpty($htCacheDefinitionsRole.($PIMEligibleRoleAssignment.RoleId).RoleDataActions) -or -not [string]::IsNullOrEmpty($htCacheDefinitionsRole.($PIMEligibleRoleAssignment.RoleId).RoleNotDataActions)) {
+                    $roleManageData = 'true'
+                }
+                else {
+                    $roleManageData = 'false'
+                }
+
+                $roleCanDoRoleAssignments = $false
+                if ($htCacheDefinitionsRole.($PIMEligibleRoleAssignment.RoleId).RoleCanDoRoleAssignments) {
+                    $roleCanDoRoleAssignments = 'true'
+                }
+
+                $null = $script:rbacAll.Add([PSCustomObject]@{
+                        Level                                = $PIMEligibleRoleAssignment.MgLevel
+                        RoleAssignmentId                     = ''
+                        RoleAssignmentPIMRelated             = $true
+                        RoleAssignmentPIMAssignmentType      = 'Eligible'
+                        RoleAssignmentPIMAssignmentSlotStart = $PIMEligibleRoleAssignment.PIMEligibilityStartDateTime
+                        RoleAssignmentPIMAssignmentSlotEnd   = $PIMEligibleRoleAssignment.PIMEligibilityEndDateTime
+                        RoleAssignmentScopeName              = $PIMEligibleRoleAssignment.Scope
+                        RoleAssignmentScopeRG                = ''
+                        RoleAssignmentScopeRes               = ''
+                        CreatedBy                            = ''
+                        CreatedOn                            = ''
+                        #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
+                        #UpdatedOn                        = $rbac.RoleAssignmentUpdatedOn
+                        MgId                                 = $PIMEligibleRoleAssignment.ManagementGroupId
+                        MgName                               = $PIMEligibleRoleAssignment.ManagementGroupDisplayName
+                        MgParentId                           = '' #check
+                        MgParentName                         = '' #check
+                        SubscriptionId                       = $PIMEligibleRoleAssignment.SubscriptionId
+                        SubscriptionName                     = $PIMEligibleRoleAssignment.SubscriptionDisplayName
+                        Scope                                = $scope
+                        Role                                 = $PIMEligibleRoleAssignment.Role
+                        RoleClear                            = $PIMEligibleRoleAssignment.RoleClear
+                        RoleId                               = $PIMEligibleRoleAssignment.RoleIdGuid
+                        RoleType                             = $PIMEligibleRoleAssignment.RoleType
+                        RoleDataRelated                      = $roleManageData #check
+                        AssignmentType                       = $PIMEligibleRoleAssignment.IdentityApplicability
+                        AssignmentInheritFrom                = $PIMEligibleRoleAssignment.AppliesThrough
+                        GroupMembersCount                    = ''
+                        ObjectDisplayName                    = $PIMEligibleRoleAssignment.IdentityDisplayName
+                        ObjectSignInName                     = $PIMEligibleRoleAssignment.IdentitySignInName
+                        ObjectId                             = $PIMEligibleRoleAssignment.IdentityObjectId
+                        ObjectType                           = $PIMEligibleRoleAssignment.IdentityType
+                        TenOrMgOrSubOrRGOrRes                = $PIMEligibleRoleAssignment.Scope
+                        RbacRelatedPolicyAssignment          = ''
+                        RbacRelatedPolicyAssignmentClear     = ''
+                        RoleSecurityCustomRoleOwner          = '' #check $rbac.RoleSecurityCustomRoleOwner
+                        RoleSecurityOwnerAssignmentSP        = '' #check $rbac.RoleSecurityOwnerAssignmentSP
+                        RoleCanDoRoleAssignments             = $roleCanDoRoleAssignments
+                    })
+            }
+            $endPIMEnrichmentToRBACAll = Get-Date
+            Write-Host "    PIMEnrichment to RBACAll duration: $((NEW-TIMESPAN -Start $startPIMEnrichmentToRBACAll -End $endPIMEnrichmentToRBACAll).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPIMEnrichmentToRBACAll -End $endPIMEnrichmentToRBACAll).TotalSeconds) seconds)"
+        }
+    }
+    #endregion PIMEligible
+
     Write-Host '   Processing unresoved Identities (createdBy)'
     $startUnResolvedIdentitiesCreatedBy = Get-Date
     #prep prepUnresoledIdentities
@@ -516,18 +673,21 @@ function processTenantSummary() {
     $htNonResolvedIdentities = @{}
     foreach ($rbac in $rbacAll) {
         $createdBy = $rbac.createdBy
-        if ($htIdentitiesWithRoleAssignmentsUnique.($createdBy)) {
-            $createdBy = $htIdentitiesWithRoleAssignmentsUnique.($createdBy).details
-            $rbac.CreatedBy = $createdBy
-        }
-        else {
-            if (-not $htNonResolvedIdentities.($rbac.createdBy)) {
-                $htNonResolvedIdentities.($rbac.createdBy) = @{}
+        if (-not [string]::IsNullOrEmpty($createdBy)) {
+            if ($htIdentitiesWithRoleAssignmentsUnique.($createdBy)) {
+                $createdBy = $htIdentitiesWithRoleAssignmentsUnique.($createdBy).details
+                $rbac.CreatedBy = $createdBy
+            }
+            else {
+                if (-not $htNonResolvedIdentities.($rbac.createdBy)) {
+                    $htNonResolvedIdentities.($rbac.createdBy) = @{}
+                }
             }
         }
     }
     #endregion enrichrbacAll
 
+    #region nonResolvedIdentities
     $htNonResolvedIdentitiesCount = $htNonResolvedIdentities.Count
     if ($htNonResolvedIdentitiesCount -gt 0) {
         Write-Host "    $htNonResolvedIdentitiesCount unresolved identities that created a RBAC Role assignment (createdBy)"
@@ -665,19 +825,24 @@ function processTenantSummary() {
                     $rbac.CreatedBy = $htResolvedIdentities.($rbac.CreatedBy).custObjectType
                 }
                 else {
-                    if ([string]::IsNullOrEmpty($rbac.CreatedBy)) {
-                        $rbac.CreatedBy = 'IsNullOrEmpty'
+                    if ($rbac.RoleAssignmentPIMAssignmentType -eq 'Eligible') {
+                        $rbac.CreatedBy = ''
                     }
                     else {
-                        $rbac.CreatedBy = "$($rbac.CreatedBy)"
+                        if ([string]::IsNullOrEmpty($rbac.CreatedBy)) {
+                            $rbac.CreatedBy = 'IsNullOrEmpty'
+                        }
+                        else {
+                            $rbac.CreatedBy = "$($rbac.CreatedBy)"
+                        }
                     }
                 }
             }
         }
     }
-
     $endUnResolvedIdentitiesCreatedBy = Get-Date
     Write-Host "   UnresolvedIdentities (createdBy) duration: $((NEW-TIMESPAN -Start $startUnResolvedIdentitiesCreatedBy -End $endUnResolvedIdentitiesCreatedBy).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startUnResolvedIdentitiesCreatedBy -End $endUnResolvedIdentitiesCreatedBy).TotalSeconds) seconds)"
+    #endregion nonResolvedIdentities
 
     $startRBACAllGrouping = Get-Date
     $script:rbacAllGroupedBySubscription = $rbacAll | Group-Object -Property SubscriptionId
@@ -4354,9 +4519,11 @@ extensions: [{ name: 'sort' }]
     if ($azAPICallConf['htParameters'].LargeTenant -or $azAPICallConf['htParameters'].RBACAtScopeOnly) {
         $rbacAllAtScope = ($rbacAll.where( { ((-not [string]::IsNullOrEmpty($_.SubscriptionId) -and $_.scope -notlike 'inherited *')) -or ([string]::IsNullOrEmpty($_.SubscriptionId)) }))
         $rbacAllCount = $rbacAllAtScope.Count
+        $rbacAllUniqueCount = ($rbacAllAtScope.where({ $_.roleAssignmentId }).RoleAssignmentId | Sort-Object -Unique).count
     }
     else {
         $rbacAllCount = $rbacAll.Count
+        $rbacAllUniqueCount = ($rbacAll.where({ $_.roleAssignmentId }).RoleAssignmentId | Sort-Object -Unique).count
     }
 
     if ($rbacAllCount -gt 0) {
@@ -4404,10 +4571,21 @@ extensions: [{ name: 'sort' }]
 "@)
         }
         else {
+
+            $roleAssignmentsInfo = @()
+            #all 
+            $roleAssignmentsInfo += "All: $($rbacAllUniqueCount)"
+            #static
+            $roleAssignmentsInfo += "Standing: $((($rbacAll.where({ $_.RoleAssignmentPIMRelated -eq $false })).roleAssignmentId | Sort-Object -Unique).count)"
+            #PIM
+            foreach ($pimAssignmentInfo in ($rbacAll.where({ $_.RoleAssignmentPIMRelated -and $_.Scope -notlike 'inherited*' })) | Group-Object -Property RoleAssignmentPIMAssignmentType) {
+                $roleAssignmentsInfo += "PIM-$($pimAssignmentInfo.Name): $($pimAssignmentInfo.Count)"
+            }
+
             $htmlTableId = 'TenantSummary_roleAssignmentsAll'
             $noteOrNot = ''
             [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsAll"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($rbacAllCount) Role assignments ($uniqueRoleAssignmentsCount unique)</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsAll"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($rbacAllCount) Role assignment related entries (unique -> $($roleAssignmentsInfo -join ", "))</span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a><br>
@@ -4437,10 +4615,10 @@ extensions: [{ name: 'sort' }]
 <th>Applicability</th>
 <th>Applies through membership <abbr title="Note: the identity might not be a direct member of the group it could also be member of a nested group"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></th>
 <th>Group Details</th>
-<th>PIM</th>
-<th>PIM assignment type</th>
-<th>PIM start</th>
-<th>PIM end</th>
+<th class="uamiresaltbgc">PIM</th>
+<th class="uamiresaltbgc">PIM assignment type</th>
+<th class="uamiresaltbgc">PIM start</th>
+<th class="uamiresaltbgc">PIM end</th>
 <th>Role AssignmentId</th>
 <th>Related Policy Assignment $noteOrNot</th>
 <th>CreatedOn</th>
@@ -4675,126 +4853,138 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>MgPath</th>
 <th>MgLevel</th>
 <th>Role</th>
+<th>Role Id</th>
 <th>Role type</th>
 <th>Identity ObjectId</th>
 <th>Identity DisplayName</th>
 <th>Identity SignInName</th>
 <th>Identity Type</th>
-<th class="uamiresaltbgc">Identity Applicability</th>
-<th class="uamiresaltbgc">Applies through (AAD Grp)</th>
-<th>PIM Eligibility Id</th>
-<th>PIM Eligibility</th>
-<th>PIM Eligibility inhherted (MG)</th>
+<th>Identity Applicability</th>
+<th>Applies through (AAD Grp)</th>
+<th class="uamiresaltbgc">PIM Eligibility</th>
+<th class="uamiresaltbgc">PIM Eligibility inhherted (MG)</th>
+<th class="uamiresaltbgc">PIM start</th>
+<th class="uamiresaltbgc">PIM end</th>
+<th class="uamiresaltbgc">PIM Eligibility Id</th>
 </tr>
 </thead>
 <tbody>
 "@)
             $htmlSUMMARYPIMEligibility = $null
-            $arrayPIMEligibleSorted = $arrayPIMEligible | Sort-Object -Property ScopeType, MgLevel, ScopeDisplayName
-            $PIMCSV = [System.Collections.ArrayList]@()
-            $tfCountCnt = 0
-            $htmlSUMMARYPIMEligibility = foreach ($PIMEligible in $arrayPIMEligibleSorted) {
-                $tfCountCnt++
-                if ($PIMEligible.RoleType -eq 'BuiltInRole') {
-                    $roleName = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($PIMEligible.RoleIdGuid).html`" target=`"_blank`" rel=`"noopener`">$($PIMEligible.RoleName)</a>"
-                }
-                else {
-                    $roleName = $PIMEligible.RoleName
-                }
-                $null = $PIMCSV.Add([PSCustomObject]@{
-                        Scope                       = $PIMEligible.ScopeType
-                        ScopeId                     = $PIMEligible.ScopeId
-                        ScopeName                   = $PIMEligible.ScopeDisplayName
-                        MgPath                      = $PIMEligible.MgPath -join "/"
-                        MgLevel                     = $PIMEligible.MgLevel
-                        Role                        = $PIMEligible.RoleName
-                        RoleType                    = $PIMEligible.RoleType
-                        IdentityObjectId            = $PIMEligible.IdentityObjectId
-                        IdentityDisplayName         = $PIMEligible.IdentityDisplayName
-                        IdentitySignInName          = $PIMEligible.IdentityPrincipalName
-                        IdentityType                = $PIMEligible.IdentityType
-                        IdentityApplicability       = 'direct'
-                        AppliesThrough              = ''
-                        PIMEligibilityId            = $PIMEligible.PIMId
-                        PIMEligibility              = $PIMEligible.PIMInheritance
-                        PIMEligibilityInhhertedFrom = $PIMEligible.PIMInheritedFrom
-                    })
+            $PIMEligibleEnrichedSorted = $PIMEligibleEnriched | Sort-Object -Property ScopeType, MgLevel, ScopeDisplayName, IdentityDisplayName
+            #$PIMCSV = [System.Collections.ArrayList]@()
+            $tfCountCnt = $PIMEligibleEnrichedSorted.Count
+            $htmlSUMMARYPIMEligibility = foreach ($PIMEligible in $PIMEligibleEnrichedSorted) {
+                #$tfCountCnt++
+                # if ($PIMEligible.RoleType -eq 'BuiltInRole') {
+                #     $roleName = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($PIMEligible.RoleIdGuid).html`" target=`"_blank`" rel=`"noopener`">$($PIMEligible.RoleName)</a>"
+                # }
+                # else {
+                #     $roleName = $PIMEligible.RoleName
+                # }
+                # $null = $PIMCSV.Add([PSCustomObject]@{
+                #         Scope                       = $PIMEligible.ScopeType
+                #         ScopeId                     = $PIMEligible.ScopeId
+                #         ScopeName                   = $PIMEligible.ScopeDisplayName
+                #         MgPath                      = $PIMEligible.MgPath -join "/"
+                #         MgLevel                     = $PIMEligible.MgLevel
+                #         Role                        = $PIMEligible.RoleName
+                #         RoleType                    = $PIMEligible.RoleType
+                #         IdentityObjectId            = $PIMEligible.IdentityObjectId
+                #         IdentityDisplayName         = $PIMEligible.IdentityDisplayName
+                #         IdentitySignInName          = $PIMEligible.IdentityPrincipalName
+                #         IdentityType                = $PIMEligible.IdentityType
+                #         IdentityApplicability       = 'direct'
+                #         AppliesThrough              = ''
+                #         PIMEligibilityId            = $PIMEligible.PIMId
+                #         PIMEligibility              = $PIMEligible.PIMInheritance
+                #         PIMEligibilityInheritedFrom = $PIMEligible.PIMInheritedFrom
+                #         PIMStartDateTime            = $PIMEligible.PIMStartDateTime
+                #         PIMEndDateTime              = $PIMEligible.PIMEndDateTime
+                #     })
                 @"
 <tr>
-<td>$($PIMEligible.ScopeType)</td>
+<td>$($PIMEligible.Scope)</td>
 <td>$($PIMEligible.ScopeId)</td>
-<td>$($PIMEligible.ScopeDisplayName)</td>
+<td>$($PIMEligible.ScopeName)</td>
 <td>$($PIMEligible.MgPath -join "/")</td>
 <td>$($PIMEligible.MgLevel)</td>
-<td>$($roleName)</td>
+<td>$($PIMEligible.Role)</td>
+<td>$($PIMEligible.RoleIdGuid)</td>
 <td>$($PIMEligible.RoleType)</td>
 <td>$($PIMEligible.IdentityObjectId)</td>
 <td>$($PIMEligible.IdentityDisplayName)</td>
-<td>$($PIMEligible.IdentityPrincipalName)</td>
+<td>$($PIMEligible.IdentitySignInName)</td>
 <td>$($PIMEligible.IdentityType)</td>
-<td>direct</td>
-<td></td>
-<td>$($PIMEligible.PIMId)</td>
-<td>$($PIMEligible.PIMInheritance)</td>
-<td>$($PIMEligible.PIMInheritedFrom)</td>
+<td>$($PIMEligible.IdentityApplicability)</td>
+<td>$($PIMEligible.AppliesThrough)</td>
+<td>$($PIMEligible.PIMEligibility)</td>
+<td>$($PIMEligible.PIMEligibilityInheritedFrom)</td>
+<td>$($PIMEligible.PIMEligibilityStartDateTime)</td>
+<td>$($PIMEligible.PIMEligibilityEndDateTime)</td>
+<td>$($PIMEligible.PIMEligibilityId)</td>
 </tr>
 "@
-                if (-not $NoAADGroupsResolveMembers) {
-                    if ($PIMEligible.IdentityType -eq 'Group') {
-                        if ($htAADGroupsDetails.($PIMEligible.IdentityObjectId)) {
-                            foreach ($groupMemberUser in $htAADGroupsDetails.($PIMEligible.IdentityObjectId).MembersUsers) {
-                                $tfCountCnt++
-                                $null = $PIMCSV.Add([PSCustomObject]@{
-                                        Scope                       = $PIMEligible.ScopeType
-                                        ScopeId                     = $PIMEligible.ScopeId
-                                        ScopeName                   = $PIMEligible.ScopeDisplayName
-                                        MgPath                      = $PIMEligible.MgPath -join "/"
-                                        MgLevel                     = $PIMEligible.MgLevel
-                                        Role                        = $PIMEligible.RoleName
-                                        RoleType                    = $PIMEligible.RoleType
-                                        IdentityObjectId            = $PIMEligible.IdentityObjectId
-                                        IdentityDisplayName         = $PIMEligible.IdentityDisplayName
-                                        IdentitySignInName          = $PIMEligible.IdentityPrincipalName
-                                        IdentityType                = "User $($groupMemberUser.userType)"
-                                        IdentityApplicability       = 'nested'
-                                        AppliesThrough              = "$($PIMEligible.IdentityDisplayName) ($($PIMEligible.IdentityObjectId))"
-                                        PIMEligibilityId            = $PIMEligible.PIMId
-                                        PIMEligibility              = $PIMEligible.PIMInheritance
-                                        PIMEligibilityInhhertedFrom = $PIMEligible.PIMInheritedFrom
-                                    })
-                                @"
-                            <tr>
-                            <td>$($PIMEligible.ScopeType)</td>
-                            <td>$($PIMEligible.ScopeId)</td>
-                            <td>$($PIMEligible.ScopeDisplayName)</td>
-                            <td>$($PIMEligible.MgPath -join "/")</td>
-                            <td>$($PIMEligible.MgLevel)</td>
-                            <td>$($roleName)</td>
-                            <td>$($PIMEligible.RoleType)</td>
-                            <td>$($groupMemberUser.id)</td>
-                            <td>$($groupMemberUser.displayName)</td>
-                            <td>$($groupMemberUser.userPrincipalName)</td>
-                            <td>User $($groupMemberUser.userType)</td>
-                            <td>indirect</td>
-                            <td>$($PIMEligible.IdentityDisplayName) ($($PIMEligible.IdentityObjectId))</td>
-                            <td>$($PIMEligible.PIMId)</td>
-                            <td>$($PIMEligible.PIMInheritance)</td>
-                            <td>$($PIMEligible.PIMInheritedFrom)</td>
-                            </tr>
-"@
-                            }
-                        }
-                        else {
-                            Write-Host "!! Unexpected: Group $($PIMEligible.IdentityDisplayName) ($($PIMEligible.IdentityObjectId)) not found in `$htAADGroupsDetails - please report back!"
-                        }
-                    }
-                }
+                #                 if (-not $NoAADGroupsResolveMembers) {
+                #                     if ($PIMEligible.IdentityType -eq 'Group') {
+                #                         if ($htAADGroupsDetails.($PIMEligible.IdentityObjectId)) {
+                #                             foreach ($groupMemberUser in $htAADGroupsDetails.($PIMEligible.IdentityObjectId).MembersUsers) {
+                #                                 $tfCountCnt++
+                #                                 $null = $PIMCSV.Add([PSCustomObject]@{
+                #                                         Scope                       = $PIMEligible.ScopeType
+                #                                         ScopeId                     = $PIMEligible.ScopeId
+                #                                         ScopeName                   = $PIMEligible.ScopeDisplayName
+                #                                         MgPath                      = $PIMEligible.MgPath -join "/"
+                #                                         MgLevel                     = $PIMEligible.MgLevel
+                #                                         Role                        = $PIMEligible.RoleName
+                #                                         RoleType                    = $PIMEligible.RoleType
+                #                                         IdentityObjectId            = $PIMEligible.IdentityObjectId
+                #                                         IdentityDisplayName         = $PIMEligible.IdentityDisplayName
+                #                                         IdentitySignInName          = $PIMEligible.IdentityPrincipalName
+                #                                         IdentityType                = "User $($groupMemberUser.userType)"
+                #                                         IdentityApplicability       = 'nested'
+                #                                         AppliesThrough              = "$($PIMEligible.IdentityDisplayName) ($($PIMEligible.IdentityObjectId))"
+                #                                         PIMEligibilityId            = $PIMEligible.PIMId
+                #                                         PIMEligibility              = $PIMEligible.PIMInheritance
+                #                                         PIMEligibilityInheritedFrom = $PIMEligible.PIMInheritedFrom
+                #                                         PIMStartDateTime            = $PIMEligible.PIMStartDateTime
+                #                                         PIMEndDateTime              = $PIMEligible.PIMEndDateTime
+                #                                     })
+                #                                 @"
+                #                             <tr>
+                #                             <td>$($PIMEligible.ScopeType)</td>
+                #                             <td>$($PIMEligible.ScopeId)</td>
+                #                             <td>$($PIMEligible.ScopeDisplayName)</td>
+                #                             <td>$($PIMEligible.MgPath -join "/")</td>
+                #                             <td>$($PIMEligible.MgLevel)</td>
+                #                             <td>$($roleName)</td>
+                #                             <td>$($PIMEligible.RoleType)</td>
+                #                             <td>$($groupMemberUser.id)</td>
+                #                             <td>$($groupMemberUser.displayName)</td>
+                #                             <td>$($groupMemberUser.userPrincipalName)</td>
+                #                             <td>User $($groupMemberUser.userType)</td>
+                #                             <td>indirect</td>
+                #                             <td>$($PIMEligible.IdentityDisplayName) ($($PIMEligible.IdentityObjectId))</td>
+                #                             <td>$($PIMEligible.PIMId)</td>
+                #                             <td>$($PIMEligible.PIMInheritance)</td>
+                #                             <td>$($PIMEligible.PIMInheritedFrom)</td>
+                #                             <td>$($PIMEligible.PIMStartDateTime)</td>
+                #                             <td>$($PIMEligible.PIMEndDateTime)</td>
+                #                             </tr>
+                # "@
+                #                             }
+                #                         }
+                #                         else {
+                #                             Write-Host "!! Unexpected: Group $($PIMEligible.IdentityDisplayName) ($($PIMEligible.IdentityObjectId)) not found in `$htAADGroupsDetails - please report back!"
+                #                         }
+                #                     }
+                #                 }
             }
 
             if (-not $NoCsvExport) {
                 $csvFilename = "$($filename)_PIMEligibility"
                 Write-Host "   Exporting PIMEligibility CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-                $PIMCSV | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+                $PIMEligibleEnrichedSorted | Select-Object -ExcludeProperty RoleClear | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
             }
 
             [void]$htmlTenantSummary.AppendLine($htmlSUMMARYPIMEligibility)
@@ -4808,7 +4998,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
-            if ($tfCount -gt 10) {
+            if ($tfCountCnt -gt 10) {
                 $spectrum = "10, $tfCountCnt"
                 if ($tfCountCnt -gt 50) {
                     $spectrum = "10, 25, 50, $tfCountCnt"
@@ -4836,9 +5026,9 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_0: 'select',
             col_4: 'select',
-            col_6: 'select',
-            col_10: 'select',
+            col_7: 'select',
             col_11: 'select',
+            col_12: 'select',
             col_14: 'select',
             col_types: [
                 'caseinsensitivestring',
@@ -4856,6 +5046,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+                'caseinsensitivestring',
+                'date',
+                'date',
                 'caseinsensitivestring'
             ],
 extensions: [{ name: 'sort' }]
@@ -13020,5 +13213,4 @@ extensions: [{ name: 'sort' }]
     $htmlTenantSummary = $null
     $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
     $script:html = $null
-
 }

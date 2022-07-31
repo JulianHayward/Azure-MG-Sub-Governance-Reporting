@@ -36,6 +36,10 @@ function getPIMEligible {
             }
         }
 
+        $PIMOnboardedGrouped = $scopesToIterate | Group-Object -Property type
+        foreach ($entry in $PIMOnboardedGrouped) {
+            Write-Host " Found $($entry.Count) PIM onboarded $($entry.Name)s"
+        }
 
         $htPIMEligibleDirect = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
         $scopesToIterate | ForEach-Object -parallel {
@@ -68,6 +72,7 @@ function getPIMEligible {
                         $ScopeType = 'MG'
                         $ManagementGroupId = $scopeId
                         $SubscriptionId = ''
+                        $SubscriptionDisplayName = ''
                         if ($htManagementGroupsMgPath.($scopeId)) {
                             $MgDetails = $htManagementGroupsMgPath.($scopeId)
                             $ManagementGroupDisplayName = $MgDetails.DisplayName
@@ -81,21 +86,21 @@ function getPIMEligible {
                             $MgPath = 'notAccessible'
                             $MgLevel = 'notAccessible' 
                         }
-                        $SubscriptionDisplayName = ''
-
 
                         if ($entry.memberType -eq 'direct') {
+                            $script:htPIMEligibleDirect.($entry.id) = @{}
+                            $script:htPIMEligibleDirect.($entry.id).clear = $scopeId
                             if ($scopeId -eq $ManagementGroupDisplayName) {
-                                $script:htPIMEligibleDirect.($entry.id) = "$($scopeId) [Level $($MgLevel)]"
+                                $script:htPIMEligibleDirect.($entry.id).enriched = "$($scopeId) [Level $($MgLevel)]"
                             }
                             else {
-                                $script:htPIMEligibleDirect.($entry.id) = "$($ManagementGroupDisplayName) ($($scopeId)) [Level $($MgLevel)]"
+                                $script:htPIMEligibleDirect.($entry.id).enriched = "$($ManagementGroupDisplayName) ($($scopeId)) [Level $($MgLevel)]"
                             }
                         }
                     }
                     if ($scope.type -eq 'subscription') {
                         $ScopeType = 'Sub'
-                        $ManagementGroupId = ''
+                        #$ManagementGroupId = ''
                         $SubscriptionId = $scopeId
                         if ($htSubscriptionsMgPath.($scopeId)) {
                             $MgDetails = $htSubscriptionsMgPath.($scopeId)
@@ -103,6 +108,8 @@ function getPIMEligible {
                             $ScopeDisplayName = $MgDetails.DisplayName
                             $MgPath = $MgDetails.path
                             $MgLevel = $MgDetails.level 
+                            $ManagementGroupId = $MgDetails.Parent
+                            $ManagementGroupDisplayName = $MgDetails.ParentName
                         }
                         else {
                             $SubscriptionDisplayName = 'notAccessible'
@@ -110,7 +117,7 @@ function getPIMEligible {
                             $MgPath = 'notAccessible'
                             $MgLevel = 'notAccessible'
                         }
-                        $ManagementGroupDisplayName = ''
+                        #$ManagementGroupDisplayName = ''
 
                     }
 
@@ -127,6 +134,10 @@ function getPIMEligible {
                         $principalType = $entry.subject.type
                     }
 
+                    $roleType = 'undefined'
+                    if ($entry.roleDefinition.type -eq 'BuiltInRole') { $roleType = 'Builtin'}
+                    if ($entry.roleDefinition.type -eq 'CustomRole') { $roleType = 'Custom'}
+
                     $null = $script:arrayPIMEligible.Add([PSCustomObject]@{
                             ScopeType                  = $ScopeType
                             ScopeId                    = $scopeId
@@ -139,7 +150,7 @@ function getPIMEligible {
                             MgLevel                    = $MgLevel
                             RoleId                     = $entry.roleDefinition.externalId
                             RoleIdGuid                 = $entry.roleDefinition.externalId -replace '.*/'
-                            RoleType                   = $entry.roleDefinition.type
+                            RoleType                   = $roleType
                             RoleName                   = $entry.roleDefinition.displayName
                             IdentityObjectId           = $entry.subject.id
                             IdentityType               = $principalType
@@ -147,7 +158,10 @@ function getPIMEligible {
                             IdentityPrincipalName      = $entry.subject.principalName
                             PIMId                      = $entry.id
                             PIMInheritance             = $entry.memberType
+                            PIMInheritedFromClear = ''
                             PIMInheritedFrom           = ''
+                            PIMStartDateTime = $entry.startDateTime
+                            PIMEndDateTime = $entry.endDateTime
                         })
                 }
             }
@@ -155,13 +169,14 @@ function getPIMEligible {
 
         foreach ($entry in $arrayPIMEligible) {
             if ($entry.PIMInheritance -eq 'inherited') {
-                $entry.PIMInheritedFrom = $htPIMEligibleDirect.($entry.PIMId)
+                $entry.PIMInheritedFromClear = $htPIMEligibleDirect.($entry.PIMId).clear
+                $entry.PIMInheritedFrom = $htPIMEligibleDirect.($entry.PIMId).enriched
             }
         }
 
         $script:arrayPIMEligibleGrouped = $arrayPIMEligible | Group-Object -Property ScopeType
         foreach ($entry in $arrayPIMEligibleGrouped) {
-            Write-Host " Found $($entry.Count) PIM onboarded $($entry.Name)s"
+            Write-Host " Found $($entry.Count) PIM Eligible assignments for $($entry.Name)s"
         }
     }
 

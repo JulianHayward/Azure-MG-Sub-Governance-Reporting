@@ -2997,9 +2997,9 @@ function dataCollectionRoleAssignmentsMG {
         $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
         $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
         if ($roleAssignmentScheduleInstancesCount -gt 0) {
-            $htRoleAssignmentsPIM = @{}
+            #$htRoleAssignmentsPIM = @{}
             foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
-                $htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
+                $script:htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
             }
         }
     }
@@ -3273,9 +3273,9 @@ function dataCollectionRoleAssignmentsSub {
         $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
         $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
         if ($roleAssignmentScheduleInstancesCount -gt 0) {
-            $htRoleAssignmentsPIM = @{}
+            #$htRoleAssignmentsPIM = @{}
             foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
-                $htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
+                $script:htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
             }
         }
     }
