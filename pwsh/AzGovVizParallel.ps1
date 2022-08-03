@@ -307,7 +307,7 @@ Param
     $AzAPICallVersion = '1.1.21',
 
     [string]
-    $ProductVersion = 'v6_major_20220731_1',
+    $ProductVersion = 'v6_major_20220803_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -1882,7 +1882,7 @@ function cacheBuiltIn {
         if ($builtInCapability -eq 'RoleDefinitions') {
             $currentTask = 'Caching built-in Role definitions'
             #Write-Host " $currentTask"
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2018-07-01&`$filter=type eq 'BuiltInRole'"
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-04-01&`$filter=type eq 'BuiltInRole'"
             $method = 'GET'
             $requestRoleDefinitionAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
 
@@ -3585,12 +3585,12 @@ function processAADGroups {
     Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (before Resolving AAD Groups)"
     $startAADGroupsResolveMembers = Get-Date
 
-    $optimizedTableForAADGroupsQuery = ($roleAssignmentsUniqueById.where( { $_.RoleAssignmentIdentityObjectType -eq 'Group' } ) | Select-Object -Property RoleAssignmentIdentityObjectId, RoleAssignmentIdentityDisplayname) | Sort-Object -Property RoleAssignmentIdentityObjectId -Unique
-    if ($optimizedTableForAADGroupsQuery) {
-        [System.Collections.ArrayList]$optimizedTableForAADGroupsQuery = $optimizedTableForAADGroupsQuery
-    }
-    else {
-        $optimizedTableForAADGroupsQuery = [System.Collections.ArrayList]@()
+    $roleAssignmentsforGroups = ($roleAssignmentsUniqueById.where( { $_.RoleAssignmentIdentityObjectType -eq 'Group' } ) | Select-Object -Property RoleAssignmentIdentityObjectId, RoleAssignmentIdentityDisplayname) | Sort-Object -Property RoleAssignmentIdentityObjectId -Unique
+    $optimizedTableForAADGroupsQuery = [System.Collections.ArrayList]@()
+    if ($roleAssignmentsforGroups.Count -gt 0){
+        foreach ($roleAssignmentforGroups in $roleAssignmentsforGroups) {
+            $null = $optimizedTableForAADGroupsQuery.Add($roleAssignmentforGroups)
+        }
     }
 
     $aadGroupsCount = ($optimizedTableForAADGroupsQuery).Count
@@ -14980,37 +14980,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <tbody>
 "@)
             $htmlSUMMARYPIMEligibility = $null
-            $PIMEligibleEnrichedSorted = $PIMEligibleEnriched | Sort-Object -Property ScopeType, MgLevel, ScopeDisplayName, IdentityDisplayName
-            #$PIMCSV = [System.Collections.ArrayList]@()
+            $PIMEligibleEnrichedSorted = $PIMEligibleEnriched | Sort-Object -Property Scope, MgLevel, ScopeDisplayName, IdentityDisplayName, PIMEligibilityId
             $tfCountCnt = $PIMEligibleEnrichedSorted.Count
             $htmlSUMMARYPIMEligibility = foreach ($PIMEligible in $PIMEligibleEnrichedSorted) {
-                #$tfCountCnt++
-                # if ($PIMEligible.RoleType -eq 'BuiltInRole') {
-                #     $roleName = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($PIMEligible.RoleIdGuid).html`" target=`"_blank`" rel=`"noopener`">$($PIMEligible.RoleName)</a>"
-                # }
-                # else {
-                #     $roleName = $PIMEligible.RoleName
-                # }
-                # $null = $PIMCSV.Add([PSCustomObject]@{
-                #         Scope                       = $PIMEligible.ScopeType
-                #         ScopeId                     = $PIMEligible.ScopeId
-                #         ScopeName                   = $PIMEligible.ScopeDisplayName
-                #         MgPath                      = $PIMEligible.MgPath -join "/"
-                #         MgLevel                     = $PIMEligible.MgLevel
-                #         Role                        = $PIMEligible.RoleName
-                #         RoleType                    = $PIMEligible.RoleType
-                #         IdentityObjectId            = $PIMEligible.IdentityObjectId
-                #         IdentityDisplayName         = $PIMEligible.IdentityDisplayName
-                #         IdentitySignInName          = $PIMEligible.IdentityPrincipalName
-                #         IdentityType                = $PIMEligible.IdentityType
-                #         IdentityApplicability       = 'direct'
-                #         AppliesThrough              = ''
-                #         PIMEligibilityId            = $PIMEligible.PIMId
-                #         PIMEligibility              = $PIMEligible.PIMInheritance
-                #         PIMEligibilityInheritedFrom = $PIMEligible.PIMInheritedFrom
-                #         PIMStartDateTime            = $PIMEligible.PIMStartDateTime
-                #         PIMEndDateTime              = $PIMEligible.PIMEndDateTime
-                #     })
                 @"
 <tr>
 <td>$($PIMEligible.Scope)</td>
@@ -15034,60 +15006,6 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <td>$($PIMEligible.PIMEligibilityId)</td>
 </tr>
 "@
-                #                 if (-not $NoAADGroupsResolveMembers) {
-                #                     if ($PIMEligible.IdentityType -eq 'Group') {
-                #                         if ($htAADGroupsDetails.($PIMEligible.IdentityObjectId)) {
-                #                             foreach ($groupMemberUser in $htAADGroupsDetails.($PIMEligible.IdentityObjectId).MembersUsers) {
-                #                                 $tfCountCnt++
-                #                                 $null = $PIMCSV.Add([PSCustomObject]@{
-                #                                         Scope                       = $PIMEligible.ScopeType
-                #                                         ScopeId                     = $PIMEligible.ScopeId
-                #                                         ScopeName                   = $PIMEligible.ScopeDisplayName
-                #                                         MgPath                      = $PIMEligible.MgPath -join "/"
-                #                                         MgLevel                     = $PIMEligible.MgLevel
-                #                                         Role                        = $PIMEligible.RoleName
-                #                                         RoleType                    = $PIMEligible.RoleType
-                #                                         IdentityObjectId            = $PIMEligible.IdentityObjectId
-                #                                         IdentityDisplayName         = $PIMEligible.IdentityDisplayName
-                #                                         IdentitySignInName          = $PIMEligible.IdentityPrincipalName
-                #                                         IdentityType                = "User $($groupMemberUser.userType)"
-                #                                         IdentityApplicability       = 'nested'
-                #                                         AppliesThrough              = "$($PIMEligible.IdentityDisplayName) ($($PIMEligible.IdentityObjectId))"
-                #                                         PIMEligibilityId            = $PIMEligible.PIMId
-                #                                         PIMEligibility              = $PIMEligible.PIMInheritance
-                #                                         PIMEligibilityInheritedFrom = $PIMEligible.PIMInheritedFrom
-                #                                         PIMStartDateTime            = $PIMEligible.PIMStartDateTime
-                #                                         PIMEndDateTime              = $PIMEligible.PIMEndDateTime
-                #                                     })
-                #                                 @"
-                #                             <tr>
-                #                             <td>$($PIMEligible.ScopeType)</td>
-                #                             <td>$($PIMEligible.ScopeId)</td>
-                #                             <td>$($PIMEligible.ScopeDisplayName)</td>
-                #                             <td>$($PIMEligible.MgPath -join "/")</td>
-                #                             <td>$($PIMEligible.MgLevel)</td>
-                #                             <td>$($roleName)</td>
-                #                             <td>$($PIMEligible.RoleType)</td>
-                #                             <td>$($groupMemberUser.id)</td>
-                #                             <td>$($groupMemberUser.displayName)</td>
-                #                             <td>$($groupMemberUser.userPrincipalName)</td>
-                #                             <td>User $($groupMemberUser.userType)</td>
-                #                             <td>indirect</td>
-                #                             <td>$($PIMEligible.IdentityDisplayName) ($($PIMEligible.IdentityObjectId))</td>
-                #                             <td>$($PIMEligible.PIMId)</td>
-                #                             <td>$($PIMEligible.PIMInheritance)</td>
-                #                             <td>$($PIMEligible.PIMInheritedFrom)</td>
-                #                             <td>$($PIMEligible.PIMStartDateTime)</td>
-                #                             <td>$($PIMEligible.PIMEndDateTime)</td>
-                #                             </tr>
-                # "@
-                #                             }
-                #                         }
-                #                         else {
-                #                             Write-Host "!! Unexpected: Group $($PIMEligible.IdentityDisplayName) ($($PIMEligible.IdentityObjectId)) not found in `$htAADGroupsDetails - please report back!"
-                #                         }
-                #                     }
-                #                 }
             }
 
             if (-not $NoCsvExport) {
@@ -27480,11 +27398,11 @@ function dataCollectionRoleDefinitions {
 
     if ($TargetMgOrSub -eq 'Sub') {
         $currentTask = "Getting Custom Role definitions for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2015-07-01&`$filter=type eq 'CustomRole'"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-04-01&`$filter=type eq 'CustomRole'"
     }
     if ($TargetMgOrSub -eq 'MG') {
         $currentTask = "Getting Custom Role definitions for Management Group: '$($scopeDisplayName)' ('$scopeId')"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2015-07-01&`$filter=type eq 'CustomRole'"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-04-01&`$filter=type eq 'CustomRole'"
     }
     $method = 'GET'
     $scopeCustomRoleDefinitions = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'

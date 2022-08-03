@@ -4,6 +4,12 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Aug-03 / Major)
+
+* __IMPORTANT Fix__ for custom Role definitions / missing DataActions and NotDataActions
+  * Update [API reference](#api-reference) roleDefinitions use API version 2022-04-01
+* BugFix
+
 __Changes__ (2022-Jul-31 / Major)
 
 * Update on feature 'PIM (Privileged Identity Management) eligible Role assignments'

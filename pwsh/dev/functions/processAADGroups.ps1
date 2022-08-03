@@ -9,12 +9,12 @@ function processAADGroups {
     Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (before Resolving AAD Groups)"
     $startAADGroupsResolveMembers = Get-Date
 
-    $optimizedTableForAADGroupsQuery = ($roleAssignmentsUniqueById.where( { $_.RoleAssignmentIdentityObjectType -eq 'Group' } ) | Select-Object -Property RoleAssignmentIdentityObjectId, RoleAssignmentIdentityDisplayname) | Sort-Object -Property RoleAssignmentIdentityObjectId -Unique
-    if ($optimizedTableForAADGroupsQuery) {
-        [System.Collections.ArrayList]$optimizedTableForAADGroupsQuery = $optimizedTableForAADGroupsQuery
-    }
-    else {
-        $optimizedTableForAADGroupsQuery = [System.Collections.ArrayList]@()
+    $roleAssignmentsforGroups = ($roleAssignmentsUniqueById.where( { $_.RoleAssignmentIdentityObjectType -eq 'Group' } ) | Select-Object -Property RoleAssignmentIdentityObjectId, RoleAssignmentIdentityDisplayname) | Sort-Object -Property RoleAssignmentIdentityObjectId -Unique
+    $optimizedTableForAADGroupsQuery = [System.Collections.ArrayList]@()
+    if ($roleAssignmentsforGroups.Count -gt 0){
+        foreach ($roleAssignmentforGroups in $roleAssignmentsforGroups) {
+            $null = $optimizedTableForAADGroupsQuery.Add($roleAssignmentforGroups)
+        }
     }
 
     $aadGroupsCount = ($optimizedTableForAADGroupsQuery).Count
