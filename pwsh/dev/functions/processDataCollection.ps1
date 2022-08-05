@@ -81,6 +81,7 @@ function processDataCollection {
             $htServicePrincipals = $using:htServicePrincipals
             $htUserTypesGuest = $using:htUserTypesGuest
             $htRoleAssignmentsPIM = $using:htRoleAssignmentsPIM
+            $alzPolicies = $using:alzPolicies
             #other
             $function:addRowToTable = $using:funcAddRowToTable
             $function:namingValidation = $using:funcNamingValidation

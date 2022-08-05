@@ -307,7 +307,7 @@ Param
     $AzAPICallVersion = '1.1.21',
 
     [string]
-    $ProductVersion = 'v6_major_20220803_1',
+    $ProductVersion = 'v6_major_20220805_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -3905,6 +3905,7 @@ function processDataCollection {
             $htServicePrincipals = $using:htServicePrincipals
             $htUserTypesGuest = $using:htUserTypesGuest
             $htRoleAssignmentsPIM = $using:htRoleAssignmentsPIM
+            $alzPolicies = $using:alzPolicies
             #other
             $function:addRowToTable = $using:funcAddRowToTable
             $function:namingValidation = $using:funcNamingValidation
@@ -24773,7 +24774,7 @@ function dataCollectionResources {
                 Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')
                 #>
                 if ($azAPICallConf['htParameters'].PSRuleFailedOnly -eq $true) {
-                    $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue -outcome Fail,Error
+                    $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue -outcome Fail, Error
                 }
                 else {
                     $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
@@ -26172,60 +26173,80 @@ function dataCollectionPolicyDefinitions {
         }
 
         if ($doIt) {
-            if (($scopePolicyDefinition.Properties.description).length -eq 0) {
-                $policyDefinitionDescription = 'no description given'
-            }
-            else {
-                $policyDefinitionDescription = $scopePolicyDefinition.Properties.description
-            }
 
-            $htTemp = @{}
-            $htTemp.Id = $hlpPolicyDefinitionId
-            if ($hlpPolicyDefinitionId -like '/providers/Microsoft.Management/managementGroups/*') {
-                $htTemp.Scope = (($hlpPolicyDefinitionId).split('/'))[0..4] -join '/'
-                $htTemp.ScopeMgSub = 'Mg'
-                $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[4]
-                $htTemp.ScopeMGLevel = $htManagementGroupsMgPath.((($hlpPolicyDefinitionId).split('/'))[4]).ParentNameChainCount
-            }
-            if ($hlpPolicyDefinitionId -like '/subscriptions/*') {
-                $htTemp.Scope = (($hlpPolicyDefinitionId).split('/'))[0..2] -join '/'
-                $htTemp.ScopeMgSub = 'Sub'
-                $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[2]
-                $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($hlpPolicyDefinitionId).split('/'))[2]).level
-            }
-            $htTemp.DisplayName = $($scopePolicyDefinition.Properties.displayname)
-            $htTemp.Description = $($policyDefinitionDescription)
-            $htTemp.Type = $($scopePolicyDefinition.Properties.policyType)
-            $htTemp.Category = $($scopePolicyDefinition.Properties.metadata.category)
-            $htTemp.PolicyDefinitionId = $hlpPolicyDefinitionId
-            if ($scopePolicyDefinition.Properties.metadata.deprecated -eq $true -or $scopePolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
-                $htTemp.Deprecated = $scopePolicyDefinition.Properties.metadata.deprecated
-            }
-            else {
-                $htTemp.Deprecated = $false
-            }
-            if ($scopePolicyDefinition.Properties.metadata.preview -eq $true -or $scopePolicyDefinition.Properties.displayname -like "``[*Preview``]*") {
-                $htTemp.Preview = $scopePolicyDefinition.Properties.metadata.preview
-            }
-            else {
-                $htTemp.Preview = $false
-            }
-            #effects
-            if ($scopePolicyDefinition.properties.parameters.effect.defaultvalue) {
-                $htTemp.effectDefaultValue = $scopePolicyDefinition.properties.parameters.effect.defaultvalue
-                if ($scopePolicyDefinition.properties.parameters.effect.allowedValues) {
-                    $htTemp.effectAllowedValue = $scopePolicyDefinition.properties.parameters.effect.allowedValues -join ','
+            if (-not ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId)) {
+                if (($scopePolicyDefinition.Properties.description).length -eq 0) {
+                    $policyDefinitionDescription = 'no description given'
                 }
                 else {
-                    $htTemp.effectAllowedValue = 'n/a'
+                    $policyDefinitionDescription = $scopePolicyDefinition.Properties.description
                 }
-                $htTemp.effectFixedValue = 'n/a'
-            }
-            else {
-                if ($scopePolicyDefinition.properties.parameters.policyEffect.defaultValue) {
-                    $htTemp.effectDefaultValue = $scopePolicyDefinition.properties.parameters.policyEffect.defaultvalue
-                    if ($scopePolicyDefinition.properties.parameters.policyEffect.allowedValues) {
-                        $htTemp.effectAllowedValue = $scopePolicyDefinition.properties.parameters.policyEffect.allowedValues -join ','
+
+                $htTemp = @{}
+                $htTemp.Id = $hlpPolicyDefinitionId
+                if ($hlpPolicyDefinitionId -like '/providers/Microsoft.Management/managementGroups/*') {
+                    $htTemp.Scope = (($hlpPolicyDefinitionId).split('/'))[0..4] -join '/'
+                    $htTemp.ScopeMgSub = 'Mg'
+                    $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[4]
+                    $htTemp.ScopeMGLevel = $htManagementGroupsMgPath.((($hlpPolicyDefinitionId).split('/'))[4]).ParentNameChainCount
+
+                    if ($alzPolicies.($scopePolicyDefinition.name)) {
+                        WRITE-HOST "**** ALZ"
+                        if ($scopePolicyDefinition.Properties.metadata.version) {
+                            WRITE-HOST "**** ALZhasVer"
+                            $htTemp.ALZ = 'true'
+                            if ($alzPolicies.($scopePolicyDefinition.name).status -eq 'obsolete') {
+                                $htTemp.ALZState = 'obsolete'
+                            }
+                            else {
+                                if ($alzPolicies.($scopePolicyDefinition.name).latestVersion -eq $scopePolicyDefinition.Properties.metadata.version) {
+                                    $htTemp.ALZState = 'upToDate'
+                                }
+                                else {
+                                    $htTemp.ALZState = 'outDated'
+                                }
+                            }
+                        }
+                        else {
+                            $htTemp.ALZ = 'false'
+                            $htTemp.ALZState = ''
+                        }
+                    }
+                    else {
+                        $htTemp.ALZ = 'false'
+                        $htTemp.ALZState = ''
+                    }
+                }
+                if ($hlpPolicyDefinitionId -like '/subscriptions/*') {
+                    $htTemp.Scope = (($hlpPolicyDefinitionId).split('/'))[0..2] -join '/'
+                    $htTemp.ScopeMgSub = 'Sub'
+                    $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[2]
+                    $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($hlpPolicyDefinitionId).split('/'))[2]).level
+                    $htTemp.ALZ = 'ignored'
+                    $htTemp.ALZState = ''
+                }
+                $htTemp.DisplayName = $($scopePolicyDefinition.Properties.displayname)
+                $htTemp.Description = $($policyDefinitionDescription)
+                $htTemp.Type = $($scopePolicyDefinition.Properties.policyType)
+                $htTemp.Category = $($scopePolicyDefinition.Properties.metadata.category)
+                $htTemp.PolicyDefinitionId = $hlpPolicyDefinitionId
+                if ($scopePolicyDefinition.Properties.metadata.deprecated -eq $true -or $scopePolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
+                    $htTemp.Deprecated = $scopePolicyDefinition.Properties.metadata.deprecated
+                }
+                else {
+                    $htTemp.Deprecated = $false
+                }
+                if ($scopePolicyDefinition.Properties.metadata.preview -eq $true -or $scopePolicyDefinition.Properties.displayname -like "``[*Preview``]*") {
+                    $htTemp.Preview = $scopePolicyDefinition.Properties.metadata.preview
+                }
+                else {
+                    $htTemp.Preview = $false
+                }
+                #effects
+                if ($scopePolicyDefinition.properties.parameters.effect.defaultvalue) {
+                    $htTemp.effectDefaultValue = $scopePolicyDefinition.properties.parameters.effect.defaultvalue
+                    if ($scopePolicyDefinition.properties.parameters.effect.allowedValues) {
+                        $htTemp.effectAllowedValue = $scopePolicyDefinition.properties.parameters.effect.allowedValues -join ','
                     }
                     else {
                         $htTemp.effectAllowedValue = 'n/a'
@@ -26233,13 +26254,26 @@ function dataCollectionPolicyDefinitions {
                     $htTemp.effectFixedValue = 'n/a'
                 }
                 else {
-                    $htTemp.effectFixedValue = $scopePolicyDefinition.Properties.policyRule.then.effect
-                    $htTemp.effectDefaultValue = 'n/a'
-                    $htTemp.effectAllowedValue = 'n/a'
+                    if ($scopePolicyDefinition.properties.parameters.policyEffect.defaultValue) {
+                        $htTemp.effectDefaultValue = $scopePolicyDefinition.properties.parameters.policyEffect.defaultvalue
+                        if ($scopePolicyDefinition.properties.parameters.policyEffect.allowedValues) {
+                            $htTemp.effectAllowedValue = $scopePolicyDefinition.properties.parameters.policyEffect.allowedValues -join ','
+                        }
+                        else {
+                            $htTemp.effectAllowedValue = 'n/a'
+                        }
+                        $htTemp.effectFixedValue = 'n/a'
+                    }
+                    else {
+                        $htTemp.effectFixedValue = $scopePolicyDefinition.Properties.policyRule.then.effect
+                        $htTemp.effectDefaultValue = 'n/a'
+                        $htTemp.effectAllowedValue = 'n/a'
+                    }
                 }
-            }
-            $htTemp.Json = $scopePolicyDefinition
+
+                $htTemp.Json = $scopePolicyDefinition
             ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId) = $htTemp
+            }
 
 
             if (-not [string]::IsNullOrWhiteSpace($scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
@@ -28688,6 +28722,463 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htClassicAdministrators = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $arrayOrphanedResources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayPIMEligible = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+
+    $alzPolicies = @"
+    {
+        "Deny-Subnet-Without-UDR": {
+          "latestVersion": "2.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-APIMgmt": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-ACR": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-MySQL-sslEnforcement": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deny-MachineLearning-HbiWorkspace": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deny-VNET-Peering-To-Non-Approved-VNETs": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-EventGridTopic": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deploy-ASC-Defender-SQLVM": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deploy-Diagnostics-ApplicationGateway": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-ApiForFHIR": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deny-Redis-http": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deny-MachineLearning-PublicAccessWhenBehindVnet": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Append-Redis-sslEnforcement": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-PowerBIEmbedded": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Append-AppService-latestTLS": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deny-MachineLearning-ComputeCluster-RemoteLoginPortPublicAccess": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deploy-ASC-Defender-ARM": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deny-Private-DNS-Zones": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Append-AppService-httpsonly": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-WVDHostPools": {
+          "latestVersion": "1.1.0",
+          "status": "prod"
+        },
+        "Deny-MachineLearning-Aks": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deploy-Diagnostics-SignalR": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-DataExplorerCluster": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-PostgreSQL-sslEnforcement": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-HDInsight": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Append-KV-SoftDelete": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-Function": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-WVDAppGroup": {
+          "latestVersion": "1.0.1",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-AVDScalingPlans": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-ASC-Defender-ACR": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deploy-Diagnostics-EventGridSub": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-ASC-Defender-Sql": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deploy-Diagnostics-MariaDB": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-ASC-Defender-AKS": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deny-RDP-From-Internet": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-MySQL": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deny-MachineLearning-ComputeCluster-Scale": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deploy-ASC-Defender-VMs": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deny-MachineLearning-Compute-VmSize": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deploy-ASC-SecurityContacts": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deny-AA-child-resources": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-TimeSeriesInsights": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-FirewallPolicy": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-FrontDoor": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-CDNEndpoints": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-SQLMI": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deny-AppGW-Without-WAF": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deny-MySql-http": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-NIC": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-EventGridSystemTopic": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-Website": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Custom-Route-Table": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-AA": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Windows-DomainJoin": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-ASC-Defender-SA": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deploy-Nsg-FlowLogs": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-RedisCache": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deny-MachineLearning-Compute-SubnetId": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deny-AppServiceApiApp-http": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-SQLElasticPools": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-VNetGW": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Budget": {
+          "latestVersion": "1.1.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-Firewall": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-DataFactory": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-DLAnalytics": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deny-AppServiceFunctionApp-http": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-VMSS": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-Relay": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Append-Redis-disableNonSslPort": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Nsg-FlowLogs-to-LA": {
+          "latestVersion": "1.1.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-Bastion": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-CosmosDB": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-VirtualNetwork": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-VM": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-TrafficManager": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-ASC-Defender-AKV": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deploy-SQL-minTLS": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-MlWorkspace": {
+          "latestVersion": "1.1.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-WebServerFarm": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-ASC-Defender-DNS": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deploy-Diagnostics-LoadBalancer": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Sql-vulnerabilityAssessments": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-PostgreSQL": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-WVDWorkspace": {
+          "latestVersion": "1.0.1",
+          "status": "prod"
+        },
+        "Deploy-Sql-SecurityAlertPolicies": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Sql-AuditingSettings": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-ACI": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-ASC-Defender-AppSrv": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deploy-Diagnostics-AnalysisService": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Audit-MachineLearning-PrivateEndpointId": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deny-Sql-minTLS": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-DDoSProtection": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-ExpressRoute": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deny-AppServiceWebApp-http": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-CognitiveServices": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-Databricks": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deny-VNet-Peering": {
+          "latestVersion": "1.0.1",
+          "status": "prod"
+        },
+        "Deploy-Storage-sslEnforcement": {
+          "latestVersion": "1.1.0",
+          "status": "prod"
+        },
+        "Deploy-Default-Udr": {
+          "latestVersion": "1.0.0",
+          "status": "obsolete"
+        },
+        "Deny-Storage-minTLS": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-MediaService": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deny-Subnet-Without-Nsg": {
+          "latestVersion": "2.0.0",
+          "status": "prod"
+        },
+        "Deny-VNET-Peer-Cross-Sub": {
+          "latestVersion": "1.0.1",
+          "status": "prod"
+        },
+        "Deny-PostgreSql-http": {
+          "latestVersion": "1.0.1",
+          "status": "prod"
+        },
+        "Deny-PublicIP": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-iotHub": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-VNET-HubSpoke": {
+          "latestVersion": "1.1.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-NetworkSecurityGroups": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-SqlMi-minTLS": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Diagnostics-LogicAppsISE": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deploy-Sql-Tde": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deny-SqlMi-minTLS": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        },
+        "Deny-PublicEndpoint-MariaDB": {
+          "latestVersion": "1.0.0",
+          "status": "prod"
+        }
+      }
+"@ | ConvertFrom-Json
 }
 
 getEntities
