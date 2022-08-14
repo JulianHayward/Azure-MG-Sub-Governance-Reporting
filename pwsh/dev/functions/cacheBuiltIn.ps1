@@ -27,62 +27,65 @@ function cacheBuiltIn {
             $builtinPolicyDefinitions = $requestPolicyDefinitionAPI.where( { $_.properties.policyType -eq 'BuiltIn' } )
 
             foreach ($builtinPolicyDefinition in $builtinPolicyDefinitions) {
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()) = @{}
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Id = ($builtinPolicyDefinition.Id).ToLower()
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).ScopeMGLevel = ''
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Scope = 'n/a'
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).ScopeMgSub = 'n/a'
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).ScopeId = 'n/a'
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).DisplayName = $builtinPolicyDefinition.Properties.displayname
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Description = $builtinPolicyDefinition.Properties.description
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Type = $builtinPolicyDefinition.Properties.policyType
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Category = $builtinPolicyDefinition.Properties.metadata.category
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).PolicyDefinitionId = ($builtinPolicyDefinition.Id).ToLower()
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$(($builtinPolicyDefinition.Id -replace '.*/')).html`" target=`"_blank`" rel=`"noopener`">$($builtinPolicyDefinition.Properties.displayname)</a>"
-                if ($builtinPolicyDefinition.Properties.metadata.deprecated -eq $true -or $builtinPolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
-                        ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Deprecated = $builtinPolicyDefinition.Properties.metadata.deprecated
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()) = @{}
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Id = ($builtinPolicyDefinition.Id).ToLower()
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ScopeMGLevel = ''
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Scope = 'n/a'
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ScopeMgSub = 'n/a'
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ScopeId = 'n/a'
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).DisplayName = $builtinPolicyDefinition.Properties.displayname
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Description = $builtinPolicyDefinition.Properties.description
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Type = $builtinPolicyDefinition.Properties.policyType
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Category = $builtinPolicyDefinition.Properties.metadata.category
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).PolicyDefinitionId = ($builtinPolicyDefinition.Id).ToLower()
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$(($builtinPolicyDefinition.Id -replace '.*/')).html`" target=`"_blank`" rel=`"noopener`">$($builtinPolicyDefinition.Properties.displayname)</a>"
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ALZ = $false
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ALZState = ''
+                
+                    if ($builtinPolicyDefinition.Properties.metadata.deprecated -eq $true -or $builtinPolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
+                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Deprecated = $builtinPolicyDefinition.Properties.metadata.deprecated
                 }
                 else {
-                        ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Deprecated = $false
+                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Deprecated = $false
                 }
                 if ($builtinPolicyDefinition.Properties.metadata.preview -eq $true -or $builtinPolicyDefinition.Properties.displayname -like "``[*Preview``]*") {
-                        ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Preview = $builtinPolicyDefinition.Properties.metadata.preview
+                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Preview = $builtinPolicyDefinition.Properties.metadata.preview
                 }
                 else {
-                        ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Preview = $false
+                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Preview = $false
                 }
                 #effects
                 if ($builtinPolicyDefinition.properties.parameters.effect.defaultvalue) {
-                        ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = $builtinPolicyDefinition.properties.parameters.effect.defaultvalue
+                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = $builtinPolicyDefinition.properties.parameters.effect.defaultvalue
                     if ($builtinPolicyDefinition.properties.parameters.effect.allowedValues) {
-                            ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = $builtinPolicyDefinition.properties.parameters.effect.allowedValues -join ','
+                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = $builtinPolicyDefinition.properties.parameters.effect.allowedValues -join ','
                     }
                     else {
-                            ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
+                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
                     }
-                        ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
+                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
                 }
                 else {
                     if ($builtinPolicyDefinition.properties.parameters.policyEffect.defaultValue) {
-                            ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = $builtinPolicyDefinition.properties.parameters.policyEffect.defaultvalue
+                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = $builtinPolicyDefinition.properties.parameters.policyEffect.defaultvalue
                         if ($builtinPolicyDefinition.properties.parameters.policyEffect.allowedValues) {
-                                ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = $builtinPolicyDefinition.properties.parameters.policyEffect.allowedValues -join ','
+                                $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = $builtinPolicyDefinition.properties.parameters.policyEffect.allowedValues -join ','
                         }
                         else {
-                                ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
+                                $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
                         }
-                            ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
+                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
                     }
                     else {
-                            ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = $builtinPolicyDefinition.Properties.policyRule.then.effect
-                            ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = 'n/a'
-                            ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
+                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = $builtinPolicyDefinition.Properties.policyRule.then.effect
+                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = 'n/a'
+                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
                     }
                 }
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Json = $builtinPolicyDefinition
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Json = $builtinPolicyDefinition
 
                 if (-not [string]::IsNullOrEmpty($builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
-                        ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
+                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
                     foreach ($roledefinitionId in $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
                         if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
                             $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId) = @{}
@@ -96,7 +99,7 @@ function cacheBuiltIn {
                     }
                 }
                 else {
-                        ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = 'n/a'
+                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = 'n/a'
                 }
             }
         }

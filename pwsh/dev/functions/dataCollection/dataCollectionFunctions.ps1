@@ -1686,7 +1686,7 @@ function dataCollectionPolicyDefinitions {
 
         if ($doIt) {
 
-            if (-not ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId)) {
+            if (-not $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId)) {
                 if (($scopePolicyDefinition.Properties.description).length -eq 0) {
                     $policyDefinitionDescription = 'no description given'
                 }
@@ -1696,6 +1696,7 @@ function dataCollectionPolicyDefinitions {
 
                 $htTemp = @{}
                 $htTemp.Id = $hlpPolicyDefinitionId
+
                 if ($hlpPolicyDefinitionId -like '/providers/Microsoft.Management/managementGroups/*') {
                     $htTemp.Scope = (($hlpPolicyDefinitionId).split('/'))[0..4] -join '/'
                     $htTemp.ScopeMgSub = 'Mg'
@@ -1734,6 +1735,7 @@ function dataCollectionPolicyDefinitions {
                     $htTemp.ScopeMgSub = 'Sub'
                     $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[2]
                     $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($hlpPolicyDefinitionId).split('/'))[2]).level
+                    #subscription scoped alz policies will be ignored 
                     $htTemp.ALZ = 'ignored'
                     $htTemp.ALZState = ''
                 }
@@ -1784,12 +1786,12 @@ function dataCollectionPolicyDefinitions {
                 }
 
                 $htTemp.Json = $scopePolicyDefinition
-            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId) = $htTemp
+            $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId) = $htTemp
             }
 
 
             if (-not [string]::IsNullOrWhiteSpace($scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).RoleDefinitionIds = $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
+                $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId).RoleDefinitionIds = $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
                 foreach ($roledefinitionId in $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
                     if (-not [string]::IsNullOrEmpty($roledefinitionId)) {
                         if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
@@ -1808,7 +1810,7 @@ function dataCollectionPolicyDefinitions {
                 }
             }
             else {
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).RoleDefinitionIds = 'n/a'
+                $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId).RoleDefinitionIds = 'n/a'
             }
 
             #region namingValidation
