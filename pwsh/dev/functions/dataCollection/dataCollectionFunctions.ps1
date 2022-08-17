@@ -2911,11 +2911,11 @@ function dataCollectionRoleDefinitions {
 
     if ($TargetMgOrSub -eq 'Sub') {
         $currentTask = "Getting Custom Role definitions for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-04-01&`$filter=type eq 'CustomRole'"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2018-07-01&`$filter=type eq 'CustomRole'"
     }
     if ($TargetMgOrSub -eq 'MG') {
         $currentTask = "Getting Custom Role definitions for Management Group: '$($scopeDisplayName)' ('$scopeId')"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-04-01&`$filter=type eq 'CustomRole'"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2018-07-01&`$filter=type eq 'CustomRole'"
     }
     $method = 'GET'
     $scopeCustomRoleDefinitions = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'

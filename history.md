@@ -4,6 +4,12 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Aug-17 / Major)
+
+* __Update: IMPORTANT Fix__ for custom Role definitions / missing DataActions and NotDataActions
+  * Update [API reference](#api-reference) roleDefinitions use API version 2018-07-01 (API version 2022-04-01 not available in sovereign clouds)
+* BugFix
+
 __Changes__ (2022-Aug-03 / Major)
 
 * __IMPORTANT Fix__ for custom Role definitions / missing DataActions and NotDataActions
