@@ -59,15 +59,14 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Aug-03 / Major)
+__Changes__ (2022-Aug-15 / Major)
 
-* __IMPORTANT Fix__ for custom Role definitions / missing DataActions and NotDataActions
-  * Update [API reference](#api-reference) roleDefinitions use API version 2022-04-01
-* BugFix
+* __Update IMPORTANT Fix__ for custom Role definitions / missing DataActions and NotDataActions
+  * Update [API reference](#api-reference) roleDefinitions use API version 2018-07-01 (2022-04-01 is not supported in sovereign clouds, yet)
 
-Passed tests: Powershell Core 7.2.5 on Windows  
-Passed tests: Powershell Core 7.2.5 Azure DevOps hosted agent ubuntu-20.04  
-Passed tests: Powershell Core 7.2.5 Github Actions hosted agent ubuntu-latest  
+Passed tests: Powershell Core 7.2.6 on Windows  
+Passed tests: Powershell Core 7.2.6 Azure DevOps hosted agent ubuntu-20.04  
+Passed tests: Powershell Core 7.2.6 Github Actions hosted agent ubuntu-latest  
 Passed tests: Powershell Core 7.2.5 GitHub Codespaces mcr.microsoft.com/powershell:latest  
 Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
 
@@ -499,7 +498,7 @@ AzGovViz polls the following APIs
 | ARM | 2021-06-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policySetDefinitions |
 | ARM | 2015-07-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignments |
 | ARM | 2020-10-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignmentScheduleInstances |
-| ARM | 2022-04-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleDefinitions |
+| ARM | 2018-07-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleDefinitions |
 | ARM | 2018-11-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Blueprint/blueprints |
 | ARM | 2019-11-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.CostManagement/query |
 | ARM | 2020-01-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/microsoft.insights/diagnosticSettings |
@@ -516,7 +515,7 @@ AzGovViz polls the following APIs
 | ARM | 2015-07-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignments |
 | ARM | 2020-10-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentScheduleInstances |
 | ARM | 2019-08-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics |
-| ARM | 2022-04-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleDefinitions |
+| ARM | 2018-07-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleDefinitions |
 | ARM | 2018-11-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprintAssignments |
 | ARM | 2018-11-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprints |
 | ARM | 2019-11-01 | /subscriptions/`subscriptionId`/providers/Microsoft.CostManagement/query |

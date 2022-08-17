@@ -933,6 +933,13 @@ function processTenantSummary() {
             $policyRoleDefinitionsClear = 'n/a'
         }
 
+        if ($tenantPolicy.Json.properties.metadata.version) {
+            $policyVersion = $tenantPolicy.Json.properties.metadata.version
+        }
+        else {
+            $policyVersion = 'n/a'
+        }
+
         if ($tenantPolicy.Type -eq 'Custom') {
 
             $createdOn = ''
@@ -977,6 +984,7 @@ function processTenantSummary() {
                     ScopeId               = $tenantPolicy.ScopeId
                     PolicyDisplayName     = $tenantPolicy.DisplayName
                     PolicyDefinitionId    = $tenantPolicy.PolicyDefinitionId
+                    PolicyVersion         = $policyVersion
                     PolicyEffect          = $effect
                     PolicyCategory        = $tenantPolicy.Category
                     RoleDefinitions       = $policyRoleDefinitions
@@ -989,6 +997,8 @@ function processTenantSummary() {
                     CreatedBy             = $createdBy
                     UpdatedOn             = $updatedOn
                     UpdatedBy             = $updatedBy
+                    ALZ                   = $tenantPolicy.ALZ
+                    ALZState              = $tenantPolicy.ALZState
                     #Json                  = [string]($tenantPolicy.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
                 })
 
@@ -1000,6 +1010,7 @@ function processTenantSummary() {
                     PolicyDisplayName      = $tenantPolicy.DisplayName
                     PolicyDefinitionName   = $tenantPolicy.PolicyDefinitionId -replace '.*/'
                     PolicyDefinitionId     = $tenantPolicy.PolicyDefinitionId
+                    PolicyVersion          = $policyVersion
                     PolicyEffect           = $effect
                     PolicyCategory         = $tenantPolicy.Category
                     UniqueAssignmentsCount = $policyUniqueAssignmentsCount
@@ -1016,6 +1027,8 @@ function processTenantSummary() {
                     UpdatedByJson          = $updatedByJson
                     #Json                  = [string]($tenantPolicy.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
                     Json                   = $tenantPolicy.Json
+                    ALZ                    = $tenantPolicy.ALZ
+                    ALZState               = $tenantPolicy.ALZState
                 })
         }
         else {
@@ -1027,6 +1040,7 @@ function processTenantSummary() {
                     PolicyDisplayName      = $tenantPolicy.DisplayName
                     PolicyDefinitionName   = $tenantPolicy.PolicyDefinitionId -replace '.*/'
                     PolicyDefinitionId     = $tenantPolicy.PolicyDefinitionId
+                    PolicyVersion          = $policyVersion
                     PolicyEffect           = $effect
                     PolicyCategory         = $tenantPolicy.Category
                     UniqueAssignmentsCount = $policyUniqueAssignmentsCount
@@ -1043,6 +1057,8 @@ function processTenantSummary() {
                     UpdatedByJson          = $null
                     #Json                  = [string]($tenantPolicy.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
                     Json                   = $tenantPolicy.Json
+                    ALZ                    = $tenantPolicy.ALZ
+                    ALZState               = $tenantPolicy.ALZState
                 })
         }
     }

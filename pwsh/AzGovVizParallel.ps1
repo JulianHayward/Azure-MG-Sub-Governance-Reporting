@@ -307,7 +307,7 @@ Param
     $AzAPICallVersion = '1.1.21',
 
     [string]
-    $ProductVersion = 'v6_major_20220805_1',
+    $ProductVersion = 'v6_major_20220815_3',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -1758,62 +1758,65 @@ function cacheBuiltIn {
             $builtinPolicyDefinitions = $requestPolicyDefinitionAPI.where( { $_.properties.policyType -eq 'BuiltIn' } )
 
             foreach ($builtinPolicyDefinition in $builtinPolicyDefinitions) {
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()) = @{}
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Id = ($builtinPolicyDefinition.Id).ToLower()
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).ScopeMGLevel = ''
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Scope = 'n/a'
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).ScopeMgSub = 'n/a'
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).ScopeId = 'n/a'
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).DisplayName = $builtinPolicyDefinition.Properties.displayname
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Description = $builtinPolicyDefinition.Properties.description
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Type = $builtinPolicyDefinition.Properties.policyType
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Category = $builtinPolicyDefinition.Properties.metadata.category
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).PolicyDefinitionId = ($builtinPolicyDefinition.Id).ToLower()
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$(($builtinPolicyDefinition.Id -replace '.*/')).html`" target=`"_blank`" rel=`"noopener`">$($builtinPolicyDefinition.Properties.displayname)</a>"
-                if ($builtinPolicyDefinition.Properties.metadata.deprecated -eq $true -or $builtinPolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
-                        ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Deprecated = $builtinPolicyDefinition.Properties.metadata.deprecated
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()) = @{}
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Id = ($builtinPolicyDefinition.Id).ToLower()
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ScopeMGLevel = ''
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Scope = 'n/a'
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ScopeMgSub = 'n/a'
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ScopeId = 'n/a'
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).DisplayName = $builtinPolicyDefinition.Properties.displayname
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Description = $builtinPolicyDefinition.Properties.description
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Type = $builtinPolicyDefinition.Properties.policyType
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Category = $builtinPolicyDefinition.Properties.metadata.category
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).PolicyDefinitionId = ($builtinPolicyDefinition.Id).ToLower()
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$(($builtinPolicyDefinition.Id -replace '.*/')).html`" target=`"_blank`" rel=`"noopener`">$($builtinPolicyDefinition.Properties.displayname)</a>"
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ALZ = $false
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ALZState = ''
+                
+                    if ($builtinPolicyDefinition.Properties.metadata.deprecated -eq $true -or $builtinPolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
+                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Deprecated = $builtinPolicyDefinition.Properties.metadata.deprecated
                 }
                 else {
-                        ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Deprecated = $false
+                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Deprecated = $false
                 }
                 if ($builtinPolicyDefinition.Properties.metadata.preview -eq $true -or $builtinPolicyDefinition.Properties.displayname -like "``[*Preview``]*") {
-                        ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Preview = $builtinPolicyDefinition.Properties.metadata.preview
+                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Preview = $builtinPolicyDefinition.Properties.metadata.preview
                 }
                 else {
-                        ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Preview = $false
+                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Preview = $false
                 }
                 #effects
                 if ($builtinPolicyDefinition.properties.parameters.effect.defaultvalue) {
-                        ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = $builtinPolicyDefinition.properties.parameters.effect.defaultvalue
+                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = $builtinPolicyDefinition.properties.parameters.effect.defaultvalue
                     if ($builtinPolicyDefinition.properties.parameters.effect.allowedValues) {
-                            ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = $builtinPolicyDefinition.properties.parameters.effect.allowedValues -join ','
+                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = $builtinPolicyDefinition.properties.parameters.effect.allowedValues -join ','
                     }
                     else {
-                            ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
+                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
                     }
-                        ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
+                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
                 }
                 else {
                     if ($builtinPolicyDefinition.properties.parameters.policyEffect.defaultValue) {
-                            ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = $builtinPolicyDefinition.properties.parameters.policyEffect.defaultvalue
+                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = $builtinPolicyDefinition.properties.parameters.policyEffect.defaultvalue
                         if ($builtinPolicyDefinition.properties.parameters.policyEffect.allowedValues) {
-                                ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = $builtinPolicyDefinition.properties.parameters.policyEffect.allowedValues -join ','
+                                $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = $builtinPolicyDefinition.properties.parameters.policyEffect.allowedValues -join ','
                         }
                         else {
-                                ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
+                                $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
                         }
-                            ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
+                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
                     }
                     else {
-                            ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = $builtinPolicyDefinition.Properties.policyRule.then.effect
-                            ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = 'n/a'
-                            ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
+                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = $builtinPolicyDefinition.Properties.policyRule.then.effect
+                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = 'n/a'
+                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
                     }
                 }
-                    ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).Json = $builtinPolicyDefinition
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Json = $builtinPolicyDefinition
 
                 if (-not [string]::IsNullOrEmpty($builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
-                        ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
+                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
                     foreach ($roledefinitionId in $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
                         if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
                             $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId) = @{}
@@ -1827,7 +1830,7 @@ function cacheBuiltIn {
                     }
                 }
                 else {
-                        ($script:htCacheDefinitionsPolicy).(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = 'n/a'
+                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = 'n/a'
                 }
             }
         }
@@ -1882,7 +1885,7 @@ function cacheBuiltIn {
         if ($builtInCapability -eq 'RoleDefinitions') {
             $currentTask = 'Caching built-in Role definitions'
             #Write-Host " $currentTask"
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-04-01&`$filter=type eq 'BuiltInRole'"
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2018-07-01&`$filter=type eq 'BuiltInRole'"
             $method = 'GET'
             $requestRoleDefinitionAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
 
@@ -3699,6 +3702,27 @@ function processAADGroups {
     $endAADGroupsResolveMembers = Get-Date
     Write-Host "Resolving AAD Groups duration: $((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
     Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (after Resolving AAD Groups)"
+}
+$htTenantALZPolicies = @{}
+foreach ($policy in $tenantCustomPolicies) {
+    if ($policy.ALZ -eq 'true') {
+        $htTenantALZPolicies.($policy.id -replace '.*/') = @{} 
+    }
+}
+
+foreach ($alzPolicy in $alzPolicies.keys){
+
+    if ($htTenantALZPolicies.($alzPolicy)){
+        "ALZ"
+    }
+    else{
+        "not"
+    }
+}
+
+
+foreach ($alzPolicy in $alzPolicies){
+
 }
 function processApplications {
     Write-Host 'Processing Service Principals - Applications'
@@ -11043,6 +11067,13 @@ function processTenantSummary() {
             $policyRoleDefinitionsClear = 'n/a'
         }
 
+        if ($tenantPolicy.Json.properties.metadata.version) {
+            $policyVersion = $tenantPolicy.Json.properties.metadata.version
+        }
+        else {
+            $policyVersion = 'n/a'
+        }
+
         if ($tenantPolicy.Type -eq 'Custom') {
 
             $createdOn = ''
@@ -11087,6 +11118,7 @@ function processTenantSummary() {
                     ScopeId               = $tenantPolicy.ScopeId
                     PolicyDisplayName     = $tenantPolicy.DisplayName
                     PolicyDefinitionId    = $tenantPolicy.PolicyDefinitionId
+                    PolicyVersion         = $policyVersion
                     PolicyEffect          = $effect
                     PolicyCategory        = $tenantPolicy.Category
                     RoleDefinitions       = $policyRoleDefinitions
@@ -11099,6 +11131,8 @@ function processTenantSummary() {
                     CreatedBy             = $createdBy
                     UpdatedOn             = $updatedOn
                     UpdatedBy             = $updatedBy
+                    ALZ                   = $tenantPolicy.ALZ
+                    ALZState              = $tenantPolicy.ALZState
                     #Json                  = [string]($tenantPolicy.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
                 })
 
@@ -11110,6 +11144,7 @@ function processTenantSummary() {
                     PolicyDisplayName      = $tenantPolicy.DisplayName
                     PolicyDefinitionName   = $tenantPolicy.PolicyDefinitionId -replace '.*/'
                     PolicyDefinitionId     = $tenantPolicy.PolicyDefinitionId
+                    PolicyVersion          = $policyVersion
                     PolicyEffect           = $effect
                     PolicyCategory         = $tenantPolicy.Category
                     UniqueAssignmentsCount = $policyUniqueAssignmentsCount
@@ -11126,6 +11161,8 @@ function processTenantSummary() {
                     UpdatedByJson          = $updatedByJson
                     #Json                  = [string]($tenantPolicy.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
                     Json                   = $tenantPolicy.Json
+                    ALZ                    = $tenantPolicy.ALZ
+                    ALZState               = $tenantPolicy.ALZState
                 })
         }
         else {
@@ -11137,6 +11174,7 @@ function processTenantSummary() {
                     PolicyDisplayName      = $tenantPolicy.DisplayName
                     PolicyDefinitionName   = $tenantPolicy.PolicyDefinitionId -replace '.*/'
                     PolicyDefinitionId     = $tenantPolicy.PolicyDefinitionId
+                    PolicyVersion          = $policyVersion
                     PolicyEffect           = $effect
                     PolicyCategory         = $tenantPolicy.Category
                     UniqueAssignmentsCount = $policyUniqueAssignmentsCount
@@ -11153,6 +11191,8 @@ function processTenantSummary() {
                     UpdatedByJson          = $null
                     #Json                  = [string]($tenantPolicy.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
                     Json                   = $tenantPolicy.Json
+                    ALZ                    = $tenantPolicy.ALZ
+                    ALZState               = $tenantPolicy.ALZState
                 })
         }
     }
@@ -26174,7 +26214,7 @@ function dataCollectionPolicyDefinitions {
 
         if ($doIt) {
 
-            if (-not ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId)) {
+            if (-not $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId)) {
                 if (($scopePolicyDefinition.Properties.description).length -eq 0) {
                     $policyDefinitionDescription = 'no description given'
                 }
@@ -26184,6 +26224,7 @@ function dataCollectionPolicyDefinitions {
 
                 $htTemp = @{}
                 $htTemp.Id = $hlpPolicyDefinitionId
+
                 if ($hlpPolicyDefinitionId -like '/providers/Microsoft.Management/managementGroups/*') {
                     $htTemp.Scope = (($hlpPolicyDefinitionId).split('/'))[0..4] -join '/'
                     $htTemp.ScopeMgSub = 'Mg'
@@ -26222,6 +26263,7 @@ function dataCollectionPolicyDefinitions {
                     $htTemp.ScopeMgSub = 'Sub'
                     $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[2]
                     $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($hlpPolicyDefinitionId).split('/'))[2]).level
+                    #subscription scoped alz policies will be ignored 
                     $htTemp.ALZ = 'ignored'
                     $htTemp.ALZState = ''
                 }
@@ -26272,12 +26314,12 @@ function dataCollectionPolicyDefinitions {
                 }
 
                 $htTemp.Json = $scopePolicyDefinition
-            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId) = $htTemp
+            $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId) = $htTemp
             }
 
 
             if (-not [string]::IsNullOrWhiteSpace($scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).RoleDefinitionIds = $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
+                $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId).RoleDefinitionIds = $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
                 foreach ($roledefinitionId in $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
                     if (-not [string]::IsNullOrEmpty($roledefinitionId)) {
                         if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
@@ -26296,7 +26338,7 @@ function dataCollectionPolicyDefinitions {
                 }
             }
             else {
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).RoleDefinitionIds = 'n/a'
+                $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId).RoleDefinitionIds = 'n/a'
             }
 
             #region namingValidation
@@ -27432,11 +27474,11 @@ function dataCollectionRoleDefinitions {
 
     if ($TargetMgOrSub -eq 'Sub') {
         $currentTask = "Getting Custom Role definitions for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-04-01&`$filter=type eq 'CustomRole'"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2018-07-01&`$filter=type eq 'CustomRole'"
     }
     if ($TargetMgOrSub -eq 'MG') {
         $currentTask = "Getting Custom Role definitions for Management Group: '$($scopeDisplayName)' ('$scopeId')"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-04-01&`$filter=type eq 'CustomRole'"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2018-07-01&`$filter=type eq 'CustomRole'"
     }
     $method = 'GET'
     $scopeCustomRoleDefinitions = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
@@ -28723,6 +28765,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $arrayOrphanedResources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayPIMEligible = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 
+    <#
     $alzPolicies = @"
     {
         "Deny-Subnet-Without-UDR": {
@@ -29179,6 +29222,109 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         }
       }
 "@ | ConvertFrom-Json
+#>
+
+    $workingPath = Get-Location
+    $ALZPath = "$($OutputPath)/ALZ"
+    mkdir $ALZPath
+    Set-Location $ALZPath
+    git clone https://github.com/Azure/Enterprise-Scale.git
+    Set-Location "$($ALZPath)/Enterprise-Scale"
+
+    $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/policies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
+    Write-Host $gitHist.Count
+
+    $htGitTrackESLZ = @{}
+    $allESLZPolicies = @{}
+
+    foreach ($commit in $gitHist | Sort-Object -Property Date) {
+        $dt = (([datetime]$commit.Date).ToUniversalTime()).ToString("yyyyMMddHHmmss")
+        $htGitTrackESLZ.($dt) = @{}
+        $htGitTrackESLZ.($dt).policies = @{}
+        $htGitTrackESLZ.($dt).commitId = $commit.CommitId
+        $jsonRaw = git show "$($commit.CommitId):eslzArm/managementGroupTemplates/policyDefinitions/policies.json"
+    
+        $jsonESLZPolicies = $jsonRaw | ConvertFrom-Json
+        Write-Host "$dt $($commit.CommitId)"
+        if (($jsonESLZPolicies.variables.policies.policyDefinitions).Count -eq 0) {
+            $eslzGoodToGo = $false
+        }
+        else {
+            $eslzGoodToGo = $true
+            $eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
+            foreach ($policyDefinition in $eslzPolicies) {
+                $policyJsonConv = ($policyDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
+                $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonConv))
+                $stringHash = [System.BitConverter]::ToString($hash) 
+                $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
+                $htGitTrackESLZ.($dt).policies.($policyJsonRebuild.name) = @{}
+                $htGitTrackESLZ.($dt).policies.($policyJsonRebuild.name).version = $policyJsonRebuild.properties.metadata.version
+
+
+                if ($policyJsonRebuild.name -eq 'Deny-Subnet-Without-UDR') {
+                    Write-Host " - - - - $dt $($commit.CommitId) 'Deny-Subnet-Without-UDR' $($policyJsonRebuild.properties.metadata.version)"
+                }
+
+                if (-not $allESLZPolicies.($policyJsonRebuild.name)) {
+                    $allESLZPolicies.($policyJsonRebuild.name) = @{}
+                    $allESLZPolicies.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
+                    $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                    $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                    $allESLZPolicies.($policyJsonRebuild.name).status = 'prod'
+                }
+                else {
+                    if ($allESLZPolicies.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                        $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                    }
+                    if (-not $allESLZPolicies.($policyJsonRebuild.name).$stringHash) {
+                        $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                    }
+                }
+            }
+        }
+    }
+
+    $cnt = 0
+    foreach ($entry in $htGitTrackESLZ.keys | sort-object) {
+        Write-Host ''
+        Write-Host "********* $entry - $($htGitTrackESLZ.($entry).commitId)"
+
+        foreach ($p in $htGitTrackESLZ.($entry).policies.keys) {
+            if ($cnt -ne (0)) {
+                if ($htGitTrackESLZ.(($htGitTrackESLZ.keys | sort-object)[($cnt - 1)]).policies.($p)) {
+                }
+                else {
+                    Write-Host "ADD $p NOT exists in previous $(($htGitTrackESLZ.keys | sort-object)[($cnt -1)])"
+                    $allESLZPolicies.$p.status = 'prod'
+                }
+            }
+            if ($cnt -ne ($htGitTrackESLZ.keys.count - 1)) {
+                if ($htGitTrackESLZ.(($htGitTrackESLZ.keys | sort-object)[($cnt + 1)]).policies.($p)) {
+                }
+                else {
+                    Write-Host "REMOVE $p NOT exists in next $(($htGitTrackESLZ.keys | sort-object)[($cnt + 1)])"
+                    $allESLZPolicies.$p.status = 'obsolete'
+                }
+            }
+        }
+        $cnt++
+    }
+
+    $finalReference = @{}
+    foreach ($entry in $allESLZPolicies.keys | sort-object) {
+        $thisOne = $allESLZPolicies.($entry)
+        $latestVersion = ([array]($thisOne.version | Sort-Object -Descending))[0]
+        $finalReference.($entry) = @{}
+        $finalReference.($entry).latestVersion = $latestVersion
+        $finalReference.($entry).status = $thisOne.status
+    }
+    $alzPolicies = $finalReference
+
+    Set-Location $workingPath
+
+    Write-Host 'remove dir ALZ'
+    Remove-Item -Recurse -Force $ALZPath
+
 }
 
 getEntities

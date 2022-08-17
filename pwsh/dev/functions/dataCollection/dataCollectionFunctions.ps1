@@ -1703,21 +1703,25 @@ function dataCollectionPolicyDefinitions {
                     $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[4]
                     $htTemp.ScopeMGLevel = $htManagementGroupsMgPath.((($hlpPolicyDefinitionId).split('/'))[4]).ParentNameChainCount
 
-                    if ($alzPolicies.($scopePolicyDefinition.name)) {
-                        WRITE-HOST "**** ALZ"
-                        if ($scopePolicyDefinition.Properties.metadata.version) {
-                            WRITE-HOST "**** ALZhasVer"
-                            $htTemp.ALZ = 'true'
-                            if ($alzPolicies.($scopePolicyDefinition.name).status -eq 'obsolete') {
-                                $htTemp.ALZState = 'obsolete'
-                            }
-                            else {
-                                if ($alzPolicies.($scopePolicyDefinition.name).latestVersion -eq $scopePolicyDefinition.Properties.metadata.version) {
-                                    $htTemp.ALZState = 'upToDate'
+                    if (-not $NoALZEvergreen) {
+                        if ($alzPolicies.($scopePolicyDefinition.name)) {
+                            if ($scopePolicyDefinition.Properties.metadata.version) {
+                                $htTemp.ALZ = 'true'
+                                if ($alzPolicies.($scopePolicyDefinition.name).status -eq 'obsolete') {
+                                    $htTemp.ALZState = 'obsolete'
                                 }
                                 else {
-                                    $htTemp.ALZState = 'outDated'
+                                    if ($alzPolicies.($scopePolicyDefinition.name).latestVersion -eq $scopePolicyDefinition.Properties.metadata.version) {
+                                        $htTemp.ALZState = 'upToDate'
+                                    }
+                                    else {
+                                        $htTemp.ALZState = 'outDated'
+                                    }
                                 }
+                            }
+                            else {
+                                $htTemp.ALZ = 'false'
+                                $htTemp.ALZState = ''
                             }
                         }
                         else {
@@ -1725,19 +1729,27 @@ function dataCollectionPolicyDefinitions {
                             $htTemp.ALZState = ''
                         }
                     }
-                    else {
-                        $htTemp.ALZ = 'false'
+                    else{
+                        $htTemp.ALZ = 'NoALZEvergreen'
                         $htTemp.ALZState = ''
                     }
                 }
+                
                 if ($hlpPolicyDefinitionId -like '/subscriptions/*') {
                     $htTemp.Scope = (($hlpPolicyDefinitionId).split('/'))[0..2] -join '/'
                     $htTemp.ScopeMgSub = 'Sub'
                     $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[2]
                     $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($hlpPolicyDefinitionId).split('/'))[2]).level
-                    #subscription scoped alz policies will be ignored 
-                    $htTemp.ALZ = 'ignored'
-                    $htTemp.ALZState = ''
+
+                    if (-not $NoALZEvergreen) {
+                        #subscription scoped alz policies will be ignored 
+                        $htTemp.ALZ = 'ignored'
+                        $htTemp.ALZState = ''
+                    }
+                    else {
+                        $htTemp.ALZ = 'NoALZEvergreen'
+                        $htTemp.ALZState = ''
+                    }
                 }
                 $htTemp.DisplayName = $($scopePolicyDefinition.Properties.displayname)
                 $htTemp.Description = $($policyDefinitionDescription)
@@ -2946,11 +2958,11 @@ function dataCollectionRoleDefinitions {
 
     if ($TargetMgOrSub -eq 'Sub') {
         $currentTask = "Getting Custom Role definitions for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-04-01&`$filter=type eq 'CustomRole'"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2018-07-01&`$filter=type eq 'CustomRole'"
     }
     if ($TargetMgOrSub -eq 'MG') {
         $currentTask = "Getting Custom Role definitions for Management Group: '$($scopeDisplayName)' ('$scopeId')"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-04-01&`$filter=type eq 'CustomRole'"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2018-07-01&`$filter=type eq 'CustomRole'"
     }
     $method = 'GET'
     $scopeCustomRoleDefinitions = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'

@@ -307,7 +307,7 @@ Param
     $AzAPICallVersion = '1.1.21',
 
     [string]
-    $ProductVersion = 'v6_major_20220805_1',
+    $ProductVersion = 'v6_major_20220815_4',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -472,6 +472,9 @@ Param
 
     [switch]
     $NoPIMEligibilityIntegrationRoleAssignmentsAll,
+
+    [switch]
+    $NoALZEvergreen,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
@@ -812,462 +815,189 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $arrayOrphanedResources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayPIMEligible = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 
-    $alzPolicies = @"
-    {
-        "Deny-Subnet-Without-UDR": {
-          "latestVersion": "2.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-APIMgmt": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-ACR": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-MySQL-sslEnforcement": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-MachineLearning-HbiWorkspace": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deny-VNET-Peering-To-Non-Approved-VNETs": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-EventGridTopic": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-ASC-Defender-SQLVM": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-Diagnostics-ApplicationGateway": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-ApiForFHIR": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-Redis-http": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-MachineLearning-PublicAccessWhenBehindVnet": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Append-Redis-sslEnforcement": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-PowerBIEmbedded": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Append-AppService-latestTLS": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-MachineLearning-ComputeCluster-RemoteLoginPortPublicAccess": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-ASC-Defender-ARM": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deny-Private-DNS-Zones": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Append-AppService-httpsonly": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-WVDHostPools": {
-          "latestVersion": "1.1.0",
-          "status": "prod"
-        },
-        "Deny-MachineLearning-Aks": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-Diagnostics-SignalR": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-DataExplorerCluster": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-PostgreSQL-sslEnforcement": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-HDInsight": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Append-KV-SoftDelete": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-Function": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-WVDAppGroup": {
-          "latestVersion": "1.0.1",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-AVDScalingPlans": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-ASC-Defender-ACR": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-Diagnostics-EventGridSub": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-ASC-Defender-Sql": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-Diagnostics-MariaDB": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-ASC-Defender-AKS": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deny-RDP-From-Internet": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-MySQL": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-MachineLearning-ComputeCluster-Scale": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-ASC-Defender-VMs": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deny-MachineLearning-Compute-VmSize": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-ASC-SecurityContacts": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-AA-child-resources": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-TimeSeriesInsights": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-FirewallPolicy": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-FrontDoor": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-CDNEndpoints": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-SQLMI": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-AppGW-Without-WAF": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-MySql-http": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-NIC": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-EventGridSystemTopic": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-Website": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Custom-Route-Table": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-AA": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Windows-DomainJoin": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-ASC-Defender-SA": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-Nsg-FlowLogs": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-RedisCache": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-MachineLearning-Compute-SubnetId": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deny-AppServiceApiApp-http": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-SQLElasticPools": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-VNetGW": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Budget": {
-          "latestVersion": "1.1.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-Firewall": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-DataFactory": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-DLAnalytics": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-AppServiceFunctionApp-http": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-VMSS": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-Relay": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Append-Redis-disableNonSslPort": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Nsg-FlowLogs-to-LA": {
-          "latestVersion": "1.1.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-Bastion": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-CosmosDB": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-VirtualNetwork": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-VM": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-TrafficManager": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-ASC-Defender-AKV": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-SQL-minTLS": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-MlWorkspace": {
-          "latestVersion": "1.1.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-WebServerFarm": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-ASC-Defender-DNS": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-Diagnostics-LoadBalancer": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Sql-vulnerabilityAssessments": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-PostgreSQL": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-WVDWorkspace": {
-          "latestVersion": "1.0.1",
-          "status": "prod"
-        },
-        "Deploy-Sql-SecurityAlertPolicies": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Sql-AuditingSettings": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-ACI": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-ASC-Defender-AppSrv": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-Diagnostics-AnalysisService": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Audit-MachineLearning-PrivateEndpointId": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deny-Sql-minTLS": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-DDoSProtection": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-ExpressRoute": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-AppServiceWebApp-http": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-CognitiveServices": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-Databricks": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-VNet-Peering": {
-          "latestVersion": "1.0.1",
-          "status": "prod"
-        },
-        "Deploy-Storage-sslEnforcement": {
-          "latestVersion": "1.1.0",
-          "status": "prod"
-        },
-        "Deploy-Default-Udr": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deny-Storage-minTLS": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-MediaService": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-Subnet-Without-Nsg": {
-          "latestVersion": "2.0.0",
-          "status": "prod"
-        },
-        "Deny-VNET-Peer-Cross-Sub": {
-          "latestVersion": "1.0.1",
-          "status": "prod"
-        },
-        "Deny-PostgreSql-http": {
-          "latestVersion": "1.0.1",
-          "status": "prod"
-        },
-        "Deny-PublicIP": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-iotHub": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-VNET-HubSpoke": {
-          "latestVersion": "1.1.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-NetworkSecurityGroups": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-SqlMi-minTLS": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-LogicAppsISE": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Sql-Tde": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-SqlMi-minTLS": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-PublicEndpoint-MariaDB": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
+    if (-not $NoALZEvergreen) {
+        $workingPath = Get-Location
+        $ALZPath = "$($OutputPath)/ALZ"
+        mkdir $ALZPath
+        Set-Location $ALZPath
+        $ALZCloneSuccess = $false
+        try {
+            git clone https://github.com/Azure/Enterprise-Scale.git
+            $ALZCloneSuccess = $true
         }
-      }
-"@ | ConvertFrom-Json
+        catch {
+            $_
+            $NoALZEvergreen = $true
+        }
+        
+        if ($ALZCloneSuccess) {
+            Set-Location "$($ALZPath)/Enterprise-Scale"
+  
+            $htGitTrackESLZPolicies = @{}
+            $htGitTrackESLZdataPolicies = @{}
+            $allESLZPolicies = @{}
+
+            $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/policies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
+            Write-Host $gitHist.Count
+            foreach ($commit in $gitHist | Sort-Object -Property Date) {
+                $dt = (([datetime]$commit.Date).ToUniversalTime()).ToString("yyyyMMddHHmmss")
+                $htGitTrackESLZPolicies.($dt) = @{}
+                $htGitTrackESLZPolicies.($dt).policies = @{}
+                $htGitTrackESLZPolicies.($dt).commitId = $commit.CommitId
+                $jsonRaw = git show "$($commit.CommitId):eslzArm/managementGroupTemplates/policyDefinitions/policies.json"
+            
+                $jsonESLZPolicies = $jsonRaw | ConvertFrom-Json
+                Write-Host "$dt $($commit.CommitId)"
+                if (($jsonESLZPolicies.variables.policies.policyDefinitions).Count -eq 0) {
+                    $eslzGoodToGo = $false
+                }
+                else {
+                    $eslzGoodToGo = $true
+                    $eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
+                    foreach ($policyDefinition in $eslzPolicies) {
+                        $policyJsonConv = ($policyDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
+                        $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonConv))
+                        $stringHash = [System.BitConverter]::ToString($hash) 
+                        $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
+                        $htGitTrackESLZPolicies.($dt).policies.($policyJsonRebuild.name) = @{}
+                        $htGitTrackESLZPolicies.($dt).policies.($policyJsonRebuild.name).version = $policyJsonRebuild.properties.metadata.version
+        
+                        if (-not $allESLZPolicies.($policyJsonRebuild.name)) {
+                            $allESLZPolicies.($policyJsonRebuild.name) = @{}
+                            $allESLZPolicies.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
+                            $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                            $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                            $allESLZPolicies.($policyJsonRebuild.name).status = 'prod'
+                        }
+                        else {
+                            if ($allESLZPolicies.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                                $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                            }
+                            if (-not $allESLZPolicies.($policyJsonRebuild.name).$stringHash) {
+                                $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                            }
+                        }
+                    }
+                }
+            }
+
+            $cnt = 0
+            foreach ($entry in $htGitTrackESLZPolicies.keys | sort-object) {
+                Write-Host ''
+                Write-Host "********* $entry - $($htGitTrackESLZPolicies.($entry).commitId)"
+        
+                foreach ($p in $htGitTrackESLZPolicies.($entry).policies.keys) {
+                    if ($cnt -ne (0)) {
+                        if ($htGitTrackESLZPolicies.(($htGitTrackESLZPolicies.keys | sort-object)[($cnt - 1)]).policies.($p)) {
+                        }
+                        else {
+                            Write-Host "ADD $p NOT exists in previous $(($htGitTrackESLZPolicies.keys | sort-object)[($cnt -1)])"
+                            $allESLZPolicies.$p.status = 'prod'
+                        }
+                    }
+                    if ($cnt -ne ($htGitTrackESLZPolicies.keys.count - 1)) {
+                        if ($htGitTrackESLZPolicies.(($htGitTrackESLZPolicies.keys | sort-object)[($cnt + 1)]).policies.($p)) {
+                        }
+                        else {
+                            Write-Host "REMOVE $p NOT exists in next $(($htGitTrackESLZPolicies.keys | sort-object)[($cnt + 1)])"
+                            $allESLZPolicies.$p.status = 'obsolete'
+                        }
+                    }
+                }
+                $cnt++
+            }
+
+            $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/dataPolicies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
+            Write-Host $gitHist.Count
+            foreach ($commit in $gitHist | Sort-Object -Property Date) {
+                $dt = (([datetime]$commit.Date).ToUniversalTime()).ToString("yyyyMMddHHmmss")
+                $htGitTrackESLZdataPolicies.($dt) = @{}
+                $htGitTrackESLZdataPolicies.($dt).policies = @{}
+                $htGitTrackESLZdataPolicies.($dt).commitId = $commit.CommitId
+                $jsonRaw = git show "$($commit.CommitId):eslzArm/managementGroupTemplates/policyDefinitions/dataPolicies.json"
+            
+                $jsonESLZPolicies = $jsonRaw | ConvertFrom-Json
+                Write-Host "$dt $($commit.CommitId)"
+                if (($jsonESLZPolicies.variables.policies.policyDefinitions).Count -eq 0) {
+                    $eslzGoodToGo = $false
+                }
+                else {
+                    $eslzGoodToGo = $true
+                    $eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
+                    foreach ($policyDefinition in $eslzPolicies) {
+                        $policyJsonConv = ($policyDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
+                        $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonConv))
+                        $stringHash = [System.BitConverter]::ToString($hash) 
+                        $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
+                        $htGitTrackESLZdataPolicies.($dt).policies.($policyJsonRebuild.name) = @{}
+                        $htGitTrackESLZdataPolicies.($dt).policies.($policyJsonRebuild.name).version = $policyJsonRebuild.properties.metadata.version
+        
+                        if (-not $allESLZPolicies.($policyJsonRebuild.name)) {
+                            $allESLZPolicies.($policyJsonRebuild.name) = @{}
+                            $allESLZPolicies.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
+                            $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                            $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                            $allESLZPolicies.($policyJsonRebuild.name).status = 'prod'
+                        }
+                        else {
+                            if ($allESLZPolicies.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                                $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                            }
+                            if (-not $allESLZPolicies.($policyJsonRebuild.name).$stringHash) {
+                                $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                            }
+                        }
+                    }
+                }
+            }
+        
+            $cnt = 0
+            foreach ($entry in $htGitTrackESLZdataPolicies.keys | sort-object) {
+                Write-Host ''
+                Write-Host "********* $entry - $($htGitTrackESLZdataPolicies.($entry).commitId)"
+        
+                foreach ($p in $htGitTrackESLZdataPolicies.($entry).policies.keys) {
+                    if ($cnt -ne (0)) {
+                        if ($htGitTrackESLZdataPolicies.(($htGitTrackESLZdataPolicies.keys | sort-object)[($cnt - 1)]).policies.($p)) {
+                        }
+                        else {
+                            Write-Host "ADD $p NOT exists in previous $(($htGitTrackESLZdataPolicies.keys | sort-object)[($cnt -1)])"
+                            $allESLZPolicies.$p.status = 'prod'
+                        }
+                    }
+                    if ($cnt -ne ($htGitTrackESLZdataPolicies.keys.count - 1)) {
+                        if ($htGitTrackESLZdataPolicies.(($htGitTrackESLZdataPolicies.keys | sort-object)[($cnt + 1)]).policies.($p)) {
+                        }
+                        else {
+                            Write-Host "REMOVE $p NOT exists in next $(($htGitTrackESLZdataPolicies.keys | sort-object)[($cnt + 1)])"
+                            $allESLZPolicies.$p.status = 'obsolete'
+                        }
+                    }
+                }
+                $cnt++
+            }
+        
+            $finalReference = @{}
+            foreach ($entry in $allESLZPolicies.keys | sort-object) {
+                $thisOne = $allESLZPolicies.($entry)
+                $latestVersion = ([array]($thisOne.version | Sort-Object -Descending))[0]
+                $finalReference.($entry) = @{}
+                $finalReference.($entry).latestVersion = $latestVersion
+                $finalReference.($entry).status = $thisOne.status
+            }
+            $alzPolicies = $finalReference
+        
+            Set-Location $workingPath
+        
+            Write-Host 'remove dir ALZ'
+            Remove-Item -Recurse -Force $ALZPath
+        }
+        else {
+            Set-Location $workingPath
+        }
+    }
+    
+
 }
 
 getEntities
