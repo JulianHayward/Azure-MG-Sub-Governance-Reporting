@@ -11085,6 +11085,7 @@ function processTenantSummary() {
                     Scope                 = $tenantPolicy.ScopeMgSub
                     ScopeId               = $tenantPolicy.ScopeId
                     PolicyDisplayName     = $tenantPolicy.DisplayName
+                    PolicyDescription     = $tenantPolicy.Description
                     PolicyDefinitionId    = $tenantPolicy.PolicyDefinitionId
                     PolicyEffect          = $effect
                     PolicyCategory        = $tenantPolicy.Category
@@ -11107,6 +11108,7 @@ function processTenantSummary() {
                     Scope                  = $tenantPolicy.ScopeMgSub
                     ScopeId                = $tenantPolicy.ScopeId
                     PolicyDisplayName      = $tenantPolicy.DisplayName
+                    PolicyDescription      = $tenantPolicy.Description
                     PolicyDefinitionName   = $tenantPolicy.PolicyDefinitionId -replace '.*/'
                     PolicyDefinitionId     = $tenantPolicy.PolicyDefinitionId
                     PolicyEffect           = $effect
@@ -11134,6 +11136,7 @@ function processTenantSummary() {
                     Scope                  = $null
                     ScopeId                = $null
                     PolicyDisplayName      = $tenantPolicy.DisplayName
+                    PolicyDescription      = $tenantPolicy.Description
                     PolicyDefinitionName   = $tenantPolicy.PolicyDefinitionId -replace '.*/'
                     PolicyDefinitionId     = $tenantPolicy.PolicyDefinitionId
                     PolicyEffect           = $effect
