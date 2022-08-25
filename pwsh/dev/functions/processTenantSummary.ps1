@@ -999,6 +999,7 @@ function processTenantSummary() {
                     UpdatedBy             = $updatedBy
                     ALZ                   = $tenantPolicy.ALZ
                     ALZState              = $tenantPolicy.ALZState
+                    ALZLatestVer          = $tenantPolicy.ALZLatestVer
                     #Json                  = [string]($tenantPolicy.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
                 })
 
@@ -1029,6 +1030,7 @@ function processTenantSummary() {
                     Json                   = $tenantPolicy.Json
                     ALZ                    = $tenantPolicy.ALZ
                     ALZState               = $tenantPolicy.ALZState
+                    ALZLatestVer           = $tenantPolicy.ALZLatestVer
                 })
         }
         else {
@@ -1059,6 +1061,7 @@ function processTenantSummary() {
                     Json                   = $tenantPolicy.Json
                     ALZ                    = $tenantPolicy.ALZ
                     ALZState               = $tenantPolicy.ALZState
+                    ALZLatestVer           = $tenantPolicy.ALZLatestVer
                 })
         }
     }
@@ -1629,13 +1632,23 @@ extensions: [{ name: 'sort' }]
         $policySetPoliciesArray = [System.Collections.ArrayList]@()
         $policySetPoliciesArrayClean = [System.Collections.ArrayList]@()
         $policySetPoliciesArrayIdOnly = [System.Collections.ArrayList]@()
+        $policySetPoliciesBuiltinArrayIdOnlyCSV = [System.Collections.ArrayList]@()
+        $policySetPoliciesStaticArrayIdOnlyCSV = [System.Collections.ArrayList]@()
+        $policySetPoliciesCustomArrayIdOnlyCSV = [System.Collections.ArrayList]@()
         foreach ($policyPolicySet in $tenantPolicySet.PolicySetPolicyIds) {
             $hlpPolicyDef = ($htCacheDefinitionsPolicy).($policyPolicySet)
 
-            if ($hlpPolicyDef.Type -eq 'Builtin') {
+            if ($hlpPolicyDef.Type -eq 'Builtin' -or $hlpPolicyDef.Type -eq 'Static') {
                 $null = $policySetPoliciesArray.Add("$($hlpPolicyDef.LinkToAzAdvertizer) ($policyPolicySet)")
+                if ($hlpPolicyDef.Type -eq 'Builtin') {
+                    $null = $policySetPoliciesBuiltinArrayIdOnlyCSV.Add($policyPolicySet -replace '/providers/microsoft.authorization/policydefinitions/')
+                }
+                if ($hlpPolicyDef.Type -eq 'Static') {
+                    $null = $policySetPoliciesStaticArrayIdOnlyCSV.Add($policyPolicySet -replace '/providers/microsoft.authorization/policydefinitions/')
+                }
             }
             else {
+                $null = $policySetPoliciesCustomArrayIdOnlyCSV.Add($policyPolicySet)
                 if ($hlpPolicyDef.DisplayName) {
                     if ([string]::IsNullOrEmpty($hlpPolicyDef.DisplayName)) {
                         $displayName = 'noDisplayNameGiven'
@@ -1649,6 +1662,7 @@ extensions: [{ name: 'sort' }]
                 }
                 $null = $policySetPoliciesArray.Add("<b>$($displayName -replace '<', '&lt;' -replace '>', '&gt;')</b> ($policyPolicySet)")
             }
+
             if ($hlpPolicyDef.DisplayName) {
                 if ([string]::IsNullOrEmpty($hlpPolicyDef.DisplayName)) {
                     $displayName = 'noDisplayNameGiven'
@@ -1660,11 +1674,23 @@ extensions: [{ name: 'sort' }]
             else {
                 $displayName = 'noDisplayNameGiven'
             }
+
             $null = $policySetPoliciesArrayClean.Add("$($displayName) ($policyPolicySet)")
             $null = $policySetPoliciesArrayIdOnly.Add($policyPolicySet)
         }
+
         if ($policySetPoliciesArrayIdOnly.Count -eq 0) {
             $policySetPoliciesArrayIdOnly = $null
+        }
+
+        if ($policySetPoliciesBuiltinArrayIdOnlyCSV.Count -eq 0) {
+            $policySetPoliciesBuiltinArrayIdOnlyCSV = $null
+        }
+        if ($policySetPoliciesStaticArrayIdOnlyCSV.Count -eq 0) {
+            $policySetPoliciesStaticArrayIdOnlyCSV = $null
+        }
+        if ($policySetPoliciesCustomArrayIdOnlyCSV.Count -eq 0) {
+            $policySetPoliciesCustomArrayIdOnlyCSV = $null
         }
 
         $policySetPoliciesCount = ($policySetPoliciesArray).count
@@ -1675,6 +1701,13 @@ extensions: [{ name: 'sort' }]
         else {
             $policiesUsed = '0 really?'
             $policiesUsedClean = '0 really?'
+        }
+
+        if ($tenantPolicySet.Json.properties.metadata.version) {
+            $policySetVersion = $tenantPolicySet.Json.properties.metadata.version
+        }
+        else {
+            $policySetVersion = 'n/a'
         }
 
         if ($tenantPolicySet.Type -eq 'Custom') {
@@ -1734,58 +1767,81 @@ extensions: [{ name: 'sort' }]
                     UpdatedOn             = $updatedOn
                     UpdatedBy             = $updatedBy
                     #Json                  = [string]($tenantPolicySet.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
+                    ALZ                   = $tenantPolicySet.ALZ
+                    ALZState              = $tenantPolicySet.ALZState
+                    ALZLatestVer          = $tenantPolicySet.ALZLatestVer
                 })
 
             $null = $script:tenantPolicySetsDetailed.Add([PSCustomObject]@{
-                    Type                    = 'Custom'
-                    ScopeMGLevel            = $tenantPolicySet.ScopeMGLevel
-                    Scope                   = $tenantPolicySet.ScopeMgSub
-                    ScopeId                 = $tenantPolicySet.ScopeId
-                    PolicySetDisplayName    = $tenantPolicySet.DisplayName
-                    PolicySetDefinitionName = $tenantPolicySet.PolicyDefinitionId -replace '.*/'
-                    PolicySetDefinitionId   = $tenantPolicySet.PolicyDefinitionId
-                    PolicySetCategory       = $tenantPolicySet.Category
-                    UniqueAssignmentsCount  = $policySetUniqueAssignmentsCount
-                    UniqueAssignments       = $policySetUniqueAssignments
-                    PoliciesUsedCount       = $policySetPoliciesCount
-                    PoliciesUsed            = $policySetPoliciesArrayClean
-                    PoliciesUsed4JSON       = $policySetPoliciesArrayIdOnly
-                    PoliciesUsed4CSV        = $policySetPoliciesArrayIdOnly -join "$CsvDelimiterOpposite "
-                    CreatedOn               = $createdOn
-                    CreatedBy               = $createdBy
-                    CreatedByJson           = $createdByJson
-                    UpdatedOn               = $updatedOn
-                    UpdatedBy               = $updatedBy
-                    UpdatedByJson           = $updatedByJson
+                    Type                     = 'Custom'
+                    ScopeMGLevel             = $tenantPolicySet.ScopeMGLevel
+                    Scope                    = $tenantPolicySet.ScopeMgSub
+                    ScopeId                  = $tenantPolicySet.ScopeId
+                    PolicySetDisplayName     = $tenantPolicySet.DisplayName
+                    PolicySetDescription     = $tenantPolicySet.Description
+                    PolicySetDefinitionName  = $tenantPolicySet.PolicyDefinitionId -replace '.*/'
+                    PolicySetDefinitionId    = $tenantPolicySet.PolicyDefinitionId
+                    PolicySetCategory        = $tenantPolicySet.Category
+                    PolicySetVersion         = $policySetVersion
+                    UniqueAssignmentsCount   = $policySetUniqueAssignmentsCount
+                    UniqueAssignments        = $policySetUniqueAssignments
+                    PoliciesUsedCount        = $policySetPoliciesCount
+                    PoliciesUsedBuiltinCount = $policySetPoliciesBuiltinArrayIdOnlyCSV.Count
+                    PoliciesUsedStaticCount  = $policySetPoliciesStaticArrayIdOnlyCSV.Count
+                    PoliciesUsedCustomCount  = $policySetPoliciesCustomArrayIdOnlyCSV.Count
+                    PoliciesUsed             = $policySetPoliciesArrayClean
+                    PoliciesUsed4JSON        = $policySetPoliciesArrayIdOnly
+                    PoliciesUsedBuiltin      = $policySetPoliciesBuiltinArrayIdOnlyCSV -join "$CsvDelimiterOpposite "
+                    PoliciesUsedStatic       = $policySetPoliciesStaticArrayIdOnlyCSV -join "$CsvDelimiterOpposite "
+                    PoliciesUsedCustom       = $policySetPoliciesCustomArrayIdOnlyCSV -join "$CsvDelimiterOpposite "
+                    CreatedOn                = $createdOn
+                    CreatedBy                = $createdBy
+                    CreatedByJson            = $createdByJson
+                    UpdatedOn                = $updatedOn
+                    UpdatedBy                = $updatedBy
+                    UpdatedByJson            = $updatedByJson
                     #Json                  = [string]($tenantPolicySet.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
-                    Json                    = $tenantPolicySet.Json
+                    Json                     = $tenantPolicySet.Json
+                    ALZ                      = $tenantPolicySet.ALZ
+                    ALZState                 = $tenantPolicySet.ALZState
+                    ALZLatestVer             = $tenantPolicySet.ALZLatestVer
                 })
 
         }
         else {
             $null = $script:tenantPolicySetsDetailed.Add([PSCustomObject]@{
-                    Type                    = 'BuiltIn'
-                    ScopeMGLevel            = $null
-                    Scope                   = $null
-                    ScopeId                 = $null
-                    PolicySetDisplayName    = $tenantPolicySet.DisplayName
-                    PolicySetDefinitionName = $tenantPolicySet.PolicyDefinitionId -replace '.*/'
-                    PolicySetDefinitionId   = $tenantPolicySet.PolicyDefinitionId
-                    PolicySetCategory       = $tenantPolicySet.Category
-                    UniqueAssignmentsCount  = $policySetUniqueAssignmentsCount
-                    UniqueAssignments       = $policySetUniqueAssignments
-                    PoliciesUsedCount       = $policySetPoliciesCount
-                    PoliciesUsed            = $policySetPoliciesArrayClean
-                    PoliciesUsed4JSON       = $policySetPoliciesArrayIdOnly
-                    PoliciesUsed4CSV        = $policySetPoliciesArrayIdOnly -join "$CsvDelimiterOpposite "
-                    CreatedOn               = ''
-                    CreatedBy               = ''
-                    CreatedByJson           = $null
-                    UpdatedOn               = ''
-                    UpdatedBy               = ''
-                    UpdatedByJson           = $null
+                    Type                     = 'BuiltIn'
+                    ScopeMGLevel             = $null
+                    Scope                    = $null
+                    ScopeId                  = $null
+                    PolicySetDisplayName     = $tenantPolicySet.DisplayName
+                    PolicySetDescription     = $tenantPolicySet.Description
+                    PolicySetDefinitionName  = $tenantPolicySet.PolicyDefinitionId -replace '.*/'
+                    PolicySetDefinitionId    = $tenantPolicySet.PolicyDefinitionId
+                    PolicySetCategory        = $tenantPolicySet.Category
+                    PolicySetVersion         = $policySetVersion
+                    UniqueAssignmentsCount   = $policySetUniqueAssignmentsCount
+                    UniqueAssignments        = $policySetUniqueAssignments
+                    PoliciesUsedCount        = $policySetPoliciesCount
+                    PoliciesUsedBuiltinCount = $policySetPoliciesBuiltinArrayIdOnlyCSV.Count
+                    PoliciesUsedStaticCount  = $policySetPoliciesStaticArrayIdOnlyCSV.Count
+                    PoliciesUsedCustomCount  = $policySetPoliciesCustomArrayIdOnlyCSV.Count
+                    PoliciesUsed             = $policySetPoliciesArrayClean
+                    PoliciesUsed4JSON        = $policySetPoliciesArrayIdOnly
+                    PoliciesUsedBuiltin      = $policySetPoliciesBuiltinArrayIdOnlyCSV -join "$CsvDelimiterOpposite "
+                    PoliciesUsedStatic       = $policySetPoliciesStaticArrayIdOnlyCSV -join "$CsvDelimiterOpposite "
+                    PoliciesUsedCustom       = $policySetPoliciesCustomArrayIdOnlyCSV -join "$CsvDelimiterOpposite "
+                    CreatedOn                = ''
+                    CreatedBy                = ''
+                    CreatedByJson            = $null
+                    UpdatedOn                = ''
+                    UpdatedBy                = ''
+                    UpdatedByJson            = $null
                     #Json                  = [string]($tenantPolicySet.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
-                    Json                    = $tenantPolicySet.Json
+                    Json                     = $tenantPolicySet.Json
+                    ALZ                      = $tenantPolicySet.ALZ
+                    ALZState                 = $tenantPolicySet.ALZState
+                    ALZLatestVer             = $tenantPolicySet.ALZLatestVer
                 })
         }
     }

@@ -1703,12 +1703,13 @@ function dataCollectionPolicyDefinitions {
                     $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[4]
                     $htTemp.ScopeMGLevel = $htManagementGroupsMgPath.((($hlpPolicyDefinitionId).split('/'))[4]).ParentNameChainCount
 
-                    if (-not $NoALZEvergreen) {
+                    if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
                         if ($alzPolicies.($scopePolicyDefinition.name)) {
                             if ($scopePolicyDefinition.Properties.metadata.version) {
                                 $htTemp.ALZ = 'true'
                                 if ($alzPolicies.($scopePolicyDefinition.name).status -eq 'obsolete') {
                                     $htTemp.ALZState = 'obsolete'
+                                    $htTemp.ALZLatestVer = ''
                                 }
                                 else {
                                     if ($alzPolicies.($scopePolicyDefinition.name).latestVersion -eq $scopePolicyDefinition.Properties.metadata.version) {
@@ -1717,21 +1718,26 @@ function dataCollectionPolicyDefinitions {
                                     else {
                                         $htTemp.ALZState = 'outDated'
                                     }
+                                    $htTemp.ALZLatestVer = $alzPolicies.($scopePolicyDefinition.name).latestVersion
                                 }
+                                
                             }
                             else {
                                 $htTemp.ALZ = 'false'
                                 $htTemp.ALZState = ''
+                                $htTemp.ALZLatestVer = ''
                             }
                         }
                         else {
                             $htTemp.ALZ = 'false'
                             $htTemp.ALZState = ''
+                            $htTemp.ALZLatestVer = ''
                         }
                     }
                     else{
                         $htTemp.ALZ = 'NoALZEvergreen'
                         $htTemp.ALZState = ''
+                        $htTemp.ALZLatestVer = ''
                     }
                 }
                 
@@ -1741,14 +1747,16 @@ function dataCollectionPolicyDefinitions {
                     $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[2]
                     $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($hlpPolicyDefinitionId).split('/'))[2]).level
 
-                    if (-not $NoALZEvergreen) {
+                    if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
                         #subscription scoped alz policies will be ignored 
                         $htTemp.ALZ = 'ignored'
                         $htTemp.ALZState = ''
+                        $htTemp.ALZLatestVer = ''
                     }
                     else {
                         $htTemp.ALZ = 'NoALZEvergreen'
                         $htTemp.ALZState = ''
+                        $htTemp.ALZLatestVer = ''
                     }
                 }
                 $htTemp.DisplayName = $($scopePolicyDefinition.Properties.displayname)
@@ -1863,7 +1871,7 @@ function dataCollectionPolicySetDefinitions {
         [string]$scopeDisplayName,
         $subscriptionQuotaId
     )
-
+    
     if ($TargetMgOrSub -eq 'Sub') {
         $currentTask = "Getting PolicySet definitions for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Custom'"
@@ -1912,12 +1920,61 @@ function dataCollectionPolicySetDefinitions {
                 $htTemp.ScopeMgSub = 'Mg'
                 $htTemp.ScopeId = (($scopePolicySetDefinition.Id).split('/'))[4]
                 $htTemp.ScopeMGLevel = $htManagementGroupsMgPath.((($scopePolicySetDefinition.Id).split('/'))[4]).ParentNameChainCount
+
+                if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
+                    if ($alzPolicySets.($scopePolicySetDefinition.name)) {
+                        if ($scopePolicySetDefinition.Properties.metadata.version) {
+                            $htTemp.ALZ = 'true'
+                            if ($alzPolicySets.($scopePolicySetDefinition.name).status -eq 'obsolete') {
+                                $htTemp.ALZState = 'obsolete'
+                                $htTemp.ALZLatestVer = ''
+                            }
+                            else {
+                                if ($alzPolicySets.($scopePolicySetDefinition.name).latestVersion -eq $scopePolicySetDefinition.Properties.metadata.version) {
+                                    $htTemp.ALZState = 'upToDate'
+                                }
+                                else {
+                                    $htTemp.ALZState = 'outDated'
+                                }
+                                $htTemp.ALZLatestVer = $alzPolicySets.($scopePolicySetDefinition.name).latestVersion
+                            }
+                            
+                        }
+                        else {
+                            $htTemp.ALZ = 'false'
+                            $htTemp.ALZState = ''
+                            $htTemp.ALZLatestVer = ''
+                        }
+                    }
+                    else {
+                        $htTemp.ALZ = 'false'
+                        $htTemp.ALZState = ''
+                        $htTemp.ALZLatestVer = ''
+                    }
+                }
+                else{
+                    $htTemp.ALZ = 'NoALZEvergreen'
+                    $htTemp.ALZState = ''
+                    $htTemp.ALZLatestVer = ''
+                }
             }
             if ($scopePolicySetDefinition.Id -like '/subscriptions/*') {
                 $htTemp.Scope = (($scopePolicySetDefinition.Id).split('/'))[0..2] -join '/'
                 $htTemp.ScopeMgSub = 'Sub'
                 $htTemp.ScopeId = (($scopePolicySetDefinition.Id).split('/'))[2]
                 $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($scopePolicySetDefinition.Id).split('/'))[2]).level
+
+                if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
+                    #subscription scoped alz policySets will be ignored 
+                    $htTemp.ALZ = 'ignored'
+                    $htTemp.ALZState = ''
+                    $htTemp.ALZLatestVer = ''
+                }
+                else {
+                    $htTemp.ALZ = 'NoALZEvergreen'
+                    $htTemp.ALZState = ''
+                    $htTemp.ALZLatestVer = ''
+                }
             }
             $htTemp.DisplayName = $($scopePolicySetDefinition.Properties.displayname)
             $htTemp.Description = $($policySetDefinitionDescription)

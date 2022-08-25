@@ -307,7 +307,7 @@ Param
     $AzAPICallVersion = '1.1.21',
 
     [string]
-    $ProductVersion = 'v6_major_20220815_3',
+    $ProductVersion = 'v6_major_20220825_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -473,6 +473,9 @@ Param
     [switch]
     $NoPIMEligibilityIntegrationRoleAssignmentsAll,
 
+    [switch]
+    $NoALZEvergreen,
+
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
     $LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -568,7 +571,8 @@ function addHtParameters {
         PolicyAtScopeOnly                            = [bool]$PolicyAtScopeOnly
         RBACAtScopeOnly                              = [bool]$RBACAtScopeOnly
         DoPSRule                                     = [bool]$DoPSRule
-        PSRuleFailedOnly                             = [bool]$PSRuleFailedOnly 
+        PSRuleFailedOnly                             = [bool]$PSRuleFailedOnly
+        NoALZEvergreen                               = [bool]$NoALZEvergreen
     }
     Write-Host 'htParameters:'
     $azAPICallConf['htParameters'] | format-table -AutoSize | Out-String
@@ -1733,7 +1737,7 @@ function cacheBuiltIn {
     $startDefinitionsCaching = Get-Date
     Write-Host 'Caching built-in Policy and RBAC Role definitions'
 
-    $arrayBuiltInCaching = @('PolicyDefinitions', 'PolicySetDefinitions', 'RoleDefinitions')
+    $arrayBuiltInCaching = @('PolicyDefinitions', 'PolicyDefinitionsStatic', 'PolicySetDefinitions', 'RoleDefinitions')
 
     $arrayBuiltInCaching | ForEach-Object -parallel {
 
@@ -1753,7 +1757,7 @@ function cacheBuiltIn {
             $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Authorization/policyDefinitions?api-version=2021-06-01&`$filter=policyType eq 'BuiltIn'"
             $method = 'GET'
             $requestPolicyDefinitionAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
-
+            
             Write-Host " $($requestPolicyDefinitionAPI.Count) built-in Policy definitions returned"
             $builtinPolicyDefinitions = $requestPolicyDefinitionAPI.where( { $_.properties.policyType -eq 'BuiltIn' } )
 
@@ -1772,7 +1776,7 @@ function cacheBuiltIn {
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$(($builtinPolicyDefinition.Id -replace '.*/')).html`" target=`"_blank`" rel=`"noopener`">$($builtinPolicyDefinition.Properties.displayname)</a>"
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ALZ = $false
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ALZState = ''
-                
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ALZLatestVer = ''
                     if ($builtinPolicyDefinition.Properties.metadata.deprecated -eq $true -or $builtinPolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
                         $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Deprecated = $builtinPolicyDefinition.Properties.metadata.deprecated
                 }
@@ -1835,6 +1839,95 @@ function cacheBuiltIn {
             }
         }
 
+        if ($builtInCapability -eq 'PolicyDefinitionsStatic') {
+            $currentTask = 'Caching static Policy definitions'
+            #Write-Host " $currentTask"
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Authorization/policyDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Static'"
+            $method = 'GET'
+            $requestPolicyDefinitionAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
+            
+            Write-Host " $($requestPolicyDefinitionAPI.Count) static Policy definitions returned"
+            $staticPolicyDefinitions = $requestPolicyDefinitionAPI.where( { $_.properties.policyType -eq 'Static' } )
+
+            foreach ($staticPolicyDefinition in $staticPolicyDefinitions) {
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()) = @{}
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Id = ($staticPolicyDefinition.Id).ToLower()
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).ScopeMGLevel = ''
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Scope = 'n/a'
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).ScopeMgSub = 'n/a'
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).ScopeId = 'n/a'
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).DisplayName = $staticPolicyDefinition.Properties.displayname
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Description = $staticPolicyDefinition.Properties.description
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Type = $staticPolicyDefinition.Properties.policyType
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Category = $staticPolicyDefinition.Properties.metadata.category
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).PolicyDefinitionId = ($staticPolicyDefinition.Id).ToLower()
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$(($staticPolicyDefinition.Id -replace '.*/')).html`" target=`"_blank`" rel=`"noopener`">$($staticPolicyDefinition.Properties.displayname)</a>"
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).ALZ = $false
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).ALZState = ''
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).ALZLatestVer = ''
+                
+                    if ($staticPolicyDefinition.Properties.metadata.deprecated -eq $true -or $staticPolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
+                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Deprecated = $staticPolicyDefinition.Properties.metadata.deprecated
+                }
+                else {
+                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Deprecated = $false
+                }
+                if ($staticPolicyDefinition.Properties.metadata.preview -eq $true -or $staticPolicyDefinition.Properties.displayname -like "``[*Preview``]*") {
+                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Preview = $staticPolicyDefinition.Properties.metadata.preview
+                }
+                else {
+                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Preview = $false
+                }
+                #effects
+                if ($staticPolicyDefinition.properties.parameters.effect.defaultvalue) {
+                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectDefaultValue = $staticPolicyDefinition.properties.parameters.effect.defaultvalue
+                    if ($staticPolicyDefinition.properties.parameters.effect.allowedValues) {
+                            $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectAllowedValue = $staticPolicyDefinition.properties.parameters.effect.allowedValues -join ','
+                    }
+                    else {
+                            $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
+                    }
+                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
+                }
+                else {
+                    if ($staticPolicyDefinition.properties.parameters.policyEffect.defaultValue) {
+                            $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectDefaultValue = $staticPolicyDefinition.properties.parameters.policyEffect.defaultvalue
+                        if ($staticPolicyDefinition.properties.parameters.policyEffect.allowedValues) {
+                                $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectAllowedValue = $staticPolicyDefinition.properties.parameters.policyEffect.allowedValues -join ','
+                        }
+                        else {
+                                $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
+                        }
+                            $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
+                    }
+                    else {
+                            $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectFixedValue = $staticPolicyDefinition.Properties.policyRule.then.effect
+                            $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectDefaultValue = 'n/a'
+                            $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
+                    }
+                }
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Json = $staticPolicyDefinition
+
+                if (-not [string]::IsNullOrEmpty($staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
+                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
+                    foreach ($roledefinitionId in $staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
+                        if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
+                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId) = @{}
+                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies = [array]$staticPolicyDefinition.Id
+                        }
+                        else {
+                            $usedInPolicies = $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies
+                            $usedInPolicies += $staticPolicyDefinition.Id
+                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies = $usedInPolicies
+                        }
+                    }
+                }
+                else {
+                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).RoleDefinitionIds = 'n/a'
+                }
+            }
+        }
+
         if ($builtInCapability -eq 'PolicySetDefinitions') {
 
             $currentTask = 'Caching built-in PolicySet definitions'
@@ -1846,39 +1939,42 @@ function cacheBuiltIn {
             $builtinPolicySetDefinitions = $requestPolicySetDefinitionAPI.where( { $_.properties.policyType -eq 'BuiltIn' } )
             Write-Host " $($requestPolicySetDefinitionAPI.Count) built-in PolicySet definitions returned"
             foreach ($builtinPolicySetDefinition in $builtinPolicySetDefinitions) {
-                ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()) = @{}
-                ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).Id = ($builtinPolicySetDefinition.Id).ToLower()
-                ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).ScopeMGLevel = ''
-                ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).Scope = 'n/a'
-                ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).ScopeMgSub = 'n/a'
-                ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).ScopeId = 'n/a'
-                ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).DisplayName = $builtinPolicySetDefinition.Properties.displayname
-                ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).Description = $builtinPolicySetDefinition.Properties.description
-                ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).Type = $builtinPolicySetDefinition.Properties.policyType
-                ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).Category = $builtinPolicySetDefinition.Properties.metadata.category
-                ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).PolicyDefinitionId = ($builtinPolicySetDefinition.Id).ToLower()
-                ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$(($builtinPolicySetDefinition.Id -replace '.*/')).html`" target=`"_blank`" rel=`"noopener`">$($builtinPolicySetDefinition.Properties.displayname)</a>"
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()) = @{}
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Id = ($builtinPolicySetDefinition.Id).ToLower()
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).ScopeMGLevel = ''
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Scope = 'n/a'
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).ScopeMgSub = 'n/a'
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).ScopeId = 'n/a'
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).DisplayName = $builtinPolicySetDefinition.Properties.displayname
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Description = $builtinPolicySetDefinition.Properties.description
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Type = $builtinPolicySetDefinition.Properties.policyType
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Category = $builtinPolicySetDefinition.Properties.metadata.category
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).PolicyDefinitionId = ($builtinPolicySetDefinition.Id).ToLower()
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$(($builtinPolicySetDefinition.Id -replace '.*/')).html`" target=`"_blank`" rel=`"noopener`">$($builtinPolicySetDefinition.Properties.displayname)</a>"
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).ALZ = $false
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).ALZState = ''
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).ALZLatestVer = ''
                 $arrayPolicySetPolicyIdsToLower = @()
                 $htPolicySetPolicyRefIds = @{}
                 $arrayPolicySetPolicyIdsToLower = foreach ($policySetPolicy in $builtinPolicySetDefinition.properties.policydefinitions) {
                     ($policySetPolicy.policyDefinitionId).ToLower()
                     $htPolicySetPolicyRefIds.($policySetPolicy.policyDefinitionReferenceId) = ($policySetPolicy.policyDefinitionId)
                 }
-                ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
-                ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).PolicySetPolicyRefIds = $htPolicySetPolicyRefIds
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).PolicySetPolicyRefIds = $htPolicySetPolicyRefIds
                 if ($builtinPolicySetDefinition.Properties.metadata.deprecated -eq $true -or $builtinPolicySetDefinition.Properties.displayname -like "``[Deprecated``]*") {
-                    ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).Deprecated = $builtinPolicySetDefinition.Properties.metadata.deprecated
+                    $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Deprecated = $builtinPolicySetDefinition.Properties.metadata.deprecated
                 }
                 else {
-                    ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).Deprecated = $false
+                    $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Deprecated = $false
                 }
                 if ($builtinPolicySetDefinition.Properties.metadata.preview -eq $true -or $builtinPolicySetDefinition.Properties.displayname -like "``[*Preview``]*") {
-                    ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).Preview = $builtinPolicySetDefinition.Properties.metadata.preview
+                    $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Preview = $builtinPolicySetDefinition.Properties.metadata.preview
                 }
                 else {
-                    ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).Preview = $false
+                    $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Preview = $false
                 }
-                ($script:htCacheDefinitionsPolicySet).(($builtinPolicySetDefinition.Id).ToLower()).Json = $builtinPolicySetDefinition
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Json = $builtinPolicySetDefinition
             }
         }
 
@@ -1930,7 +2026,7 @@ function cacheBuiltIn {
         }
     }
 
-    $script:builtInPolicyDefinitionsCount = $script:htCacheDefinitionsPolicy.Keys.Count
+    $script:builtInPolicyDefinitionsCount = $htCacheDefinitionsPolicy.Values.where({$_.Type -eq 'BuiltIn'}).count
 
     $endDefinitionsCaching = Get-Date
     Write-Host "Caching built-in definitions duration: $((NEW-TIMESPAN -Start $startDefinitionsCaching -End $endDefinitionsCaching).TotalSeconds) seconds"
@@ -3703,26 +3799,239 @@ function processAADGroups {
     Write-Host "Resolving AAD Groups duration: $((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
     Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (after Resolving AAD Groups)"
 }
-$htTenantALZPolicies = @{}
-foreach ($policy in $tenantCustomPolicies) {
-    if ($policy.ALZ -eq 'true') {
-        $htTenantALZPolicies.($policy.id -replace '.*/') = @{} 
+function processALZEverGreen {
+
+    $ALZRepositoryURI = 'https://github.com/Azure/Enterprise-Scale.git'
+    $workingPath = Get-Location
+    Write-Host " Working directory is '$($workingPath)'"
+    $ALZFolderName = "ALZ_$(get-date -Format $FileTimeStampFormat)"
+    $ALZPath = "$($OutputPath)/$($ALZFolderName)"
+        
+    if (-not (Test-Path -LiteralPath "$($ALZPath)")) {
+        Write-Host " Creating temporary directory '$($ALZPath)'"
+        $null = mkdir $ALZPath
     }
-}
-
-foreach ($alzPolicy in $alzPolicies.keys){
-
-    if ($htTenantALZPolicies.($alzPolicy)){
-        "ALZ"
+    else {
+        Write-Host " Unexpected: The path '$($ALZPath)' already exists"
+        throw
     }
-    else{
-        "not"
+
+    Write-Host " Switching to temporary directory '$($ALZPath)'"
+    Set-Location $ALZPath
+    $ALZCloneSuccess = $false
+    try {
+        Write-Host " Try cloning '$($ALZRepositoryURI)'"
+        git clone $ALZRepositoryURI
+        $ALZCloneSuccess = $true
     }
-}
+    catch {
+        $_
+        Write-Host " Cloning '$($ALZRepositoryURI)' failed"
+        Write-Host " Setting switch parameter '-NoALZEvergreen' '$($ALZRepositoryURI)' to true"
+        $script:NoALZEvergreen = $true
+        $script:azAPICallConf['htParameters'].NoALZEvergreen = $true
+        Write-Host " Switching back to working directory '$($workingPath)'"
+        Set-Location $workingPath
+    }
+        
+    if ($ALZCloneSuccess) {
+        Write-Host " Switching to directory '$($ALZPath)/Enterprise-Scale'"
+        Set-Location "$($ALZPath)/Enterprise-Scale"
+  
+        # $htGitTrackESLZPolicies = @{}
+        # $htGitTrackESLZdataPolicies = @{}
+        $allESLZPolicies = @{}
+        $allESLZPolicySets = @{}
 
+        $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/policies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
+        #Write-Host $gitHist.Count
+        $commitCount = 0
+        Write-Host " Processing ALZ Policy and Set definitions"
+        foreach ($commit in $gitHist | Sort-Object -Property Date) {
+            $commitCount++
+            #$commitCount
 
-foreach ($alzPolicy in $alzPolicies){
+            #$dt = (([datetime]$commit.Date).ToUniversalTime()).ToString("yyyyMMddHHmmss")
+            # $htGitTrackESLZPolicies.($dt) = @{}
+            # $htGitTrackESLZPolicies.($dt).policies = @{}
+            # $htGitTrackESLZPolicies.($dt).commitId = $commit.CommitId
+            $jsonRaw = git show "$($commit.CommitId):eslzArm/managementGroupTemplates/policyDefinitions/policies.json"
+            
+            $jsonESLZPolicies = $jsonRaw | ConvertFrom-Json
+            #Write-Host "$dt $($commit.CommitId)"
+            if (($jsonESLZPolicies.variables.policies.policyDefinitions).Count -eq 0) {
+                $eslzGoodToGo = $false
+            }
+            else {
+                $eslzGoodToGo = $true
 
+                $eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
+                foreach ($policyDefinition in $eslzPolicies) {
+                    $policyJsonConv = ($policyDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
+                    $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonConv))
+                    $stringHash = [System.BitConverter]::ToString($hash) 
+                    $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
+                    # $htGitTrackESLZPolicies.($dt).policies.($policyJsonRebuild.name) = @{}
+                    # $htGitTrackESLZPolicies.($dt).policies.($policyJsonRebuild.name).version = $policyJsonRebuild.properties.metadata.version
+        
+                    if (-not $allESLZPolicies.($policyJsonRebuild.name)) {
+                        $allESLZPolicies.($policyJsonRebuild.name) = @{}
+                        $allESLZPolicies.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
+                        $null = $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                        $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPolicies.($policyJsonRebuild.name).status = 'prod'
+                        }
+                        else {
+                            $allESLZPolicies.($policyJsonRebuild.name).status = 'obsolete'
+                        }
+                    }
+                    else {
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPolicies.($policyJsonRebuild.name).status = 'prod'
+                        }
+                        else {
+                            $allESLZPolicies.($policyJsonRebuild.name).status = 'obsolete'
+                        }
+                        if ($allESLZPolicies.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                            $null = $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                        }
+                        if (-not $allESLZPolicies.($policyJsonRebuild.name).$stringHash) {
+                            $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                        }
+                    }
+                }
+
+                $eslzPolicySets = $jsonESLZPolicies.variables.initiatives.policySetDefinitions
+                foreach ($policySetDefinition in $eslzPolicySets) {
+                    $policyJsonConv = ($policySetDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
+                    $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonConv))
+                    $stringHash = [System.BitConverter]::ToString($hash) 
+                    $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
+                    # $htGitTrackESLZPolicies.($dt).policies.($policyJsonRebuild.name) = @{}
+                    # $htGitTrackESLZPolicies.($dt).policies.($policyJsonRebuild.name).version = $policyJsonRebuild.properties.metadata.version
+                    if (-not $allESLZPolicySets.($policyJsonRebuild.name)) {
+                        $allESLZPolicySets.($policyJsonRebuild.name) = @{}
+                        $allESLZPolicySets.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
+                        $null = $allESLZPolicySets.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                        $allESLZPolicySets.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPolicySets.($policyJsonRebuild.name).status = 'prod'
+                        }
+                        else {
+                            $allESLZPolicySets.($policyJsonRebuild.name).status = 'obsolete'
+                        }
+                    }
+                    else {
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPolicySets.($policyJsonRebuild.name).status = 'prod'
+                        }
+                        else {
+                            $allESLZPolicySets.($policyJsonRebuild.name).status = 'obsolete'
+                        }
+                        if ($allESLZPolicySets.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                            $null = $allESLZPolicySets.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                        }
+                        if (-not $allESLZPolicySets.($policyJsonRebuild.name).$stringHash) {
+                            $allESLZPolicySets.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                        }
+                    }
+                }
+            }
+        }
+
+        Write-Host " Processing ALZ Data Policy definitions"
+        $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/dataPolicies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
+        #Write-Host $gitHist.Count
+        $commitCount = 0
+        foreach ($commit in $gitHist | Sort-Object -Property Date) {
+
+            $commitCount++
+            #$dt = (([datetime]$commit.Date).ToUniversalTime()).ToString("yyyyMMddHHmmss")
+            # $htGitTrackESLZdataPolicies.($dt) = @{}
+            # $htGitTrackESLZdataPolicies.($dt).policies = @{}
+            # $htGitTrackESLZdataPolicies.($dt).commitId = $commit.CommitId
+            $jsonRaw = git show "$($commit.CommitId):eslzArm/managementGroupTemplates/policyDefinitions/dataPolicies.json"
+            
+            $jsonESLZPolicies = $jsonRaw | ConvertFrom-Json
+            #Write-Host "$dt $($commit.CommitId)"
+            if (($jsonESLZPolicies.variables.policies.policyDefinitions).Count -eq 0) {
+                $eslzGoodToGo = $false
+            }
+            else {
+                $eslzGoodToGo = $true
+                $eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
+                foreach ($policyDefinition in $eslzPolicies) {
+                    $policyJsonConv = ($policyDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
+                    $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonConv))
+                    $stringHash = [System.BitConverter]::ToString($hash) 
+                    $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
+                    # $htGitTrackESLZdataPolicies.($dt).policies.($policyJsonRebuild.name) = @{}
+                    # $htGitTrackESLZdataPolicies.($dt).policies.($policyJsonRebuild.name).version = $policyJsonRebuild.properties.metadata.version
+        
+                    if (-not $allESLZPolicies.($policyJsonRebuild.name)) {
+                        $allESLZPolicies.($policyJsonRebuild.name) = @{}
+                        $allESLZPolicies.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
+                        $null = $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                        $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPolicies.($policyJsonRebuild.name).status = 'prod'
+                        }
+                        else {
+                            $allESLZPolicies.($policyJsonRebuild.name).status = 'obsolete'
+                        }
+                    }
+                    else {
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPolicies.($policyJsonRebuild.name).status = 'prod'
+                        }
+                        else {
+                            $allESLZPolicies.($policyJsonRebuild.name).status = 'obsolete'
+                        }
+                        if ($allESLZPolicies.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                            $null = $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                        }
+                        if (-not $allESLZPolicies.($policyJsonRebuild.name).$stringHash) {
+                            $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                        }
+                    }
+                }
+            }
+        }
+
+        Write-Host " $($allESLZPolicies.Keys.Count) Policy definitions ($($allESLZPolicies.Values.where({$_.status -eq 'Prod'}).Count) productive)"
+        Write-Host " $($allESLZPolicySets.Keys.Count) PolicySet definitions ($($allESLZPolicySets.Values.where({$_.status -eq 'Prod'}).Count) productive)"
+
+        $script:alzPolicies = @{}
+        foreach ($entry in $allESLZPolicies.keys | sort-object) {
+            $thisOne = $allESLZPolicies.($entry)
+            $latestVersion = ([array]($thisOne.version | Sort-Object -Descending))[0]
+            $script:alzPolicies.($entry) = @{}
+            $script:alzPolicies.($entry).latestVersion = $latestVersion
+            $script:alzPolicies.($entry).status = $thisOne.status
+        }
+        $script:alzPolicies.'deploy-asc-standard' = @{}
+        $script:alzPolicies.'deploy-asc-standard'.latestVersion = '1.0.0'
+        $script:alzPolicies.'deploy-asc-standard'.status = 'obsolete'
+
+        $script:alzPolicySets = @{}
+        foreach ($entry in $allESLZPolicySets.keys | sort-object) {
+            $thisOne = $allESLZPolicySets.($entry)
+            $latestVersion = ([array]($thisOne.version | Sort-Object -Descending))[0]
+            $script:alzPolicySets.($entry) = @{}
+            $script:alzPolicySets.($entry).latestVersion = $latestVersion
+            $script:alzPolicySets.($entry).status = $thisOne.status
+        }
+        $script:alzPolicySets.'Deploy-Diag-LogAnalytics' = @{}
+        $script:alzPolicySets.'Deploy-Diag-LogAnalytics'.latestVersion = '1.0.0'
+        $script:alzPolicySets.'Deploy-Diag-LogAnalytics'.status = 'obsolete'
+        
+        Write-Host " Switching back to working directory '$($workingPath)'"
+        Set-Location $workingPath
+        
+        Write-Host " Removing temporary directory '$($ALZPath)'"
+        Remove-Item -Recurse -Force $ALZPath
+    }
 }
 function processApplications {
     Write-Host 'Processing Service Principals - Applications'
@@ -3930,6 +4239,7 @@ function processDataCollection {
             $htUserTypesGuest = $using:htUserTypesGuest
             $htRoleAssignmentsPIM = $using:htRoleAssignmentsPIM
             $alzPolicies = $using:alzPolicies
+            $alzPolicySets = $using:alzPolicySets
             #other
             $function:addRowToTable = $using:funcAddRowToTable
             $function:namingValidation = $using:funcNamingValidation
@@ -4190,6 +4500,8 @@ function processDataCollection {
                 $arrayPSRuleTracking = $using:arrayPSRuleTracking
                 $htClassicAdministrators = $using:htClassicAdministrators
                 $htRoleAssignmentsPIM = $using:htRoleAssignmentsPIM
+                $alzPolicies = $using:alzPolicies
+                $alzPolicySets = $using:alzPolicySets
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation
@@ -11133,6 +11445,7 @@ function processTenantSummary() {
                     UpdatedBy             = $updatedBy
                     ALZ                   = $tenantPolicy.ALZ
                     ALZState              = $tenantPolicy.ALZState
+                    ALZLatestVer          = $tenantPolicy.ALZLatestVer
                     #Json                  = [string]($tenantPolicy.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
                 })
 
@@ -11163,6 +11476,7 @@ function processTenantSummary() {
                     Json                   = $tenantPolicy.Json
                     ALZ                    = $tenantPolicy.ALZ
                     ALZState               = $tenantPolicy.ALZState
+                    ALZLatestVer           = $tenantPolicy.ALZLatestVer
                 })
         }
         else {
@@ -11193,6 +11507,7 @@ function processTenantSummary() {
                     Json                   = $tenantPolicy.Json
                     ALZ                    = $tenantPolicy.ALZ
                     ALZState               = $tenantPolicy.ALZState
+                    ALZLatestVer           = $tenantPolicy.ALZLatestVer
                 })
         }
     }
@@ -11763,13 +12078,23 @@ extensions: [{ name: 'sort' }]
         $policySetPoliciesArray = [System.Collections.ArrayList]@()
         $policySetPoliciesArrayClean = [System.Collections.ArrayList]@()
         $policySetPoliciesArrayIdOnly = [System.Collections.ArrayList]@()
+        $policySetPoliciesBuiltinArrayIdOnlyCSV = [System.Collections.ArrayList]@()
+        $policySetPoliciesStaticArrayIdOnlyCSV = [System.Collections.ArrayList]@()
+        $policySetPoliciesCustomArrayIdOnlyCSV = [System.Collections.ArrayList]@()
         foreach ($policyPolicySet in $tenantPolicySet.PolicySetPolicyIds) {
             $hlpPolicyDef = ($htCacheDefinitionsPolicy).($policyPolicySet)
 
-            if ($hlpPolicyDef.Type -eq 'Builtin') {
+            if ($hlpPolicyDef.Type -eq 'Builtin' -or $hlpPolicyDef.Type -eq 'Static') {
                 $null = $policySetPoliciesArray.Add("$($hlpPolicyDef.LinkToAzAdvertizer) ($policyPolicySet)")
+                if ($hlpPolicyDef.Type -eq 'Builtin') {
+                    $null = $policySetPoliciesBuiltinArrayIdOnlyCSV.Add($policyPolicySet -replace '/providers/microsoft.authorization/policydefinitions/')
+                }
+                if ($hlpPolicyDef.Type -eq 'Static') {
+                    $null = $policySetPoliciesStaticArrayIdOnlyCSV.Add($policyPolicySet -replace '/providers/microsoft.authorization/policydefinitions/')
+                }
             }
             else {
+                $null = $policySetPoliciesCustomArrayIdOnlyCSV.Add($policyPolicySet)
                 if ($hlpPolicyDef.DisplayName) {
                     if ([string]::IsNullOrEmpty($hlpPolicyDef.DisplayName)) {
                         $displayName = 'noDisplayNameGiven'
@@ -11783,6 +12108,7 @@ extensions: [{ name: 'sort' }]
                 }
                 $null = $policySetPoliciesArray.Add("<b>$($displayName -replace '<', '&lt;' -replace '>', '&gt;')</b> ($policyPolicySet)")
             }
+
             if ($hlpPolicyDef.DisplayName) {
                 if ([string]::IsNullOrEmpty($hlpPolicyDef.DisplayName)) {
                     $displayName = 'noDisplayNameGiven'
@@ -11794,11 +12120,23 @@ extensions: [{ name: 'sort' }]
             else {
                 $displayName = 'noDisplayNameGiven'
             }
+
             $null = $policySetPoliciesArrayClean.Add("$($displayName) ($policyPolicySet)")
             $null = $policySetPoliciesArrayIdOnly.Add($policyPolicySet)
         }
+
         if ($policySetPoliciesArrayIdOnly.Count -eq 0) {
             $policySetPoliciesArrayIdOnly = $null
+        }
+
+        if ($policySetPoliciesBuiltinArrayIdOnlyCSV.Count -eq 0) {
+            $policySetPoliciesBuiltinArrayIdOnlyCSV = $null
+        }
+        if ($policySetPoliciesStaticArrayIdOnlyCSV.Count -eq 0) {
+            $policySetPoliciesStaticArrayIdOnlyCSV = $null
+        }
+        if ($policySetPoliciesCustomArrayIdOnlyCSV.Count -eq 0) {
+            $policySetPoliciesCustomArrayIdOnlyCSV = $null
         }
 
         $policySetPoliciesCount = ($policySetPoliciesArray).count
@@ -11809,6 +12147,13 @@ extensions: [{ name: 'sort' }]
         else {
             $policiesUsed = '0 really?'
             $policiesUsedClean = '0 really?'
+        }
+
+        if ($tenantPolicySet.Json.properties.metadata.version) {
+            $policySetVersion = $tenantPolicySet.Json.properties.metadata.version
+        }
+        else {
+            $policySetVersion = 'n/a'
         }
 
         if ($tenantPolicySet.Type -eq 'Custom') {
@@ -11868,58 +12213,81 @@ extensions: [{ name: 'sort' }]
                     UpdatedOn             = $updatedOn
                     UpdatedBy             = $updatedBy
                     #Json                  = [string]($tenantPolicySet.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
+                    ALZ                   = $tenantPolicySet.ALZ
+                    ALZState              = $tenantPolicySet.ALZState
+                    ALZLatestVer          = $tenantPolicySet.ALZLatestVer
                 })
 
             $null = $script:tenantPolicySetsDetailed.Add([PSCustomObject]@{
-                    Type                    = 'Custom'
-                    ScopeMGLevel            = $tenantPolicySet.ScopeMGLevel
-                    Scope                   = $tenantPolicySet.ScopeMgSub
-                    ScopeId                 = $tenantPolicySet.ScopeId
-                    PolicySetDisplayName    = $tenantPolicySet.DisplayName
-                    PolicySetDefinitionName = $tenantPolicySet.PolicyDefinitionId -replace '.*/'
-                    PolicySetDefinitionId   = $tenantPolicySet.PolicyDefinitionId
-                    PolicySetCategory       = $tenantPolicySet.Category
-                    UniqueAssignmentsCount  = $policySetUniqueAssignmentsCount
-                    UniqueAssignments       = $policySetUniqueAssignments
-                    PoliciesUsedCount       = $policySetPoliciesCount
-                    PoliciesUsed            = $policySetPoliciesArrayClean
-                    PoliciesUsed4JSON       = $policySetPoliciesArrayIdOnly
-                    PoliciesUsed4CSV        = $policySetPoliciesArrayIdOnly -join "$CsvDelimiterOpposite "
-                    CreatedOn               = $createdOn
-                    CreatedBy               = $createdBy
-                    CreatedByJson           = $createdByJson
-                    UpdatedOn               = $updatedOn
-                    UpdatedBy               = $updatedBy
-                    UpdatedByJson           = $updatedByJson
+                    Type                     = 'Custom'
+                    ScopeMGLevel             = $tenantPolicySet.ScopeMGLevel
+                    Scope                    = $tenantPolicySet.ScopeMgSub
+                    ScopeId                  = $tenantPolicySet.ScopeId
+                    PolicySetDisplayName     = $tenantPolicySet.DisplayName
+                    PolicySetDescription     = $tenantPolicySet.Description
+                    PolicySetDefinitionName  = $tenantPolicySet.PolicyDefinitionId -replace '.*/'
+                    PolicySetDefinitionId    = $tenantPolicySet.PolicyDefinitionId
+                    PolicySetCategory        = $tenantPolicySet.Category
+                    PolicySetVersion         = $policySetVersion
+                    UniqueAssignmentsCount   = $policySetUniqueAssignmentsCount
+                    UniqueAssignments        = $policySetUniqueAssignments
+                    PoliciesUsedCount        = $policySetPoliciesCount
+                    PoliciesUsedBuiltinCount = $policySetPoliciesBuiltinArrayIdOnlyCSV.Count
+                    PoliciesUsedStaticCount  = $policySetPoliciesStaticArrayIdOnlyCSV.Count
+                    PoliciesUsedCustomCount  = $policySetPoliciesCustomArrayIdOnlyCSV.Count
+                    PoliciesUsed             = $policySetPoliciesArrayClean
+                    PoliciesUsed4JSON        = $policySetPoliciesArrayIdOnly
+                    PoliciesUsedBuiltin      = $policySetPoliciesBuiltinArrayIdOnlyCSV -join "$CsvDelimiterOpposite "
+                    PoliciesUsedStatic       = $policySetPoliciesStaticArrayIdOnlyCSV -join "$CsvDelimiterOpposite "
+                    PoliciesUsedCustom       = $policySetPoliciesCustomArrayIdOnlyCSV -join "$CsvDelimiterOpposite "
+                    CreatedOn                = $createdOn
+                    CreatedBy                = $createdBy
+                    CreatedByJson            = $createdByJson
+                    UpdatedOn                = $updatedOn
+                    UpdatedBy                = $updatedBy
+                    UpdatedByJson            = $updatedByJson
                     #Json                  = [string]($tenantPolicySet.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
-                    Json                    = $tenantPolicySet.Json
+                    Json                     = $tenantPolicySet.Json
+                    ALZ                      = $tenantPolicySet.ALZ
+                    ALZState                 = $tenantPolicySet.ALZState
+                    ALZLatestVer             = $tenantPolicySet.ALZLatestVer
                 })
 
         }
         else {
             $null = $script:tenantPolicySetsDetailed.Add([PSCustomObject]@{
-                    Type                    = 'BuiltIn'
-                    ScopeMGLevel            = $null
-                    Scope                   = $null
-                    ScopeId                 = $null
-                    PolicySetDisplayName    = $tenantPolicySet.DisplayName
-                    PolicySetDefinitionName = $tenantPolicySet.PolicyDefinitionId -replace '.*/'
-                    PolicySetDefinitionId   = $tenantPolicySet.PolicyDefinitionId
-                    PolicySetCategory       = $tenantPolicySet.Category
-                    UniqueAssignmentsCount  = $policySetUniqueAssignmentsCount
-                    UniqueAssignments       = $policySetUniqueAssignments
-                    PoliciesUsedCount       = $policySetPoliciesCount
-                    PoliciesUsed            = $policySetPoliciesArrayClean
-                    PoliciesUsed4JSON       = $policySetPoliciesArrayIdOnly
-                    PoliciesUsed4CSV        = $policySetPoliciesArrayIdOnly -join "$CsvDelimiterOpposite "
-                    CreatedOn               = ''
-                    CreatedBy               = ''
-                    CreatedByJson           = $null
-                    UpdatedOn               = ''
-                    UpdatedBy               = ''
-                    UpdatedByJson           = $null
+                    Type                     = 'BuiltIn'
+                    ScopeMGLevel             = $null
+                    Scope                    = $null
+                    ScopeId                  = $null
+                    PolicySetDisplayName     = $tenantPolicySet.DisplayName
+                    PolicySetDescription     = $tenantPolicySet.Description
+                    PolicySetDefinitionName  = $tenantPolicySet.PolicyDefinitionId -replace '.*/'
+                    PolicySetDefinitionId    = $tenantPolicySet.PolicyDefinitionId
+                    PolicySetCategory        = $tenantPolicySet.Category
+                    PolicySetVersion         = $policySetVersion
+                    UniqueAssignmentsCount   = $policySetUniqueAssignmentsCount
+                    UniqueAssignments        = $policySetUniqueAssignments
+                    PoliciesUsedCount        = $policySetPoliciesCount
+                    PoliciesUsedBuiltinCount = $policySetPoliciesBuiltinArrayIdOnlyCSV.Count
+                    PoliciesUsedStaticCount  = $policySetPoliciesStaticArrayIdOnlyCSV.Count
+                    PoliciesUsedCustomCount  = $policySetPoliciesCustomArrayIdOnlyCSV.Count
+                    PoliciesUsed             = $policySetPoliciesArrayClean
+                    PoliciesUsed4JSON        = $policySetPoliciesArrayIdOnly
+                    PoliciesUsedBuiltin      = $policySetPoliciesBuiltinArrayIdOnlyCSV -join "$CsvDelimiterOpposite "
+                    PoliciesUsedStatic       = $policySetPoliciesStaticArrayIdOnlyCSV -join "$CsvDelimiterOpposite "
+                    PoliciesUsedCustom       = $policySetPoliciesCustomArrayIdOnlyCSV -join "$CsvDelimiterOpposite "
+                    CreatedOn                = ''
+                    CreatedBy                = ''
+                    CreatedByJson            = $null
+                    UpdatedOn                = ''
+                    UpdatedBy                = ''
+                    UpdatedByJson            = $null
                     #Json                  = [string]($tenantPolicySet.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
-                    Json                    = $tenantPolicySet.Json
+                    Json                     = $tenantPolicySet.Json
+                    ALZ                      = $tenantPolicySet.ALZ
+                    ALZState                 = $tenantPolicySet.ALZState
+                    ALZLatestVer             = $tenantPolicySet.ALZLatestVer
                 })
         }
     }
@@ -26231,41 +26599,61 @@ function dataCollectionPolicyDefinitions {
                     $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[4]
                     $htTemp.ScopeMGLevel = $htManagementGroupsMgPath.((($hlpPolicyDefinitionId).split('/'))[4]).ParentNameChainCount
 
-                    if ($alzPolicies.($scopePolicyDefinition.name)) {
-                        WRITE-HOST "**** ALZ"
-                        if ($scopePolicyDefinition.Properties.metadata.version) {
-                            WRITE-HOST "**** ALZhasVer"
-                            $htTemp.ALZ = 'true'
-                            if ($alzPolicies.($scopePolicyDefinition.name).status -eq 'obsolete') {
-                                $htTemp.ALZState = 'obsolete'
-                            }
-                            else {
-                                if ($alzPolicies.($scopePolicyDefinition.name).latestVersion -eq $scopePolicyDefinition.Properties.metadata.version) {
-                                    $htTemp.ALZState = 'upToDate'
+                    if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
+                        if ($alzPolicies.($scopePolicyDefinition.name)) {
+                            if ($scopePolicyDefinition.Properties.metadata.version) {
+                                $htTemp.ALZ = 'true'
+                                if ($alzPolicies.($scopePolicyDefinition.name).status -eq 'obsolete') {
+                                    $htTemp.ALZState = 'obsolete'
+                                    $htTemp.ALZLatestVer = ''
                                 }
                                 else {
-                                    $htTemp.ALZState = 'outDated'
+                                    if ($alzPolicies.($scopePolicyDefinition.name).latestVersion -eq $scopePolicyDefinition.Properties.metadata.version) {
+                                        $htTemp.ALZState = 'upToDate'
+                                    }
+                                    else {
+                                        $htTemp.ALZState = 'outDated'
+                                    }
+                                    $htTemp.ALZLatestVer = $alzPolicies.($scopePolicyDefinition.name).latestVersion
                                 }
+                                
+                            }
+                            else {
+                                $htTemp.ALZ = 'false'
+                                $htTemp.ALZState = ''
+                                $htTemp.ALZLatestVer = ''
                             }
                         }
                         else {
                             $htTemp.ALZ = 'false'
                             $htTemp.ALZState = ''
+                            $htTemp.ALZLatestVer = ''
                         }
                     }
-                    else {
-                        $htTemp.ALZ = 'false'
+                    else{
+                        $htTemp.ALZ = 'NoALZEvergreen'
                         $htTemp.ALZState = ''
+                        $htTemp.ALZLatestVer = ''
                     }
                 }
+                
                 if ($hlpPolicyDefinitionId -like '/subscriptions/*') {
                     $htTemp.Scope = (($hlpPolicyDefinitionId).split('/'))[0..2] -join '/'
                     $htTemp.ScopeMgSub = 'Sub'
                     $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[2]
                     $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($hlpPolicyDefinitionId).split('/'))[2]).level
-                    #subscription scoped alz policies will be ignored 
-                    $htTemp.ALZ = 'ignored'
-                    $htTemp.ALZState = ''
+
+                    if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
+                        #subscription scoped alz policies will be ignored 
+                        $htTemp.ALZ = 'ignored'
+                        $htTemp.ALZState = ''
+                        $htTemp.ALZLatestVer = ''
+                    }
+                    else {
+                        $htTemp.ALZ = 'NoALZEvergreen'
+                        $htTemp.ALZState = ''
+                        $htTemp.ALZLatestVer = ''
+                    }
                 }
                 $htTemp.DisplayName = $($scopePolicyDefinition.Properties.displayname)
                 $htTemp.Description = $($policyDefinitionDescription)
@@ -26379,7 +26767,7 @@ function dataCollectionPolicySetDefinitions {
         [string]$scopeDisplayName,
         $subscriptionQuotaId
     )
-
+    
     if ($TargetMgOrSub -eq 'Sub') {
         $currentTask = "Getting PolicySet definitions for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Custom'"
@@ -26428,12 +26816,61 @@ function dataCollectionPolicySetDefinitions {
                 $htTemp.ScopeMgSub = 'Mg'
                 $htTemp.ScopeId = (($scopePolicySetDefinition.Id).split('/'))[4]
                 $htTemp.ScopeMGLevel = $htManagementGroupsMgPath.((($scopePolicySetDefinition.Id).split('/'))[4]).ParentNameChainCount
+
+                if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
+                    if ($alzPolicySets.($scopePolicySetDefinition.name)) {
+                        if ($scopePolicySetDefinition.Properties.metadata.version) {
+                            $htTemp.ALZ = 'true'
+                            if ($alzPolicySets.($scopePolicySetDefinition.name).status -eq 'obsolete') {
+                                $htTemp.ALZState = 'obsolete'
+                                $htTemp.ALZLatestVer = ''
+                            }
+                            else {
+                                if ($alzPolicySets.($scopePolicySetDefinition.name).latestVersion -eq $scopePolicySetDefinition.Properties.metadata.version) {
+                                    $htTemp.ALZState = 'upToDate'
+                                }
+                                else {
+                                    $htTemp.ALZState = 'outDated'
+                                }
+                                $htTemp.ALZLatestVer = $alzPolicySets.($scopePolicySetDefinition.name).latestVersion
+                            }
+                            
+                        }
+                        else {
+                            $htTemp.ALZ = 'false'
+                            $htTemp.ALZState = ''
+                            $htTemp.ALZLatestVer = ''
+                        }
+                    }
+                    else {
+                        $htTemp.ALZ = 'false'
+                        $htTemp.ALZState = ''
+                        $htTemp.ALZLatestVer = ''
+                    }
+                }
+                else{
+                    $htTemp.ALZ = 'NoALZEvergreen'
+                    $htTemp.ALZState = ''
+                    $htTemp.ALZLatestVer = ''
+                }
             }
             if ($scopePolicySetDefinition.Id -like '/subscriptions/*') {
                 $htTemp.Scope = (($scopePolicySetDefinition.Id).split('/'))[0..2] -join '/'
                 $htTemp.ScopeMgSub = 'Sub'
                 $htTemp.ScopeId = (($scopePolicySetDefinition.Id).split('/'))[2]
                 $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($scopePolicySetDefinition.Id).split('/'))[2]).level
+
+                if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
+                    #subscription scoped alz policySets will be ignored 
+                    $htTemp.ALZ = 'ignored'
+                    $htTemp.ALZState = ''
+                    $htTemp.ALZLatestVer = ''
+                }
+                else {
+                    $htTemp.ALZ = 'NoALZEvergreen'
+                    $htTemp.ALZState = ''
+                    $htTemp.ALZLatestVer = ''
+                }
             }
             $htTemp.DisplayName = $($scopePolicySetDefinition.Properties.displayname)
             $htTemp.Description = $($policySetDefinitionDescription)
@@ -28610,8 +29047,9 @@ if ($azGovVizNewerVersionAvailable) {
 
 handleCloudEnvironment
 
-#region recommendPSRule
+
 if (-not $HierarchyMapOnly) {
+    #region recommendPSRule
     if (-not $azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
         if (-not $DoPSRule) {
             Write-Host ""
@@ -28623,25 +29061,25 @@ if (-not $HierarchyMapOnly) {
             pause
         }
     }
-}
-#endregion recommendPSRule
+    #endregion recommendPSRule
 
-#region hintPIMEligibility
-if ($azAPICallConf['htParameters'].accountType -eq 'User') {
-    if (-not $NoPIMEligibility) {
-        Write-Host ""
-        Write-Host " * * * HINT: PIM (Privileged Identity Management) Eligibility reporting * * *" -ForegroundColor DarkBlue
-        Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
-        Write-Host "Executing principal accountType: '$($azAPICallConf['htParameters'].accountType)'"
-        Write-Host "PIM Eligibility reporting requires to execute the script as ServicePrincipal. API Permission 'PrivilegedAccess.Read.AzureResources' is required"
-        Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
-        $NoPIMEligibility = $true
-        Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
-        Write-Host " * * * * * * * * * * * * * * * * * * * * * *" -ForegroundColor DarkBlue
-        pause
+    #region hintPIMEligibility
+    if ($azAPICallConf['htParameters'].accountType -eq 'User') {
+        if (-not $NoPIMEligibility) {
+            Write-Host ""
+            Write-Host " * * * HINT: PIM (Privileged Identity Management) Eligibility reporting * * *" -ForegroundColor DarkBlue
+            Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
+            Write-Host "Executing principal accountType: '$($azAPICallConf['htParameters'].accountType)'"
+            Write-Host "PIM Eligibility reporting requires to execute the script as ServicePrincipal. API Permission 'PrivilegedAccess.Read.AzureResources' is required"
+            Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
+            $NoPIMEligibility = $true
+            Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
+            Write-Host " * * * * * * * * * * * * * * * * * * * * * *" -ForegroundColor DarkBlue
+            pause
+        }
     }
+    #endregion hintPIMEligibility
 }
-#endregion hintPIMEligibility
 
 addHtParameters
 
@@ -28764,567 +29202,12 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htClassicAdministrators = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $arrayOrphanedResources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayPIMEligible = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+}
 
-    <#
-    $alzPolicies = @"
-    {
-        "Deny-Subnet-Without-UDR": {
-          "latestVersion": "2.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-APIMgmt": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-ACR": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-MySQL-sslEnforcement": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-MachineLearning-HbiWorkspace": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deny-VNET-Peering-To-Non-Approved-VNETs": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-EventGridTopic": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-ASC-Defender-SQLVM": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-Diagnostics-ApplicationGateway": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-ApiForFHIR": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-Redis-http": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-MachineLearning-PublicAccessWhenBehindVnet": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Append-Redis-sslEnforcement": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-PowerBIEmbedded": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Append-AppService-latestTLS": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-MachineLearning-ComputeCluster-RemoteLoginPortPublicAccess": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-ASC-Defender-ARM": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deny-Private-DNS-Zones": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Append-AppService-httpsonly": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-WVDHostPools": {
-          "latestVersion": "1.1.0",
-          "status": "prod"
-        },
-        "Deny-MachineLearning-Aks": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-Diagnostics-SignalR": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-DataExplorerCluster": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-PostgreSQL-sslEnforcement": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-HDInsight": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Append-KV-SoftDelete": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-Function": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-WVDAppGroup": {
-          "latestVersion": "1.0.1",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-AVDScalingPlans": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-ASC-Defender-ACR": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-Diagnostics-EventGridSub": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-ASC-Defender-Sql": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-Diagnostics-MariaDB": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-ASC-Defender-AKS": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deny-RDP-From-Internet": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-MySQL": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-MachineLearning-ComputeCluster-Scale": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-ASC-Defender-VMs": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deny-MachineLearning-Compute-VmSize": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-ASC-SecurityContacts": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-AA-child-resources": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-TimeSeriesInsights": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-FirewallPolicy": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-FrontDoor": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-CDNEndpoints": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-SQLMI": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-AppGW-Without-WAF": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-MySql-http": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-NIC": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-EventGridSystemTopic": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-Website": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Custom-Route-Table": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-AA": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Windows-DomainJoin": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-ASC-Defender-SA": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-Nsg-FlowLogs": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-RedisCache": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-MachineLearning-Compute-SubnetId": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deny-AppServiceApiApp-http": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-SQLElasticPools": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-VNetGW": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Budget": {
-          "latestVersion": "1.1.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-Firewall": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-DataFactory": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-DLAnalytics": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-AppServiceFunctionApp-http": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-VMSS": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-Relay": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Append-Redis-disableNonSslPort": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Nsg-FlowLogs-to-LA": {
-          "latestVersion": "1.1.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-Bastion": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-CosmosDB": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-VirtualNetwork": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-VM": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-TrafficManager": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-ASC-Defender-AKV": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-SQL-minTLS": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-MlWorkspace": {
-          "latestVersion": "1.1.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-WebServerFarm": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-ASC-Defender-DNS": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-Diagnostics-LoadBalancer": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Sql-vulnerabilityAssessments": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-PostgreSQL": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-WVDWorkspace": {
-          "latestVersion": "1.0.1",
-          "status": "prod"
-        },
-        "Deploy-Sql-SecurityAlertPolicies": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Sql-AuditingSettings": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-ACI": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-ASC-Defender-AppSrv": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deploy-Diagnostics-AnalysisService": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Audit-MachineLearning-PrivateEndpointId": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deny-Sql-minTLS": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-DDoSProtection": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-ExpressRoute": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-AppServiceWebApp-http": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-CognitiveServices": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-Databricks": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-VNet-Peering": {
-          "latestVersion": "1.0.1",
-          "status": "prod"
-        },
-        "Deploy-Storage-sslEnforcement": {
-          "latestVersion": "1.1.0",
-          "status": "prod"
-        },
-        "Deploy-Default-Udr": {
-          "latestVersion": "1.0.0",
-          "status": "obsolete"
-        },
-        "Deny-Storage-minTLS": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-MediaService": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-Subnet-Without-Nsg": {
-          "latestVersion": "2.0.0",
-          "status": "prod"
-        },
-        "Deny-VNET-Peer-Cross-Sub": {
-          "latestVersion": "1.0.1",
-          "status": "prod"
-        },
-        "Deny-PostgreSql-http": {
-          "latestVersion": "1.0.1",
-          "status": "prod"
-        },
-        "Deny-PublicIP": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-iotHub": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-VNET-HubSpoke": {
-          "latestVersion": "1.1.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-NetworkSecurityGroups": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-SqlMi-minTLS": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Diagnostics-LogicAppsISE": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deploy-Sql-Tde": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-SqlMi-minTLS": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        },
-        "Deny-PublicEndpoint-MariaDB": {
-          "latestVersion": "1.0.0",
-          "status": "prod"
-        }
-      }
-"@ | ConvertFrom-Json
-#>
-
-    $workingPath = Get-Location
-    $ALZPath = "$($OutputPath)/ALZ"
-    mkdir $ALZPath
-    Set-Location $ALZPath
-    git clone https://github.com/Azure/Enterprise-Scale.git
-    Set-Location "$($ALZPath)/Enterprise-Scale"
-
-    $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/policies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
-    Write-Host $gitHist.Count
-
-    $htGitTrackESLZ = @{}
-    $allESLZPolicies = @{}
-
-    foreach ($commit in $gitHist | Sort-Object -Property Date) {
-        $dt = (([datetime]$commit.Date).ToUniversalTime()).ToString("yyyyMMddHHmmss")
-        $htGitTrackESLZ.($dt) = @{}
-        $htGitTrackESLZ.($dt).policies = @{}
-        $htGitTrackESLZ.($dt).commitId = $commit.CommitId
-        $jsonRaw = git show "$($commit.CommitId):eslzArm/managementGroupTemplates/policyDefinitions/policies.json"
-    
-        $jsonESLZPolicies = $jsonRaw | ConvertFrom-Json
-        Write-Host "$dt $($commit.CommitId)"
-        if (($jsonESLZPolicies.variables.policies.policyDefinitions).Count -eq 0) {
-            $eslzGoodToGo = $false
-        }
-        else {
-            $eslzGoodToGo = $true
-            $eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
-            foreach ($policyDefinition in $eslzPolicies) {
-                $policyJsonConv = ($policyDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
-                $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonConv))
-                $stringHash = [System.BitConverter]::ToString($hash) 
-                $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
-                $htGitTrackESLZ.($dt).policies.($policyJsonRebuild.name) = @{}
-                $htGitTrackESLZ.($dt).policies.($policyJsonRebuild.name).version = $policyJsonRebuild.properties.metadata.version
-
-
-                if ($policyJsonRebuild.name -eq 'Deny-Subnet-Without-UDR') {
-                    Write-Host " - - - - $dt $($commit.CommitId) 'Deny-Subnet-Without-UDR' $($policyJsonRebuild.properties.metadata.version)"
-                }
-
-                if (-not $allESLZPolicies.($policyJsonRebuild.name)) {
-                    $allESLZPolicies.($policyJsonRebuild.name) = @{}
-                    $allESLZPolicies.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
-                    $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
-                    $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
-                    $allESLZPolicies.($policyJsonRebuild.name).status = 'prod'
-                }
-                else {
-                    if ($allESLZPolicies.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
-                        $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
-                    }
-                    if (-not $allESLZPolicies.($policyJsonRebuild.name).$stringHash) {
-                        $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
-                    }
-                }
-            }
-        }
+if (-not $HierarchyMapOnly) {
+    if (-not $NoALZEvergreen) {
+        processALZEverGreen
     }
-
-    $cnt = 0
-    foreach ($entry in $htGitTrackESLZ.keys | sort-object) {
-        Write-Host ''
-        Write-Host "********* $entry - $($htGitTrackESLZ.($entry).commitId)"
-
-        foreach ($p in $htGitTrackESLZ.($entry).policies.keys) {
-            if ($cnt -ne (0)) {
-                if ($htGitTrackESLZ.(($htGitTrackESLZ.keys | sort-object)[($cnt - 1)]).policies.($p)) {
-                }
-                else {
-                    Write-Host "ADD $p NOT exists in previous $(($htGitTrackESLZ.keys | sort-object)[($cnt -1)])"
-                    $allESLZPolicies.$p.status = 'prod'
-                }
-            }
-            if ($cnt -ne ($htGitTrackESLZ.keys.count - 1)) {
-                if ($htGitTrackESLZ.(($htGitTrackESLZ.keys | sort-object)[($cnt + 1)]).policies.($p)) {
-                }
-                else {
-                    Write-Host "REMOVE $p NOT exists in next $(($htGitTrackESLZ.keys | sort-object)[($cnt + 1)])"
-                    $allESLZPolicies.$p.status = 'obsolete'
-                }
-            }
-        }
-        $cnt++
-    }
-
-    $finalReference = @{}
-    foreach ($entry in $allESLZPolicies.keys | sort-object) {
-        $thisOne = $allESLZPolicies.($entry)
-        $latestVersion = ([array]($thisOne.version | Sort-Object -Descending))[0]
-        $finalReference.($entry) = @{}
-        $finalReference.($entry).latestVersion = $latestVersion
-        $finalReference.($entry).status = $thisOne.status
-    }
-    $alzPolicies = $finalReference
-
-    Set-Location $workingPath
-
-    Write-Host 'remove dir ALZ'
-    Remove-Item -Recurse -Force $ALZPath
-
 }
 
 getEntities
@@ -30001,20 +29884,34 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     <script>
         `$("#getImage").on('click', function () {
 
-        element = document.getElementById('first')
+        element = document.getElementById('saveAsImageArea')
         var images = element.getElementsByTagName('img');
         var l = images.length;
         for (var i = 0; i < l; i++) {
             images[0].parentNode.removeChild(images[0]);
         }
 
-        domtoimage.toJpeg(element)
+        var scale = 3;
+        domtoimage.toPng(element, { quality: 0.95 , width: element.clientWidth * scale,
+            height: element.clientHeight * scale,
+            style: {
+                transform: 'scale('+scale+')',
+                transformOrigin: 'top left'
+        }})          
             .then(function (dataUrl) {
-                var link = document.createElement('a');
-                link.download = '$($fileName)';
-                link.href = dataUrl;
-                link.click();
-            });
+            var link = document.createElement('a');
+            link.download = 'AzGovViz_v6_major_20220823_1_20220823_183737_ESJH.png';
+            link.href = dataUrl;
+            link.click();
+        });
+
+        // domtoimage.toJpeg(element)
+        //     .then(function (dataUrl) {
+        //         var link = document.createElement('a');
+        //         link.download = 'AzGovViz_v6_major_20220823_1_20220823_183737_ESJH.jpeg';
+        //         link.href = dataUrl;
+        //         link.click();
+        //     });
                 
         })
     </script>
@@ -30060,6 +29957,7 @@ $html += @"
 
 $html += @'
 <ul>
+    <div id="saveAsImageArea">
     <li id="first" style="background-color:white">
 '@
 
@@ -30251,6 +30149,7 @@ else {
                         </li>
                     </ul>
                 </li>
+                </div>
             </ul>
         </div>
     </div>
@@ -30390,22 +30289,36 @@ $html += @"
     <script>
         `$("#getImage").on('click', function () {
     
-        element = document.getElementById('first')
-        var images = element.getElementsByTagName('img');
-        var l = images.length;
-        for (var i = 0; i < l; i++) {
-            images[0].parentNode.removeChild(images[0]);
-        }
-
-        domtoimage.toJpeg(element)
-            .then(function (dataUrl) {
+            element = document.getElementById('saveAsImageArea')
+            var images = element.getElementsByTagName('img');
+            var l = images.length;
+            for (var i = 0; i < l; i++) {
+                images[0].parentNode.removeChild(images[0]);
+            }
+    
+            var scale = 3;
+            domtoimage.toPng(element, { quality: 0.95 , width: element.clientWidth * scale,
+                height: element.clientHeight * scale,
+                style: {
+                    transform: 'scale('+scale+')',
+                    transformOrigin: 'top left'
+            }})          
+                .then(function (dataUrl) {
                 var link = document.createElement('a');
-                link.download = '$($fileName).jpeg';
+                link.download = 'AzGovViz_v6_major_20220823_1_20220823_183737_ESJH.png';
                 link.href = dataUrl;
                 link.click();
             });
-                
-        })
+    
+            // domtoimage.toJpeg(element)
+            //     .then(function (dataUrl) {
+            //         var link = document.createElement('a');
+            //         link.download = 'AzGovViz_v6_major_20220823_1_20220823_183737_ESJH.jpeg';
+            //         link.href = dataUrl;
+            //         link.click();
+            //     });
+                    
+            })
     </script>
 </body>
 </html>

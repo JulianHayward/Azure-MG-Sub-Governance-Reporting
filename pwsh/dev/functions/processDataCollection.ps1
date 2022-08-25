@@ -82,6 +82,7 @@ function processDataCollection {
             $htUserTypesGuest = $using:htUserTypesGuest
             $htRoleAssignmentsPIM = $using:htRoleAssignmentsPIM
             $alzPolicies = $using:alzPolicies
+            $alzPolicySets = $using:alzPolicySets
             #other
             $function:addRowToTable = $using:funcAddRowToTable
             $function:namingValidation = $using:funcNamingValidation
@@ -342,6 +343,8 @@ function processDataCollection {
                 $arrayPSRuleTracking = $using:arrayPSRuleTracking
                 $htClassicAdministrators = $using:htClassicAdministrators
                 $htRoleAssignmentsPIM = $using:htRoleAssignmentsPIM
+                $alzPolicies = $using:alzPolicies
+                $alzPolicySets = $using:alzPolicySets
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation

@@ -307,7 +307,7 @@ Param
     $AzAPICallVersion = '1.1.21',
 
     [string]
-    $ProductVersion = 'v6_major_20220815_4',
+    $ProductVersion = 'v6_major_20220825_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -537,6 +537,7 @@ if ($ManagementGroupId -match " ") {
 }
 
 #region Functions
+. ".\$($ScriptPath)\functions\processALZEverGreen.ps1"
 . ".\$($ScriptPath)\functions\getPIMEligible.ps1"
 . ".\$($ScriptPath)\functions\testGuid.ps1"
 . ".\$($ScriptPath)\functions\apiCallTracking.ps1"
@@ -660,8 +661,9 @@ if ($azGovVizNewerVersionAvailable) {
 
 handleCloudEnvironment
 
-#region recommendPSRule
+
 if (-not $HierarchyMapOnly) {
+    #region recommendPSRule
     if (-not $azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
         if (-not $DoPSRule) {
             Write-Host ""
@@ -673,25 +675,25 @@ if (-not $HierarchyMapOnly) {
             pause
         }
     }
-}
-#endregion recommendPSRule
+    #endregion recommendPSRule
 
-#region hintPIMEligibility
-if ($azAPICallConf['htParameters'].accountType -eq 'User') {
-    if (-not $NoPIMEligibility) {
-        Write-Host ""
-        Write-Host " * * * HINT: PIM (Privileged Identity Management) Eligibility reporting * * *" -ForegroundColor DarkBlue
-        Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
-        Write-Host "Executing principal accountType: '$($azAPICallConf['htParameters'].accountType)'"
-        Write-Host "PIM Eligibility reporting requires to execute the script as ServicePrincipal. API Permission 'PrivilegedAccess.Read.AzureResources' is required"
-        Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
-        $NoPIMEligibility = $true
-        Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
-        Write-Host " * * * * * * * * * * * * * * * * * * * * * *" -ForegroundColor DarkBlue
-        pause
+    #region hintPIMEligibility
+    if ($azAPICallConf['htParameters'].accountType -eq 'User') {
+        if (-not $NoPIMEligibility) {
+            Write-Host ""
+            Write-Host " * * * HINT: PIM (Privileged Identity Management) Eligibility reporting * * *" -ForegroundColor DarkBlue
+            Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
+            Write-Host "Executing principal accountType: '$($azAPICallConf['htParameters'].accountType)'"
+            Write-Host "PIM Eligibility reporting requires to execute the script as ServicePrincipal. API Permission 'PrivilegedAccess.Read.AzureResources' is required"
+            Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
+            $NoPIMEligibility = $true
+            Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
+            Write-Host " * * * * * * * * * * * * * * * * * * * * * *" -ForegroundColor DarkBlue
+            pause
+        }
     }
+    #endregion hintPIMEligibility
 }
-#endregion hintPIMEligibility
 
 addHtParameters
 
@@ -814,190 +816,12 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htClassicAdministrators = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $arrayOrphanedResources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayPIMEligible = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+}
 
+if (-not $HierarchyMapOnly) {
     if (-not $NoALZEvergreen) {
-        $workingPath = Get-Location
-        $ALZPath = "$($OutputPath)/ALZ"
-        mkdir $ALZPath
-        Set-Location $ALZPath
-        $ALZCloneSuccess = $false
-        try {
-            git clone https://github.com/Azure/Enterprise-Scale.git
-            $ALZCloneSuccess = $true
-        }
-        catch {
-            $_
-            $NoALZEvergreen = $true
-        }
-        
-        if ($ALZCloneSuccess) {
-            Set-Location "$($ALZPath)/Enterprise-Scale"
-  
-            $htGitTrackESLZPolicies = @{}
-            $htGitTrackESLZdataPolicies = @{}
-            $allESLZPolicies = @{}
-
-            $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/policies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
-            Write-Host $gitHist.Count
-            foreach ($commit in $gitHist | Sort-Object -Property Date) {
-                $dt = (([datetime]$commit.Date).ToUniversalTime()).ToString("yyyyMMddHHmmss")
-                $htGitTrackESLZPolicies.($dt) = @{}
-                $htGitTrackESLZPolicies.($dt).policies = @{}
-                $htGitTrackESLZPolicies.($dt).commitId = $commit.CommitId
-                $jsonRaw = git show "$($commit.CommitId):eslzArm/managementGroupTemplates/policyDefinitions/policies.json"
-            
-                $jsonESLZPolicies = $jsonRaw | ConvertFrom-Json
-                Write-Host "$dt $($commit.CommitId)"
-                if (($jsonESLZPolicies.variables.policies.policyDefinitions).Count -eq 0) {
-                    $eslzGoodToGo = $false
-                }
-                else {
-                    $eslzGoodToGo = $true
-                    $eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
-                    foreach ($policyDefinition in $eslzPolicies) {
-                        $policyJsonConv = ($policyDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
-                        $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonConv))
-                        $stringHash = [System.BitConverter]::ToString($hash) 
-                        $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
-                        $htGitTrackESLZPolicies.($dt).policies.($policyJsonRebuild.name) = @{}
-                        $htGitTrackESLZPolicies.($dt).policies.($policyJsonRebuild.name).version = $policyJsonRebuild.properties.metadata.version
-        
-                        if (-not $allESLZPolicies.($policyJsonRebuild.name)) {
-                            $allESLZPolicies.($policyJsonRebuild.name) = @{}
-                            $allESLZPolicies.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
-                            $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
-                            $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
-                            $allESLZPolicies.($policyJsonRebuild.name).status = 'prod'
-                        }
-                        else {
-                            if ($allESLZPolicies.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
-                                $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
-                            }
-                            if (-not $allESLZPolicies.($policyJsonRebuild.name).$stringHash) {
-                                $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
-                            }
-                        }
-                    }
-                }
-            }
-
-            $cnt = 0
-            foreach ($entry in $htGitTrackESLZPolicies.keys | sort-object) {
-                Write-Host ''
-                Write-Host "********* $entry - $($htGitTrackESLZPolicies.($entry).commitId)"
-        
-                foreach ($p in $htGitTrackESLZPolicies.($entry).policies.keys) {
-                    if ($cnt -ne (0)) {
-                        if ($htGitTrackESLZPolicies.(($htGitTrackESLZPolicies.keys | sort-object)[($cnt - 1)]).policies.($p)) {
-                        }
-                        else {
-                            Write-Host "ADD $p NOT exists in previous $(($htGitTrackESLZPolicies.keys | sort-object)[($cnt -1)])"
-                            $allESLZPolicies.$p.status = 'prod'
-                        }
-                    }
-                    if ($cnt -ne ($htGitTrackESLZPolicies.keys.count - 1)) {
-                        if ($htGitTrackESLZPolicies.(($htGitTrackESLZPolicies.keys | sort-object)[($cnt + 1)]).policies.($p)) {
-                        }
-                        else {
-                            Write-Host "REMOVE $p NOT exists in next $(($htGitTrackESLZPolicies.keys | sort-object)[($cnt + 1)])"
-                            $allESLZPolicies.$p.status = 'obsolete'
-                        }
-                    }
-                }
-                $cnt++
-            }
-
-            $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/dataPolicies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
-            Write-Host $gitHist.Count
-            foreach ($commit in $gitHist | Sort-Object -Property Date) {
-                $dt = (([datetime]$commit.Date).ToUniversalTime()).ToString("yyyyMMddHHmmss")
-                $htGitTrackESLZdataPolicies.($dt) = @{}
-                $htGitTrackESLZdataPolicies.($dt).policies = @{}
-                $htGitTrackESLZdataPolicies.($dt).commitId = $commit.CommitId
-                $jsonRaw = git show "$($commit.CommitId):eslzArm/managementGroupTemplates/policyDefinitions/dataPolicies.json"
-            
-                $jsonESLZPolicies = $jsonRaw | ConvertFrom-Json
-                Write-Host "$dt $($commit.CommitId)"
-                if (($jsonESLZPolicies.variables.policies.policyDefinitions).Count -eq 0) {
-                    $eslzGoodToGo = $false
-                }
-                else {
-                    $eslzGoodToGo = $true
-                    $eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
-                    foreach ($policyDefinition in $eslzPolicies) {
-                        $policyJsonConv = ($policyDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
-                        $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonConv))
-                        $stringHash = [System.BitConverter]::ToString($hash) 
-                        $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
-                        $htGitTrackESLZdataPolicies.($dt).policies.($policyJsonRebuild.name) = @{}
-                        $htGitTrackESLZdataPolicies.($dt).policies.($policyJsonRebuild.name).version = $policyJsonRebuild.properties.metadata.version
-        
-                        if (-not $allESLZPolicies.($policyJsonRebuild.name)) {
-                            $allESLZPolicies.($policyJsonRebuild.name) = @{}
-                            $allESLZPolicies.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
-                            $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
-                            $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
-                            $allESLZPolicies.($policyJsonRebuild.name).status = 'prod'
-                        }
-                        else {
-                            if ($allESLZPolicies.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
-                                $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
-                            }
-                            if (-not $allESLZPolicies.($policyJsonRebuild.name).$stringHash) {
-                                $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
-                            }
-                        }
-                    }
-                }
-            }
-        
-            $cnt = 0
-            foreach ($entry in $htGitTrackESLZdataPolicies.keys | sort-object) {
-                Write-Host ''
-                Write-Host "********* $entry - $($htGitTrackESLZdataPolicies.($entry).commitId)"
-        
-                foreach ($p in $htGitTrackESLZdataPolicies.($entry).policies.keys) {
-                    if ($cnt -ne (0)) {
-                        if ($htGitTrackESLZdataPolicies.(($htGitTrackESLZdataPolicies.keys | sort-object)[($cnt - 1)]).policies.($p)) {
-                        }
-                        else {
-                            Write-Host "ADD $p NOT exists in previous $(($htGitTrackESLZdataPolicies.keys | sort-object)[($cnt -1)])"
-                            $allESLZPolicies.$p.status = 'prod'
-                        }
-                    }
-                    if ($cnt -ne ($htGitTrackESLZdataPolicies.keys.count - 1)) {
-                        if ($htGitTrackESLZdataPolicies.(($htGitTrackESLZdataPolicies.keys | sort-object)[($cnt + 1)]).policies.($p)) {
-                        }
-                        else {
-                            Write-Host "REMOVE $p NOT exists in next $(($htGitTrackESLZdataPolicies.keys | sort-object)[($cnt + 1)])"
-                            $allESLZPolicies.$p.status = 'obsolete'
-                        }
-                    }
-                }
-                $cnt++
-            }
-        
-            $finalReference = @{}
-            foreach ($entry in $allESLZPolicies.keys | sort-object) {
-                $thisOne = $allESLZPolicies.($entry)
-                $latestVersion = ([array]($thisOne.version | Sort-Object -Descending))[0]
-                $finalReference.($entry) = @{}
-                $finalReference.($entry).latestVersion = $latestVersion
-                $finalReference.($entry).status = $thisOne.status
-            }
-            $alzPolicies = $finalReference
-        
-            Set-Location $workingPath
-        
-            Write-Host 'remove dir ALZ'
-            Remove-Item -Recurse -Force $ALZPath
-        }
-        else {
-            Set-Location $workingPath
-        }
+        processALZEverGreen
     }
-    
-
 }
 
 getEntities
@@ -1674,20 +1498,34 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     <script>
         `$("#getImage").on('click', function () {
 
-        element = document.getElementById('first')
+        element = document.getElementById('saveAsImageArea')
         var images = element.getElementsByTagName('img');
         var l = images.length;
         for (var i = 0; i < l; i++) {
             images[0].parentNode.removeChild(images[0]);
         }
 
-        domtoimage.toJpeg(element)
+        var scale = 3;
+        domtoimage.toPng(element, { quality: 0.95 , width: element.clientWidth * scale,
+            height: element.clientHeight * scale,
+            style: {
+                transform: 'scale('+scale+')',
+                transformOrigin: 'top left'
+        }})          
             .then(function (dataUrl) {
-                var link = document.createElement('a');
-                link.download = '$($fileName)';
-                link.href = dataUrl;
-                link.click();
-            });
+            var link = document.createElement('a');
+            link.download = 'AzGovViz_v6_major_20220823_1_20220823_183737_ESJH.png';
+            link.href = dataUrl;
+            link.click();
+        });
+
+        // domtoimage.toJpeg(element)
+        //     .then(function (dataUrl) {
+        //         var link = document.createElement('a');
+        //         link.download = 'AzGovViz_v6_major_20220823_1_20220823_183737_ESJH.jpeg';
+        //         link.href = dataUrl;
+        //         link.click();
+        //     });
                 
         })
     </script>
@@ -1733,6 +1571,7 @@ $html += @"
 
 $html += @'
 <ul>
+    <div id="saveAsImageArea">
     <li id="first" style="background-color:white">
 '@
 
@@ -1924,6 +1763,7 @@ else {
                         </li>
                     </ul>
                 </li>
+                </div>
             </ul>
         </div>
     </div>
@@ -2063,22 +1903,36 @@ $html += @"
     <script>
         `$("#getImage").on('click', function () {
     
-        element = document.getElementById('first')
-        var images = element.getElementsByTagName('img');
-        var l = images.length;
-        for (var i = 0; i < l; i++) {
-            images[0].parentNode.removeChild(images[0]);
-        }
-
-        domtoimage.toJpeg(element)
-            .then(function (dataUrl) {
+            element = document.getElementById('saveAsImageArea')
+            var images = element.getElementsByTagName('img');
+            var l = images.length;
+            for (var i = 0; i < l; i++) {
+                images[0].parentNode.removeChild(images[0]);
+            }
+    
+            var scale = 3;
+            domtoimage.toPng(element, { quality: 0.95 , width: element.clientWidth * scale,
+                height: element.clientHeight * scale,
+                style: {
+                    transform: 'scale('+scale+')',
+                    transformOrigin: 'top left'
+            }})          
+                .then(function (dataUrl) {
                 var link = document.createElement('a');
-                link.download = '$($fileName).jpeg';
+                link.download = 'AzGovViz_v6_major_20220823_1_20220823_183737_ESJH.png';
                 link.href = dataUrl;
                 link.click();
             });
-                
-        })
+    
+            // domtoimage.toJpeg(element)
+            //     .then(function (dataUrl) {
+            //         var link = document.createElement('a');
+            //         link.download = 'AzGovViz_v6_major_20220823_1_20220823_183737_ESJH.jpeg';
+            //         link.href = dataUrl;
+            //         link.click();
+            //     });
+                    
+            })
     </script>
 </body>
 </html>
