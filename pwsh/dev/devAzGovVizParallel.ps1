@@ -307,7 +307,7 @@ Param
     $AzAPICallVersion = '1.1.21',
 
     [string]
-    $ProductVersion = 'v6_major_20220825_1',
+    $ProductVersion = 'v6_major_20220825_2',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -1514,7 +1514,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         }})          
             .then(function (dataUrl) {
             var link = document.createElement('a');
-            link.download = 'AzGovViz_v6_major_20220823_1_20220823_183737_ESJH.png';
+            link.download = '$($fileName).png';
             link.href = dataUrl;
             link.click();
         });
@@ -1522,7 +1522,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         // domtoimage.toJpeg(element)
         //     .then(function (dataUrl) {
         //         var link = document.createElement('a');
-        //         link.download = 'AzGovViz_v6_major_20220823_1_20220823_183737_ESJH.jpeg';
+        //         link.download = '$($fileName).jpeg';
         //         link.href = dataUrl;
         //         link.click();
         //     });
@@ -1919,7 +1919,7 @@ $html += @"
             }})          
                 .then(function (dataUrl) {
                 var link = document.createElement('a');
-                link.download = 'AzGovViz_v6_major_20220823_1_20220823_183737_ESJH.png';
+                link.download = '$($fileName).png';
                 link.href = dataUrl;
                 link.click();
             });
@@ -1927,7 +1927,7 @@ $html += @"
             // domtoimage.toJpeg(element)
             //     .then(function (dataUrl) {
             //         var link = document.createElement('a');
-            //         link.download = 'AzGovViz_v6_major_20220823_1_20220823_183737_ESJH.jpeg';
+            //         link.download = '$($fileName).jpeg';
             //         link.href = dataUrl;
             //         link.click();
             //     });
