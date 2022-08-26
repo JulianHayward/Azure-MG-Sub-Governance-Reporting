@@ -18,15 +18,28 @@ function processALZEverGreen {
     Write-Host " Switching to temporary directory '$($ALZPath)'"
     Set-Location $ALZPath
     $ALZCloneSuccess = $false
+
     try {
         Write-Host " Try cloning '$($ALZRepositoryURI)'"
         git clone $ALZRepositoryURI
-        $ALZCloneSuccess = $true
+        if (-not (Test-Path -LiteralPath "$($ALZPath)/Enterprise-Scale" -PathType Container)) {
+            $ALZCloneSuccess = $false
+            Write-Host " Cloning '$($ALZRepositoryURI)' failed"
+            Write-Host " Setting switch parameter '-NoALZEvergreen' to true"
+            $script:NoALZEvergreen = $true
+            $script:azAPICallConf['htParameters'].NoALZEvergreen = $true
+            Write-Host " Switching back to working directory '$($workingPath)'"
+            Set-Location $workingPath
+        }
+        else {
+            Write-Host " Cloning '$($ALZRepositoryURI)' succeeded"
+            $ALZCloneSuccess = $true
+        }
     }
     catch {
         $_
         Write-Host " Cloning '$($ALZRepositoryURI)' failed"
-        Write-Host " Setting switch parameter '-NoALZEvergreen' '$($ALZRepositoryURI)' to true"
+        Write-Host " Setting switch parameter '-NoALZEvergreen' to true"
         $script:NoALZEvergreen = $true
         $script:azAPICallConf['htParameters'].NoALZEvergreen = $true
         Write-Host " Switching back to working directory '$($workingPath)'"
@@ -201,7 +214,7 @@ function processALZEverGreen {
         Write-Host " $($allESLZPolicies.Keys.Count) Policy definitions ($($allESLZPolicies.Values.where({$_.status -eq 'Prod'}).Count) productive)"
         Write-Host " $($allESLZPolicySets.Keys.Count) PolicySet definitions ($($allESLZPolicySets.Values.where({$_.status -eq 'Prod'}).Count) productive)"
 
-        $script:alzPolicies = @{}
+        #$script:alzPolicies = @{}
         foreach ($entry in $allESLZPolicies.keys | sort-object) {
             $thisOne = $allESLZPolicies.($entry)
             $latestVersion = ([array]($thisOne.version | Sort-Object -Descending))[0]
@@ -213,7 +226,7 @@ function processALZEverGreen {
         $script:alzPolicies.'deploy-asc-standard'.latestVersion = '1.0.0'
         $script:alzPolicies.'deploy-asc-standard'.status = 'obsolete'
 
-        $script:alzPolicySets = @{}
+        #$script:alzPolicySets = @{}
         foreach ($entry in $allESLZPolicySets.keys | sort-object) {
             $thisOne = $allESLZPolicySets.($entry)
             $latestVersion = ([array]($thisOne.version | Sort-Object -Descending))[0]

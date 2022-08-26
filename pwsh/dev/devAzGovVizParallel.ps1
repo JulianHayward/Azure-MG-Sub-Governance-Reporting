@@ -307,7 +307,7 @@ Param
     $AzAPICallVersion = '1.1.21',
 
     [string]
-    $ProductVersion = 'v6_major_20220825_2',
+    $ProductVersion = 'v6_major_20220826_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -816,6 +816,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htClassicAdministrators = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $arrayOrphanedResources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayPIMEligible = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $alzPolicies = @{}
+    $alzPolicySets = @{}
 }
 
 if (-not $HierarchyMapOnly) {
