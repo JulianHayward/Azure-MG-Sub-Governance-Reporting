@@ -83,6 +83,8 @@ function processDataCollection {
             $htRoleAssignmentsPIM = $using:htRoleAssignmentsPIM
             $alzPolicies = $using:alzPolicies
             $alzPolicySets = $using:alzPolicySets
+            $alzPolicyHashes = $using:alzPolicyHashes
+            $alzPolicySetHashes = $using:alzPolicySetHashes
             #other
             $function:addRowToTable = $using:funcAddRowToTable
             $function:namingValidation = $using:funcNamingValidation
@@ -345,6 +347,8 @@ function processDataCollection {
                 $htRoleAssignmentsPIM = $using:htRoleAssignmentsPIM
                 $alzPolicies = $using:alzPolicies
                 $alzPolicySets = $using:alzPolicySets
+                $alzPolicyHashes = $using:alzPolicyHashes
+                $alzPolicySetHashes = $using:alzPolicySetHashes
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation

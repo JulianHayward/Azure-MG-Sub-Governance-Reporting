@@ -1702,43 +1702,6 @@ function dataCollectionPolicyDefinitions {
                     $htTemp.ScopeMgSub = 'Mg'
                     $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[4]
                     $htTemp.ScopeMGLevel = $htManagementGroupsMgPath.((($hlpPolicyDefinitionId).split('/'))[4]).ParentNameChainCount
-
-                    if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
-                        if ($alzPolicies.($scopePolicyDefinition.name)) {
-                            if ($scopePolicyDefinition.Properties.metadata.version) {
-                                $htTemp.ALZ = 'true'
-                                if ($alzPolicies.($scopePolicyDefinition.name).status -eq 'obsolete') {
-                                    $htTemp.ALZState = 'obsolete'
-                                    $htTemp.ALZLatestVer = ''
-                                }
-                                else {
-                                    if ($alzPolicies.($scopePolicyDefinition.name).latestVersion -eq $scopePolicyDefinition.Properties.metadata.version) {
-                                        $htTemp.ALZState = 'upToDate'
-                                    }
-                                    else {
-                                        $htTemp.ALZState = 'outDated'
-                                    }
-                                    $htTemp.ALZLatestVer = $alzPolicies.($scopePolicyDefinition.name).latestVersion
-                                }
-                                
-                            }
-                            else {
-                                $htTemp.ALZ = 'false'
-                                $htTemp.ALZState = ''
-                                $htTemp.ALZLatestVer = ''
-                            }
-                        }
-                        else {
-                            $htTemp.ALZ = 'false'
-                            $htTemp.ALZState = ''
-                            $htTemp.ALZLatestVer = ''
-                        }
-                    }
-                    else{
-                        $htTemp.ALZ = 'NoALZEvergreen'
-                        $htTemp.ALZState = ''
-                        $htTemp.ALZLatestVer = ''
-                    }
                 }
                 
                 if ($hlpPolicyDefinitionId -like '/subscriptions/*') {
@@ -1746,19 +1709,100 @@ function dataCollectionPolicyDefinitions {
                     $htTemp.ScopeMgSub = 'Sub'
                     $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[2]
                     $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($hlpPolicyDefinitionId).split('/'))[2]).level
-
-                    if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
-                        #subscription scoped alz policies will be ignored 
-                        $htTemp.ALZ = 'ignored'
-                        $htTemp.ALZState = ''
-                        $htTemp.ALZLatestVer = ''
-                    }
-                    else {
-                        $htTemp.ALZ = 'NoALZEvergreen'
-                        $htTemp.ALZState = ''
-                        $htTemp.ALZLatestVer = ''
-                    }
                 }
+
+
+                if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
+
+                    #if ($scopePolicyDefinition.Properties.metadata.version) {
+                        $policyJsonRule = $scopePolicyDefinition.properties.policyRule | ConvertTo-Json -depth 99
+                        $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonRule))
+                        $stringHash = [System.BitConverter]::ToString($hash) 
+
+                        if ($alzPolicies.($scopePolicyDefinition.name) -or $alzPolicyHashes.($stringHash)) {
+
+                            $policyHashMatch = $false
+                            if ($alzPolicyHashes.($stringHash)) {
+                                $policyHashMatch = $true
+                                Write-Host "$($scopePolicyDefinition.name) exists in alzPolicyHashes"
+                                $htTemp.ALZ = 'true'
+                                $htTemp.ALZIdentificationLevel = 'PolicyRule Hash'
+                                $htTemp.ALZPolicyName = $alzPolicyHashes.($stringHash).policyName
+                                $htTemp.hash = $stringHash
+                                if ($alzpolicies.($alzPolicyHashes.($stringHash).policyName).status -eq 'obsolete') {
+                                    $htTemp.ALZState = 'obsolete'
+                                    $htTemp.ALZLatestVer = ''
+                                }
+                                else {
+                                    if ($scopePolicyDefinition.Properties.metadata.version) {
+                                        if ($alzpolicies.($alzPolicyHashes.($stringHash).policyName).latestVersion -eq $scopePolicyDefinition.Properties.metadata.version) {
+                                            $htTemp.ALZState = 'upToDate'
+                                        }
+                                        else {
+                                            $htTemp.ALZState = 'outDated'
+                                        }
+                                    }
+                                    else {
+                                        $htTemp.ALZState = 'potentiallyOutDated (no ver)'
+                                    }
+                                    $htTemp.ALZLatestVer = $alzpolicies.($alzPolicyHashes.($stringHash).policyName).latestVersion
+                                }
+                            }
+
+                            if ($alzPolicies.($scopePolicyDefinition.name) -and -not $policyHashMatch) {
+                                #Write-Host "$($scopePolicyDefinition.name) NOT exists in alzPolicyHashes but matches name in alzPolicies"
+                                $htTemp.ALZ = 'true'
+                                $htTemp.ALZIdentificationLevel = 'Policy Name'
+                                $htTemp.ALZPolicyName = $alzPolicies.($scopePolicyDefinition.name).policyName
+                                $htTemp.hash = $stringHash
+                                if ($alzPolicies.($scopePolicyDefinition.name).status -eq 'obsolete') {
+                                    $htTemp.ALZState = 'obsolete'
+                                    $htTemp.ALZLatestVer = ''
+                                }
+                                else {
+                                    if ($scopePolicyDefinition.Properties.metadata.version) {
+                                        if ($alzPolicies.($scopePolicyDefinition.name).latestVersion -eq $scopePolicyDefinition.Properties.metadata.version) {
+                                            $htTemp.ALZState = 'upToDate'
+                                        }
+                                        else {
+                                            $htTemp.ALZState = 'outDated'
+                                        }
+                                    }
+                                    else {
+                                        $htTemp.ALZState = 'likelyOutDated (no ver)'
+                                    }
+
+                                    $htTemp.ALZLatestVer = $alzPolicies.($scopePolicyDefinition.name).latestVersion
+                                }
+                            }
+                        }
+                        else {
+                            $htTemp.ALZ = 'false'
+                            $htTemp.ALZState = ''
+                            $htTemp.ALZLatestVer = ''
+                            $htTemp.ALZIdentificationLevel = ''
+                            $htTemp.ALZPolicyName = ''
+                            $htTemp.hash = $stringHash
+                        }
+                    #}
+                    # else {
+                    #     $htTemp.ALZ = 'false'
+                    #     $htTemp.ALZState = ''
+                    #     $htTemp.ALZLatestVer = ''
+                    #     $htTemp.ALZIdentificationLevel = ''
+                    #     $htTemp.ALZPolicyName = ''
+                    #     $htTemp.hash = ''
+                    # }
+                }
+                else{
+                    $htTemp.ALZ = 'NoALZEvergreen'
+                    $htTemp.ALZState = ''
+                    $htTemp.ALZLatestVer = ''
+                    $htTemp.ALZIdentificationLevel = ''
+                    $htTemp.ALZPolicyName = ''
+                    $htTemp.hash = ''
+                }
+
                 $htTemp.DisplayName = $($scopePolicyDefinition.Properties.displayname)
                 $htTemp.Description = $($policyDefinitionDescription)
                 $htTemp.Type = $($scopePolicyDefinition.Properties.policyType)
@@ -1906,22 +1950,46 @@ function dataCollectionPolicySetDefinitions {
         }
 
         if ($doIt) {
-            if (($scopePolicySetDefinition.Properties.description).length -eq 0) {
-                $policySetDefinitionDescription = 'no description given'
-            }
-            else {
-                $policySetDefinitionDescription = $scopePolicySetDefinition.Properties.description
-            }
+            if (-not $script:htCacheDefinitionsPolicySet.($hlpPolicySetDefinitionId)) {
+                if (($scopePolicySetDefinition.Properties.description).length -eq 0) {
+                    $policySetDefinitionDescription = 'no description given'
+                }
+                else {
+                    $policySetDefinitionDescription = $scopePolicySetDefinition.Properties.description
+                }
 
-            $htTemp = @{}
-            $htTemp.Id = $hlpPolicySetDefinitionId
-            if ($scopePolicySetDefinition.Id -like '/providers/Microsoft.Management/managementGroups/*') {
-                $htTemp.Scope = (($scopePolicySetDefinition.Id).split('/'))[0..4] -join '/'
-                $htTemp.ScopeMgSub = 'Mg'
-                $htTemp.ScopeId = (($scopePolicySetDefinition.Id).split('/'))[4]
-                $htTemp.ScopeMGLevel = $htManagementGroupsMgPath.((($scopePolicySetDefinition.Id).split('/'))[4]).ParentNameChainCount
+                $htTemp = @{}
+                $htTemp.Id = $hlpPolicySetDefinitionId
+                if ($scopePolicySetDefinition.Id -like '/providers/Microsoft.Management/managementGroups/*') {
+                    $htTemp.Scope = (($scopePolicySetDefinition.Id).split('/'))[0..4] -join '/'
+                    $htTemp.ScopeMgSub = 'Mg'
+                    $htTemp.ScopeId = (($scopePolicySetDefinition.Id).split('/'))[4]
+                    $htTemp.ScopeMGLevel = $htManagementGroupsMgPath.((($scopePolicySetDefinition.Id).split('/'))[4]).ParentNameChainCount
+                }
+
+                if ($scopePolicySetDefinition.Id -like '/subscriptions/*') {
+                    $htTemp.Scope = (($scopePolicySetDefinition.Id).split('/'))[0..2] -join '/'
+                    $htTemp.ScopeMgSub = 'Sub'
+                    $htTemp.ScopeId = (($scopePolicySetDefinition.Id).split('/'))[2]
+                    $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($scopePolicySetDefinition.Id).split('/'))[2]).level
+
+                    <#
+                    if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
+                        #subscription scoped alz policySets will be ignored 
+                        $htTemp.ALZ = 'ignored'
+                        $htTemp.ALZState = ''
+                        $htTemp.ALZLatestVer = ''
+                    }
+                    else {
+                        $htTemp.ALZ = 'NoALZEvergreen'
+                        $htTemp.ALZState = ''
+                        $htTemp.ALZLatestVer = ''
+                    }
+                    #>
+                }
 
                 if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
+                    <#
                     if ($alzPolicySets.($scopePolicySetDefinition.name)) {
                         if ($scopePolicySetDefinition.Properties.metadata.version) {
                             $htTemp.ALZ = 'true'
@@ -1951,59 +2019,119 @@ function dataCollectionPolicySetDefinitions {
                         $htTemp.ALZState = ''
                         $htTemp.ALZLatestVer = ''
                     }
+                    #>
+                    #if ($scopePolicySetDefinition.Properties.metadata.version) {
+                        <#
+                        $policyJsonRule = $scopePolicySetDefinition.properties.policyRule | ConvertTo-Json -depth 99
+                        $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonRule))
+                        $stringHash = [System.BitConverter]::ToString($hash) 
+                        #>
+
+                        $policyJsonParameters = $scopePolicySetDefinition.properties.parameters | ConvertTo-Json -depth 99
+                        $policyJsonPolicyDefinitions = $scopePolicySetDefinition.properties.policyDefinitions | ConvertTo-Json -depth 99
+                        $hashParameters = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonParameters))
+                        $stringHashParameters = [System.BitConverter]::ToString($hashParameters) 
+                        $hashPolicyDefinitions = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonPolicyDefinitions))
+                        $stringHashPolicyDefinitions = [System.BitConverter]::ToString($hashPolicyDefinitions) 
+                        $stringHash = "$($stringHashParameters)_$($stringHashPolicyDefinitions)"
+
+
+                        if ($alzPolicySets.($scopePolicySetDefinition.name) -or $alzPolicyHashes.($stringHash)) {
+
+                            $policySetHashMatch = $false
+                            if ($alzPolicySetHashes.($stringHash)) {
+                                $policySetHashMatch = $true
+                                Write-Host "+++ PolicySet $($scopePolicySetDefinition.name) exists in alzPolicyHashes"
+                                $htTemp.ALZ = 'true'
+                                $htTemp.ALZIdentificationLevel = 'PolicySet Hash'
+                                $htTemp.ALZPolicySetName = $alzPolicySetHashes.($stringHash).policySetName
+                                if ($alzPolicySetHashes.($stringHash).status -eq 'obsolete') {
+                                    $htTemp.ALZState = 'obsolete'
+                                    $htTemp.ALZLatestVer = ''
+                                }
+                                else {
+                                    if ($alzPolicySetHashes.($stringHash).latestVersion -eq $scopePolicySetDefinition.Properties.metadata.version) {
+                                        $htTemp.ALZState = 'upToDate'
+                                    }
+                                    else {
+                                        $htTemp.ALZState = 'outDated'
+                                    }
+                                    $htTemp.ALZLatestVer = $alzPolicySetHashes.($stringHash).latestVersion
+                                }
+                            }
+
+                            if ($alzPolicySets.($scopePolicySetDefinition.name) -and -not $policySetHashMatch) {
+                                #Write-Host "*** PolicySet $($scopePolicySetDefinition.name) NOT exists in alzPolicySetHashes but matches name in alzPolicySets"
+                                $htTemp.ALZ = 'true'
+                                $htTemp.ALZIdentificationLevel = 'PolicySet Name'
+                                $htTemp.ALZPolicySetName = $alzPolicySets.($scopePolicySetDefinition.name).policySetName
+                                if ($alzPolicySets.($scopePolicySetDefinition.name).status -eq 'obsolete') {
+                                    $htTemp.ALZState = 'obsolete'
+                                    $htTemp.ALZLatestVer = ''
+                                }
+                                else {
+                                    if ($alzPolicySets.($scopePolicySetDefinition.name).latestVersion -eq $scopePolicySetDefinition.Properties.metadata.version) {
+                                        $htTemp.ALZState = 'upToDate'
+                                    }
+                                    else {
+                                        $htTemp.ALZState = 'outDated'
+                                    }
+                                    $htTemp.ALZLatestVer = $alzPolicySets.($scopePolicySetDefinition.name).latestVersion
+                                }
+                            }
+                        }
+                        else {
+                            $htTemp.ALZ = 'false'
+                            $htTemp.ALZState = ''
+                            $htTemp.ALZLatestVer = ''
+                            $htTemp.ALZIdentificationLevel = ''
+                            $htTemp.ALZPolicySetName = ''
+                        }
+                    # }
+                    # else {
+                    #     $htTemp.ALZ = 'false'
+                    #     $htTemp.ALZState = ''
+                    #     $htTemp.ALZLatestVer = ''
+                    #     $htTemp.ALZIdentificationLevel = ''
+                    #     $htTemp.ALZPolicySetName = ''
+                    # }
                 }
                 else{
                     $htTemp.ALZ = 'NoALZEvergreen'
                     $htTemp.ALZState = ''
                     $htTemp.ALZLatestVer = ''
+                    $htTemp.ALZIdentificationLevel = ''
+                    $htTemp.ALZPolicySetName = ''
                 }
-            }
-            if ($scopePolicySetDefinition.Id -like '/subscriptions/*') {
-                $htTemp.Scope = (($scopePolicySetDefinition.Id).split('/'))[0..2] -join '/'
-                $htTemp.ScopeMgSub = 'Sub'
-                $htTemp.ScopeId = (($scopePolicySetDefinition.Id).split('/'))[2]
-                $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($scopePolicySetDefinition.Id).split('/'))[2]).level
 
-                if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
-                    #subscription scoped alz policySets will be ignored 
-                    $htTemp.ALZ = 'ignored'
-                    $htTemp.ALZState = ''
-                    $htTemp.ALZLatestVer = ''
+                $htTemp.DisplayName = $($scopePolicySetDefinition.Properties.displayname)
+                $htTemp.Description = $($policySetDefinitionDescription)
+                $htTemp.Type = $($scopePolicySetDefinition.Properties.policyType)
+                $htTemp.Category = $($scopePolicySetDefinition.Properties.metadata.category)
+                $htTemp.PolicyDefinitionId = $hlpPolicySetDefinitionId
+                $arrayPolicySetPolicyIdsToLower = @()
+                $htPolicySetPolicyRefIds = @{}
+                $arrayPolicySetPolicyIdsToLower = foreach ($policySetPolicy in $scopePolicySetDefinition.properties.policydefinitions) {
+                    $($policySetPolicy.policyDefinitionId).ToLower()
+                    $htPolicySetPolicyRefIds.($policySetPolicy.policyDefinitionReferenceId) = ($policySetPolicy.policyDefinitionId)
+                }
+                $htTemp.PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
+                $htTemp.PolicySetPolicyRefIds = $htPolicySetPolicyRefIds
+                $htTemp.Json = $scopePolicySetDefinition
+                if ($scopePolicySetDefinition.Properties.metadata.deprecated -eq $true -or $scopePolicySetDefinition.Properties.displayname -like "``[Deprecated``]*") {
+                    $htTemp.Deprecated = $scopePolicySetDefinition.Properties.metadata.deprecated
                 }
                 else {
-                    $htTemp.ALZ = 'NoALZEvergreen'
-                    $htTemp.ALZState = ''
-                    $htTemp.ALZLatestVer = ''
+                    $htTemp.Deprecated = $false
                 }
+                if ($scopePolicySetDefinition.Properties.metadata.preview -eq $true -or $scopePolicySetDefinition.Properties.displayname -like "``[*Preview``]*") {
+                    $htTemp.Preview = $scopePolicySetDefinition.Properties.metadata.preview
+                }
+                else {
+                    $htTemp.Preview = $false
+                }
+                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId) = $htTemp
             }
-            $htTemp.DisplayName = $($scopePolicySetDefinition.Properties.displayname)
-            $htTemp.Description = $($policySetDefinitionDescription)
-            $htTemp.Type = $($scopePolicySetDefinition.Properties.policyType)
-            $htTemp.Category = $($scopePolicySetDefinition.Properties.metadata.category)
-            $htTemp.PolicyDefinitionId = $hlpPolicySetDefinitionId
-            $arrayPolicySetPolicyIdsToLower = @()
-            $htPolicySetPolicyRefIds = @{}
-            $arrayPolicySetPolicyIdsToLower = foreach ($policySetPolicy in $scopePolicySetDefinition.properties.policydefinitions) {
-                $($policySetPolicy.policyDefinitionId).ToLower()
-                $htPolicySetPolicyRefIds.($policySetPolicy.policyDefinitionReferenceId) = ($policySetPolicy.policyDefinitionId)
-            }
-            $htTemp.PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
-            $htTemp.PolicySetPolicyRefIds = $htPolicySetPolicyRefIds
-            $htTemp.Json = $scopePolicySetDefinition
-            if ($scopePolicySetDefinition.Properties.metadata.deprecated -eq $true -or $scopePolicySetDefinition.Properties.displayname -like "``[Deprecated``]*") {
-                $htTemp.Deprecated = $scopePolicySetDefinition.Properties.metadata.deprecated
-            }
-            else {
-                $htTemp.Deprecated = $false
-            }
-            if ($scopePolicySetDefinition.Properties.metadata.preview -eq $true -or $scopePolicySetDefinition.Properties.displayname -like "``[*Preview``]*") {
-                $htTemp.Preview = $scopePolicySetDefinition.Properties.metadata.preview
-            }
-            else {
-                $htTemp.Preview = $false
-            }
-            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId) = $htTemp
-
             #namingValidation
             if (-not [string]::IsNullOrEmpty($scopePolicySetDefinition.Properties.displayname)) {
                 $namingValidationResult = NamingValidation -toCheck $scopePolicySetDefinition.Properties.displayname

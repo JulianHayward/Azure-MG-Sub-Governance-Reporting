@@ -978,28 +978,30 @@ function processTenantSummary() {
             }
 
             $null = $script:customPoliciesDetailed.Add([PSCustomObject]@{
-                    Type                  = 'Custom'
-                    ScopeMGLevel          = $tenantPolicy.ScopeMGLevel
-                    Scope                 = $tenantPolicy.ScopeMgSub
-                    ScopeId               = $tenantPolicy.ScopeId
-                    PolicyDisplayName     = $tenantPolicy.DisplayName
-                    PolicyDefinitionId    = $tenantPolicy.PolicyDefinitionId
-                    PolicyVersion         = $policyVersion
-                    PolicyEffect          = $effect
-                    PolicyCategory        = $tenantPolicy.Category
-                    RoleDefinitions       = $policyRoleDefinitions
-                    RoleDefinitionsClear  = $policyRoleDefinitionsClear
-                    UniqueAssignments     = $uniqueAssignments
-                    UsedInPolicySetsCount = $usedInPolicySetCount
-                    UsedInPolicySets      = $usedInPolicySet
-                    UsedInPolicySet4CSV   = $usedInPolicySet4CSV
-                    CreatedOn             = $createdOn
-                    CreatedBy             = $createdBy
-                    UpdatedOn             = $updatedOn
-                    UpdatedBy             = $updatedBy
-                    ALZ                   = $tenantPolicy.ALZ
-                    ALZState              = $tenantPolicy.ALZState
-                    ALZLatestVer          = $tenantPolicy.ALZLatestVer
+                    Type                   = 'Custom'
+                    ScopeMGLevel           = $tenantPolicy.ScopeMGLevel
+                    Scope                  = $tenantPolicy.ScopeMgSub
+                    ScopeId                = $tenantPolicy.ScopeId
+                    PolicyDisplayName      = $tenantPolicy.DisplayName
+                    PolicyDefinitionId     = $tenantPolicy.PolicyDefinitionId
+                    PolicyVersion          = $policyVersion
+                    PolicyEffect           = $effect
+                    PolicyCategory         = $tenantPolicy.Category
+                    RoleDefinitions        = $policyRoleDefinitions
+                    RoleDefinitionsClear   = $policyRoleDefinitionsClear
+                    UniqueAssignments      = $uniqueAssignments
+                    UsedInPolicySetsCount  = $usedInPolicySetCount
+                    UsedInPolicySets       = $usedInPolicySet
+                    UsedInPolicySet4CSV    = $usedInPolicySet4CSV
+                    CreatedOn              = $createdOn
+                    CreatedBy              = $createdBy
+                    UpdatedOn              = $updatedOn
+                    UpdatedBy              = $updatedBy
+                    ALZ                    = $tenantPolicy.ALZ
+                    ALZState               = $tenantPolicy.ALZState
+                    ALZLatestVer           = $tenantPolicy.ALZLatestVer
+                    ALZIdentificationLevel = $tenantPolicy.ALZIdentificationLevel
+                    ALZPolicyName          = $tenantPolicy.ALZPolicyName
                     #Json                  = [string]($tenantPolicy.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
                 })
 
@@ -1031,6 +1033,8 @@ function processTenantSummary() {
                     ALZ                    = $tenantPolicy.ALZ
                     ALZState               = $tenantPolicy.ALZState
                     ALZLatestVer           = $tenantPolicy.ALZLatestVer
+                    ALZIdentificationLevel = $tenantPolicy.ALZIdentificationLevel
+                    ALZPolicyName          = $tenantPolicy.ALZPolicyName
                 })
         }
         else {
@@ -1062,6 +1066,8 @@ function processTenantSummary() {
                     ALZ                    = $tenantPolicy.ALZ
                     ALZState               = $tenantPolicy.ALZState
                     ALZLatestVer           = $tenantPolicy.ALZLatestVer
+                    ALZIdentificationLevel = $tenantPolicy.ALZIdentificationLevel
+                    ALZPolicyName          = $tenantPolicy.ALZPolicyName
                 })
         }
     }
@@ -1752,24 +1758,26 @@ extensions: [{ name: 'sort' }]
             }
 
             $null = $script:customPolicySetsDetailed.Add([PSCustomObject]@{
-                    Type                  = 'Custom'
-                    ScopeMGLevel          = $tenantPolicySet.ScopeMGLevel
-                    Scope                 = $tenantPolicySet.ScopeMgSub
-                    ScopeId               = $tenantPolicySet.ScopeId
-                    PolicySetDisplayName  = $tenantPolicySet.DisplayName
-                    PolicySetDefinitionId = $tenantPolicySet.PolicyDefinitionId
-                    PolicySetCategory     = $tenantPolicySet.Category
-                    UniqueAssignments     = $policySetUniqueAssignment
-                    PoliciesUsed          = $policiesUsed
-                    PoliciesUsedClean     = $policiesUsedClean
-                    CreatedOn             = $createdOn
-                    CreatedBy             = $createdBy
-                    UpdatedOn             = $updatedOn
-                    UpdatedBy             = $updatedBy
+                    Type                   = 'Custom'
+                    ScopeMGLevel           = $tenantPolicySet.ScopeMGLevel
+                    Scope                  = $tenantPolicySet.ScopeMgSub
+                    ScopeId                = $tenantPolicySet.ScopeId
+                    PolicySetDisplayName   = $tenantPolicySet.DisplayName
+                    PolicySetDefinitionId  = $tenantPolicySet.PolicyDefinitionId
+                    PolicySetCategory      = $tenantPolicySet.Category
+                    UniqueAssignments      = $policySetUniqueAssignment
+                    PoliciesUsed           = $policiesUsed
+                    PoliciesUsedClean      = $policiesUsedClean
+                    CreatedOn              = $createdOn
+                    CreatedBy              = $createdBy
+                    UpdatedOn              = $updatedOn
+                    UpdatedBy              = $updatedBy
                     #Json                  = [string]($tenantPolicySet.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
-                    ALZ                   = $tenantPolicySet.ALZ
-                    ALZState              = $tenantPolicySet.ALZState
-                    ALZLatestVer          = $tenantPolicySet.ALZLatestVer
+                    ALZ                    = $tenantPolicySet.ALZ
+                    ALZState               = $tenantPolicySet.ALZState
+                    ALZLatestVer           = $tenantPolicySet.ALZLatestVer
+                    ALZIdentificationLevel = $tenantPolicySet.ALZIdentificationLevel
+                    ALZPolicySetName       = $tenantPolicySet.ALZPolicySetName
                 })
 
             $null = $script:tenantPolicySetsDetailed.Add([PSCustomObject]@{
@@ -1805,6 +1813,8 @@ extensions: [{ name: 'sort' }]
                     ALZ                      = $tenantPolicySet.ALZ
                     ALZState                 = $tenantPolicySet.ALZState
                     ALZLatestVer             = $tenantPolicySet.ALZLatestVer
+                    ALZIdentificationLevel   = $tenantPolicySet.ALZIdentificationLevel
+                    ALZPolicySetName         = $tenantPolicySet.ALZPolicySetName
                 })
 
         }
@@ -1842,6 +1852,8 @@ extensions: [{ name: 'sort' }]
                     ALZ                      = $tenantPolicySet.ALZ
                     ALZState                 = $tenantPolicySet.ALZState
                     ALZLatestVer             = $tenantPolicySet.ALZLatestVer
+                    ALZIdentificationLevel   = $tenantPolicySet.ALZIdentificationLevel
+                    ALZPolicySetName         = $tenantPolicySet.ALZPolicySetName
                 })
         }
     }

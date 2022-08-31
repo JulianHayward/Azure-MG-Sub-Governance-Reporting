@@ -130,7 +130,9 @@ function cacheBuiltIn {
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).ALZ = $false
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).ALZState = ''
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).ALZLatestVer = ''
-                
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).ALZIdentificationLevel = ''
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).ALZPolicyName = ''
+
                     if ($staticPolicyDefinition.Properties.metadata.deprecated -eq $true -or $staticPolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
                         $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Deprecated = $staticPolicyDefinition.Properties.metadata.deprecated
                 }
@@ -219,6 +221,8 @@ function cacheBuiltIn {
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).ALZ = $false
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).ALZState = ''
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).ALZLatestVer = ''
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).ALZIdentificationLevel = ''
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).ALZPolicySetName = ''
                 $arrayPolicySetPolicyIdsToLower = @()
                 $htPolicySetPolicyRefIds = @{}
                 $arrayPolicySetPolicyIdsToLower = foreach ($policySetPolicy in $builtinPolicySetDefinition.properties.policydefinitions) {

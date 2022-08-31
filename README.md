@@ -59,6 +59,12 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
+__Changes__ (2022-Aug-31 / Major)
+
+* Fix consumption large tenants with more than 3k subscriptions
+* ALZ EverGreen POC (name and hash based)
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.22
+
 __Changes__ (2022-Aug-25 / Major)
 
 * Fix CSV export `*_PolicySetDefinitions.csv` - Builtin Policy definitions contained in PolicySet definitions will only show the GUID instead of the full ID as for large PolicySet definitions the field size limit in Excel may be exceeded (column: PoliciesUsed4CSV)

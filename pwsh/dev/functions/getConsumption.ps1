@@ -304,7 +304,7 @@ function getConsumption {
                 }#>
             }
             else {
-                if ($allConsumptionDataAPIResult -eq 'Unauthorized' -or $allConsumptionDataAPIResult -eq 'OfferNotSupported' -or $allConsumptionDataAPIResult -eq 'NoValidSubscriptions') {
+                if ($allConsumptionDataAPIResult -eq 'Unauthorized' -or $allConsumptionDataAPIResult -eq 'OfferNotSupported' -or $allConsumptionDataAPIResult -eq 'NoValidSubscriptions' -or $allConsumptionDataAPIResult -eq 'tooManySubscriptions') {
                     $script:htConsumptionExceptionLog.Mg.($ManagementGroupId) = @{}
                     $script:htConsumptionExceptionLog.Mg.($ManagementGroupId).Exception = $allConsumptionDataAPIResult
                     Write-Host " Switching to 'foreach Subscription' mode. Getting Consumption data using Management Group scope failed."

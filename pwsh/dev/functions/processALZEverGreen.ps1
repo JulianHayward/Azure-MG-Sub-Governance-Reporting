@@ -1,5 +1,6 @@
 function processALZEverGreen {
-
+    $start = get-date
+    Write-Host "Processing ALZ EverGreen base data"
     $ALZRepositoryURI = 'https://github.com/Azure/Enterprise-Scale.git'
     $workingPath = Get-Location
     Write-Host " Working directory is '$($workingPath)'"
@@ -54,6 +55,8 @@ function processALZEverGreen {
         # $htGitTrackESLZdataPolicies = @{}
         $allESLZPolicies = @{}
         $allESLZPolicySets = @{}
+        $allESLZPolicyHashes = @{}
+        $allESLZPolicySetHashes = @{}
 
         $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/policies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
         #Write-Host $gitHist.Count
@@ -80,9 +83,11 @@ function processALZEverGreen {
                 $eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
                 foreach ($policyDefinition in $eslzPolicies) {
                     $policyJsonConv = ($policyDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
-                    $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonConv))
-                    $stringHash = [System.BitConverter]::ToString($hash) 
                     $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
+                    $policyJsonRule = $policyJsonRebuild.properties.policyRule | ConvertTo-Json -depth 99
+                    $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonRule))
+                    $stringHash = [System.BitConverter]::ToString($hash) 
+                    
                     # $htGitTrackESLZPolicies.($dt).policies.($policyJsonRebuild.name) = @{}
                     # $htGitTrackESLZPolicies.($dt).policies.($policyJsonRebuild.name).version = $policyJsonRebuild.properties.metadata.version
         
@@ -91,6 +96,7 @@ function processALZEverGreen {
                         $allESLZPolicies.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
                         $null = $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
                         $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                        $allESLZPolicies.($policyJsonRebuild.name).name = $policyJsonRebuild.name
                         if ($commitCount -eq $gitHist.Count) {
                             $allESLZPolicies.($policyJsonRebuild.name).status = 'prod'
                         }
@@ -112,21 +118,64 @@ function processALZEverGreen {
                             $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
                         }
                     }
+
+                    #hsh
+                    if (-not $allESLZPolicyHashes.($stringHash)) {
+                        $allESLZPolicyHashes.($stringHash) = @{}
+                        $allESLZPolicyHashes.($stringHash).version = [System.Collections.ArrayList]@()
+                        $null = $allESLZPolicyHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
+                        $allESLZPolicyHashes.($stringHash).name = $policyJsonRebuild.name
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPolicyHashes.($stringHash).status = 'prod'
+                        }
+                        else {
+                            $allESLZPolicyHashes.($stringHash).status = 'obsolete'
+                        }
+                    }
+                    else {
+                        #Write-host "already exists:" $stringHash $policyJsonRebuild.name
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPolicyHashes.($stringHash).status = 'prod'
+                        }
+                        else {
+                            $allESLZPolicyHashes.($stringHash).status = 'obsolete'
+                        }
+                        if ($allESLZPolicyHashes.($stringHash).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                            $null = $allESLZPolicyHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
+                        }
+                        if (-not $allESLZPolicyHashes.($stringHash).($policyJsonRebuild.name)) {
+                            $allESLZPolicyHashes.($stringHash).($policyJsonRebuild.name) = $policyJsonRebuild.name
+                        }
+                    }
                 }
 
                 $eslzPolicySets = $jsonESLZPolicies.variables.initiatives.policySetDefinitions
                 foreach ($policySetDefinition in $eslzPolicySets) {
-                    $policyJsonConv = ($policySetDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
+                    <#$policyJsonConv = ($policySetDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
                     $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonConv))
                     $stringHash = [System.BitConverter]::ToString($hash) 
                     $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
+                    #>
+
+                    $policyJsonConv = ($policySetDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
+                    $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
+                    $policyJsonParameters = $policyJsonRebuild.properties.parameters | ConvertTo-Json -depth 99
+                    $policyJsonPolicyDefinitions = $policyJsonRebuild.properties.policyDefinitions | ConvertTo-Json -depth 99
+                    $hashParameters = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonParameters))
+                    $stringHashParameters = [System.BitConverter]::ToString($hashParameters) 
+                    $hashPolicyDefinitions = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonPolicyDefinitions))
+                    $stringHashPolicyDefinitions = [System.BitConverter]::ToString($hashPolicyDefinitions) 
+                    $stringHash = "$($stringHashParameters)_$($stringHashPolicyDefinitions)"
+
                     # $htGitTrackESLZPolicies.($dt).policies.($policyJsonRebuild.name) = @{}
                     # $htGitTrackESLZPolicies.($dt).policies.($policyJsonRebuild.name).version = $policyJsonRebuild.properties.metadata.version
+                    
                     if (-not $allESLZPolicySets.($policyJsonRebuild.name)) {
                         $allESLZPolicySets.($policyJsonRebuild.name) = @{}
                         $allESLZPolicySets.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
                         $null = $allESLZPolicySets.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
                         $allESLZPolicySets.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                        $allESLZPolicySets.($policyJsonRebuild.name).name = $policyJsonRebuild.name
                         if ($commitCount -eq $gitHist.Count) {
                             $allESLZPolicySets.($policyJsonRebuild.name).status = 'prod'
                         }
@@ -146,6 +195,35 @@ function processALZEverGreen {
                         }
                         if (-not $allESLZPolicySets.($policyJsonRebuild.name).$stringHash) {
                             $allESLZPolicySets.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                        }
+                    }
+
+                    #hsh
+                    if (-not $allESLZPolicySetHashes.($stringHash)) {
+                        $allESLZPolicySetHashes.($stringHash) = @{}
+                        $allESLZPolicySetHashes.($stringHash).version = [System.Collections.ArrayList]@()
+                        $null = $allESLZPolicySetHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
+                        $allESLZPolicySetHashes.($stringHash).name = $policyJsonRebuild.name
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPolicySetHashes.($stringHash).status = 'prod'
+                        }
+                        else {
+                            $allESLZPolicySetHashes.($stringHash).status = 'obsolete'
+                        }
+                    }
+                    else {
+                        #Write-host "already exists:" $stringHash $policyJsonRebuild.name
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPolicySetHashes.($stringHash).status = 'prod'
+                        }
+                        else {
+                            $allESLZPolicySetHashes.($stringHash).status = 'obsolete'
+                        }
+                        if ($allESLZPolicySetHashes.($stringHash).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                            $null = $allESLZPolicySetHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
+                        }
+                        if (-not $allESLZPolicySetHashes.($stringHash).($policyJsonRebuild.name)) {
+                            $allESLZPolicySetHashes.($stringHash).($policyJsonRebuild.name) = $policyJsonRebuild.name
                         }
                     }
                 }
@@ -175,9 +253,11 @@ function processALZEverGreen {
                 $eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
                 foreach ($policyDefinition in $eslzPolicies) {
                     $policyJsonConv = ($policyDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
-                    $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonConv))
-                    $stringHash = [System.BitConverter]::ToString($hash) 
                     $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
+                    $policyJsonRule = $policyJsonRebuild.properties.policyRule | ConvertTo-Json -depth 99
+                    $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonRule))
+                    $stringHash = [System.BitConverter]::ToString($hash) 
+
                     # $htGitTrackESLZdataPolicies.($dt).policies.($policyJsonRebuild.name) = @{}
                     # $htGitTrackESLZdataPolicies.($dt).policies.($policyJsonRebuild.name).version = $policyJsonRebuild.properties.metadata.version
         
@@ -186,6 +266,7 @@ function processALZEverGreen {
                         $allESLZPolicies.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
                         $null = $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
                         $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                        $allESLZPolicies.($policyJsonRebuild.name).name = $policyJsonRebuild.name
                         if ($commitCount -eq $gitHist.Count) {
                             $allESLZPolicies.($policyJsonRebuild.name).status = 'prod'
                         }
@@ -207,6 +288,35 @@ function processALZEverGreen {
                             $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
                         }
                     }
+
+                    #hsh
+                    if (-not $allESLZPolicyHashes.($stringHash)) {
+                        $allESLZPolicyHashes.($stringHash) = @{}
+                        $allESLZPolicyHashes.($stringHash).version = [System.Collections.ArrayList]@()
+                        $null = $allESLZPolicyHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
+                        $allESLZPolicyHashes.($stringHash).name = $policyJsonRebuild.name
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPolicyHashes.($stringHash).status = 'prod'
+                        }
+                        else {
+                            $allESLZPolicyHashes.($stringHash).status = 'obsolete'
+                        }
+                    }
+                    else {
+                        #Write-host "dataPolicy already exists:" $stringHash $policyJsonRebuild.name
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPolicyHashes.($stringHash).status = 'prod'
+                        }
+                        else {
+                            $allESLZPolicyHashes.($stringHash).status = 'obsolete'
+                        }
+                        if ($allESLZPolicyHashes.($stringHash).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                            $null = $allESLZPolicyHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
+                        }
+                        if (-not $allESLZPolicyHashes.($stringHash).($policyJsonRebuild.name)) {
+                            $allESLZPolicyHashes.($stringHash).($policyJsonRebuild.name) = $policyJsonRebuild.name
+                        }
+                    }
                 }
             }
         }
@@ -221,10 +331,20 @@ function processALZEverGreen {
             $script:alzPolicies.($entry) = @{}
             $script:alzPolicies.($entry).latestVersion = $latestVersion
             $script:alzPolicies.($entry).status = $thisOne.status
+            $script:alzPolicies.($entry).policyName = $thisOne.name
         }
-        $script:alzPolicies.'deploy-asc-standard' = @{}
-        $script:alzPolicies.'deploy-asc-standard'.latestVersion = '1.0.0'
-        $script:alzPolicies.'deploy-asc-standard'.status = 'obsolete'
+        # $script:alzPolicies.'deploy-asc-standard' = @{}
+        # $script:alzPolicies.'deploy-asc-standard'.latestVersion = '1.0.0'
+        # $script:alzPolicies.'deploy-asc-standard'.status = 'obsolete'
+
+        foreach ($entry in $allESLZPolicyHashes.keys | sort-object) {
+            $thisOne = $allESLZPolicyHashes.($entry)
+            $latestVersion = ([array]($thisOne.version | Sort-Object -Descending))[0]
+            $script:alzPolicyHashes.($entry) = @{}
+            $script:alzPolicyHashes.($entry).latestVersion = $latestVersion
+            $script:alzPolicyHashes.($entry).status = $thisOne.status
+            $script:alzPolicyHashes.($entry).policyName = $thisOne.name
+        }
 
         #$script:alzPolicySets = @{}
         foreach ($entry in $allESLZPolicySets.keys | sort-object) {
@@ -233,15 +353,28 @@ function processALZEverGreen {
             $script:alzPolicySets.($entry) = @{}
             $script:alzPolicySets.($entry).latestVersion = $latestVersion
             $script:alzPolicySets.($entry).status = $thisOne.status
+            $script:alzPolicySets.($entry).policySetName = $thisOne.name
         }
         $script:alzPolicySets.'Deploy-Diag-LogAnalytics' = @{}
         $script:alzPolicySets.'Deploy-Diag-LogAnalytics'.latestVersion = '1.0.0'
         $script:alzPolicySets.'Deploy-Diag-LogAnalytics'.status = 'obsolete'
         
+        foreach ($entry in $allESLZPolicySetHashes.keys | sort-object) {
+            $thisOne = $allESLZPolicySetHashes.($entry)
+            $latestVersion = ([array]($thisOne.version | Sort-Object -Descending))[0]
+            $script:alzPolicySetHashes.($entry) = @{}
+            $script:alzPolicySetHashes.($entry).latestVersion = $latestVersion
+            $script:alzPolicySetHashes.($entry).status = $thisOne.status
+            $script:alzPolicySetHashes.($entry).policySetName = $thisOne.name
+        }
+
         Write-Host " Switching back to working directory '$($workingPath)'"
         Set-Location $workingPath
         
         Write-Host " Removing temporary directory '$($ALZPath)'"
         Remove-Item -Recurse -Force $ALZPath
     }
+
+    $end = Get-Date
+    Write-Host " Processing ALZ EverGreen base data duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
 }

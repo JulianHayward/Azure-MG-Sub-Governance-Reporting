@@ -304,10 +304,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.21',
+    $AzAPICallVersion = '1.1.22',
 
     [string]
-    $ProductVersion = 'v6_major_20220826_1',
+    $ProductVersion = 'v6_major_20220831_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -818,6 +818,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $arrayPIMEligible = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $alzPolicies = @{}
     $alzPolicySets = @{}
+    $alzPolicyHashes = @{}
+    $alzPolicySetHashes = @{}
 }
 
 if (-not $HierarchyMapOnly) {
