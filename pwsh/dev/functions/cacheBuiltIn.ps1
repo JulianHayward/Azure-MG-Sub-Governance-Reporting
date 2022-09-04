@@ -34,14 +34,18 @@ function cacheBuiltIn {
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ScopeMgSub = 'n/a'
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ScopeId = 'n/a'
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).DisplayName = $builtinPolicyDefinition.Properties.displayname
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Name = $builtinPolicyDefinition.Name
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Description = $builtinPolicyDefinition.Properties.description
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Type = $builtinPolicyDefinition.Properties.policyType
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Category = $builtinPolicyDefinition.Properties.metadata.category
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Version = $builtinPolicyDefinition.Properties.metadata.version
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).PolicyDefinitionId = ($builtinPolicyDefinition.Id).ToLower()
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$(($builtinPolicyDefinition.Id -replace '.*/')).html`" target=`"_blank`" rel=`"noopener`">$($builtinPolicyDefinition.Properties.displayname)</a>"
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ALZ = $false
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ALZState = ''
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ALZLatestVer = ''
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ALZIdentificationLevel = ''
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ALZPolicyName = ''
                     if ($builtinPolicyDefinition.Properties.metadata.deprecated -eq $true -or $builtinPolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
                         $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Deprecated = $builtinPolicyDefinition.Properties.metadata.deprecated
                 }
@@ -122,9 +126,11 @@ function cacheBuiltIn {
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).ScopeMgSub = 'n/a'
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).ScopeId = 'n/a'
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).DisplayName = $staticPolicyDefinition.Properties.displayname
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Name = $staticPolicyDefinition.Name
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Description = $staticPolicyDefinition.Properties.description
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Type = $staticPolicyDefinition.Properties.policyType
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Category = $staticPolicyDefinition.Properties.metadata.category
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Version = $staticPolicyDefinition.Properties.metadata.version
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).PolicyDefinitionId = ($staticPolicyDefinition.Id).ToLower()
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$(($staticPolicyDefinition.Id -replace '.*/')).html`" target=`"_blank`" rel=`"noopener`">$($staticPolicyDefinition.Properties.displayname)</a>"
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).ALZ = $false
@@ -213,9 +219,11 @@ function cacheBuiltIn {
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).ScopeMgSub = 'n/a'
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).ScopeId = 'n/a'
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).DisplayName = $builtinPolicySetDefinition.Properties.displayname
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Name = $builtinPolicySetDefinition.Name
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Description = $builtinPolicySetDefinition.Properties.description
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Type = $builtinPolicySetDefinition.Properties.policyType
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Category = $builtinPolicySetDefinition.Properties.metadata.category
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Version = $builtinPolicySetDefinition.Properties.metadata.version
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).PolicyDefinitionId = ($builtinPolicySetDefinition.Id).ToLower()
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$(($builtinPolicySetDefinition.Id -replace '.*/')).html`" target=`"_blank`" rel=`"noopener`">$($builtinPolicySetDefinition.Properties.displayname)</a>"
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).ALZ = $false

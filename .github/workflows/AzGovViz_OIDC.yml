@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220710_1
+# AzGovViz v6_major_20220904_1
 # First things first:
 # 1. Mandatory: define <Management Group Id> in line 11 (e.g. be992f89-5615-4745-baca-16e5d7b72a50)
 # 2. Optional: enable the schedule (line 22,23)
@@ -93,7 +93,13 @@ jobs:
             Write-Host "WebApp ($($env:WebAppName)) has Authentication enabled: $authStatus"
             if ($authStatus) {
                 try {
-                    Compress-Archive -Path "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).html" -DestinationPath "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).zip"
+                    if (test-path -path "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId)_DefinitionInsights.html") {
+                      Compress-Archive -Path "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).html", "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId)_DefinitionInsights.html" -DestinationPath "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).zip"
+                    }
+                    else{
+                      Compress-Archive -Path "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).html" -DestinationPath "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).zip"
+                    }
+
                     $null = Select-AzSubscription -SubscriptionId $($env:WebAppSubscriptionId)
                     if (Publish-AzWebApp -ResourceGroupName $($env:WebAppResourceGroup) -Name $($env:WebAppName) -ArchivePath "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).zip" -Force) {
                         Write-Host "HTML published"

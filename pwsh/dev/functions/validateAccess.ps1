@@ -71,11 +71,11 @@ function validateAccess {
         $getAzManagementGroups = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -validateAccess
 
         if ($getAzManagementGroups -eq 'failed') {
-            $permissionCheckResults += "'Reader' permissions on Management Group - check FAILED"
+            $permissionCheckResults += "RBAC 'Reader' permissions on Management Group - check FAILED"
             $permissionsCheckFailed = $true
         }
         else {
-            $permissionCheckResults += "'Reader' permissions on Management Group - check PASSED"
+            $permissionCheckResults += "RBAC 'Reader' permissions on Management Group - check PASSED"
         }
 
         Write-Host 'Permission check results'
@@ -127,11 +127,11 @@ function validateAccess {
         $selectedManagementGroupId = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -validateAccess
 
         if ($selectedManagementGroupId -eq 'failed') {
-            $permissionCheckResults += "'Reader' permissions on Management Group '$($ManagementGroupId)' - check FAILED"
+            $permissionCheckResults += "RBAC 'Reader' permissions on Management Group '$($ManagementGroupId)' - check FAILED"
             $permissionsCheckFailed = $true
         }
         else {
-            $permissionCheckResults += "'Reader' permissions on Management Group '$($ManagementGroupId)' - check PASSED"
+            $permissionCheckResults += "RBAC 'Reader' permissions on Management Group '$($ManagementGroupId)' - check PASSED"
             $script:ManagementGroupId = $selectedManagementGroupId.Name
             $script:ManagementGroupName = $selectedManagementGroupId.properties.displayName
         }

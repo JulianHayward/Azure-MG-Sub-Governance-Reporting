@@ -304,10 +304,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.22',
+    $AzAPICallVersion = '1.1.23',
 
     [string]
-    $ProductVersion = 'v6_major_20220831_1',
+    $ProductVersion = 'v6_major_20220904_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -475,6 +475,9 @@ Param
 
     [switch]
     $NoALZEvergreen,
+
+    [switch]
+    $DefinitionInsightsDedicatedHTML,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
@@ -1769,14 +1772,18 @@ function cacheBuiltIn {
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ScopeMgSub = 'n/a'
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ScopeId = 'n/a'
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).DisplayName = $builtinPolicyDefinition.Properties.displayname
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Name = $builtinPolicyDefinition.Name
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Description = $builtinPolicyDefinition.Properties.description
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Type = $builtinPolicyDefinition.Properties.policyType
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Category = $builtinPolicyDefinition.Properties.metadata.category
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Version = $builtinPolicyDefinition.Properties.metadata.version
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).PolicyDefinitionId = ($builtinPolicyDefinition.Id).ToLower()
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$(($builtinPolicyDefinition.Id -replace '.*/')).html`" target=`"_blank`" rel=`"noopener`">$($builtinPolicyDefinition.Properties.displayname)</a>"
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ALZ = $false
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ALZState = ''
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ALZLatestVer = ''
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ALZIdentificationLevel = ''
+                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).ALZPolicyName = ''
                     if ($builtinPolicyDefinition.Properties.metadata.deprecated -eq $true -or $builtinPolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
                         $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Deprecated = $builtinPolicyDefinition.Properties.metadata.deprecated
                 }
@@ -1857,9 +1864,11 @@ function cacheBuiltIn {
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).ScopeMgSub = 'n/a'
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).ScopeId = 'n/a'
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).DisplayName = $staticPolicyDefinition.Properties.displayname
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Name = $staticPolicyDefinition.Name
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Description = $staticPolicyDefinition.Properties.description
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Type = $staticPolicyDefinition.Properties.policyType
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Category = $staticPolicyDefinition.Properties.metadata.category
+                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Version = $staticPolicyDefinition.Properties.metadata.version
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).PolicyDefinitionId = ($staticPolicyDefinition.Id).ToLower()
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$(($staticPolicyDefinition.Id -replace '.*/')).html`" target=`"_blank`" rel=`"noopener`">$($staticPolicyDefinition.Properties.displayname)</a>"
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).ALZ = $false
@@ -1948,9 +1957,11 @@ function cacheBuiltIn {
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).ScopeMgSub = 'n/a'
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).ScopeId = 'n/a'
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).DisplayName = $builtinPolicySetDefinition.Properties.displayname
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Name = $builtinPolicySetDefinition.Name
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Description = $builtinPolicySetDefinition.Properties.description
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Type = $builtinPolicySetDefinition.Properties.policyType
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Category = $builtinPolicySetDefinition.Properties.metadata.category
+                $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).Version = $builtinPolicySetDefinition.Properties.metadata.version
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).PolicyDefinitionId = ($builtinPolicySetDefinition.Id).ToLower()
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).LinkToAzAdvertizer = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$(($builtinPolicySetDefinition.Id -replace '.*/')).html`" target=`"_blank`" rel=`"noopener`">$($builtinPolicySetDefinition.Properties.displayname)</a>"
                 $script:htCacheDefinitionsPolicySet.(($builtinPolicySetDefinition.Id).ToLower()).ALZ = $false
@@ -2153,7 +2164,7 @@ function exportBaseCSV {
     $outprops = $newtable[0].PSObject.Properties.Name
     $outprops.Set($outprops.IndexOf('PolicyAssignmentNotScopes'), @{L = 'PolicyAssignmentNotScopes'; E = { ($_.PolicyAssignmentNotScopes -join "$CsvDelimiterOpposite ") } })
     if ($CsvExportUseQuotesAsNeeded) {
-        $newTable | Sort-Object -Property level, mgId, SubscriptionId, PolicyAssignmentId, RoleAssignmentId, BlueprintId, BlueprintAssignmentId | Select-Object -Property $outprops -ExcludeProperty PolicyAssignmentParameters | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).csv" -Delimiter "$csvDelimiter" -NoTypeInformation  -UseQuotes AsNeeded
+        $newTable | Sort-Object -Property level, mgId, SubscriptionId, PolicyAssignmentId, RoleAssignmentId, BlueprintId, BlueprintAssignmentId | Select-Object -Property $outprops -ExcludeProperty PolicyAssignmentParameters | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
     }
     else {
         $newTable | Sort-Object -Property level, mgId, SubscriptionId, PolicyAssignmentId, RoleAssignmentId, BlueprintId, BlueprintAssignmentId | Select-Object -Property $outprops -ExcludeProperty PolicyAssignmentParameters | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
@@ -4392,6 +4403,7 @@ function processDataCollection {
             $alzPolicySets = $using:alzPolicySets
             $alzPolicyHashes = $using:alzPolicyHashes
             $alzPolicySetHashes = $using:alzPolicySetHashes
+            $htDoARMRoleAssignmentScheduleInstances = $using:htDoARMRoleAssignmentScheduleInstances
             #other
             $function:addRowToTable = $using:funcAddRowToTable
             $function:namingValidation = $using:funcNamingValidation
@@ -4656,6 +4668,7 @@ function processDataCollection {
                 $alzPolicySets = $using:alzPolicySets
                 $alzPolicyHashes = $using:alzPolicyHashes
                 $alzPolicySetHashes = $using:alzPolicySetHashes
+                $htDoARMRoleAssignmentScheduleInstances = $using:htDoARMRoleAssignmentScheduleInstances
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation
@@ -5034,6 +5047,7 @@ function processDataCollection {
 
                         #ADDED
                         $arrayAdded = [System.Collections.ArrayList]@()
+                        $arrayAddedAndRemoved = [System.Collections.ArrayList]@()
                         foreach ($resource in $x.DiffOnly) {
                             $resourceSplitted = $resource.split('/')
                             #$resourceSplitted
@@ -5045,6 +5059,20 @@ function processDataCollection {
                                     resourceType2  = $resourceSplitted[9]
                                     resourceType3  = $resourceSplitted[11]
                                 })
+                            
+                            $subDetails = $htSubscriptionsMgPath.($resourceSplitted[2])
+                            $null = $arrayAddedAndRemoved.Add([pscustomobject]@{
+                                    action = 'add'
+                                    subscriptionId = $resourceSplitted[2]
+                                    subscriptionName = $subDetails.displayName
+                                    mgPath = $subDetails.pathDelimited
+                                    resourceId = $resource
+                                    resourceType0  = $resourceSplitted[6]
+                                    resourceType1  = $resourceSplitted[7]
+                                    resourceType2  = $resourceSplitted[9]
+                                    resourceType3  = $resourceSplitted[11]
+                                })
+
                             if ($resourceSplitted.Count -gt 13) {
                                 Write-Host " Unforeseen Resource type!"
                                 Write-Host " Please report this Resource type at $($GithubRepository): '$resource'"
@@ -5077,6 +5105,20 @@ function processDataCollection {
                                     resourceType2  = $resourceSplitted[9]
                                     resourceType3  = $resourceSplitted[11]
                                 })
+
+                            $subDetails = $htSubscriptionsMgPath.($resourceSplitted[2])
+                            $null = $arrayAddedAndRemoved.Add([pscustomobject]@{
+                                action = 'remove'
+                                subscriptionId = $resourceSplitted[2]
+                                subscriptionName = $subDetails.displayName
+                                mgPath = $subDetails.pathDelimited
+                                resourceId = $resource
+                                resourceType0  = $resourceSplitted[6]
+                                resourceType1  = $resourceSplitted[7]
+                                resourceType2  = $resourceSplitted[9]
+                                resourceType3  = $resourceSplitted[11]
+                            })
+
                             if ($resourceSplitted.Count -gt 13) {
                                 Write-Host " Unforeseen Resource type!"
                                 Write-Host " Please report this Resource type at $($GithubRepository): '$resource'"
@@ -5105,6 +5147,9 @@ function processDataCollection {
                     #DataCollection Export of Resource fluctuation
                     Write-Host "Exporting ResourceFluctuation CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuation.csv'"
                     $arrayResourceFluctuationFinal | Sort-Object -Property ResourceType | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuation.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+
+                    Write-Host "Exporting ResourceFluctuation detailed CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuationDetailed.csv'"
+                    $arrayAddedAndRemoved | Sort-Object -Property Resource | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuationDetailed.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
                 }
                 Write-Host "Process Resource fluctuation duration: $((NEW-TIMESPAN -Start $start -End (get-date)).TotalSeconds) seconds"
 
@@ -5888,8 +5933,10 @@ function processDefinitionInsights() {
 "@
     }
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-    $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
+    if (-not $DefinitionInsightsDedicatedHTML) {
+        $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+        $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
+    }
     [void]$htmlDefinitionInsights.AppendLine( @"
     </tbody>
 </table>
@@ -6159,8 +6206,10 @@ tf.init();}}
 "@
     }
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-    $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
+    if (-not $DefinitionInsightsDedicatedHTML) {
+        $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+        $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
+    }
     [void]$htmlDefinitionInsights.AppendLine( @"
     </tbody>
 </table>
@@ -6451,14 +6500,16 @@ tf.init();}}
     if (-not $NoCsvExport) {
         $csvFilename = "$($filename)_RoleDefinitions"
         Write-Host "   Exporting RoleDefinitions CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-        $arrayRoleDefinitionsForCSVExport | Sort-Object -Property Type, Name, Id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+        $arrayRoleDefinitionsForCSVExport | Sort-Object -Property Type, Name, Id | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
         $arrayRoleDefinitionsForCSVExport = $null
     }
     #endregion exportCSV
 
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-    $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
+    if (-not $DefinitionInsightsDedicatedHTML) {
+        $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+        $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
+    }
     [void]$htmlDefinitionInsights.AppendLine( @"
     </tbody>
 </table>
@@ -6558,10 +6609,34 @@ tf.init();}}
 '@)
     #endregion definitionInsightsAzureRBAC
 
-    $script:html += $htmlDefinitionInsights
-    $htmlDefinitionInsights = $null
-    $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-    $script:html = $null
+    Write-Host "   DefinitionInsightsDedicatedHTML: $DefinitionInsightsDedicatedHTML"
+    if (-not $DefinitionInsightsDedicatedHTML){
+        Write-Host "   Appending DefinitionInsights to HTML"
+        $script:html += $htmlDefinitionInsights
+        $htmlDefinitionInsights = $null
+        $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+        $script:html = $null
+    }
+    else {
+        Write-Host "   Creating dedicated DefinitionInsights HTML ($($outputPath)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html)"
+        $htmlDefinitionInsightsDedicated = $null
+        $htmlDefinitionInsightsDedicated += $htmlDefinitionInsightsDedicatedStart
+        $htmlDefinitionInsightsDedicated += $htmlDefinitionInsights
+        $htmlDefinitionInsightsDedicated += $htmlDefinitionInsightsDedicatedEnd
+        #$htmlDefinitionInsights = $null
+        $htmlDefinitionInsightsDedicated | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html" -Encoding utf8 -Force
+        #$script:htmlDefinitionInsightsDedicated = $null
+
+        $htmlDefinitionInsightsNo = @"
+        <span>DefinitionInsights have been saved to dedicated HTML file '$($outputPath)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html' (parameter -DefinitionInsightsDedicatedHTML: $($DefinitionInsightsDedicatedHTML))</span><br>
+        <a class="externallink" href="$($fileName)_DefinitionInsights.html" target="blank">DefinitionInsights <i class="fa fa-external-link" aria-hidden="true"></i></a>
+"@
+        $script:html += $htmlDefinitionInsightsNo
+        #$htmlDefinitionInsightsNo = $null
+        $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+        $script:html = $null
+    }
+
 
     $endDefinitionInsights = Get-Date
     Write-Host "  DefinitionInsights processing duration: $((NEW-TIMESPAN -Start $startDefinitionInsights -End $endDefinitionInsights).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefinitionInsights -End $endDefinitionInsights).TotalSeconds) seconds)"
@@ -11533,12 +11608,12 @@ function processTenantSummary() {
             $policyRoleDefinitionsClear = 'n/a'
         }
 
-        if ($tenantPolicy.Json.properties.metadata.version) {
-            $policyVersion = $tenantPolicy.Json.properties.metadata.version
-        }
-        else {
-            $policyVersion = 'n/a'
-        }
+        # if ($tenantPolicy.Json.properties.metadata.version) {
+        #     $policyVersion = $tenantPolicy.Json.properties.metadata.version
+        # }
+        # else {
+        #     $policyVersion = 'n/a'
+        # }
 
         if ($tenantPolicy.Type -eq 'Custom') {
 
@@ -11583,8 +11658,9 @@ function processTenantSummary() {
                     Scope                  = $tenantPolicy.ScopeMgSub
                     ScopeId                = $tenantPolicy.ScopeId
                     PolicyDisplayName      = $tenantPolicy.DisplayName
+                    PolicyDefinitionName   = $tenantPolicy.Name
                     PolicyDefinitionId     = $tenantPolicy.PolicyDefinitionId
-                    PolicyVersion          = $policyVersion
+                    PolicyVersion          = $tenantPolicy.Version
                     PolicyEffect           = $effect
                     PolicyCategory         = $tenantPolicy.Category
                     RoleDefinitions        = $policyRoleDefinitions
@@ -11611,9 +11687,9 @@ function processTenantSummary() {
                     Scope                  = $tenantPolicy.ScopeMgSub
                     ScopeId                = $tenantPolicy.ScopeId
                     PolicyDisplayName      = $tenantPolicy.DisplayName
-                    PolicyDefinitionName   = $tenantPolicy.PolicyDefinitionId -replace '.*/'
+                    PolicyDefinitionName   = $tenantPolicy.Name
                     PolicyDefinitionId     = $tenantPolicy.PolicyDefinitionId
-                    PolicyVersion          = $policyVersion
+                    PolicyVersion          = $tenantPolicy.Version
                     PolicyEffect           = $effect
                     PolicyCategory         = $tenantPolicy.Category
                     UniqueAssignmentsCount = $policyUniqueAssignmentsCount
@@ -11644,9 +11720,9 @@ function processTenantSummary() {
                     Scope                  = $null
                     ScopeId                = $null
                     PolicyDisplayName      = $tenantPolicy.DisplayName
-                    PolicyDefinitionName   = $tenantPolicy.PolicyDefinitionId -replace '.*/'
+                    PolicyDefinitionName   = $tenantPolicy.Name
                     PolicyDefinitionId     = $tenantPolicy.PolicyDefinitionId
-                    PolicyVersion          = $policyVersion
+                    PolicyVersion          = $tenantPolicy.Version
                     PolicyEffect           = $effect
                     PolicyCategory         = $tenantPolicy.Category
                     UniqueAssignmentsCount = $policyUniqueAssignmentsCount
@@ -11675,7 +11751,7 @@ function processTenantSummary() {
     if (-not $NoCsvExport) {
         $csvFilename = "$($filename)_PolicyDefinitions"
         Write-Host "   Exporting PolicyDefinitions CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-        $tenantPoliciesDetailed | Sort-Object -Property Type, Scope, PolicyDefinitionId | Select-Object -ExcludeProperty UniqueAssignments, UsedInPolicySets, UsedInPolicySet4JSON, CreatedByJson, UpdatedByJson, Json | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+        $tenantPoliciesDetailed | Sort-Object -Property Type, Scope, PolicyDefinitionId | Select-Object -ExcludeProperty UniqueAssignments, UsedInPolicySets, UsedInPolicySet4JSON, CreatedByJson, UpdatedByJson, Json | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
     }
 
     if ($getMgParentName -eq 'Tenant Root') {
@@ -11693,6 +11769,7 @@ function processTenantSummary() {
 <th>Scope</th>
 <th>Scope Id</th>
 <th>Policy DisplayName</th>
+<th>Policy Name</th>
 <th>PolicyId</th>
 <th>Category</th>
 <th>Effect</th>
@@ -11720,6 +11797,7 @@ function processTenantSummary() {
 <td class="breakwordall">$($customPolicy.Scope)</td>
 <td class="breakwordall">$($customPolicy.ScopeId)</td>
 <td class="breakwordall">$($customPolicy.PolicyDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td class="breakwordall">$($customPolicy.PolicyDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyEffect)</td>
@@ -11779,10 +11857,11 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                 delay: 1100
             },
             no_results_message: true,
-            col_widths: ['', '150px', '150px', '250px', '150px', '150px', '150px', '150px', '250px', '', '150px', '', '150px'],
+            col_widths: ['', '150px', '150px', '150px', '250px', '150px', '150px', '150px', '150px', '250px', '', '150px', '', '150px'],
             col_0: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -11855,6 +11934,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 <th>Scope</th>
 <th>Scope Id</th>
 <th>Policy DisplayName</th>
+<th>Policy Name</th>
 <th>PolicyId</th>
 <th>Category</th>
 <th>Policy Effect</th>
@@ -11882,6 +11962,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 <td>$($customPolicy.Scope)</td>
 <td>$($customPolicy.ScopeId)</td>
 <td>$($customPolicy.PolicyDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($customPolicy.PolicyDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($customPolicy.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($customPolicy.PolicyEffect)</td>
@@ -11935,6 +12016,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_0: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -12363,6 +12445,7 @@ extensions: [{ name: 'sort' }]
                     Scope                  = $tenantPolicySet.ScopeMgSub
                     ScopeId                = $tenantPolicySet.ScopeId
                     PolicySetDisplayName   = $tenantPolicySet.DisplayName
+                    PolicySetDefinitionName= $tenantPolicySet.Name
                     PolicySetDefinitionId  = $tenantPolicySet.PolicyDefinitionId
                     PolicySetCategory      = $tenantPolicySet.Category
                     UniqueAssignments      = $policySetUniqueAssignment
@@ -12387,10 +12470,10 @@ extensions: [{ name: 'sort' }]
                     ScopeId                  = $tenantPolicySet.ScopeId
                     PolicySetDisplayName     = $tenantPolicySet.DisplayName
                     PolicySetDescription     = $tenantPolicySet.Description
-                    PolicySetDefinitionName  = $tenantPolicySet.PolicyDefinitionId -replace '.*/'
+                    PolicySetDefinitionName  = $tenantPolicySet.Name
                     PolicySetDefinitionId    = $tenantPolicySet.PolicyDefinitionId
                     PolicySetCategory        = $tenantPolicySet.Category
-                    PolicySetVersion         = $policySetVersion
+                    PolicySetVersion         = $tenantPolicySet.Version
                     UniqueAssignmentsCount   = $policySetUniqueAssignmentsCount
                     UniqueAssignments        = $policySetUniqueAssignments
                     PoliciesUsedCount        = $policySetPoliciesCount
@@ -12426,10 +12509,10 @@ extensions: [{ name: 'sort' }]
                     ScopeId                  = $null
                     PolicySetDisplayName     = $tenantPolicySet.DisplayName
                     PolicySetDescription     = $tenantPolicySet.Description
-                    PolicySetDefinitionName  = $tenantPolicySet.PolicyDefinitionId -replace '.*/'
+                    PolicySetDefinitionName  = $tenantPolicySet.Name
                     PolicySetDefinitionId    = $tenantPolicySet.PolicyDefinitionId
                     PolicySetCategory        = $tenantPolicySet.Category
-                    PolicySetVersion         = $policySetVersion
+                    PolicySetVersion         = $tenantPolicySet.Version
                     UniqueAssignmentsCount   = $policySetUniqueAssignmentsCount
                     UniqueAssignments        = $policySetUniqueAssignments
                     PoliciesUsedCount        = $policySetPoliciesCount
@@ -12461,7 +12544,7 @@ extensions: [{ name: 'sort' }]
     if (-not $NoCsvExport) {
         $csvFilename = "$($filename)_PolicySetDefinitions"
         Write-Host "   Exporting PolicySetDefinitions CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-        $tenantPolicySetsDetailed | Select-Object -ExcludeProperty UniqueAssignments, PoliciesUsed, PoliciesUsed4JSON, CreatedByJson, UpdatedByJson, Json | Sort-Object -Property Type, Scope, PolicySetDefinitionId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+        $tenantPolicySetsDetailed | Select-Object -ExcludeProperty UniqueAssignments, PoliciesUsed, PoliciesUsed4JSON, CreatedByJson, UpdatedByJson, Json | Sort-Object -Property Type, Scope, PolicySetDefinitionId | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
     }
 
     if ($getMgParentName -eq 'Tenant Root') {
@@ -12485,6 +12568,7 @@ extensions: [{ name: 'sort' }]
 <th>Scope</th>
 <th>ScopeId</th>
 <th>PolicySet DisplayName</th>
+<th>PolicySet Name</th>
 <th>PolicySetId</th>
 <th>Category</th>
 <th>Unique assignments</th>
@@ -12504,6 +12588,7 @@ extensions: [{ name: 'sort' }]
 <td>$($customPolicySet.Scope)</td>
 <td>$($customPolicySet.ScopeId)</td>
 <td>$($customPolicySet.PolicySetDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($customPolicySet.PolicySetDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PolicySetDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PolicySetCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
@@ -12555,6 +12640,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_0: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -12610,6 +12696,7 @@ extensions: [{ name: 'sort' }]
 <th>Scope</th>
 <th>Scope Id</th>
 <th>PolicySet DisplayName</th>
+<th>PolicySet Name</th>
 <th>PolicySetId</th>
 <th>Category</th>
 <th>Unique assignments</th>
@@ -12629,6 +12716,7 @@ extensions: [{ name: 'sort' }]
 <td class="breakwordall">$($customPolicySet.Scope)</td>
 <td class="breakwordall">$($customPolicySet.ScopeId)</td>
 <td>$($customPolicySet.PolicySetDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($customPolicySet.PolicySetDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PolicySetDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PolicySetCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
@@ -12680,6 +12768,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_0: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -15122,7 +15211,7 @@ extensions: [{ name: 'sort' }]
         if (-not $NoCsvExport) {
             $csvFilename = "$($filename)_ClassicAdministrators"
             Write-Host "   Exporting ClassicAdministrators CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-            $classicAdministrators | Select-Object -ExcludeProperty Id | Sort-Object -Property Subscription, SubscriptionId, Role | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+            $classicAdministrators | Select-Object -ExcludeProperty Id | Sort-Object -Property Subscription, SubscriptionId, Role | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
         }
         $htmlSUMMARYClassicAdministrators = foreach ($classicAdministrator in $classicAdministrators) {
             @"
@@ -15586,7 +15675,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             if (-not $NoCsvExport) {
                 $csvFilename = "$($filename)_PIMEligibility"
                 Write-Host "   Exporting PIMEligibility CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-                $PIMEligibleEnrichedSorted | Select-Object -ExcludeProperty RoleClear | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+                $PIMEligibleEnrichedSorted | Select-Object -ExcludeProperty RoleClear | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
             }
 
             [void]$htmlTenantSummary.AppendLine($htmlSUMMARYPIMEligibility)
@@ -18062,7 +18151,7 @@ extensions: [{ name: 'sort' }]
             if (-not $NoCsvExport) {
                 $csvFilename = "$($filename)_ResourceProviders"
                 Write-Host "   Exporting ResourceProviders CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-                $arrayResourceProvidersDetailedForCSVExport | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+                $arrayResourceProvidersDetailedForCSVExport | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
                 $arrayResourceProvidersDetailedForCSVExport = $null
             }
             #endregion exportCSV
@@ -18152,7 +18241,7 @@ extensions: [{ name: 'sort' }]
         if (-not $NoCsvExport) {
             $csvFilename = "$($filename)_SubscriptionsFeatures"
             Write-Host "   Exporting SubscriptionsFeatures CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-            ($arrayFeaturesAll | Select-Object -ExcludeProperty mgPathArray | Sort-Object -Property feature, subscriptionId) | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+            ($arrayFeaturesAll | Select-Object -ExcludeProperty mgPathArray | Sort-Object -Property feature, subscriptionId) | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
         }
         #endregion exportCSV
 
@@ -24864,11 +24953,11 @@ function validateAccess {
         $getAzManagementGroups = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -validateAccess
 
         if ($getAzManagementGroups -eq 'failed') {
-            $permissionCheckResults += "'Reader' permissions on Management Group - check FAILED"
+            $permissionCheckResults += "RBAC 'Reader' permissions on Management Group - check FAILED"
             $permissionsCheckFailed = $true
         }
         else {
-            $permissionCheckResults += "'Reader' permissions on Management Group - check PASSED"
+            $permissionCheckResults += "RBAC 'Reader' permissions on Management Group - check PASSED"
         }
 
         Write-Host 'Permission check results'
@@ -24920,11 +25009,11 @@ function validateAccess {
         $selectedManagementGroupId = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -validateAccess
 
         if ($selectedManagementGroupId -eq 'failed') {
-            $permissionCheckResults += "'Reader' permissions on Management Group '$($ManagementGroupId)' - check FAILED"
+            $permissionCheckResults += "RBAC 'Reader' permissions on Management Group '$($ManagementGroupId)' - check FAILED"
             $permissionsCheckFailed = $true
         }
         else {
-            $permissionCheckResults += "'Reader' permissions on Management Group '$($ManagementGroupId)' - check PASSED"
+            $permissionCheckResults += "RBAC 'Reader' permissions on Management Group '$($ManagementGroupId)' - check PASSED"
             $script:ManagementGroupId = $selectedManagementGroupId.Name
             $script:ManagementGroupName = $selectedManagementGroupId.properties.displayName
         }
@@ -26786,7 +26875,7 @@ function dataCollectionPolicyDefinitions {
                             $policyHashMatch = $false
                             if ($alzPolicyHashes.($stringHash)) {
                                 $policyHashMatch = $true
-                                Write-Host "$($scopePolicyDefinition.name) exists in alzPolicyHashes"
+                                #Write-Host "$($scopePolicyDefinition.name) exists in alzPolicyHashes"
                                 $htTemp.ALZ = 'true'
                                 $htTemp.ALZIdentificationLevel = 'PolicyRule Hash'
                                 $htTemp.ALZPolicyName = $alzPolicyHashes.($stringHash).policyName
@@ -26831,7 +26920,7 @@ function dataCollectionPolicyDefinitions {
                                         }
                                     }
                                     else {
-                                        $htTemp.ALZState = 'likelyOutDated (no ver)'
+                                        $htTemp.ALZState = 'potentiallyOutDated (no ver)'
                                     }
 
                                     $htTemp.ALZLatestVer = $alzPolicies.($scopePolicyDefinition.name).latestVersion
@@ -26866,9 +26955,16 @@ function dataCollectionPolicyDefinitions {
                 }
 
                 $htTemp.DisplayName = $($scopePolicyDefinition.Properties.displayname)
+                $htTemp.Name = $scopePolicyDefinition.Name
                 $htTemp.Description = $($policyDefinitionDescription)
                 $htTemp.Type = $($scopePolicyDefinition.Properties.policyType)
                 $htTemp.Category = $($scopePolicyDefinition.Properties.metadata.category)
+                if ($scopePolicyDefinition.Properties.metadata.version){
+                    $htTemp.Version = $($scopePolicyDefinition.Properties.metadata.version)
+                }
+                else {
+                    $htTemp.Version = 'n/a'
+                }
                 $htTemp.PolicyDefinitionId = $hlpPolicyDefinitionId
                 if ($scopePolicyDefinition.Properties.metadata.deprecated -eq $true -or $scopePolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
                     $htTemp.Deprecated = $scopePolicyDefinition.Properties.metadata.deprecated
@@ -27103,7 +27199,7 @@ function dataCollectionPolicySetDefinitions {
                             $policySetHashMatch = $false
                             if ($alzPolicySetHashes.($stringHash)) {
                                 $policySetHashMatch = $true
-                                Write-Host "+++ PolicySet $($scopePolicySetDefinition.name) exists in alzPolicyHashes"
+                                #Write-Host "+++ PolicySet $($scopePolicySetDefinition.name) exists in alzPolicyHashes"
                                 $htTemp.ALZ = 'true'
                                 $htTemp.ALZIdentificationLevel = 'PolicySet Hash'
                                 $htTemp.ALZPolicySetName = $alzPolicySetHashes.($stringHash).policySetName
@@ -27167,9 +27263,16 @@ function dataCollectionPolicySetDefinitions {
                 }
 
                 $htTemp.DisplayName = $($scopePolicySetDefinition.Properties.displayname)
+                $htTemp.Name = $scopePolicySetDefinition.Name
                 $htTemp.Description = $($policySetDefinitionDescription)
                 $htTemp.Type = $($scopePolicySetDefinition.Properties.policyType)
                 $htTemp.Category = $($scopePolicySetDefinition.Properties.metadata.category)
+                if ($scopePolicySetDefinition.Properties.metadata.version){
+                    $htTemp.Version = $($scopePolicySetDefinition.Properties.metadata.version)
+                }
+                else {
+                    $htTemp.Version = 'n/a'
+                }
                 $htTemp.PolicyDefinitionId = $hlpPolicySetDefinitionId
                 $arrayPolicySetPolicyIdsToLower = @()
                 $htPolicySetPolicyRefIds = @{}
@@ -28279,21 +28382,26 @@ function dataCollectionRoleAssignmentsMG {
 
     $addRowToTableDone = $false
     #PIM MGRoleAssignmentScheduleInstances
-    $currentTask = "Getting ARM RoleAssignment ScheduleInstances for Management Group: '$($scopeDisplayName)' ('$($scopeId)')"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
-    $method = 'GET'
-    $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    if ($htDoARMRoleAssignmentScheduleInstances.Do -eq $true) {
+        $currentTask = "Getting ARM RoleAssignment ScheduleInstances for Management Group: '$($scopeDisplayName)' ('$($scopeId)')"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
+        $method = 'GET'
+        $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-    if ($roleAssignmentScheduleInstancesFromAPI -eq 'ResourceNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'TenantNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'InvalidResourceType' -or $roleAssignmentScheduleInstancesFromAPI -eq 'RoleAssignmentScheduleInstancesError') {
-        #Write-Host "Scope '$($scopeDisplayName)' ('$scopeId') not onboarded in PIM"
-    }
-    else {
-        $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
-        $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
-        if ($roleAssignmentScheduleInstancesCount -gt 0) {
-            #$htRoleAssignmentsPIM = @{}
-            foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
-                $script:htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
+        if ($roleAssignmentScheduleInstancesFromAPI -eq 'RoleAssignmentScheduleInstancesError' -or $roleAssignmentScheduleInstancesFromAPI -eq 'AadPremiumLicenseRequired') {
+            if ($roleAssignmentScheduleInstancesFromAPI -eq 'AadPremiumLicenseRequired') {
+                Write-Host "  -> Setting 'htDoARMRoleAssignmentScheduleInstances.Do' to false (AadPremiumLicenseRequired)"
+                $script:htDoARMRoleAssignmentScheduleInstances.Do = $false
+            }
+        }
+        else {
+            $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
+            $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
+            if ($roleAssignmentScheduleInstancesCount -gt 0) {
+                #$htRoleAssignmentsPIM = @{}
+                foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
+                    $script:htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
+                }
             }
         }
     }
@@ -28555,21 +28663,27 @@ function dataCollectionRoleAssignmentsSub {
     $script:htSubscriptionsRoleAssignmentLimit.($scopeId) = $roleAssignmentsUsage.roleAssignmentsLimit
 
     #PIM SubscriptionRoleAssignmentScheduleInstances
-    $currentTask = "Getting ARM RoleAssignment ScheduleInstances for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
-    $method = 'GET'
-    $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    if ($htDoARMRoleAssignmentScheduleInstances.Do -eq $true) {
+        $currentTask = "Getting ARM RoleAssignment ScheduleInstances for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
+        $method = 'GET'
+        $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-    if ($roleAssignmentScheduleInstancesFromAPI -eq 'ResourceNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'TenantNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'InvalidResourceType' -or $roleAssignmentScheduleInstancesFromAPI -eq 'RoleAssignmentScheduleInstancesError') {
-        #Write-Host "Scope '$($scopeDisplayName)' ('$scopeId') not onboarded in PIM"
-    }
-    else {
-        $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
-        $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
-        if ($roleAssignmentScheduleInstancesCount -gt 0) {
-            #$htRoleAssignmentsPIM = @{}
-            foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
-                $script:htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
+        if ($roleAssignmentScheduleInstancesFromAPI -eq 'RoleAssignmentScheduleInstancesError' -or $roleAssignmentScheduleInstancesFromAPI -eq 'AadPremiumLicenseRequired') {
+            # this should not be required at sub level as the error would already have occured at mg level
+            # if ($roleAssignmentScheduleInstancesFromAPI -eq 'AadPremiumLicenseRequired') {
+            #     Write-Host " Setting 'htDoARMRoleAssignmentScheduleInstances.Do' to false (AadPremiumLicenseRequired)"
+            #     $script:htDoARMRoleAssignmentScheduleInstances.Do = $false
+            # }
+        }
+        else {
+            $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
+            $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
+            if ($roleAssignmentScheduleInstancesCount -gt 0) {
+                #$htRoleAssignmentsPIM = @{}
+                foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
+                    $script:htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
+                }
             }
         }
     }
@@ -29500,6 +29614,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $alzPolicySets = @{}
     $alzPolicyHashes = @{}
     $alzPolicySetHashes = @{}
+    $htDoARMRoleAssignmentScheduleInstances = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $htDoARMRoleAssignmentScheduleInstances.Do = $true
 }
 
 if (-not $HierarchyMapOnly) {
@@ -30129,6 +30245,70 @@ $html = @"
 "@
 
 if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+
+    if ($DefinitionInsightsDedicatedHTML){
+        $htmlDefinitionInsightsDedicatedStart = $html
+        $htmlDefinitionInsightsDedicatedStart += @'
+    <body>
+        <div class="se-pre-con"></div>
+
+        <div class="hierprnt" id="hierprnt">
+            <div class="definitioninsightsprnt" id="definitioninsightsprnt" style="width:100%;height:100%;overflow-y:auto;resize: none;">
+                <div class="definitioninsights" id="definitioninsights"><p class="pbordered">DefinitionInsights</p>
+
+'@
+
+        $htmlDefinitionInsightsDedicatedEnd = @"
+                </div><!--definitionInsights-->
+            </div><!--definitionInsightsprnt-->
+
+        </div>
+        <div class="footer">
+            <div class="VersionDiv VersionLatest"></div>
+            <div class="VersionDiv VersionThis"></div>
+            <div class="VersionAlert"></div>
+        </div>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_002.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/autocorrectOff_v004_001.js"></script>
+        <script>
+            fitty('#fitme', {
+                minSize: 7,
+                maxSize: 10
+            });
+        </script>
+        <script>
+            `$("#getImage").on('click', function () {
+
+            element = document.getElementById('saveAsImageArea')
+            var images = element.getElementsByTagName('img');
+            var l = images.length;
+            for (var i = 0; i < l; i++) {
+                images[0].parentNode.removeChild(images[0]);
+            }
+
+            var scale = 3;
+            domtoimage.toPng(element, { quality: 0.95 , width: element.clientWidth * scale,
+                height: element.clientHeight * scale,
+                style: {
+                    transform: 'scale('+scale+')',
+                    transformOrigin: 'top left'
+            }})          
+                .then(function (dataUrl) {
+                var link = document.createElement('a');
+                link.download = '$($fileName).png';
+                link.href = dataUrl;
+                link.click();
+            });
+                    
+            })
+        </script>
+    </body>
+</html>
+"@
+    }
     if (-not $NoSingleSubscriptionOutput) {
 
         if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
@@ -30149,9 +30329,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         $htmlSubscriptionOnlyStart += @'
     <body>
         <div class="se-pre-con"></div>
-        <div class="tree">
-
-        </div>
 
         <div class="hierprnt" id="hierprnt">
             <div class="hierarchyTables" id="hierarchyTables">
@@ -30160,61 +30337,52 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 '@
 
         $htmlSubscriptionOnlyEnd = @"
-</table>
-</div>
-    </div>
-    <div class="footer">
-        <div class="VersionDiv VersionLatest"></div>
-        <div class="VersionDiv VersionThis"></div>
-        <div class="VersionAlert"></div>
-    </div>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_002.js"></script>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/autocorrectOff_v004_001.js"></script>
-    <script>
-        fitty('#fitme', {
-            minSize: 7,
-            maxSize: 10
-        });
-    </script>
-    <script>
-        `$("#getImage").on('click', function () {
+            </table>
+        </div>
+        </div>
+        <div class="footer">
+            <div class="VersionDiv VersionLatest"></div>
+            <div class="VersionDiv VersionThis"></div>
+            <div class="VersionAlert"></div>
+        </div>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_002.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/autocorrectOff_v004_001.js"></script>
+        <script>
+            fitty('#fitme', {
+                minSize: 7,
+                maxSize: 10
+            });
+        </script>
+        <script>
+            `$("#getImage").on('click', function () {
 
-        element = document.getElementById('saveAsImageArea')
-        var images = element.getElementsByTagName('img');
-        var l = images.length;
-        for (var i = 0; i < l; i++) {
-            images[0].parentNode.removeChild(images[0]);
-        }
+            element = document.getElementById('saveAsImageArea')
+            var images = element.getElementsByTagName('img');
+            var l = images.length;
+            for (var i = 0; i < l; i++) {
+                images[0].parentNode.removeChild(images[0]);
+            }
 
-        var scale = 3;
-        domtoimage.toPng(element, { quality: 0.95 , width: element.clientWidth * scale,
-            height: element.clientHeight * scale,
-            style: {
-                transform: 'scale('+scale+')',
-                transformOrigin: 'top left'
-        }})          
-            .then(function (dataUrl) {
-            var link = document.createElement('a');
-            link.download = '$($fileName).png';
-            link.href = dataUrl;
-            link.click();
-        });
-
-        // domtoimage.toJpeg(element)
-        //     .then(function (dataUrl) {
-        //         var link = document.createElement('a');
-        //         link.download = '$($fileName).jpeg';
-        //         link.href = dataUrl;
-        //         link.click();
-        //     });
-                
-        })
-    </script>
-</body>
-
+            var scale = 3;
+            domtoimage.toPng(element, { quality: 0.95 , width: element.clientWidth * scale,
+                height: element.clientHeight * scale,
+                style: {
+                    transform: 'scale('+scale+')',
+                    transformOrigin: 'top left'
+            }})          
+                .then(function (dataUrl) {
+                var link = document.createElement('a');
+                link.download = '$($fileName).png';
+                link.href = dataUrl;
+                link.click();
+            });
+                    
+            })
+        </script>
+    </body>
 </html>
 "@
     }
@@ -30484,13 +30652,13 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $endSummary = Get-Date
     Write-Host " Building TenantSummary duration: $((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalSeconds) seconds)"
 
-    $html += @'
+    $html += @"
     </div><!--summary-->
     </div><!--summprnt-->
 
     <div class="definitioninsightsprnt" id="definitioninsightsprnt">
     <div class="definitioninsights" id="definitioninsights"><p class="pbordered">DefinitionInsights</p>
-'@
+"@
     $html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
     $html = $null
 

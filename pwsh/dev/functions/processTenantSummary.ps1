@@ -933,12 +933,12 @@ function processTenantSummary() {
             $policyRoleDefinitionsClear = 'n/a'
         }
 
-        if ($tenantPolicy.Json.properties.metadata.version) {
-            $policyVersion = $tenantPolicy.Json.properties.metadata.version
-        }
-        else {
-            $policyVersion = 'n/a'
-        }
+        # if ($tenantPolicy.Json.properties.metadata.version) {
+        #     $policyVersion = $tenantPolicy.Json.properties.metadata.version
+        # }
+        # else {
+        #     $policyVersion = 'n/a'
+        # }
 
         if ($tenantPolicy.Type -eq 'Custom') {
 
@@ -983,8 +983,9 @@ function processTenantSummary() {
                     Scope                  = $tenantPolicy.ScopeMgSub
                     ScopeId                = $tenantPolicy.ScopeId
                     PolicyDisplayName      = $tenantPolicy.DisplayName
+                    PolicyDefinitionName   = $tenantPolicy.Name
                     PolicyDefinitionId     = $tenantPolicy.PolicyDefinitionId
-                    PolicyVersion          = $policyVersion
+                    PolicyVersion          = $tenantPolicy.Version
                     PolicyEffect           = $effect
                     PolicyCategory         = $tenantPolicy.Category
                     RoleDefinitions        = $policyRoleDefinitions
@@ -1011,9 +1012,9 @@ function processTenantSummary() {
                     Scope                  = $tenantPolicy.ScopeMgSub
                     ScopeId                = $tenantPolicy.ScopeId
                     PolicyDisplayName      = $tenantPolicy.DisplayName
-                    PolicyDefinitionName   = $tenantPolicy.PolicyDefinitionId -replace '.*/'
+                    PolicyDefinitionName   = $tenantPolicy.Name
                     PolicyDefinitionId     = $tenantPolicy.PolicyDefinitionId
-                    PolicyVersion          = $policyVersion
+                    PolicyVersion          = $tenantPolicy.Version
                     PolicyEffect           = $effect
                     PolicyCategory         = $tenantPolicy.Category
                     UniqueAssignmentsCount = $policyUniqueAssignmentsCount
@@ -1044,9 +1045,9 @@ function processTenantSummary() {
                     Scope                  = $null
                     ScopeId                = $null
                     PolicyDisplayName      = $tenantPolicy.DisplayName
-                    PolicyDefinitionName   = $tenantPolicy.PolicyDefinitionId -replace '.*/'
+                    PolicyDefinitionName   = $tenantPolicy.Name
                     PolicyDefinitionId     = $tenantPolicy.PolicyDefinitionId
-                    PolicyVersion          = $policyVersion
+                    PolicyVersion          = $tenantPolicy.Version
                     PolicyEffect           = $effect
                     PolicyCategory         = $tenantPolicy.Category
                     UniqueAssignmentsCount = $policyUniqueAssignmentsCount
@@ -1075,7 +1076,7 @@ function processTenantSummary() {
     if (-not $NoCsvExport) {
         $csvFilename = "$($filename)_PolicyDefinitions"
         Write-Host "   Exporting PolicyDefinitions CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-        $tenantPoliciesDetailed | Sort-Object -Property Type, Scope, PolicyDefinitionId | Select-Object -ExcludeProperty UniqueAssignments, UsedInPolicySets, UsedInPolicySet4JSON, CreatedByJson, UpdatedByJson, Json | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+        $tenantPoliciesDetailed | Sort-Object -Property Type, Scope, PolicyDefinitionId | Select-Object -ExcludeProperty UniqueAssignments, UsedInPolicySets, UsedInPolicySet4JSON, CreatedByJson, UpdatedByJson, Json | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
     }
 
     if ($getMgParentName -eq 'Tenant Root') {
@@ -1093,6 +1094,7 @@ function processTenantSummary() {
 <th>Scope</th>
 <th>Scope Id</th>
 <th>Policy DisplayName</th>
+<th>Policy Name</th>
 <th>PolicyId</th>
 <th>Category</th>
 <th>Effect</th>
@@ -1120,6 +1122,7 @@ function processTenantSummary() {
 <td class="breakwordall">$($customPolicy.Scope)</td>
 <td class="breakwordall">$($customPolicy.ScopeId)</td>
 <td class="breakwordall">$($customPolicy.PolicyDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td class="breakwordall">$($customPolicy.PolicyDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyEffect)</td>
@@ -1179,10 +1182,11 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                 delay: 1100
             },
             no_results_message: true,
-            col_widths: ['', '150px', '150px', '250px', '150px', '150px', '150px', '150px', '250px', '', '150px', '', '150px'],
+            col_widths: ['', '150px', '150px', '150px', '250px', '150px', '150px', '150px', '150px', '250px', '', '150px', '', '150px'],
             col_0: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -1255,6 +1259,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 <th>Scope</th>
 <th>Scope Id</th>
 <th>Policy DisplayName</th>
+<th>Policy Name</th>
 <th>PolicyId</th>
 <th>Category</th>
 <th>Policy Effect</th>
@@ -1282,6 +1287,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 <td>$($customPolicy.Scope)</td>
 <td>$($customPolicy.ScopeId)</td>
 <td>$($customPolicy.PolicyDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($customPolicy.PolicyDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($customPolicy.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($customPolicy.PolicyEffect)</td>
@@ -1335,6 +1341,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_0: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -1763,6 +1770,7 @@ extensions: [{ name: 'sort' }]
                     Scope                  = $tenantPolicySet.ScopeMgSub
                     ScopeId                = $tenantPolicySet.ScopeId
                     PolicySetDisplayName   = $tenantPolicySet.DisplayName
+                    PolicySetDefinitionName= $tenantPolicySet.Name
                     PolicySetDefinitionId  = $tenantPolicySet.PolicyDefinitionId
                     PolicySetCategory      = $tenantPolicySet.Category
                     UniqueAssignments      = $policySetUniqueAssignment
@@ -1787,10 +1795,10 @@ extensions: [{ name: 'sort' }]
                     ScopeId                  = $tenantPolicySet.ScopeId
                     PolicySetDisplayName     = $tenantPolicySet.DisplayName
                     PolicySetDescription     = $tenantPolicySet.Description
-                    PolicySetDefinitionName  = $tenantPolicySet.PolicyDefinitionId -replace '.*/'
+                    PolicySetDefinitionName  = $tenantPolicySet.Name
                     PolicySetDefinitionId    = $tenantPolicySet.PolicyDefinitionId
                     PolicySetCategory        = $tenantPolicySet.Category
-                    PolicySetVersion         = $policySetVersion
+                    PolicySetVersion         = $tenantPolicySet.Version
                     UniqueAssignmentsCount   = $policySetUniqueAssignmentsCount
                     UniqueAssignments        = $policySetUniqueAssignments
                     PoliciesUsedCount        = $policySetPoliciesCount
@@ -1826,10 +1834,10 @@ extensions: [{ name: 'sort' }]
                     ScopeId                  = $null
                     PolicySetDisplayName     = $tenantPolicySet.DisplayName
                     PolicySetDescription     = $tenantPolicySet.Description
-                    PolicySetDefinitionName  = $tenantPolicySet.PolicyDefinitionId -replace '.*/'
+                    PolicySetDefinitionName  = $tenantPolicySet.Name
                     PolicySetDefinitionId    = $tenantPolicySet.PolicyDefinitionId
                     PolicySetCategory        = $tenantPolicySet.Category
-                    PolicySetVersion         = $policySetVersion
+                    PolicySetVersion         = $tenantPolicySet.Version
                     UniqueAssignmentsCount   = $policySetUniqueAssignmentsCount
                     UniqueAssignments        = $policySetUniqueAssignments
                     PoliciesUsedCount        = $policySetPoliciesCount
@@ -1861,7 +1869,7 @@ extensions: [{ name: 'sort' }]
     if (-not $NoCsvExport) {
         $csvFilename = "$($filename)_PolicySetDefinitions"
         Write-Host "   Exporting PolicySetDefinitions CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-        $tenantPolicySetsDetailed | Select-Object -ExcludeProperty UniqueAssignments, PoliciesUsed, PoliciesUsed4JSON, CreatedByJson, UpdatedByJson, Json | Sort-Object -Property Type, Scope, PolicySetDefinitionId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+        $tenantPolicySetsDetailed | Select-Object -ExcludeProperty UniqueAssignments, PoliciesUsed, PoliciesUsed4JSON, CreatedByJson, UpdatedByJson, Json | Sort-Object -Property Type, Scope, PolicySetDefinitionId | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
     }
 
     if ($getMgParentName -eq 'Tenant Root') {
@@ -1885,6 +1893,7 @@ extensions: [{ name: 'sort' }]
 <th>Scope</th>
 <th>ScopeId</th>
 <th>PolicySet DisplayName</th>
+<th>PolicySet Name</th>
 <th>PolicySetId</th>
 <th>Category</th>
 <th>Unique assignments</th>
@@ -1904,6 +1913,7 @@ extensions: [{ name: 'sort' }]
 <td>$($customPolicySet.Scope)</td>
 <td>$($customPolicySet.ScopeId)</td>
 <td>$($customPolicySet.PolicySetDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($customPolicySet.PolicySetDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PolicySetDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PolicySetCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
@@ -1955,6 +1965,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_0: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -2010,6 +2021,7 @@ extensions: [{ name: 'sort' }]
 <th>Scope</th>
 <th>Scope Id</th>
 <th>PolicySet DisplayName</th>
+<th>PolicySet Name</th>
 <th>PolicySetId</th>
 <th>Category</th>
 <th>Unique assignments</th>
@@ -2029,6 +2041,7 @@ extensions: [{ name: 'sort' }]
 <td class="breakwordall">$($customPolicySet.Scope)</td>
 <td class="breakwordall">$($customPolicySet.ScopeId)</td>
 <td>$($customPolicySet.PolicySetDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($customPolicySet.PolicySetDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PolicySetDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PolicySetCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
@@ -2080,6 +2093,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_0: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -4522,7 +4536,7 @@ extensions: [{ name: 'sort' }]
         if (-not $NoCsvExport) {
             $csvFilename = "$($filename)_ClassicAdministrators"
             Write-Host "   Exporting ClassicAdministrators CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-            $classicAdministrators | Select-Object -ExcludeProperty Id | Sort-Object -Property Subscription, SubscriptionId, Role | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+            $classicAdministrators | Select-Object -ExcludeProperty Id | Sort-Object -Property Subscription, SubscriptionId, Role | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
         }
         $htmlSUMMARYClassicAdministrators = foreach ($classicAdministrator in $classicAdministrators) {
             @"
@@ -4986,7 +5000,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             if (-not $NoCsvExport) {
                 $csvFilename = "$($filename)_PIMEligibility"
                 Write-Host "   Exporting PIMEligibility CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-                $PIMEligibleEnrichedSorted | Select-Object -ExcludeProperty RoleClear | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+                $PIMEligibleEnrichedSorted | Select-Object -ExcludeProperty RoleClear | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
             }
 
             [void]$htmlTenantSummary.AppendLine($htmlSUMMARYPIMEligibility)
@@ -7462,7 +7476,7 @@ extensions: [{ name: 'sort' }]
             if (-not $NoCsvExport) {
                 $csvFilename = "$($filename)_ResourceProviders"
                 Write-Host "   Exporting ResourceProviders CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-                $arrayResourceProvidersDetailedForCSVExport | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+                $arrayResourceProvidersDetailedForCSVExport | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
                 $arrayResourceProvidersDetailedForCSVExport = $null
             }
             #endregion exportCSV
@@ -7552,7 +7566,7 @@ extensions: [{ name: 'sort' }]
         if (-not $NoCsvExport) {
             $csvFilename = "$($filename)_SubscriptionsFeatures"
             Write-Host "   Exporting SubscriptionsFeatures CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-            ($arrayFeaturesAll | Select-Object -ExcludeProperty mgPathArray | Sort-Object -Property feature, subscriptionId) | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+            ($arrayFeaturesAll | Select-Object -ExcludeProperty mgPathArray | Sort-Object -Property feature, subscriptionId) | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
         }
         #endregion exportCSV
 

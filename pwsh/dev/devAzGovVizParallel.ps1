@@ -304,10 +304,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.22',
+    $AzAPICallVersion = '1.1.23',
 
     [string]
-    $ProductVersion = 'v6_major_20220831_1',
+    $ProductVersion = 'v6_major_20220904_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -475,6 +475,9 @@ Param
 
     [switch]
     $NoALZEvergreen,
+
+    [switch]
+    $DefinitionInsightsDedicatedHTML,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
@@ -820,6 +823,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $alzPolicySets = @{}
     $alzPolicyHashes = @{}
     $alzPolicySetHashes = @{}
+    $htDoARMRoleAssignmentScheduleInstances = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $htDoARMRoleAssignmentScheduleInstances.Do = $true
 }
 
 if (-not $HierarchyMapOnly) {
@@ -1449,6 +1454,70 @@ $html = @"
 "@
 
 if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+
+    if ($DefinitionInsightsDedicatedHTML){
+        $htmlDefinitionInsightsDedicatedStart = $html
+        $htmlDefinitionInsightsDedicatedStart += @'
+    <body>
+        <div class="se-pre-con"></div>
+
+        <div class="hierprnt" id="hierprnt">
+            <div class="definitioninsightsprnt" id="definitioninsightsprnt" style="width:100%;height:100%;overflow-y:auto;resize: none;">
+                <div class="definitioninsights" id="definitioninsights"><p class="pbordered">DefinitionInsights</p>
+
+'@
+
+        $htmlDefinitionInsightsDedicatedEnd = @"
+                </div><!--definitionInsights-->
+            </div><!--definitionInsightsprnt-->
+
+        </div>
+        <div class="footer">
+            <div class="VersionDiv VersionLatest"></div>
+            <div class="VersionDiv VersionThis"></div>
+            <div class="VersionAlert"></div>
+        </div>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_002.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/autocorrectOff_v004_001.js"></script>
+        <script>
+            fitty('#fitme', {
+                minSize: 7,
+                maxSize: 10
+            });
+        </script>
+        <script>
+            `$("#getImage").on('click', function () {
+
+            element = document.getElementById('saveAsImageArea')
+            var images = element.getElementsByTagName('img');
+            var l = images.length;
+            for (var i = 0; i < l; i++) {
+                images[0].parentNode.removeChild(images[0]);
+            }
+
+            var scale = 3;
+            domtoimage.toPng(element, { quality: 0.95 , width: element.clientWidth * scale,
+                height: element.clientHeight * scale,
+                style: {
+                    transform: 'scale('+scale+')',
+                    transformOrigin: 'top left'
+            }})          
+                .then(function (dataUrl) {
+                var link = document.createElement('a');
+                link.download = '$($fileName).png';
+                link.href = dataUrl;
+                link.click();
+            });
+                    
+            })
+        </script>
+    </body>
+</html>
+"@
+    }
     if (-not $NoSingleSubscriptionOutput) {
 
         if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
@@ -1469,9 +1538,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         $htmlSubscriptionOnlyStart += @'
     <body>
         <div class="se-pre-con"></div>
-        <div class="tree">
-
-        </div>
 
         <div class="hierprnt" id="hierprnt">
             <div class="hierarchyTables" id="hierarchyTables">
@@ -1480,61 +1546,52 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 '@
 
         $htmlSubscriptionOnlyEnd = @"
-</table>
-</div>
-    </div>
-    <div class="footer">
-        <div class="VersionDiv VersionLatest"></div>
-        <div class="VersionDiv VersionThis"></div>
-        <div class="VersionAlert"></div>
-    </div>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_002.js"></script>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/autocorrectOff_v004_001.js"></script>
-    <script>
-        fitty('#fitme', {
-            minSize: 7,
-            maxSize: 10
-        });
-    </script>
-    <script>
-        `$("#getImage").on('click', function () {
+            </table>
+        </div>
+        </div>
+        <div class="footer">
+            <div class="VersionDiv VersionLatest"></div>
+            <div class="VersionDiv VersionThis"></div>
+            <div class="VersionAlert"></div>
+        </div>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_002.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/autocorrectOff_v004_001.js"></script>
+        <script>
+            fitty('#fitme', {
+                minSize: 7,
+                maxSize: 10
+            });
+        </script>
+        <script>
+            `$("#getImage").on('click', function () {
 
-        element = document.getElementById('saveAsImageArea')
-        var images = element.getElementsByTagName('img');
-        var l = images.length;
-        for (var i = 0; i < l; i++) {
-            images[0].parentNode.removeChild(images[0]);
-        }
+            element = document.getElementById('saveAsImageArea')
+            var images = element.getElementsByTagName('img');
+            var l = images.length;
+            for (var i = 0; i < l; i++) {
+                images[0].parentNode.removeChild(images[0]);
+            }
 
-        var scale = 3;
-        domtoimage.toPng(element, { quality: 0.95 , width: element.clientWidth * scale,
-            height: element.clientHeight * scale,
-            style: {
-                transform: 'scale('+scale+')',
-                transformOrigin: 'top left'
-        }})          
-            .then(function (dataUrl) {
-            var link = document.createElement('a');
-            link.download = '$($fileName).png';
-            link.href = dataUrl;
-            link.click();
-        });
-
-        // domtoimage.toJpeg(element)
-        //     .then(function (dataUrl) {
-        //         var link = document.createElement('a');
-        //         link.download = '$($fileName).jpeg';
-        //         link.href = dataUrl;
-        //         link.click();
-        //     });
-                
-        })
-    </script>
-</body>
-
+            var scale = 3;
+            domtoimage.toPng(element, { quality: 0.95 , width: element.clientWidth * scale,
+                height: element.clientHeight * scale,
+                style: {
+                    transform: 'scale('+scale+')',
+                    transformOrigin: 'top left'
+            }})          
+                .then(function (dataUrl) {
+                var link = document.createElement('a');
+                link.download = '$($fileName).png';
+                link.href = dataUrl;
+                link.click();
+            });
+                    
+            })
+        </script>
+    </body>
 </html>
 "@
     }
@@ -1804,13 +1861,13 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $endSummary = Get-Date
     Write-Host " Building TenantSummary duration: $((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalSeconds) seconds)"
 
-    $html += @'
+    $html += @"
     </div><!--summary-->
     </div><!--summprnt-->
 
     <div class="definitioninsightsprnt" id="definitioninsightsprnt">
     <div class="definitioninsights" id="definitioninsights"><p class="pbordered">DefinitionInsights</p>
-'@
+"@
     $html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
     $html = $null
 

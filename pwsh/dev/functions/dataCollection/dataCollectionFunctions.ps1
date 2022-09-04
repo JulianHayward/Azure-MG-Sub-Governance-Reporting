@@ -1724,7 +1724,7 @@ function dataCollectionPolicyDefinitions {
                             $policyHashMatch = $false
                             if ($alzPolicyHashes.($stringHash)) {
                                 $policyHashMatch = $true
-                                Write-Host "$($scopePolicyDefinition.name) exists in alzPolicyHashes"
+                                #Write-Host "$($scopePolicyDefinition.name) exists in alzPolicyHashes"
                                 $htTemp.ALZ = 'true'
                                 $htTemp.ALZIdentificationLevel = 'PolicyRule Hash'
                                 $htTemp.ALZPolicyName = $alzPolicyHashes.($stringHash).policyName
@@ -1769,7 +1769,7 @@ function dataCollectionPolicyDefinitions {
                                         }
                                     }
                                     else {
-                                        $htTemp.ALZState = 'likelyOutDated (no ver)'
+                                        $htTemp.ALZState = 'potentiallyOutDated (no ver)'
                                     }
 
                                     $htTemp.ALZLatestVer = $alzPolicies.($scopePolicyDefinition.name).latestVersion
@@ -1804,9 +1804,16 @@ function dataCollectionPolicyDefinitions {
                 }
 
                 $htTemp.DisplayName = $($scopePolicyDefinition.Properties.displayname)
+                $htTemp.Name = $scopePolicyDefinition.Name
                 $htTemp.Description = $($policyDefinitionDescription)
                 $htTemp.Type = $($scopePolicyDefinition.Properties.policyType)
                 $htTemp.Category = $($scopePolicyDefinition.Properties.metadata.category)
+                if ($scopePolicyDefinition.Properties.metadata.version){
+                    $htTemp.Version = $($scopePolicyDefinition.Properties.metadata.version)
+                }
+                else {
+                    $htTemp.Version = 'n/a'
+                }
                 $htTemp.PolicyDefinitionId = $hlpPolicyDefinitionId
                 if ($scopePolicyDefinition.Properties.metadata.deprecated -eq $true -or $scopePolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
                     $htTemp.Deprecated = $scopePolicyDefinition.Properties.metadata.deprecated
@@ -2041,7 +2048,7 @@ function dataCollectionPolicySetDefinitions {
                             $policySetHashMatch = $false
                             if ($alzPolicySetHashes.($stringHash)) {
                                 $policySetHashMatch = $true
-                                Write-Host "+++ PolicySet $($scopePolicySetDefinition.name) exists in alzPolicyHashes"
+                                #Write-Host "+++ PolicySet $($scopePolicySetDefinition.name) exists in alzPolicyHashes"
                                 $htTemp.ALZ = 'true'
                                 $htTemp.ALZIdentificationLevel = 'PolicySet Hash'
                                 $htTemp.ALZPolicySetName = $alzPolicySetHashes.($stringHash).policySetName
@@ -2105,9 +2112,16 @@ function dataCollectionPolicySetDefinitions {
                 }
 
                 $htTemp.DisplayName = $($scopePolicySetDefinition.Properties.displayname)
+                $htTemp.Name = $scopePolicySetDefinition.Name
                 $htTemp.Description = $($policySetDefinitionDescription)
                 $htTemp.Type = $($scopePolicySetDefinition.Properties.policyType)
                 $htTemp.Category = $($scopePolicySetDefinition.Properties.metadata.category)
+                if ($scopePolicySetDefinition.Properties.metadata.version){
+                    $htTemp.Version = $($scopePolicySetDefinition.Properties.metadata.version)
+                }
+                else {
+                    $htTemp.Version = 'n/a'
+                }
                 $htTemp.PolicyDefinitionId = $hlpPolicySetDefinitionId
                 $arrayPolicySetPolicyIdsToLower = @()
                 $htPolicySetPolicyRefIds = @{}
@@ -3217,21 +3231,26 @@ function dataCollectionRoleAssignmentsMG {
 
     $addRowToTableDone = $false
     #PIM MGRoleAssignmentScheduleInstances
-    $currentTask = "Getting ARM RoleAssignment ScheduleInstances for Management Group: '$($scopeDisplayName)' ('$($scopeId)')"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
-    $method = 'GET'
-    $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    if ($htDoARMRoleAssignmentScheduleInstances.Do -eq $true) {
+        $currentTask = "Getting ARM RoleAssignment ScheduleInstances for Management Group: '$($scopeDisplayName)' ('$($scopeId)')"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
+        $method = 'GET'
+        $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-    if ($roleAssignmentScheduleInstancesFromAPI -eq 'ResourceNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'TenantNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'InvalidResourceType' -or $roleAssignmentScheduleInstancesFromAPI -eq 'RoleAssignmentScheduleInstancesError') {
-        #Write-Host "Scope '$($scopeDisplayName)' ('$scopeId') not onboarded in PIM"
-    }
-    else {
-        $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
-        $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
-        if ($roleAssignmentScheduleInstancesCount -gt 0) {
-            #$htRoleAssignmentsPIM = @{}
-            foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
-                $script:htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
+        if ($roleAssignmentScheduleInstancesFromAPI -eq 'RoleAssignmentScheduleInstancesError' -or $roleAssignmentScheduleInstancesFromAPI -eq 'AadPremiumLicenseRequired') {
+            if ($roleAssignmentScheduleInstancesFromAPI -eq 'AadPremiumLicenseRequired') {
+                Write-Host "  -> Setting 'htDoARMRoleAssignmentScheduleInstances.Do' to false (AadPremiumLicenseRequired)"
+                $script:htDoARMRoleAssignmentScheduleInstances.Do = $false
+            }
+        }
+        else {
+            $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
+            $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
+            if ($roleAssignmentScheduleInstancesCount -gt 0) {
+                #$htRoleAssignmentsPIM = @{}
+                foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
+                    $script:htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
+                }
             }
         }
     }
@@ -3493,21 +3512,27 @@ function dataCollectionRoleAssignmentsSub {
     $script:htSubscriptionsRoleAssignmentLimit.($scopeId) = $roleAssignmentsUsage.roleAssignmentsLimit
 
     #PIM SubscriptionRoleAssignmentScheduleInstances
-    $currentTask = "Getting ARM RoleAssignment ScheduleInstances for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
-    $method = 'GET'
-    $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    if ($htDoARMRoleAssignmentScheduleInstances.Do -eq $true) {
+        $currentTask = "Getting ARM RoleAssignment ScheduleInstances for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
+        $method = 'GET'
+        $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-    if ($roleAssignmentScheduleInstancesFromAPI -eq 'ResourceNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'TenantNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'InvalidResourceType' -or $roleAssignmentScheduleInstancesFromAPI -eq 'RoleAssignmentScheduleInstancesError') {
-        #Write-Host "Scope '$($scopeDisplayName)' ('$scopeId') not onboarded in PIM"
-    }
-    else {
-        $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
-        $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
-        if ($roleAssignmentScheduleInstancesCount -gt 0) {
-            #$htRoleAssignmentsPIM = @{}
-            foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
-                $script:htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
+        if ($roleAssignmentScheduleInstancesFromAPI -eq 'RoleAssignmentScheduleInstancesError' -or $roleAssignmentScheduleInstancesFromAPI -eq 'AadPremiumLicenseRequired') {
+            # this should not be required at sub level as the error would already have occured at mg level
+            # if ($roleAssignmentScheduleInstancesFromAPI -eq 'AadPremiumLicenseRequired') {
+            #     Write-Host " Setting 'htDoARMRoleAssignmentScheduleInstances.Do' to false (AadPremiumLicenseRequired)"
+            #     $script:htDoARMRoleAssignmentScheduleInstances.Do = $false
+            # }
+        }
+        else {
+            $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
+            $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
+            if ($roleAssignmentScheduleInstancesCount -gt 0) {
+                #$htRoleAssignmentsPIM = @{}
+                foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
+                    $script:htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
+                }
             }
         }
     }

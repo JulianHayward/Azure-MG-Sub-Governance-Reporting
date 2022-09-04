@@ -59,6 +59,16 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
+__Changes__ (2022-Sep-04 / Major)
+
+* New parameter `-DefinitionInsightsDedicatedHTML` (DefinitionInsights will be written to a separate HTML file `*_DefinitionInsights.html`)
+  * Update Azure DevOps and GitHub YAML files accordingly for webApp publishing
+* Add Resource fluctuation detailed (`*_ResourceFluctuationDetailed.csv`) CSV output (add/remove, scope details, resource details)
+* ALZ EverGreen POC (name and hash based)
+  * New parameter `-NoALZEvergreen` (do not execute ALZ EverGreen)
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.23
+* Optimization
+
 __Changes__ (2022-Aug-31 / Major)
 
 * Fix consumption large tenants with more than 3k subscriptions
@@ -68,7 +78,7 @@ __Changes__ (2022-Aug-31 / Major)
 __Changes__ (2022-Aug-25 / Major)
 
 * Fix CSV export `*_PolicySetDefinitions.csv` - Builtin Policy definitions contained in PolicySet definitions will only show the GUID instead of the full ID as for large PolicySet definitions the field size limit in Excel may be exceeded (column: PoliciesUsed4CSV)
-* BuiltIn definitions collection - add 'Static' Policy definitions (part of __DefinitionInsights__ and `*_PolicySetDefinitions.csv`)
+* BuiltIn definitions collection - add 'Static' Policy definitions (part of __DefinitionInsights__ and `*_PolicyDefinitions.csv`)
 * Fix __HierarchyMap__ image quality (now .png (aka 'peng')) - thanks! Brooks Vaughn
 * ALZ EverGreen POC
 
@@ -200,6 +210,9 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
         * Explicit Resource Provider state per Subscription
       * Resource Locks
         * Aggregated insights for Lock and respective Lock-type usage on Subscriptions, ResourceGroups and Resources
+    * Resource fluctuation - added/removed resources since previous AzGovViz execution
+      * Aggregated insights on resource fluctuation add/remove (HTML)
+      * Detailed insights on resource fluctuation add/remove (CSV)
     * Orphaned Resources (ARG)
       * If you run AzGovViz with parameter -DoAzureConsumption then the orphaned resources output will show you potential cost savings for orphaned resources with intent 'cost savings'
       * The orphaned resources feature is based on [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources) ARG queries and workbooks by Dolev Shor
@@ -485,6 +498,8 @@ AzAPICall resources:
     * `-NoPIMEligibility` - Do not report on PIM eligible Role assignments
     * `-PIMEligibilityIgnoreScope` - By default will only report for PIM Elibility for the scope (`ManagementGroupId`) that was provided. If you use the new switch parameter then PIM Eligibility for all onboarded scopes (Management Groups and Subscriptions) will be reported
     * `-NoPIMEligibilityIntegrationRoleAssignmentsAll` - Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
+  * `-DefinitionInsightsDedicatedHTML` - DefinitionInsights will be written to a separate HTML file `*_DefinitionInsights.html`
+  * `-NoALZEvergreen` - do not execute ALZ EverGreen
 
 ### API reference
 

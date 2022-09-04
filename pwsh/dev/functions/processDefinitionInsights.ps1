@@ -316,8 +316,10 @@ function processDefinitionInsights() {
 "@
     }
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-    $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
+    if (-not $DefinitionInsightsDedicatedHTML) {
+        $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+        $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
+    }
     [void]$htmlDefinitionInsights.AppendLine( @"
     </tbody>
 </table>
@@ -587,8 +589,10 @@ tf.init();}}
 "@
     }
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-    $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
+    if (-not $DefinitionInsightsDedicatedHTML) {
+        $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+        $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
+    }
     [void]$htmlDefinitionInsights.AppendLine( @"
     </tbody>
 </table>
@@ -879,14 +883,16 @@ tf.init();}}
     if (-not $NoCsvExport) {
         $csvFilename = "$($filename)_RoleDefinitions"
         Write-Host "   Exporting RoleDefinitions CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-        $arrayRoleDefinitionsForCSVExport | Sort-Object -Property Type, Name, Id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -Encoding utf8 -NoTypeInformation
+        $arrayRoleDefinitionsForCSVExport | Sort-Object -Property Type, Name, Id | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
         $arrayRoleDefinitionsForCSVExport = $null
     }
     #endregion exportCSV
 
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-    $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
+    if (-not $DefinitionInsightsDedicatedHTML) {
+        $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+        $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
+    }
     [void]$htmlDefinitionInsights.AppendLine( @"
     </tbody>
 </table>
@@ -986,10 +992,34 @@ tf.init();}}
 '@)
     #endregion definitionInsightsAzureRBAC
 
-    $script:html += $htmlDefinitionInsights
-    $htmlDefinitionInsights = $null
-    $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-    $script:html = $null
+    Write-Host "   DefinitionInsightsDedicatedHTML: $DefinitionInsightsDedicatedHTML"
+    if (-not $DefinitionInsightsDedicatedHTML){
+        Write-Host "   Appending DefinitionInsights to HTML"
+        $script:html += $htmlDefinitionInsights
+        $htmlDefinitionInsights = $null
+        $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+        $script:html = $null
+    }
+    else {
+        Write-Host "   Creating dedicated DefinitionInsights HTML ($($outputPath)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html)"
+        $htmlDefinitionInsightsDedicated = $null
+        $htmlDefinitionInsightsDedicated += $htmlDefinitionInsightsDedicatedStart
+        $htmlDefinitionInsightsDedicated += $htmlDefinitionInsights
+        $htmlDefinitionInsightsDedicated += $htmlDefinitionInsightsDedicatedEnd
+        #$htmlDefinitionInsights = $null
+        $htmlDefinitionInsightsDedicated | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html" -Encoding utf8 -Force
+        #$script:htmlDefinitionInsightsDedicated = $null
+
+        $htmlDefinitionInsightsNo = @"
+        <span>DefinitionInsights have been saved to dedicated HTML file '$($outputPath)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html' (parameter -DefinitionInsightsDedicatedHTML: $($DefinitionInsightsDedicatedHTML))</span><br>
+        <a class="externallink" href="$($fileName)_DefinitionInsights.html" target="blank">DefinitionInsights <i class="fa fa-external-link" aria-hidden="true"></i></a>
+"@
+        $script:html += $htmlDefinitionInsightsNo
+        #$htmlDefinitionInsightsNo = $null
+        $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+        $script:html = $null
+    }
+
 
     $endDefinitionInsights = Get-Date
     Write-Host "  DefinitionInsights processing duration: $((NEW-TIMESPAN -Start $startDefinitionInsights -End $endDefinitionInsights).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefinitionInsights -End $endDefinitionInsights).TotalSeconds) seconds)"
