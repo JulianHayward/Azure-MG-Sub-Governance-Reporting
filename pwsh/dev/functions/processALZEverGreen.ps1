@@ -57,46 +57,143 @@ function processALZEverGreen {
         $allESLZPolicySets = @{}
         $allESLZPolicyHashes = @{}
         $allESLZPolicySetHashes = @{}
+        #$allESLZPoliciesMetaDataNames = @{}
+        #$allESLZPoliciesMetaDataHashes = @{}
+        #$allESLZPolicySetsMetaDataNames = @{}
+        #$allESLZPolicySetsMetaDataHashes = @{}
 
+
+        Write-Host " Processing ALZ Data Policy definitions"
+        
+        $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/dataPolicies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
+        #Write-Host $gitHist.Count
+        $commitCount = 0
+        $processDataPolicies = $true
+        foreach ($commit in $gitHist | Sort-Object -Property Date) {
+            if ($processDataPolicies) {
+                if ($commit.CommitId -eq '3476914f9ba9a8f3f641a25497dfb24a4efa1017') {
+                    $processDataPolicies = $false
+                    continue
+                }
+                Write-Host "processing commit (dataPolicies) $($commit.CommitId)"
+                $commitCount++
+                $jsonRaw = git show "$($commit.CommitId):eslzArm/managementGroupTemplates/policyDefinitions/dataPolicies.json"
+                
+                $jsonESLZPolicies = $jsonRaw | ConvertFrom-Json
+                if (($jsonESLZPolicies.variables.policies.policyDefinitions).Count -eq 0) {
+                    #$eslzGoodToGo = $false
+                }
+                else {
+                    #$eslzGoodToGo = $true
+                    $eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
+                    foreach ($policyDefinition in $eslzPolicies) {
+                        $policyJsonConv = ($policyDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
+                        $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
+                        $policyJsonRule = $policyJsonRebuild.properties.policyRule | ConvertTo-Json -depth 99
+                        $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonRule))
+                        $stringHash = [System.BitConverter]::ToString($hash) 
+
+                        if (-not $allESLZPolicies.($policyJsonRebuild.name)) {
+                            $allESLZPolicies.($policyJsonRebuild.name) = @{}
+                            $allESLZPolicies.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
+                            $null = $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                            $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                            $allESLZPolicies.($policyJsonRebuild.name).name = $policyJsonRebuild.name
+                            $allESLZPolicies.($policyJsonRebuild.name).metadataSource = ''
+
+                            $allESLZPolicies.($policyJsonRebuild.name).status = 'obsolete'
+                        }
+                        else {
+                            $allESLZPolicies.($policyJsonRebuild.name).status = 'obsolete'
+ 
+                            if ($allESLZPolicies.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                                $null = $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                            }
+                            if (-not $allESLZPolicies.($policyJsonRebuild.name).$stringHash) {
+                                $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                            }
+                        }
+
+                        #hsh
+                        if (-not $allESLZPolicyHashes.($stringHash)) {
+                            $allESLZPolicyHashes.($stringHash) = @{}
+                            $allESLZPolicyHashes.($stringHash).version = [System.Collections.ArrayList]@()
+                            $null = $allESLZPolicyHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
+                            $allESLZPolicyHashes.($stringHash).name = $policyJsonRebuild.name
+                            $allESLZPolicyHashes.($stringHash).metadataSource = ''
+
+                            $allESLZPolicyHashes.($stringHash).status = 'obsolete'
+                        }
+                        else {
+                            $allESLZPolicyHashes.($stringHash).status = 'obsolete'
+                            if ($allESLZPolicyHashes.($stringHash).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                                $null = $allESLZPolicyHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
+                            }
+                            if (-not $allESLZPolicyHashes.($stringHash).($policyJsonRebuild.name)) {
+                                $allESLZPolicyHashes.($stringHash).($policyJsonRebuild.name) = $policyJsonRebuild.name
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Write-Host " Processing ALZ Policy and Set definitions"
         $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/policies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
         #Write-Host $gitHist.Count
         $commitCount = 0
-        Write-Host " Processing ALZ Policy and Set definitions"
+        $doNewALZPolicyReadingApproach = $false
         foreach ($commit in $gitHist | Sort-Object -Property Date) {
-            $commitCount++
-            #$commitCount
 
-            #$dt = (([datetime]$commit.Date).ToUniversalTime()).ToString("yyyyMMddHHmmss")
-            # $htGitTrackESLZPolicies.($dt) = @{}
-            # $htGitTrackESLZPolicies.($dt).policies = @{}
-            # $htGitTrackESLZPolicies.($dt).commitId = $commit.CommitId
+            if ($commit.CommitId -eq '3476914f9ba9a8f3f641a25497dfb24a4efa1017') {
+                $doNewALZPolicyReadingApproach = $true
+            }
+            Write-Host "processing commit $($commit.CommitId) - doNewALZPolicyReadingApproach: $doNewALZPolicyReadingApproach"
+            $commitCount++
+
             $jsonRaw = git show "$($commit.CommitId):eslzArm/managementGroupTemplates/policyDefinitions/policies.json"
             
-            $jsonESLZPolicies = $jsonRaw | ConvertFrom-Json
-            #Write-Host "$dt $($commit.CommitId)"
-            if (($jsonESLZPolicies.variables.policies.policyDefinitions).Count -eq 0) {
-                $eslzGoodToGo = $false
-            }
-            else {
-                $eslzGoodToGo = $true
+            if ($doNewALZPolicyReadingApproach) {
+                $jsonESLZPolicies = $jsonRaw -replace "\[\[", '[' | ConvertFrom-Json
+                [regex]$extractVariableName = "(?<=\[variables\(')[^']+"
+                $refsPolicyDefinitionsAll = $extractVariableName.Matches($jsonESLZPolicies.variables.loadPolicyDefinitions.All).Value
+                $refsPolicyDefinitionsAzureCloud = $extractVariableName.Matches($jsonESLZPolicies.variables.loadPolicyDefinitions.AzureCloud).Value
+                $refsPolicyDefinitionsAzureChinaCloud = $extractVariableName.Matches($jsonESLZPolicies.variables.loadPolicyDefinitions.AzureChinaCloud).Value
+                $refsPolicyDefinitionsAzureUSGovernment = $extractVariableName.Matches($jsonESLZPolicies.variables.loadPolicyDefinitions.AzureUSGovernment).Value
+                $refsPolicySetDefinitionsAll = $extractVariableName.Matches($jsonESLZPolicies.variables.loadPolicySetDefinitions.All).Value
+                $refsPolicySetDefinitionsAzureCloud = $extractVariableName.Matches($jsonESLZPolicies.variables.loadPolicySetDefinitions.AzureCloud).Value
+                $refsPolicySetDefinitionsAzureChinaCloud = $extractVariableName.Matches($jsonESLZPolicies.variables.loadPolicySetDefinitions.AzureChinaCloud).Value
+                $refsPolicySetDefinitionsAzureUSGovernment = $extractVariableName.Matches($jsonESLZPolicies.variables.loadPolicySetDefinitions.AzureUSGovernment).Value
+                $listPolicyDefinitionsAzureCloud = $refsPolicyDefinitionsAll + $refsPolicyDefinitionsAzureCloud
+                $listPolicyDefinitionsAzureChinaCloud = $refsPolicyDefinitionsAll + $refsPolicyDefinitionsAzureChinaCloud
+                $listPolicyDefinitionsAzureUSGovernment = $refsPolicyDefinitionsAll + $refsPolicyDefinitionsAzureUSGovernment
+                $listPolicySetDefinitionsAzureCloud = $refsPolicySetDefinitionsAll + $refsPolicySetDefinitionsAzureCloud
+                $listPolicySetDefinitionsAzureChinaCloud = $refsPolicySetDefinitionsAll + $refsPolicySetDefinitionsAzureChinaCloud
+                $listPolicySetDefinitionsAzureUSGovernment = $refsPolicySetDefinitionsAll + $refsPolicySetDefinitionsAzureUSGovernment
+                $policyDefinitionsAzureCloud = $listPolicyDefinitionsAzureCloud.ForEach({ $jsonESLZPolicies.variables.$_ })
+                $policyDefinitionsAzureChinaCloud = $listPolicyDefinitionsAzureChinaCloud.ForEach({ $jsonESLZPolicies.variables.$_ })
+                $policyDefinitionsAzureUSGovernment = $listPolicyDefinitionsAzureUSGovernment.ForEach({ $jsonESLZPolicies.variables.$_ })
+                $policySetDefinitionsAzureCloud = $listPolicySetDefinitionsAzureCloud.ForEach({ $jsonESLZPolicies.variables.$_ })
+                $policySetDefinitionsAzureChinaCloud = $listPolicySetDefinitionsAzureChinaCloud.ForEach({ $jsonESLZPolicies.variables.$_ })
+                $policySetDefinitionsAzureUSGovernment = $listPolicySetDefinitionsAzureUSGovernment.ForEach({ $jsonESLZPolicies.variables.$_ })
+            #pause
 
-                $eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
-                foreach ($policyDefinition in $eslzPolicies) {
-                    $policyJsonConv = ($policyDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
-                    $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
+                #$eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
+                foreach ($policyDefinition in $policyDefinitionsAzureCloud) {
+
+                    #$policyJsonConv = ($policyDefinition | ConvertTo-Json -depth 99)
+                    $policyJsonRebuild = $policyDefinition | ConvertFrom-Json
                     $policyJsonRule = $policyJsonRebuild.properties.policyRule | ConvertTo-Json -depth 99
                     $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonRule))
                     $stringHash = [System.BitConverter]::ToString($hash) 
-                    
-                    # $htGitTrackESLZPolicies.($dt).policies.($policyJsonRebuild.name) = @{}
-                    # $htGitTrackESLZPolicies.($dt).policies.($policyJsonRebuild.name).version = $policyJsonRebuild.properties.metadata.version
-        
+                        
                     if (-not $allESLZPolicies.($policyJsonRebuild.name)) {
                         $allESLZPolicies.($policyJsonRebuild.name) = @{}
                         $allESLZPolicies.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
                         $null = $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
                         $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
                         $allESLZPolicies.($policyJsonRebuild.name).name = $policyJsonRebuild.name
+                        $allESLZPolicies.($policyJsonRebuild.name).metadataSource = $policyJsonRebuild.properties.metadata.source
                         if ($commitCount -eq $gitHist.Count) {
                             $allESLZPolicies.($policyJsonRebuild.name).status = 'prod'
                         }
@@ -111,6 +208,7 @@ function processALZEverGreen {
                         else {
                             $allESLZPolicies.($policyJsonRebuild.name).status = 'obsolete'
                         }
+                        $allESLZPolicies.($policyJsonRebuild.name).metadataSource = $policyJsonRebuild.properties.metadata.source
                         if ($allESLZPolicies.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
                             $null = $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
                         }
@@ -118,13 +216,14 @@ function processALZEverGreen {
                             $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
                         }
                     }
-
+    
                     #hsh
                     if (-not $allESLZPolicyHashes.($stringHash)) {
                         $allESLZPolicyHashes.($stringHash) = @{}
                         $allESLZPolicyHashes.($stringHash).version = [System.Collections.ArrayList]@()
                         $null = $allESLZPolicyHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
                         $allESLZPolicyHashes.($stringHash).name = $policyJsonRebuild.name
+                        $allESLZPolicyHashes.($stringHash).metadataSource = $policyJsonRebuild.properties.metadata.source
                         if ($commitCount -eq $gitHist.Count) {
                             $allESLZPolicyHashes.($stringHash).status = 'prod'
                         }
@@ -140,6 +239,7 @@ function processALZEverGreen {
                         else {
                             $allESLZPolicyHashes.($stringHash).status = 'obsolete'
                         }
+                        $allESLZPolicyHashes.($stringHash).metadataSource = $policyJsonRebuild.properties.metadata.source
                         if ($allESLZPolicyHashes.($stringHash).version -notcontains $policyJsonRebuild.properties.metadata.version) {
                             $null = $allESLZPolicyHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
                         }
@@ -147,18 +247,74 @@ function processALZEverGreen {
                             $allESLZPolicyHashes.($stringHash).($policyJsonRebuild.name) = $policyJsonRebuild.name
                         }
                     }
-                }
 
-                $eslzPolicySets = $jsonESLZPolicies.variables.initiatives.policySetDefinitions
-                foreach ($policySetDefinition in $eslzPolicySets) {
-                    <#$policyJsonConv = ($policySetDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
-                    $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonConv))
-                    $stringHash = [System.BitConverter]::ToString($hash) 
-                    $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
+                    <#metadata name
+                    if ($policyJsonRebuild.properties.metadata.source -eq 'https://github.com/Azure/Enterprise-Scale/') {
+                        if (-not $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name)) {
+                            $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name) = @{}
+                            $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
+                            $null = $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                            $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                            $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).name = $policyJsonRebuild.name
+                            if ($commitCount -eq $gitHist.Count) {
+                                $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).status = 'prod'
+                            }
+                            else {
+                                $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).status = 'obsolete'
+                            }
+                        }
+                        else {
+                            if ($commitCount -eq $gitHist.Count) {
+                                $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).status = 'prod'
+                            }
+                            else {
+                                $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).status = 'obsolete'
+                            }
+                            if ($allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                                $null = $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                            }
+                            if (-not $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).$stringHash) {
+                                $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                            }
+                        }
+                    }
+
+                    #metadata hash
+                    if (-not $allESLZPoliciesMetaDataHashes.($stringHash)) {
+                        $allESLZPoliciesMetaDataHashes.($stringHash) = @{}
+                        $allESLZPoliciesMetaDataHashes.($stringHash).version = [System.Collections.ArrayList]@()
+                        $null = $allESLZPoliciesMetaDataHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
+                        $allESLZPoliciesMetaDataHashes.($stringHash).name = $policyJsonRebuild.name
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPoliciesMetaDataHashes.($stringHash).status = 'prod'
+                        }
+                        else {
+                            $allESLZPoliciesMetaDataHashes.($stringHash).status = 'obsolete'
+                        }
+                    }
+                    else {
+                        #Write-host "already exists:" $stringHash $policyJsonRebuild.name
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPoliciesMetaDataHashes.($stringHash).status = 'prod'
+                        }
+                        else {
+                            $allESLZPoliciesMetaDataHashes.($stringHash).status = 'obsolete'
+                        }
+                        if ($allESLZPoliciesMetaDataHashes.($stringHash).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                            $null = $allESLZPoliciesMetaDataHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
+                        }
+                        if (-not $allESLZPoliciesMetaDataHashes.($stringHash).($policyJsonRebuild.name)) {
+                            $allESLZPoliciesMetaDataHashes.($stringHash).($policyJsonRebuild.name) = $policyJsonRebuild.name
+                        }
+                    }
                     #>
-
-                    $policyJsonConv = ($policySetDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
-                    $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
+                }
+    
+                #$eslzPolicySets = $jsonESLZPolicies.variables.initiatives.policySetDefinitions
+                foreach ($policySetDefinition in $policySetDefinitionsAzureCloud) {
+ 
+                    #$policyJsonConv = ($policySetDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
+                    $policyJsonRebuild = $policySetDefinition | ConvertFrom-Json
                     $policyJsonParameters = $policyJsonRebuild.properties.parameters | ConvertTo-Json -depth 99
                     $policyJsonPolicyDefinitions = $policyJsonRebuild.properties.policyDefinitions | ConvertTo-Json -depth 99
                     $hashParameters = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonParameters))
@@ -166,16 +322,14 @@ function processALZEverGreen {
                     $hashPolicyDefinitions = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonPolicyDefinitions))
                     $stringHashPolicyDefinitions = [System.BitConverter]::ToString($hashPolicyDefinitions) 
                     $stringHash = "$($stringHashParameters)_$($stringHashPolicyDefinitions)"
-
-                    # $htGitTrackESLZPolicies.($dt).policies.($policyJsonRebuild.name) = @{}
-                    # $htGitTrackESLZPolicies.($dt).policies.($policyJsonRebuild.name).version = $policyJsonRebuild.properties.metadata.version
-                    
+    
                     if (-not $allESLZPolicySets.($policyJsonRebuild.name)) {
                         $allESLZPolicySets.($policyJsonRebuild.name) = @{}
                         $allESLZPolicySets.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
                         $null = $allESLZPolicySets.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
                         $allESLZPolicySets.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
                         $allESLZPolicySets.($policyJsonRebuild.name).name = $policyJsonRebuild.name
+                        $allESLZPolicySets.($policyJsonRebuild.name).metadataSource = $policyJsonRebuild.properties.metadata.source
                         if ($commitCount -eq $gitHist.Count) {
                             $allESLZPolicySets.($policyJsonRebuild.name).status = 'prod'
                         }
@@ -190,6 +344,7 @@ function processALZEverGreen {
                         else {
                             $allESLZPolicySets.($policyJsonRebuild.name).status = 'obsolete'
                         }
+                        $allESLZPolicySets.($policyJsonRebuild.name).metadataSource = $policyJsonRebuild.properties.metadata.source
                         if ($allESLZPolicySets.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
                             $null = $allESLZPolicySets.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
                         }
@@ -197,13 +352,14 @@ function processALZEverGreen {
                             $allESLZPolicySets.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
                         }
                     }
-
+    
                     #hsh
                     if (-not $allESLZPolicySetHashes.($stringHash)) {
                         $allESLZPolicySetHashes.($stringHash) = @{}
                         $allESLZPolicySetHashes.($stringHash).version = [System.Collections.ArrayList]@()
                         $null = $allESLZPolicySetHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
                         $allESLZPolicySetHashes.($stringHash).name = $policyJsonRebuild.name
+                        $allESLZPolicySetHashes.($stringHash).metadataSource = $policyJsonRebuild.properties.metadata.source
                         if ($commitCount -eq $gitHist.Count) {
                             $allESLZPolicySetHashes.($stringHash).status = 'prod'
                         }
@@ -219,6 +375,7 @@ function processALZEverGreen {
                         else {
                             $allESLZPolicySetHashes.($stringHash).status = 'obsolete'
                         }
+                        $allESLZPolicySetHashes.($stringHash).metadataSource = $policyJsonRebuild.properties.metadata.source
                         if ($allESLZPolicySetHashes.($stringHash).version -notcontains $policyJsonRebuild.properties.metadata.version) {
                             $null = $allESLZPolicySetHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
                         }
@@ -226,103 +383,267 @@ function processALZEverGreen {
                             $allESLZPolicySetHashes.($stringHash).($policyJsonRebuild.name) = $policyJsonRebuild.name
                         }
                     }
+
+                    <#metadata name
+                    if (-not $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name)) {
+                        $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name) = @{}
+                        $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
+                        $null = $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                        $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                        $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).name = $policyJsonRebuild.name
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).status = 'prod'
+                        }
+                        else {
+                            $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).status = 'obsolete'
+                        }
+                    }
+                    else {
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).status = 'prod'
+                        }
+                        else {
+                            $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).status = 'obsolete'
+                        }
+                        if ($allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                            $null = $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                        }
+                        if (-not $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).$stringHash) {
+                            $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                        }
+                    }
+
+                    #metadata hash
+                    if (-not $allESLZPolicySetsMetaDataHashes.($stringHash)) {
+                        $allESLZPolicySetsMetaDataHashes.($stringHash) = @{}
+                        $allESLZPolicySetsMetaDataHashes.($stringHash).version = [System.Collections.ArrayList]@()
+                        $null = $allESLZPolicySetsMetaDataHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
+                        $allESLZPolicySetsMetaDataHashes.($stringHash).name = $policyJsonRebuild.name
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPolicySetsMetaDataHashes.($stringHash).status = 'prod'
+                        }
+                        else {
+                            $allESLZPolicySetsMetaDataHashes.($stringHash).status = 'obsolete'
+                        }
+                    }
+                    else {
+                        #Write-host "already exists:" $stringHash $policyJsonRebuild.name
+                        if ($commitCount -eq $gitHist.Count) {
+                            $allESLZPolicySetsMetaDataHashes.($stringHash).status = 'prod'
+                        }
+                        else {
+                            $allESLZPolicySetsMetaDataHashes.($stringHash).status = 'obsolete'
+                        }
+                        if ($allESLZPolicySetsMetaDataHashes.($stringHash).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                            $null = $allESLZPolicySetsMetaDataHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
+                        }
+                        if (-not $allESLZPolicySetsMetaDataHashes.($stringHash).($policyJsonRebuild.name)) {
+                            $allESLZPolicySetsMetaDataHashes.($stringHash).($policyJsonRebuild.name) = $policyJsonRebuild.name
+                        }
+                    }
+                    #>
                 }
-            }
-        }
-
-        Write-Host " Processing ALZ Data Policy definitions"
-        $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/dataPolicies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
-        #Write-Host $gitHist.Count
-        $commitCount = 0
-        foreach ($commit in $gitHist | Sort-Object -Property Date) {
-
-            $commitCount++
-            #$dt = (([datetime]$commit.Date).ToUniversalTime()).ToString("yyyyMMddHHmmss")
-            # $htGitTrackESLZdataPolicies.($dt) = @{}
-            # $htGitTrackESLZdataPolicies.($dt).policies = @{}
-            # $htGitTrackESLZdataPolicies.($dt).commitId = $commit.CommitId
-            $jsonRaw = git show "$($commit.CommitId):eslzArm/managementGroupTemplates/policyDefinitions/dataPolicies.json"
-            
-            $jsonESLZPolicies = $jsonRaw | ConvertFrom-Json
-            #Write-Host "$dt $($commit.CommitId)"
-            if (($jsonESLZPolicies.variables.policies.policyDefinitions).Count -eq 0) {
-                $eslzGoodToGo = $false
             }
             else {
-                $eslzGoodToGo = $true
-                $eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
-                foreach ($policyDefinition in $eslzPolicies) {
-                    $policyJsonConv = ($policyDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
-                    $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
-                    $policyJsonRule = $policyJsonRebuild.properties.policyRule | ConvertTo-Json -depth 99
-                    $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonRule))
-                    $stringHash = [System.BitConverter]::ToString($hash) 
-
-                    # $htGitTrackESLZdataPolicies.($dt).policies.($policyJsonRebuild.name) = @{}
-                    # $htGitTrackESLZdataPolicies.($dt).policies.($policyJsonRebuild.name).version = $policyJsonRebuild.properties.metadata.version
-        
-                    if (-not $allESLZPolicies.($policyJsonRebuild.name)) {
-                        $allESLZPolicies.($policyJsonRebuild.name) = @{}
-                        $allESLZPolicies.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
-                        $null = $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
-                        $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
-                        $allESLZPolicies.($policyJsonRebuild.name).name = $policyJsonRebuild.name
-                        if ($commitCount -eq $gitHist.Count) {
-                            $allESLZPolicies.($policyJsonRebuild.name).status = 'prod'
-                        }
-                        else {
-                            $allESLZPolicies.($policyJsonRebuild.name).status = 'obsolete'
-                        }
-                    }
-                    else {
-                        if ($commitCount -eq $gitHist.Count) {
-                            $allESLZPolicies.($policyJsonRebuild.name).status = 'prod'
-                        }
-                        else {
-                            $allESLZPolicies.($policyJsonRebuild.name).status = 'obsolete'
-                        }
-                        if ($allESLZPolicies.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                $jsonESLZPolicies = $jsonRaw | ConvertFrom-Json
+                #Write-Host "$dt $($commit.CommitId)"
+                if (($jsonESLZPolicies.variables.policies.policyDefinitions).Count -eq 0) {
+                    #$eslzGoodToGo = $false
+                }
+                else {
+                    #$eslzGoodToGo = $true
+    
+                    $eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
+                    foreach ($policyDefinition in $eslzPolicies) {
+                        $policyJsonConv = ($policyDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
+                        $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
+                        $policyJsonRule = $policyJsonRebuild.properties.policyRule | ConvertTo-Json -depth 99
+                        $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonRule))
+                        $stringHash = [System.BitConverter]::ToString($hash) 
+                        
+                        if (-not $allESLZPolicies.($policyJsonRebuild.name)) {
+                            $allESLZPolicies.($policyJsonRebuild.name) = @{}
+                            $allESLZPolicies.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
                             $null = $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
-                        }
-                        if (-not $allESLZPolicies.($policyJsonRebuild.name).$stringHash) {
                             $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
-                        }
-                    }
-
-                    #hsh
-                    if (-not $allESLZPolicyHashes.($stringHash)) {
-                        $allESLZPolicyHashes.($stringHash) = @{}
-                        $allESLZPolicyHashes.($stringHash).version = [System.Collections.ArrayList]@()
-                        $null = $allESLZPolicyHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
-                        $allESLZPolicyHashes.($stringHash).name = $policyJsonRebuild.name
-                        if ($commitCount -eq $gitHist.Count) {
-                            $allESLZPolicyHashes.($stringHash).status = 'prod'
+                            $allESLZPolicies.($policyJsonRebuild.name).name = $policyJsonRebuild.name
+                            $allESLZPolicies.($policyJsonRebuild.name).metadataSource = ''
+                            if ($commitCount -eq $gitHist.Count) {
+                                $allESLZPolicies.($policyJsonRebuild.name).status = 'prod'
+                            }
+                            else {
+                                $allESLZPolicies.($policyJsonRebuild.name).status = 'obsolete'
+                            }
                         }
                         else {
-                            $allESLZPolicyHashes.($stringHash).status = 'obsolete'
+                            if ($commitCount -eq $gitHist.Count) {
+                                $allESLZPolicies.($policyJsonRebuild.name).status = 'prod'
+                            }
+                            else {
+                                $allESLZPolicies.($policyJsonRebuild.name).status = 'obsolete'
+                            }
+                            if ($allESLZPolicies.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                                $null = $allESLZPolicies.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                            }
+                            if (-not $allESLZPolicies.($policyJsonRebuild.name).$stringHash) {
+                                $allESLZPolicies.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                            }
                         }
-                    }
-                    else {
-                        #Write-host "dataPolicy already exists:" $stringHash $policyJsonRebuild.name
-                        if ($commitCount -eq $gitHist.Count) {
-                            $allESLZPolicyHashes.($stringHash).status = 'prod'
-                        }
-                        else {
-                            $allESLZPolicyHashes.($stringHash).status = 'obsolete'
-                        }
-                        if ($allESLZPolicyHashes.($stringHash).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+    
+                        #hsh
+                        if (-not $allESLZPolicyHashes.($stringHash)) {
+                            $allESLZPolicyHashes.($stringHash) = @{}
+                            $allESLZPolicyHashes.($stringHash).version = [System.Collections.ArrayList]@()
                             $null = $allESLZPolicyHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
+                            $allESLZPolicyHashes.($stringHash).name = $policyJsonRebuild.name
+                            $allESLZPolicyHashes.($stringHash).metadataSource = ''
+                            if ($commitCount -eq $gitHist.Count) {
+                                $allESLZPolicyHashes.($stringHash).status = 'prod'
+                            }
+                            else {
+                                $allESLZPolicyHashes.($stringHash).status = 'obsolete'
+                            }
                         }
-                        if (-not $allESLZPolicyHashes.($stringHash).($policyJsonRebuild.name)) {
-                            $allESLZPolicyHashes.($stringHash).($policyJsonRebuild.name) = $policyJsonRebuild.name
+                        else {
+                            #Write-host "already exists:" $stringHash $policyJsonRebuild.name
+                            if ($commitCount -eq $gitHist.Count) {
+                                $allESLZPolicyHashes.($stringHash).status = 'prod'
+                            }
+                            else {
+                                $allESLZPolicyHashes.($stringHash).status = 'obsolete'
+                            }
+                            if ($allESLZPolicyHashes.($stringHash).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                                $null = $allESLZPolicyHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
+                            }
+                            if (-not $allESLZPolicyHashes.($stringHash).($policyJsonRebuild.name)) {
+                                $allESLZPolicyHashes.($stringHash).($policyJsonRebuild.name) = $policyJsonRebuild.name
+                            }
+                        }
+                    }
+    
+                    $eslzPolicySets = $jsonESLZPolicies.variables.initiatives.policySetDefinitions
+                    foreach ($policySetDefinition in $eslzPolicySets) {
+    
+                        $policyJsonConv = ($policySetDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
+                        $policyJsonRebuild = $policyJsonConv | ConvertFrom-Json
+                        $policyJsonParameters = $policyJsonRebuild.properties.parameters | ConvertTo-Json -depth 99
+                        $policyJsonPolicyDefinitions = $policyJsonRebuild.properties.policyDefinitions | ConvertTo-Json -depth 99
+                        $hashParameters = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonParameters))
+                        $stringHashParameters = [System.BitConverter]::ToString($hashParameters) 
+                        $hashPolicyDefinitions = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonPolicyDefinitions))
+                        $stringHashPolicyDefinitions = [System.BitConverter]::ToString($hashPolicyDefinitions) 
+                        $stringHash = "$($stringHashParameters)_$($stringHashPolicyDefinitions)"
+    
+                        if (-not $allESLZPolicySets.($policyJsonRebuild.name)) {
+                            $allESLZPolicySets.($policyJsonRebuild.name) = @{}
+                            $allESLZPolicySets.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
+                            $null = $allESLZPolicySets.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                            $allESLZPolicySets.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                            $allESLZPolicySets.($policyJsonRebuild.name).name = $policyJsonRebuild.name
+                            $allESLZPolicySets.($policyJsonRebuild.name).metadataSource = ''
+                            if ($commitCount -eq $gitHist.Count) {
+                                $allESLZPolicySets.($policyJsonRebuild.name).status = 'prod'
+                            }
+                            else {
+                                $allESLZPolicySets.($policyJsonRebuild.name).status = 'obsolete'
+                            }
+                        }
+                        else {
+                            if ($commitCount -eq $gitHist.Count) {
+                                $allESLZPolicySets.($policyJsonRebuild.name).status = 'prod'
+                            }
+                            else {
+                                $allESLZPolicySets.($policyJsonRebuild.name).status = 'obsolete'
+                            }
+                            if ($allESLZPolicySets.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                                $null = $allESLZPolicySets.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
+                            }
+                            if (-not $allESLZPolicySets.($policyJsonRebuild.name).$stringHash) {
+                                $allESLZPolicySets.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
+                            }
+                        }
+    
+                        #hsh
+                        if (-not $allESLZPolicySetHashes.($stringHash)) {
+                            $allESLZPolicySetHashes.($stringHash) = @{}
+                            $allESLZPolicySetHashes.($stringHash).version = [System.Collections.ArrayList]@()
+                            $null = $allESLZPolicySetHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
+                            $allESLZPolicySetHashes.($stringHash).name = $policyJsonRebuild.name
+                            $allESLZPolicySetHashes.($stringHash).metadataSource = ''
+                            if ($commitCount -eq $gitHist.Count) {
+                                $allESLZPolicySetHashes.($stringHash).status = 'prod'
+                            }
+                            else {
+                                $allESLZPolicySetHashes.($stringHash).status = 'obsolete'
+                            }
+                        }
+                        else {
+                            #Write-host "already exists:" $stringHash $policyJsonRebuild.name
+                            if ($commitCount -eq $gitHist.Count) {
+                                $allESLZPolicySetHashes.($stringHash).status = 'prod'
+                            }
+                            else {
+                                $allESLZPolicySetHashes.($stringHash).status = 'obsolete'
+                            }
+                            if ($allESLZPolicySetHashes.($stringHash).version -notcontains $policyJsonRebuild.properties.metadata.version) {
+                                $null = $allESLZPolicySetHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
+                            }
+                            if (-not $allESLZPolicySetHashes.($stringHash).($policyJsonRebuild.name)) {
+                                $allESLZPolicySetHashes.($stringHash).($policyJsonRebuild.name) = $policyJsonRebuild.name
+                            }
                         }
                     }
                 }
             }
         }
+
 
         Write-Host " $($allESLZPolicies.Keys.Count) Policy definitions ($($allESLZPolicies.Values.where({$_.status -eq 'Prod'}).Count) productive)"
         Write-Host " $($allESLZPolicySets.Keys.Count) PolicySet definitions ($($allESLZPolicySets.Values.where({$_.status -eq 'Prod'}).Count) productive)"
+
+        $arrayObsoleteALZPolicies = @(
+            'Deny-PublicEndpoint-Aks',
+            'Deny-PublicEndpoint-CosmosDB',
+            'Deny-PublicEndpoint-KeyVault',
+            'Deny-PublicEndpoint-MySQL',
+            'Deny-PublicEndpoint-PostgreSql',
+            'Deny-PublicEndpoint-Sql',
+            'Deny-PublicEndpoint-Storage',
+            'Deploy-ASC-Standard',
+            'Deploy-Diagnostics-ActivityLog',
+            'Deploy-Diagnostics-AKS',
+            'Deploy-Diagnostics-Batch',
+            'Deploy-Diagnostics-DataLakeStore',
+            'Deploy-Diagnostics-EventHub',
+            'Deploy-Diagnostics-KeyVault',
+            'Deploy-Diagnostics-LogicAppsWF',
+            'Deploy-Diagnostics-PublicIP',
+            'Deploy-Diagnostics-RecoveryVault',
+            'Deploy-Diagnostics-SearchServices',
+            'Deploy-Diagnostics-ServiceBus',
+            'Deploy-Diagnostics-SQLDBs',
+            'Deploy-Diagnostics-StreamAnalytics',
+            'Deploy-DNSZoneGroup-For-Blob-PrivateEndpoint',
+            'Deploy-DNSZoneGroup-For-File-PrivateEndpoint',
+            'Deploy-DNSZoneGroup-For-KeyVault-PrivateEndpoint',
+            'Deploy-DNSZoneGroup-For-Queue-PrivateEndpoint',
+            'Deploy-DNSZoneGroup-For-Sql-PrivateEndpoint',
+            'Deploy-DNSZoneGroup-For-Table-PrivateEndpoint',
+            'Deploy-HUB',
+            'Deploy-LA-Config',
+            'Deploy-Log-Analytics',
+            'Deploy-vHUB',
+            'Deploy-vNet',
+            'Deploy-vWAN'
+        )
+        foreach ($obsoleteALZPolicy in $arrayObsoleteALZPolicies) {
+            if (-not $alzPolicies.($obsoleteALZPolicy)) {
+                $script:alzPolicies.($obsoleteALZPolicy) = @{}
+                $script:alzPolicies.($obsoleteALZPolicy).latestVersion = ''
+                $script:alzPolicies.($obsoleteALZPolicy).status = 'obsolete'
+                $script:alzPolicies.($obsoleteALZPolicy).policyName = $obsoleteALZPolicy
+            }
+        }
 
         #$script:alzPolicies = @{}
         foreach ($entry in $allESLZPolicies.keys | sort-object) {
@@ -333,9 +654,6 @@ function processALZEverGreen {
             $script:alzPolicies.($entry).status = $thisOne.status
             $script:alzPolicies.($entry).policyName = $thisOne.name
         }
-        # $script:alzPolicies.'deploy-asc-standard' = @{}
-        # $script:alzPolicies.'deploy-asc-standard'.latestVersion = '1.0.0'
-        # $script:alzPolicies.'deploy-asc-standard'.status = 'obsolete'
 
         foreach ($entry in $allESLZPolicyHashes.keys | sort-object) {
             $thisOne = $allESLZPolicyHashes.($entry)
@@ -347,6 +665,9 @@ function processALZEverGreen {
         }
 
         #$script:alzPolicySets = @{}
+        $script:alzPolicySets.'Deploy-Diag-LogAnalytics' = @{}
+        $script:alzPolicySets.'Deploy-Diag-LogAnalytics'.latestVersion = '1.0.0'
+        $script:alzPolicySets.'Deploy-Diag-LogAnalytics'.status = 'obsolete'
         foreach ($entry in $allESLZPolicySets.keys | sort-object) {
             $thisOne = $allESLZPolicySets.($entry)
             $latestVersion = ([array]($thisOne.version | Sort-Object -Descending))[0]
@@ -355,10 +676,7 @@ function processALZEverGreen {
             $script:alzPolicySets.($entry).status = $thisOne.status
             $script:alzPolicySets.($entry).policySetName = $thisOne.name
         }
-        $script:alzPolicySets.'Deploy-Diag-LogAnalytics' = @{}
-        $script:alzPolicySets.'Deploy-Diag-LogAnalytics'.latestVersion = '1.0.0'
-        $script:alzPolicySets.'Deploy-Diag-LogAnalytics'.status = 'obsolete'
-        
+
         foreach ($entry in $allESLZPolicySetHashes.keys | sort-object) {
             $thisOne = $allESLZPolicySetHashes.($entry)
             $latestVersion = ([array]($thisOne.version | Sort-Object -Descending))[0]

@@ -1040,7 +1040,7 @@ function processTenantSummary() {
         }
         else {
             $null = $script:tenantPoliciesDetailed.Add([PSCustomObject]@{
-                    Type                   = 'BuiltIn'
+                    Type                   = $tenantPolicy.Type
                     ScopeMGLevel           = $null
                     Scope                  = $null
                     ScopeId                = $null

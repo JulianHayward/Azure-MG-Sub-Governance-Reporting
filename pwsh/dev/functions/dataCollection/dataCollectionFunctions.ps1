@@ -1726,7 +1726,15 @@ function dataCollectionPolicyDefinitions {
                                 $policyHashMatch = $true
                                 #Write-Host "$($scopePolicyDefinition.name) exists in alzPolicyHashes"
                                 $htTemp.ALZ = 'true'
-                                $htTemp.ALZIdentificationLevel = 'PolicyRule Hash'
+                                if ($alzPolicyHashes.($stringHash).metadataSource -eq 'https://github.com/Azure/Enterprise-Scale/' -and $alzPolicyHashes.($stringHash).metadataSource -eq $scopePolicyDefinition.properties.metadata.source -and $alzPolicyHashes.($stringHash).policyName -eq $scopePolicyDefinition.name){
+                                    $htTemp.ALZIdentificationLevel = 'MetaData Tag, PolicyRule Hash, Policy Name'
+                                }
+                                elseif ($alzPolicyHashes.($stringHash).policyName -eq $scopePolicyDefinition.name){
+                                    $htTemp.ALZIdentificationLevel = 'PolicyRule Hash, Policy Name'
+                                }
+                                else {
+                                    $htTemp.ALZIdentificationLevel = 'PolicyRule Hash'
+                                }
                                 $htTemp.ALZPolicyName = $alzPolicyHashes.($stringHash).policyName
                                 $htTemp.hash = $stringHash
                                 if ($alzpolicies.($alzPolicyHashes.($stringHash).policyName).status -eq 'obsolete') {
@@ -1752,7 +1760,13 @@ function dataCollectionPolicyDefinitions {
                             if ($alzPolicies.($scopePolicyDefinition.name) -and -not $policyHashMatch) {
                                 #Write-Host "$($scopePolicyDefinition.name) NOT exists in alzPolicyHashes but matches name in alzPolicies"
                                 $htTemp.ALZ = 'true'
-                                $htTemp.ALZIdentificationLevel = 'Policy Name'
+                                if ($alzPolicies.($scopePolicyDefinition.name).metadataSource -eq 'https://github.com/Azure/Enterprise-Scale/' -and $alzPolicies.($scopePolicyDefinition.name).metadataSource -eq $scopePolicyDefinition.properties.metadata.source){
+                                    $htTemp.ALZIdentificationLevel = 'MetaData Tag, Policy Name'
+                                }
+                                else {
+                                    $htTemp.ALZIdentificationLevel = 'Policy Name'
+                                }
+                                    
                                 $htTemp.ALZPolicyName = $alzPolicies.($scopePolicyDefinition.name).policyName
                                 $htTemp.hash = $stringHash
                                 if ($alzPolicies.($scopePolicyDefinition.name).status -eq 'obsolete') {
@@ -2043,14 +2057,22 @@ function dataCollectionPolicySetDefinitions {
                         $stringHash = "$($stringHashParameters)_$($stringHashPolicyDefinitions)"
 
 
-                        if ($alzPolicySets.($scopePolicySetDefinition.name) -or $alzPolicyHashes.($stringHash)) {
+                        if ($alzPolicySets.($scopePolicySetDefinition.name) -or $allESLZPolicySetHashes.($stringHash)) {
 
                             $policySetHashMatch = $false
                             if ($alzPolicySetHashes.($stringHash)) {
                                 $policySetHashMatch = $true
-                                #Write-Host "+++ PolicySet $($scopePolicySetDefinition.name) exists in alzPolicyHashes"
+                                #Write-Host "+++ PolicySet $($scopePolicySetDefinition.name) exists in allESLZPolicySetHashes"
                                 $htTemp.ALZ = 'true'
-                                $htTemp.ALZIdentificationLevel = 'PolicySet Hash'
+                                if ($allESLZPolicySetHashes.($stringHash).metadataSource -eq 'https://github.com/Azure/Enterprise-Scale/' -and $allESLZPolicySetHashes.($stringHash).metadataSource -eq $scopePolicySetDefinition.properties.metadata.source -and $allESLZPolicySetHashes.($stringHash).policySetName -eq $scopePolicySetDefinition.name){
+                                    $htTemp.ALZIdentificationLevel = 'MetaData Tag, PolicyRule Hash, PolicySet Name'
+                                }
+                                elseif ($allESLZPolicySetHashes.($stringHash).policySetName -eq $scopePolicySetDefinition.name) {
+                                    $htTemp.ALZIdentificationLevel = 'PolicySet Hash, PolicySet Name'
+                                }
+                                else {
+                                    $htTemp.ALZIdentificationLevel = 'PolicySet Hash'
+                                }
                                 $htTemp.ALZPolicySetName = $alzPolicySetHashes.($stringHash).policySetName
                                 if ($alzPolicySetHashes.($stringHash).status -eq 'obsolete') {
                                     $htTemp.ALZState = 'obsolete'
@@ -2070,7 +2092,12 @@ function dataCollectionPolicySetDefinitions {
                             if ($alzPolicySets.($scopePolicySetDefinition.name) -and -not $policySetHashMatch) {
                                 #Write-Host "*** PolicySet $($scopePolicySetDefinition.name) NOT exists in alzPolicySetHashes but matches name in alzPolicySets"
                                 $htTemp.ALZ = 'true'
-                                $htTemp.ALZIdentificationLevel = 'PolicySet Name'
+                                if ($alzPolicySets.($scopePolicySetDefinition.name).metadataSource -eq 'https://github.com/Azure/Enterprise-Scale/' -and $alzPolicySets.($scopePolicySetDefinition.name).metadataSource -eq $scopePolicySetDefinition.properties.metadata.source){
+                                    $htTemp.ALZIdentificationLevel = 'MetaData Tag, PolicySet Name'
+                                }
+                                else {
+                                    $htTemp.ALZIdentificationLevel = 'PolicySet Name'
+                                }
                                 $htTemp.ALZPolicySetName = $alzPolicySets.($scopePolicySetDefinition.name).policySetName
                                 if ($alzPolicySets.($scopePolicySetDefinition.name).status -eq 'obsolete') {
                                     $htTemp.ALZState = 'obsolete'
@@ -3239,7 +3266,7 @@ function dataCollectionRoleAssignmentsMG {
 
         if ($roleAssignmentScheduleInstancesFromAPI -eq 'RoleAssignmentScheduleInstancesError' -or $roleAssignmentScheduleInstancesFromAPI -eq 'AadPremiumLicenseRequired') {
             if ($roleAssignmentScheduleInstancesFromAPI -eq 'AadPremiumLicenseRequired') {
-                Write-Host "  -> Setting 'htDoARMRoleAssignmentScheduleInstances.Do' to false (AadPremiumLicenseRequired)"
+                Write-Host "    -> Setting 'htDoARMRoleAssignmentScheduleInstances.Do' to false (AadPremiumLicenseRequired)"
                 $script:htDoARMRoleAssignmentScheduleInstances.Do = $false
             }
         }
