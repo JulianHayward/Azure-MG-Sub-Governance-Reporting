@@ -307,7 +307,7 @@ Param
     $AzAPICallVersion = '1.1.23',
 
     [string]
-    $ProductVersion = 'v6_major_20220907_3',
+    $ProductVersion = 'v6_major_20220909_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -3867,22 +3867,13 @@ function processALZEverGreen {
         Write-Host " Switching to directory '$($ALZPath)/Enterprise-Scale'"
         Set-Location "$($ALZPath)/Enterprise-Scale"
   
-        # $htGitTrackESLZPolicies = @{}
-        # $htGitTrackESLZdataPolicies = @{}
         $allESLZPolicies = @{}
         $allESLZPolicySets = @{}
         $allESLZPolicyHashes = @{}
         $allESLZPolicySetHashes = @{}
-        #$allESLZPoliciesMetaDataNames = @{}
-        #$allESLZPoliciesMetaDataHashes = @{}
-        #$allESLZPolicySetsMetaDataNames = @{}
-        #$allESLZPolicySetsMetaDataHashes = @{}
-
 
         Write-Host " Processing ALZ Data Policy definitions"
-        
         $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/dataPolicies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
-        #Write-Host $gitHist.Count
         $commitCount = 0
         $processDataPolicies = $true
         foreach ($commit in $gitHist | Sort-Object -Property Date) {
@@ -3897,10 +3888,8 @@ function processALZEverGreen {
                 
                 $jsonESLZPolicies = $jsonRaw | ConvertFrom-Json
                 if (($jsonESLZPolicies.variables.policies.policyDefinitions).Count -eq 0) {
-                    #$eslzGoodToGo = $false
                 }
                 else {
-                    #$eslzGoodToGo = $true
                     $eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
                     foreach ($policyDefinition in $eslzPolicies) {
                         $policyJsonConv = ($policyDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
@@ -3956,7 +3945,6 @@ function processALZEverGreen {
 
         Write-Host " Processing ALZ Policy and Set definitions"
         $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/policies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
-        #Write-Host $gitHist.Count
         $commitCount = 0
         $doNewALZPolicyReadingApproach = $false
         foreach ($commit in $gitHist | Sort-Object -Property Date) {
@@ -3992,12 +3980,24 @@ function processALZEverGreen {
                 $policySetDefinitionsAzureCloud = $listPolicySetDefinitionsAzureCloud.ForEach({ $jsonESLZPolicies.variables.$_ })
                 $policySetDefinitionsAzureChinaCloud = $listPolicySetDefinitionsAzureChinaCloud.ForEach({ $jsonESLZPolicies.variables.$_ })
                 $policySetDefinitionsAzureUSGovernment = $listPolicySetDefinitionsAzureUSGovernment.ForEach({ $jsonESLZPolicies.variables.$_ })
-            #pause
 
-                #$eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
-                foreach ($policyDefinition in $policyDefinitionsAzureCloud) {
+                switch ($azAPICallConf['checkContext'].Environment.Name) {
+                    'Azurecloud' { 
+                        $policyDefinitionsData = $policyDefinitionsAzureCloud 
+                        $policySetDefinitionsData = $policySetDefinitionsAzureCloud 
+                    }
+                    'AzureChinaCloud' { 
+                        $policyDefinitionsData = $policyDefinitionsAzureChinaCloud 
+                        $policySetDefinitionsData = $policySetDefinitionsAzureChinaCloud 
+                    }
+                    'AzureUSGovernment' { 
+                        $policyDefinitionsData = $policyDefinitionsAzureUSGovernment 
+                        $policySetDefinitionsData = $policySetDefinitionsAzureUSGovernment 
+                    }
+                }
 
-                    #$policyJsonConv = ($policyDefinition | ConvertTo-Json -depth 99)
+                foreach ($policyDefinition in $policyDefinitionsData) {
+
                     $policyJsonRebuild = $policyDefinition | ConvertFrom-Json
                     $policyJsonRule = $policyJsonRebuild.properties.policyRule | ConvertTo-Json -depth 99
                     $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonRule))
@@ -4048,7 +4048,6 @@ function processALZEverGreen {
                         }
                     }
                     else {
-                        #Write-host "already exists:" $stringHash $policyJsonRebuild.name
                         if ($commitCount -eq $gitHist.Count) {
                             $allESLZPolicyHashes.($stringHash).status = 'prod'
                         }
@@ -4063,73 +4062,10 @@ function processALZEverGreen {
                             $allESLZPolicyHashes.($stringHash).($policyJsonRebuild.name) = $policyJsonRebuild.name
                         }
                     }
-
-                    <#metadata name
-                    if ($policyJsonRebuild.properties.metadata.source -eq 'https://github.com/Azure/Enterprise-Scale/') {
-                        if (-not $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name)) {
-                            $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name) = @{}
-                            $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
-                            $null = $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
-                            $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
-                            $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).name = $policyJsonRebuild.name
-                            if ($commitCount -eq $gitHist.Count) {
-                                $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).status = 'prod'
-                            }
-                            else {
-                                $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).status = 'obsolete'
-                            }
-                        }
-                        else {
-                            if ($commitCount -eq $gitHist.Count) {
-                                $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).status = 'prod'
-                            }
-                            else {
-                                $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).status = 'obsolete'
-                            }
-                            if ($allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
-                                $null = $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
-                            }
-                            if (-not $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).$stringHash) {
-                                $allESLZPoliciesMetaDataNames.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
-                            }
-                        }
-                    }
-
-                    #metadata hash
-                    if (-not $allESLZPoliciesMetaDataHashes.($stringHash)) {
-                        $allESLZPoliciesMetaDataHashes.($stringHash) = @{}
-                        $allESLZPoliciesMetaDataHashes.($stringHash).version = [System.Collections.ArrayList]@()
-                        $null = $allESLZPoliciesMetaDataHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
-                        $allESLZPoliciesMetaDataHashes.($stringHash).name = $policyJsonRebuild.name
-                        if ($commitCount -eq $gitHist.Count) {
-                            $allESLZPoliciesMetaDataHashes.($stringHash).status = 'prod'
-                        }
-                        else {
-                            $allESLZPoliciesMetaDataHashes.($stringHash).status = 'obsolete'
-                        }
-                    }
-                    else {
-                        #Write-host "already exists:" $stringHash $policyJsonRebuild.name
-                        if ($commitCount -eq $gitHist.Count) {
-                            $allESLZPoliciesMetaDataHashes.($stringHash).status = 'prod'
-                        }
-                        else {
-                            $allESLZPoliciesMetaDataHashes.($stringHash).status = 'obsolete'
-                        }
-                        if ($allESLZPoliciesMetaDataHashes.($stringHash).version -notcontains $policyJsonRebuild.properties.metadata.version) {
-                            $null = $allESLZPoliciesMetaDataHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
-                        }
-                        if (-not $allESLZPoliciesMetaDataHashes.($stringHash).($policyJsonRebuild.name)) {
-                            $allESLZPoliciesMetaDataHashes.($stringHash).($policyJsonRebuild.name) = $policyJsonRebuild.name
-                        }
-                    }
-                    #>
                 }
     
-                #$eslzPolicySets = $jsonESLZPolicies.variables.initiatives.policySetDefinitions
-                foreach ($policySetDefinition in $policySetDefinitionsAzureCloud) {
+                foreach ($policySetDefinition in $policySetDefinitionsData) {
  
-                    #$policyJsonConv = ($policySetDefinition | ConvertTo-Json -depth 99) -replace "\[\[", '['
                     $policyJsonRebuild = $policySetDefinition | ConvertFrom-Json
                     $policyJsonParameters = $policyJsonRebuild.properties.parameters | ConvertTo-Json -depth 99
                     $policyJsonPolicyDefinitions = $policyJsonRebuild.properties.policyDefinitions | ConvertTo-Json -depth 99
@@ -4184,7 +4120,6 @@ function processALZEverGreen {
                         }
                     }
                     else {
-                        #Write-host "already exists:" $stringHash $policyJsonRebuild.name
                         if ($commitCount -eq $gitHist.Count) {
                             $allESLZPolicySetHashes.($stringHash).status = 'prod'
                         }
@@ -4199,75 +4134,13 @@ function processALZEverGreen {
                             $allESLZPolicySetHashes.($stringHash).($policyJsonRebuild.name) = $policyJsonRebuild.name
                         }
                     }
-
-                    <#metadata name
-                    if (-not $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name)) {
-                        $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name) = @{}
-                        $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).version = [System.Collections.ArrayList]@()
-                        $null = $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
-                        $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
-                        $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).name = $policyJsonRebuild.name
-                        if ($commitCount -eq $gitHist.Count) {
-                            $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).status = 'prod'
-                        }
-                        else {
-                            $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).status = 'obsolete'
-                        }
-                    }
-                    else {
-                        if ($commitCount -eq $gitHist.Count) {
-                            $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).status = 'prod'
-                        }
-                        else {
-                            $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).status = 'obsolete'
-                        }
-                        if ($allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).version -notcontains $policyJsonRebuild.properties.metadata.version) {
-                            $null = $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).version.Add($policyJsonRebuild.properties.metadata.version)
-                        }
-                        if (-not $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).$stringHash) {
-                            $allESLZPolicySetsMetaDataNames.($policyJsonRebuild.name).$stringHash = $policyJsonRebuild.properties.metadata.version
-                        }
-                    }
-
-                    #metadata hash
-                    if (-not $allESLZPolicySetsMetaDataHashes.($stringHash)) {
-                        $allESLZPolicySetsMetaDataHashes.($stringHash) = @{}
-                        $allESLZPolicySetsMetaDataHashes.($stringHash).version = [System.Collections.ArrayList]@()
-                        $null = $allESLZPolicySetsMetaDataHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
-                        $allESLZPolicySetsMetaDataHashes.($stringHash).name = $policyJsonRebuild.name
-                        if ($commitCount -eq $gitHist.Count) {
-                            $allESLZPolicySetsMetaDataHashes.($stringHash).status = 'prod'
-                        }
-                        else {
-                            $allESLZPolicySetsMetaDataHashes.($stringHash).status = 'obsolete'
-                        }
-                    }
-                    else {
-                        #Write-host "already exists:" $stringHash $policyJsonRebuild.name
-                        if ($commitCount -eq $gitHist.Count) {
-                            $allESLZPolicySetsMetaDataHashes.($stringHash).status = 'prod'
-                        }
-                        else {
-                            $allESLZPolicySetsMetaDataHashes.($stringHash).status = 'obsolete'
-                        }
-                        if ($allESLZPolicySetsMetaDataHashes.($stringHash).version -notcontains $policyJsonRebuild.properties.metadata.version) {
-                            $null = $allESLZPolicySetsMetaDataHashes.($stringHash).version.Add($policyJsonRebuild.properties.metadata.version)
-                        }
-                        if (-not $allESLZPolicySetsMetaDataHashes.($stringHash).($policyJsonRebuild.name)) {
-                            $allESLZPolicySetsMetaDataHashes.($stringHash).($policyJsonRebuild.name) = $policyJsonRebuild.name
-                        }
-                    }
-                    #>
                 }
             }
             else {
                 $jsonESLZPolicies = $jsonRaw | ConvertFrom-Json
-                #Write-Host "$dt $($commit.CommitId)"
                 if (($jsonESLZPolicies.variables.policies.policyDefinitions).Count -eq 0) {
-                    #$eslzGoodToGo = $false
                 }
                 else {
-                    #$eslzGoodToGo = $true
     
                     $eslzPolicies = $jsonESLZPolicies.variables.policies.policyDefinitions
                     foreach ($policyDefinition in $eslzPolicies) {
@@ -4321,7 +4194,6 @@ function processALZEverGreen {
                             }
                         }
                         else {
-                            #Write-host "already exists:" $stringHash $policyJsonRebuild.name
                             if ($commitCount -eq $gitHist.Count) {
                                 $allESLZPolicyHashes.($stringHash).status = 'prod'
                             }
@@ -4394,7 +4266,6 @@ function processALZEverGreen {
                             }
                         }
                         else {
-                            #Write-host "already exists:" $stringHash $policyJsonRebuild.name
                             if ($commitCount -eq $gitHist.Count) {
                                 $allESLZPolicySetHashes.($stringHash).status = 'prod'
                             }
@@ -4458,10 +4329,10 @@ function processALZEverGreen {
                 $script:alzPolicies.($obsoleteALZPolicy).latestVersion = ''
                 $script:alzPolicies.($obsoleteALZPolicy).status = 'obsolete'
                 $script:alzPolicies.($obsoleteALZPolicy).policyName = $obsoleteALZPolicy
+                $script:alzPolicies.($obsoleteALZPolicy).metadataSource = ''
             }
         }
 
-        #$script:alzPolicies = @{}
         foreach ($entry in $allESLZPolicies.keys | sort-object) {
             $thisOne = $allESLZPolicies.($entry)
             $latestVersion = ([array]($thisOne.version | Sort-Object -Descending))[0]
@@ -4469,6 +4340,7 @@ function processALZEverGreen {
             $script:alzPolicies.($entry).latestVersion = $latestVersion
             $script:alzPolicies.($entry).status = $thisOne.status
             $script:alzPolicies.($entry).policyName = $thisOne.name
+            $script:alzPolicies.($entry).metadataSource = $thisOne.name
         }
 
         foreach ($entry in $allESLZPolicyHashes.keys | sort-object) {
@@ -4478,12 +4350,13 @@ function processALZEverGreen {
             $script:alzPolicyHashes.($entry).latestVersion = $latestVersion
             $script:alzPolicyHashes.($entry).status = $thisOne.status
             $script:alzPolicyHashes.($entry).policyName = $thisOne.name
+            $script:alzPolicyHashes.($entry).metadataSource = $thisOne.metadataSource
         }
 
-        #$script:alzPolicySets = @{}
         $script:alzPolicySets.'Deploy-Diag-LogAnalytics' = @{}
         $script:alzPolicySets.'Deploy-Diag-LogAnalytics'.latestVersion = '1.0.0'
         $script:alzPolicySets.'Deploy-Diag-LogAnalytics'.status = 'obsolete'
+        $script:alzPolicySets.'Deploy-Diag-LogAnalytics'.policySetName = 'Deploy-Diag-LogAnalytics'
         foreach ($entry in $allESLZPolicySets.keys | sort-object) {
             $thisOne = $allESLZPolicySets.($entry)
             $latestVersion = ([array]($thisOne.version | Sort-Object -Descending))[0]
@@ -4491,6 +4364,7 @@ function processALZEverGreen {
             $script:alzPolicySets.($entry).latestVersion = $latestVersion
             $script:alzPolicySets.($entry).status = $thisOne.status
             $script:alzPolicySets.($entry).policySetName = $thisOne.name
+            $script:alzPolicySets.($entry).metadataSource = $thisOne.metadataSource
         }
 
         foreach ($entry in $allESLZPolicySetHashes.keys | sort-object) {
@@ -4500,6 +4374,7 @@ function processALZEverGreen {
             $script:alzPolicySetHashes.($entry).latestVersion = $latestVersion
             $script:alzPolicySetHashes.($entry).status = $thisOne.status
             $script:alzPolicySetHashes.($entry).policySetName = $thisOne.name
+            $script:alzPolicySetHashes.($entry).metadataSource = $thisOne.metadataSource
         }
 
         Write-Host " Switching back to working directory '$($workingPath)'"
@@ -12090,6 +11965,7 @@ function processTenantSummary() {
 <th>Policy Name</th>
 <th>PolicyId</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Effect</th>
 <th>Role definitions</th>
 <th>Unique assignments</th>
@@ -12118,6 +11994,7 @@ function processTenantSummary() {
 <td class="breakwordall">$($customPolicy.PolicyDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($customPolicy.ALZ)</td>
 <td class="breakwordall">$($customPolicy.PolicyEffect)</td>
 <td class="breakwordall">$($customPolicy.RoleDefinitions)</td>
 <td class="breakwordall">$($customPolicy.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
@@ -12175,10 +12052,12 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                 delay: 1100
             },
             no_results_message: true,
-            col_widths: ['', '150px', '150px', '150px', '250px', '150px', '150px', '150px', '150px', '250px', '', '150px', '', '150px'],
+            col_widths: ['', '150px', '150px', '150px', '250px', '150px', '', '150px', '150px', '150px', '250px', '', '150px', '', '150px'],
             col_0: 'select',
+            col_6: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -12255,6 +12134,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 <th>Policy Name</th>
 <th>PolicyId</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Policy Effect</th>
 <th>Role definitions</th>
 <th>Unique assignments</th>
@@ -12283,6 +12163,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 <td>$($customPolicy.PolicyDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($customPolicy.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($customPolicy.ALZ)</td>
 <td>$($customPolicy.PolicyEffect)</td>
 <td>$($customPolicy.RoleDefinitions)</td>
 <td class="breakwordall">$($customPolicy.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
@@ -12331,9 +12212,12 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             }
             [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_widths: ['', '150px', '150px', '150px', '250px', '150px', '', '150px', '150px', '150px', '250px', '', '150px', '', '150px'],
             col_0: 'select',
+            col_6: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -12758,27 +12642,27 @@ extensions: [{ name: 'sort' }]
             }
 
             $null = $script:customPolicySetsDetailed.Add([PSCustomObject]@{
-                    Type                   = 'Custom'
-                    ScopeMGLevel           = $tenantPolicySet.ScopeMGLevel
-                    Scope                  = $tenantPolicySet.ScopeMgSub
-                    ScopeId                = $tenantPolicySet.ScopeId
-                    PolicySetDisplayName   = $tenantPolicySet.DisplayName
-                    PolicySetDefinitionName= $tenantPolicySet.Name
-                    PolicySetDefinitionId  = $tenantPolicySet.PolicyDefinitionId
-                    PolicySetCategory      = $tenantPolicySet.Category
-                    UniqueAssignments      = $policySetUniqueAssignment
-                    PoliciesUsed           = $policiesUsed
-                    PoliciesUsedClean      = $policiesUsedClean
-                    CreatedOn              = $createdOn
-                    CreatedBy              = $createdBy
-                    UpdatedOn              = $updatedOn
-                    UpdatedBy              = $updatedBy
+                    Type                    = 'Custom'
+                    ScopeMGLevel            = $tenantPolicySet.ScopeMGLevel
+                    Scope                   = $tenantPolicySet.ScopeMgSub
+                    ScopeId                 = $tenantPolicySet.ScopeId
+                    PolicySetDisplayName    = $tenantPolicySet.DisplayName
+                    PolicySetDefinitionName = $tenantPolicySet.Name
+                    PolicySetDefinitionId   = $tenantPolicySet.PolicyDefinitionId
+                    PolicySetCategory       = $tenantPolicySet.Category
+                    UniqueAssignments       = $policySetUniqueAssignment
+                    PoliciesUsed            = $policiesUsed
+                    PoliciesUsedClean       = $policiesUsedClean
+                    CreatedOn               = $createdOn
+                    CreatedBy               = $createdBy
+                    UpdatedOn               = $updatedOn
+                    UpdatedBy               = $updatedBy
                     #Json                  = [string]($tenantPolicySet.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
-                    ALZ                    = $tenantPolicySet.ALZ
-                    ALZState               = $tenantPolicySet.ALZState
-                    ALZLatestVer           = $tenantPolicySet.ALZLatestVer
-                    ALZIdentificationLevel = $tenantPolicySet.ALZIdentificationLevel
-                    ALZPolicySetName       = $tenantPolicySet.ALZPolicySetName
+                    ALZ                     = $tenantPolicySet.ALZ
+                    ALZState                = $tenantPolicySet.ALZState
+                    ALZLatestVer            = $tenantPolicySet.ALZLatestVer
+                    ALZIdentificationLevel  = $tenantPolicySet.ALZIdentificationLevel
+                    ALZPolicySetName        = $tenantPolicySet.ALZPolicySetName
                 })
 
             $null = $script:tenantPolicySetsDetailed.Add([PSCustomObject]@{
@@ -12889,6 +12773,7 @@ extensions: [{ name: 'sort' }]
 <th>PolicySet Name</th>
 <th>PolicySetId</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Unique assignments</th>
 <th>Policies used in PolicySet</th>
 <th>CreatedOn</th>
@@ -12909,6 +12794,7 @@ extensions: [{ name: 'sort' }]
 <td>$($customPolicySet.PolicySetDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PolicySetDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PolicySetCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($customPolicySet.ALZ)</td>
 <td class="breakwordall">$($customPolicySet.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PoliciesUsed)</td>
 <td>$($customPolicySet.CreatedOn)</td>
@@ -12956,8 +12842,10 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_0: 'select',
+            col_6: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -13017,6 +12905,7 @@ extensions: [{ name: 'sort' }]
 <th>PolicySet Name</th>
 <th>PolicySetId</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Unique assignments</th>
 <th>Policies used in PolicySet</th>
 <th>CreatedOn</th>
@@ -13037,6 +12926,7 @@ extensions: [{ name: 'sort' }]
 <td>$($customPolicySet.PolicySetDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PolicySetDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PolicySetCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($customPolicySet.ALZ)</td>
 <td class="breakwordall">$($customPolicySet.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PoliciesUsed)</td>
 <td>$($customPolicySet.CreatedOn)</td>
@@ -13084,8 +12974,10 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_0: 'select',
+            col_6: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -13337,6 +13229,238 @@ extensions: [{ name: 'sort' }]
         }
     }
     #endregion SUMMARYCustompolicySetOrphandedTenantRoot
+
+    #region SUMMARYALZPolicies
+    Write-Host '  processing TenantSummary ALZPolicies'
+    
+    if (-not $NoALZEvergreen) {
+
+        $alzPoliciesInTenant = [System.Collections.ArrayList]@()
+        #policies
+        foreach ($policy in ($htCacheDefinitionsPolicy).Values.where({ $_.ALZ -eq $true })) {
+            if ($policy.ALZState -ne 'obsolete' -and $policy.ALZState -ne 'unknown') {
+                $ALZVersion = $alzPolicies.($policy.ALZPolicyName).latestVersion
+                $azAdvertizerUrl = "https://www.azadvertizer.net/azpolicyadvertizer/$($policy.ALZPolicyName).html"
+            }
+            else {
+                $ALZVersion = ''
+                $azAdvertizerUrl = ''
+            }
+            $null = $alzPoliciesInTenant.Add([PSCustomObject]@{
+                    Type            = 'Policy'
+                    PolicyName      = $policy.Name
+                    PolicyId        = $policy.PolicyDefinitionId
+                    PolicyVersion   = $policy.Version
+                    PolicyScope     = $policy.ScopeMgSub
+                    PolicyScopeId   = $policy.ScopeId
+                    ALZPolicyName   = $policy.ALZPolicyName
+                    ALZVersion      = $ALZVersion
+                    ALZState        = $policy.ALZState
+                    InTenant        = $true
+                    DetectedBy      = $policy.ALZIdentificationLevel
+                    AzAdvertizerUrl = $azAdvertizerUrl
+                })
+        }
+        foreach ($alzPolicy in $alzPolicies.keys) {
+            if ($alzPolicies.($alzPolicy).status -eq 'Prod') {
+                if ($alzPoliciesInTenant.PolicyName -notcontains $alzPolicy) {
+                    $null = $alzPoliciesInTenant.Add([PSCustomObject]@{
+                            Type            = 'Policy'
+                            PolicyName      = 'n/a'
+                            PolicyId        = 'n/a'
+                            PolicyVersion   = 'n/a'
+                            PolicyScope     = 'n/a'
+                            PolicyScopeId   = 'n/a'
+                            ALZPolicyName   = $alzPolicy
+                            ALZVersion      = $alzPolicies.($alzPolicy).latestVersion
+                            ALZState        = $alzPolicies.($alzPolicy).status
+                            InTenant        = $false
+                            DetectedBy      = 'ALZ GitHub repository'
+                            AzAdvertizerUrl = "https://www.azadvertizer.net/azpolicyadvertizer/$($alzPolicy).html"
+                        })
+                }
+            }
+        }
+
+        #policysets
+        foreach ($policySet in ($htCacheDefinitionsPolicySet).Values.where({ $_.ALZ -eq $true })) {
+
+            if ($policySet.ALZState -ne 'obsolete' -and $policySet.ALZState -ne 'unknown') {
+                $ALZVersion = $alzPolicySets.($policySet.ALZPolicySetName).latestVersion
+                $azAdvertizerUrl = "https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($policySet.ALZPolicySetName).html"
+            }
+            else {
+                $ALZVersion = ''
+                $azAdvertizerUrl = ''
+            }
+            $null = $alzPoliciesInTenant.Add([PSCustomObject]@{
+                    Type            = 'PolicySet'
+                    PolicyName      = $policySet.Name
+                    PolicyId        = $policySet.PolicyDefinitionId
+                    PolicyVersion   = $policySet.Version
+                    PolicyScope     = $policySet.ScopeMgSub
+                    PolicyScopeId   = $policySet.ScopeId
+                    ALZPolicyName   = $policySet.ALZPolicySetName
+                    ALZVersion      = $ALZVersion
+                    ALZState        = $policySet.ALZState
+                    InTenant        = $true
+                    DetectedBy      = $policySet.ALZIdentificationLevel
+                    AzAdvertizerUrl = $azAdvertizerUrl
+                })
+        }
+
+        foreach ($alzPolicySet in $alzPolicySets.keys) {
+            if ($alzPolicySets.($alzPolicySet).status -eq 'Prod') {
+                if ($alzPoliciesInTenant.PolicyName -notcontains $alzPolicySet) {
+                    $null = $alzPoliciesInTenant.Add([PSCustomObject]@{
+                            Type            = 'PolicySet'
+                            PolicyName      = 'n/a'
+                            PolicyId        = 'n/a'
+                            PolicyVersion   = 'n/a'
+                            PolicyScope     = 'n/a'
+                            PolicyScopeId   = 'n/a'
+                            ALZPolicyName   = $alzPolicySet
+                            ALZVersion      = $alzPolicySets.($alzPolicySet).latestVersion
+                            ALZState        = $alzPolicySets.($alzPolicySet).status
+                            InTenant        = $false
+                            DetectedBy      = 'ALZ GitHub repository'
+                            AzAdvertizerUrl = "https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($alzPolicySet).html"
+                        })
+                }
+            }
+        }
+
+        if ($alzPoliciesInTenant.Count -gt 0) {
+            $tfCount = $alzPoliciesInTenant.Count
+            $htmlTableId = 'TenantSummary_ALZPolicies'
+
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ALZPolicies"><i class="padlx fa fa-retweet" aria-hidden="true" style="color:#23C632"></i> <span class="valignMiddle">Azure Landing Zones EverGreen</span>
+</button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id= "$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Type</th>
+<th>Policy Name (Id)</th>
+<th>Policy Version</th>
+<th>Policy Scope</th>
+<th>Policy Scope Id</th>
+<th class="uamiresaltbgc">ALZ Policy Name (Id)</th>
+<th class="uamiresaltbgc">ALZ Policy Version</th>
+<th class="uamiresaltbgc">ALZ State</th>
+<th>Exists in tenant</th>
+<th>Detection method</th>
+<th>AzAdvertizer Link</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+            $htmlSUMMARYALZEverGreen = $null
+            $exemptionData4CSVExport = [System.Collections.ArrayList]@()
+            $htmlSUMMARYALZEverGreen = foreach ($entry in $alzPoliciesInTenant) {
+                if ([string]::IsNullOrWhiteSpace($entry.AzAdvertizerUrl)) {
+                    $link = ''
+                }
+                else {
+                    $link = "<a class=`"externallink`" href=`"$($entry.AzAdvertizerUrl)`" target=`"_blank`" rel=`"noopener`">AzA Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                }
+                @"
+<tr>
+<td>$($entry.Type)</td>
+<td>$($entry.PolicyName)</td>
+<td>$($entry.PolicyVersion)</td>
+<td>$($entry.PolicyScope)</td>
+<td>$($entry.PolicyScopeId)</td>
+<td>$($entry.ALZPolicyName)</td>
+<td>$($entry.ALZVersion)</td>
+<td>$($entry.ALZState)</td>
+<td>$($entry.InTenant)</td>
+<td>$($entry.DetectedBy)</td>
+<td>$link</td>
+</tr>
+"@
+            }
+
+            if (-not $NoCsvExport) {
+                Write-Host "Exporting ALZ EverGreen CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZEverGreen.csv'"
+                $alzPoliciesInTenant | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZEverGreen.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+            }
+
+            [void]$htmlTenantSummary.AppendLine($htmlSUMMARYALZEverGreen)
+            [void]$htmlTenantSummary.AppendLine(@"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_0: 'select',
+            col_3: 'select',
+            col_7: 'select',
+            col_8: 'select',
+            col_9: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+"@)
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Azure Landing Zones EverGreen</span></p>
+"@)
+        }
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Azure Landing Zones EverGreen (parameter -NoALZEvergreen = $NoALZEvergreen)</span></p>
+"@)
+    }
+    #endregion SUMMARYALZPolicies
 
     $startcustpolsetdeprpol = Get-Date
     #region SUMMARYPolicySetsDeprecatedPolicy
@@ -27183,101 +27307,100 @@ function dataCollectionPolicyDefinitions {
 
                 if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
 
-                    #if ($scopePolicyDefinition.Properties.metadata.version) {
-                        $policyJsonRule = $scopePolicyDefinition.properties.policyRule | ConvertTo-Json -depth 99
-                        $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonRule))
-                        $stringHash = [System.BitConverter]::ToString($hash) 
+                    $policyJsonRule = $scopePolicyDefinition.properties.policyRule | ConvertTo-Json -depth 99
+                    $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonRule))
+                    $stringHash = [System.BitConverter]::ToString($hash) 
 
-                        if ($alzPolicies.($scopePolicyDefinition.name) -or $alzPolicyHashes.($stringHash)) {
+                    if ($alzPolicies.($scopePolicyDefinition.name) -or $alzPolicyHashes.($stringHash) -or $scopePolicyDefinition.properties.metadata.source -eq 'https://github.com/Azure/Enterprise-Scale/') {
 
-                            $policyHashMatch = $false
-                            if ($alzPolicyHashes.($stringHash)) {
-                                $policyHashMatch = $true
-                                #Write-Host "$($scopePolicyDefinition.name) exists in alzPolicyHashes"
-                                $htTemp.ALZ = 'true'
-                                if ($alzPolicyHashes.($stringHash).metadataSource -eq 'https://github.com/Azure/Enterprise-Scale/' -and $alzPolicyHashes.($stringHash).metadataSource -eq $scopePolicyDefinition.properties.metadata.source -and $alzPolicyHashes.($stringHash).policyName -eq $scopePolicyDefinition.name){
-                                    $htTemp.ALZIdentificationLevel = 'MetaData Tag, PolicyRule Hash, Policy Name'
-                                }
-                                elseif ($alzPolicyHashes.($stringHash).policyName -eq $scopePolicyDefinition.name){
-                                    $htTemp.ALZIdentificationLevel = 'PolicyRule Hash, Policy Name'
-                                }
-                                else {
-                                    $htTemp.ALZIdentificationLevel = 'PolicyRule Hash'
-                                }
-                                $htTemp.ALZPolicyName = $alzPolicyHashes.($stringHash).policyName
-                                $htTemp.hash = $stringHash
-                                if ($alzpolicies.($alzPolicyHashes.($stringHash).policyName).status -eq 'obsolete') {
-                                    $htTemp.ALZState = 'obsolete'
-                                    $htTemp.ALZLatestVer = ''
-                                }
-                                else {
-                                    if ($scopePolicyDefinition.Properties.metadata.version) {
-                                        if ($alzpolicies.($alzPolicyHashes.($stringHash).policyName).latestVersion -eq $scopePolicyDefinition.Properties.metadata.version) {
-                                            $htTemp.ALZState = 'upToDate'
-                                        }
-                                        else {
-                                            $htTemp.ALZState = 'outDated'
-                                        }
-                                    }
-                                    else {
-                                        $htTemp.ALZState = 'potentiallyOutDated (no ver)'
-                                    }
-                                    $htTemp.ALZLatestVer = $alzpolicies.($alzPolicyHashes.($stringHash).policyName).latestVersion
-                                }
+                        $policyHashMatch = $false
+                        if ($alzPolicyHashes.($stringHash)) {
+                            $policyHashMatch = $true
+                            $htTemp.ALZ = 'true'
+                            if ($alzPolicyHashes.($stringHash).metadataSource -eq 'https://github.com/Azure/Enterprise-Scale/' -and $alzPolicyHashes.($stringHash).metadataSource -eq $scopePolicyDefinition.properties.metadata.source -and $alzPolicyHashes.($stringHash).policyName -eq $scopePolicyDefinition.name) {
+                                $htTemp.ALZIdentificationLevel = 'PolicyRule Hash, Policy Name, MetaData Tag'
                             }
-
-                            if ($alzPolicies.($scopePolicyDefinition.name) -and -not $policyHashMatch) {
-                                #Write-Host "$($scopePolicyDefinition.name) NOT exists in alzPolicyHashes but matches name in alzPolicies"
-                                $htTemp.ALZ = 'true'
-                                if ($alzPolicies.($scopePolicyDefinition.name).metadataSource -eq 'https://github.com/Azure/Enterprise-Scale/' -and $alzPolicies.($scopePolicyDefinition.name).metadataSource -eq $scopePolicyDefinition.properties.metadata.source){
-                                    $htTemp.ALZIdentificationLevel = 'MetaData Tag, Policy Name'
-                                }
-                                else {
-                                    $htTemp.ALZIdentificationLevel = 'Policy Name'
-                                }
-                                    
-                                $htTemp.ALZPolicyName = $alzPolicies.($scopePolicyDefinition.name).policyName
-                                $htTemp.hash = $stringHash
-                                if ($alzPolicies.($scopePolicyDefinition.name).status -eq 'obsolete') {
-                                    $htTemp.ALZState = 'obsolete'
-                                    $htTemp.ALZLatestVer = ''
-                                }
-                                else {
-                                    if ($scopePolicyDefinition.Properties.metadata.version) {
-                                        if ($alzPolicies.($scopePolicyDefinition.name).latestVersion -eq $scopePolicyDefinition.Properties.metadata.version) {
-                                            $htTemp.ALZState = 'upToDate'
-                                        }
-                                        else {
-                                            $htTemp.ALZState = 'outDated'
-                                        }
+                            elseif ($alzPolicyHashes.($stringHash).policyName -eq $scopePolicyDefinition.name) {
+                                $htTemp.ALZIdentificationLevel = 'PolicyRule Hash, Policy Name'
+                            }
+                            else {
+                                $htTemp.ALZIdentificationLevel = 'PolicyRule Hash'
+                            }
+                            $htTemp.ALZPolicyName = $alzPolicyHashes.($stringHash).policyName
+                            $htTemp.hash = $stringHash
+                            if ($alzpolicies.($alzPolicyHashes.($stringHash).policyName).status -eq 'obsolete') {
+                                $htTemp.ALZState = 'obsolete'
+                                $htTemp.ALZLatestVer = ''
+                            }
+                            else {
+                                if ($scopePolicyDefinition.Properties.metadata.version) {
+                                    if ($alzpolicies.($alzPolicyHashes.($stringHash).policyName).latestVersion -eq $scopePolicyDefinition.Properties.metadata.version) {
+                                        $htTemp.ALZState = 'upToDate'
                                     }
                                     else {
-                                        $htTemp.ALZState = 'potentiallyOutDated (no ver)'
+                                        $htTemp.ALZState = 'outDated'
                                     }
-
-                                    $htTemp.ALZLatestVer = $alzPolicies.($scopePolicyDefinition.name).latestVersion
                                 }
+                                else {
+                                    $htTemp.ALZState = 'potentiallyOutDated (no ver)'
+                                }
+                                $htTemp.ALZLatestVer = $alzpolicies.($alzPolicyHashes.($stringHash).policyName).latestVersion
                             }
                         }
-                        else {
-                            $htTemp.ALZ = 'false'
-                            $htTemp.ALZState = ''
+
+                        $policyNameMatch = $false
+                        if ($alzPolicies.($scopePolicyDefinition.name) -and -not $policyHashMatch) {
+                            $policyNameMatch = $true
+                            $htTemp.ALZ = 'true'
+                            if ($alzPolicies.($scopePolicyDefinition.name).metadataSource -eq 'https://github.com/Azure/Enterprise-Scale/' -and $alzPolicies.($scopePolicyDefinition.name).metadataSource -eq $scopePolicyDefinition.properties.metadata.source) {
+                                $htTemp.ALZIdentificationLevel = 'Policy Name, MetaData Tag'
+                            }
+                            else {
+                                $htTemp.ALZIdentificationLevel = 'Policy Name'
+                            }
+                                    
+                            $htTemp.ALZPolicyName = $alzPolicies.($scopePolicyDefinition.name).policyName
+                            $htTemp.hash = $stringHash
+                            if ($alzPolicies.($scopePolicyDefinition.name).status -eq 'obsolete') {
+                                $htTemp.ALZState = 'obsolete'
+                                $htTemp.ALZLatestVer = ''
+                            }
+                            else {
+                                if ($scopePolicyDefinition.Properties.metadata.version) {
+                                    if ($alzPolicies.($scopePolicyDefinition.name).latestVersion -eq $scopePolicyDefinition.Properties.metadata.version) {
+                                        $htTemp.ALZState = 'upToDate'
+                                    }
+                                    else {
+                                        $htTemp.ALZState = 'outDated'
+                                    }
+                                }
+                                else {
+                                    $htTemp.ALZState = 'potentiallyOutDated (no ver)'
+                                }
+
+                                $htTemp.ALZLatestVer = $alzPolicies.($scopePolicyDefinition.name).latestVersion
+                            }
+                        }
+
+                        if ($scopePolicyDefinition.properties.metadata.source -eq 'https://github.com/Azure/Enterprise-Scale/' -and -not $policyHashMatch -and -not $policyNameMatch) {
+                            $htTemp.ALZ = 'true'
+                            $htTemp.ALZState = 'unknown'
                             $htTemp.ALZLatestVer = ''
-                            $htTemp.ALZIdentificationLevel = ''
+                            $htTemp.ALZIdentificationLevel = 'MetaData Tag'
                             $htTemp.ALZPolicyName = ''
                             $htTemp.hash = $stringHash
                         }
-                    #}
-                    # else {
-                    #     $htTemp.ALZ = 'false'
-                    #     $htTemp.ALZState = ''
-                    #     $htTemp.ALZLatestVer = ''
-                    #     $htTemp.ALZIdentificationLevel = ''
-                    #     $htTemp.ALZPolicyName = ''
-                    #     $htTemp.hash = ''
-                    # }
+                    }
+                    else {
+                        $htTemp.ALZ = 'false'
+                        $htTemp.ALZState = ''
+                        $htTemp.ALZLatestVer = ''
+                        $htTemp.ALZIdentificationLevel = ''
+                        $htTemp.ALZPolicyName = ''
+                        $htTemp.hash = $stringHash
+                    }
                 }
-                else{
+                else {
                     $htTemp.ALZ = 'NoALZEvergreen'
                     $htTemp.ALZState = ''
                     $htTemp.ALZLatestVer = ''
@@ -27291,7 +27414,7 @@ function dataCollectionPolicyDefinitions {
                 $htTemp.Description = $($policyDefinitionDescription)
                 $htTemp.Type = $($scopePolicyDefinition.Properties.policyType)
                 $htTemp.Category = $($scopePolicyDefinition.Properties.metadata.category)
-                if ($scopePolicyDefinition.Properties.metadata.version){
+                if ($scopePolicyDefinition.Properties.metadata.version) {
                     $htTemp.Version = $($scopePolicyDefinition.Properties.metadata.version)
                 }
                 else {
@@ -27340,7 +27463,7 @@ function dataCollectionPolicyDefinitions {
                 }
 
                 $htTemp.Json = $scopePolicyDefinition
-            $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId) = $htTemp
+                $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId) = $htTemp
             }
 
 
@@ -27462,27 +27585,60 @@ function dataCollectionPolicySetDefinitions {
                     $htTemp.ScopeMgSub = 'Sub'
                     $htTemp.ScopeId = (($scopePolicySetDefinition.Id).split('/'))[2]
                     $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($scopePolicySetDefinition.Id).split('/'))[2]).level
-
-                    <#
-                    if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
-                        #subscription scoped alz policySets will be ignored 
-                        $htTemp.ALZ = 'ignored'
-                        $htTemp.ALZState = ''
-                        $htTemp.ALZLatestVer = ''
-                    }
-                    else {
-                        $htTemp.ALZ = 'NoALZEvergreen'
-                        $htTemp.ALZState = ''
-                        $htTemp.ALZLatestVer = ''
-                    }
-                    #>
                 }
 
                 if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
-                    <#
-                    if ($alzPolicySets.($scopePolicySetDefinition.name)) {
-                        if ($scopePolicySetDefinition.Properties.metadata.version) {
+
+                    $policyJsonParameters = $scopePolicySetDefinition.properties.parameters | ConvertTo-Json -depth 99
+                    $policyJsonPolicyDefinitions = $scopePolicySetDefinition.properties.policyDefinitions | ConvertTo-Json -depth 99
+                    $hashParameters = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonParameters))
+                    $stringHashParameters = [System.BitConverter]::ToString($hashParameters) 
+                    $hashPolicyDefinitions = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonPolicyDefinitions))
+                    $stringHashPolicyDefinitions = [System.BitConverter]::ToString($hashPolicyDefinitions) 
+                    $stringHash = "$($stringHashParameters)_$($stringHashPolicyDefinitions)"
+
+                    if ($alzPolicySets.($scopePolicySetDefinition.name) -or $allESLZPolicySetHashes.($stringHash) -or $scopePolicySetDefinition.properties.metadata.source -eq 'https://github.com/Azure/Enterprise-Scale/') {
+
+                        $policySetHashMatch = $false
+                        if ($alzPolicySetHashes.($stringHash)) {
+                            $policySetHashMatch = $true
                             $htTemp.ALZ = 'true'
+                            if ($allESLZPolicySetHashes.($stringHash).metadataSource -eq 'https://github.com/Azure/Enterprise-Scale/' -and $allESLZPolicySetHashes.($stringHash).metadataSource -eq $scopePolicySetDefinition.properties.metadata.source -and $allESLZPolicySetHashes.($stringHash).policySetName -eq $scopePolicySetDefinition.name) {
+                                $htTemp.ALZIdentificationLevel = 'PolicySet Hash, PolicySet Name, MetaData Tag'
+                            }
+                            elseif ($allESLZPolicySetHashes.($stringHash).policySetName -eq $scopePolicySetDefinition.name) {
+                                $htTemp.ALZIdentificationLevel = 'PolicySet Hash, PolicySet Name'
+                            }
+                            else {
+                                $htTemp.ALZIdentificationLevel = 'PolicySet Hash'
+                            }
+                            $htTemp.ALZPolicySetName = $alzPolicySetHashes.($stringHash).policySetName
+                            if ($alzPolicySetHashes.($stringHash).status -eq 'obsolete') {
+                                $htTemp.ALZState = 'obsolete'
+                                $htTemp.ALZLatestVer = ''
+                            }
+                            else {
+                                if ($alzPolicySetHashes.($stringHash).latestVersion -eq $scopePolicySetDefinition.Properties.metadata.version) {
+                                    $htTemp.ALZState = 'upToDate'
+                                }
+                                else {
+                                    $htTemp.ALZState = 'outDated'
+                                }
+                                $htTemp.ALZLatestVer = $alzPolicySetHashes.($stringHash).latestVersion
+                            }
+                        }
+
+                        $policySetNameMatch = $false
+                        if ($alzPolicySets.($scopePolicySetDefinition.name) -and -not $policySetHashMatch) {
+                            $policySetNameMatch = $true
+                            $htTemp.ALZ = 'true'
+                            if ($alzPolicySets.($scopePolicySetDefinition.name).metadataSource -eq 'https://github.com/Azure/Enterprise-Scale/' -and $alzPolicySets.($scopePolicySetDefinition.name).metadataSource -eq $scopePolicySetDefinition.properties.metadata.source) {
+                                $htTemp.ALZIdentificationLevel = 'PolicySet Name, MetaData Tag'
+                            }
+                            else {
+                                $htTemp.ALZIdentificationLevel = 'PolicySet Name'
+                            }
+                            $htTemp.ALZPolicySetName = $alzPolicySets.($scopePolicySetDefinition.name).policySetName
                             if ($alzPolicySets.($scopePolicySetDefinition.name).status -eq 'obsolete') {
                                 $htTemp.ALZState = 'obsolete'
                                 $htTemp.ALZLatestVer = ''
@@ -27496,110 +27652,26 @@ function dataCollectionPolicySetDefinitions {
                                 }
                                 $htTemp.ALZLatestVer = $alzPolicySets.($scopePolicySetDefinition.name).latestVersion
                             }
-                            
                         }
-                        else {
-                            $htTemp.ALZ = 'false'
-                            $htTemp.ALZState = ''
+
+                        if ($scopePolicySetDefinition.properties.metadata.source -eq 'https://github.com/Azure/Enterprise-Scale/' -and -not $policySetHashMatch -and -not $policySetNameMatch) {
+                            $htTemp.ALZ = 'true'
+                            $htTemp.ALZState = 'unknown'
                             $htTemp.ALZLatestVer = ''
+                            $htTemp.ALZIdentificationLevel = 'MetaData Tag'
+                            $htTemp.ALZPolicyName = ''
+                            $htTemp.hash = $stringHash
                         }
                     }
                     else {
                         $htTemp.ALZ = 'false'
                         $htTemp.ALZState = ''
                         $htTemp.ALZLatestVer = ''
+                        $htTemp.ALZIdentificationLevel = ''
+                        $htTemp.ALZPolicySetName = ''
                     }
-                    #>
-                    #if ($scopePolicySetDefinition.Properties.metadata.version) {
-                        <#
-                        $policyJsonRule = $scopePolicySetDefinition.properties.policyRule | ConvertTo-Json -depth 99
-                        $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonRule))
-                        $stringHash = [System.BitConverter]::ToString($hash) 
-                        #>
-
-                        $policyJsonParameters = $scopePolicySetDefinition.properties.parameters | ConvertTo-Json -depth 99
-                        $policyJsonPolicyDefinitions = $scopePolicySetDefinition.properties.policyDefinitions | ConvertTo-Json -depth 99
-                        $hashParameters = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonParameters))
-                        $stringHashParameters = [System.BitConverter]::ToString($hashParameters) 
-                        $hashPolicyDefinitions = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonPolicyDefinitions))
-                        $stringHashPolicyDefinitions = [System.BitConverter]::ToString($hashPolicyDefinitions) 
-                        $stringHash = "$($stringHashParameters)_$($stringHashPolicyDefinitions)"
-
-
-                        if ($alzPolicySets.($scopePolicySetDefinition.name) -or $allESLZPolicySetHashes.($stringHash)) {
-
-                            $policySetHashMatch = $false
-                            if ($alzPolicySetHashes.($stringHash)) {
-                                $policySetHashMatch = $true
-                                #Write-Host "+++ PolicySet $($scopePolicySetDefinition.name) exists in allESLZPolicySetHashes"
-                                $htTemp.ALZ = 'true'
-                                if ($allESLZPolicySetHashes.($stringHash).metadataSource -eq 'https://github.com/Azure/Enterprise-Scale/' -and $allESLZPolicySetHashes.($stringHash).metadataSource -eq $scopePolicySetDefinition.properties.metadata.source -and $allESLZPolicySetHashes.($stringHash).policySetName -eq $scopePolicySetDefinition.name){
-                                    $htTemp.ALZIdentificationLevel = 'MetaData Tag, PolicyRule Hash, PolicySet Name'
-                                }
-                                elseif ($allESLZPolicySetHashes.($stringHash).policySetName -eq $scopePolicySetDefinition.name) {
-                                    $htTemp.ALZIdentificationLevel = 'PolicySet Hash, PolicySet Name'
-                                }
-                                else {
-                                    $htTemp.ALZIdentificationLevel = 'PolicySet Hash'
-                                }
-                                $htTemp.ALZPolicySetName = $alzPolicySetHashes.($stringHash).policySetName
-                                if ($alzPolicySetHashes.($stringHash).status -eq 'obsolete') {
-                                    $htTemp.ALZState = 'obsolete'
-                                    $htTemp.ALZLatestVer = ''
-                                }
-                                else {
-                                    if ($alzPolicySetHashes.($stringHash).latestVersion -eq $scopePolicySetDefinition.Properties.metadata.version) {
-                                        $htTemp.ALZState = 'upToDate'
-                                    }
-                                    else {
-                                        $htTemp.ALZState = 'outDated'
-                                    }
-                                    $htTemp.ALZLatestVer = $alzPolicySetHashes.($stringHash).latestVersion
-                                }
-                            }
-
-                            if ($alzPolicySets.($scopePolicySetDefinition.name) -and -not $policySetHashMatch) {
-                                #Write-Host "*** PolicySet $($scopePolicySetDefinition.name) NOT exists in alzPolicySetHashes but matches name in alzPolicySets"
-                                $htTemp.ALZ = 'true'
-                                if ($alzPolicySets.($scopePolicySetDefinition.name).metadataSource -eq 'https://github.com/Azure/Enterprise-Scale/' -and $alzPolicySets.($scopePolicySetDefinition.name).metadataSource -eq $scopePolicySetDefinition.properties.metadata.source){
-                                    $htTemp.ALZIdentificationLevel = 'MetaData Tag, PolicySet Name'
-                                }
-                                else {
-                                    $htTemp.ALZIdentificationLevel = 'PolicySet Name'
-                                }
-                                $htTemp.ALZPolicySetName = $alzPolicySets.($scopePolicySetDefinition.name).policySetName
-                                if ($alzPolicySets.($scopePolicySetDefinition.name).status -eq 'obsolete') {
-                                    $htTemp.ALZState = 'obsolete'
-                                    $htTemp.ALZLatestVer = ''
-                                }
-                                else {
-                                    if ($alzPolicySets.($scopePolicySetDefinition.name).latestVersion -eq $scopePolicySetDefinition.Properties.metadata.version) {
-                                        $htTemp.ALZState = 'upToDate'
-                                    }
-                                    else {
-                                        $htTemp.ALZState = 'outDated'
-                                    }
-                                    $htTemp.ALZLatestVer = $alzPolicySets.($scopePolicySetDefinition.name).latestVersion
-                                }
-                            }
-                        }
-                        else {
-                            $htTemp.ALZ = 'false'
-                            $htTemp.ALZState = ''
-                            $htTemp.ALZLatestVer = ''
-                            $htTemp.ALZIdentificationLevel = ''
-                            $htTemp.ALZPolicySetName = ''
-                        }
-                    # }
-                    # else {
-                    #     $htTemp.ALZ = 'false'
-                    #     $htTemp.ALZState = ''
-                    #     $htTemp.ALZLatestVer = ''
-                    #     $htTemp.ALZIdentificationLevel = ''
-                    #     $htTemp.ALZPolicySetName = ''
-                    # }
                 }
-                else{
+                else {
                     $htTemp.ALZ = 'NoALZEvergreen'
                     $htTemp.ALZState = ''
                     $htTemp.ALZLatestVer = ''
@@ -27612,7 +27684,7 @@ function dataCollectionPolicySetDefinitions {
                 $htTemp.Description = $($policySetDefinitionDescription)
                 $htTemp.Type = $($scopePolicySetDefinition.Properties.policyType)
                 $htTemp.Category = $($scopePolicySetDefinition.Properties.metadata.category)
-                if ($scopePolicySetDefinition.Properties.metadata.version){
+                if ($scopePolicySetDefinition.Properties.metadata.version) {
                     $htTemp.Version = $($scopePolicySetDefinition.Properties.metadata.version)
                 }
                 else {
@@ -29965,7 +30037,25 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
 if (-not $HierarchyMapOnly) {
     if (-not $NoALZEvergreen) {
-        processALZEverGreen
+        switch ($azAPICallConf['checkContext'].Environment.Name) {
+            'Azurecloud' { 
+                Write-Host "ALZ EverGreen feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZEverGreen 
+            }
+            'AzureChinaCloud' { 
+                Write-Host "ALZ EverGreen feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZEverGreen
+            }
+            'AzureUSGovernment' { 
+                Write-Host "ALZ EverGreen feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZEverGreen 
+            }
+            Default {
+                Write-Host "ALZ EverGreen feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                Write-Host "Setting parameter -NoALZEvergreen to 'true'"
+                $NoALZEvergreen = $true
+            }
+        }
     }
 }
 

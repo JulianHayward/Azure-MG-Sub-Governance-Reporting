@@ -1097,6 +1097,7 @@ function processTenantSummary() {
 <th>Policy Name</th>
 <th>PolicyId</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Effect</th>
 <th>Role definitions</th>
 <th>Unique assignments</th>
@@ -1125,6 +1126,7 @@ function processTenantSummary() {
 <td class="breakwordall">$($customPolicy.PolicyDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($customPolicy.ALZ)</td>
 <td class="breakwordall">$($customPolicy.PolicyEffect)</td>
 <td class="breakwordall">$($customPolicy.RoleDefinitions)</td>
 <td class="breakwordall">$($customPolicy.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
@@ -1182,10 +1184,12 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                 delay: 1100
             },
             no_results_message: true,
-            col_widths: ['', '150px', '150px', '150px', '250px', '150px', '150px', '150px', '150px', '250px', '', '150px', '', '150px'],
+            col_widths: ['', '150px', '150px', '150px', '250px', '150px', '', '150px', '150px', '150px', '250px', '', '150px', '', '150px'],
             col_0: 'select',
+            col_6: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -1262,6 +1266,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 <th>Policy Name</th>
 <th>PolicyId</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Policy Effect</th>
 <th>Role definitions</th>
 <th>Unique assignments</th>
@@ -1290,6 +1295,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 <td>$($customPolicy.PolicyDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($customPolicy.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($customPolicy.ALZ)</td>
 <td>$($customPolicy.PolicyEffect)</td>
 <td>$($customPolicy.RoleDefinitions)</td>
 <td class="breakwordall">$($customPolicy.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
@@ -1338,9 +1344,12 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             }
             [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_widths: ['', '150px', '150px', '150px', '250px', '150px', '', '150px', '150px', '150px', '250px', '', '150px', '', '150px'],
             col_0: 'select',
+            col_6: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -1765,27 +1774,27 @@ extensions: [{ name: 'sort' }]
             }
 
             $null = $script:customPolicySetsDetailed.Add([PSCustomObject]@{
-                    Type                   = 'Custom'
-                    ScopeMGLevel           = $tenantPolicySet.ScopeMGLevel
-                    Scope                  = $tenantPolicySet.ScopeMgSub
-                    ScopeId                = $tenantPolicySet.ScopeId
-                    PolicySetDisplayName   = $tenantPolicySet.DisplayName
-                    PolicySetDefinitionName= $tenantPolicySet.Name
-                    PolicySetDefinitionId  = $tenantPolicySet.PolicyDefinitionId
-                    PolicySetCategory      = $tenantPolicySet.Category
-                    UniqueAssignments      = $policySetUniqueAssignment
-                    PoliciesUsed           = $policiesUsed
-                    PoliciesUsedClean      = $policiesUsedClean
-                    CreatedOn              = $createdOn
-                    CreatedBy              = $createdBy
-                    UpdatedOn              = $updatedOn
-                    UpdatedBy              = $updatedBy
+                    Type                    = 'Custom'
+                    ScopeMGLevel            = $tenantPolicySet.ScopeMGLevel
+                    Scope                   = $tenantPolicySet.ScopeMgSub
+                    ScopeId                 = $tenantPolicySet.ScopeId
+                    PolicySetDisplayName    = $tenantPolicySet.DisplayName
+                    PolicySetDefinitionName = $tenantPolicySet.Name
+                    PolicySetDefinitionId   = $tenantPolicySet.PolicyDefinitionId
+                    PolicySetCategory       = $tenantPolicySet.Category
+                    UniqueAssignments       = $policySetUniqueAssignment
+                    PoliciesUsed            = $policiesUsed
+                    PoliciesUsedClean       = $policiesUsedClean
+                    CreatedOn               = $createdOn
+                    CreatedBy               = $createdBy
+                    UpdatedOn               = $updatedOn
+                    UpdatedBy               = $updatedBy
                     #Json                  = [string]($tenantPolicySet.Json | ConvertTo-Json -Depth 99 -EnumsAsStrings)
-                    ALZ                    = $tenantPolicySet.ALZ
-                    ALZState               = $tenantPolicySet.ALZState
-                    ALZLatestVer           = $tenantPolicySet.ALZLatestVer
-                    ALZIdentificationLevel = $tenantPolicySet.ALZIdentificationLevel
-                    ALZPolicySetName       = $tenantPolicySet.ALZPolicySetName
+                    ALZ                     = $tenantPolicySet.ALZ
+                    ALZState                = $tenantPolicySet.ALZState
+                    ALZLatestVer            = $tenantPolicySet.ALZLatestVer
+                    ALZIdentificationLevel  = $tenantPolicySet.ALZIdentificationLevel
+                    ALZPolicySetName        = $tenantPolicySet.ALZPolicySetName
                 })
 
             $null = $script:tenantPolicySetsDetailed.Add([PSCustomObject]@{
@@ -1896,6 +1905,7 @@ extensions: [{ name: 'sort' }]
 <th>PolicySet Name</th>
 <th>PolicySetId</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Unique assignments</th>
 <th>Policies used in PolicySet</th>
 <th>CreatedOn</th>
@@ -1916,6 +1926,7 @@ extensions: [{ name: 'sort' }]
 <td>$($customPolicySet.PolicySetDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PolicySetDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PolicySetCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($customPolicySet.ALZ)</td>
 <td class="breakwordall">$($customPolicySet.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PoliciesUsed)</td>
 <td>$($customPolicySet.CreatedOn)</td>
@@ -1963,8 +1974,10 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_0: 'select',
+            col_6: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -2024,6 +2037,7 @@ extensions: [{ name: 'sort' }]
 <th>PolicySet Name</th>
 <th>PolicySetId</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Unique assignments</th>
 <th>Policies used in PolicySet</th>
 <th>CreatedOn</th>
@@ -2044,6 +2058,7 @@ extensions: [{ name: 'sort' }]
 <td>$($customPolicySet.PolicySetDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PolicySetDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PolicySetCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($customPolicySet.ALZ)</td>
 <td class="breakwordall">$($customPolicySet.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicySet.PoliciesUsed)</td>
 <td>$($customPolicySet.CreatedOn)</td>
@@ -2091,8 +2106,10 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_0: 'select',
+            col_6: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -2344,6 +2361,238 @@ extensions: [{ name: 'sort' }]
         }
     }
     #endregion SUMMARYCustompolicySetOrphandedTenantRoot
+
+    #region SUMMARYALZPolicies
+    Write-Host '  processing TenantSummary ALZPolicies'
+    
+    if (-not $NoALZEvergreen) {
+
+        $alzPoliciesInTenant = [System.Collections.ArrayList]@()
+        #policies
+        foreach ($policy in ($htCacheDefinitionsPolicy).Values.where({ $_.ALZ -eq $true })) {
+            if ($policy.ALZState -ne 'obsolete' -and $policy.ALZState -ne 'unknown') {
+                $ALZVersion = $alzPolicies.($policy.ALZPolicyName).latestVersion
+                $azAdvertizerUrl = "https://www.azadvertizer.net/azpolicyadvertizer/$($policy.ALZPolicyName).html"
+            }
+            else {
+                $ALZVersion = ''
+                $azAdvertizerUrl = ''
+            }
+            $null = $alzPoliciesInTenant.Add([PSCustomObject]@{
+                    Type            = 'Policy'
+                    PolicyName      = $policy.Name
+                    PolicyId        = $policy.PolicyDefinitionId
+                    PolicyVersion   = $policy.Version
+                    PolicyScope     = $policy.ScopeMgSub
+                    PolicyScopeId   = $policy.ScopeId
+                    ALZPolicyName   = $policy.ALZPolicyName
+                    ALZVersion      = $ALZVersion
+                    ALZState        = $policy.ALZState
+                    InTenant        = $true
+                    DetectedBy      = $policy.ALZIdentificationLevel
+                    AzAdvertizerUrl = $azAdvertizerUrl
+                })
+        }
+        foreach ($alzPolicy in $alzPolicies.keys) {
+            if ($alzPolicies.($alzPolicy).status -eq 'Prod') {
+                if ($alzPoliciesInTenant.PolicyName -notcontains $alzPolicy) {
+                    $null = $alzPoliciesInTenant.Add([PSCustomObject]@{
+                            Type            = 'Policy'
+                            PolicyName      = 'n/a'
+                            PolicyId        = 'n/a'
+                            PolicyVersion   = 'n/a'
+                            PolicyScope     = 'n/a'
+                            PolicyScopeId   = 'n/a'
+                            ALZPolicyName   = $alzPolicy
+                            ALZVersion      = $alzPolicies.($alzPolicy).latestVersion
+                            ALZState        = $alzPolicies.($alzPolicy).status
+                            InTenant        = $false
+                            DetectedBy      = 'ALZ GitHub repository'
+                            AzAdvertizerUrl = "https://www.azadvertizer.net/azpolicyadvertizer/$($alzPolicy).html"
+                        })
+                }
+            }
+        }
+
+        #policysets
+        foreach ($policySet in ($htCacheDefinitionsPolicySet).Values.where({ $_.ALZ -eq $true })) {
+
+            if ($policySet.ALZState -ne 'obsolete' -and $policySet.ALZState -ne 'unknown') {
+                $ALZVersion = $alzPolicySets.($policySet.ALZPolicySetName).latestVersion
+                $azAdvertizerUrl = "https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($policySet.ALZPolicySetName).html"
+            }
+            else {
+                $ALZVersion = ''
+                $azAdvertizerUrl = ''
+            }
+            $null = $alzPoliciesInTenant.Add([PSCustomObject]@{
+                    Type            = 'PolicySet'
+                    PolicyName      = $policySet.Name
+                    PolicyId        = $policySet.PolicyDefinitionId
+                    PolicyVersion   = $policySet.Version
+                    PolicyScope     = $policySet.ScopeMgSub
+                    PolicyScopeId   = $policySet.ScopeId
+                    ALZPolicyName   = $policySet.ALZPolicySetName
+                    ALZVersion      = $ALZVersion
+                    ALZState        = $policySet.ALZState
+                    InTenant        = $true
+                    DetectedBy      = $policySet.ALZIdentificationLevel
+                    AzAdvertizerUrl = $azAdvertizerUrl
+                })
+        }
+
+        foreach ($alzPolicySet in $alzPolicySets.keys) {
+            if ($alzPolicySets.($alzPolicySet).status -eq 'Prod') {
+                if ($alzPoliciesInTenant.PolicyName -notcontains $alzPolicySet) {
+                    $null = $alzPoliciesInTenant.Add([PSCustomObject]@{
+                            Type            = 'PolicySet'
+                            PolicyName      = 'n/a'
+                            PolicyId        = 'n/a'
+                            PolicyVersion   = 'n/a'
+                            PolicyScope     = 'n/a'
+                            PolicyScopeId   = 'n/a'
+                            ALZPolicyName   = $alzPolicySet
+                            ALZVersion      = $alzPolicySets.($alzPolicySet).latestVersion
+                            ALZState        = $alzPolicySets.($alzPolicySet).status
+                            InTenant        = $false
+                            DetectedBy      = 'ALZ GitHub repository'
+                            AzAdvertizerUrl = "https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($alzPolicySet).html"
+                        })
+                }
+            }
+        }
+
+        if ($alzPoliciesInTenant.Count -gt 0) {
+            $tfCount = $alzPoliciesInTenant.Count
+            $htmlTableId = 'TenantSummary_ALZPolicies'
+
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ALZPolicies"><i class="padlx fa fa-retweet" aria-hidden="true" style="color:#23C632"></i> <span class="valignMiddle">Azure Landing Zones EverGreen</span>
+</button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id= "$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Type</th>
+<th>Policy Name (Id)</th>
+<th>Policy Version</th>
+<th>Policy Scope</th>
+<th>Policy Scope Id</th>
+<th class="uamiresaltbgc">ALZ Policy Name (Id)</th>
+<th class="uamiresaltbgc">ALZ Policy Version</th>
+<th class="uamiresaltbgc">ALZ State</th>
+<th>Exists in tenant</th>
+<th>Detection method</th>
+<th>AzAdvertizer Link</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+            $htmlSUMMARYALZEverGreen = $null
+            $exemptionData4CSVExport = [System.Collections.ArrayList]@()
+            $htmlSUMMARYALZEverGreen = foreach ($entry in $alzPoliciesInTenant) {
+                if ([string]::IsNullOrWhiteSpace($entry.AzAdvertizerUrl)) {
+                    $link = ''
+                }
+                else {
+                    $link = "<a class=`"externallink`" href=`"$($entry.AzAdvertizerUrl)`" target=`"_blank`" rel=`"noopener`">AzA Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                }
+                @"
+<tr>
+<td>$($entry.Type)</td>
+<td>$($entry.PolicyName)</td>
+<td>$($entry.PolicyVersion)</td>
+<td>$($entry.PolicyScope)</td>
+<td>$($entry.PolicyScopeId)</td>
+<td>$($entry.ALZPolicyName)</td>
+<td>$($entry.ALZVersion)</td>
+<td>$($entry.ALZState)</td>
+<td>$($entry.InTenant)</td>
+<td>$($entry.DetectedBy)</td>
+<td>$link</td>
+</tr>
+"@
+            }
+
+            if (-not $NoCsvExport) {
+                Write-Host "Exporting ALZ EverGreen CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZEverGreen.csv'"
+                $alzPoliciesInTenant | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZEverGreen.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+            }
+
+            [void]$htmlTenantSummary.AppendLine($htmlSUMMARYALZEverGreen)
+            [void]$htmlTenantSummary.AppendLine(@"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_0: 'select',
+            col_3: 'select',
+            col_7: 'select',
+            col_8: 'select',
+            col_9: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+"@)
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Azure Landing Zones EverGreen</span></p>
+"@)
+        }
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Azure Landing Zones EverGreen (parameter -NoALZEvergreen = $NoALZEvergreen)</span></p>
+"@)
+    }
+    #endregion SUMMARYALZPolicies
 
     $startcustpolsetdeprpol = Get-Date
     #region SUMMARYPolicySetsDeprecatedPolicy

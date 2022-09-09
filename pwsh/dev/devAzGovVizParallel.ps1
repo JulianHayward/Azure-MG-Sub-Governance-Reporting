@@ -307,7 +307,7 @@ Param
     $AzAPICallVersion = '1.1.23',
 
     [string]
-    $ProductVersion = 'v6_major_20220907_3',
+    $ProductVersion = 'v6_major_20220909_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -829,7 +829,25 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
 if (-not $HierarchyMapOnly) {
     if (-not $NoALZEvergreen) {
-        processALZEverGreen
+        switch ($azAPICallConf['checkContext'].Environment.Name) {
+            'Azurecloud' { 
+                Write-Host "ALZ EverGreen feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZEverGreen 
+            }
+            'AzureChinaCloud' { 
+                Write-Host "ALZ EverGreen feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZEverGreen
+            }
+            'AzureUSGovernment' { 
+                Write-Host "ALZ EverGreen feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZEverGreen 
+            }
+            Default {
+                Write-Host "ALZ EverGreen feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                Write-Host "Setting parameter -NoALZEvergreen to 'true'"
+                $NoALZEvergreen = $true
+            }
+        }
     }
 }
 
