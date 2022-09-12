@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220904_1
+# AzGovViz v6_major_20220912_1
 # First things first:
 # 1. Mandatory: define <Management Group Id> in line 11 (e.g. be992f89-5615-4745-baca-16e5d7b72a50)
 # 2. Optional: enable the schedule (line 22,23)

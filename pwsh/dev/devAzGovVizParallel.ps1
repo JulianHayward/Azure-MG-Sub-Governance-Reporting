@@ -152,6 +152,15 @@
     Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibilityIntegrationRoleAssignmentsAll
 
+.PARAMETER NoALZEvergreen
+    ALZ EverGreen - Azure Landing Zones EverGreen for Policy and Set definitions. AzGovViz will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ EverGreen results will be displayed in the TenantSummary and a CSV export `*_ALZEverGreen.csv` will be provided.
+    If you do not want to execute the ALZ EverGreen feature then use this parameter
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZEvergreen 
+
+.PARAMETER NoDefinitionInsightsDedicatedHTML
+    DefinitionInsights will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep DefinitionInsights in the main html file then use this parameter
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML  
+
 .EXAMPLE
     Define the ManagementGroup ID
     PS C:\> .\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>
@@ -288,6 +297,12 @@
     Define if PIM Eligible assignments should not be integrated with RoleAssignmentsAll outputs (HTML, CSV)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibilityIntegrationRoleAssignmentsAll
 
+    Define if the ALZ EverGreen feature should not be executed
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZEvergreen
+
+    Define if DefinitionInsights should not be written to a seperate html file (*_DefinitionInsights.html)
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML
+
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
@@ -307,7 +322,7 @@ Param
     $AzAPICallVersion = '1.1.23',
 
     [string]
-    $ProductVersion = 'v6_major_20220909_1',
+    $ProductVersion = 'v6_major_20220912_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -477,7 +492,7 @@ Param
     $NoALZEvergreen,
 
     [switch]
-    $DefinitionInsightsDedicatedHTML,
+    $NoDefinitionInsightsDedicatedHTML,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
@@ -604,6 +619,8 @@ $funcTestGuid = $function:testGuid.ToString()
 
 testPowerShellVersion
 showMemoryUsage
+
+$outputPathGiven = $OutputPath
 setOutput
 if ($DoTranscript) {
     setTranscript
@@ -848,6 +865,9 @@ if (-not $HierarchyMapOnly) {
                 $NoALZEvergreen = $true
             }
         }
+    }
+    else {
+        #Write-Host "Skipping ALZ EverGreen (parameter -NoALZEvergreen = $NoALZEvergreen)"
     }
 }
 
@@ -1473,7 +1493,7 @@ $html = @"
 
 if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
-    if ($DefinitionInsightsDedicatedHTML){
+    if (-not $NoDefinitionInsightsDedicatedHTML){
         $htmlDefinitionInsightsDedicatedStart = $html
         $htmlDefinitionInsightsDedicatedStart += @'
     <body>

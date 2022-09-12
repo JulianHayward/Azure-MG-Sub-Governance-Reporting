@@ -152,6 +152,15 @@
     Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibilityIntegrationRoleAssignmentsAll
 
+.PARAMETER NoALZEvergreen
+    ALZ EverGreen - Azure Landing Zones EverGreen for Policy and Set definitions. AzGovViz will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ EverGreen results will be displayed in the TenantSummary and a CSV export `*_ALZEverGreen.csv` will be provided.
+    If you do not want to execute the ALZ EverGreen feature then use this parameter
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZEvergreen 
+
+.PARAMETER NoDefinitionInsightsDedicatedHTML
+    DefinitionInsights will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep DefinitionInsights in the main html file then use this parameter
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML  
+
 .EXAMPLE
     Define the ManagementGroup ID
     PS C:\> .\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>
@@ -288,6 +297,12 @@
     Define if PIM Eligible assignments should not be integrated with RoleAssignmentsAll outputs (HTML, CSV)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibilityIntegrationRoleAssignmentsAll
 
+    Define if the ALZ EverGreen feature should not be executed
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZEvergreen
+
+    Define if DefinitionInsights should not be written to a seperate html file (*_DefinitionInsights.html)
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML
+
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
@@ -307,7 +322,7 @@ Param
     $AzAPICallVersion = '1.1.23',
 
     [string]
-    $ProductVersion = 'v6_major_20220909_1',
+    $ProductVersion = 'v6_major_20220912_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -477,7 +492,7 @@ Param
     $NoALZEvergreen,
 
     [switch]
-    $DefinitionInsightsDedicatedHTML,
+    $NoDefinitionInsightsDedicatedHTML,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
@@ -610,6 +625,7 @@ function addRowToTable() {
         [string]$PolicyDescription = '',
         [string]$PolicyVariant = '',
         [string]$PolicyType = '',
+        $PolicyIsALZ = '',
         [string]$PolicyCategory = '',
         [string]$PolicyDefinitionIdGuid = '',
         [string]$PolicyDefinitionId = '',
@@ -707,6 +723,7 @@ function addRowToTable() {
             PolicyDescription                        = $PolicyDescription
             PolicyVariant                            = $PolicyVariant
             PolicyType                               = $PolicyType
+            PolicyIsALZ                              = $PolicyIsALZ
             PolicyCategory                           = $PolicyCategory
             PolicyDefinitionIdGuid                   = $PolicyDefinitionIdGuid
             PolicyDefinitionId                       = $PolicyDefinitionId
@@ -3872,7 +3889,7 @@ function processALZEverGreen {
         $allESLZPolicyHashes = @{}
         $allESLZPolicySetHashes = @{}
 
-        Write-Host " Processing ALZ Data Policy definitions"
+        #Write-Host " Processing ALZ Data Policy definitions"
         $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/dataPolicies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
         $commitCount = 0
         $processDataPolicies = $true
@@ -3882,7 +3899,7 @@ function processALZEverGreen {
                     $processDataPolicies = $false
                     continue
                 }
-                Write-Host "processing commit (dataPolicies) $($commit.CommitId)"
+                #Write-Host "processing commit (dataPolicies) $($commit.CommitId)"
                 $commitCount++
                 $jsonRaw = git show "$($commit.CommitId):eslzArm/managementGroupTemplates/policyDefinitions/dataPolicies.json"
                 
@@ -3943,7 +3960,7 @@ function processALZEverGreen {
             }
         }
 
-        Write-Host " Processing ALZ Policy and Set definitions"
+        #Write-Host " Processing ALZ Policy and Set definitions"
         $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/policies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
         $commitCount = 0
         $doNewALZPolicyReadingApproach = $false
@@ -3952,7 +3969,7 @@ function processALZEverGreen {
             if ($commit.CommitId -eq '3476914f9ba9a8f3f641a25497dfb24a4efa1017') {
                 $doNewALZPolicyReadingApproach = $true
             }
-            Write-Host "processing commit $($commit.CommitId) - doNewALZPolicyReadingApproach: $doNewALZPolicyReadingApproach"
+            #Write-Host "processing commit $($commit.CommitId) - doNewALZPolicyReadingApproach: $doNewALZPolicyReadingApproach"
             $commitCount++
 
             $jsonRaw = git show "$($commit.CommitId):eslzArm/managementGroupTemplates/policyDefinitions/policies.json"
@@ -4285,8 +4302,8 @@ function processALZEverGreen {
         }
 
 
-        Write-Host " $($allESLZPolicies.Keys.Count) Policy definitions ($($allESLZPolicies.Values.where({$_.status -eq 'Prod'}).Count) productive)"
-        Write-Host " $($allESLZPolicySets.Keys.Count) PolicySet definitions ($($allESLZPolicySets.Values.where({$_.status -eq 'Prod'}).Count) productive)"
+        Write-Host " $($allESLZPolicies.Keys.Count) Azure Landing Zones (ALZ) Policy definitions ($($allESLZPolicies.Values.where({$_.status -eq 'Prod'}).Count) productive)"
+        Write-Host " $($allESLZPolicySets.Keys.Count) Azure Landing Zones (ALZ) PolicySet definitions ($($allESLZPolicySets.Values.where({$_.status -eq 'Prod'}).Count) productive)"
 
         $arrayObsoleteALZPolicies = @(
             'Deny-PublicEndpoint-Aks',
@@ -5908,8 +5925,13 @@ function processDefinitionInsights() {
         </div>
 
         <div class="me">
-            <label>Builtin/Custom</label>
+            <label>Builtin/Custom/Static</label>
             <span id="polType"></span>
+        </div>
+
+        <div class="me">
+            <label>ALZ</label>
+            <span id="polIsALZ"></span>
         </div>
 
         <div class="me">
@@ -5987,6 +6009,7 @@ function processDefinitionInsights() {
 <tr>
 <th>JSON</th>
 <th>PolicyType</th>
+<th>ALZ</th>
 <th>Category</th>
 <th>Deprecated</th>
 <th>Preview</th>
@@ -6109,6 +6132,7 @@ function processDefinitionInsights() {
 
 </td>
 <td>$($policy.Type)</td>
+<td>$($policy.ALZ)</td>
 <td>$($policy.Category -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($policy.Deprecated)</td>
 <td>$($policy.Preview)</td>
@@ -6126,7 +6150,7 @@ function processDefinitionInsights() {
 "@
     }
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    if (-not $DefinitionInsightsDedicatedHTML) {
+    if ($NoDefinitionInsightsDedicatedHTML) {
         $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
         $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
     }
@@ -6187,10 +6211,12 @@ function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId
     col_3: 'select',
     col_4: 'select',
     col_5: 'select',
-    col_7: 'select',
+    col_6: 'select',
     col_8: 'select',
-    col_11: 'select',
+    col_9: 'select',
+    col_12: 'select',
     col_types: [
+        'caseinsensitivestring',
         'caseinsensitivestring',
         'caseinsensitivestring',
         'caseinsensitivestring',
@@ -6210,6 +6236,7 @@ function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId
     external_flt_ids: [
         'polJson',
         'polType',
+        'polIsALZ',
         'polCategory',
         'polDeprecated',
         'polPreview',
@@ -6224,14 +6251,14 @@ function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId
         'polUsedInPolicySets',
         'polRoledefs'
     ],
-    watermark: ['', '','', '', '', '', '', '', '', '','','','','', 'try: \'Contributor\''],
+    watermark: ['', '', '','', '', '', '', '', '', '', '','','','','', 'try: \'Contributor\''],
     extensions: [
         {
             name: 'sort'
         },
         {
             name: 'colsVisibility',
-            at_start: [1,2,3,4,5,6,7,8,9,10,11,12,13,14],
+            at_start: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
             text: 'Columns: ',
             enable_tick_all: true
         }
@@ -6266,6 +6293,11 @@ tf.init();}}
         <div class="me">
             <label>Builtin/Custom</label>
             <span id="polsetType"></span>
+        </div>
+
+        <div class="me">
+            <label>ALZ</label>
+            <span id="polsetIsALZ"></span>
         </div>
 
         <div class="me">
@@ -6309,6 +6341,7 @@ tf.init();}}
 <tr>
 <th>JSON</th>
 <th>PolicySet Type</th>
+<th>ALZ</th>
 <th>Category</th>
 <th>Deprecated</th>
 <th>Preview</th>
@@ -6387,6 +6420,7 @@ tf.init();}}
 
 </td>
 <td>$($policySet.Type)</td>
+<td>$($policySet.ALZ)</td>
 <td>$($policySet.Category -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($policySet.Deprecated)</td>
 <td>$($policySet.Preview)</td>
@@ -6399,7 +6433,7 @@ tf.init();}}
 "@
     }
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    if (-not $DefinitionInsightsDedicatedHTML) {
+    if ($NoDefinitionInsightsDedicatedHTML) {
         $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
         $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
     }
@@ -6460,8 +6494,10 @@ function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId
     col_3: 'select',
     col_4: 'select',
     col_5: 'select',
-    col_7: 'select',
+    col_6: 'select',
+    col_8: 'select',
     col_types: [
+        'caseinsensitivestring',
         'caseinsensitivestring',
         'caseinsensitivestring',
         'caseinsensitivestring',
@@ -6477,6 +6513,7 @@ function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId
     external_flt_ids: [
         'polsetJson',
         'polsetType',
+        'polsetIsALZ',
         'polsetCategory',
         'polsetDeprecated',
         'polsetPreview',
@@ -6490,7 +6527,7 @@ function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId
         },
         {
             name: 'colsVisibility',
-            at_start: [1,2,3,4,5,6,7,8,9],
+            at_start: [1,2,3,4,5,6,7,8,9,10],
             text: 'Columns: ',
             enable_tick_all: true
         }
@@ -6699,7 +6736,7 @@ tf.init();}}
     #endregion exportCSV
 
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    if (-not $DefinitionInsightsDedicatedHTML) {
+    if ($NoDefinitionInsightsDedicatedHTML) {
         $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
         $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
     }
@@ -6802,8 +6839,8 @@ tf.init();}}
 '@)
     #endregion definitionInsightsAzureRBAC
 
-    Write-Host "   DefinitionInsightsDedicatedHTML: $DefinitionInsightsDedicatedHTML"
-    if (-not $DefinitionInsightsDedicatedHTML){
+    Write-Host "   NoDefinitionInsightsDedicatedHTML: $NoDefinitionInsightsDedicatedHTML"
+    if ($NoDefinitionInsightsDedicatedHTML) {
         Write-Host "   Appending DefinitionInsights to HTML"
         $script:html += $htmlDefinitionInsights
         $htmlDefinitionInsights = $null
@@ -6821,8 +6858,8 @@ tf.init();}}
         #$script:htmlDefinitionInsightsDedicated = $null
 
         $htmlDefinitionInsightsNo = @"
-        <span>DefinitionInsights have been saved to dedicated HTML file '$($outputPath)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html' (parameter -DefinitionInsightsDedicatedHTML: $($DefinitionInsightsDedicatedHTML))</span><br>
-        <a class="externallink" href="$($fileName)_DefinitionInsights.html" target="blank">DefinitionInsights <i class="fa fa-external-link" aria-hidden="true"></i></a>
+        <span>DefinitionInsights has been saved to dedicated HTML file '<i>$($outputPathGiven)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html</i>' (parameter -NoDefinitionInsightsDedicatedHTML = $($NoDefinitionInsightsDedicatedHTML))</span><br>
+        Open <a class="externallink" href="$($fileName)_DefinitionInsights.html" target="blank">DefinitionInsights <i class="fa fa-external-link" aria-hidden="true"></i></a>
 "@
         $script:html += $htmlDefinitionInsightsNo
         #$htmlDefinitionInsightsNo = $null
@@ -9578,6 +9615,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 <th>PolicyId</th>
 <th>Type</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Effect</th>
 <th>Parameters</th>
 <th>Enforcement</th>
@@ -9627,6 +9665,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 <td class="breakwordall">$($policyAssignment.PolicyId)</td>
 <td>$($policyAssignment.PolicyType)</td>
 <td>$($policyAssignment.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($policyAssignment.PolicyIsALZ)</td>
 <td>$($policyAssignment.Effect)</td>
 <td>$($policyAssignment.PolicyAssignmentParameters)</td>
 <td>$($policyAssignment.PolicyAssignmentEnforcementMode)</td>
@@ -9698,9 +9737,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_2: 'select',
             col_5: 'select',
             col_7: 'select',
-            col_9: 'select',
+            col_8: 'select',
+            col_10: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -9832,6 +9873,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>PolicySetId</th>
 <th>Type</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Parameters</th>
 <th>Enforcement</th>
 <th>NonCompliance Message</th>
@@ -9878,6 +9920,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <td class="breakwordall">$($policyAssignment.PolicyId)</td>
 <td>$($policyAssignment.PolicyType)</td>
 <td>$($policyAssignment.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($policyAssignment.PolicyIsALZ)</td>
 <td>$($policyAssignment.PolicyAssignmentParameters)</td>
 <td>$($policyAssignment.PolicyAssignmentEnforcementMode)</td>
 <td>$($policyAssignment.PolicyAssignmentNonComplianceMessages)</td>
@@ -9945,8 +9988,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_1: 'select',
             col_4: 'select',
             col_7: 'select',
+            col_8: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -10085,6 +10130,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th class="widthCustom">Policy DisplayName</th>
 <th>PolicyId</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Policy effect</th>
 <th>Role definitions</th>
 <th>Unique assignments</th>
@@ -10106,6 +10152,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <td>$($customPolicy.PolicyDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($customPolicy.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($customPolicy.ALZ)</td>
 <td>$($customPolicy.PolicyEffect)</td>
 <td>$($customPolicy.RoleDefinitions)</td>
 <td class="breakwordall">$($customPolicy.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
@@ -10150,7 +10197,9 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         }
         [void]$htmlScopeInsights.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+                col_3: 'select',
                 col_types: [
+                    'caseinsensitivestring',
                     'caseinsensitivestring',
                     'caseinsensitivestring',
                     'caseinsensitivestring',
@@ -10224,6 +10273,7 @@ extensions: [{ name: 'sort' }]
 <th class="widthCustom">PolicySet DisplayName</th>
 <th>PolicySetId</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Unique assignments</th>
 <th>Policies Used</th>
 </tr>
@@ -10237,6 +10287,7 @@ extensions: [{ name: 'sort' }]
 <td>$($custompolicySet.PolicySetDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($custompolicySet.PolicySetDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($custompolicySet.PolicySetCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($custompolicySet.ALZ)</td>
 <td>$($custompolicySet.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($custompolicySet.PoliciesUsed)</td>
 </tr>
@@ -10279,7 +10330,10 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         }
         [void]$htmlScopeInsights.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+                col_3: 'select',
                 col_types: [
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
                     'caseinsensitivestring',
                     'caseinsensitivestring',
                     'caseinsensitivestring',
@@ -12090,7 +12144,6 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
     else {
         $faimage = "<i class=`"fa fa-check-circle`" aria-hidden=`"true`"></i>"
 
-
         if ($tenantCustomPoliciesCount -gt 0) {
             $tfCount = $tenantCustomPoliciesCount
             $customPoliciesInScopeArray = [System.Collections.ArrayList]@()
@@ -12157,21 +12210,21 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                 }
                 @"
 <tr>
-<td>$($customPolicy.Scope)</td>
-<td>$($customPolicy.ScopeId)</td>
-<td>$($customPolicy.PolicyDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td>$($customPolicy.PolicyDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td class="breakwordall">$($customPolicy.Scope)</td>
+<td class="breakwordall">$($customPolicy.ScopeId)</td>
+<td class="breakwordall">$($customPolicy.PolicyDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td class="breakwordall">$($customPolicy.PolicyDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td>$($customPolicy.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td class="breakwordall">$($customPolicy.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($customPolicy.ALZ)</td>
-<td>$($customPolicy.PolicyEffect)</td>
-<td>$($customPolicy.RoleDefinitions)</td>
+<td class="breakwordall">$($customPolicy.PolicyEffect)</td>
+<td class="breakwordall">$($customPolicy.RoleDefinitions)</td>
 <td class="breakwordall">$($customPolicy.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicyUsedInPolicySets)</td>
-<td>$($customPolicy.CreatedOn)</td>
-<td>$($customPolicy.CreatedBy)</td>
-<td>$($customPolicy.UpdatedOn)</td>
-<td>$($customPolicy.UpdatedBy)</td>
+<td class="breakwordall">$($customPolicy.CreatedOn)</td>
+<td class="breakwordall">$($customPolicy.CreatedBy)</td>
+<td class="breakwordall">$($customPolicy.UpdatedOn)</td>
+<td class="breakwordall">$($customPolicy.UpdatedBy)</td>
 </tr>
 "@
             }
@@ -12211,8 +12264,12 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 "@)
             }
             [void]$htmlTenantSummary.AppendLine(@"
-btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-            col_widths: ['', '150px', '150px', '150px', '250px', '150px', '', '150px', '150px', '150px', '250px', '', '150px', '', '150px'],
+            btn_reset: true, 
+            highlight_keywords: true, 
+            alternate_rows: true, 
+            auto_filter: { delay: 1100 }, 
+            no_results_message: true,
+            col_widths: ['50px', '150px', '150px', '150px', '250px', '150px', '50px', '150px', '150px', '150px', '250px', '75px', '150px', '75px', '150px'],
             col_0: 'select',
             col_6: 'select',
             locale: 'en-US',
@@ -12233,7 +12290,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'date',
                 'caseinsensitivestring'
             ],
-extensions: [{ name: 'sort' }]
+            extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
         tf.init();}}
@@ -13273,7 +13330,7 @@ extensions: [{ name: 'sort' }]
                             PolicyScopeId   = 'n/a'
                             ALZPolicyName   = $alzPolicy
                             ALZVersion      = $alzPolicies.($alzPolicy).latestVersion
-                            ALZState        = $alzPolicies.($alzPolicy).status
+                            ALZState        = ''
                             InTenant        = $false
                             DetectedBy      = 'ALZ GitHub repository'
                             AzAdvertizerUrl = "https://www.azadvertizer.net/azpolicyadvertizer/$($alzPolicy).html"
@@ -13321,7 +13378,7 @@ extensions: [{ name: 'sort' }]
                             PolicyScopeId   = 'n/a'
                             ALZPolicyName   = $alzPolicySet
                             ALZVersion      = $alzPolicySets.($alzPolicySet).latestVersion
-                            ALZState        = $alzPolicySets.($alzPolicySet).status
+                            ALZState        = ''
                             InTenant        = $false
                             DetectedBy      = 'ALZ GitHub repository'
                             AzAdvertizerUrl = "https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($alzPolicySet).html"
@@ -13333,11 +13390,12 @@ extensions: [{ name: 'sort' }]
         if ($alzPoliciesInTenant.Count -gt 0) {
             $tfCount = $alzPoliciesInTenant.Count
             $htmlTableId = 'TenantSummary_ALZPolicies'
-
+            $abbrALZ = " <abbr title=`"obsolete: this policy is no longer ALZ maintained by ALZ&#13;outDated: a new version of the policy available&#13;unknown: ALZ related policy could not be mapped&#13;upToDate: policy matches with latest ALZ policy`"><i class=`"fa fa-question-circle`" aria-hidden=`"true`"></i></abbr>"
             [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ALZPolicies"><i class="padlx fa fa-retweet" aria-hidden="true" style="color:#23C632"></i> <span class="valignMiddle">Azure Landing Zones EverGreen</span>
 </button>
 <div class="content TenantSummary">
+<i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Landing Zones (ALZ)</span> <a class="externallink" href="https://github.com/Azure/Enterprise-Scale/blob/main/docs/ESLZ-Policies.md" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id= "$htmlTableId" class="summaryTable">
 <thead>
@@ -13349,7 +13407,7 @@ extensions: [{ name: 'sort' }]
 <th>Policy Scope Id</th>
 <th class="uamiresaltbgc">ALZ Policy Name (Id)</th>
 <th class="uamiresaltbgc">ALZ Policy Version</th>
-<th class="uamiresaltbgc">ALZ State</th>
+<th class="uamiresaltbgc">ALZ State$($abbrALZ)</th>
 <th>Exists in tenant</th>
 <th>Detection method</th>
 <th>AzAdvertizer Link</th>
@@ -13428,7 +13486,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_0: 'select',
             col_3: 'select',
-            col_7: 'select',
+            col_7: 'multiple',
             col_8: 'select',
             col_9: 'select',
             col_types: [
@@ -14594,6 +14652,7 @@ extensions: [{ name: 'sort' }]
                     PolicyId                              = $policyAssignmentAll.PolicyDefinitionId
                     PolicyVariant                         = $policyAssignmentAll.PolicyVariant
                     PolicyType                            = $policyAssignmentAll.PolicyType
+                    PolicyIsALZ                           = $policyAssignmentAll.PolicyIsALZ
                     PolicyCategory                        = $policyCategory
                     Inheritance                           = $scope
                     ExcludedScope                         = $excludedScope
@@ -14639,6 +14698,7 @@ extensions: [{ name: 'sort' }]
                     PolicyId                              = $policyAssignmentAll.PolicyDefinitionId
                     PolicyVariant                         = $policyAssignmentAll.PolicyVariant
                     PolicyType                            = $policyAssignmentAll.PolicyType
+                    PolicyIsALZ                           = $policyAssignmentAll.PolicyIsALZ
                     PolicyCategory                        = $policyCategory
                     Inheritance                           = $scope
                     ExcludedScope                         = $excludedScope
@@ -14861,6 +14921,7 @@ extensions: [{ name: 'sort' }]
 <th>Policy/Set</th>
 <th>Type</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Effect</th>
 <th>Parameters</th>
 <th>Enforcement</th>
@@ -14926,6 +14987,7 @@ extensions: [{ name: 'sort' }]
 <td>$($policyAssignment.PolicyVariant)</td>
 <td>$($policyAssignment.PolicyType)</td>
 <td>$($policyAssignment.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($policyAssignment.PolicyIsALZ)</td>
 <td>$($policyAssignment.Effect)</td>
 <td>$($policyAssignment.PolicyAssignmentParameters)</td>
 <td>$($policyAssignment.PolicyAssignmentEnforcementMode)</td>
@@ -15017,8 +15079,10 @@ extensions: [{ name: 'sort' }]
             col_12: 'select',
             col_14: 'select',
             col_16: 'select',
+            col_17: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -15065,12 +15129,12 @@ extensions: [{ name: 'sort' }]
 
             if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
                 [void]$htmlTenantSummary.AppendLine(@'
-            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
 '@)
             }
             else {
                 [void]$htmlTenantSummary.AppendLine(@'
-            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
 '@)
             }
 
@@ -15082,12 +15146,12 @@ extensions: [{ name: 'sort' }]
 
             if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
                 [void]$htmlTenantSummary.AppendLine(@'
-                    at_start: [9, 25, 26],
+                    at_start: [9, 26, 27],
 '@)
             }
             else {
                 [void]$htmlTenantSummary.AppendLine(@'
-                    at_start: [9, 20, 21],
+                    at_start: [9, 21, 22],
 '@)
             }
 
@@ -21537,7 +21601,7 @@ extensions: [{ name: 'sort' }]
     [void]$htmlTenantSummary.AppendLine(@'
 <button type="button" class="collapsible" id="tenantSummaryAAD"><hr class="hr-textAAD" data-content="Azure Active Directory" /></button>
 <div class="content TenantSummaryContent">
-<i class="padlx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Check out <b>AzADServicePrincipalInsights</b> POC</span> <a class="externallink" href="https://aka.ms/azadserviceprincipalinsights" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Check out <b>AzADServicePrincipalInsights</b></span> <a class="externallink" href="https://aka.ms/azadserviceprincipalinsights" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Demystifying Service Principals - Managed Identities</span> <a class="externallink" href="https://devblogs.microsoft.com/devops/demystifying-service-principals-managed-identities/" target="_blank" rel="noopener">devBlogs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">John Savill - Azure AD App Registrations, Enterprise Apps and Service Principals</span> <a class="externallink" href="https://www.youtube.com/watch?v=WVNvoiA_ktw" target="_blank" rel="noopener">YouTube <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 '@)
@@ -24917,6 +24981,24 @@ function runInfo {
             #$script:paramsUsed += "NoPIMEligibilityIntegrationRoleAssignmentsAll: $($NoPIMEligibilityIntegrationRoleAssignmentsAll) &#13;"
         }
 
+        if ($NoDefinitionInsightsDedicatedHTML) {
+            Write-Host " NoDefinitionInsightsDedicatedHTML = $($NoDefinitionInsightsDedicatedHTML)" -ForegroundColor Green
+            #$script:paramsUsed += "NoDefinitionInsightsDedicatedHTML: $($NoDefinitionInsightsDedicatedHTML) &#13;"
+        }
+        else {
+            Write-Host " NoDefinitionInsightsDedicatedHTML = $($NoDefinitionInsightsDedicatedHTML)" -ForegroundColor Yellow
+            #$script:paramsUsed += "NoDefinitionInsightsDedicatedHTML: $($NoDefinitionInsightsDedicatedHTML) &#13;"
+        }
+
+        if ($NoALZEvergreen) {
+            Write-Host " NoALZEvergreen = $($NoALZEvergreen)" -ForegroundColor Green
+            #$script:paramsUsed += "NoALZEvergreen: $($NoALZEvergreen) &#13;"
+        }
+        else {
+            Write-Host " NoALZEvergreen = $($NoALZEvergreen)" -ForegroundColor Yellow
+            #$script:paramsUsed += "NoALZEvergreen: $($NoALZEvergreen) &#13;"
+        }
+
     }
     #endregion RunInfo
 }
@@ -24957,7 +25039,6 @@ function setBaseVariablesMG {
     }
 }
 function setOutput {
-    #outputPath
     if (-not [IO.Path]::IsPathRooted($outputPath)) {
         $outputPath = Join-Path -Path (Get-Location).Path -ChildPath $outputPath
     }
@@ -27401,7 +27482,7 @@ function dataCollectionPolicyDefinitions {
                     }
                 }
                 else {
-                    $htTemp.ALZ = 'NoALZEvergreen'
+                    $htTemp.ALZ = 'n/a'
                     $htTemp.ALZState = ''
                     $htTemp.ALZLatestVer = ''
                     $htTemp.ALZIdentificationLevel = ''
@@ -27672,7 +27753,7 @@ function dataCollectionPolicySetDefinitions {
                     }
                 }
                 else {
-                    $htTemp.ALZ = 'NoALZEvergreen'
+                    $htTemp.ALZ = 'n/a'
                     $htTemp.ALZState = ''
                     $htTemp.ALZLatestVer = ''
                     $htTemp.ALZIdentificationLevel = ''
@@ -27858,6 +27939,7 @@ function dataCollectionPolicyAssignmentsMG {
                             $policyDisplayName = ($policyDefinition).DisplayName
                             $policyDescription = ($policyDefinition).Description
                             $policyDefinitionType = ($policyDefinition).Type
+                            $policyDefinitionIsALZ = ($policyDefinition).ALZ
                             $policyCategory = ($policyDefinition).Category
                             $policyDefinitionEffectDefault = ($policyDefinition).effectDefaultValue
                             $policyDefinitionEffectFixed = ($policyDefinition).effectFixedValue
@@ -27898,6 +27980,7 @@ function dataCollectionPolicyAssignmentsMG {
                     $policyDisplayName = 'unknown'
                     $policyDescription = 'unknown'
                     $policyDefinitionType = 'likely Custom'
+                    $policyDefinitionIsALZ = 'unknown'
                     $policyCategory = 'unknown'
                     $policyDefinitionEffectDefault = 'unknown'
                     $policyDefinitionEffectFixed = 'unknown'
@@ -27974,6 +28057,7 @@ function dataCollectionPolicyAssignmentsMG {
                     -PolicyDescription $policyDescription `
                     -PolicyVariant $policyVariant `
                     -PolicyType $policyDefinitionType `
+                    -PolicyIsALZ $policyDefinitionIsALZ `
                     -PolicyCategory $policyCategory `
                     -PolicyDefinitionIdGuid ($policyDefinitionId -replace '.*/') `
                     -PolicyDefinitionId $policyDefinitionId `
@@ -28039,6 +28123,7 @@ function dataCollectionPolicyAssignmentsMG {
                         $policySetDisplayName = $policySetDefinition.DisplayName
                         $policySetDescription = $policySetDefinition.Description
                         $policySetDefinitionType = $policySetDefinition.Type
+                        $policySetDefinitionIsALZ = $policySetDefinition.ALZ
                         $policySetCategory = $policySetDefinition.Category
                     }
                     else {
@@ -28056,6 +28141,7 @@ function dataCollectionPolicyAssignmentsMG {
                     $policySetDisplayName = 'unknown'
                     $policySetDescription = 'unknown'
                     $policySetDefinitionType = 'likely Custom'
+                    $policySetDefinitionIsALZ = 'unknown'
                     $policySetCategory = 'unknown'
                 }
 
@@ -28129,6 +28215,7 @@ function dataCollectionPolicyAssignmentsMG {
                     -PolicyDescription $policySetDescription `
                     -PolicyVariant $policyVariant `
                     -PolicyType $policySetDefinitionType `
+                    -PolicyIsALZ $policySetDefinitionIsALZ `
                     -PolicyCategory $policySetCategory `
                     -PolicyDefinitionIdGuid ($policySetDefinitionId -replace '.*/') `
                     -PolicyDefinitionId $policySetDefinitionId `
@@ -28285,6 +28372,7 @@ function dataCollectionPolicyAssignmentsSub {
                             $policyDisplayName = ($policyAssignmentsPolicyDefinition).DisplayName
                             $policyDescription = ($policyAssignmentsPolicyDefinition).Description
                             $policyDefinitionType = ($policyAssignmentsPolicyDefinition).Type
+                            $policyDefinitionIsALZ = ($policyAssignmentsPolicyDefinition).ALZ
                             $policyCategory = ($policyAssignmentsPolicyDefinition).Category
                             $policyDefinitionEffectDefault = ($policyAssignmentsPolicyDefinition).effectDefaultValue
                             $policyDefinitionEffectFixed = ($policyAssignmentsPolicyDefinition).effectFixedValue
@@ -28353,6 +28441,7 @@ function dataCollectionPolicyAssignmentsSub {
                     $policyDisplayName = 'unknown'
                     $policyDescription = 'unknown'
                     $policyDefinitionType = 'likely Custom'
+                    $policyDefinitionIsALZ = 'unknown'
                     $policyCategory = 'unknown'
                     $policyDefinitionEffectDefault = 'unknown'
                     $policyDefinitionEffectFixed = 'unknown'
@@ -28455,6 +28544,7 @@ function dataCollectionPolicyAssignmentsSub {
                     -PolicyDescription $policyDescription `
                     -PolicyVariant $policyVariant `
                     -PolicyType $policyDefinitionType `
+                    -PolicyIsALZ $policyDefinitionIsALZ `
                     -PolicyCategory $policyCategory `
                     -PolicyDefinitionIdGuid ($policyDefinitionId -replace '.*/') `
                     -PolicyDefinitionId $policyDefinitionId `
@@ -28515,6 +28605,7 @@ function dataCollectionPolicyAssignmentsSub {
                             $policySetDisplayName = ($policyAssignmentsPolicySetDefinition).DisplayName
                             $policySetDescription = ($policyAssignmentsPolicySetDefinition).Description
                             $policySetDefinitionType = ($policyAssignmentsPolicySetDefinition).Type
+                            $policySetDefinitionIsALZ = ($policyAssignmentsPolicySetDefinition).ALZ
                             $policySetCategory = ($policyAssignmentsPolicySetDefinition).Category
 
                             if (($policyAssignmentsPolicySetDefinition).Type -ne $policySetDefinitionType) {
@@ -28553,6 +28644,7 @@ function dataCollectionPolicyAssignmentsSub {
                     $policySetDisplayName = 'unknown'
                     $policySetDescription = 'unknown'
                     $policySetDefinitionType = 'likely Custom'
+                    $policySetDefinitionIsALZ = 'unknown'
                     $policySetCategory = 'unknown'
 
                     if ($policySetDefinitionId -like '/providers/microsoft.management/managementgroups/*') {
@@ -28668,6 +28760,7 @@ function dataCollectionPolicyAssignmentsSub {
                     -PolicyDescription $policySetDescription `
                     -PolicyVariant $policyVariant `
                     -PolicyType $policySetDefinitionType `
+                    -PolicyIsALZ $policySetDefinitionIsALZ `
                     -PolicyCategory $policySetCategory `
                     -PolicyDefinitionIdGuid (($policySetDefinitionId) -replace '.*/') `
                     -PolicyDefinitionId $policySetDefinitionId `
@@ -29812,6 +29905,8 @@ $funcTestGuid = $function:testGuid.ToString()
 
 testPowerShellVersion
 showMemoryUsage
+
+$outputPathGiven = $OutputPath
 setOutput
 if ($DoTranscript) {
     setTranscript
@@ -30056,6 +30151,9 @@ if (-not $HierarchyMapOnly) {
                 $NoALZEvergreen = $true
             }
         }
+    }
+    else {
+        #Write-Host "Skipping ALZ EverGreen (parameter -NoALZEvergreen = $NoALZEvergreen)"
     }
 }
 
@@ -30681,7 +30779,7 @@ $html = @"
 
 if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
-    if ($DefinitionInsightsDedicatedHTML){
+    if (-not $NoDefinitionInsightsDedicatedHTML){
         $htmlDefinitionInsightsDedicatedStart = $html
         $htmlDefinitionInsightsDedicatedStart += @'
     <body>

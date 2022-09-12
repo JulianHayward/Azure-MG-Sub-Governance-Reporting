@@ -98,8 +98,13 @@ function processDefinitionInsights() {
         </div>
 
         <div class="me">
-            <label>Builtin/Custom</label>
+            <label>Builtin/Custom/Static</label>
             <span id="polType"></span>
+        </div>
+
+        <div class="me">
+            <label>ALZ</label>
+            <span id="polIsALZ"></span>
         </div>
 
         <div class="me">
@@ -177,6 +182,7 @@ function processDefinitionInsights() {
 <tr>
 <th>JSON</th>
 <th>PolicyType</th>
+<th>ALZ</th>
 <th>Category</th>
 <th>Deprecated</th>
 <th>Preview</th>
@@ -299,6 +305,7 @@ function processDefinitionInsights() {
 
 </td>
 <td>$($policy.Type)</td>
+<td>$($policy.ALZ)</td>
 <td>$($policy.Category -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($policy.Deprecated)</td>
 <td>$($policy.Preview)</td>
@@ -316,7 +323,7 @@ function processDefinitionInsights() {
 "@
     }
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    if (-not $DefinitionInsightsDedicatedHTML) {
+    if ($NoDefinitionInsightsDedicatedHTML) {
         $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
         $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
     }
@@ -377,10 +384,12 @@ function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId
     col_3: 'select',
     col_4: 'select',
     col_5: 'select',
-    col_7: 'select',
+    col_6: 'select',
     col_8: 'select',
-    col_11: 'select',
+    col_9: 'select',
+    col_12: 'select',
     col_types: [
+        'caseinsensitivestring',
         'caseinsensitivestring',
         'caseinsensitivestring',
         'caseinsensitivestring',
@@ -400,6 +409,7 @@ function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId
     external_flt_ids: [
         'polJson',
         'polType',
+        'polIsALZ',
         'polCategory',
         'polDeprecated',
         'polPreview',
@@ -414,14 +424,14 @@ function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId
         'polUsedInPolicySets',
         'polRoledefs'
     ],
-    watermark: ['', '','', '', '', '', '', '', '', '','','','','', 'try: \'Contributor\''],
+    watermark: ['', '', '','', '', '', '', '', '', '', '','','','','', 'try: \'Contributor\''],
     extensions: [
         {
             name: 'sort'
         },
         {
             name: 'colsVisibility',
-            at_start: [1,2,3,4,5,6,7,8,9,10,11,12,13,14],
+            at_start: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
             text: 'Columns: ',
             enable_tick_all: true
         }
@@ -456,6 +466,11 @@ tf.init();}}
         <div class="me">
             <label>Builtin/Custom</label>
             <span id="polsetType"></span>
+        </div>
+
+        <div class="me">
+            <label>ALZ</label>
+            <span id="polsetIsALZ"></span>
         </div>
 
         <div class="me">
@@ -499,6 +514,7 @@ tf.init();}}
 <tr>
 <th>JSON</th>
 <th>PolicySet Type</th>
+<th>ALZ</th>
 <th>Category</th>
 <th>Deprecated</th>
 <th>Preview</th>
@@ -577,6 +593,7 @@ tf.init();}}
 
 </td>
 <td>$($policySet.Type)</td>
+<td>$($policySet.ALZ)</td>
 <td>$($policySet.Category -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($policySet.Deprecated)</td>
 <td>$($policySet.Preview)</td>
@@ -589,7 +606,7 @@ tf.init();}}
 "@
     }
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    if (-not $DefinitionInsightsDedicatedHTML) {
+    if ($NoDefinitionInsightsDedicatedHTML) {
         $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
         $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
     }
@@ -650,8 +667,10 @@ function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId
     col_3: 'select',
     col_4: 'select',
     col_5: 'select',
-    col_7: 'select',
+    col_6: 'select',
+    col_8: 'select',
     col_types: [
+        'caseinsensitivestring',
         'caseinsensitivestring',
         'caseinsensitivestring',
         'caseinsensitivestring',
@@ -667,6 +686,7 @@ function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId
     external_flt_ids: [
         'polsetJson',
         'polsetType',
+        'polsetIsALZ',
         'polsetCategory',
         'polsetDeprecated',
         'polsetPreview',
@@ -680,7 +700,7 @@ function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId
         },
         {
             name: 'colsVisibility',
-            at_start: [1,2,3,4,5,6,7,8,9],
+            at_start: [1,2,3,4,5,6,7,8,9,10],
             text: 'Columns: ',
             enable_tick_all: true
         }
@@ -889,7 +909,7 @@ tf.init();}}
     #endregion exportCSV
 
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    if (-not $DefinitionInsightsDedicatedHTML) {
+    if ($NoDefinitionInsightsDedicatedHTML) {
         $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
         $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
     }
@@ -992,8 +1012,8 @@ tf.init();}}
 '@)
     #endregion definitionInsightsAzureRBAC
 
-    Write-Host "   DefinitionInsightsDedicatedHTML: $DefinitionInsightsDedicatedHTML"
-    if (-not $DefinitionInsightsDedicatedHTML){
+    Write-Host "   NoDefinitionInsightsDedicatedHTML: $NoDefinitionInsightsDedicatedHTML"
+    if ($NoDefinitionInsightsDedicatedHTML) {
         Write-Host "   Appending DefinitionInsights to HTML"
         $script:html += $htmlDefinitionInsights
         $htmlDefinitionInsights = $null
@@ -1011,8 +1031,8 @@ tf.init();}}
         #$script:htmlDefinitionInsightsDedicated = $null
 
         $htmlDefinitionInsightsNo = @"
-        <span>DefinitionInsights have been saved to dedicated HTML file '$($outputPath)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html' (parameter -DefinitionInsightsDedicatedHTML: $($DefinitionInsightsDedicatedHTML))</span><br>
-        <a class="externallink" href="$($fileName)_DefinitionInsights.html" target="blank">DefinitionInsights <i class="fa fa-external-link" aria-hidden="true"></i></a>
+        <span>DefinitionInsights has been saved to dedicated HTML file '<i>$($outputPathGiven)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html</i>' (parameter -NoDefinitionInsightsDedicatedHTML = $($NoDefinitionInsightsDedicatedHTML))</span><br>
+        Open <a class="externallink" href="$($fileName)_DefinitionInsights.html" target="blank">DefinitionInsights <i class="fa fa-external-link" aria-hidden="true"></i></a>
 "@
         $script:html += $htmlDefinitionInsightsNo
         #$htmlDefinitionInsightsNo = $null

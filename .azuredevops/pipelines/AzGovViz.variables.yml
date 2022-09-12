@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220904_1
+# AzGovViz v6_major_20220912_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -285,7 +285,7 @@ variables:
     value:
 
 # Create a dedicated DefinitionInsights HTML file 
-  - name: DefinitionInsightsDedicatedHTML
+  - name: NoDefinitionInsightsDedicatedHTML
     # Switch | example: value: true
     value:
 

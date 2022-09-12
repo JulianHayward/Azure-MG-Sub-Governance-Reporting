@@ -1222,7 +1222,6 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
     else {
         $faimage = "<i class=`"fa fa-check-circle`" aria-hidden=`"true`"></i>"
 
-
         if ($tenantCustomPoliciesCount -gt 0) {
             $tfCount = $tenantCustomPoliciesCount
             $customPoliciesInScopeArray = [System.Collections.ArrayList]@()
@@ -1289,21 +1288,21 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                 }
                 @"
 <tr>
-<td>$($customPolicy.Scope)</td>
-<td>$($customPolicy.ScopeId)</td>
-<td>$($customPolicy.PolicyDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td>$($customPolicy.PolicyDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td class="breakwordall">$($customPolicy.Scope)</td>
+<td class="breakwordall">$($customPolicy.ScopeId)</td>
+<td class="breakwordall">$($customPolicy.PolicyDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td class="breakwordall">$($customPolicy.PolicyDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td>$($customPolicy.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td class="breakwordall">$($customPolicy.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($customPolicy.ALZ)</td>
-<td>$($customPolicy.PolicyEffect)</td>
-<td>$($customPolicy.RoleDefinitions)</td>
+<td class="breakwordall">$($customPolicy.PolicyEffect)</td>
+<td class="breakwordall">$($customPolicy.RoleDefinitions)</td>
 <td class="breakwordall">$($customPolicy.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicyUsedInPolicySets)</td>
-<td>$($customPolicy.CreatedOn)</td>
-<td>$($customPolicy.CreatedBy)</td>
-<td>$($customPolicy.UpdatedOn)</td>
-<td>$($customPolicy.UpdatedBy)</td>
+<td class="breakwordall">$($customPolicy.CreatedOn)</td>
+<td class="breakwordall">$($customPolicy.CreatedBy)</td>
+<td class="breakwordall">$($customPolicy.UpdatedOn)</td>
+<td class="breakwordall">$($customPolicy.UpdatedBy)</td>
 </tr>
 "@
             }
@@ -1343,8 +1342,12 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 "@)
             }
             [void]$htmlTenantSummary.AppendLine(@"
-btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-            col_widths: ['', '150px', '150px', '150px', '250px', '150px', '', '150px', '150px', '150px', '250px', '', '150px', '', '150px'],
+            btn_reset: true, 
+            highlight_keywords: true, 
+            alternate_rows: true, 
+            auto_filter: { delay: 1100 }, 
+            no_results_message: true,
+            col_widths: ['50px', '150px', '150px', '150px', '250px', '150px', '50px', '150px', '150px', '150px', '250px', '75px', '150px', '75px', '150px'],
             col_0: 'select',
             col_6: 'select',
             locale: 'en-US',
@@ -1365,7 +1368,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'date',
                 'caseinsensitivestring'
             ],
-extensions: [{ name: 'sort' }]
+            extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
         tf.init();}}
@@ -2405,7 +2408,7 @@ extensions: [{ name: 'sort' }]
                             PolicyScopeId   = 'n/a'
                             ALZPolicyName   = $alzPolicy
                             ALZVersion      = $alzPolicies.($alzPolicy).latestVersion
-                            ALZState        = $alzPolicies.($alzPolicy).status
+                            ALZState        = ''
                             InTenant        = $false
                             DetectedBy      = 'ALZ GitHub repository'
                             AzAdvertizerUrl = "https://www.azadvertizer.net/azpolicyadvertizer/$($alzPolicy).html"
@@ -2453,7 +2456,7 @@ extensions: [{ name: 'sort' }]
                             PolicyScopeId   = 'n/a'
                             ALZPolicyName   = $alzPolicySet
                             ALZVersion      = $alzPolicySets.($alzPolicySet).latestVersion
-                            ALZState        = $alzPolicySets.($alzPolicySet).status
+                            ALZState        = ''
                             InTenant        = $false
                             DetectedBy      = 'ALZ GitHub repository'
                             AzAdvertizerUrl = "https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($alzPolicySet).html"
@@ -2465,11 +2468,12 @@ extensions: [{ name: 'sort' }]
         if ($alzPoliciesInTenant.Count -gt 0) {
             $tfCount = $alzPoliciesInTenant.Count
             $htmlTableId = 'TenantSummary_ALZPolicies'
-
+            $abbrALZ = " <abbr title=`"obsolete: this policy is no longer ALZ maintained by ALZ&#13;outDated: a new version of the policy available&#13;unknown: ALZ related policy could not be mapped&#13;upToDate: policy matches with latest ALZ policy`"><i class=`"fa fa-question-circle`" aria-hidden=`"true`"></i></abbr>"
             [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ALZPolicies"><i class="padlx fa fa-retweet" aria-hidden="true" style="color:#23C632"></i> <span class="valignMiddle">Azure Landing Zones EverGreen</span>
 </button>
 <div class="content TenantSummary">
+<i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Landing Zones (ALZ)</span> <a class="externallink" href="https://github.com/Azure/Enterprise-Scale/blob/main/docs/ESLZ-Policies.md" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id= "$htmlTableId" class="summaryTable">
 <thead>
@@ -2481,7 +2485,7 @@ extensions: [{ name: 'sort' }]
 <th>Policy Scope Id</th>
 <th class="uamiresaltbgc">ALZ Policy Name (Id)</th>
 <th class="uamiresaltbgc">ALZ Policy Version</th>
-<th class="uamiresaltbgc">ALZ State</th>
+<th class="uamiresaltbgc">ALZ State$($abbrALZ)</th>
 <th>Exists in tenant</th>
 <th>Detection method</th>
 <th>AzAdvertizer Link</th>
@@ -2560,7 +2564,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_0: 'select',
             col_3: 'select',
-            col_7: 'select',
+            col_7: 'multiple',
             col_8: 'select',
             col_9: 'select',
             col_types: [
@@ -3726,6 +3730,7 @@ extensions: [{ name: 'sort' }]
                     PolicyId                              = $policyAssignmentAll.PolicyDefinitionId
                     PolicyVariant                         = $policyAssignmentAll.PolicyVariant
                     PolicyType                            = $policyAssignmentAll.PolicyType
+                    PolicyIsALZ                           = $policyAssignmentAll.PolicyIsALZ
                     PolicyCategory                        = $policyCategory
                     Inheritance                           = $scope
                     ExcludedScope                         = $excludedScope
@@ -3771,6 +3776,7 @@ extensions: [{ name: 'sort' }]
                     PolicyId                              = $policyAssignmentAll.PolicyDefinitionId
                     PolicyVariant                         = $policyAssignmentAll.PolicyVariant
                     PolicyType                            = $policyAssignmentAll.PolicyType
+                    PolicyIsALZ                           = $policyAssignmentAll.PolicyIsALZ
                     PolicyCategory                        = $policyCategory
                     Inheritance                           = $scope
                     ExcludedScope                         = $excludedScope
@@ -3993,6 +3999,7 @@ extensions: [{ name: 'sort' }]
 <th>Policy/Set</th>
 <th>Type</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Effect</th>
 <th>Parameters</th>
 <th>Enforcement</th>
@@ -4058,6 +4065,7 @@ extensions: [{ name: 'sort' }]
 <td>$($policyAssignment.PolicyVariant)</td>
 <td>$($policyAssignment.PolicyType)</td>
 <td>$($policyAssignment.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($policyAssignment.PolicyIsALZ)</td>
 <td>$($policyAssignment.Effect)</td>
 <td>$($policyAssignment.PolicyAssignmentParameters)</td>
 <td>$($policyAssignment.PolicyAssignmentEnforcementMode)</td>
@@ -4149,8 +4157,10 @@ extensions: [{ name: 'sort' }]
             col_12: 'select',
             col_14: 'select',
             col_16: 'select',
+            col_17: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -4197,12 +4207,12 @@ extensions: [{ name: 'sort' }]
 
             if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
                 [void]$htmlTenantSummary.AppendLine(@'
-            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
 '@)
             }
             else {
                 [void]$htmlTenantSummary.AppendLine(@'
-            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
 '@)
             }
 
@@ -4214,12 +4224,12 @@ extensions: [{ name: 'sort' }]
 
             if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
                 [void]$htmlTenantSummary.AppendLine(@'
-                    at_start: [9, 25, 26],
+                    at_start: [9, 26, 27],
 '@)
             }
             else {
                 [void]$htmlTenantSummary.AppendLine(@'
-                    at_start: [9, 20, 21],
+                    at_start: [9, 21, 22],
 '@)
             }
 
@@ -10669,7 +10679,7 @@ extensions: [{ name: 'sort' }]
     [void]$htmlTenantSummary.AppendLine(@'
 <button type="button" class="collapsible" id="tenantSummaryAAD"><hr class="hr-textAAD" data-content="Azure Active Directory" /></button>
 <div class="content TenantSummaryContent">
-<i class="padlx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Check out <b>AzADServicePrincipalInsights</b> POC</span> <a class="externallink" href="https://aka.ms/azadserviceprincipalinsights" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Check out <b>AzADServicePrincipalInsights</b></span> <a class="externallink" href="https://aka.ms/azadserviceprincipalinsights" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Demystifying Service Principals - Managed Identities</span> <a class="externallink" href="https://devblogs.microsoft.com/devops/demystifying-service-principals-managed-identities/" target="_blank" rel="noopener">devBlogs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">John Savill - Azure AD App Registrations, Enterprise Apps and Service Principals</span> <a class="externallink" href="https://www.youtube.com/watch?v=WVNvoiA_ktw" target="_blank" rel="noopener">YouTube <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 '@)

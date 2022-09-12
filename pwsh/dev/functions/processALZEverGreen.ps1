@@ -56,7 +56,7 @@ function processALZEverGreen {
         $allESLZPolicyHashes = @{}
         $allESLZPolicySetHashes = @{}
 
-        Write-Host " Processing ALZ Data Policy definitions"
+        #Write-Host " Processing ALZ Data Policy definitions"
         $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/dataPolicies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
         $commitCount = 0
         $processDataPolicies = $true
@@ -66,7 +66,7 @@ function processALZEverGreen {
                     $processDataPolicies = $false
                     continue
                 }
-                Write-Host "processing commit (dataPolicies) $($commit.CommitId)"
+                #Write-Host "processing commit (dataPolicies) $($commit.CommitId)"
                 $commitCount++
                 $jsonRaw = git show "$($commit.CommitId):eslzArm/managementGroupTemplates/policyDefinitions/dataPolicies.json"
                 
@@ -127,7 +127,7 @@ function processALZEverGreen {
             }
         }
 
-        Write-Host " Processing ALZ Policy and Set definitions"
+        #Write-Host " Processing ALZ Policy and Set definitions"
         $gitHist = (git log --format="%ai`t%H`t%an`t%ae`t%s" -- ./eslzArm/managementGroupTemplates/policyDefinitions/policies.json) | ConvertFrom-Csv -Delimiter "`t" -Header ("Date", "CommitId", "Author", "Email", "Subject")
         $commitCount = 0
         $doNewALZPolicyReadingApproach = $false
@@ -136,7 +136,7 @@ function processALZEverGreen {
             if ($commit.CommitId -eq '3476914f9ba9a8f3f641a25497dfb24a4efa1017') {
                 $doNewALZPolicyReadingApproach = $true
             }
-            Write-Host "processing commit $($commit.CommitId) - doNewALZPolicyReadingApproach: $doNewALZPolicyReadingApproach"
+            #Write-Host "processing commit $($commit.CommitId) - doNewALZPolicyReadingApproach: $doNewALZPolicyReadingApproach"
             $commitCount++
 
             $jsonRaw = git show "$($commit.CommitId):eslzArm/managementGroupTemplates/policyDefinitions/policies.json"
@@ -469,8 +469,8 @@ function processALZEverGreen {
         }
 
 
-        Write-Host " $($allESLZPolicies.Keys.Count) Policy definitions ($($allESLZPolicies.Values.where({$_.status -eq 'Prod'}).Count) productive)"
-        Write-Host " $($allESLZPolicySets.Keys.Count) PolicySet definitions ($($allESLZPolicySets.Values.where({$_.status -eq 'Prod'}).Count) productive)"
+        Write-Host " $($allESLZPolicies.Keys.Count) Azure Landing Zones (ALZ) Policy definitions ($($allESLZPolicies.Values.where({$_.status -eq 'Prod'}).Count) productive)"
+        Write-Host " $($allESLZPolicySets.Keys.Count) Azure Landing Zones (ALZ) PolicySet definitions ($($allESLZPolicySets.Values.where({$_.status -eq 'Prod'}).Count) productive)"
 
         $arrayObsoleteALZPolicies = @(
             'Deny-PublicEndpoint-Aks',

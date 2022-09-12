@@ -1808,7 +1808,7 @@ function dataCollectionPolicyDefinitions {
                     }
                 }
                 else {
-                    $htTemp.ALZ = 'NoALZEvergreen'
+                    $htTemp.ALZ = 'n/a'
                     $htTemp.ALZState = ''
                     $htTemp.ALZLatestVer = ''
                     $htTemp.ALZIdentificationLevel = ''
@@ -2079,7 +2079,7 @@ function dataCollectionPolicySetDefinitions {
                     }
                 }
                 else {
-                    $htTemp.ALZ = 'NoALZEvergreen'
+                    $htTemp.ALZ = 'n/a'
                     $htTemp.ALZState = ''
                     $htTemp.ALZLatestVer = ''
                     $htTemp.ALZIdentificationLevel = ''
@@ -2265,6 +2265,7 @@ function dataCollectionPolicyAssignmentsMG {
                             $policyDisplayName = ($policyDefinition).DisplayName
                             $policyDescription = ($policyDefinition).Description
                             $policyDefinitionType = ($policyDefinition).Type
+                            $policyDefinitionIsALZ = ($policyDefinition).ALZ
                             $policyCategory = ($policyDefinition).Category
                             $policyDefinitionEffectDefault = ($policyDefinition).effectDefaultValue
                             $policyDefinitionEffectFixed = ($policyDefinition).effectFixedValue
@@ -2305,6 +2306,7 @@ function dataCollectionPolicyAssignmentsMG {
                     $policyDisplayName = 'unknown'
                     $policyDescription = 'unknown'
                     $policyDefinitionType = 'likely Custom'
+                    $policyDefinitionIsALZ = 'unknown'
                     $policyCategory = 'unknown'
                     $policyDefinitionEffectDefault = 'unknown'
                     $policyDefinitionEffectFixed = 'unknown'
@@ -2381,6 +2383,7 @@ function dataCollectionPolicyAssignmentsMG {
                     -PolicyDescription $policyDescription `
                     -PolicyVariant $policyVariant `
                     -PolicyType $policyDefinitionType `
+                    -PolicyIsALZ $policyDefinitionIsALZ `
                     -PolicyCategory $policyCategory `
                     -PolicyDefinitionIdGuid ($policyDefinitionId -replace '.*/') `
                     -PolicyDefinitionId $policyDefinitionId `
@@ -2446,6 +2449,7 @@ function dataCollectionPolicyAssignmentsMG {
                         $policySetDisplayName = $policySetDefinition.DisplayName
                         $policySetDescription = $policySetDefinition.Description
                         $policySetDefinitionType = $policySetDefinition.Type
+                        $policySetDefinitionIsALZ = $policySetDefinition.ALZ
                         $policySetCategory = $policySetDefinition.Category
                     }
                     else {
@@ -2463,6 +2467,7 @@ function dataCollectionPolicyAssignmentsMG {
                     $policySetDisplayName = 'unknown'
                     $policySetDescription = 'unknown'
                     $policySetDefinitionType = 'likely Custom'
+                    $policySetDefinitionIsALZ = 'unknown'
                     $policySetCategory = 'unknown'
                 }
 
@@ -2536,6 +2541,7 @@ function dataCollectionPolicyAssignmentsMG {
                     -PolicyDescription $policySetDescription `
                     -PolicyVariant $policyVariant `
                     -PolicyType $policySetDefinitionType `
+                    -PolicyIsALZ $policySetDefinitionIsALZ `
                     -PolicyCategory $policySetCategory `
                     -PolicyDefinitionIdGuid ($policySetDefinitionId -replace '.*/') `
                     -PolicyDefinitionId $policySetDefinitionId `
@@ -2692,6 +2698,7 @@ function dataCollectionPolicyAssignmentsSub {
                             $policyDisplayName = ($policyAssignmentsPolicyDefinition).DisplayName
                             $policyDescription = ($policyAssignmentsPolicyDefinition).Description
                             $policyDefinitionType = ($policyAssignmentsPolicyDefinition).Type
+                            $policyDefinitionIsALZ = ($policyAssignmentsPolicyDefinition).ALZ
                             $policyCategory = ($policyAssignmentsPolicyDefinition).Category
                             $policyDefinitionEffectDefault = ($policyAssignmentsPolicyDefinition).effectDefaultValue
                             $policyDefinitionEffectFixed = ($policyAssignmentsPolicyDefinition).effectFixedValue
@@ -2760,6 +2767,7 @@ function dataCollectionPolicyAssignmentsSub {
                     $policyDisplayName = 'unknown'
                     $policyDescription = 'unknown'
                     $policyDefinitionType = 'likely Custom'
+                    $policyDefinitionIsALZ = 'unknown'
                     $policyCategory = 'unknown'
                     $policyDefinitionEffectDefault = 'unknown'
                     $policyDefinitionEffectFixed = 'unknown'
@@ -2862,6 +2870,7 @@ function dataCollectionPolicyAssignmentsSub {
                     -PolicyDescription $policyDescription `
                     -PolicyVariant $policyVariant `
                     -PolicyType $policyDefinitionType `
+                    -PolicyIsALZ $policyDefinitionIsALZ `
                     -PolicyCategory $policyCategory `
                     -PolicyDefinitionIdGuid ($policyDefinitionId -replace '.*/') `
                     -PolicyDefinitionId $policyDefinitionId `
@@ -2922,6 +2931,7 @@ function dataCollectionPolicyAssignmentsSub {
                             $policySetDisplayName = ($policyAssignmentsPolicySetDefinition).DisplayName
                             $policySetDescription = ($policyAssignmentsPolicySetDefinition).Description
                             $policySetDefinitionType = ($policyAssignmentsPolicySetDefinition).Type
+                            $policySetDefinitionIsALZ = ($policyAssignmentsPolicySetDefinition).ALZ
                             $policySetCategory = ($policyAssignmentsPolicySetDefinition).Category
 
                             if (($policyAssignmentsPolicySetDefinition).Type -ne $policySetDefinitionType) {
@@ -2960,6 +2970,7 @@ function dataCollectionPolicyAssignmentsSub {
                     $policySetDisplayName = 'unknown'
                     $policySetDescription = 'unknown'
                     $policySetDefinitionType = 'likely Custom'
+                    $policySetDefinitionIsALZ = 'unknown'
                     $policySetCategory = 'unknown'
 
                     if ($policySetDefinitionId -like '/providers/microsoft.management/managementgroups/*') {
@@ -3075,6 +3086,7 @@ function dataCollectionPolicyAssignmentsSub {
                     -PolicyDescription $policySetDescription `
                     -PolicyVariant $policyVariant `
                     -PolicyType $policySetDefinitionType `
+                    -PolicyIsALZ $policySetDefinitionIsALZ `
                     -PolicyCategory $policySetCategory `
                     -PolicyDefinitionIdGuid (($policySetDefinitionId) -replace '.*/') `
                     -PolicyDefinitionId $policySetDefinitionId `
