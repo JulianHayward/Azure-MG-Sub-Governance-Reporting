@@ -286,7 +286,7 @@ function dataCollectionResources {
                 Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')
                 #>
                 if ($azAPICallConf['htParameters'].PSRuleFailedOnly -eq $true) {
-                    $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue -outcome Fail,Error
+                    $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue -outcome Fail, Error
                 }
                 else {
                     $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
@@ -1685,60 +1685,166 @@ function dataCollectionPolicyDefinitions {
         }
 
         if ($doIt) {
-            if (($scopePolicyDefinition.Properties.description).length -eq 0) {
-                $policyDefinitionDescription = 'no description given'
-            }
-            else {
-                $policyDefinitionDescription = $scopePolicyDefinition.Properties.description
-            }
 
-            $htTemp = @{}
-            $htTemp.Id = $hlpPolicyDefinitionId
-            if ($hlpPolicyDefinitionId -like '/providers/Microsoft.Management/managementGroups/*') {
-                $htTemp.Scope = (($hlpPolicyDefinitionId).split('/'))[0..4] -join '/'
-                $htTemp.ScopeMgSub = 'Mg'
-                $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[4]
-                $htTemp.ScopeMGLevel = $htManagementGroupsMgPath.((($hlpPolicyDefinitionId).split('/'))[4]).ParentNameChainCount
-            }
-            if ($hlpPolicyDefinitionId -like '/subscriptions/*') {
-                $htTemp.Scope = (($hlpPolicyDefinitionId).split('/'))[0..2] -join '/'
-                $htTemp.ScopeMgSub = 'Sub'
-                $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[2]
-                $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($hlpPolicyDefinitionId).split('/'))[2]).level
-            }
-            $htTemp.DisplayName = $($scopePolicyDefinition.Properties.displayname)
-            $htTemp.Description = $($policyDefinitionDescription)
-            $htTemp.Type = $($scopePolicyDefinition.Properties.policyType)
-            $htTemp.Category = $($scopePolicyDefinition.Properties.metadata.category)
-            $htTemp.PolicyDefinitionId = $hlpPolicyDefinitionId
-            if ($scopePolicyDefinition.Properties.metadata.deprecated -eq $true -or $scopePolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
-                $htTemp.Deprecated = $scopePolicyDefinition.Properties.metadata.deprecated
-            }
-            else {
-                $htTemp.Deprecated = $false
-            }
-            if ($scopePolicyDefinition.Properties.metadata.preview -eq $true -or $scopePolicyDefinition.Properties.displayname -like "``[*Preview``]*") {
-                $htTemp.Preview = $scopePolicyDefinition.Properties.metadata.preview
-            }
-            else {
-                $htTemp.Preview = $false
-            }
-            #effects
-            if ($scopePolicyDefinition.properties.parameters.effect.defaultvalue) {
-                $htTemp.effectDefaultValue = $scopePolicyDefinition.properties.parameters.effect.defaultvalue
-                if ($scopePolicyDefinition.properties.parameters.effect.allowedValues) {
-                    $htTemp.effectAllowedValue = $scopePolicyDefinition.properties.parameters.effect.allowedValues -join ','
+            if (-not $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId)) {
+                if (($scopePolicyDefinition.Properties.description).length -eq 0) {
+                    $policyDefinitionDescription = 'no description given'
                 }
                 else {
-                    $htTemp.effectAllowedValue = 'n/a'
+                    $policyDefinitionDescription = $scopePolicyDefinition.Properties.description
                 }
-                $htTemp.effectFixedValue = 'n/a'
-            }
-            else {
-                if ($scopePolicyDefinition.properties.parameters.policyEffect.defaultValue) {
-                    $htTemp.effectDefaultValue = $scopePolicyDefinition.properties.parameters.policyEffect.defaultvalue
-                    if ($scopePolicyDefinition.properties.parameters.policyEffect.allowedValues) {
-                        $htTemp.effectAllowedValue = $scopePolicyDefinition.properties.parameters.policyEffect.allowedValues -join ','
+
+                $htTemp = @{}
+                $htTemp.Id = $hlpPolicyDefinitionId
+
+                if ($hlpPolicyDefinitionId -like '/providers/Microsoft.Management/managementGroups/*') {
+                    $htTemp.Scope = (($hlpPolicyDefinitionId).split('/'))[0..4] -join '/'
+                    $htTemp.ScopeMgSub = 'Mg'
+                    $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[4]
+                    $htTemp.ScopeMGLevel = $htManagementGroupsMgPath.((($hlpPolicyDefinitionId).split('/'))[4]).ParentNameChainCount
+                }
+                
+                if ($hlpPolicyDefinitionId -like '/subscriptions/*') {
+                    $htTemp.Scope = (($hlpPolicyDefinitionId).split('/'))[0..2] -join '/'
+                    $htTemp.ScopeMgSub = 'Sub'
+                    $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[2]
+                    $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($hlpPolicyDefinitionId).split('/'))[2]).level
+                }
+
+
+                if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
+
+                    $policyJsonRule = $scopePolicyDefinition.properties.policyRule | ConvertTo-Json -depth 99
+                    $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonRule))
+                    $stringHash = [System.BitConverter]::ToString($hash) 
+
+                    if ($alzPolicies.($scopePolicyDefinition.name) -or $alzPolicyHashes.($stringHash) -or $scopePolicyDefinition.properties.metadata.source -eq 'https://github.com/Azure/Enterprise-Scale/') {
+
+                        $policyHashMatch = $false
+                        if ($alzPolicyHashes.($stringHash)) {
+                            $policyHashMatch = $true
+                            $htTemp.ALZ = 'true'
+                            if ($alzPolicyHashes.($stringHash).metadataSource -eq 'https://github.com/Azure/Enterprise-Scale/' -and $alzPolicyHashes.($stringHash).metadataSource -eq $scopePolicyDefinition.properties.metadata.source -and $alzPolicyHashes.($stringHash).policyName -eq $scopePolicyDefinition.name) {
+                                $htTemp.ALZIdentificationLevel = 'PolicyRule Hash, Policy Name, MetaData Tag'
+                            }
+                            elseif ($alzPolicyHashes.($stringHash).policyName -eq $scopePolicyDefinition.name) {
+                                $htTemp.ALZIdentificationLevel = 'PolicyRule Hash, Policy Name'
+                            }
+                            else {
+                                $htTemp.ALZIdentificationLevel = 'PolicyRule Hash'
+                            }
+                            $htTemp.ALZPolicyName = $alzPolicyHashes.($stringHash).policyName
+                            $htTemp.hash = $stringHash
+                            if ($alzpolicies.($alzPolicyHashes.($stringHash).policyName).status -eq 'obsolete') {
+                                $htTemp.ALZState = 'obsolete'
+                                $htTemp.ALZLatestVer = ''
+                            }
+                            else {
+                                if ($scopePolicyDefinition.Properties.metadata.version) {
+                                    if ($alzpolicies.($alzPolicyHashes.($stringHash).policyName).latestVersion -eq $scopePolicyDefinition.Properties.metadata.version) {
+                                        $htTemp.ALZState = 'upToDate'
+                                    }
+                                    else {
+                                        $htTemp.ALZState = 'outDated'
+                                    }
+                                }
+                                else {
+                                    $htTemp.ALZState = 'potentiallyOutDated (no ver)'
+                                }
+                                $htTemp.ALZLatestVer = $alzpolicies.($alzPolicyHashes.($stringHash).policyName).latestVersion
+                            }
+                        }
+
+                        $policyNameMatch = $false
+                        if ($alzPolicies.($scopePolicyDefinition.name) -and -not $policyHashMatch) {
+                            $policyNameMatch = $true
+                            $htTemp.ALZ = 'true'
+                            if ($alzPolicies.($scopePolicyDefinition.name).metadataSource -eq 'https://github.com/Azure/Enterprise-Scale/' -and $alzPolicies.($scopePolicyDefinition.name).metadataSource -eq $scopePolicyDefinition.properties.metadata.source) {
+                                $htTemp.ALZIdentificationLevel = 'Policy Name, MetaData Tag'
+                            }
+                            else {
+                                $htTemp.ALZIdentificationLevel = 'Policy Name'
+                            }
+                                    
+                            $htTemp.ALZPolicyName = $alzPolicies.($scopePolicyDefinition.name).policyName
+                            $htTemp.hash = $stringHash
+                            if ($alzPolicies.($scopePolicyDefinition.name).status -eq 'obsolete') {
+                                $htTemp.ALZState = 'obsolete'
+                                $htTemp.ALZLatestVer = ''
+                            }
+                            else {
+                                if ($scopePolicyDefinition.Properties.metadata.version) {
+                                    if ($alzPolicies.($scopePolicyDefinition.name).latestVersion -eq $scopePolicyDefinition.Properties.metadata.version) {
+                                        $htTemp.ALZState = 'upToDate'
+                                    }
+                                    else {
+                                        $htTemp.ALZState = 'outDated'
+                                    }
+                                }
+                                else {
+                                    $htTemp.ALZState = 'potentiallyOutDated (no ver)'
+                                }
+
+                                $htTemp.ALZLatestVer = $alzPolicies.($scopePolicyDefinition.name).latestVersion
+                            }
+                        }
+
+                        if ($scopePolicyDefinition.properties.metadata.source -eq 'https://github.com/Azure/Enterprise-Scale/' -and -not $policyHashMatch -and -not $policyNameMatch) {
+                            $htTemp.ALZ = 'true'
+                            $htTemp.ALZState = 'unknown'
+                            $htTemp.ALZLatestVer = ''
+                            $htTemp.ALZIdentificationLevel = 'MetaData Tag'
+                            $htTemp.ALZPolicyName = ''
+                            $htTemp.hash = $stringHash
+                        }
+                    }
+                    else {
+                        $htTemp.ALZ = 'false'
+                        $htTemp.ALZState = ''
+                        $htTemp.ALZLatestVer = ''
+                        $htTemp.ALZIdentificationLevel = ''
+                        $htTemp.ALZPolicyName = ''
+                        $htTemp.hash = $stringHash
+                    }
+                }
+                else {
+                    $htTemp.ALZ = 'n/a'
+                    $htTemp.ALZState = ''
+                    $htTemp.ALZLatestVer = ''
+                    $htTemp.ALZIdentificationLevel = ''
+                    $htTemp.ALZPolicyName = ''
+                    $htTemp.hash = ''
+                }
+
+                $htTemp.DisplayName = $($scopePolicyDefinition.Properties.displayname)
+                $htTemp.Name = $scopePolicyDefinition.Name
+                $htTemp.Description = $($policyDefinitionDescription)
+                $htTemp.Type = $($scopePolicyDefinition.Properties.policyType)
+                $htTemp.Category = $($scopePolicyDefinition.Properties.metadata.category)
+                if ($scopePolicyDefinition.Properties.metadata.version) {
+                    $htTemp.Version = $($scopePolicyDefinition.Properties.metadata.version)
+                }
+                else {
+                    $htTemp.Version = 'n/a'
+                }
+                $htTemp.PolicyDefinitionId = $hlpPolicyDefinitionId
+                if ($scopePolicyDefinition.Properties.metadata.deprecated -eq $true -or $scopePolicyDefinition.Properties.displayname -like "``[Deprecated``]*") {
+                    $htTemp.Deprecated = $scopePolicyDefinition.Properties.metadata.deprecated
+                }
+                else {
+                    $htTemp.Deprecated = $false
+                }
+                if ($scopePolicyDefinition.Properties.metadata.preview -eq $true -or $scopePolicyDefinition.Properties.displayname -like "``[*Preview``]*") {
+                    $htTemp.Preview = $scopePolicyDefinition.Properties.metadata.preview
+                }
+                else {
+                    $htTemp.Preview = $false
+                }
+                #effects
+                if ($scopePolicyDefinition.properties.parameters.effect.defaultvalue) {
+                    $htTemp.effectDefaultValue = $scopePolicyDefinition.properties.parameters.effect.defaultvalue
+                    if ($scopePolicyDefinition.properties.parameters.effect.allowedValues) {
+                        $htTemp.effectAllowedValue = $scopePolicyDefinition.properties.parameters.effect.allowedValues -join ','
                     }
                     else {
                         $htTemp.effectAllowedValue = 'n/a'
@@ -1746,17 +1852,30 @@ function dataCollectionPolicyDefinitions {
                     $htTemp.effectFixedValue = 'n/a'
                 }
                 else {
-                    $htTemp.effectFixedValue = $scopePolicyDefinition.Properties.policyRule.then.effect
-                    $htTemp.effectDefaultValue = 'n/a'
-                    $htTemp.effectAllowedValue = 'n/a'
+                    if ($scopePolicyDefinition.properties.parameters.policyEffect.defaultValue) {
+                        $htTemp.effectDefaultValue = $scopePolicyDefinition.properties.parameters.policyEffect.defaultvalue
+                        if ($scopePolicyDefinition.properties.parameters.policyEffect.allowedValues) {
+                            $htTemp.effectAllowedValue = $scopePolicyDefinition.properties.parameters.policyEffect.allowedValues -join ','
+                        }
+                        else {
+                            $htTemp.effectAllowedValue = 'n/a'
+                        }
+                        $htTemp.effectFixedValue = 'n/a'
+                    }
+                    else {
+                        $htTemp.effectFixedValue = $scopePolicyDefinition.Properties.policyRule.then.effect
+                        $htTemp.effectDefaultValue = 'n/a'
+                        $htTemp.effectAllowedValue = 'n/a'
+                    }
                 }
+
+                $htTemp.Json = $scopePolicyDefinition
+                $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId) = $htTemp
             }
-            $htTemp.Json = $scopePolicyDefinition
-            ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId) = $htTemp
 
 
             if (-not [string]::IsNullOrWhiteSpace($scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).RoleDefinitionIds = $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
+                $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId).RoleDefinitionIds = $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
                 foreach ($roledefinitionId in $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
                     if (-not [string]::IsNullOrEmpty($roledefinitionId)) {
                         if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
@@ -1775,7 +1894,7 @@ function dataCollectionPolicyDefinitions {
                 }
             }
             else {
-                ($script:htCacheDefinitionsPolicy).($hlpPolicyDefinitionId).RoleDefinitionIds = 'n/a'
+                $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId).RoleDefinitionIds = 'n/a'
             }
 
             #region namingValidation
@@ -1816,7 +1935,7 @@ function dataCollectionPolicySetDefinitions {
         [string]$scopeDisplayName,
         $subscriptionQuotaId
     )
-
+    
     if ($TargetMgOrSub -eq 'Sub') {
         $currentTask = "Getting PolicySet definitions for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Custom'"
@@ -1851,55 +1970,157 @@ function dataCollectionPolicySetDefinitions {
         }
 
         if ($doIt) {
-            if (($scopePolicySetDefinition.Properties.description).length -eq 0) {
-                $policySetDefinitionDescription = 'no description given'
-            }
-            else {
-                $policySetDefinitionDescription = $scopePolicySetDefinition.Properties.description
-            }
+            if (-not $script:htCacheDefinitionsPolicySet.($hlpPolicySetDefinitionId)) {
+                if (($scopePolicySetDefinition.Properties.description).length -eq 0) {
+                    $policySetDefinitionDescription = 'no description given'
+                }
+                else {
+                    $policySetDefinitionDescription = $scopePolicySetDefinition.Properties.description
+                }
 
-            $htTemp = @{}
-            $htTemp.Id = $hlpPolicySetDefinitionId
-            if ($scopePolicySetDefinition.Id -like '/providers/Microsoft.Management/managementGroups/*') {
-                $htTemp.Scope = (($scopePolicySetDefinition.Id).split('/'))[0..4] -join '/'
-                $htTemp.ScopeMgSub = 'Mg'
-                $htTemp.ScopeId = (($scopePolicySetDefinition.Id).split('/'))[4]
-                $htTemp.ScopeMGLevel = $htManagementGroupsMgPath.((($scopePolicySetDefinition.Id).split('/'))[4]).ParentNameChainCount
-            }
-            if ($scopePolicySetDefinition.Id -like '/subscriptions/*') {
-                $htTemp.Scope = (($scopePolicySetDefinition.Id).split('/'))[0..2] -join '/'
-                $htTemp.ScopeMgSub = 'Sub'
-                $htTemp.ScopeId = (($scopePolicySetDefinition.Id).split('/'))[2]
-                $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($scopePolicySetDefinition.Id).split('/'))[2]).level
-            }
-            $htTemp.DisplayName = $($scopePolicySetDefinition.Properties.displayname)
-            $htTemp.Description = $($policySetDefinitionDescription)
-            $htTemp.Type = $($scopePolicySetDefinition.Properties.policyType)
-            $htTemp.Category = $($scopePolicySetDefinition.Properties.metadata.category)
-            $htTemp.PolicyDefinitionId = $hlpPolicySetDefinitionId
-            $arrayPolicySetPolicyIdsToLower = @()
-            $htPolicySetPolicyRefIds = @{}
-            $arrayPolicySetPolicyIdsToLower = foreach ($policySetPolicy in $scopePolicySetDefinition.properties.policydefinitions) {
-                $($policySetPolicy.policyDefinitionId).ToLower()
-                $htPolicySetPolicyRefIds.($policySetPolicy.policyDefinitionReferenceId) = ($policySetPolicy.policyDefinitionId)
-            }
-            $htTemp.PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
-            $htTemp.PolicySetPolicyRefIds = $htPolicySetPolicyRefIds
-            $htTemp.Json = $scopePolicySetDefinition
-            if ($scopePolicySetDefinition.Properties.metadata.deprecated -eq $true -or $scopePolicySetDefinition.Properties.displayname -like "``[Deprecated``]*") {
-                $htTemp.Deprecated = $scopePolicySetDefinition.Properties.metadata.deprecated
-            }
-            else {
-                $htTemp.Deprecated = $false
-            }
-            if ($scopePolicySetDefinition.Properties.metadata.preview -eq $true -or $scopePolicySetDefinition.Properties.displayname -like "``[*Preview``]*") {
-                $htTemp.Preview = $scopePolicySetDefinition.Properties.metadata.preview
-            }
-            else {
-                $htTemp.Preview = $false
-            }
-            ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId) = $htTemp
+                $htTemp = @{}
+                $htTemp.Id = $hlpPolicySetDefinitionId
+                if ($scopePolicySetDefinition.Id -like '/providers/Microsoft.Management/managementGroups/*') {
+                    $htTemp.Scope = (($scopePolicySetDefinition.Id).split('/'))[0..4] -join '/'
+                    $htTemp.ScopeMgSub = 'Mg'
+                    $htTemp.ScopeId = (($scopePolicySetDefinition.Id).split('/'))[4]
+                    $htTemp.ScopeMGLevel = $htManagementGroupsMgPath.((($scopePolicySetDefinition.Id).split('/'))[4]).ParentNameChainCount
+                }
 
+                if ($scopePolicySetDefinition.Id -like '/subscriptions/*') {
+                    $htTemp.Scope = (($scopePolicySetDefinition.Id).split('/'))[0..2] -join '/'
+                    $htTemp.ScopeMgSub = 'Sub'
+                    $htTemp.ScopeId = (($scopePolicySetDefinition.Id).split('/'))[2]
+                    $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($scopePolicySetDefinition.Id).split('/'))[2]).level
+                }
+
+                if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
+
+                    $policyJsonParameters = $scopePolicySetDefinition.properties.parameters | ConvertTo-Json -depth 99
+                    $policyJsonPolicyDefinitions = $scopePolicySetDefinition.properties.policyDefinitions | ConvertTo-Json -depth 99
+                    $hashParameters = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonParameters))
+                    $stringHashParameters = [System.BitConverter]::ToString($hashParameters) 
+                    $hashPolicyDefinitions = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonPolicyDefinitions))
+                    $stringHashPolicyDefinitions = [System.BitConverter]::ToString($hashPolicyDefinitions) 
+                    $stringHash = "$($stringHashParameters)_$($stringHashPolicyDefinitions)"
+
+                    if ($alzPolicySets.($scopePolicySetDefinition.name) -or $allESLZPolicySetHashes.($stringHash) -or $scopePolicySetDefinition.properties.metadata.source -eq 'https://github.com/Azure/Enterprise-Scale/') {
+
+                        $policySetHashMatch = $false
+                        if ($alzPolicySetHashes.($stringHash)) {
+                            $policySetHashMatch = $true
+                            $htTemp.ALZ = 'true'
+                            if ($allESLZPolicySetHashes.($stringHash).metadataSource -eq 'https://github.com/Azure/Enterprise-Scale/' -and $allESLZPolicySetHashes.($stringHash).metadataSource -eq $scopePolicySetDefinition.properties.metadata.source -and $allESLZPolicySetHashes.($stringHash).policySetName -eq $scopePolicySetDefinition.name) {
+                                $htTemp.ALZIdentificationLevel = 'PolicySet Hash, PolicySet Name, MetaData Tag'
+                            }
+                            elseif ($allESLZPolicySetHashes.($stringHash).policySetName -eq $scopePolicySetDefinition.name) {
+                                $htTemp.ALZIdentificationLevel = 'PolicySet Hash, PolicySet Name'
+                            }
+                            else {
+                                $htTemp.ALZIdentificationLevel = 'PolicySet Hash'
+                            }
+                            $htTemp.ALZPolicySetName = $alzPolicySetHashes.($stringHash).policySetName
+                            if ($alzPolicySetHashes.($stringHash).status -eq 'obsolete') {
+                                $htTemp.ALZState = 'obsolete'
+                                $htTemp.ALZLatestVer = ''
+                            }
+                            else {
+                                if ($alzPolicySetHashes.($stringHash).latestVersion -eq $scopePolicySetDefinition.Properties.metadata.version) {
+                                    $htTemp.ALZState = 'upToDate'
+                                }
+                                else {
+                                    $htTemp.ALZState = 'outDated'
+                                }
+                                $htTemp.ALZLatestVer = $alzPolicySetHashes.($stringHash).latestVersion
+                            }
+                        }
+
+                        $policySetNameMatch = $false
+                        if ($alzPolicySets.($scopePolicySetDefinition.name) -and -not $policySetHashMatch) {
+                            $policySetNameMatch = $true
+                            $htTemp.ALZ = 'true'
+                            if ($alzPolicySets.($scopePolicySetDefinition.name).metadataSource -eq 'https://github.com/Azure/Enterprise-Scale/' -and $alzPolicySets.($scopePolicySetDefinition.name).metadataSource -eq $scopePolicySetDefinition.properties.metadata.source) {
+                                $htTemp.ALZIdentificationLevel = 'PolicySet Name, MetaData Tag'
+                            }
+                            else {
+                                $htTemp.ALZIdentificationLevel = 'PolicySet Name'
+                            }
+                            $htTemp.ALZPolicySetName = $alzPolicySets.($scopePolicySetDefinition.name).policySetName
+                            if ($alzPolicySets.($scopePolicySetDefinition.name).status -eq 'obsolete') {
+                                $htTemp.ALZState = 'obsolete'
+                                $htTemp.ALZLatestVer = ''
+                            }
+                            else {
+                                if ($alzPolicySets.($scopePolicySetDefinition.name).latestVersion -eq $scopePolicySetDefinition.Properties.metadata.version) {
+                                    $htTemp.ALZState = 'upToDate'
+                                }
+                                else {
+                                    $htTemp.ALZState = 'outDated'
+                                }
+                                $htTemp.ALZLatestVer = $alzPolicySets.($scopePolicySetDefinition.name).latestVersion
+                            }
+                        }
+
+                        if ($scopePolicySetDefinition.properties.metadata.source -eq 'https://github.com/Azure/Enterprise-Scale/' -and -not $policySetHashMatch -and -not $policySetNameMatch) {
+                            $htTemp.ALZ = 'true'
+                            $htTemp.ALZState = 'unknown'
+                            $htTemp.ALZLatestVer = ''
+                            $htTemp.ALZIdentificationLevel = 'MetaData Tag'
+                            $htTemp.ALZPolicyName = ''
+                            $htTemp.hash = $stringHash
+                        }
+                    }
+                    else {
+                        $htTemp.ALZ = 'false'
+                        $htTemp.ALZState = ''
+                        $htTemp.ALZLatestVer = ''
+                        $htTemp.ALZIdentificationLevel = ''
+                        $htTemp.ALZPolicySetName = ''
+                    }
+                }
+                else {
+                    $htTemp.ALZ = 'n/a'
+                    $htTemp.ALZState = ''
+                    $htTemp.ALZLatestVer = ''
+                    $htTemp.ALZIdentificationLevel = ''
+                    $htTemp.ALZPolicySetName = ''
+                }
+
+                $htTemp.DisplayName = $($scopePolicySetDefinition.Properties.displayname)
+                $htTemp.Name = $scopePolicySetDefinition.Name
+                $htTemp.Description = $($policySetDefinitionDescription)
+                $htTemp.Type = $($scopePolicySetDefinition.Properties.policyType)
+                $htTemp.Category = $($scopePolicySetDefinition.Properties.metadata.category)
+                if ($scopePolicySetDefinition.Properties.metadata.version) {
+                    $htTemp.Version = $($scopePolicySetDefinition.Properties.metadata.version)
+                }
+                else {
+                    $htTemp.Version = 'n/a'
+                }
+                $htTemp.PolicyDefinitionId = $hlpPolicySetDefinitionId
+                $arrayPolicySetPolicyIdsToLower = @()
+                $htPolicySetPolicyRefIds = @{}
+                $arrayPolicySetPolicyIdsToLower = foreach ($policySetPolicy in $scopePolicySetDefinition.properties.policydefinitions) {
+                    $($policySetPolicy.policyDefinitionId).ToLower()
+                    $htPolicySetPolicyRefIds.($policySetPolicy.policyDefinitionReferenceId) = ($policySetPolicy.policyDefinitionId)
+                }
+                $htTemp.PolicySetPolicyIds = $arrayPolicySetPolicyIdsToLower
+                $htTemp.PolicySetPolicyRefIds = $htPolicySetPolicyRefIds
+                $htTemp.Json = $scopePolicySetDefinition
+                if ($scopePolicySetDefinition.Properties.metadata.deprecated -eq $true -or $scopePolicySetDefinition.Properties.displayname -like "``[Deprecated``]*") {
+                    $htTemp.Deprecated = $scopePolicySetDefinition.Properties.metadata.deprecated
+                }
+                else {
+                    $htTemp.Deprecated = $false
+                }
+                if ($scopePolicySetDefinition.Properties.metadata.preview -eq $true -or $scopePolicySetDefinition.Properties.displayname -like "``[*Preview``]*") {
+                    $htTemp.Preview = $scopePolicySetDefinition.Properties.metadata.preview
+                }
+                else {
+                    $htTemp.Preview = $false
+                }
+                ($script:htCacheDefinitionsPolicySet).($hlpPolicySetDefinitionId) = $htTemp
+            }
             #namingValidation
             if (-not [string]::IsNullOrEmpty($scopePolicySetDefinition.Properties.displayname)) {
                 $namingValidationResult = NamingValidation -toCheck $scopePolicySetDefinition.Properties.displayname
@@ -2044,6 +2265,7 @@ function dataCollectionPolicyAssignmentsMG {
                             $policyDisplayName = ($policyDefinition).DisplayName
                             $policyDescription = ($policyDefinition).Description
                             $policyDefinitionType = ($policyDefinition).Type
+                            $policyDefinitionIsALZ = ($policyDefinition).ALZ
                             $policyCategory = ($policyDefinition).Category
                             $policyDefinitionEffectDefault = ($policyDefinition).effectDefaultValue
                             $policyDefinitionEffectFixed = ($policyDefinition).effectFixedValue
@@ -2084,6 +2306,7 @@ function dataCollectionPolicyAssignmentsMG {
                     $policyDisplayName = 'unknown'
                     $policyDescription = 'unknown'
                     $policyDefinitionType = 'likely Custom'
+                    $policyDefinitionIsALZ = 'unknown'
                     $policyCategory = 'unknown'
                     $policyDefinitionEffectDefault = 'unknown'
                     $policyDefinitionEffectFixed = 'unknown'
@@ -2160,6 +2383,7 @@ function dataCollectionPolicyAssignmentsMG {
                     -PolicyDescription $policyDescription `
                     -PolicyVariant $policyVariant `
                     -PolicyType $policyDefinitionType `
+                    -PolicyIsALZ $policyDefinitionIsALZ `
                     -PolicyCategory $policyCategory `
                     -PolicyDefinitionIdGuid ($policyDefinitionId -replace '.*/') `
                     -PolicyDefinitionId $policyDefinitionId `
@@ -2225,6 +2449,7 @@ function dataCollectionPolicyAssignmentsMG {
                         $policySetDisplayName = $policySetDefinition.DisplayName
                         $policySetDescription = $policySetDefinition.Description
                         $policySetDefinitionType = $policySetDefinition.Type
+                        $policySetDefinitionIsALZ = $policySetDefinition.ALZ
                         $policySetCategory = $policySetDefinition.Category
                     }
                     else {
@@ -2242,6 +2467,7 @@ function dataCollectionPolicyAssignmentsMG {
                     $policySetDisplayName = 'unknown'
                     $policySetDescription = 'unknown'
                     $policySetDefinitionType = 'likely Custom'
+                    $policySetDefinitionIsALZ = 'unknown'
                     $policySetCategory = 'unknown'
                 }
 
@@ -2315,6 +2541,7 @@ function dataCollectionPolicyAssignmentsMG {
                     -PolicyDescription $policySetDescription `
                     -PolicyVariant $policyVariant `
                     -PolicyType $policySetDefinitionType `
+                    -PolicyIsALZ $policySetDefinitionIsALZ `
                     -PolicyCategory $policySetCategory `
                     -PolicyDefinitionIdGuid ($policySetDefinitionId -replace '.*/') `
                     -PolicyDefinitionId $policySetDefinitionId `
@@ -2471,6 +2698,7 @@ function dataCollectionPolicyAssignmentsSub {
                             $policyDisplayName = ($policyAssignmentsPolicyDefinition).DisplayName
                             $policyDescription = ($policyAssignmentsPolicyDefinition).Description
                             $policyDefinitionType = ($policyAssignmentsPolicyDefinition).Type
+                            $policyDefinitionIsALZ = ($policyAssignmentsPolicyDefinition).ALZ
                             $policyCategory = ($policyAssignmentsPolicyDefinition).Category
                             $policyDefinitionEffectDefault = ($policyAssignmentsPolicyDefinition).effectDefaultValue
                             $policyDefinitionEffectFixed = ($policyAssignmentsPolicyDefinition).effectFixedValue
@@ -2539,6 +2767,7 @@ function dataCollectionPolicyAssignmentsSub {
                     $policyDisplayName = 'unknown'
                     $policyDescription = 'unknown'
                     $policyDefinitionType = 'likely Custom'
+                    $policyDefinitionIsALZ = 'unknown'
                     $policyCategory = 'unknown'
                     $policyDefinitionEffectDefault = 'unknown'
                     $policyDefinitionEffectFixed = 'unknown'
@@ -2641,6 +2870,7 @@ function dataCollectionPolicyAssignmentsSub {
                     -PolicyDescription $policyDescription `
                     -PolicyVariant $policyVariant `
                     -PolicyType $policyDefinitionType `
+                    -PolicyIsALZ $policyDefinitionIsALZ `
                     -PolicyCategory $policyCategory `
                     -PolicyDefinitionIdGuid ($policyDefinitionId -replace '.*/') `
                     -PolicyDefinitionId $policyDefinitionId `
@@ -2701,6 +2931,7 @@ function dataCollectionPolicyAssignmentsSub {
                             $policySetDisplayName = ($policyAssignmentsPolicySetDefinition).DisplayName
                             $policySetDescription = ($policyAssignmentsPolicySetDefinition).Description
                             $policySetDefinitionType = ($policyAssignmentsPolicySetDefinition).Type
+                            $policySetDefinitionIsALZ = ($policyAssignmentsPolicySetDefinition).ALZ
                             $policySetCategory = ($policyAssignmentsPolicySetDefinition).Category
 
                             if (($policyAssignmentsPolicySetDefinition).Type -ne $policySetDefinitionType) {
@@ -2739,6 +2970,7 @@ function dataCollectionPolicyAssignmentsSub {
                     $policySetDisplayName = 'unknown'
                     $policySetDescription = 'unknown'
                     $policySetDefinitionType = 'likely Custom'
+                    $policySetDefinitionIsALZ = 'unknown'
                     $policySetCategory = 'unknown'
 
                     if ($policySetDefinitionId -like '/providers/microsoft.management/managementgroups/*') {
@@ -2854,6 +3086,7 @@ function dataCollectionPolicyAssignmentsSub {
                     -PolicyDescription $policySetDescription `
                     -PolicyVariant $policyVariant `
                     -PolicyType $policySetDefinitionType `
+                    -PolicyIsALZ $policySetDefinitionIsALZ `
                     -PolicyCategory $policySetCategory `
                     -PolicyDefinitionIdGuid (($policySetDefinitionId) -replace '.*/') `
                     -PolicyDefinitionId $policySetDefinitionId `
@@ -2985,21 +3218,26 @@ function dataCollectionRoleAssignmentsMG {
 
     $addRowToTableDone = $false
     #PIM MGRoleAssignmentScheduleInstances
-    $currentTask = "Getting ARM RoleAssignment ScheduleInstances for Management Group: '$($scopeDisplayName)' ('$($scopeId)')"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
-    $method = 'GET'
-    $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    if ($htDoARMRoleAssignmentScheduleInstances.Do -eq $true) {
+        $currentTask = "Getting ARM RoleAssignment ScheduleInstances for Management Group: '$($scopeDisplayName)' ('$($scopeId)')"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
+        $method = 'GET'
+        $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-    if ($roleAssignmentScheduleInstancesFromAPI -eq 'ResourceNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'TenantNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'InvalidResourceType' -or $roleAssignmentScheduleInstancesFromAPI -eq 'RoleAssignmentScheduleInstancesError') {
-        #Write-Host "Scope '$($scopeDisplayName)' ('$scopeId') not onboarded in PIM"
-    }
-    else {
-        $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
-        $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
-        if ($roleAssignmentScheduleInstancesCount -gt 0) {
-            #$htRoleAssignmentsPIM = @{}
-            foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
-                $script:htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
+        if ($roleAssignmentScheduleInstancesFromAPI -eq 'RoleAssignmentScheduleInstancesError' -or $roleAssignmentScheduleInstancesFromAPI -eq 'AadPremiumLicenseRequired') {
+            if ($roleAssignmentScheduleInstancesFromAPI -eq 'AadPremiumLicenseRequired') {
+                Write-Host "    -> Setting 'htDoARMRoleAssignmentScheduleInstances.Do' to false (AadPremiumLicenseRequired)"
+                $script:htDoARMRoleAssignmentScheduleInstances.Do = $false
+            }
+        }
+        else {
+            $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
+            $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
+            if ($roleAssignmentScheduleInstancesCount -gt 0) {
+                #$htRoleAssignmentsPIM = @{}
+                foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
+                    $script:htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
+                }
             }
         }
     }
@@ -3261,21 +3499,27 @@ function dataCollectionRoleAssignmentsSub {
     $script:htSubscriptionsRoleAssignmentLimit.($scopeId) = $roleAssignmentsUsage.roleAssignmentsLimit
 
     #PIM SubscriptionRoleAssignmentScheduleInstances
-    $currentTask = "Getting ARM RoleAssignment ScheduleInstances for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
-    $method = 'GET'
-    $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    if ($htDoARMRoleAssignmentScheduleInstances.Do -eq $true) {
+        $currentTask = "Getting ARM RoleAssignment ScheduleInstances for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
+        $method = 'GET'
+        $roleAssignmentScheduleInstancesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-    if ($roleAssignmentScheduleInstancesFromAPI -eq 'ResourceNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'TenantNotOnboarded' -or $roleAssignmentScheduleInstancesFromAPI -eq 'InvalidResourceType' -or $roleAssignmentScheduleInstancesFromAPI -eq 'RoleAssignmentScheduleInstancesError') {
-        #Write-Host "Scope '$($scopeDisplayName)' ('$scopeId') not onboarded in PIM"
-    }
-    else {
-        $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
-        $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
-        if ($roleAssignmentScheduleInstancesCount -gt 0) {
-            #$htRoleAssignmentsPIM = @{}
-            foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
-                $script:htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
+        if ($roleAssignmentScheduleInstancesFromAPI -eq 'RoleAssignmentScheduleInstancesError' -or $roleAssignmentScheduleInstancesFromAPI -eq 'AadPremiumLicenseRequired') {
+            # this should not be required at sub level as the error would already have occured at mg level
+            # if ($roleAssignmentScheduleInstancesFromAPI -eq 'AadPremiumLicenseRequired') {
+            #     Write-Host " Setting 'htDoARMRoleAssignmentScheduleInstances.Do' to false (AadPremiumLicenseRequired)"
+            #     $script:htDoARMRoleAssignmentScheduleInstances.Do = $false
+            # }
+        }
+        else {
+            $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
+            $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
+            if ($roleAssignmentScheduleInstancesCount -gt 0) {
+                #$htRoleAssignmentsPIM = @{}
+                foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
+                    $script:htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
+                }
             }
         }
     }

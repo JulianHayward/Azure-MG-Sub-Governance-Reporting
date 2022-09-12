@@ -18,6 +18,7 @@ function addRowToTable() {
         [string]$PolicyDescription = '',
         [string]$PolicyVariant = '',
         [string]$PolicyType = '',
+        $PolicyIsALZ = '',
         [string]$PolicyCategory = '',
         [string]$PolicyDefinitionIdGuid = '',
         [string]$PolicyDefinitionId = '',
@@ -115,6 +116,7 @@ function addRowToTable() {
             PolicyDescription                        = $PolicyDescription
             PolicyVariant                            = $PolicyVariant
             PolicyType                               = $PolicyType
+            PolicyIsALZ                              = $PolicyIsALZ
             PolicyCategory                           = $PolicyCategory
             PolicyDefinitionIdGuid                   = $PolicyDefinitionIdGuid
             PolicyDefinitionId                       = $PolicyDefinitionId

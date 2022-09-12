@@ -1,5 +1,4 @@
 function setOutput {
-    #outputPath
     if (-not [IO.Path]::IsPathRooted($outputPath)) {
         $outputPath = Join-Path -Path (Get-Location).Path -ChildPath $outputPath
     }

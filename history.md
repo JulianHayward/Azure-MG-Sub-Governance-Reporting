@@ -4,6 +4,20 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Sep-12 / Major)
+
+* New feature 'ALZ EverGreen' - Azure Landing Zones EverGreen for Policy and Set definitions. AzGovViz will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ EverGreen results will be displayed in the __TenantSummary__ and a CSV export `*_ALZEverGreen.csv` will be provided. Thanks! ALZ Team 
+  * New parameter `-NoALZEverGreen` - Do not execute the ALZ EverGreen feature
+* Update: Per default __DefinitionInsights__ will be written to a separate HTML file. This will improve the html file handling (browser memory usage /response time / user experience). 
+  * Note: Please update your Azure DevOps and GitHub YAML files with the latest versions if you are using the webApp publishing feature
+  * New parameter `-NoDefinitionInsightsDedicatedHTML` (__DefinitionInsights__ will NOT be written to a separate HTML file `*_DefinitionInsights.html`)
+* Add Resource fluctuation detailed (`*_ResourceFluctuationDetailed.csv`) CSV output (add/remove, scope details, resource details)
+* Fix consumption reporting for large tenants with more than 3k subscriptions (_Management Group abc has too many subscriptions <count>, exceeding CCM API Current Limit 3000_)
+* Fix CSV export `*_PolicySetDefinitions.csv` - Builtin Policy definitions contained in PolicySet definitions will only show the GUID instead of the full ID as for large PolicySet definitions the field size limit in Excel may be exceeded (column: PoliciesUsed4CSV)
+* BuiltIn definitions collection - add 'Static' Policy definitions (part of __DefinitionInsights__ and `*_PolicyDefinitions.csv`)
+* Fix __HierarchyMap__ image quality (now .png (aka 'peng')). Thanks! Brooks Vaughn
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.23
+* Optimizations
 __Changes__ (2022-Aug-17 / Major)
 
 * __Update: IMPORTANT Fix__ for custom Role definitions / missing DataActions and NotDataActions

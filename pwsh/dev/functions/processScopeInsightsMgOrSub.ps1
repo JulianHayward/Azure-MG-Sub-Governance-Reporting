@@ -2602,6 +2602,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 <th>PolicyId</th>
 <th>Type</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Effect</th>
 <th>Parameters</th>
 <th>Enforcement</th>
@@ -2651,6 +2652,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 <td class="breakwordall">$($policyAssignment.PolicyId)</td>
 <td>$($policyAssignment.PolicyType)</td>
 <td>$($policyAssignment.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($policyAssignment.PolicyIsALZ)</td>
 <td>$($policyAssignment.Effect)</td>
 <td>$($policyAssignment.PolicyAssignmentParameters)</td>
 <td>$($policyAssignment.PolicyAssignmentEnforcementMode)</td>
@@ -2722,9 +2724,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_2: 'select',
             col_5: 'select',
             col_7: 'select',
-            col_9: 'select',
+            col_8: 'select',
+            col_10: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -2856,6 +2860,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>PolicySetId</th>
 <th>Type</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Parameters</th>
 <th>Enforcement</th>
 <th>NonCompliance Message</th>
@@ -2902,6 +2907,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <td class="breakwordall">$($policyAssignment.PolicyId)</td>
 <td>$($policyAssignment.PolicyType)</td>
 <td>$($policyAssignment.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($policyAssignment.PolicyIsALZ)</td>
 <td>$($policyAssignment.PolicyAssignmentParameters)</td>
 <td>$($policyAssignment.PolicyAssignmentEnforcementMode)</td>
 <td>$($policyAssignment.PolicyAssignmentNonComplianceMessages)</td>
@@ -2969,8 +2975,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_1: 'select',
             col_4: 'select',
             col_7: 'select',
+            col_8: 'select',
             locale: 'en-US',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -3109,6 +3117,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th class="widthCustom">Policy DisplayName</th>
 <th>PolicyId</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Policy effect</th>
 <th>Role definitions</th>
 <th>Unique assignments</th>
@@ -3130,6 +3139,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <td>$($customPolicy.PolicyDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td class="breakwordall">$($customPolicy.PolicyDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($customPolicy.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($customPolicy.ALZ)</td>
 <td>$($customPolicy.PolicyEffect)</td>
 <td>$($customPolicy.RoleDefinitions)</td>
 <td class="breakwordall">$($customPolicy.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
@@ -3174,7 +3184,9 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         }
         [void]$htmlScopeInsights.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+                col_3: 'select',
                 col_types: [
+                    'caseinsensitivestring',
                     'caseinsensitivestring',
                     'caseinsensitivestring',
                     'caseinsensitivestring',
@@ -3248,6 +3260,7 @@ extensions: [{ name: 'sort' }]
 <th class="widthCustom">PolicySet DisplayName</th>
 <th>PolicySetId</th>
 <th>Category</th>
+<th>ALZ</th>
 <th>Unique assignments</th>
 <th>Policies Used</th>
 </tr>
@@ -3261,6 +3274,7 @@ extensions: [{ name: 'sort' }]
 <td>$($custompolicySet.PolicySetDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($custompolicySet.PolicySetDefinitionId -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($custompolicySet.PolicySetCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
+<td>$($custompolicySet.ALZ)</td>
 <td>$($custompolicySet.UniqueAssignments -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($custompolicySet.PoliciesUsed)</td>
 </tr>
@@ -3303,7 +3317,10 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         }
         [void]$htmlScopeInsights.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+                col_3: 'select',
                 col_types: [
+                    'caseinsensitivestring',
+                    'caseinsensitivestring',
                     'caseinsensitivestring',
                     'caseinsensitivestring',
                     'caseinsensitivestring',

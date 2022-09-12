@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220731_1
+# AzGovViz v6_major_20220912_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -276,6 +276,16 @@ variables:
   
 # Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
   - name: NoPIMEligibilityIntegrationRoleAssignmentsAll
+    # Switch | example: value: true
+    value:
+
+# Do not execute Azure Landing Zones Evergreen
+  - name: NoALZEvergreen
+    # Switch | example: value: true
+    value:
+
+# Create a dedicated DefinitionInsights HTML file 
+  - name: NoDefinitionInsightsDedicatedHTML
     # Switch | example: value: true
     value:
 

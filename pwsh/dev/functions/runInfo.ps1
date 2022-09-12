@@ -388,6 +388,24 @@ function runInfo {
             #$script:paramsUsed += "NoPIMEligibilityIntegrationRoleAssignmentsAll: $($NoPIMEligibilityIntegrationRoleAssignmentsAll) &#13;"
         }
 
+        if ($NoDefinitionInsightsDedicatedHTML) {
+            Write-Host " NoDefinitionInsightsDedicatedHTML = $($NoDefinitionInsightsDedicatedHTML)" -ForegroundColor Green
+            #$script:paramsUsed += "NoDefinitionInsightsDedicatedHTML: $($NoDefinitionInsightsDedicatedHTML) &#13;"
+        }
+        else {
+            Write-Host " NoDefinitionInsightsDedicatedHTML = $($NoDefinitionInsightsDedicatedHTML)" -ForegroundColor Yellow
+            #$script:paramsUsed += "NoDefinitionInsightsDedicatedHTML: $($NoDefinitionInsightsDedicatedHTML) &#13;"
+        }
+
+        if ($NoALZEvergreen) {
+            Write-Host " NoALZEvergreen = $($NoALZEvergreen)" -ForegroundColor Green
+            #$script:paramsUsed += "NoALZEvergreen: $($NoALZEvergreen) &#13;"
+        }
+        else {
+            Write-Host " NoALZEvergreen = $($NoALZEvergreen)" -ForegroundColor Yellow
+            #$script:paramsUsed += "NoALZEvergreen: $($NoALZEvergreen) &#13;"
+        }
+
     }
     #endregion RunInfo
 }

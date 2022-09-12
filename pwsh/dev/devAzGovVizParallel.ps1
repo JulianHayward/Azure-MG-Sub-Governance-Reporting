@@ -152,6 +152,15 @@
     Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibilityIntegrationRoleAssignmentsAll
 
+.PARAMETER NoALZEvergreen
+    ALZ EverGreen - Azure Landing Zones EverGreen for Policy and Set definitions. AzGovViz will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ EverGreen results will be displayed in the TenantSummary and a CSV export `*_ALZEverGreen.csv` will be provided.
+    If you do not want to execute the ALZ EverGreen feature then use this parameter
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZEvergreen 
+
+.PARAMETER NoDefinitionInsightsDedicatedHTML
+    DefinitionInsights will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep DefinitionInsights in the main html file then use this parameter
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML  
+
 .EXAMPLE
     Define the ManagementGroup ID
     PS C:\> .\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>
@@ -288,6 +297,12 @@
     Define if PIM Eligible assignments should not be integrated with RoleAssignmentsAll outputs (HTML, CSV)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibilityIntegrationRoleAssignmentsAll
 
+    Define if the ALZ EverGreen feature should not be executed
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZEvergreen
+
+    Define if DefinitionInsights should not be written to a seperate html file (*_DefinitionInsights.html)
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML
+
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
@@ -304,10 +319,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.21',
+    $AzAPICallVersion = '1.1.23',
 
     [string]
-    $ProductVersion = 'v6_major_20220817_1',
+    $ProductVersion = 'v6_major_20220912_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -473,6 +488,12 @@ Param
     [switch]
     $NoPIMEligibilityIntegrationRoleAssignmentsAll,
 
+    [switch]
+    $NoALZEvergreen,
+
+    [switch]
+    $NoDefinitionInsightsDedicatedHTML,
+
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
     $LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -534,6 +555,7 @@ if ($ManagementGroupId -match " ") {
 }
 
 #region Functions
+. ".\$($ScriptPath)\functions\processALZEverGreen.ps1"
 . ".\$($ScriptPath)\functions\getPIMEligible.ps1"
 . ".\$($ScriptPath)\functions\testGuid.ps1"
 . ".\$($ScriptPath)\functions\apiCallTracking.ps1"
@@ -597,6 +619,8 @@ $funcTestGuid = $function:testGuid.ToString()
 
 testPowerShellVersion
 showMemoryUsage
+
+$outputPathGiven = $OutputPath
 setOutput
 if ($DoTranscript) {
     setTranscript
@@ -657,8 +681,9 @@ if ($azGovVizNewerVersionAvailable) {
 
 handleCloudEnvironment
 
-#region recommendPSRule
+
 if (-not $HierarchyMapOnly) {
+    #region recommendPSRule
     if (-not $azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
         if (-not $DoPSRule) {
             Write-Host ""
@@ -670,25 +695,25 @@ if (-not $HierarchyMapOnly) {
             pause
         }
     }
-}
-#endregion recommendPSRule
+    #endregion recommendPSRule
 
-#region hintPIMEligibility
-if ($azAPICallConf['htParameters'].accountType -eq 'User') {
-    if (-not $NoPIMEligibility) {
-        Write-Host ""
-        Write-Host " * * * HINT: PIM (Privileged Identity Management) Eligibility reporting * * *" -ForegroundColor DarkBlue
-        Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
-        Write-Host "Executing principal accountType: '$($azAPICallConf['htParameters'].accountType)'"
-        Write-Host "PIM Eligibility reporting requires to execute the script as ServicePrincipal. API Permission 'PrivilegedAccess.Read.AzureResources' is required"
-        Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
-        $NoPIMEligibility = $true
-        Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
-        Write-Host " * * * * * * * * * * * * * * * * * * * * * *" -ForegroundColor DarkBlue
-        pause
+    #region hintPIMEligibility
+    if ($azAPICallConf['htParameters'].accountType -eq 'User') {
+        if (-not $NoPIMEligibility) {
+            Write-Host ""
+            Write-Host " * * * HINT: PIM (Privileged Identity Management) Eligibility reporting * * *" -ForegroundColor DarkBlue
+            Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
+            Write-Host "Executing principal accountType: '$($azAPICallConf['htParameters'].accountType)'"
+            Write-Host "PIM Eligibility reporting requires to execute the script as ServicePrincipal. API Permission 'PrivilegedAccess.Read.AzureResources' is required"
+            Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
+            $NoPIMEligibility = $true
+            Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
+            Write-Host " * * * * * * * * * * * * * * * * * * * * * *" -ForegroundColor DarkBlue
+            pause
+        }
     }
+    #endregion hintPIMEligibility
 }
-#endregion hintPIMEligibility
 
 addHtParameters
 
@@ -811,6 +836,39 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htClassicAdministrators = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $arrayOrphanedResources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayPIMEligible = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $alzPolicies = @{}
+    $alzPolicySets = @{}
+    $alzPolicyHashes = @{}
+    $alzPolicySetHashes = @{}
+    $htDoARMRoleAssignmentScheduleInstances = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $htDoARMRoleAssignmentScheduleInstances.Do = $true
+}
+
+if (-not $HierarchyMapOnly) {
+    if (-not $NoALZEvergreen) {
+        switch ($azAPICallConf['checkContext'].Environment.Name) {
+            'Azurecloud' { 
+                Write-Host "ALZ EverGreen feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZEverGreen 
+            }
+            'AzureChinaCloud' { 
+                Write-Host "ALZ EverGreen feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZEverGreen
+            }
+            'AzureUSGovernment' { 
+                Write-Host "ALZ EverGreen feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZEverGreen 
+            }
+            Default {
+                Write-Host "ALZ EverGreen feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                Write-Host "Setting parameter -NoALZEvergreen to 'true'"
+                $NoALZEvergreen = $true
+            }
+        }
+    }
+    else {
+        #Write-Host "Skipping ALZ EverGreen (parameter -NoALZEvergreen = $NoALZEvergreen)"
+    }
 }
 
 getEntities
@@ -1434,6 +1492,70 @@ $html = @"
 "@
 
 if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+
+    if (-not $NoDefinitionInsightsDedicatedHTML){
+        $htmlDefinitionInsightsDedicatedStart = $html
+        $htmlDefinitionInsightsDedicatedStart += @'
+    <body>
+        <div class="se-pre-con"></div>
+
+        <div class="hierprnt" id="hierprnt">
+            <div class="definitioninsightsprnt" id="definitioninsightsprnt" style="width:100%;height:100%;overflow-y:auto;resize: none;">
+                <div class="definitioninsights" id="definitioninsights"><p class="pbordered">DefinitionInsights</p>
+
+'@
+
+        $htmlDefinitionInsightsDedicatedEnd = @"
+                </div><!--definitionInsights-->
+            </div><!--definitionInsightsprnt-->
+
+        </div>
+        <div class="footer">
+            <div class="VersionDiv VersionLatest"></div>
+            <div class="VersionDiv VersionThis"></div>
+            <div class="VersionAlert"></div>
+        </div>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_002.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/autocorrectOff_v004_001.js"></script>
+        <script>
+            fitty('#fitme', {
+                minSize: 7,
+                maxSize: 10
+            });
+        </script>
+        <script>
+            `$("#getImage").on('click', function () {
+
+            element = document.getElementById('saveAsImageArea')
+            var images = element.getElementsByTagName('img');
+            var l = images.length;
+            for (var i = 0; i < l; i++) {
+                images[0].parentNode.removeChild(images[0]);
+            }
+
+            var scale = 3;
+            domtoimage.toPng(element, { quality: 0.95 , width: element.clientWidth * scale,
+                height: element.clientHeight * scale,
+                style: {
+                    transform: 'scale('+scale+')',
+                    transformOrigin: 'top left'
+            }})          
+                .then(function (dataUrl) {
+                var link = document.createElement('a');
+                link.download = '$($fileName).png';
+                link.href = dataUrl;
+                link.click();
+            });
+                    
+            })
+        </script>
+    </body>
+</html>
+"@
+    }
     if (-not $NoSingleSubscriptionOutput) {
 
         if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
@@ -1454,9 +1576,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         $htmlSubscriptionOnlyStart += @'
     <body>
         <div class="se-pre-con"></div>
-        <div class="tree">
-
-        </div>
 
         <div class="hierprnt" id="hierprnt">
             <div class="hierarchyTables" id="hierarchyTables">
@@ -1465,47 +1584,52 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 '@
 
         $htmlSubscriptionOnlyEnd = @"
-</table>
-</div>
-    </div>
-    <div class="footer">
-        <div class="VersionDiv VersionLatest"></div>
-        <div class="VersionDiv VersionThis"></div>
-        <div class="VersionAlert"></div>
-    </div>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_002.js"></script>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/autocorrectOff_v004_001.js"></script>
-    <script>
-        fitty('#fitme', {
-            minSize: 7,
-            maxSize: 10
-        });
-    </script>
-    <script>
-        `$("#getImage").on('click', function () {
+            </table>
+        </div>
+        </div>
+        <div class="footer">
+            <div class="VersionDiv VersionLatest"></div>
+            <div class="VersionDiv VersionThis"></div>
+            <div class="VersionAlert"></div>
+        </div>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_002.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/autocorrectOff_v004_001.js"></script>
+        <script>
+            fitty('#fitme', {
+                minSize: 7,
+                maxSize: 10
+            });
+        </script>
+        <script>
+            `$("#getImage").on('click', function () {
 
-        element = document.getElementById('first')
-        var images = element.getElementsByTagName('img');
-        var l = images.length;
-        for (var i = 0; i < l; i++) {
-            images[0].parentNode.removeChild(images[0]);
-        }
+            element = document.getElementById('saveAsImageArea')
+            var images = element.getElementsByTagName('img');
+            var l = images.length;
+            for (var i = 0; i < l; i++) {
+                images[0].parentNode.removeChild(images[0]);
+            }
 
-        domtoimage.toJpeg(element)
-            .then(function (dataUrl) {
+            var scale = 3;
+            domtoimage.toPng(element, { quality: 0.95 , width: element.clientWidth * scale,
+                height: element.clientHeight * scale,
+                style: {
+                    transform: 'scale('+scale+')',
+                    transformOrigin: 'top left'
+            }})          
+                .then(function (dataUrl) {
                 var link = document.createElement('a');
-                link.download = '$($fileName)';
+                link.download = '$($fileName).png';
                 link.href = dataUrl;
                 link.click();
             });
-                
-        })
-    </script>
-</body>
-
+                    
+            })
+        </script>
+    </body>
 </html>
 "@
     }
@@ -1546,6 +1670,7 @@ $html += @"
 
 $html += @'
 <ul>
+    <div id="saveAsImageArea">
     <li id="first" style="background-color:white">
 '@
 
@@ -1737,6 +1862,7 @@ else {
                         </li>
                     </ul>
                 </li>
+                </div>
             </ul>
         </div>
     </div>
@@ -1773,13 +1899,13 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $endSummary = Get-Date
     Write-Host " Building TenantSummary duration: $((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalSeconds) seconds)"
 
-    $html += @'
+    $html += @"
     </div><!--summary-->
     </div><!--summprnt-->
 
     <div class="definitioninsightsprnt" id="definitioninsightsprnt">
     <div class="definitioninsights" id="definitioninsights"><p class="pbordered">DefinitionInsights</p>
-'@
+"@
     $html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
     $html = $null
 
@@ -1876,22 +2002,36 @@ $html += @"
     <script>
         `$("#getImage").on('click', function () {
     
-        element = document.getElementById('first')
-        var images = element.getElementsByTagName('img');
-        var l = images.length;
-        for (var i = 0; i < l; i++) {
-            images[0].parentNode.removeChild(images[0]);
-        }
-
-        domtoimage.toJpeg(element)
-            .then(function (dataUrl) {
+            element = document.getElementById('saveAsImageArea')
+            var images = element.getElementsByTagName('img');
+            var l = images.length;
+            for (var i = 0; i < l; i++) {
+                images[0].parentNode.removeChild(images[0]);
+            }
+    
+            var scale = 3;
+            domtoimage.toPng(element, { quality: 0.95 , width: element.clientWidth * scale,
+                height: element.clientHeight * scale,
+                style: {
+                    transform: 'scale('+scale+')',
+                    transformOrigin: 'top left'
+            }})          
+                .then(function (dataUrl) {
                 var link = document.createElement('a');
-                link.download = '$($fileName).jpeg';
+                link.download = '$($fileName).png';
                 link.href = dataUrl;
                 link.click();
             });
-                
-        })
+    
+            // domtoimage.toJpeg(element)
+            //     .then(function (dataUrl) {
+            //         var link = document.createElement('a');
+            //         link.download = '$($fileName).jpeg';
+            //         link.href = dataUrl;
+            //         link.click();
+            //     });
+                    
+            })
     </script>
 </body>
 </html>
