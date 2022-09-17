@@ -52,7 +52,7 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 * [Security](#security)
 * [Known issues](#known-issues)
 * [Facts](#facts)
-* [Contributions](#contributions)
+* [Contribution](#contribution)
 * [AzAdvertizer](#azadvertizer)
 * [AzADServicePrincipalInsights](#azadserviceprincipalinsights)
 * [Closing note](#closing-note)
@@ -677,9 +677,9 @@ Disabled Subscriptions and Subscriptions where Quota Id starts with with "AAD_" 
 
 ARM Limits are not acquired programmatically, these are hardcoded. The links used to check related limits are commented in the param section of the script.
 
-## Contributions
+## Contribution
 
-Please feel free to contribute. 
+You are welcome to contribute to the project. __[Contribution Guide](contributionGuide.md)__
 
 Thanks to so many supporters - testing, giving feedback, making suggestions, presenting use-case, posting/blogging articles, refactoring code - THANK YOU!
 
