@@ -9535,41 +9535,45 @@ extensions: [{ name: 'sort' }]
                         }
                     }
                     #where no Policy exists
-                    foreach ($resourceTypeDiagnosticsCapable in $resourceTypesDiagnosticsArray | Where-Object { $_.Logs -eq $true }) {
-                        if (($diagnosticsPolicyAnalysis.ResourceType).ToLower() -notcontains ( ($resourceTypeDiagnosticsCapable.ResourceType).ToLower() )) {
-                            $supportedLogs = ($resourceTypesDiagnosticsArray | Where-Object { $_.ResourceType -eq $resourceTypeDiagnosticsCapable.ResourceType }).LogCategories
-                            $logsSupported = 'yes'
-                            $resourceTypeCountFromResourceTypesSummarizedArray = ($resourceTypesSummarizedArray | Where-Object { $_.ResourceType -eq $resourceTypeDiagnosticsCapable.ResourceType }).ResourceCount
-                            if ($resourceTypeCountFromResourceTypesSummarizedArray) {
-                                $resourceCount = $resourceTypeCountFromResourceTypesSummarizedArray
+                    $diagnosticsPolicyAnalysisCount = ($diagnosticsPolicyAnalysis).count
+                    if ($diagnosticsPolicyAnalysisCount -gt 0) {
+                        foreach ($resourceTypeDiagnosticsCapable in $resourceTypesDiagnosticsArray | Where-Object { $_.Logs -eq $true }) {
+                            if (($diagnosticsPolicyAnalysis.ResourceType).ToLower() -notcontains ( ($resourceTypeDiagnosticsCapable.ResourceType).ToLower() )) {
+                                $supportedLogs = ($resourceTypesDiagnosticsArray | Where-Object { $_.ResourceType -eq $resourceTypeDiagnosticsCapable.ResourceType }).LogCategories
+                                $logsSupported = 'yes'
+                                $resourceTypeCountFromResourceTypesSummarizedArray = ($resourceTypesSummarizedArray | Where-Object { $_.ResourceType -eq $resourceTypeDiagnosticsCapable.ResourceType }).ResourceCount
+                                if ($resourceTypeCountFromResourceTypesSummarizedArray) {
+                                    $resourceCount = $resourceTypeCountFromResourceTypesSummarizedArray
+                                }
+                                else {
+                                    $resourceCount = '0'
+                                }
+                                $recommendation = "Create diagnostics policy for this ResourceType. To verify GA check <a class=`"externallink`" href=`"https://docs.microsoft.com/en-us/azure/azure-monitor/platform/resource-logs-categories`" target=`"_blank`" rel=`"noopener`">docs <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                                $null = $diagnosticsPolicyAnalysis.Add([PSCustomObject]@{
+                                        Priority                    = '2-Medium'
+                                        PolicyId                    = 'n/a'
+                                        PolicyCategory              = 'n/a'
+                                        PolicyName                  = 'n/a'
+                                        PolicyDeploysRoles          = 'n/a'
+                                        ResourceType                = $resourceTypeDiagnosticsCapable.ResourceType
+                                        ResourceTypeCount           = $resourceCount
+                                        Status                      = 'n/a'
+                                        LogsSupported               = $logsSupported
+                                        LogCategoriesInPolicy       = 'n/a'
+                                        LogCategoriesSupported      = $supportedLogs -join "$CsvDelimiterOpposite "
+                                        LogCategoriesDelta          = 'n/a'
+                                        Recommendation              = $recommendation
+                                        DiagnosticsTargetType       = 'n/a'
+                                        PolicyForResourceTypeExists = $false
+                                        PolicyAssignments           = 'n/a'
+                                        PolicyUsedInPolicySet       = 'n/a'
+                                        PolicySetAssignments        = 'n/a'
+                                    })
                             }
-                            else {
-                                $resourceCount = '0'
-                            }
-                            $recommendation = "Create diagnostics policy for this ResourceType. To verify GA check <a class=`"externallink`" href=`"https://docs.microsoft.com/en-us/azure/azure-monitor/platform/resource-logs-categories`" target=`"_blank`" rel=`"noopener`">docs <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
-                            $null = $diagnosticsPolicyAnalysis.Add([PSCustomObject]@{
-                                    Priority                    = '2-Medium'
-                                    PolicyId                    = 'n/a'
-                                    PolicyCategory              = 'n/a'
-                                    PolicyName                  = 'n/a'
-                                    PolicyDeploysRoles          = 'n/a'
-                                    ResourceType                = $resourceTypeDiagnosticsCapable.ResourceType
-                                    ResourceTypeCount           = $resourceCount
-                                    Status                      = 'n/a'
-                                    LogsSupported               = $logsSupported
-                                    LogCategoriesInPolicy       = 'n/a'
-                                    LogCategoriesSupported      = $supportedLogs -join "$CsvDelimiterOpposite "
-                                    LogCategoriesDelta          = 'n/a'
-                                    Recommendation              = $recommendation
-                                    DiagnosticsTargetType       = 'n/a'
-                                    PolicyForResourceTypeExists = $false
-                                    PolicyAssignments           = 'n/a'
-                                    PolicyUsedInPolicySet       = 'n/a'
-                                    PolicySetAssignments        = 'n/a'
-                                })
                         }
                     }
-                    $diagnosticsPolicyAnalysisCount = ($diagnosticsPolicyAnalysis | Measure-Object).count
+                    
+                    $diagnosticsPolicyAnalysisCount = ($diagnosticsPolicyAnalysis).count
 
                     if ($diagnosticsPolicyAnalysisCount -gt 0) {
                         $tfCount = $diagnosticsPolicyAnalysisCount

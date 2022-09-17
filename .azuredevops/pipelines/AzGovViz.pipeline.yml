@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220912_1
+# AzGovViz v6_major_20220917_1
 # First things first:
 # 1. Mandatory: Set needed variables 'ServiceConnection' and 'ManagementGroupId' in the AzGovViz.variables.yml file.
 # 2. Mandatory: Check line 20  
@@ -138,8 +138,8 @@ jobs:
         Write-Host "WebApp ($($env:WEBAPPNAME)) has Authentication enabled: $authStatus"
         if ($authStatus) {
             try {
-                Write-Host "NoDefinitionInsightsDedicatedHTML = $($env:NoDEFINITIONINSIGHTSDEDICATEDHTML)"
-                if ($($env:NoDEFINITIONINSIGHTSDEDICATEDHTML)) {
+                Write-Host "NoDefinitionInsightsDedicatedHTML = $($env:NODEFINITIONINSIGHTSDEDICATEDHTML)"
+                if ($($env:NODEFINITIONINSIGHTSDEDICATEDHTML)) {
                     Compress-Archive -Path "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID).html" -DestinationPath "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID).zip"
                 }
                 else {
@@ -148,7 +148,7 @@ jobs:
                 
                 $null = Select-AzSubscription -SubscriptionId $($env:WEBAPPSUBSCRIPTIONID)
                 if (Publish-AzWebApp -ResourceGroupName $($env:WEBAPPRESOURCEGROUP) -Name $($env:WEBAPPNAME) -ArchivePath "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID).zip" -Force) {
-                    if ($($env:NoDEFINITIONINSIGHTSDEDICATEDHTML)) {
+                    if ($($env:NODEFINITIONINSIGHTSDEDICATEDHTML)) {
                         Write-Host "Published AzGovViz_$($env:MANAGEMENTGROUPID).html"
                     }
                     else {

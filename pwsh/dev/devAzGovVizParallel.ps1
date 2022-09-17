@@ -322,7 +322,7 @@ Param
     $AzAPICallVersion = '1.1.23',
 
     [string]
-    $ProductVersion = 'v6_major_20220912_1',
+    $ProductVersion = 'v6_major_20220917_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
