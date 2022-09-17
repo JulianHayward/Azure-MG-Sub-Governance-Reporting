@@ -8,6 +8,7 @@ __Changes__ (2022-Sep-17 / Major)
 
 * Fix Azure DevOps Pipeline correct addressing of NoDefinitionInsights variable in YAML
 * Fix issue #132
+* Add __[Contribution Guide](contributionGuide.md)__
 
 __Changes__ (2022-Sep-12 / Major)
 
