@@ -82,8 +82,7 @@ Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
 
 <a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html" target="_blank">![Demo](img/demo4_66.png)</a>
 
-[Demo (v6_major_20220622_2)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)  
-Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation
+[Demo (v6_major_20220927_1)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)
 
 More [demo output](https://github.com/JulianHayward/AzGovViz)
 
