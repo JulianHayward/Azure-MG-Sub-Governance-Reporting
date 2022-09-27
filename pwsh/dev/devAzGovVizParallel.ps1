@@ -152,14 +152,27 @@
     Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibilityIntegrationRoleAssignmentsAll
 
-.PARAMETER NoALZEvergreen
-    ALZ EverGreen - Azure Landing Zones EverGreen for Policy and Set definitions. AzGovViz will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ EverGreen results will be displayed in the TenantSummary and a CSV export `*_ALZEverGreen.csv` will be provided.
-    If you do not want to execute the ALZ EverGreen feature then use this parameter
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZEvergreen 
+.PARAMETER NoALZPolicyVersionChecker
+    'Azure Landing Zones (ALZ) Policy Version Checker' for Policy and Set definitions. AzGovViz will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The 'Azure Landing Zones (ALZ) Policy Version Checker' results will be displayed in the TenantSummary and a CSV export `*_ALZPolicyVersionChecker.csv` will be provided.
+    If you do not want to execute the 'Azure Landing Zones (ALZ) Policy Version Checker' feature then use this parameter
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker 
 
 .PARAMETER NoDefinitionInsightsDedicatedHTML
     DefinitionInsights will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep DefinitionInsights in the main html file then use this parameter
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML  
+
+.PARAMETER NoStorageAccountAccessAnalysis
+    Analysis on Storage Accounts, specially focused on anonymous access.
+    If you do not want to execute this feature then use this parameter
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoStorageAccountAccessAnalysis
+
+.PARAMETER StorageAccountAccessAnalysisSubscriptionTags
+    If the Storage Account Access Analysis feature is executed with this parameter you can define the subscription tags that should be added to the CSV output
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -StorageAccountAccessAnalysisSubscriptionTags @('Responsible', 'TeamEmail')
+
+.PARAMETER StorageAccountAccessAnalysisStorageAccountTags
+    If the Storage Account Access Analysis feature is executed with this parameter you can define the Storage Account (resource) tags that should be added to the CSV output
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
 
 .EXAMPLE
     Define the ManagementGroup ID
@@ -297,11 +310,16 @@
     Define if PIM Eligible assignments should not be integrated with RoleAssignmentsAll outputs (HTML, CSV)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibilityIntegrationRoleAssignmentsAll
 
-    Define if the ALZ EverGreen feature should not be executed
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZEvergreen
+    Define if the 'Azure Landing Zones (ALZ) Policy Version Checker' feature should not be executed
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 
     Define if DefinitionInsights should not be written to a seperate html file (*_DefinitionInsights.html)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML
+
+    Define if Storage Account Access Analysis (focus on anonymous access) should be executed
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoStorageAccountAccessAnalysis
+    Additionally you can define Subscription and/or Storage Account Tag names that should be added to the CSV output per Storage Account
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> --StorageAccountAccessAnalysisSubscriptionTags @('Responsible', 'TeamEmail') -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
 
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
@@ -319,10 +337,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.23',
+    $AzAPICallVersion = '1.1.24',
 
     [string]
-    $ProductVersion = 'v6_major_20220917_1',
+    $ProductVersion = 'v6_major_20220927_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -489,10 +507,19 @@ Param
     $NoPIMEligibilityIntegrationRoleAssignmentsAll,
 
     [switch]
-    $NoALZEvergreen,
+    $NoALZPolicyVersionChecker,
 
     [switch]
     $NoDefinitionInsightsDedicatedHTML,
+
+    [switch]
+    $NoStorageAccountAccessAnalysis,
+
+    [array]
+    $StorageAccountAccessAnalysisSubscriptionTags = @('undefined'),
+
+    [array]
+    $StorageAccountAccessAnalysisStorageAccountTags = @('undefined'),
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
@@ -555,7 +582,8 @@ if ($ManagementGroupId -match " ") {
 }
 
 #region Functions
-. ".\$($ScriptPath)\functions\processALZEverGreen.ps1"
+. ".\$($ScriptPath)\functions\processStorageAccountAnalysis.ps1"
+. ".\$($ScriptPath)\functions\processALZPolicyVersionChecker.ps1"
 . ".\$($ScriptPath)\functions\getPIMEligible.ps1"
 . ".\$($ScriptPath)\functions\testGuid.ps1"
 . ".\$($ScriptPath)\functions\apiCallTracking.ps1"
@@ -651,6 +679,7 @@ if ($DoPSRule) {
             ModulePathPipeline = 'PSRuleModule'
         })
 }
+
 verifyModules3rd -modules $modules
 #endregion verifyModules3rd
 
@@ -680,7 +709,6 @@ if ($azGovVizNewerVersionAvailable) {
 #endregion promptNewAzGovVizVersionAvailable
 
 handleCloudEnvironment
-
 
 if (-not $HierarchyMapOnly) {
     #region recommendPSRule
@@ -842,32 +870,34 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $alzPolicySetHashes = @{}
     $htDoARMRoleAssignmentScheduleInstances = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htDoARMRoleAssignmentScheduleInstances.Do = $true
+    $storageAccounts = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayStorageAccountAnalysisResults = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
 if (-not $HierarchyMapOnly) {
-    if (-not $NoALZEvergreen) {
+    if (-not $NoALZPolicyVersionChecker) {
         switch ($azAPICallConf['checkContext'].Environment.Name) {
             'Azurecloud' { 
-                Write-Host "ALZ EverGreen feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                processALZEverGreen 
+                Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZPolicyVersionChecker 
             }
             'AzureChinaCloud' { 
-                Write-Host "ALZ EverGreen feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                processALZEverGreen
+                Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZPolicyVersionChecker
             }
             'AzureUSGovernment' { 
-                Write-Host "ALZ EverGreen feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                processALZEverGreen 
+                Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZPolicyVersionChecker 
             }
             Default {
-                Write-Host "ALZ EverGreen feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                Write-Host "Setting parameter -NoALZEvergreen to 'true'"
-                $NoALZEvergreen = $true
+                Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                Write-Host "Setting parameter -NoALZPolicyVersionChecker to 'true'"
+                $NoALZPolicyVersionChecker = $true
             }
         }
     }
     else {
-        #Write-Host "Skipping ALZ EverGreen (parameter -NoALZEvergreen = $NoALZEvergreen)"
+        #Write-Host "Skipping 'Azure Landing Zones (ALZ) Policy Version Checker' (parameter -NoALZPolicyVersionChecker = $NoALZPolicyVersionChecker)"
     }
 }
 
@@ -944,6 +974,11 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
     createTagList
     showMemoryUsage
+
+    if ($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis -eq $false) {
+        processStorageAccountAnalysis
+        showMemoryUsage
+    }
 
     if ($azAPICallConf['htParameters'].NoResources -eq $false) {
         getResourceDiagnosticsCapability

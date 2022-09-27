@@ -2368,7 +2368,7 @@ extensions: [{ name: 'sort' }]
     #region SUMMARYALZPolicies
     Write-Host '  processing TenantSummary ALZPolicies'
     
-    if (-not $NoALZEvergreen) {
+    if (-not $NoALZPolicyVersionChecker) {
 
         $alzPoliciesInTenant = [System.Collections.ArrayList]@()
         #policies
@@ -2470,7 +2470,7 @@ extensions: [{ name: 'sort' }]
             $htmlTableId = 'TenantSummary_ALZPolicies'
             $abbrALZ = " <abbr title=`"obsolete: this policy is no longer ALZ maintained by ALZ&#13;outDated: a new version of the policy available&#13;unknown: ALZ related policy could not be mapped&#13;upToDate: policy matches with latest ALZ policy`"><i class=`"fa fa-question-circle`" aria-hidden=`"true`"></i></abbr>"
             [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ALZPolicies"><i class="padlx fa fa-retweet" aria-hidden="true" style="color:#23C632"></i> <span class="valignMiddle">Azure Landing Zones EverGreen</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ALZPolicies"><i class="padlx fa fa-retweet" aria-hidden="true" style="color:#23C632"></i> <span class="valignMiddle">Azure Landing Zones (ALZ) Policy Version Checker</span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Landing Zones (ALZ)</span> <a class="externallink" href="https://github.com/Azure/Enterprise-Scale/blob/main/docs/ESLZ-Policies.md" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
@@ -2494,9 +2494,9 @@ extensions: [{ name: 'sort' }]
 <tbody>
 "@)
 
-            $htmlSUMMARYALZEverGreen = $null
+            $htmlSUMMARYALZPolicyVersionChecker = $null
             $exemptionData4CSVExport = [System.Collections.ArrayList]@()
-            $htmlSUMMARYALZEverGreen = foreach ($entry in $alzPoliciesInTenant) {
+            $htmlSUMMARYALZPolicyVersionChecker = foreach ($entry in $alzPoliciesInTenant) {
                 if ([string]::IsNullOrWhiteSpace($entry.AzAdvertizerUrl)) {
                     $link = ''
                 }
@@ -2521,11 +2521,11 @@ extensions: [{ name: 'sort' }]
             }
 
             if (-not $NoCsvExport) {
-                Write-Host "Exporting ALZ EverGreen CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZEverGreen.csv'"
-                $alzPoliciesInTenant | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZEverGreen.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                Write-Host "Exporting 'Azure Landing Zones (ALZ) Policy Version Checker' CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZPolicyVersionChecker.csv'"
+                $alzPoliciesInTenant | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZPolicyVersionChecker.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
             }
 
-            [void]$htmlTenantSummary.AppendLine($htmlSUMMARYALZEverGreen)
+            [void]$htmlTenantSummary.AppendLine($htmlSUMMARYALZPolicyVersionChecker)
             [void]$htmlTenantSummary.AppendLine(@"
             </tbody>
         </table>
@@ -2587,13 +2587,13 @@ extensions: [{ name: 'sort' }]
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@"
-    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Azure Landing Zones EverGreen</span></p>
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Azure Landing Zones (ALZ) Policy Version Checker</span></p>
 "@)
         }
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Azure Landing Zones EverGreen (parameter -NoALZEvergreen = $NoALZEvergreen)</span></p>
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Azure Landing Zones (ALZ) Policy Version Checker (parameter -NoALZPolicyVersionChecker = $NoALZPolicyVersionChecker)</span></p>
 "@)
     }
     #endregion SUMMARYALZPolicies
@@ -8705,6 +8705,203 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         }
         #endregion SUMMARYPSRule
     }
+
+    
+    #region SUMMARYStorageAccountAnalysis
+    if (1 -eq 1) {
+    if ($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis -eq $false) {
+        $startStorageAccountAnalysis = Get-Date
+        Write-Host '  processing TenantSummary Storage Account Access Analysis'
+            
+        $arrayStorageAccountAnalysisResultsCount = $arrayStorageAccountAnalysisResults.Count 
+        if ($arrayStorageAccountAnalysisResultsCount.Count -gt 0) {
+
+            if (-not $NoCsvExport) {
+                $storageAccountAccessAnalysisCSVPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_StorageAccountAccessAnalysis.csv"
+                Write-Host "   Exporting 'Storage Account Access Analysis' CSV '$storageAccountAccessAnalysisCSVPath'"
+                $arrayStorageAccountAnalysisResults | Sort-Object -Property StorageAccount | Export-Csv -Path $storageAccountAccessAnalysisCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
+            }
+
+            $htmlTableId = 'TenantSummary_StorageAccountAccessAnalysis'
+            $tfCount = $arrayStorageAccountAnalysisResultsCount
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_StorageAccountAccessAnalysis"><i class="padlx fa fa-user-secret" aria-hidden="true"></i> <span class="valignMiddle">$tfCount Storage Accounts Access Analysis results</span></button>
+<div class="content TenantSummary">
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Check this article by Elli Shlomo (MVP) </span> <a class="externallink" href="https://misconfig.io/azure-blob-container-threats-attacks/" target="_blank" rel="noopener">Azure Blob Container Threats & Attacks <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> If you enabled the parameters <i>StorageAccountAccessAnalysisSubscriptionTags or StorageAccountAccessAnalysisStorageAccountTags</i> these are integrated in the CSV output *_StorageAccountAccessAnalysis.csv<br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>StorageAccount</th>
+<th>kind</th>
+<th>skuName</th>
+<th>skuTier</th>
+<th>location</th>
+<th>allowBlobPublicAccess</th> 
+<th>publicNetworkAccess</th> 
+<th>subscriptionMGPath</th>
+<th>resourceGroup</th>
+<th>networkAclsdefaultAction</th>
+<th>staticWebsitesState</th>
+<th>staticWebsitesResponse</th>
+<th>containersCanBeListed</th>
+<th>containersCount</th>
+<th>containersAnonymousContainerCount</th> 
+<th>containersAnonymousBlobCount</th>
+<th>ipRulesCount</th>
+<th>ipRulesIPAddressList</th>
+<th>virtualNetworkRulesCount</th>
+<th>resourceAccessRulesCount</th>
+<th>resourceAccessRules</th>
+<th>bypass</th>
+<th>supportsHttpsTrafficOnly</th>
+<th>minimumTlsVersion</th>
+<th>allowSharedKeyAccess</th>
+<th>requireInfrastructureEncryption</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+            foreach ($result in $arrayStorageAccountAnalysisResults | sort-Object -Property Name) {
+
+                [void]$htmlTenantSummary.AppendLine(@"
+                        <tr>
+                        <td>$($result.storageAccount)</td>
+                        <td>$($result.kind)</td>
+                        <td>$($result.skuName)</td>
+                        <td>$($result.skuTier)</td>
+                        <td>$($result.location)</td>
+                        <td>$($result.allowBlobPublicAccess)</td> 
+                        <td>$($result.publicNetworkAccess)</td> 
+                        <td>$($result.subscriptionMGPath)</td>
+                        <td>$($result.resourceGroup)</td>
+                        <td>$($result.networkAclsdefaultAction)</td>
+                        <td>$($result.staticWebsitesState)</td>
+                        <td>$($result.staticWebsitesResponse)</td>
+                        <td>$($result.containersCanBeListed)</td>
+                        <td>$($result.containersCount)</td>
+                        <td>$($result.containersAnonymousContainerCount)</td> 
+                        <td>$($result.containersAnonymousBlobCount)</td>
+                        <td>$($result.ipRulesCount)</td>
+                        <td>$($result.ipRulesIPAddressList)</td>
+                        <td>$($result.virtualNetworkRulesCount)</td>
+                        <td>$($result.resourceAccessRulesCount)</td>
+                        <td>$($result.resourceAccessRules)</td>
+                        <td>$($result.bypass)</td>
+                        <td>$($result.supportsHttpsTrafficOnly)</td>
+                        <td>$($result.minimumTlsVersion)</td>
+                        <td>$($result.allowSharedKeyAccess)</td>
+                        <td>$($result.requireInfrastructureEncryption)</td>
+                        </tr>
+"@)
+
+            }
+
+            [void]$htmlTenantSummary.AppendLine(@"
+</tbody>
+</table>
+<script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            linked_filters: true,
+            col_1: 'select',
+            col_2: 'select',
+            col_3: 'select',
+            col_4: 'select',
+            col_5: 'select',
+            col_6: 'select',
+            col_9: 'select',
+            col_10: 'select',
+            col_11: 'select',
+            col_12: 'select',
+            col_21: 'select',
+            col_22: 'select',
+            col_23: 'select',
+            col_24: 'select',
+            col_25: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number',
+                'number',
+                'number',
+                'number',
+                'caseinsensitivestring',
+                'number',
+                'number',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+            extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+</div>
+"@)
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@'
+    <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No Storage Accounts found</span></p>
+'@)
+        }
+        $endStorageAccountAnalysis = Get-Date
+        Write-Host "   Storage Account Analysis processing duration: $((NEW-TIMESPAN -Start $startStorageAccountAnalysis -End $endStorageAccountAnalysis).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startStorageAccountAnalysis -End $endStorageAccountAnalysis).TotalSeconds) seconds)"
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+            <i class="padlx fa fa-check-square-o" aria-hidden="true"></i> <span class="valignMiddle">Storage Account Access Analysis disabled - </span><span class="info">parameter -NoStorageAccountAccessAnalysis $($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis)</span>
+"@)
+    }
+}
+    #endregion SUMMARYStorageAccountAnalysis
+    
 
     [void]$htmlTenantSummary.AppendLine(@'
     </div>

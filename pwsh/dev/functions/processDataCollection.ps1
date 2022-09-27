@@ -295,6 +295,7 @@ function processDataCollection {
                 $scriptPath = $using:ScriptPath
                 #Array&HTs
                 $newTable = $using:newTable
+                $storageAccounts = $using:storageAccounts
                 $resourcesAll = $using:resourcesAll
                 $resourcesIdsAll = $using:resourcesIdsAll
                 $resourceGroupsAll = $using:resourceGroupsAll
@@ -360,6 +361,7 @@ function processDataCollection {
                 $function:dataCollectionDefenderPlans = $using:funcDataCollectionDefenderPlans
                 $function:dataCollectionDiagnosticsSub = $using:funcDataCollectionDiagnosticsSub
                 $function:dataCollectionResources = $using:funcDataCollectionResources
+                $function:dataCollectionStorageAccounts = $using:funcDataCollectionStorageAccounts
                 $function:dataCollectionResourceGroups = $using:funcDataCollectionResourceGroups
                 $function:dataCollectionResourceProviders = $using:funcDataCollectionResourceProviders
                 $function:dataCollectionFeatures = $using:funcDataCollectionFeatures
@@ -435,6 +437,14 @@ function processDataCollection {
                         }
                         DataCollectionDiagnosticsSub @baseParameters @dataCollectionDiagnosticsSubParameters
 
+                        if ($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis -eq $false) {
+                            #resources
+                            $dataCollectionStorageAccountsParameters = @{
+                                ChildMgMgPath = $childMgMgPath
+                                ChildMgParentNameChainDelimited = $childMgParentNameChainDelimited
+                            }
+                            DataCollectionStorageAccounts @baseParameters @dataCollectionStorageAccountsParameters
+                        }
 
                         if ($azAPICallConf['htParameters'].NoResources -eq $false) {
                             #resources

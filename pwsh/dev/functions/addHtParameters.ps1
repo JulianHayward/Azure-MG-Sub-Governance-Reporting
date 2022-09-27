@@ -33,7 +33,8 @@ function addHtParameters {
         RBACAtScopeOnly                              = [bool]$RBACAtScopeOnly
         DoPSRule                                     = [bool]$DoPSRule
         PSRuleFailedOnly                             = [bool]$PSRuleFailedOnly
-        NoALZEvergreen                               = [bool]$NoALZEvergreen
+        NoALZPolicyVersionChecker                    = [bool]$NoALZPolicyVersionChecker
+        NoStorageAccountAccessAnalysis               = [bool]$NoStorageAccountAccessAnalysis
     }
     Write-Host 'htParameters:'
     $azAPICallConf['htParameters'] | format-table -AutoSize | Out-String

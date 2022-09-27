@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220912_1
+# AzGovViz v6_major_20220927_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -25,6 +25,26 @@ parameters:
     #   default:
     #     - MSDN_
     #     - EnterpriseAgreement_
+    default:
+      - undefined
+
+    # Subscription Tag names for Storage Account Access Analysis
+  - name: StorageAccountAccessAnalysisSubscriptionTagsParameters
+    type: object
+    # example:
+    #   default:
+    #     - Responsible
+    #     - <TagName>
+    default:
+      - undefined
+
+    # Storage Account Tag names for Storage Account Access Analysis
+  - name: StorageAccountAccessAnalysisStorageAccountTagsParameters
+    type: object
+    # example:
+    #   default:
+    #     - SAOwner
+    #     - <TagName>
     default:
       - undefined
 
@@ -279,8 +299,8 @@ variables:
     # Switch | example: value: true
     value:
 
-# Do not execute Azure Landing Zones Evergreen
-  - name: NoALZEvergreen
+# Do not execute Azure Landing Zones (ALZ) Policy Version Checker
+  - name: noALZPolicyVersionChecker
     # Switch | example: value: true
     value:
 
@@ -295,3 +315,9 @@ variables:
 
   - name: SubscriptionQuotaIdWhitelist
     value: ${{ join(',',parameters.SubscriptionQuotaIdWhitelistParameters) }}
+
+  - name: StorageAccountAccessAnalysisSubscriptionTags
+    value: ${{ join(',',parameters.StorageAccountAccessAnalysisSubscriptionTagsParameters) }}
+
+  - name: StorageAccountAccessAnalysisStorageAccountTags
+    value: ${{ join(',',parameters.StorageAccountAccessAnalysisStorageAccountTagsParameters) }}

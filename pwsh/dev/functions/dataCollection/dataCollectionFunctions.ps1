@@ -261,6 +261,26 @@ function dataCollectionDiagnosticsMG {
 }
 $funcDataCollectionDiagnosticsMG = $function:dataCollectionDiagnosticsMG.ToString()
 
+function dataCollectionStorageAccounts {
+    [CmdletBinding()]Param(
+        [string]$scopeId,
+        [string]$scopeDisplayName,
+        $ChildMgMgPath,
+        $ChildMgParentNameChainDelimited,
+        $subscriptionQuotaId
+    )
+
+    $currentTask = "Getting Storage Accounts for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Storage/storageAccounts?api-version=2021-09-01"
+    $method = 'GET'
+    $storageAccountsSubscriptionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+
+    foreach ($storageAccount in $storageAccountsSubscriptionResult) {
+        $null = $script:storageAccounts.Add($storageAccount)
+    }
+}
+$funcDataCollectionStorageAccounts = $function:dataCollectionStorageAccounts.ToString()
+
 function dataCollectionResources {
     [CmdletBinding()]Param(
         [string]$scopeId,
@@ -1712,7 +1732,7 @@ function dataCollectionPolicyDefinitions {
                 }
 
 
-                if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
+                if ($azAPICallConf['htParameters'].NoALZPolicyVersionChecker -eq $false) {
 
                     $policyJsonRule = $scopePolicyDefinition.properties.policyRule | ConvertTo-Json -depth 99
                     $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonRule))
@@ -1994,7 +2014,7 @@ function dataCollectionPolicySetDefinitions {
                     $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($scopePolicySetDefinition.Id).split('/'))[2]).level
                 }
 
-                if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
+                if ($azAPICallConf['htParameters'].NoALZPolicyVersionChecker -eq $false) {
 
                     $policyJsonParameters = $scopePolicySetDefinition.properties.parameters | ConvertTo-Json -depth 99
                     $policyJsonPolicyDefinitions = $scopePolicySetDefinition.properties.policyDefinitions | ConvertTo-Json -depth 99

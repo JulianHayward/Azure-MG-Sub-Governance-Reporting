@@ -1,6 +1,6 @@
-function processALZEverGreen {
+function processALZPolicyVersionChecker {
     $start = get-date
-    Write-Host "Processing ALZ EverGreen base data"
+    Write-Host "Processing 'Azure Landing Zones (ALZ) Policy Version Checker' base data"
     $ALZRepositoryURI = 'https://github.com/Azure/Enterprise-Scale.git'
     $workingPath = Get-Location
     Write-Host " Working directory is '$($workingPath)'"
@@ -26,9 +26,9 @@ function processALZEverGreen {
         if (-not (Test-Path -LiteralPath "$($ALZPath)/Enterprise-Scale" -PathType Container)) {
             $ALZCloneSuccess = $false
             Write-Host " Cloning '$($ALZRepositoryURI)' failed"
-            Write-Host " Setting switch parameter '-NoALZEvergreen' to true"
-            $script:NoALZEvergreen = $true
-            $script:azAPICallConf['htParameters'].NoALZEvergreen = $true
+            Write-Host " Setting switch parameter '-NoALZPolicyVersionChecker' to true"
+            $script:NoALZPolicyVersionChecker = $true
+            $script:azAPICallConf['htParameters'].NoALZPolicyVersionChecker = $true
             Write-Host " Switching back to working directory '$($workingPath)'"
             Set-Location $workingPath
         }
@@ -40,9 +40,9 @@ function processALZEverGreen {
     catch {
         $_
         Write-Host " Cloning '$($ALZRepositoryURI)' failed"
-        Write-Host " Setting switch parameter '-NoALZEvergreen' to true"
-        $script:NoALZEvergreen = $true
-        $script:azAPICallConf['htParameters'].NoALZEvergreen = $true
+        Write-Host " Setting switch parameter '-NoALZPolicyVersionChecker' to true"
+        $script:NoALZPolicyVersionChecker = $true
+        $script:azAPICallConf['htParameters'].NoALZPolicyVersionChecker = $true
         Write-Host " Switching back to working directory '$($workingPath)'"
         Set-Location $workingPath
     }
@@ -569,5 +569,5 @@ function processALZEverGreen {
     }
 
     $end = Get-Date
-    Write-Host " Processing ALZ EverGreen base data duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
+    Write-Host " Processing 'Azure Landing Zones (ALZ) Policy Version Checker' base data duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
 }

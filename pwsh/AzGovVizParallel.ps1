@@ -152,14 +152,27 @@
     Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibilityIntegrationRoleAssignmentsAll
 
-.PARAMETER NoALZEvergreen
-    ALZ EverGreen - Azure Landing Zones EverGreen for Policy and Set definitions. AzGovViz will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ EverGreen results will be displayed in the TenantSummary and a CSV export `*_ALZEverGreen.csv` will be provided.
-    If you do not want to execute the ALZ EverGreen feature then use this parameter
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZEvergreen 
+.PARAMETER NoALZPolicyVersionChecker
+    'Azure Landing Zones (ALZ) Policy Version Checker' for Policy and Set definitions. AzGovViz will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The 'Azure Landing Zones (ALZ) Policy Version Checker' results will be displayed in the TenantSummary and a CSV export `*_ALZPolicyVersionChecker.csv` will be provided.
+    If you do not want to execute the 'Azure Landing Zones (ALZ) Policy Version Checker' feature then use this parameter
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker 
 
 .PARAMETER NoDefinitionInsightsDedicatedHTML
     DefinitionInsights will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep DefinitionInsights in the main html file then use this parameter
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML  
+
+.PARAMETER NoStorageAccountAccessAnalysis
+    Analysis on Storage Accounts, specially focused on anonymous access.
+    If you do not want to execute this feature then use this parameter
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoStorageAccountAccessAnalysis
+
+.PARAMETER StorageAccountAccessAnalysisSubscriptionTags
+    If the Storage Account Access Analysis feature is executed with this parameter you can define the subscription tags that should be added to the CSV output
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -StorageAccountAccessAnalysisSubscriptionTags @('Responsible', 'TeamEmail')
+
+.PARAMETER StorageAccountAccessAnalysisStorageAccountTags
+    If the Storage Account Access Analysis feature is executed with this parameter you can define the Storage Account (resource) tags that should be added to the CSV output
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
 
 .EXAMPLE
     Define the ManagementGroup ID
@@ -297,11 +310,16 @@
     Define if PIM Eligible assignments should not be integrated with RoleAssignmentsAll outputs (HTML, CSV)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibilityIntegrationRoleAssignmentsAll
 
-    Define if the ALZ EverGreen feature should not be executed
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZEvergreen
+    Define if the 'Azure Landing Zones (ALZ) Policy Version Checker' feature should not be executed
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 
     Define if DefinitionInsights should not be written to a seperate html file (*_DefinitionInsights.html)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML
+
+    Define if Storage Account Access Analysis (focus on anonymous access) should be executed
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoStorageAccountAccessAnalysis
+    Additionally you can define Subscription and/or Storage Account Tag names that should be added to the CSV output per Storage Account
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> --StorageAccountAccessAnalysisSubscriptionTags @('Responsible', 'TeamEmail') -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
 
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
@@ -319,10 +337,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.23',
+    $AzAPICallVersion = '1.1.24',
 
     [string]
-    $ProductVersion = 'v6_major_20220917_1',
+    $ProductVersion = 'v6_major_20220927_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -489,10 +507,19 @@ Param
     $NoPIMEligibilityIntegrationRoleAssignmentsAll,
 
     [switch]
-    $NoALZEvergreen,
+    $NoALZPolicyVersionChecker,
 
     [switch]
     $NoDefinitionInsightsDedicatedHTML,
+
+    [switch]
+    $NoStorageAccountAccessAnalysis,
+
+    [array]
+    $StorageAccountAccessAnalysisSubscriptionTags = @('undefined'),
+
+    [array]
+    $StorageAccountAccessAnalysisStorageAccountTags = @('undefined'),
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
@@ -590,7 +617,8 @@ function addHtParameters {
         RBACAtScopeOnly                              = [bool]$RBACAtScopeOnly
         DoPSRule                                     = [bool]$DoPSRule
         PSRuleFailedOnly                             = [bool]$PSRuleFailedOnly
-        NoALZEvergreen                               = [bool]$NoALZEvergreen
+        NoALZPolicyVersionChecker                    = [bool]$NoALZPolicyVersionChecker
+        NoStorageAccountAccessAnalysis               = [bool]$NoStorageAccountAccessAnalysis
     }
     Write-Host 'htParameters:'
     $azAPICallConf['htParameters'] | format-table -AutoSize | Out-String
@@ -3831,9 +3859,9 @@ function processAADGroups {
     Write-Host "Resolving AAD Groups duration: $((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
     Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (after Resolving AAD Groups)"
 }
-function processALZEverGreen {
+function processALZPolicyVersionChecker {
     $start = get-date
-    Write-Host "Processing ALZ EverGreen base data"
+    Write-Host "Processing 'Azure Landing Zones (ALZ) Policy Version Checker' base data"
     $ALZRepositoryURI = 'https://github.com/Azure/Enterprise-Scale.git'
     $workingPath = Get-Location
     Write-Host " Working directory is '$($workingPath)'"
@@ -3859,9 +3887,9 @@ function processALZEverGreen {
         if (-not (Test-Path -LiteralPath "$($ALZPath)/Enterprise-Scale" -PathType Container)) {
             $ALZCloneSuccess = $false
             Write-Host " Cloning '$($ALZRepositoryURI)' failed"
-            Write-Host " Setting switch parameter '-NoALZEvergreen' to true"
-            $script:NoALZEvergreen = $true
-            $script:azAPICallConf['htParameters'].NoALZEvergreen = $true
+            Write-Host " Setting switch parameter '-NoALZPolicyVersionChecker' to true"
+            $script:NoALZPolicyVersionChecker = $true
+            $script:azAPICallConf['htParameters'].NoALZPolicyVersionChecker = $true
             Write-Host " Switching back to working directory '$($workingPath)'"
             Set-Location $workingPath
         }
@@ -3873,9 +3901,9 @@ function processALZEverGreen {
     catch {
         $_
         Write-Host " Cloning '$($ALZRepositoryURI)' failed"
-        Write-Host " Setting switch parameter '-NoALZEvergreen' to true"
-        $script:NoALZEvergreen = $true
-        $script:azAPICallConf['htParameters'].NoALZEvergreen = $true
+        Write-Host " Setting switch parameter '-NoALZPolicyVersionChecker' to true"
+        $script:NoALZPolicyVersionChecker = $true
+        $script:azAPICallConf['htParameters'].NoALZPolicyVersionChecker = $true
         Write-Host " Switching back to working directory '$($workingPath)'"
         Set-Location $workingPath
     }
@@ -4402,7 +4430,7 @@ function processALZEverGreen {
     }
 
     $end = Get-Date
-    Write-Host " Processing ALZ EverGreen base data duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
+    Write-Host " Processing 'Azure Landing Zones (ALZ) Policy Version Checker' base data duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
 }
 function processApplications {
     Write-Host 'Processing Service Principals - Applications'
@@ -4823,6 +4851,7 @@ function processDataCollection {
                 $scriptPath = $using:ScriptPath
                 #Array&HTs
                 $newTable = $using:newTable
+                $storageAccounts = $using:storageAccounts
                 $resourcesAll = $using:resourcesAll
                 $resourcesIdsAll = $using:resourcesIdsAll
                 $resourceGroupsAll = $using:resourceGroupsAll
@@ -4888,6 +4917,7 @@ function processDataCollection {
                 $function:dataCollectionDefenderPlans = $using:funcDataCollectionDefenderPlans
                 $function:dataCollectionDiagnosticsSub = $using:funcDataCollectionDiagnosticsSub
                 $function:dataCollectionResources = $using:funcDataCollectionResources
+                $function:dataCollectionStorageAccounts = $using:funcDataCollectionStorageAccounts
                 $function:dataCollectionResourceGroups = $using:funcDataCollectionResourceGroups
                 $function:dataCollectionResourceProviders = $using:funcDataCollectionResourceProviders
                 $function:dataCollectionFeatures = $using:funcDataCollectionFeatures
@@ -4963,6 +4993,14 @@ function processDataCollection {
                         }
                         DataCollectionDiagnosticsSub @baseParameters @dataCollectionDiagnosticsSubParameters
 
+                        if ($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis -eq $false) {
+                            #resources
+                            $dataCollectionStorageAccountsParameters = @{
+                                ChildMgMgPath = $childMgMgPath
+                                ChildMgParentNameChainDelimited = $childMgParentNameChainDelimited
+                            }
+                            DataCollectionStorageAccounts @baseParameters @dataCollectionStorageAccountsParameters
+                        }
 
                         if ($azAPICallConf['htParameters'].NoResources -eq $false) {
                             #resources
@@ -10920,6 +10958,259 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     }
 
 }
+function processStorageAccountAnalysis {
+    $start = get-date
+    Write-Host "Processing Storage Account Analysis"
+    $storageAccountscount = $storageAccounts.count
+    if ($storageAccountscount -gt 0) {
+        Write-Host " Executing Storage Account Analysis for $storageAccountscount Storage Accounts"
+        $script:arrayStorageAccountAnalysisResults = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+
+        $storageAccounts | ForEach-Object -Parallel {
+            $storageAccount = $_
+            $azAPICallConf = $using:azAPICallConf
+            $arrayStorageAccountAnalysisResults = $using:arrayStorageAccountAnalysisResults
+            $htAllSubscriptionsFromAPI = $using:htAllSubscriptionsFromAPI
+            $htSubscriptionsMgPath = $using:htSubscriptionsMgPath
+            $htSubscriptionTags = $using:htSubscriptionTags
+            $CSVDelimiterOpposite = $using:CSVDelimiterOpposite
+            $StorageAccountAccessAnalysisSubscriptionTags = $using:StorageAccountAccessAnalysisSubscriptionTags
+            $StorageAccountAccessAnalysisStorageAccountTags = $using:StorageAccountAccessAnalysisStorageAccountTags
+            $listContainersSuccess = 'n/a'
+            $containersCount = 'n/a'
+            $arrayContainers = @()
+            $arrayContainersAnonymousContainer = @()
+            $arrayContainersAnonymousBlob = @()
+            $staticWebsitesState = 'n/a'
+            $webSiteResponds = 'n/a'
+    
+            $subscriptionId = ($storageAccount.id -split '/')[2]
+            $resourceGroupName = ($storageAccount.id -split '/')[4]
+            $subDetails = $htAllSubscriptionsFromAPI.($subscriptionId).subDetails
+    
+            Write-Host "Processing SA; Subscription: $($subDetails.displayName) ($subscriptionId) [$($subDetails.subscriptionPolicies.quotaId)] - Storage Account: $($storageAccount.name)"
+    
+            if ($storageAccount.Properties.primaryEndpoints.blob) {
+
+                $urlServiceProps = "$($storageAccount.Properties.primaryEndpoints.blob)?restype=service&comp=properties"
+                $saProperties = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlServiceProps -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get restype=service&comp=properties"
+                try {
+                    $xmlSaProperties = [xml]([string]$saProperties -replace $saProperties.Substring(0, 3))
+                }
+                catch {
+                    Write-Host "XMLSAPropertiesFailed: Subscription: $($subDetails.displayName) ($subscriptionId) - Storage Account: $($storageAccount.name)"
+                    $saProperties | ConvertTo-Json -Depth 99
+                }
+    
+                $staticWebsitesState = $false
+                if ($xmlSaProperties.StorageServiceProperties.StaticWebsite) {
+                    if ($xmlSaProperties.StorageServiceProperties.StaticWebsite.Enabled -eq $true) {
+                        $staticWebsitesState = $true
+                    }
+                }
+
+                $urlCompList = "$($storageAccount.Properties.primaryEndpoints.blob)?comp=list"
+                $listContainers = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlCompList -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get comp=list"
+                if ($listContainers -eq 'AuthorizationFailure') {
+                    $listContainersSuccess = $false
+                }
+                else {
+                    $listContainersSuccess = $true
+                }
+    
+                if ($listContainersSuccess) {
+                    $xmlListContainers = [xml]([string]$listContainers -replace $listContainers.Substring(0, 3))
+                    $containersCount = $xmlListContainers.EnumerationResults.Containers.Container.Count
+                
+                    foreach ($container in $xmlListContainers.EnumerationResults.Containers.Container) {
+                        $arrayContainers += $container.Name
+                        if ($container.Name -eq '$web' -and $staticWebsitesState) {
+                            if ($storageAccount.properties.primaryEndpoints.web) {
+                                try {
+                                    $testStaticWebsiteResponse = Invoke-WebRequest -Uri $storageAccount.properties.primaryEndpoints.web -Method 'HEAD'
+                                    $webSiteResponds = $true
+                                }
+                                catch {
+                                    $webSiteResponds = $false
+                                }
+                            }
+                        }
+    
+                        if ($container.Properties.PublicAccess) {
+                            if ($container.Properties.PublicAccess -eq 'blob') {
+                                $arrayContainersAnonymousBlob += $container.Name
+                            }
+                            if ($container.Properties.PublicAccess -eq 'container') {
+                                $arrayContainersAnonymousContainer += $container.Name
+                            }
+                        }
+                    }
+                }
+            }
+    
+            $allowSharedKeyAccess = $storageAccount.properties.allowSharedKeyAccess
+            if ([string]::IsNullOrWhiteSpace($storageAccount.properties.allowSharedKeyAccess)) {
+                $allowSharedKeyAccess = 'likely True'
+            }
+            $requireInfrastructureEncryption = $storageAccount.properties.encryption.requireInfrastructureEncryption
+            if ([string]::IsNullOrWhiteSpace($storageAccount.properties.encryption.requireInfrastructureEncryption)) {
+                $requireInfrastructureEncryption = 'likely False'
+            }
+    
+            $arrayResourceAccessRules = [System.Collections.ArrayList]@()
+            if ($storageAccount.properties.networkAcls.resourceAccessRules) {
+                if ($storageAccount.properties.networkAcls.resourceAccessRules.count -gt 0) {
+                    foreach ($resourceAccessRule in $storageAccount.properties.networkAcls.resourceAccessRules) {
+    
+                        $resourceAccessRuleResourceIdSplitted = $resourceAccessRule.resourceId -split '/'
+                        $resourceType = "$($resourceAccessRuleResourceIdSplitted[6])/$($resourceAccessRuleResourceIdSplitted[7])"
+                    
+                        [regex]$regex = '\*+'
+                        $resourceAccessRule.resourceId
+                        switch ($regex.matches($resourceAccessRule.resourceId).count) {
+                            { $_ -eq 1 } { 
+                                $null = $arrayResourceAccessRules.Add([PSCustomObject]@{
+                                        resourcetype = $resourceType 
+                                        range        = 'resourceGroup'
+                                        sort         = 3
+                                    })
+                            }
+                            { $_ -eq 2 } { 
+                                $null = $arrayResourceAccessRules.Add([PSCustomObject]@{
+                                        resourcetype = $resourceType 
+                                        range        = 'subscription'
+                                        sort         = 2
+                                    })
+                            }
+                            { $_ -eq 3 } { 
+                                $null = $arrayResourceAccessRules.Add([PSCustomObject]@{
+                                        resourcetype = $resourceType 
+                                        range        = 'tenant'
+                                        sort         = 1
+                                    })
+                            }
+                            default { 
+                                $null = $arrayResourceAccessRules.Add([PSCustomObject]@{
+                                        resourcetype = $resourceType 
+                                        range        = 'resource'
+                                        resource     = $resourceAccessRule.resourceId
+                                        sort         = 0
+                                    })
+                            }
+                        } 
+                    }
+                }
+            }
+            $resourceAccessRulesCount = $arrayResourceAccessRules.count
+            if ($resourceAccessRulesCount -eq 0) {
+                $resourceAccessRules = ''
+            }
+            else {
+                $ht = @{}
+                foreach ($accessRulePerRange in $arrayResourceAccessRules | Group-Object -Property range | Sort-Object -Property Name -Descending) {
+    
+                    if ($accessRulePerRange.Name -eq 'resource') {
+                        $arrayResources = @()
+                        foreach ($resource in $accessRulePerRange.Group.resource | Sort-Object) {
+                            $arrayResources += $resource
+                        }
+                        $ht.($accessRulePerRange.Name) = [array]($arrayResources)
+                    }
+                    else {
+                        $arrayResourceTypes = @()
+                        foreach ($resourceType in $accessRulePerRange.Group.resourceType | Sort-Object) {
+                            $arrayResourceTypes += $resourceType
+                        }
+                        $ht.($accessRulePerRange.Name) = [array]($arrayResourceTypes)
+                    }              
+                }
+                $resourceAccessRules = $ht | ConvertTo-Json
+            }
+
+            if ([string]::IsNullOrWhiteSpace($storageAccount.properties.publicNetworkAccess)) {
+                $publicNetworkAccess = 'likely enabled'
+            }
+            else {
+                $publicNetworkAccess = $storageAccount.properties.publicNetworkAccess
+            }
+    
+            $temp = [System.Collections.ArrayList]@()
+            $null = $temp.Add([PSCustomObject]@{
+                    storageAccount                    = $storageAccount.name
+                    kind                              = $storageAccount.kind
+                    skuName                           = $storageAccount.sku.name
+                    skuTier                           = $storageAccount.sku.tier
+                    location                          = $storageAccount.location
+                    creationTime                      = $storageAccount.properties.creationTime
+                    allowBlobPublicAccess             = $storageAccount.properties.allowBlobPublicAccess
+                    publicNetworkAccess               = $publicNetworkAccess
+                    SubscriptionId                    = $subscriptionId
+                    SubscriptionName                  = $subDetails.displayName
+                    subscriptionQuotaId               = $subDetails.subscriptionPolicies.quotaId
+                    subscriptionMGPath                = $htSubscriptionsMgPath.($subscriptionId).path -join '/'
+                    resourceGroup                     = $resourceGroupName
+                    networkAclsdefaultAction          = $storageAccount.properties.networkAcls.defaultAction
+                    staticWebsitesState               = $staticWebsitesState
+                    staticWebsitesResponse            = $webSiteResponds
+                    containersCanBeListed             = $listContainersSuccess
+                    containersCount                   = $containersCount
+                    containers                        = $arrayContainers -join "$CSVDelimiterOpposite "
+                    containersAnonymousContainerCount = $arrayContainersAnonymousContainer.Count
+                    containersAnonymousContainer      = $arrayContainersAnonymousContainer -join "$CSVDelimiterOpposite "
+                    containersAnonymousBlobCount      = $arrayContainersAnonymousBlob.Count
+                    containersAnonymousBlob           = $arrayContainersAnonymousBlob -join "$CSVDelimiterOpposite "
+                    ipRulesCount                      = $storageAccount.properties.networkAcls.ipRules.Count
+                    ipRulesIPAddressList              = ($storageAccount.properties.networkAcls.ipRules.value | Sort-Object) -join "$CSVDelimiterOpposite "
+                    virtualNetworkRulesCount          = $storageAccount.properties.networkAcls.virtualNetworkRules.Count
+                    virtualNetworkRulesList           = ($storageAccount.properties.networkAcls.virtualNetworkRules.Id | Sort-Object) -join "$CSVDelimiterOpposite "
+                    resourceAccessRulesCount          = $resourceAccessRulesCount
+                    resourceAccessRules               = $resourceAccessRules
+                    bypass                            = $storageAccount.properties.networkAcls.bypass -join "$CSVDelimiterOpposite "
+                    supportsHttpsTrafficOnly          = $storageAccount.properties.supportsHttpsTrafficOnly
+                    minimumTlsVersion                 = $storageAccount.properties.minimumTlsVersion
+                    allowSharedKeyAccess              = $allowSharedKeyAccess
+                    requireInfrastructureEncryption   = $requireInfrastructureEncryption
+                })
+    
+            if ($StorageAccountAccessAnalysisSubscriptionTags[0] -ne 'undefined' -and $StorageAccountAccessAnalysisSubscriptionTags.Count -gt 0) {
+                foreach ($subTag4StorageAccountAccessAnalysis in $StorageAccountAccessAnalysisSubscriptionTags) {
+                    if ($htSubscriptionTags.($subscriptionId).$subTag4StorageAccountAccessAnalysis) {
+                        $temp | Add-Member -NotePropertyName "SubTag_$subTag4StorageAccountAccessAnalysis" -NotePropertyValue $($htSubscriptionTags.($subscriptionId).$subTag4StorageAccountAccessAnalysis)
+                    }
+                    else {
+                        $temp | Add-Member -NotePropertyName "SubTag_$subTag4StorageAccountAccessAnalysis" -NotePropertyValue 'n/a'
+                    }
+                }
+            }
+    
+            if ($StorageAccountAccessAnalysisStorageAccountTags[0] -ne 'undefined' -and $StorageAccountAccessAnalysisStorageAccountTags.Count -gt 0) {
+                if ($storageAccount.tags) {
+                    $htAllSATags = @{}
+                    foreach ($saTagName in ($storageAccount.tags | Get-Member).where({ $_.MemberType -eq 'NoteProperty' }).Name) {
+                        $htAllSATags.$saTagName = $storageAccount.tags.$saTagName
+                    }
+                }
+                foreach ($saTag4StorageAccountAccessAnalysis in $StorageAccountAccessAnalysisStorageAccountTags) {
+                    if ($htAllSATags.$saTag4StorageAccountAccessAnalysis) {
+                        $temp | Add-Member -NotePropertyName "SATag_$saTag4StorageAccountAccessAnalysis" -NotePropertyValue $($htAllSATags.$saTag4StorageAccountAccessAnalysis)
+                    }
+                    else {
+                        $temp | Add-Member -NotePropertyName "SATag_$saTag4StorageAccountAccessAnalysis" -NotePropertyValue 'n/a'
+                    }
+                }
+            }
+    
+            $null = $script:arrayStorageAccountAnalysisResults.AddRange($temp)
+    
+        } -ThrottleLimit $ThrottleLimit
+    }
+    else {
+        Write-Host " No Storage Accounts present"
+    }
+
+    $end = Get-Date
+    Write-Host " Processing Storage Account Analysis duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
+}
 function processTenantSummary() {
     Write-Host ' Building TenantSummary'
     showMemoryUsage
@@ -13290,7 +13581,7 @@ extensions: [{ name: 'sort' }]
     #region SUMMARYALZPolicies
     Write-Host '  processing TenantSummary ALZPolicies'
     
-    if (-not $NoALZEvergreen) {
+    if (-not $NoALZPolicyVersionChecker) {
 
         $alzPoliciesInTenant = [System.Collections.ArrayList]@()
         #policies
@@ -13392,7 +13683,7 @@ extensions: [{ name: 'sort' }]
             $htmlTableId = 'TenantSummary_ALZPolicies'
             $abbrALZ = " <abbr title=`"obsolete: this policy is no longer ALZ maintained by ALZ&#13;outDated: a new version of the policy available&#13;unknown: ALZ related policy could not be mapped&#13;upToDate: policy matches with latest ALZ policy`"><i class=`"fa fa-question-circle`" aria-hidden=`"true`"></i></abbr>"
             [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ALZPolicies"><i class="padlx fa fa-retweet" aria-hidden="true" style="color:#23C632"></i> <span class="valignMiddle">Azure Landing Zones EverGreen</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ALZPolicies"><i class="padlx fa fa-retweet" aria-hidden="true" style="color:#23C632"></i> <span class="valignMiddle">Azure Landing Zones (ALZ) Policy Version Checker</span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Landing Zones (ALZ)</span> <a class="externallink" href="https://github.com/Azure/Enterprise-Scale/blob/main/docs/ESLZ-Policies.md" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
@@ -13416,9 +13707,9 @@ extensions: [{ name: 'sort' }]
 <tbody>
 "@)
 
-            $htmlSUMMARYALZEverGreen = $null
+            $htmlSUMMARYALZPolicyVersionChecker = $null
             $exemptionData4CSVExport = [System.Collections.ArrayList]@()
-            $htmlSUMMARYALZEverGreen = foreach ($entry in $alzPoliciesInTenant) {
+            $htmlSUMMARYALZPolicyVersionChecker = foreach ($entry in $alzPoliciesInTenant) {
                 if ([string]::IsNullOrWhiteSpace($entry.AzAdvertizerUrl)) {
                     $link = ''
                 }
@@ -13443,11 +13734,11 @@ extensions: [{ name: 'sort' }]
             }
 
             if (-not $NoCsvExport) {
-                Write-Host "Exporting ALZ EverGreen CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZEverGreen.csv'"
-                $alzPoliciesInTenant | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZEverGreen.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                Write-Host "Exporting 'Azure Landing Zones (ALZ) Policy Version Checker' CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZPolicyVersionChecker.csv'"
+                $alzPoliciesInTenant | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZPolicyVersionChecker.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
             }
 
-            [void]$htmlTenantSummary.AppendLine($htmlSUMMARYALZEverGreen)
+            [void]$htmlTenantSummary.AppendLine($htmlSUMMARYALZPolicyVersionChecker)
             [void]$htmlTenantSummary.AppendLine(@"
             </tbody>
         </table>
@@ -13509,13 +13800,13 @@ extensions: [{ name: 'sort' }]
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@"
-    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Azure Landing Zones EverGreen</span></p>
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Azure Landing Zones (ALZ) Policy Version Checker</span></p>
 "@)
         }
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Azure Landing Zones EverGreen (parameter -NoALZEvergreen = $NoALZEvergreen)</span></p>
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Azure Landing Zones (ALZ) Policy Version Checker (parameter -NoALZPolicyVersionChecker = $NoALZPolicyVersionChecker)</span></p>
 "@)
     }
     #endregion SUMMARYALZPolicies
@@ -19628,6 +19919,203 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         #endregion SUMMARYPSRule
     }
 
+    
+    #region SUMMARYStorageAccountAnalysis
+    if (1 -eq 1) {
+    if ($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis -eq $false) {
+        $startStorageAccountAnalysis = Get-Date
+        Write-Host '  processing TenantSummary Storage Account Access Analysis'
+            
+        $arrayStorageAccountAnalysisResultsCount = $arrayStorageAccountAnalysisResults.Count 
+        if ($arrayStorageAccountAnalysisResultsCount.Count -gt 0) {
+
+            if (-not $NoCsvExport) {
+                $storageAccountAccessAnalysisCSVPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_StorageAccountAccessAnalysis.csv"
+                Write-Host "   Exporting 'Storage Account Access Analysis' CSV '$storageAccountAccessAnalysisCSVPath'"
+                $arrayStorageAccountAnalysisResults | Sort-Object -Property StorageAccount | Export-Csv -Path $storageAccountAccessAnalysisCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
+            }
+
+            $htmlTableId = 'TenantSummary_StorageAccountAccessAnalysis'
+            $tfCount = $arrayStorageAccountAnalysisResultsCount
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_StorageAccountAccessAnalysis"><i class="padlx fa fa-user-secret" aria-hidden="true"></i> <span class="valignMiddle">$tfCount Storage Accounts Access Analysis results</span></button>
+<div class="content TenantSummary">
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Check this article by Elli Shlomo (MVP) </span> <a class="externallink" href="https://misconfig.io/azure-blob-container-threats-attacks/" target="_blank" rel="noopener">Azure Blob Container Threats & Attacks <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> If you enabled the parameters <i>StorageAccountAccessAnalysisSubscriptionTags or StorageAccountAccessAnalysisStorageAccountTags</i> these are integrated in the CSV output *_StorageAccountAccessAnalysis.csv<br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>StorageAccount</th>
+<th>kind</th>
+<th>skuName</th>
+<th>skuTier</th>
+<th>location</th>
+<th>allowBlobPublicAccess</th> 
+<th>publicNetworkAccess</th> 
+<th>subscriptionMGPath</th>
+<th>resourceGroup</th>
+<th>networkAclsdefaultAction</th>
+<th>staticWebsitesState</th>
+<th>staticWebsitesResponse</th>
+<th>containersCanBeListed</th>
+<th>containersCount</th>
+<th>containersAnonymousContainerCount</th> 
+<th>containersAnonymousBlobCount</th>
+<th>ipRulesCount</th>
+<th>ipRulesIPAddressList</th>
+<th>virtualNetworkRulesCount</th>
+<th>resourceAccessRulesCount</th>
+<th>resourceAccessRules</th>
+<th>bypass</th>
+<th>supportsHttpsTrafficOnly</th>
+<th>minimumTlsVersion</th>
+<th>allowSharedKeyAccess</th>
+<th>requireInfrastructureEncryption</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+            foreach ($result in $arrayStorageAccountAnalysisResults | sort-Object -Property Name) {
+
+                [void]$htmlTenantSummary.AppendLine(@"
+                        <tr>
+                        <td>$($result.storageAccount)</td>
+                        <td>$($result.kind)</td>
+                        <td>$($result.skuName)</td>
+                        <td>$($result.skuTier)</td>
+                        <td>$($result.location)</td>
+                        <td>$($result.allowBlobPublicAccess)</td> 
+                        <td>$($result.publicNetworkAccess)</td> 
+                        <td>$($result.subscriptionMGPath)</td>
+                        <td>$($result.resourceGroup)</td>
+                        <td>$($result.networkAclsdefaultAction)</td>
+                        <td>$($result.staticWebsitesState)</td>
+                        <td>$($result.staticWebsitesResponse)</td>
+                        <td>$($result.containersCanBeListed)</td>
+                        <td>$($result.containersCount)</td>
+                        <td>$($result.containersAnonymousContainerCount)</td> 
+                        <td>$($result.containersAnonymousBlobCount)</td>
+                        <td>$($result.ipRulesCount)</td>
+                        <td>$($result.ipRulesIPAddressList)</td>
+                        <td>$($result.virtualNetworkRulesCount)</td>
+                        <td>$($result.resourceAccessRulesCount)</td>
+                        <td>$($result.resourceAccessRules)</td>
+                        <td>$($result.bypass)</td>
+                        <td>$($result.supportsHttpsTrafficOnly)</td>
+                        <td>$($result.minimumTlsVersion)</td>
+                        <td>$($result.allowSharedKeyAccess)</td>
+                        <td>$($result.requireInfrastructureEncryption)</td>
+                        </tr>
+"@)
+
+            }
+
+            [void]$htmlTenantSummary.AppendLine(@"
+</tbody>
+</table>
+<script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            linked_filters: true,
+            col_1: 'select',
+            col_2: 'select',
+            col_3: 'select',
+            col_4: 'select',
+            col_5: 'select',
+            col_6: 'select',
+            col_9: 'select',
+            col_10: 'select',
+            col_11: 'select',
+            col_12: 'select',
+            col_21: 'select',
+            col_22: 'select',
+            col_23: 'select',
+            col_24: 'select',
+            col_25: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number',
+                'number',
+                'number',
+                'number',
+                'caseinsensitivestring',
+                'number',
+                'number',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+            extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+</div>
+"@)
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@'
+    <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No Storage Accounts found</span></p>
+'@)
+        }
+        $endStorageAccountAnalysis = Get-Date
+        Write-Host "   Storage Account Analysis processing duration: $((NEW-TIMESPAN -Start $startStorageAccountAnalysis -End $endStorageAccountAnalysis).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startStorageAccountAnalysis -End $endStorageAccountAnalysis).TotalSeconds) seconds)"
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+            <i class="padlx fa fa-check-square-o" aria-hidden="true"></i> <span class="valignMiddle">Storage Account Access Analysis disabled - </span><span class="info">parameter -NoStorageAccountAccessAnalysis $($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis)</span>
+"@)
+    }
+}
+    #endregion SUMMARYStorageAccountAnalysis
+    
+
     [void]$htmlTenantSummary.AppendLine(@'
     </div>
 '@)
@@ -24994,13 +25482,28 @@ function runInfo {
             #$script:paramsUsed += "NoDefinitionInsightsDedicatedHTML: $($NoDefinitionInsightsDedicatedHTML) &#13;"
         }
 
-        if ($NoALZEvergreen) {
-            Write-Host " NoALZEvergreen = $($NoALZEvergreen)" -ForegroundColor Green
-            #$script:paramsUsed += "NoALZEvergreen: $($NoALZEvergreen) &#13;"
+        if ($NoALZPolicyVersionChecker) {
+            Write-Host " NoALZPolicyVersionChecker = $($NoALZPolicyVersionChecker)" -ForegroundColor Green
+            #$script:paramsUsed += "NoALZPolicyVersionChecker: $($NoALZPolicyVersionChecker) &#13;"
         }
         else {
-            Write-Host " NoALZEvergreen = $($NoALZEvergreen)" -ForegroundColor Yellow
-            #$script:paramsUsed += "NoALZEvergreen: $($NoALZEvergreen) &#13;"
+            Write-Host " NoALZPolicyVersionChecker = $($NoALZPolicyVersionChecker)" -ForegroundColor Yellow
+            #$script:paramsUsed += "NoALZPolicyVersionChecker: $($NoALZPolicyVersionChecker) &#13;"
+        }
+
+        if ($NoStorageAccountAccessAnalysis) {
+            Write-Host " NoStorageAccountAccessAnalysis = $($NoStorageAccountAccessAnalysis)" -ForegroundColor Green
+            #$script:paramsUsed += "NoStorageAccountAccessAnalysis: $($NoStorageAccountAccessAnalysis) &#13;"
+        }
+        else {
+            Write-Host " NoStorageAccountAccessAnalysis = $($NoStorageAccountAccessAnalysis)" -ForegroundColor Yellow
+            #$script:paramsUsed += "NoStorageAccountAccessAnalysis: $($NoStorageAccountAccessAnalysis) &#13;"
+            if ($StorageAccountAccessAnalysisSubscriptionTags[0] -ne 'undefined' -and $StorageAccountAccessAnalysisSubscriptionTags.Count -gt 0) {
+                Write-Host "  -StorageAccountAccessAnalysisSubscriptionTags: $($StorageAccountAccessAnalysisSubscriptionTags -join ', ')" -ForegroundColor Yellow
+            }
+            if ($StorageAccountAccessAnalysisStorageAccountTags[0] -ne 'undefined' -and $StorageAccountAccessAnalysisStorageAccountTags.Count -gt 0) {
+                Write-Host "  -StorageAccountAccessAnalysisStorageAccountTags: $($StorageAccountAccessAnalysisStorageAccountTags -join ', ')" -ForegroundColor Yellow
+            }
         }
 
     }
@@ -25938,6 +26441,26 @@ function dataCollectionDiagnosticsMG {
     }
 }
 $funcDataCollectionDiagnosticsMG = $function:dataCollectionDiagnosticsMG.ToString()
+
+function dataCollectionStorageAccounts {
+    [CmdletBinding()]Param(
+        [string]$scopeId,
+        [string]$scopeDisplayName,
+        $ChildMgMgPath,
+        $ChildMgParentNameChainDelimited,
+        $subscriptionQuotaId
+    )
+
+    $currentTask = "Getting Storage Accounts for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Storage/storageAccounts?api-version=2021-09-01"
+    $method = 'GET'
+    $storageAccountsSubscriptionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+
+    foreach ($storageAccount in $storageAccountsSubscriptionResult) {
+        $null = $script:storageAccounts.Add($storageAccount)
+    }
+}
+$funcDataCollectionStorageAccounts = $function:dataCollectionStorageAccounts.ToString()
 
 function dataCollectionResources {
     [CmdletBinding()]Param(
@@ -27390,7 +27913,7 @@ function dataCollectionPolicyDefinitions {
                 }
 
 
-                if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
+                if ($azAPICallConf['htParameters'].NoALZPolicyVersionChecker -eq $false) {
 
                     $policyJsonRule = $scopePolicyDefinition.properties.policyRule | ConvertTo-Json -depth 99
                     $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonRule))
@@ -27672,7 +28195,7 @@ function dataCollectionPolicySetDefinitions {
                     $htTemp.ScopeMGLevel = $htSubscriptionsMgPath.((($scopePolicySetDefinition.Id).split('/'))[2]).level
                 }
 
-                if ($azAPICallConf['htParameters'].NoALZEvergreen -eq $false) {
+                if ($azAPICallConf['htParameters'].NoALZPolicyVersionChecker -eq $false) {
 
                     $policyJsonParameters = $scopePolicySetDefinition.properties.parameters | ConvertTo-Json -depth 99
                     $policyJsonPolicyDefinitions = $scopePolicySetDefinition.properties.policyDefinitions | ConvertTo-Json -depth 99
@@ -29941,6 +30464,7 @@ if ($DoPSRule) {
             ModulePathPipeline = 'PSRuleModule'
         })
 }
+
 verifyModules3rd -modules $modules
 #endregion verifyModules3rd
 
@@ -29970,7 +30494,6 @@ if ($azGovVizNewerVersionAvailable) {
 #endregion promptNewAzGovVizVersionAvailable
 
 handleCloudEnvironment
-
 
 if (-not $HierarchyMapOnly) {
     #region recommendPSRule
@@ -30132,32 +30655,34 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $alzPolicySetHashes = @{}
     $htDoARMRoleAssignmentScheduleInstances = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htDoARMRoleAssignmentScheduleInstances.Do = $true
+    $storageAccounts = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayStorageAccountAnalysisResults = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
 if (-not $HierarchyMapOnly) {
-    if (-not $NoALZEvergreen) {
+    if (-not $NoALZPolicyVersionChecker) {
         switch ($azAPICallConf['checkContext'].Environment.Name) {
             'Azurecloud' { 
-                Write-Host "ALZ EverGreen feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                processALZEverGreen 
+                Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZPolicyVersionChecker 
             }
             'AzureChinaCloud' { 
-                Write-Host "ALZ EverGreen feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                processALZEverGreen
+                Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZPolicyVersionChecker
             }
             'AzureUSGovernment' { 
-                Write-Host "ALZ EverGreen feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                processALZEverGreen 
+                Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZPolicyVersionChecker 
             }
             Default {
-                Write-Host "ALZ EverGreen feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                Write-Host "Setting parameter -NoALZEvergreen to 'true'"
-                $NoALZEvergreen = $true
+                Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                Write-Host "Setting parameter -NoALZPolicyVersionChecker to 'true'"
+                $NoALZPolicyVersionChecker = $true
             }
         }
     }
     else {
-        #Write-Host "Skipping ALZ EverGreen (parameter -NoALZEvergreen = $NoALZEvergreen)"
+        #Write-Host "Skipping 'Azure Landing Zones (ALZ) Policy Version Checker' (parameter -NoALZPolicyVersionChecker = $NoALZPolicyVersionChecker)"
     }
 }
 
@@ -30234,6 +30759,11 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
     createTagList
     showMemoryUsage
+
+    if ($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis -eq $false) {
+        processStorageAccountAnalysis
+        showMemoryUsage
+    }
 
     if ($azAPICallConf['htParameters'].NoResources -eq $false) {
         getResourceDiagnosticsCapability

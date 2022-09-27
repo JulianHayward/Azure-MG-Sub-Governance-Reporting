@@ -59,26 +59,16 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Sep-17 / Major)
+__Changes__ (2022-Sep-27 / Major)
 
-* Fix Azure DevOps Pipeline correct addressing of NoDefinitionInsights variable in YAML
-* Fix issue #132
-* Add __[Contribution Guide](contributionGuide.md)__
-
-__Changes__ (2022-Sep-12 / Major)
-
-* New feature 'ALZ EverGreen' - Azure Landing Zones EverGreen for Policy and Set definitions. AzGovViz will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ EverGreen results will be displayed in the __TenantSummary__ and a CSV export `*_ALZEverGreen.csv` will be provided. Thanks! ALZ Team 
-  * New parameter `-NoALZEverGreen` - Do not execute the ALZ EverGreen feature
-* Update: Per default __DefinitionInsights__ will be written to a separate HTML file. This will improve the html file handling (browser memory usage /response time / user experience). 
-  * Note: Please update your Azure DevOps and GitHub YAML files with the latest versions if you are using the webApp publishing feature
-  * New parameter `-NoDefinitionInsightsDedicatedHTML` (__DefinitionInsights__ will NOT be written to a separate HTML file `*_DefinitionInsights.html`)
-* Add Resource fluctuation detailed (`*_ResourceFluctuationDetailed.csv`) CSV output (add/remove, scope details, resource details)
-* Fix consumption reporting for large tenants with more than 3k subscriptions (_Management Group abc has too many subscriptions <count>, exceeding CCM API Current Limit 3000_)
-* Fix CSV export `*_PolicySetDefinitions.csv` - Builtin Policy definitions contained in PolicySet definitions will only show the GUID instead of the full ID as for large PolicySet definitions the field size limit in Excel may be exceeded (column: PoliciesUsed4CSV)
-* BuiltIn definitions collection - add 'Static' Policy definitions (part of __DefinitionInsights__ and `*_PolicyDefinitions.csv`)
-* Fix __HierarchyMap__ image quality (now .png (aka 'peng')). Thanks! Brooks Vaughn
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.23
-* Optimizations
+* New feature 'Storage Account Access Analysis' - provides insights on Storage Accounts focusing on anonymous access (containers/blobs and static website feature). Data is provided in the HTML __TenantSummary__ (Subscriptions, Resources & Defender) and as CSV export
+  * New parameter `-NoStorageAccountAccessAnalysis` - do not execute the feature
+  * New parameter `-StorageAccountAccessAnalysisSubscriptionTags` - define the Subscription tags that should be added to the CSV output
+  * New parameter `-StorageAccountAccessAnalysisStorageAccountTags` - define the Storage Account (resource) tags that should be added to the CSV output
+  * Updated `.azuredevops/pipelines/AzGovViz.variables.yml` accordingly
+* Rename 'ALZ EverGreen' feature to 'Azure Landing Zones (ALZ) Policy Version Checker'
+  * Replaced parameter `-NoALZEverGreen` `-NoALZPolicyVersionChecker`
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.24
 
 Passed tests: Powershell Core 7.2.6 on Windows  
 Passed tests: Powershell Core 7.2.6 Azure DevOps hosted agent ubuntu-20.04  
@@ -493,7 +483,7 @@ AzAPICall resources:
     * `-PIMEligibilityIgnoreScope` - By default will only report for PIM Elibility for the scope (`ManagementGroupId`) that was provided. If you use the new switch parameter then PIM Eligibility for all onboarded scopes (Management Groups and Subscriptions) will be reported
     * `-NoPIMEligibilityIntegrationRoleAssignmentsAll` - Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
   * ~~`-DefinitionInsightsDedicatedHTML`~~ `-NoDefinitionInsightsDedicatedHTML` - __DefinitionInsights__ will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep __DefinitionInsights__ in the main html file then use this parameter
-  * `-NoALZEvergreen` - Do not execute the ALZ EverGreen feature
+  * ~~`-NoALZEvergreen`~~ `-NoALZPolicyVersionChecker` - Do not execute the ~~'ALZ EverGreen'~~ 'Azure Landing Zones (ALZ) Policy Version Checker' feature
 
 ### API reference
 

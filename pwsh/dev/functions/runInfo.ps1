@@ -397,13 +397,28 @@ function runInfo {
             #$script:paramsUsed += "NoDefinitionInsightsDedicatedHTML: $($NoDefinitionInsightsDedicatedHTML) &#13;"
         }
 
-        if ($NoALZEvergreen) {
-            Write-Host " NoALZEvergreen = $($NoALZEvergreen)" -ForegroundColor Green
-            #$script:paramsUsed += "NoALZEvergreen: $($NoALZEvergreen) &#13;"
+        if ($NoALZPolicyVersionChecker) {
+            Write-Host " NoALZPolicyVersionChecker = $($NoALZPolicyVersionChecker)" -ForegroundColor Green
+            #$script:paramsUsed += "NoALZPolicyVersionChecker: $($NoALZPolicyVersionChecker) &#13;"
         }
         else {
-            Write-Host " NoALZEvergreen = $($NoALZEvergreen)" -ForegroundColor Yellow
-            #$script:paramsUsed += "NoALZEvergreen: $($NoALZEvergreen) &#13;"
+            Write-Host " NoALZPolicyVersionChecker = $($NoALZPolicyVersionChecker)" -ForegroundColor Yellow
+            #$script:paramsUsed += "NoALZPolicyVersionChecker: $($NoALZPolicyVersionChecker) &#13;"
+        }
+
+        if ($NoStorageAccountAccessAnalysis) {
+            Write-Host " NoStorageAccountAccessAnalysis = $($NoStorageAccountAccessAnalysis)" -ForegroundColor Green
+            #$script:paramsUsed += "NoStorageAccountAccessAnalysis: $($NoStorageAccountAccessAnalysis) &#13;"
+        }
+        else {
+            Write-Host " NoStorageAccountAccessAnalysis = $($NoStorageAccountAccessAnalysis)" -ForegroundColor Yellow
+            #$script:paramsUsed += "NoStorageAccountAccessAnalysis: $($NoStorageAccountAccessAnalysis) &#13;"
+            if ($StorageAccountAccessAnalysisSubscriptionTags[0] -ne 'undefined' -and $StorageAccountAccessAnalysisSubscriptionTags.Count -gt 0) {
+                Write-Host "  -StorageAccountAccessAnalysisSubscriptionTags: $($StorageAccountAccessAnalysisSubscriptionTags -join ', ')" -ForegroundColor Yellow
+            }
+            if ($StorageAccountAccessAnalysisStorageAccountTags[0] -ne 'undefined' -and $StorageAccountAccessAnalysisStorageAccountTags.Count -gt 0) {
+                Write-Host "  -StorageAccountAccessAnalysisStorageAccountTags: $($StorageAccountAccessAnalysisStorageAccountTags -join ', ')" -ForegroundColor Yellow
+            }
         }
 
     }
