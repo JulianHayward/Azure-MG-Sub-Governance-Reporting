@@ -8728,43 +8728,44 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_StorageAccountAccessAnalysis"><i class="padlx fa fa-user-secret" aria-hidden="true"></i> <span class="valignMiddle">$tfCount Storage Accounts Access Analysis results</span></button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Check this article by Elli Shlomo (MVP) </span> <a class="externallink" href="https://misconfig.io/azure-blob-container-threats-attacks/" target="_blank" rel="noopener">Azure Blob Container Threats & Attacks <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
-<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> If you enabled the parameters <i>StorageAccountAccessAnalysisSubscriptionTags or StorageAccountAccessAnalysisStorageAccountTags</i> these are integrated in the CSV output *_StorageAccountAccessAnalysis.csv<br>
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> If you enabled the parameters <i>StorageAccountAccessAnalysisSubscriptionTags or StorageAccountAccessAnalysisStorageAccountTags</i> these are integrated in the CSV output *_StorageAccountAccessAnalysis.csv</span><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
 <thead>
 <tr>
 <th>StorageAccount</th>
-<th>kind</th>
-<th>skuName</th>
-<th>skuTier</th>
-<th>location</th>
-<th>allowBlobPublicAccess</th> 
-<th>publicNetworkAccess</th> 
-<th>subscriptionMGPath</th>
-<th>resourceGroup</th>
-<th>networkAclsdefaultAction</th>
-<th>staticWebsitesState</th>
-<th>staticWebsitesResponse</th>
-<th>containersCanBeListed</th>
-<th>containersCount</th>
-<th>containersAnonymousContainerCount</th> 
-<th>containersAnonymousBlobCount</th>
-<th>ipRulesCount</th>
-<th>ipRulesIPAddressList</th>
-<th>virtualNetworkRulesCount</th>
-<th>resourceAccessRulesCount</th>
-<th>resourceAccessRules</th>
-<th>bypass</th>
-<th>supportsHttpsTrafficOnly</th>
-<th>minimumTlsVersion</th>
-<th>allowSharedKeyAccess</th>
-<th>requireInfrastructureEncryption</th>
+<th>Kind</th>
+<th>SkuName</th>
+<th>SkuTier</th>
+<th>Location</th>
+<th>Subscription</th>
+<th>Subscription MGPath</th>
+<th>ResourceGroup</th>
+<th>Allow Blob Public Access</th> 
+<th>Public Network Access</th> 
+<th>NetworkAcls defaultAction</th>
+<th>StaticWebsites State</th>
+<th>StaticWebsites Response</th>
+<th>Containers CanBeListed</th>
+<th>Containers Count</th>
+<th>Containers Anonymous Container Count</th> 
+<th>Containers Anonymous Blob Count</th>
+<th>IpRules Count</th>
+<th>IpRules IPAddress List</th>
+<th>VirtualNetwork Rules Count</th>
+<th>ResourceAccess Rules Count</th>
+<th>ResourceAccess Rules</th>
+<th>Bypass</th>
+<th>Supports Https Traffic Only</th>
+<th>Minimum Tls Version</th>
+<th>Allow SharedKey Access</th>
+<th>Require Infrastructure Encryption</th>
 </tr>
 </thead>
 <tbody>
 "@)
 
-            foreach ($result in $arrayStorageAccountAnalysisResults | sort-Object -Property Name) {
+            foreach ($result in $arrayStorageAccountAnalysisResults | sort-Object -Property storageAccount) {
 
                 [void]$htmlTenantSummary.AppendLine(@"
                         <tr>
@@ -8772,11 +8773,12 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.kind)</td>
                         <td>$($result.skuName)</td>
                         <td>$($result.skuTier)</td>
-                        <td>$($result.location)</td>
-                        <td>$($result.allowBlobPublicAccess)</td> 
-                        <td>$($result.publicNetworkAccess)</td> 
+                        <td>$($result.location)</td> 
+                        <td>$($result.SubscriptionName)</td> 
                         <td>$($result.subscriptionMGPath)</td>
                         <td>$($result.resourceGroup)</td>
+                        <td>$($result.allowBlobPublicAccess)</td> 
+                        <td>$($result.publicNetworkAccess)</td>
                         <td>$($result.networkAclsdefaultAction)</td>
                         <td>$($result.staticWebsitesState)</td>
                         <td>$($result.staticWebsitesResponse)</td>
@@ -8839,18 +8841,19 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_2: 'select',
             col_3: 'select',
             col_4: 'select',
-            col_5: 'select',
-            col_6: 'select',
+            col_8: 'select',
             col_9: 'select',
             col_10: 'select',
             col_11: 'select',
             col_12: 'select',
-            col_21: 'select',
+            col_13: 'select',
             col_22: 'select',
             col_23: 'select',
             col_24: 'select',
             col_25: 'select',
+            col_26: 'select',
             col_types: [
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',

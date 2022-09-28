@@ -59,16 +59,17 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Sep-27 / Major)
+__Changes__ (2022-Sep-28 / Major)
 
-* New feature 'Storage Account Access Analysis' - provides insights on Storage Accounts focusing on anonymous access (containers/blobs and static website feature). Data is provided in the HTML __TenantSummary__ (Subscriptions, Resources & Defender) and as CSV export
+* New feature 'Storage Account Access Analysis' - provides insights on Storage Accounts with focus on anonymous access (containers/blobs and 'Static website' feature). Data is provided in the HTML __TenantSummary__ (Subscriptions, Resources & Defender) and as CSV export
   * New parameter `-NoStorageAccountAccessAnalysis` - do not execute the feature
   * New parameter `-StorageAccountAccessAnalysisSubscriptionTags` - define the Subscription tags that should be added to the CSV output
   * New parameter `-StorageAccountAccessAnalysisStorageAccountTags` - define the Storage Account (resource) tags that should be added to the CSV output
   * Updated `.azuredevops/pipelines/AzGovViz.variables.yml` accordingly
 * Rename 'ALZ EverGreen' feature to 'Azure Landing Zones (ALZ) Policy Version Checker'
-  * Replaced parameter `-NoALZEverGreen` `-NoALZPolicyVersionChecker`
+  * Replaced parameter ~~`-NoALZEverGreen`~~ with `-NoALZPolicyVersionChecker`
 * Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.24
+* Optimizations
 
 Passed tests: Powershell Core 7.2.6 on Windows  
 Passed tests: Powershell Core 7.2.6 Azure DevOps hosted agent ubuntu-20.04  
@@ -209,6 +210,8 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
     * Summary of Resources that have an UserAssigned Managed Identity assigned
   * [Integrate PSRule for Azure](#integrate-psrule-for-azure)
     * Well-Architected Framework aligned best practice analysis for resources, including guidance for remediation
+  * Storage Account Access Analysis
+    * Provides insights on Storage Accounts with focus on anonymous access (containers/blobs and 'Static website' feature)
 * __Diagnostics__
   * Management Groups Diagnostic settings report
     * Management Group, Diagnostic setting name, target type (LA, SA, EH), target Id, Log Category status

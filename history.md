@@ -4,6 +4,18 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Sep-28 / Major)
+
+* New feature 'Storage Account Access Analysis' - provides insights on Storage Accounts with focus on anonymous access (containers/blobs and 'Static website' feature). Data is provided in the HTML __TenantSummary__ (Subscriptions, Resources & Defender) and as CSV export
+  * New parameter `-NoStorageAccountAccessAnalysis` - do not execute the feature
+  * New parameter `-StorageAccountAccessAnalysisSubscriptionTags` - define the Subscription tags that should be added to the CSV output
+  * New parameter `-StorageAccountAccessAnalysisStorageAccountTags` - define the Storage Account (resource) tags that should be added to the CSV output
+  * Updated `.azuredevops/pipelines/AzGovViz.variables.yml` accordingly
+* Rename 'ALZ EverGreen' feature to 'Azure Landing Zones (ALZ) Policy Version Checker'
+  * Replaced parameter ~~`-NoALZEverGreen`~~ with `-NoALZPolicyVersionChecker`
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.24
+* Optimizations
+
 __Changes__ (2022-Sep-17 / Major)
 
 * Fix Azure DevOps Pipeline correct addressing of NoDefinitionInsights variable in YAML

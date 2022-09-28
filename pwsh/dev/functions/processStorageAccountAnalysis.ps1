@@ -205,7 +205,7 @@ function processStorageAccountAnalysis {
                     virtualNetworkRulesList           = ($storageAccount.properties.networkAcls.virtualNetworkRules.Id | Sort-Object) -join "$CSVDelimiterOpposite "
                     resourceAccessRulesCount          = $resourceAccessRulesCount
                     resourceAccessRules               = $resourceAccessRules
-                    bypass                            = $storageAccount.properties.networkAcls.bypass -join "$CSVDelimiterOpposite "
+                    bypass                            = ($storageAccount.properties.networkAcls.bypass | Sort-Object) -join "$CSVDelimiterOpposite "
                     supportsHttpsTrafficOnly          = $storageAccount.properties.supportsHttpsTrafficOnly
                     minimumTlsVersion                 = $storageAccount.properties.minimumTlsVersion
                     allowSharedKeyAccess              = $allowSharedKeyAccess
