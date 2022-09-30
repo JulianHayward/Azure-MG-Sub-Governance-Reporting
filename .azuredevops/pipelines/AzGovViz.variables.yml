@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220927_1
+# AzGovViz v6_major_20220930_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -56,10 +56,10 @@ variables:
     # String | example: value: 'azure-ado-serviceconnection'
     value: '<YourServiceConnection>'
 
-  # The Management Group ID for the script to start processing with
+  # The Management Group ID for the script to process
   - name: ManagementGroupId
-    # String | example: value: 'MyManagementGroup'
-    value: '<YourManagementGroupId>'
+    # String | example: value: 'MyManagementGroupId'
+    value: '<YourManagementGroupId>' #provide the Management Group Id, not the displayName
 
 ### Default Variables - Modify as Needed
 
@@ -306,6 +306,11 @@ variables:
 
 # Create a dedicated DefinitionInsights HTML file 
   - name: NoDefinitionInsightsDedicatedHTML
+    # Switch | example: value: true
+    value:
+
+# Do not execute Storage Account Access Analysis
+  - name: NoStorageAccountAccessAnalysis
     # Switch | example: value: true
     value:
 

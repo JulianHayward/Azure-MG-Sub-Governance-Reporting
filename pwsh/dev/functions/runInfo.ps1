@@ -421,6 +421,15 @@ function runInfo {
             }
         }
 
+        if ($GitHubActionsOIDC) {
+            Write-Host " GitHubActionsOIDC = $($GitHubActionsOIDC)" -ForegroundColor Green
+            #$script:paramsUsed += "GitHubActionsOIDC: $($GitHubActionsOIDC) &#13;"
+        }
+        else {
+            Write-Host " GitHubActionsOIDC = $($GitHubActionsOIDC)" -ForegroundColor Yellow
+            #$script:paramsUsed += "GitHubActionsOIDC: $($GitHubActionsOIDC) &#13;"
+        }
+
     }
     #endregion RunInfo
 }

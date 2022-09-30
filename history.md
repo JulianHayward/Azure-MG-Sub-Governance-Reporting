@@ -4,6 +4,18 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Sep-30 / Major)
+
+* Fix issue #135 
+  * Embedded GitHub Actions OIDC (Open ID Connect) specific functionality to reconnect and get new token ([AzAPICall](https://aka.ms/AzAPICall))
+  * New parameter `-GitHubActionsOIDC` which is only to be used for GitHub Actions `/.github/workflows/AzGovViz_OIDC.yml`
+  * Updated `/.github/workflows/AzGovViz_OIDC.yml` to use the new parameter `-GitHubActionsOIDC`
+* Fix issue #136
+  * Handle return for Storage Accounts located in managed Resource Groups  
+  &#127800; Call for contribution: Please review the list of known [managed Resource Groups](https://github.com/JulianHayward/AzSchnitzels/blob/main/info/managedResourceGroups.txt) and contribute if you can, thanks!
+* Added missing variable `NoStorageAccountAccessAnalysis` in `.azuredevops/pipelines/AzGovViz.variables.yml`
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.29
+
 __Changes__ (2022-Sep-28 / Major)
 
 * New feature 'Storage Account Access Analysis' - provides insights on Storage Accounts with focus on anonymous access (containers/blobs and 'Static website' feature). Data is provided in the HTML __TenantSummary__ (Subscriptions, Resources & Defender) and as CSV export

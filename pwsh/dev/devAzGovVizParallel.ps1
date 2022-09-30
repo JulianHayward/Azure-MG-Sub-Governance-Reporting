@@ -337,10 +337,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.24',
+    $AzAPICallVersion = '1.1.29',
 
     [string]
-    $ProductVersion = 'v6_major_20220928_1',
+    $ProductVersion = 'v6_major_20220930_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -520,6 +520,9 @@ Param
 
     [array]
     $StorageAccountAccessAnalysisStorageAccountTags = @('undefined'),
+
+    [switch]
+    $GitHubActionsOIDC,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]

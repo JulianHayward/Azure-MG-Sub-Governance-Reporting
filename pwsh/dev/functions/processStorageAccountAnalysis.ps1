@@ -5,7 +5,8 @@ function processStorageAccountAnalysis {
     if ($storageAccountscount -gt 0) {
         Write-Host " Executing Storage Account Analysis for $storageAccountscount Storage Accounts"
         $script:arrayStorageAccountAnalysisResults = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-
+        createBearerToken -AzAPICallConfiguration $azapicallconf -targetEndPoint 'Storage'
+        
         $storageAccounts | ForEach-Object -Parallel {
             $storageAccount = $_
             $azAPICallConf = $using:azAPICallConf
@@ -33,25 +34,31 @@ function processStorageAccountAnalysis {
             if ($storageAccount.Properties.primaryEndpoints.blob) {
 
                 $urlServiceProps = "$($storageAccount.Properties.primaryEndpoints.blob)?restype=service&comp=properties"
-                $saProperties = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlServiceProps -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get restype=service&comp=properties"
-                try {
-                    $xmlSaProperties = [xml]([string]$saProperties -replace $saProperties.Substring(0, 3))
+                $saProperties = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlServiceProps -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get restype=service&comp=properties" -saResourceGroupName $resourceGroupName
+                if ($saProperties -eq 'AuthorizationFailure' -or $saProperties -eq 'AuthorizationPermissionDenied') {
+
                 }
-                catch {
-                    Write-Host "XMLSAPropertiesFailed: Subscription: $($subDetails.displayName) ($subscriptionId) - Storage Account: $($storageAccount.name)"
-                    $saProperties | ConvertTo-Json -Depth 99
-                }
-    
-                $staticWebsitesState = $false
-                if ($xmlSaProperties.StorageServiceProperties.StaticWebsite) {
-                    if ($xmlSaProperties.StorageServiceProperties.StaticWebsite.Enabled -eq $true) {
-                        $staticWebsitesState = $true
+                else {
+                    try {
+                        $xmlSaProperties = [xml]([string]$saProperties -replace $saProperties.Substring(0, 3))
+                        if ($xmlSaProperties.StorageServiceProperties.StaticWebsite) {
+                            if ($xmlSaProperties.StorageServiceProperties.StaticWebsite.Enabled -eq $true) {
+                                $staticWebsitesState = $true
+                            }
+                            else {
+                                $staticWebsitesState = $false
+                            }
+                        }
+                    }
+                    catch {
+                        Write-Host "XMLSAPropertiesFailed: Subscription: $($subDetails.displayName) ($subscriptionId) - Storage Account: $($storageAccount.name)"
+                        $saProperties | ConvertTo-Json -Depth 99
                     }
                 }
 
                 $urlCompList = "$($storageAccount.Properties.primaryEndpoints.blob)?comp=list"
                 $listContainers = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlCompList -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get comp=list"
-                if ($listContainers -eq 'AuthorizationFailure') {
+                if ($listContainers -eq 'AuthorizationFailure' -or $listContainers -eq 'AuthorizationPermissionDenied') {
                     $listContainersSuccess = $false
                 }
                 else {

@@ -337,10 +337,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.24',
+    $AzAPICallVersion = '1.1.29',
 
     [string]
-    $ProductVersion = 'v6_major_20220928_1',
+    $ProductVersion = 'v6_major_20220930_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -521,6 +521,9 @@ Param
     [array]
     $StorageAccountAccessAnalysisStorageAccountTags = @('undefined'),
 
+    [switch]
+    $GitHubActionsOIDC,
+
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
     $LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -619,6 +622,7 @@ function addHtParameters {
         PSRuleFailedOnly                             = [bool]$PSRuleFailedOnly
         NoALZPolicyVersionChecker                    = [bool]$NoALZPolicyVersionChecker
         NoStorageAccountAccessAnalysis               = [bool]$NoStorageAccountAccessAnalysis
+        GitHubActionsOIDC                            = [bool]$GitHubActionsOIDC
     }
     Write-Host 'htParameters:'
     $azAPICallConf['htParameters'] | format-table -AutoSize | Out-String
@@ -10965,7 +10969,8 @@ function processStorageAccountAnalysis {
     if ($storageAccountscount -gt 0) {
         Write-Host " Executing Storage Account Analysis for $storageAccountscount Storage Accounts"
         $script:arrayStorageAccountAnalysisResults = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-
+        createBearerToken -AzAPICallConfiguration $azapicallconf -targetEndPoint 'Storage'
+        
         $storageAccounts | ForEach-Object -Parallel {
             $storageAccount = $_
             $azAPICallConf = $using:azAPICallConf
@@ -10993,25 +10998,31 @@ function processStorageAccountAnalysis {
             if ($storageAccount.Properties.primaryEndpoints.blob) {
 
                 $urlServiceProps = "$($storageAccount.Properties.primaryEndpoints.blob)?restype=service&comp=properties"
-                $saProperties = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlServiceProps -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get restype=service&comp=properties"
-                try {
-                    $xmlSaProperties = [xml]([string]$saProperties -replace $saProperties.Substring(0, 3))
+                $saProperties = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlServiceProps -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get restype=service&comp=properties" -saResourceGroupName $resourceGroupName
+                if ($saProperties -eq 'AuthorizationFailure' -or $saProperties -eq 'AuthorizationPermissionDenied') {
+
                 }
-                catch {
-                    Write-Host "XMLSAPropertiesFailed: Subscription: $($subDetails.displayName) ($subscriptionId) - Storage Account: $($storageAccount.name)"
-                    $saProperties | ConvertTo-Json -Depth 99
-                }
-    
-                $staticWebsitesState = $false
-                if ($xmlSaProperties.StorageServiceProperties.StaticWebsite) {
-                    if ($xmlSaProperties.StorageServiceProperties.StaticWebsite.Enabled -eq $true) {
-                        $staticWebsitesState = $true
+                else {
+                    try {
+                        $xmlSaProperties = [xml]([string]$saProperties -replace $saProperties.Substring(0, 3))
+                        if ($xmlSaProperties.StorageServiceProperties.StaticWebsite) {
+                            if ($xmlSaProperties.StorageServiceProperties.StaticWebsite.Enabled -eq $true) {
+                                $staticWebsitesState = $true
+                            }
+                            else {
+                                $staticWebsitesState = $false
+                            }
+                        }
+                    }
+                    catch {
+                        Write-Host "XMLSAPropertiesFailed: Subscription: $($subDetails.displayName) ($subscriptionId) - Storage Account: $($storageAccount.name)"
+                        $saProperties | ConvertTo-Json -Depth 99
                     }
                 }
 
                 $urlCompList = "$($storageAccount.Properties.primaryEndpoints.blob)?comp=list"
                 $listContainers = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlCompList -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get comp=list"
-                if ($listContainers -eq 'AuthorizationFailure') {
+                if ($listContainers -eq 'AuthorizationFailure' -or $listContainers -eq 'AuthorizationPermissionDenied') {
                     $listContainersSuccess = $false
                 }
                 else {
@@ -25507,6 +25518,15 @@ function runInfo {
             if ($StorageAccountAccessAnalysisStorageAccountTags[0] -ne 'undefined' -and $StorageAccountAccessAnalysisStorageAccountTags.Count -gt 0) {
                 Write-Host "   StorageAccountAccessAnalysisStorageAccountTags: $($StorageAccountAccessAnalysisStorageAccountTags -join ', ')" -ForegroundColor Green
             }
+        }
+
+        if ($GitHubActionsOIDC) {
+            Write-Host " GitHubActionsOIDC = $($GitHubActionsOIDC)" -ForegroundColor Green
+            #$script:paramsUsed += "GitHubActionsOIDC: $($GitHubActionsOIDC) &#13;"
+        }
+        else {
+            Write-Host " GitHubActionsOIDC = $($GitHubActionsOIDC)" -ForegroundColor Yellow
+            #$script:paramsUsed += "GitHubActionsOIDC: $($GitHubActionsOIDC) &#13;"
         }
 
     }

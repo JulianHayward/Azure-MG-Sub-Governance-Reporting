@@ -59,17 +59,17 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Sep-28 / Major)
+__Changes__ (2022-Sep-30 / Major)
 
-* New feature 'Storage Account Access Analysis' - provides insights on Storage Accounts with focus on anonymous access (containers/blobs and 'Static website' feature). Data is provided in the HTML __TenantSummary__ (Subscriptions, Resources & Defender) and as CSV export
-  * New parameter `-NoStorageAccountAccessAnalysis` - do not execute the feature
-  * New parameter `-StorageAccountAccessAnalysisSubscriptionTags` - define the Subscription tags that should be added to the CSV output
-  * New parameter `-StorageAccountAccessAnalysisStorageAccountTags` - define the Storage Account (resource) tags that should be added to the CSV output
-  * Updated `.azuredevops/pipelines/AzGovViz.variables.yml` accordingly
-* Rename 'ALZ EverGreen' feature to 'Azure Landing Zones (ALZ) Policy Version Checker'
-  * Replaced parameter ~~`-NoALZEverGreen`~~ with `-NoALZPolicyVersionChecker`
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.24
-* Optimizations
+* Fix issue #135 
+  * Embedded GitHub Actions OIDC (Open ID Connect) specific functionality to reconnect and get new token ([AzAPICall](https://aka.ms/AzAPICall))
+  * New parameter `-GitHubActionsOIDC` which is only to be used for GitHub Actions `/.github/workflows/AzGovViz_OIDC.yml`
+  * Updated `/.github/workflows/AzGovViz_OIDC.yml` to use the new parameter `-GitHubActionsOIDC`
+* Fix issue #136
+  * Handle return for Storage Accounts located in managed Resource Groups  
+  &#127800; Call for contribution: Please review the list of known [managed Resource Groups](https://github.com/JulianHayward/AzSchnitzels/blob/main/info/managedResourceGroups.txt) and contribute if you can, thanks!
+* Added missing variable `NoStorageAccountAccessAnalysis` in `.azuredevops/pipelines/AzGovViz.variables.yml`
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.29
 
 Passed tests: Powershell Core 7.2.6 on Windows  
 Passed tests: Powershell Core 7.2.6 Azure DevOps hosted agent ubuntu-20.04  
