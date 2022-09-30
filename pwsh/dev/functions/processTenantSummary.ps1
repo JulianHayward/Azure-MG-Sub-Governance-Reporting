@@ -8722,10 +8722,13 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 $arrayStorageAccountAnalysisResults | Sort-Object -Property StorageAccount | Export-Csv -Path $storageAccountAccessAnalysisCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
             }
 
+            $saAnonymousAccessCount = ($arrayStorageAccountAnalysisResults.where({ $_.containersAnonymousContainerCount -gt 0 -or $_.containersAnonymousBlobCount -gt 0})).Count
+            $saStaticWebsitesEnabledCount = ($arrayStorageAccountAnalysisResults.where({ $_.staticWebsitesState -eq $true })).Count
+
             $htmlTableId = 'TenantSummary_StorageAccountAccessAnalysis'
             $tfCount = $arrayStorageAccountAnalysisResultsCount
             [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_StorageAccountAccessAnalysis"><i class="padlx fa fa-user-secret" aria-hidden="true"></i> <span class="valignMiddle">$tfCount Storage Accounts Access Analysis results</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_StorageAccountAccessAnalysis"><i class="padlx fa fa-user-secret" aria-hidden="true"></i> <span class="valignMiddle">$tfCount Storage Accounts Access Analysis results - Anonymous Access Container/Blob: $saAnonymousAccessCount, Static Website enabled: $saStaticWebsitesEnabledCount</span></button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Check this article by Elli Shlomo (MVP) </span> <a class="externallink" href="https://misconfig.io/azure-blob-container-threats-attacks/" target="_blank" rel="noopener">Azure Blob Container Threats & Attacks <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> If you enabled the parameters <i>StorageAccountAccessAnalysisSubscriptionTags or StorageAccountAccessAnalysisStorageAccountTags</i> these are integrated in the CSV output *_StorageAccountAccessAnalysis.csv</span><br>

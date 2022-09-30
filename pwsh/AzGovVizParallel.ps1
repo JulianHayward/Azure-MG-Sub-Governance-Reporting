@@ -337,10 +337,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.29',
+    $AzAPICallVersion = '1.1.30',
 
     [string]
-    $ProductVersion = 'v6_major_20220930_1',
+    $ProductVersion = 'v6_major_20220930_2',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -10999,8 +10999,10 @@ function processStorageAccountAnalysis {
 
                 $urlServiceProps = "$($storageAccount.Properties.primaryEndpoints.blob)?restype=service&comp=properties"
                 $saProperties = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlServiceProps -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get restype=service&comp=properties" -saResourceGroupName $resourceGroupName
-                if ($saProperties -eq 'AuthorizationFailure' -or $saProperties -eq 'AuthorizationPermissionDenied') {
-
+                if ($saProperties -eq 'AuthorizationFailure' -or $saProperties -eq 'AuthorizationPermissionDenied' -or $saProperties -eq 'ResourceUnavailable') {
+                    if ($saProperties -eq 'ResourceUnavailable') {
+                        $staticWebsitesState = $saProperties
+                    }
                 }
                 else {
                     try {
@@ -11022,14 +11024,19 @@ function processStorageAccountAnalysis {
 
                 $urlCompList = "$($storageAccount.Properties.primaryEndpoints.blob)?comp=list"
                 $listContainers = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlCompList -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get comp=list"
-                if ($listContainers -eq 'AuthorizationFailure' -or $listContainers -eq 'AuthorizationPermissionDenied') {
-                    $listContainersSuccess = $false
+                if ($listContainers -eq 'AuthorizationFailure' -or $listContainers -eq 'AuthorizationPermissionDenied' -or $listContainers -eq 'ResourceUnavailable') {
+                    if ($listContainers -eq 'ResourceUnavailable') {
+                        $listContainersSuccess = $listContainers
+                    }
+                    else {
+                        $listContainersSuccess = $false
+                    }
                 }
                 else {
                     $listContainersSuccess = $true
                 }
     
-                if ($listContainersSuccess) {
+                if ($listContainersSuccess -eq $true) {
                     $xmlListContainers = [xml]([string]$listContainers -replace $listContainers.Substring(0, 3))
                     $containersCount = $xmlListContainers.EnumerationResults.Containers.Container.Count
                 
@@ -19946,10 +19953,13 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 $arrayStorageAccountAnalysisResults | Sort-Object -Property StorageAccount | Export-Csv -Path $storageAccountAccessAnalysisCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
             }
 
+            $saAnonymousAccessCount = ($arrayStorageAccountAnalysisResults.where({ $_.containersAnonymousContainerCount -gt 0 -or $_.containersAnonymousBlobCount -gt 0})).Count
+            $saStaticWebsitesEnabledCount = ($arrayStorageAccountAnalysisResults.where({ $_.staticWebsitesState -eq $true })).Count
+
             $htmlTableId = 'TenantSummary_StorageAccountAccessAnalysis'
             $tfCount = $arrayStorageAccountAnalysisResultsCount
             [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_StorageAccountAccessAnalysis"><i class="padlx fa fa-user-secret" aria-hidden="true"></i> <span class="valignMiddle">$tfCount Storage Accounts Access Analysis results</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_StorageAccountAccessAnalysis"><i class="padlx fa fa-user-secret" aria-hidden="true"></i> <span class="valignMiddle">$tfCount Storage Accounts Access Analysis results - Anonymous Access Container/Blob: $saAnonymousAccessCount, Static Website enabled: $saStaticWebsitesEnabledCount</span></button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Check this article by Elli Shlomo (MVP) </span> <a class="externallink" href="https://misconfig.io/azure-blob-container-threats-attacks/" target="_blank" rel="noopener">Azure Blob Container Threats & Attacks <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> If you enabled the parameters <i>StorageAccountAccessAnalysisSubscriptionTags or StorageAccountAccessAnalysisStorageAccountTags</i> these are integrated in the CSV output *_StorageAccountAccessAnalysis.csv</span><br>

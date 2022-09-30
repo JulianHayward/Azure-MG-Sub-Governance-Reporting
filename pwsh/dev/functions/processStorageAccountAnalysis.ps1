@@ -35,8 +35,10 @@ function processStorageAccountAnalysis {
 
                 $urlServiceProps = "$($storageAccount.Properties.primaryEndpoints.blob)?restype=service&comp=properties"
                 $saProperties = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlServiceProps -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get restype=service&comp=properties" -saResourceGroupName $resourceGroupName
-                if ($saProperties -eq 'AuthorizationFailure' -or $saProperties -eq 'AuthorizationPermissionDenied') {
-
+                if ($saProperties -eq 'AuthorizationFailure' -or $saProperties -eq 'AuthorizationPermissionDenied' -or $saProperties -eq 'ResourceUnavailable') {
+                    if ($saProperties -eq 'ResourceUnavailable') {
+                        $staticWebsitesState = $saProperties
+                    }
                 }
                 else {
                     try {
@@ -58,14 +60,19 @@ function processStorageAccountAnalysis {
 
                 $urlCompList = "$($storageAccount.Properties.primaryEndpoints.blob)?comp=list"
                 $listContainers = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlCompList -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get comp=list"
-                if ($listContainers -eq 'AuthorizationFailure' -or $listContainers -eq 'AuthorizationPermissionDenied') {
-                    $listContainersSuccess = $false
+                if ($listContainers -eq 'AuthorizationFailure' -or $listContainers -eq 'AuthorizationPermissionDenied' -or $listContainers -eq 'ResourceUnavailable') {
+                    if ($listContainers -eq 'ResourceUnavailable') {
+                        $listContainersSuccess = $listContainers
+                    }
+                    else {
+                        $listContainersSuccess = $false
+                    }
                 }
                 else {
                     $listContainersSuccess = $true
                 }
     
-                if ($listContainersSuccess) {
+                if ($listContainersSuccess -eq $true) {
                     $xmlListContainers = [xml]([string]$listContainers -replace $listContainers.Substring(0, 3))
                     $containersCount = $xmlListContainers.EnumerationResults.Containers.Container.Count
                 
