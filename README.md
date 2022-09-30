@@ -69,7 +69,7 @@ __Changes__ (2022-Sep-30 / Major)
   * Handle return for Storage Accounts located in managed Resource Groups  
   &#127800; Call for contribution: Please review the list of known [managed Resource Groups](https://github.com/JulianHayward/AzSchnitzels/blob/main/info/managedResourceGroups.txt) and contribute if you can, thanks!
 * Added missing variable `NoStorageAccountAccessAnalysis` in `.azuredevops/pipelines/AzGovViz.variables.yml`
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.29
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.30
 
 Passed tests: Powershell Core 7.2.6 on Windows  
 Passed tests: Powershell Core 7.2.6 Azure DevOps hosted agent ubuntu-20.04  
