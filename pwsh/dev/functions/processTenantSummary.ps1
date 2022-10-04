@@ -5343,9 +5343,16 @@ extensions: [{ name: 'sort' }]
         Write-Host "   TenantSummary PIMEligibility duration: $((NEW-TIMESPAN -Start $startPIMEligibility -End $endPIMEligibility).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPIMEligibility -End $endPIMEligibility).TotalSeconds) seconds)"
     }
     else {
-        [void]$htmlTenantSummary.AppendLine(@"
-<p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No PIM Eligibility</span></p>
+        if ($azAPICallConf['htParameters'].accountType -ne 'User' -and $NoPIMEligibility) {
+            [void]$htmlTenantSummary.AppendLine(@"
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No PIM Eligibility - </span><span class="info valignMiddle">parameter -NoPIMEligibility = $NoPIMEligibility</span></p>
 "@)
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@"
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No PIM Eligibility - </span><span class="info valignMiddle">run AzGovViz with a Service Principal to get PIM Eligibility insights</span></p>
+"@)
+        }
     }
     #endregion SUMMARYPIMEligibility
 
@@ -6585,9 +6592,13 @@ extensions: [{ name: 'sort' }]
     Write-Host '  processing TenantSummary Subscriptions'
     $summarySubscriptions = $optimizedTableForPathQueryMgAndSub | Sort-Object -Property Subscription
     $summarySubscriptionsCount = ($summarySubscriptions).Count
+
+    $arrayPIMEligibleGroupedBySubscription = $arrayPIMEligible.where({ $_.ScopeType -eq 'Sub' }) | Group-Object -Property ScopeId
+
     if ($summarySubscriptionsCount -gt 0) {
         $tfCount = $summarySubscriptionsCount
         $htmlTableId = 'TenantSummary_subs'
+        $abbr = " <abbr title=`"indirect: members of an AAD group where RBAC was assigned`"><i class=`"fa fa-question-circle`" aria-hidden=`"true`"></i></abbr>"
         [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_Subs"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle">$($summarySubscriptionsCount) Subscriptions (state: enabled)</span></button>
 <div class="content TenantSummary">
@@ -6602,7 +6613,17 @@ extensions: [{ name: 'sort' }]
 <th>QuotaId</th>
 <th>Role assignment limit</th>
 <th>Tags</th>
-<th>Sub MDfC Score</th>
+<th>Owner (at Scope) direct</th>
+<th>Owner (at Scope) indirect$($abbr)</th>
+<th>Owner (PIM eligible at scope)</th>
+<th>User Access Administrator (at Scope) direct</th>
+<th>User Access Administrator (at Scope) indirect$($abbr)</th>
+<th>User Access Administrator (PIM eligible at scope)</th>
+<th>MDfC Score</th>
+<th>MDfC 'Email notifications' state
+<th>MDfC 'Email notifications' severity
+<th>MDfC 'Email notifications' roles
+<th>MDfC 'Email notifications' emails
 "@)
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
             [void]$htmlTenantSummary.AppendLine(@"
@@ -6643,6 +6664,40 @@ extensions: [{ name: 'sort' }]
                 $totalCost = 'n/a'
                 $currency = 'n/a'
             }
+
+            if ($htDefenderEmailContacts.($summarySubscription.subscriptionId)) {
+                $hlpDefenderEmailContacts = $htDefenderEmailContacts.($summarySubscription.subscriptionId)
+                $MDfCEmailNotificationsState = $hlpDefenderEmailContacts.alertNotificationsState
+                $MDfCEmailNotificationsSeverity = $hlpDefenderEmailContacts.alertNotificationsminimalSeverity
+                $MDfCEmailNotificationsRoles = $hlpDefenderEmailContacts.roles
+                $MDfCEmailNotificationsEmails = $hlpDefenderEmailContacts.emails
+            }
+            else { 
+                $MDfCEmailNotificationsState = ''
+                $MDfCEmailNotificationsSeverity = ''
+                $MDfCEmailNotificationsRoles = ''
+                $MDfCEmailNotificationsEmails = ''
+            }
+
+            #rbac assignments owner and userAccountAdministrator
+            $rbacAtScopeForThisSubscription = ($rbacAllGroupedBySubscription.where( { $_.name -eq $summarySubscription.subscriptionId } )).group
+            
+            $rbacOwnersAtScopeForThisSubscription = ($rbacAtScopeForThisSubscription.where({ $_.Scope -eq 'thisScope Sub' -and $_.RoleId -eq '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' }))
+            $rbacOwnersAtScopeForThisSubscriptionDirectCount = ($rbacOwnersAtScopeForThisSubscription.where( { $_.AssignmentType -eq 'direct' } )).Count
+            $rbacOwnersAtScopeForThisSubscriptionInDirectCount = $rbacOwnersAtScopeForThisSubscription.Count - $rbacOwnersAtScopeForThisSubscriptionDirectCount
+            
+            $rbacUAAsAtScopeForThisSubscription = ($rbacAtScopeForThisSubscription.where({ $_.Scope -eq 'thisScope Sub' -and $_.RoleId -eq '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9' }))
+            $rbacUAAsAtScopeForThisSubscriptionDirectCount = ($rbacUAAsAtScopeForThisSubscription.where( { $_.AssignmentType -eq 'direct' } )).Count
+            $rbacUAAsAtScopeForThisSubscriptionInDirectCount = $rbacUAAsAtScopeForThisSubscription.Count - $rbacUAAsAtScopeForThisSubscriptionDirectCount
+            
+            #pim eligibility owner and userAccountAdministrator
+            $pimEligibleOwnersAtScopeForThisSubscriptionCount = ''
+            $pimEligibleUAAsAtScopeForThisSubscriptionCount = ''
+            if(-not $NoPIMEligibility) {
+                $pimEligibleAtScopeForThisSubscription = ($arrayPIMEligibleGroupedBySubscription.where( { $_.name -eq $summarySubscription.subscriptionId } )).group
+                $pimEligibleOwnersAtScopeForThisSubscriptionCount = ($pimEligibleAtScopeForThisSubscription.where( { $_.RoleIdGuid -eq '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' } )).Count
+                $pimEligibleUAAsAtScopeForThisSubscriptionCount = ($pimEligibleAtScopeForThisSubscription.where( { $_.RoleIdGuid -eq '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9' } )).Count
+            }
             @"
 <tr>
 <td>$($summarySubscription.subscription -replace '<', '&lt;' -replace '>', '&gt;')</td>
@@ -6650,7 +6705,17 @@ extensions: [{ name: 'sort' }]
 <td>$($summarySubscription.SubscriptionQuotaId)</td>
 <td>$($htSubscriptionsRoleAssignmentLimit.($summarySubscription.subscriptionId))</td>
 <td>$(($subscriptionTagsArray | Sort-Object) -join "$CsvDelimiterOpposite ")</td>
+<td>$($rbacOwnersAtScopeForThisSubscriptionDirectCount)</td>
+<td>$($rbacOwnersAtScopeForThisSubscriptionInDirectCount)</td>
+<td>$($pimEligibleOwnersAtScopeForThisSubscriptionCount)</td>
+<td>$($rbacUAAsAtScopeForThisSubscriptionDirectCount)</td>
+<td>$($rbacUAAsAtScopeForThisSubscriptionInDirectCount)</td>
+<td>$($pimEligibleUAAsAtScopeForThisSubscriptionCount)</td>
 <td>$($summarySubscription.SubscriptionASCSecureScore)</td>
+<td>$($MDfCEmailNotificationsState)</td>
+<td>$($MDfCEmailNotificationsSeverity)</td>
+<td>$($MDfCEmailNotificationsRoles)</td>
+<td>$($MDfCEmailNotificationsEmails)</td>
 "@
             if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
                 @"
@@ -6702,10 +6767,13 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_2: 'select',
             col_3: 'select',
+            col_12: 'select',
+            col_13: 'select',
+            col_14: 'select',
 '@)
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
             [void]$htmlTenantSummary.AppendLine(@'
-            col_6: 'select',
+            col_17: 'multiple',
 '@)
         }
         [void]$htmlTenantSummary.AppendLine(@'
@@ -6716,6 +6784,16 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'number',
                 'caseinsensitivestring',
                 'number',
+                'number',
+                'number',
+                'number',
+                'number',
+                'number',
+                'number',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
 '@)
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
             [void]$htmlTenantSummary.AppendLine(@'
@@ -6726,7 +6804,8 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         [void]$htmlTenantSummary.AppendLine(@"
                 'caseinsensitivestring'
             ],
-extensions: [{ name: 'sort' }]
+            watermark: ['', '', '', '', '', 'try: >1'],
+            extensions: [{ name: 'sort' }]
         };
         var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
         tf.init();}}
@@ -7141,7 +7220,7 @@ extensions: [{ name: 'sort' }]
             $tfCount = ($arrayResourceFluctuationFinal).count
             $htmlTableId = 'TenantSummary_resourceFluctuation'
             [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_resourceFluctuation"><i class="padlx fa fa-history" aria-hidden="true"></i> <span class="valignMiddle">Resource fluctuation - $resourceTypesCount Resource types (Resources: $addedCount added, $removedCount removed)</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_resourceFluctuation"><i class="padlx fa fa-history" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">Resource fluctuation - $resourceTypesCount Resource types (Resources: $addedCount added, $removedCount removed)</span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -7240,7 +7319,7 @@ extensions: [{ name: 'sort' }]
             $tfCount = $resourcesIdsAllCAFNamingRelevantGroupedByTypeCount
             $htmlTableId = 'TenantSummary_CAFResourceNamingALL'
             [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_CAFResourceNamingALL"><i class="padlx fa fa-star-o" aria-hidden="true"></i> <span class="valignMiddle">CAF Naming Recommendation Compliance</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_CAFResourceNamingALL"><i class="padlx fa fa-star-o" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">CAF Naming Recommendation Compliance</span>
 </button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> CAF - Recommended abbreviations for Azure resource types</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
@@ -7387,7 +7466,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $orphanedResourceTypesCount
         $htmlTableId = 'TenantSummary_orphanedResources'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_orphanedResources"><i class="padlx fa fa-trash-o" aria-hidden="true"></i> <span class="valignMiddle">$($arrayOrphanedResources.count) Orphaned Resources ($orphanedResourceTypesCount ResourceTypes)</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_orphanedResources"><i class="padlx fa fa-trash-o" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$($arrayOrphanedResources.count) Orphaned Resources ($orphanedResourceTypesCount ResourceTypes)</span>
 </button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> 'Azure Orphan Resources' ARG queries and workbooks</span> <a class="externallink" href="https://github.com/dolevshor/azure-orphan-resources" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
@@ -7833,7 +7912,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($subFeaturesGroupedByFeature | Measure-Object).Count
         $htmlTableId = 'TenantSummary_SubFeatures'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubFeatures"><i class="padlx fa fa-cube" aria-hidden="true"></i> <span class="valignMiddle">$tfCount enabled Subscriptions Features</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubFeatures"><i class="padlx fa fa-cube" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$tfCount enabled Subscriptions Features</span></button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Set up preview features in Azure subscription</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/preview-features" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -8120,7 +8199,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         $htmlTableId = 'TenantSummary_DefenderPlans'
 
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_DefenderPlans"><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans (by plan)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_DefenderPlans"><i class="padlx fa fa-shield" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans (by plan)</span></button>
 <div class="content TenantSummary">
 "@)
 
@@ -8202,7 +8281,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         $htmlTableId = 'TenantSummary_DefenderPlansBySubscription'
 
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_DefenderPlansBySubscription"><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans (by Subscription)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_DefenderPlansBySubscription"><i class="padlx fa fa-shield" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans (by Subscription)</span></button>
 <div class="content TenantSummary">
 "@)
 
@@ -8383,7 +8462,7 @@ extensions: [{ name: 'sort' }]
             $htmlTableId = 'TenantSummary_UserAssignedIdentities4Resources'
 
             [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_UserAssignedIdentities4Resources"><i class="padlx fa fa-user-circle-o" aria-hidden="true"></i> <span class="valignMiddle">UserAssigned Managed Identities assigned to Resources / vice versa</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_UserAssignedIdentities4Resources"><i class="padlx fa fa-user-circle-o" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">UserAssigned Managed Identities assigned to Resources / vice versa</span></button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Managed identity 'user-assigned' vs 'system-assigned'</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview#managed-identity-types" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -8589,7 +8668,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 $htmlTableId = 'TenantSummary_PSRule'
 
                 [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_PSRule"><i class="padlx fa fa-check-square-o" aria-hidden="true"></i> <span class="valignMiddle">$tfCount PSRule for Azure results</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_PSRule"><i class="padlx fa fa-check-square-o" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$tfCount PSRule for Azure results</span></button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Learn about </span> <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -8709,26 +8788,26 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     
     #region SUMMARYStorageAccountAnalysis
     if (1 -eq 1) {
-    if ($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis -eq $false) {
-        $startStorageAccountAnalysis = Get-Date
-        Write-Host '  processing TenantSummary Storage Account Access Analysis'
+        if ($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis -eq $false) {
+            $startStorageAccountAnalysis = Get-Date
+            Write-Host '  processing TenantSummary Storage Account Access Analysis'
             
-        $arrayStorageAccountAnalysisResultsCount = $arrayStorageAccountAnalysisResults.Count 
-        if ($arrayStorageAccountAnalysisResultsCount.Count -gt 0) {
+            $arrayStorageAccountAnalysisResultsCount = $arrayStorageAccountAnalysisResults.Count 
+            if ($arrayStorageAccountAnalysisResultsCount.Count -gt 0) {
 
-            if (-not $NoCsvExport) {
-                $storageAccountAccessAnalysisCSVPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_StorageAccountAccessAnalysis.csv"
-                Write-Host "   Exporting 'Storage Account Access Analysis' CSV '$storageAccountAccessAnalysisCSVPath'"
-                $arrayStorageAccountAnalysisResults | Sort-Object -Property StorageAccount | Export-Csv -Path $storageAccountAccessAnalysisCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
-            }
+                if (-not $NoCsvExport) {
+                    $storageAccountAccessAnalysisCSVPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_StorageAccountAccessAnalysis.csv"
+                    Write-Host "   Exporting 'Storage Account Access Analysis' CSV '$storageAccountAccessAnalysisCSVPath'"
+                    $arrayStorageAccountAnalysisResults | Sort-Object -Property StorageAccount | Export-Csv -Path $storageAccountAccessAnalysisCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
+                }
 
-            $saAnonymousAccessCount = ($arrayStorageAccountAnalysisResults.where({ $_.containersAnonymousContainerCount -gt 0 -or $_.containersAnonymousBlobCount -gt 0})).Count
-            $saStaticWebsitesEnabledCount = ($arrayStorageAccountAnalysisResults.where({ $_.staticWebsitesState -eq $true })).Count
+                $saAnonymousAccessCount = ($arrayStorageAccountAnalysisResults.where({ $_.containersAnonymousContainerCount -gt 0 -or $_.containersAnonymousBlobCount -gt 0 })).Count
+                $saStaticWebsitesEnabledCount = ($arrayStorageAccountAnalysisResults.where({ $_.staticWebsitesState -eq $true })).Count
 
-            $htmlTableId = 'TenantSummary_StorageAccountAccessAnalysis'
-            $tfCount = $arrayStorageAccountAnalysisResultsCount
-            [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_StorageAccountAccessAnalysis"><i class="padlx fa fa-user-secret" aria-hidden="true"></i> <span class="valignMiddle">$tfCount Storage Accounts Access Analysis results - Anonymous Access Container/Blob: $saAnonymousAccessCount, Static Website enabled: $saStaticWebsitesEnabledCount</span></button>
+                $htmlTableId = 'TenantSummary_StorageAccountAccessAnalysis'
+                $tfCount = $arrayStorageAccountAnalysisResultsCount
+                [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_StorageAccountAccessAnalysis"><i class="padlx fa fa-user-secret" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$tfCount Storage Accounts Access Analysis results - Anonymous Access Container/Blob: $saAnonymousAccessCount, Static Website enabled: $saStaticWebsitesEnabledCount</span></button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Check this article by Elli Shlomo (MVP) </span> <a class="externallink" href="https://misconfig.io/azure-blob-container-threats-attacks/" target="_blank" rel="noopener">Azure Blob Container Threats & Attacks <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> If you enabled the parameters <i>StorageAccountAccessAnalysisSubscriptionTags or StorageAccountAccessAnalysisStorageAccountTags</i> these are integrated in the CSV output *_StorageAccountAccessAnalysis.csv</span><br>
@@ -8768,9 +8847,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <tbody>
 "@)
 
-            foreach ($result in $arrayStorageAccountAnalysisResults | sort-Object -Property storageAccount) {
+                foreach ($result in $arrayStorageAccountAnalysisResults | sort-Object -Property storageAccount) {
 
-                [void]$htmlTenantSummary.AppendLine(@"
+                    [void]$htmlTenantSummary.AppendLine(@"
                         <tr>
                         <td>$($result.storageAccount)</td>
                         <td>$($result.kind)</td>
@@ -8802,9 +8881,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         </tr>
 "@)
 
-            }
+                }
 
-            [void]$htmlTenantSummary.AppendLine(@"
+                [void]$htmlTenantSummary.AppendLine(@"
 </tbody>
 </table>
 <script>
@@ -8813,31 +8892,31 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
-            if ($tfCount -gt 10) {
-                $spectrum = "10, $tfCount"
-                if ($tfCount -gt 50) {
-                    $spectrum = "10, 25, 50, $tfCount"
-                }
-                if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, 100, $tfCount"
-                }
-                if ($tfCount -gt 500) {
-                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
-                }
-                if ($tfCount -gt 1000) {
-                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-                }
-                if ($tfCount -gt 2000) {
-                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-                }
-                if ($tfCount -gt 3000) {
-                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-                }
-                [void]$htmlTenantSummary.AppendLine(@"
+                if ($tfCount -gt 10) {
+                    $spectrum = "10, $tfCount"
+                    if ($tfCount -gt 50) {
+                        $spectrum = "10, 25, 50, $tfCount"
+                    }
+                    if ($tfCount -gt 100) {
+                        $spectrum = "10, 30, 50, 100, $tfCount"
+                    }
+                    if ($tfCount -gt 500) {
+                        $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                    }
+                    if ($tfCount -gt 1000) {
+                        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                    }
+                    if ($tfCount -gt 2000) {
+                        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                    }
+                    if ($tfCount -gt 3000) {
+                        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                    }
+                    [void]$htmlTenantSummary.AppendLine(@"
 paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
 "@)
-            }
-            [void]$htmlTenantSummary.AppendLine(@"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             linked_filters: true,
             col_1: 'select',
@@ -8891,21 +8970,21 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     </script>
 </div>
 "@)
-        }
-        else {
-            [void]$htmlTenantSummary.AppendLine(@'
+            }
+            else {
+                [void]$htmlTenantSummary.AppendLine(@'
     <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No Storage Accounts found</span></p>
 '@)
+            }
+            $endStorageAccountAnalysis = Get-Date
+            Write-Host "   Storage Account Analysis processing duration: $((NEW-TIMESPAN -Start $startStorageAccountAnalysis -End $endStorageAccountAnalysis).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startStorageAccountAnalysis -End $endStorageAccountAnalysis).TotalSeconds) seconds)"
         }
-        $endStorageAccountAnalysis = Get-Date
-        Write-Host "   Storage Account Analysis processing duration: $((NEW-TIMESPAN -Start $startStorageAccountAnalysis -End $endStorageAccountAnalysis).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startStorageAccountAnalysis -End $endStorageAccountAnalysis).TotalSeconds) seconds)"
-    }
-    else {
-        [void]$htmlTenantSummary.AppendLine(@"
+        else {
+            [void]$htmlTenantSummary.AppendLine(@"
             <i class="padlx fa fa-check-square-o" aria-hidden="true"></i> <span class="valignMiddle">Storage Account Access Analysis disabled - </span><span class="info">parameter -NoStorageAccountAccessAnalysis $($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis)</span>
 "@)
+        }
     }
-}
     #endregion SUMMARYStorageAccountAnalysis
     
 

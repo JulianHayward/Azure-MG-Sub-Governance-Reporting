@@ -58,6 +58,77 @@ function dataCollectionDefenderPlans {
 }
 $funcDataCollectionDefenderPlans = $function:dataCollectionDefenderPlans.ToString()
 
+function dataCollectionDefenderEmailContacts {
+    [CmdletBinding()]Param(
+        [string]$scopeId,
+        [string]$scopeDisplayName,
+        $SubscriptionQuotaId
+    )
+
+    $currentTask = "Getting Microsoft Defender for Cloud Email contacts for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
+    #https://docs.microsoft.com/en-us/rest/api/securitycenter/pricings
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/securityContacts?api-version=2020-01-01-preview"
+    $method = 'GET'
+    $defenderSecurityContactsResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -listenOn 'Content' -currentTask $currentTask -caller 'CustomDataCollection'
+
+    if ($defenderSecurityContactsResult -eq 'SubScriptionNotRegistered' -or $defenderSecurityContactsResult -eq 'DisallowedProvider') {
+    }
+    else {
+        if ($defenderSecurityContactsResult.Count -gt 0) {
+            foreach ($entry in $defenderSecurityContactsResult) {
+
+                if ($entry.properties) {
+                    if ($entry.properties.notificationsByRole.roles.count -gt 0) {
+                        $roles = ($entry.properties.notificationsByRole.roles | Sort-Object) -join "$CsvDelimiterOpposite "
+                    }
+                    else {
+                        $roles = 'none'
+                    }
+
+                    if ($entry.properties.emails) {
+                        if (-not [string]::IsNullOrWhiteSpace($entry.properties.emails)) {
+                            $emailsSplitted = $entry.properties.emails -split ';'
+                            $arrayEmails = @()
+                            foreach ($email in $emailsSplitted) {
+                                $arrayEmails += "'$email'"
+                            }
+                            $emails = ($arrayEmails | Sort-Object) -join "$CsvDelimiterOpposite "
+                        }
+                        else {
+                            $emails = $entry.properties.emails
+                        }
+                    }
+                    else {
+                        $emails = 'none'
+                    }
+
+                    if ($entry.properties.alertNotifications.state) {
+                        $alertNotificationsState = $entry.properties.alertNotifications.state
+                    }
+
+                    if ($entry.properties.alertNotifications.minimalSeverity) {
+                        $alertNotificationsminimalSeverity = $entry.properties.alertNotifications.minimalSeverity
+                    }
+                }
+                else {
+                    $roles = 'n/a'
+                    $emails = 'n/a'
+                    $alertNotificationsState = 'n/a'
+                    $alertNotificationsminimalSeverity = 'n/a'
+                }
+
+                $script:htDefenderEmailContacts.($scopeId) = @{
+                    emails                            = $emails
+                    roles                             = $roles
+                    alertNotificationsState           = $alertNotificationsState
+                    alertNotificationsminimalSeverity = $alertNotificationsminimalSeverity
+                }
+            }
+        }
+    }
+}
+$funcDataCollectionDefenderEmailContacts = $function:dataCollectionDefenderEmailContacts.ToString()
+
 function dataCollectionDiagnosticsSub {
     [CmdletBinding()]Param(
         [string]$scopeId,

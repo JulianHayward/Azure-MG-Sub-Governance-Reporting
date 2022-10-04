@@ -337,10 +337,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.30',
+    $AzAPICallVersion = '1.1.31',
 
     [string]
-    $ProductVersion = 'v6_major_20220930_2',
+    $ProductVersion = 'v6_major_20221004_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -875,6 +875,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htDoARMRoleAssignmentScheduleInstances.Do = $true
     $storageAccounts = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayStorageAccountAnalysisResults = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $htDefenderEmailContacts = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
 }
 
 if (-not $HierarchyMapOnly) {

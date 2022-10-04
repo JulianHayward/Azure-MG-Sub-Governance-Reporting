@@ -234,7 +234,7 @@ function processScopeInsights($mgChild, $mgChildOf) {
 <button type="button" class="collapsible" id="table_$mgId">$levelSpacing<img class="imgMg $($classDefaultMG)" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle">$mgNameAndOrId $subInfo</span></button>
 <div class="content">
 <table class="bottomrow">
-<tr><td class="detailstd"><p><a href="#hierarchy_$mgId"><i class="fa fa-eye" aria-hidden="true"></i> <i>Highlight Management Group in HierarchyMap</i></a></p></td></tr>
+<tr><td class="detailstd"><p><a href="#hierarchy_$mgId"><i class="fa fa-eye" aria-hidden="true" style="color: #0078df"></i> <i>Highlight Management Group in HierarchyMap</i></a></p></td></tr>
 "@
         if ($mgId -eq $defaultManagementGroupId) {
             $script:html += @'
@@ -300,7 +300,7 @@ function processScopeInsightsMGSubs($mgChild) {
             if (-not $NoScopeInsights) {
                 $script:html += @"
                 <table class="subTable">
-                <tr><td class="detailstd"><p><a href="#hierarchySub_$mgChild"><i class="fa fa-eye" aria-hidden="true"></i> <i>Highlight Subscription in HierarchyMap</i></a></p></td></tr>
+                <tr><td class="detailstd"><p><a href="#hierarchySub_$mgChild"><i class="fa fa-eye" aria-hidden="true" style="color: #0078df"></i> <i>Highlight Subscription in HierarchyMap</i></a></p></td></tr>
 "@
             }
 

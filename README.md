@@ -59,17 +59,12 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Sep-30 / Major)
+__Changes__ (2022-Oct-04 / Major)
 
-* Fix issue #135 
-  * Embedded GitHub Actions OIDC (Open ID Connect) specific functionality to reconnect and get new token ([AzAPICall](https://aka.ms/AzAPICall))
-  * New parameter `-GitHubActionsOIDC` which is only to be used for GitHub Actions `/.github/workflows/AzGovViz_OIDC.yml`
-  * Updated `/.github/workflows/AzGovViz_OIDC.yml` to use the new parameter `-GitHubActionsOIDC`
-* Fix issue #136
-  * Handle return for Storage Accounts located in managed Resource Groups  
-  &#127800; Call for contribution: Please review the list of known [managed Resource Groups](https://github.com/JulianHayward/AzSchnitzels/blob/main/info/managedResourceGroups.txt) and contribute if you can, thanks!
-* Added missing variable `NoStorageAccountAccessAnalysis` in `.azuredevops/pipelines/AzGovViz.variables.yml`
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.30
+* New feature to report on Microsoft Defender for Cloud Email notifications configuration for Subscriptions. Data is provided in the HTML __TenantSummary__ (Subscriptions, Resources & Defender) and __ScopeInsights__
+  * Updated [API reference](#api-reference)
+* Further enrich Subscription insights __TenantSummary__ (Subscriptions, Resources & Defender) - Owner & User Access Administrator Role assignment count (at scope) direct and indirect, plus PIM eligibility count
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.31
 
 Passed tests: Powershell Core 7.2.6 on Windows  
 Passed tests: Powershell Core 7.2.6 Azure DevOps hosted agent ubuntu-20.04  
@@ -183,7 +178,15 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
   * Hierarchy Settings | Require authorization for Management Group creation
 * __Subscriptions, Resources & Defender__
   * Subscription insights
-    * QuotaId, State, Tags, Microsoft Defender for Cloud Secure Score, Cost, Management Group path, Role assignment limit, enabled Preview features
+    * State
+    * QuotaId
+    * Role assignment limit
+    * Tags
+    * Owner & User Access Administrator Role assignment count (at scope) direct and indirect plus PIM eligibility count
+    * Microsoft Defender for Cloud Secure Score
+    * Microsoft Defender for Cloud Email noticifications configuration
+    * Cost
+    * Management Group path
   * Tag Name usage
     * Insights on usage of Tag Names on Subscriptions, ResourceGroups and Resources
   * Resources
@@ -538,6 +541,7 @@ AzGovViz polls the following APIs
 | ARM | 2020-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Resources/tags/default |
 | ARM | 2018-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Security/pricings |
 | ARM | 2020-01-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securescores |
+| ARM | 2020-01-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securityContacts |
 | ARM | 2019-10-01 | /subscriptions/`subscriptionId`/providers |
 | ARM | 2021-04-01 | /subscriptions/`subscriptionId`/resourcegroups |
 | ARM | 2021-04-01 | /subscriptions/`subscriptionId`/resources |

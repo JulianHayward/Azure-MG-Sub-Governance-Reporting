@@ -352,6 +352,7 @@ function processDataCollection {
                 $alzPolicyHashes = $using:alzPolicyHashes
                 $alzPolicySetHashes = $using:alzPolicySetHashes
                 $htDoARMRoleAssignmentScheduleInstances = $using:htDoARMRoleAssignmentScheduleInstances
+                $htDefenderEmailContacts = $using:htDefenderEmailContacts
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation
@@ -378,6 +379,7 @@ function processDataCollection {
                 $function:dataCollectionRoleDefinitions = $using:funcDataCollectionRoleDefinitions
                 $function:dataCollectionRoleAssignmentsSub = $using:funcDataCollectionRoleAssignmentsSub
                 $function:dataCollectionClassicAdministratorsSub = $using:funcDataCollectionClassicAdministratorsSub
+                $function:dataCollectionDefenderEmailContacts = $using:funcDataCollectionDefenderEmailContacts
                 #endregion UsingVARs
 
                 $addRowToTableDone = $false
@@ -429,6 +431,9 @@ function processDataCollection {
                             ChildMgMgPath = $childMgMgPath
                         }
                         DataCollectionDefenderPlans @baseParameters @dataCollectionDefenderPlansParameters
+
+                        #defenderEmailContacts
+                        DataCollectionDefenderEmailContacts @baseParameters
 
                         #diagnostics
                         $dataCollectionDiagnosticsSubParameters = @{

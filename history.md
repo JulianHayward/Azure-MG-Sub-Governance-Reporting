@@ -4,6 +4,13 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Oct-04 / Major)
+
+* New feature to report on Microsoft Defender for Cloud Email notifications configuration for Subscriptions. Data is provided in the HTML __TenantSummary__ (Subscriptions, Resources & Defender) and __ScopeInsights__
+  * Updated [API reference](#api-reference)
+* Further enrich Subscription insights __TenantSummary__ (Subscriptions, Resources & Defender) - Owner & User Access Administrator Role assignment count (at scope) direct and indirect, plus PIM eligibility count
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.31
+
 __Changes__ (2022-Sep-30 / Major)
 
 * Fix issue #135 
