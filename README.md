@@ -59,6 +59,10 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
+__Changes__ (2022-Oct-05 / Major)
+
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.33
+
 __Changes__ (2022-Oct-04 / Major)
 
 * New feature to report on Microsoft Defender for Cloud Email notifications configuration for Subscriptions. Data is provided in the HTML __TenantSummary__ (Subscriptions, Resources & Defender) and __ScopeInsights__

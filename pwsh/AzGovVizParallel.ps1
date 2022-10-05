@@ -337,10 +337,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.31',
+    $AzAPICallVersion = '1.1.33',
 
     [string]
-    $ProductVersion = 'v6_major_20221004_1',
+    $ProductVersion = 'v6_major_20221005_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
