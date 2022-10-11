@@ -74,57 +74,84 @@ function dataCollectionDefenderEmailContacts {
     if ($defenderSecurityContactsResult -eq 'SubScriptionNotRegistered' -or $defenderSecurityContactsResult -eq 'DisallowedProvider') {
     }
     else {
-        if ($defenderSecurityContactsResult.Count -gt 0) {
-            foreach ($entry in $defenderSecurityContactsResult) {
 
-                if ($entry.properties) {
-                    if ($entry.properties.notificationsByRole.roles.count -gt 0) {
-                        $roles = ($entry.properties.notificationsByRole.roles | Sort-Object) -join "$CsvDelimiterOpposite "
-                    }
-                    else {
-                        $roles = 'none'
-                    }
-
-                    if ($entry.properties.emails) {
-                        if (-not [string]::IsNullOrWhiteSpace($entry.properties.emails)) {
-                            $emailsSplitted = $entry.properties.emails -split ';'
-                            $arrayEmails = @()
-                            foreach ($email in $emailsSplitted) {
-                                $arrayEmails += "'$email'"
-                            }
-                            $emails = ($arrayEmails | Sort-Object) -join "$CsvDelimiterOpposite "
+        if ($defenderSecurityContactsResult -like "azgvzerrorMessage_*") {
+            $errorInfo = $defenderSecurityContactsResult -replace 'azgvzerrorMessage_'
+            $script:htDefenderEmailContacts.($scopeId) = @{
+                subscriptionId                    = $scopeId
+                subscriptionName                  = $scopeDisplayName
+                emails                            = $errorInfo
+                roles                             = $errorInfo
+                alertNotificationsState           = $errorInfo
+                alertNotificationsminimalSeverity = $errorInfo
+            }
+        }
+        else {
+            if ($defenderSecurityContactsResult.Count -gt 0) {
+                foreach ($entry in $defenderSecurityContactsResult) {
+    
+                    if ($entry.properties) {
+                        if ($entry.properties.notificationsByRole.roles.count -gt 0) {
+                            $roles = ($entry.properties.notificationsByRole.roles | Sort-Object) -join "$CsvDelimiterOpposite "
                         }
                         else {
-                            $emails = $entry.properties.emails
+                            $roles = 'none'
+                        }
+    
+                        if ($entry.properties.emails) {
+                            if (-not [string]::IsNullOrWhiteSpace($entry.properties.emails)) {
+                                $emailsSplitted = $entry.properties.emails -split ';'
+                                $arrayEmails = @()
+                                foreach ($email in $emailsSplitted) {
+                                    $arrayEmails += "'$email'"
+                                }
+                                $emails = ($arrayEmails | Sort-Object) -join "$CsvDelimiterOpposite "
+                            }
+                            else {
+                                $emails = $entry.properties.emails
+                            }
+                        }
+                        else {
+                            $emails = 'none'
+                        }
+    
+                        if ($entry.properties.alertNotifications.state) {
+                            $alertNotificationsState = $entry.properties.alertNotifications.state
+                        }
+    
+                        if ($entry.properties.alertNotifications.minimalSeverity) {
+                            $alertNotificationsminimalSeverity = $entry.properties.alertNotifications.minimalSeverity
                         }
                     }
                     else {
-                        $emails = 'none'
+                        $roles = 'n/a'
+                        $emails = 'n/a'
+                        $alertNotificationsState = 'n/a'
+                        $alertNotificationsminimalSeverity = 'n/a'
                     }
-
-                    if ($entry.properties.alertNotifications.state) {
-                        $alertNotificationsState = $entry.properties.alertNotifications.state
-                    }
-
-                    if ($entry.properties.alertNotifications.minimalSeverity) {
-                        $alertNotificationsminimalSeverity = $entry.properties.alertNotifications.minimalSeverity
+    
+                    $script:htDefenderEmailContacts.($scopeId) = @{
+                        subscriptionId                    = $scopeId
+                        subscriptionName                  = $scopeDisplayName
+                        emails                            = $emails
+                        roles                             = $roles
+                        alertNotificationsState           = $alertNotificationsState
+                        alertNotificationsminimalSeverity = $alertNotificationsminimalSeverity
                     }
                 }
-                else {
-                    $roles = 'n/a'
-                    $emails = 'n/a'
-                    $alertNotificationsState = 'n/a'
-                    $alertNotificationsminimalSeverity = 'n/a'
-                }
-
+            }
+            else {
                 $script:htDefenderEmailContacts.($scopeId) = @{
-                    emails                            = $emails
-                    roles                             = $roles
-                    alertNotificationsState           = $alertNotificationsState
-                    alertNotificationsminimalSeverity = $alertNotificationsminimalSeverity
+                    subscriptionId                    = $scopeId
+                    subscriptionName                  = $scopeDisplayName
+                    emails                            = 'n/a'
+                    roles                             = 'n/a'
+                    alertNotificationsState           = 'n/a'
+                    alertNotificationsminimalSeverity = 'n/a'
                 }
             }
         }
+
     }
 }
 $funcDataCollectionDefenderEmailContacts = $function:dataCollectionDefenderEmailContacts.ToString()

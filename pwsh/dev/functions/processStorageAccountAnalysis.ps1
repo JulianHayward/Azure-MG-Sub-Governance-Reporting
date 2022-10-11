@@ -54,7 +54,7 @@ function processStorageAccountAnalysis {
                     }
                     catch {
                         Write-Host "XMLSAPropertiesFailed: Subscription: $($subDetails.displayName) ($subscriptionId) - Storage Account: $($storageAccount.name)"
-                        $saProperties | ConvertTo-Json -Depth 99
+                        Write-Host $($saProperties.ForEach({[char]$_}) -join '') -ForegroundColor Cyan
                     }
                 }
 
