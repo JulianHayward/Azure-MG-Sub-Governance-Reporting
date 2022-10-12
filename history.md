@@ -4,6 +4,12 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Oct-11 / Major)
+
+* Optimized handling of faulty Microsoft Defender for Cloud Email notifications configuration
+* Optimized handling of deviating xml data response for Storage Accounts (restype=service&comp=properties)
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.34
+
 __Changes__ (2022-Oct-05 / Major)
 
 * Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.33
