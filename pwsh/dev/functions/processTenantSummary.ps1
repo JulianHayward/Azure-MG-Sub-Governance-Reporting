@@ -6637,6 +6637,10 @@ extensions: [{ name: 'sort' }]
 </thead>
 <tbody>
 '@)
+
+        Write-Host " Exporting MDfC Email Notifications CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv'"
+        $htDefenderEmailContacts.values | Select-Object -Property subscriptionId, subscriptionName, alertNotificationsState, alertNotificationsminimalSeverity, roles, emails | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv" -Delimiter "$csvDelimiter" -NoTypeInformation      
+
         $htmlSUMMARYSubs = $null
         $htmlSUMMARYSubs = foreach ($summarySubscription in $summarySubscriptions) {
             $subPath = $htSubscriptionsMgPath.($summarySubscription.subscriptionId).pathDelimited
