@@ -4,6 +4,11 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Oct-19 / Major)
+
+* Fix error for feature 'Storage Account Access Analysis' in sovereign clouds
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.43
+
 __Changes__ (2022-Oct-11 / Major)
 
 * Optimized handling of faulty Microsoft Defender for Cloud Email notifications configuration

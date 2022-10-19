@@ -59,22 +59,10 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Oct-11 / Major)
+__Changes__ (2022-Oct-19 / Major)
 
-* Optimized handling of faulty Microsoft Defender for Cloud Email notifications configuration
-* Optimized handling of deviating xml data response for Storage Accounts (restype=service&comp=properties)
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.34
-
-__Changes__ (2022-Oct-05 / Major)
-
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.33
-
-__Changes__ (2022-Oct-04 / Major)
-
-* New feature to report on Microsoft Defender for Cloud Email notifications configuration for Subscriptions. Data is provided in the HTML __TenantSummary__ (Subscriptions, Resources & Defender) and __ScopeInsights__
-  * Updated [API reference](#api-reference)
-* Further enrich Subscription insights __TenantSummary__ (Subscriptions, Resources & Defender) - Owner & User Access Administrator Role assignment count (at scope) direct and indirect, plus PIM eligibility count
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.31
+* Fix error for feature 'Storage Account Access Analysis' in sovereign clouds
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.43
 
 Passed tests: Powershell Core 7.2.6 on Windows  
 Passed tests: Powershell Core 7.2.6 Azure DevOps hosted agent ubuntu-20.04  
