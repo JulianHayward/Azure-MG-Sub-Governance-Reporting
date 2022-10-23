@@ -59,6 +59,13 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
+__Changes__ (2022-Oct-23 / Major)
+
+* New feature - Network analysis (__TenantSummary__ and CSV export)
+  * Virtual Networks
+  * Virtual Network Peerings
+* Minor optimizations
+
 __Changes__ (2022-Oct-19 / Major)
 
 * Fix error for feature 'Storage Account Access Analysis' in sovereign clouds
@@ -213,6 +220,9 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
     * Well-Architected Framework aligned best practice analysis for resources, including guidance for remediation
   * Storage Account Access Analysis
     * Provides insights on Storage Accounts with focus on anonymous access (containers/blobs and 'Static website' feature)
+* __Network__
+  * Virtual Networks
+  * Virtual Network Peerings
 * __Diagnostics__
   * Management Groups Diagnostic settings report
     * Management Group, Diagnostic setting name, target type (LA, SA, EH), target Id, Log Category status
@@ -487,6 +497,10 @@ AzAPICall resources:
     * `-NoPIMEligibilityIntegrationRoleAssignmentsAll` - Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
   * ~~`-DefinitionInsightsDedicatedHTML`~~ `-NoDefinitionInsightsDedicatedHTML` - __DefinitionInsights__ will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep __DefinitionInsights__ in the main html file then use this parameter
   * ~~`-NoALZEvergreen`~~ `-NoALZPolicyVersionChecker` - Do not execute the ~~'ALZ EverGreen'~~ 'Azure Landing Zones (ALZ) Policy Version Checker' feature
+  * `-NoStorageAccountAccessAnalysis` - Do not execute Storage Account Access Analysis (focus on anonymous access)
+  * `-StorageAccountAccessAnalysisSubscriptionTags` - Define Subscription tag names that should be added to the CSV output per Storage Account
+  * `-StorageAccountAccessAnalysisStorageAccountTags` - Define Storage Account tag names that should be added to the CSV output per Storage Account
+  * `-NoNetwork` - Do not execute Network analysis / Virtual Network and Virtual Network Peerings
 
 ### API reference
 

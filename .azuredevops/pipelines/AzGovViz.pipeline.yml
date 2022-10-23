@@ -1,6 +1,6 @@
-# AzGovViz v6_major_20220917_1
+# AzGovViz v6_major_20221023_1
 # First things first:
-# 1. Mandatory: Set needed variables 'ServiceConnection' and 'ManagementGroupId' in the AzGovViz.variables.yml file.
+# 1. Mandatory: In the AzGovViz.variables.yml file set needed variables 'ServiceConnection' and 'ManagementGroupId
 # 2. Mandatory: Check line 20  
 # Documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 

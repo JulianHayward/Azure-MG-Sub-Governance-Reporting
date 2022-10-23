@@ -151,10 +151,34 @@ function dataCollectionDefenderEmailContacts {
                 }
             }
         }
-
     }
 }
 $funcDataCollectionDefenderEmailContacts = $function:dataCollectionDefenderEmailContacts.ToString()
+
+function dataCollectionVNets {
+    [CmdletBinding()]Param(
+        [string]$scopeId,
+        [string]$scopeDisplayName,
+        $SubscriptionQuotaId
+    )
+
+    $currentTask = "Getting Virtual Networks for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
+    #https://docs.microsoft.com/en-us/rest/api/securitycenter/pricings
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Network/virtualNetworks?api-version=2022-05-01"
+    $method = 'GET'
+    $networkResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+
+    if ($networkResult -eq 'someError') {
+    }
+    else {
+        if ($networkResult.Count -gt 0) {
+            foreach ($vnet in $networkResult) {
+                $null = $script:arrayVNets.Add($vnet)
+            }
+        }
+    }
+}
+$funcDataCollectionVNets = $function:dataCollectionVNets.ToString()
 
 function dataCollectionDiagnosticsSub {
     [CmdletBinding()]Param(

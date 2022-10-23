@@ -421,6 +421,15 @@ function runInfo {
             }
         }
 
+        if ($NoNetwork) {
+            Write-Host " NoNetwork = $($NoNetwork)" -ForegroundColor Green
+            #$script:paramsUsed += "NoNetwork: $($NoNetwork) &#13;"
+        }
+        else {
+            Write-Host " NoNetwork = $($NoNetwork)" -ForegroundColor Yellow
+            #$script:paramsUsed += "NoNetwork: $($NoNetwork) &#13;"
+        }
+
         if ($GitHubActionsOIDC) {
             Write-Host " GitHubActionsOIDC = $($GitHubActionsOIDC)" -ForegroundColor Green
             #$script:paramsUsed += "GitHubActionsOIDC: $($GitHubActionsOIDC) &#13;"

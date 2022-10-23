@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220930_1
+# AzGovViz v6_major_20221023_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -311,6 +311,11 @@ variables:
 
 # Do not execute Storage Account Access Analysis
   - name: NoStorageAccountAccessAnalysis
+    # Switch | example: value: true
+    value:
+
+# Do not execute Network analysis / Virtual Network and Virtual Network Peerings
+  - name: NoNetwork
     # Switch | example: value: true
     value:
 

@@ -353,6 +353,7 @@ function processDataCollection {
                 $alzPolicySetHashes = $using:alzPolicySetHashes
                 $htDoARMRoleAssignmentScheduleInstances = $using:htDoARMRoleAssignmentScheduleInstances
                 $htDefenderEmailContacts = $using:htDefenderEmailContacts
+                $arrayVNets = $using:arrayVNets
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation
@@ -380,6 +381,7 @@ function processDataCollection {
                 $function:dataCollectionRoleAssignmentsSub = $using:funcDataCollectionRoleAssignmentsSub
                 $function:dataCollectionClassicAdministratorsSub = $using:funcDataCollectionClassicAdministratorsSub
                 $function:dataCollectionDefenderEmailContacts = $using:funcDataCollectionDefenderEmailContacts
+                $function:dataCollectionVNets = $using:funcDataCollectionVNets
                 #endregion UsingVARs
 
                 $addRowToTableDone = $false
@@ -408,8 +410,6 @@ function processDataCollection {
                     }
                 }
 
-                #$rndom = Get-Random -Minimum 10 -Maximum 750
-                #start-sleep -Millisecond $rndom
                 if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
                     $currentSubscription = $htAllSubscriptionsFromAPI.($childMgSubId).subDetails
                     $subscriptionQuotaId = $currentSubscription.subscriptionPolicies.quotaId
@@ -434,6 +434,11 @@ function processDataCollection {
 
                         #defenderEmailContacts
                         DataCollectionDefenderEmailContacts @baseParameters
+
+                        if (-not $azAPICallConf['htParameters'].NoNetwork) {
+                        #VNets
+                            DataCollectionVNets @baseParameters
+                        }
 
                         #diagnostics
                         $dataCollectionDiagnosticsSubParameters = @{

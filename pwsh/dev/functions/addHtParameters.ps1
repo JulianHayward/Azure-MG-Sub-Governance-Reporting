@@ -36,6 +36,7 @@ function addHtParameters {
         NoALZPolicyVersionChecker                    = [bool]$NoALZPolicyVersionChecker
         NoStorageAccountAccessAnalysis               = [bool]$NoStorageAccountAccessAnalysis
         GitHubActionsOIDC                            = [bool]$GitHubActionsOIDC
+        NoNetwork                                    = [bool]$NoNetwork
     }
     Write-Host 'htParameters:'
     $azAPICallConf['htParameters'] | format-table -AutoSize | Out-String

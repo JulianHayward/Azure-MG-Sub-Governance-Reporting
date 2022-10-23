@@ -4,6 +4,13 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Oct-23 / Major)
+
+* New feature - Network analysis (__TenantSummary__ and CSV export)
+  * Virtual Networks
+  * Virtual Network Peerings
+* Minor optimizations
+
 __Changes__ (2022-Oct-19 / Major)
 
 * Fix error for feature 'Storage Account Access Analysis' in sovereign clouds

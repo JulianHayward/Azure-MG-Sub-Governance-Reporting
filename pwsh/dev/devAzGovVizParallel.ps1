@@ -174,6 +174,11 @@
     If the Storage Account Access Analysis feature is executed with this parameter you can define the Storage Account (resource) tags that should be added to the CSV output
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
 
+.PARAMETER NoNetwork
+    Network analysis / Virtual Network and Virtual Network Peerings
+    If you do not want to execute this feature then use this parameter
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoNetwork
+
 .EXAMPLE
     Define the ManagementGroup ID
     PS C:\> .\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>
@@ -321,6 +326,9 @@
     Additionally you can define Subscription and/or Storage Account Tag names that should be added to the CSV output per Storage Account
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> --StorageAccountAccessAnalysisSubscriptionTags @('Responsible', 'TeamEmail') -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
 
+    Define if Network analysis / Virtual Network and Virtual Network Peerings should not be executed
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoNetwork
+
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
@@ -340,7 +348,7 @@ Param
     $AzAPICallVersion = '1.1.43',
 
     [string]
-    $ProductVersion = 'v6_major_20221019_1',
+    $ProductVersion = 'v6_major_20221023_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -524,6 +532,9 @@ Param
     [switch]
     $GitHubActionsOIDC,
 
+    [switch]
+    $NoNetwork,
+
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
     $LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -585,6 +596,7 @@ if ($ManagementGroupId -match " ") {
 }
 
 #region Functions
+. ".\$($ScriptPath)\functions\processNetwork.ps1"
 . ".\$($ScriptPath)\functions\processStorageAccountAnalysis.ps1"
 . ".\$($ScriptPath)\functions\processALZPolicyVersionChecker.ps1"
 . ".\$($ScriptPath)\functions\getPIMEligible.ps1"
@@ -876,6 +888,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $storageAccounts = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayStorageAccountAnalysisResults = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htDefenderEmailContacts = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+    $arrayVNets = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
 if (-not $HierarchyMapOnly) {
@@ -940,6 +953,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $startDataCollection = Get-Date
 
     processDataCollection -mgId $ManagementGroupId
+
     showMemoryUsage
 
     if (-not $NoPIMEligibility) {
@@ -1411,7 +1425,7 @@ $html = @"
         link.media = "screen,print";
         document.getElementsByTagName( "head" )[0].appendChild( link );
     </script>
-    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_047.css">
+    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_048.css">
     <script src="https://www.azadvertizer.net/azgovvizv4/js/jquery-3.6.0.min.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/jquery-ui-1.13.0.min.js"></script>
     <script type="text/javascript" src="https://www.azadvertizer.net/azgovvizv4/js/highlight_v004_002.js"></script>
@@ -1919,6 +1933,10 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $html = $null
 
     $startSummary = Get-Date
+
+    if (-not $azAPICallConf['htParameters'].NoNetwork) {
+        processNetwork
+    }
 
     processTenantSummary
     showMemoryUsage

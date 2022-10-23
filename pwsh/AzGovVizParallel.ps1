@@ -174,6 +174,11 @@
     If the Storage Account Access Analysis feature is executed with this parameter you can define the Storage Account (resource) tags that should be added to the CSV output
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
 
+.PARAMETER NoNetwork
+    Network analysis / Virtual Network and Virtual Network Peerings
+    If you do not want to execute this feature then use this parameter
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoNetwork
+
 .EXAMPLE
     Define the ManagementGroup ID
     PS C:\> .\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>
@@ -321,6 +326,9 @@
     Additionally you can define Subscription and/or Storage Account Tag names that should be added to the CSV output per Storage Account
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> --StorageAccountAccessAnalysisSubscriptionTags @('Responsible', 'TeamEmail') -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
 
+    Define if Network analysis / Virtual Network and Virtual Network Peerings should not be executed
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoNetwork
+
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
@@ -340,7 +348,7 @@ Param
     $AzAPICallVersion = '1.1.43',
 
     [string]
-    $ProductVersion = 'v6_major_20221019_1',
+    $ProductVersion = 'v6_major_20221023_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -524,6 +532,9 @@ Param
     [switch]
     $GitHubActionsOIDC,
 
+    [switch]
+    $NoNetwork,
+
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
     $LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -623,6 +634,7 @@ function addHtParameters {
         NoALZPolicyVersionChecker                    = [bool]$NoALZPolicyVersionChecker
         NoStorageAccountAccessAnalysis               = [bool]$NoStorageAccountAccessAnalysis
         GitHubActionsOIDC                            = [bool]$GitHubActionsOIDC
+        NoNetwork                                    = [bool]$NoNetwork
     }
     Write-Host 'htParameters:'
     $azAPICallConf['htParameters'] | format-table -AutoSize | Out-String
@@ -4913,6 +4925,7 @@ function processDataCollection {
                 $alzPolicySetHashes = $using:alzPolicySetHashes
                 $htDoARMRoleAssignmentScheduleInstances = $using:htDoARMRoleAssignmentScheduleInstances
                 $htDefenderEmailContacts = $using:htDefenderEmailContacts
+                $arrayVNets = $using:arrayVNets
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation
@@ -4940,6 +4953,7 @@ function processDataCollection {
                 $function:dataCollectionRoleAssignmentsSub = $using:funcDataCollectionRoleAssignmentsSub
                 $function:dataCollectionClassicAdministratorsSub = $using:funcDataCollectionClassicAdministratorsSub
                 $function:dataCollectionDefenderEmailContacts = $using:funcDataCollectionDefenderEmailContacts
+                $function:dataCollectionVNets = $using:funcDataCollectionVNets
                 #endregion UsingVARs
 
                 $addRowToTableDone = $false
@@ -4968,8 +4982,6 @@ function processDataCollection {
                     }
                 }
 
-                #$rndom = Get-Random -Minimum 10 -Maximum 750
-                #start-sleep -Millisecond $rndom
                 if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
                     $currentSubscription = $htAllSubscriptionsFromAPI.($childMgSubId).subDetails
                     $subscriptionQuotaId = $currentSubscription.subscriptionPolicies.quotaId
@@ -4994,6 +5006,11 @@ function processDataCollection {
 
                         #defenderEmailContacts
                         DataCollectionDefenderEmailContacts @baseParameters
+
+                        if (-not $azAPICallConf['htParameters'].NoNetwork) {
+                        #VNets
+                            DataCollectionVNets @baseParameters
+                        }
 
                         #diagnostics
                         $dataCollectionDiagnosticsSubParameters = @{
@@ -7057,6 +7074,286 @@ function processManagedIdentities {
     }
     $endSPMI = Get-Date
     Write-Host "Processing Service Principals - Managed Identities duration: $((NEW-TIMESPAN -Start $startSPMI -End $endSPMI).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSPMI -End $endSPMI).TotalSeconds) seconds)"
+}
+function processNetwork {
+    $script:arrayVirtualNetworks = [System.Collections.ArrayList]@()
+    $script:arraySubnets = [System.Collections.ArrayList]@()
+
+    $htVNets = @{}
+    #$htPeerings = @{}
+    foreach ($vnet in $arrayVNets) {
+        $htVNets.($vnet.id) = $vnet
+        if ($vnet.properties.subnets.Count -gt 0) {
+            foreach ($subnet in $vnet.properties.subnets) {
+                if ($subnet.properties.ipConfigurations.Count -gt 0) {
+                    foreach ($ipConfiguration in $subnet.properties.ipConfigurations) {
+                        #$vnet | convertto-json -depth 99
+                        #$ipConfiguration.id
+                        #  pause
+                    }
+                }
+                if ($subnet.properties.networkSecurityGroup.Count -gt 0) {
+                    foreach ($networkSecurityGroup in $subnet.properties.networkSecurityGroup) {
+                        # $networkSecurityGroup
+                    }
+                }
+                if ($subnet.properties.serviceEndpoints.Count -gt 0) {
+                    foreach ($serviceEndpoints in $subnet.properties.serviceEndpoints) {
+                        # $serviceEndpoints
+                    }
+                }
+                if ($subnet.properties.routeTable.Count -gt 0) {
+                    foreach ($routeTable in $subnet.properties.routeTable) {
+                        #  $routeTable
+                    }
+                }
+                if ($subnet.properties.delegations.Count -gt 0) {
+                    foreach ($delegations in $subnet.properties.delegations) {
+                        # $delegations
+                    }
+                }
+            }
+        }
+        # if ($vnet.properties.virtualNetworkPeerings.Count -gt 0) {
+        #     $htPeerings.($vnet.id) = $vnet.properties.virtualNetworkPeerings
+        # }
+    }
+
+    foreach ($vnet in $arrayVNets) {
+        #peeringsStuff
+    
+        #$vnetIdSplit = "/subscriptions/19f26644-2e08-4119-8ade-5e1e93e3dca3/resourceGroups/AzAdvertizer/providers/Microsoft.Network/virtualNetworks/azadvertizer" -split "/"
+        $vnetIdSplit = ($vnet.id -split "/")
+        $subscriptionId = $vnetIdSplit[2]
+        
+        $subscriptionName = 'n/a'
+        $MGPath = 'n/a'
+        if ($htSubscriptionsMgPath.($subscriptionId)) {
+            $subHelper = $htSubscriptionsMgPath.($subscriptionId)
+            $subscriptionName = $subHelper.displayName
+            $MGPath = $subHelper.ParentNameChainDelimited
+        }
+
+        $vnetResourceGroup = $vnetIdSplit[4]
+        if ($vnet.properties.virtualNetworkPeerings.Count -gt 0) {
+            foreach ($peering in $vnet.properties.virtualNetworkPeerings) {
+                $remotevnetIdSplit = ($peering.properties.remoteVirtualNetwork.id -split "/")
+                $remotesubscriptionId = $remotevnetIdSplit[2]
+            
+
+                $remotesubscriptionName = 'n/a'
+                $remoteMGPath = 'n/a'
+                if ($htSubscriptionsMgPath.($subscriptionId)) {
+                    $remotesubHelper = $htSubscriptionsMgPath.($remotesubscriptionId)
+                    $remotesubscriptionName = $remotesubHelper.displayName
+                    $remoteMGPath = $remotesubHelper.ParentNameChainDelimited
+                }
+
+                $remotevnetName = $remotevnetIdSplit[8] 
+                $remotevnetResourceGroup = $remotevnetIdSplit[4] 
+            
+                if ($htVNets.($peering.properties.remoteVirtualNetwork.id)) {
+                    $remotevnetState = 'existent'
+                    $remoteLocation = $htVNets.($peering.properties.remoteVirtualNetwork.id).location
+                    $remotePeeringsCount = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.virtualNetworkPeerings.Count
+                    $remoteSubnetsCount = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.subnets.Count
+                    $remoteSubnetsWithNSGCount = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.subnets.properties.networkSecurityGroup.Count
+                    $remoteSubnetsWithRouteTable = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.subnets.properties.routeTable.Count
+                    $remoteSubnetsWithDelegations = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.subnets.properties.delegations.Count
+                    $remoteDhcpoptionsDnsservers = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.dhcpoptions.dnsservers
+                    $remoteConnectedDevices = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.subnets.properties.ipConfigurations.id.Count
+                    $remoteDdosProtection = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.enableDdosProtection
+                    $remotePeering = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.virtualNetworkPeerings.where({ $_.properties.remoteVirtualNetwork.id -eq $vnet.id })
+                    if ($remotePeering.count -eq 1) {
+                        $remotePeeringName = $remotePeering.name
+                        $remotePeeringState = $remotePeering.Properties.peeringState
+                        $remotePeeringSyncLevel = $remotePeering.Properties.peeringSyncLevel
+                        $remoteAllowVirtualNetworkAccess = $remotePeering.properties.allowVirtualNetworkAccess
+                        $remoteAllowForwardedTraffic = $remotePeering.properties.allowForwardedTraffic
+                        $remoteAllowGatewayTransit = $remotePeering.properties.allowGatewayTransit
+                        $remoteUseRemoteGateways = $remotePeering.properties.useRemoteGateways
+                        $remoteDoNotVerifyRemoteGateways = $remotePeering.properties.doNotVerifyRemoteGateways
+                        $remotePeerCompleteVnets = $remotePeering.properties.peerCompleteVnets
+                        $remoteRouteServiceVips = $remotePeering.properties.routeServiceVips
+                    }
+                    else{
+                        $remotePeeringName = 'n/a'
+                        $remotePeeringState = 'n/a'
+                        $remotePeeringSyncLevel = 'n/a'
+                        $remoteAllowVirtualNetworkAccess = 'n/a'
+                        $remoteAllowForwardedTraffic = 'n/a'
+                        $remoteAllowGatewayTransit = 'n/a'
+                        $remoteUseRemoteGateways = 'n/a'
+                        $remoteDoNotVerifyRemoteGateways = 'n/a'
+                        $remotePeerCompleteVnets = 'n/a'
+                        $remoteRouteServiceVips = 'n/a'
+                    }
+
+                }
+                else {
+                    if ($getMgParentName -eq 'Tenant Root') {
+                        $remotevnetState = 'non-existent'
+                    }
+                    else {
+                        $remotevnetState = 'n/a'
+                    }
+                    $remoteLocation = 'n/a'
+                    $remotePeeringsCount = 'n/a'
+                    $remoteSubnetsCount = 'n/a'
+                    $remoteSubnetsWithNSGCount = 'n/a'
+                    $remoteSubnetsWithRouteTable = 'n/a'
+                    $remoteSubnetsWithDelegations = 'n/a'
+                    $remoteDhcpoptionsDnsservers = 'n/a'
+                    $remoteConnectedDevices = 'n/a'
+                    $remoteDdosProtection = 'n/a'
+                    $remotePeeringName = 'n/a'
+                    $remotePeeringState = 'n/a'
+                    $remotePeeringSyncLevel = 'n/a'
+                    $remoteAllowVirtualNetworkAccess = 'n/a'
+                    $remoteAllowForwardedTraffic = 'n/a'
+                    $remoteAllowGatewayTransit = 'n/a'
+                    $remoteUseRemoteGateways = 'n/a'
+                    $remoteDoNotVerifyRemoteGateways = 'n/a'
+                    $remotePeerCompleteVnets = 'n/a'
+                    $remoteRouteServiceVips = 'n/a'
+                }
+
+                $null = $script:arrayVirtualNetworks.Add([PSCustomObject]@{
+                        SubscriptionName                                = $subscriptionName
+                        Subscription                                    = ($vnet.id -split "/")[2]
+                        MGPath                                          = $MGPath
+                        VNet                                            = $vnet.name
+                        VNetId                                            = $vnet.id
+                        VNetResourceGroup                               = $vnetResourceGroup
+                        Location                                        = $vnet.location
+                        AddressSpaceAddressPrefixes                     = $vnet.properties.addressSpace.addressPrefixes
+                        DhcpoptionsDnsservers                           = $vnet.properties.dhcpoptions.dnsservers
+                        SubnetsCount                                    = $vnet.properties.subnets.Count
+                        SubnetsWithNSGCount                             = $vnet.properties.subnets.properties.networkSecurityGroup.Count
+                        SubnetsWithRouteTableCount                      = $vnet.properties.subnets.properties.routeTable.Count
+                        SubnetsWithDelegationsCount                     = $vnet.properties.subnets.properties.delegations.Count
+                        ConnectedDevices                                = $vnet.properties.subnets.properties.ipConfigurations.id.Count 
+                        DdosProtection                                  = $vnet.properties.enableDdosProtection
+                
+                        PeeringsCount                                   = $vnet.properties.virtualNetworkPeerings.Count
+                        PeeringName                                     = $peering.name
+                        PeeringState                                    = $peering.properties.peeringState
+                        PeeringSyncLevel                                = $peering.properties.peeringSyncLevel
+                        AllowVirtualNetworkAccess                       = $peering.properties.allowVirtualNetworkAccess
+                        AllowForwardedTraffic                           = $peering.properties.allowForwardedTraffic
+                        AllowGatewayTransit                             = $peering.properties.allowGatewayTransit
+                        UseRemoteGateways                               = $peering.properties.useRemoteGateways
+                        DoNotVerifyRemoteGateways                       = $peering.properties.doNotVerifyRemoteGateways
+                        PeerCompleteVnets                               = $peering.properties.peerCompleteVnets
+                        RouteServiceVips                                = $peering.properties.routeServiceVips
+                
+                        RemotePeeringsCount                             = $remotePeeringsCount
+                        RemotePeeringName                               = $remotePeeringName
+                        RemotePeeringState                              = $remotePeeringState
+                        RemotePeeringSyncLevel                          = $remotePeeringSyncLevel
+                        RemoteAllowVirtualNetworkAccess                 = $RemoteAllowVirtualNetworkAccess
+                        RemoteAllowForwardedTraffic                     = $RemoteAllowForwardedTraffic
+                        RemoteAllowGatewayTransit                       = $RemoteAllowGatewayTransit
+                        RemoteUseRemoteGateways                         = $RemoteUseRemoteGateways
+                        RemoteDoNotVerifyRemoteGateways                 = $RemoteDoNotVerifyRemoteGateways
+                        RemotePeerCompleteVnets                         = $RemotePeerCompleteVnets
+                        RemoteRouteServiceVips                          = $RemoteRouteServiceVips
+
+                        RemoteSubscriptionName                          = $remotesubscriptionName
+                        RemoteSubscription                              = $remotesubscriptionId
+                        RemoteMGPath                                    = $remoteMGPath
+                        RemoteVNet                                      = $remotevnetName
+                        RemoteVNetId                                    = $peering.properties.remoteVirtualNetwork.id
+                        RemoteVNetState                                 = $remotevnetState
+                        RemoteVNetResourceGroup                         = $remotevnetResourceGroup
+                        RemoteVNetLocation                              = $remoteLocation
+                        RemoteAddressSpaceAddressPrefixes               = $peering.properties.remoteAddressSpace.addressPrefixes
+                        RemoteVirtualNetworkAddressSpaceAddressPrefixes = $peering.properties.remoteVirtualNetworkAddressSpace.addressPrefixes
+                        
+                        RemoteDhcpoptionsDnsservers                     = $remoteDhcpoptionsDnsservers
+                        RemoteSubnetsCount                              = $remoteSubnetsCount
+                        RemoteSubnetsWithNSGCount                       = $remoteSubnetsWithNSGCount
+                        RemoteSubnetsWithRouteTable                     = $remoteSubnetsWithRouteTable
+                        RemoteSubnetsWithDelegations                    = $remoteSubnetsWithDelegations
+                        RemoteConnectedDevices                          = $remoteConnectedDevices
+                        RemoteDdosProtection                            = $remoteDdosProtection
+                    })
+            }
+        
+        }
+        else {
+            $null = $script:arrayVirtualNetworks.Add([PSCustomObject]@{
+                    SubscriptionName                                = $subscriptionName
+                    Subscription                                    = ($vnet.id -split "/")[2]
+                    MGPath                                          = $MGPath
+                    VNet                                            = $vnet.name
+                    VNetId                                          = $vnet.id
+                    VNetResourceGroup                               = $vnetResourceGroup
+                    Location                                        = $vnet.location
+            
+                    AddressSpaceAddressPrefixes                     = $vnet.properties.addressSpace.addressPrefixes
+                    DhcpoptionsDnsservers                           = $vnet.properties.dhcpoptions.dnsservers
+                    SubnetsCount                                    = $vnet.properties.subnets.Count
+                    SubnetsWithNSGCount                             = $vnet.properties.subnets.properties.networkSecurityGroup.Count
+                    SubnetsWithRouteTableCount                      = $vnet.properties.subnets.properties.routeTable.Count
+                    SubnetsWithDelegationsCount                     = $vnet.properties.subnets.properties.delegations.Count
+                    ConnectedDevices                                = $vnet.properties.subnets.properties.ipConfigurations.id.Count 
+                    DdosProtection                                  = $vnet.properties.enableDdosProtection
+            
+                    PeeringsCount                                   = $vnet.properties.virtualNetworkPeerings.Count
+                    PeeringName                                     = ''
+                    PeeringState                                    = ''
+                    PeeringSyncLevel                                = ''
+                    AllowVirtualNetworkAccess                       = ''
+                    AllowForwardedTraffic                           = ''
+                    AllowGatewayTransit                             = ''
+                    UseRemoteGateways                               = ''
+                    DoNotVerifyRemoteGateways                       = ''
+                    PeerCompleteVnets                               = ''
+                    RouteServiceVips                                = ''
+
+                    RemotePeeringsCount                             = ''
+                    RemotePeeringName                               = ''
+                    RemotePeeringState                              = ''
+                    RemotePeeringSyncLevel                          = ''
+                    RemoteAllowVirtualNetworkAccess                 = ''
+                    RemoteAllowForwardedTraffic                     = ''
+                    RemoteAllowGatewayTransit                       = ''
+                    RemoteUseRemoteGateways                         = ''
+                    RemoteDoNotVerifyRemoteGateways                 = ''
+                    RemotePeerCompleteVnets                         = ''
+                    RemoteRouteServiceVips                          = ''
+
+                    RemoteSubscriptionName                          = ''
+                    RemoteSubscription                              = ''
+                    RemoteMGPath                                    = ''
+                    RemoteVNet                                      = ''
+                    RemoteVNetId                                    = ''
+                    RemoteVNetState                                 = ''
+                    RemoteVNetResourceGroup                         = ''
+                    RemoteVNetLocation                              = ''
+                    RemoteAddressSpaceAddressPrefixes               = ''
+                    RemoteVirtualNetworkAddressSpaceAddressPrefixes = ''
+                    RemoteDhcpoptionsDnsservers                     = ''
+                    RemoteSubnetsCount                              = ''
+                    RemoteSubnetsWithNSGCount                       = ''
+                    RemoteSubnetsWithRouteTable                     = ''
+                    RemoteSubnetsWithDelegations                    = ''
+                    RemoteConnectedDevices                          = ''
+                    RemoteDdosProtection                            = ''
+                })
+        }
+    
+
+        #subnetStuff
+        if ($vnet.properties.subnets.Count -gt 0) {
+            #"$($vnet.name) has $($vnet.properties.subnets.Count) subnets"
+            foreach ($subnet in $vnet.properties.subnets) {
+                #"  subnet: $($subnet.name)"
+                #"  addressPrefix: $($subnet.properties.addressPrefix)"
+            }
+        }
+    }
 }
 function processScopeInsightsMgOrSub($mgOrSub, $mgChild, $subscriptionId, $subscriptionsMgId) {
     $script:scopescnter++
@@ -17887,7 +18184,7 @@ extensions: [{ name: 'sort' }]
 "@)
         }
         [void]$htmlTenantSummary.AppendLine(@'
-<th>Path</th>
+<th>Management Group Path</th>
 </tr>
 </thead>
 <tbody>
@@ -17898,7 +18195,7 @@ extensions: [{ name: 'sort' }]
 
         $htmlSUMMARYSubs = $null
         $htmlSUMMARYSubs = foreach ($summarySubscription in $summarySubscriptions) {
-            $subPath = $htSubscriptionsMgPath.($summarySubscription.subscriptionId).pathDelimited
+            $subPath = $htSubscriptionsMgPath.($summarySubscription.subscriptionId).ParentNameChainDelimited
             $subscriptionTagsArray = [System.Collections.ArrayList]@()
             foreach ($tag in ($htSubscriptionTags).($summarySubscription.subscriptionId).keys) {
                 $null = $subscriptionTagsArray.Add("'$($tag)':'$(($htSubscriptionTags).$($summarySubscription.subscriptionId).$tag)'")
@@ -20044,28 +20341,26 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         #endregion SUMMARYPSRule
     }
 
-    
     #region SUMMARYStorageAccountAnalysis
-    if (1 -eq 1) {
-        if ($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis -eq $false) {
-            $startStorageAccountAnalysis = Get-Date
-            Write-Host '  processing TenantSummary Storage Account Access Analysis'
+    if ($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis -eq $false) {
+        $startStorageAccountAnalysis = Get-Date
+        Write-Host '  processing TenantSummary Storage Account Access Analysis'
             
-            $arrayStorageAccountAnalysisResultsCount = $arrayStorageAccountAnalysisResults.Count 
-            if ($arrayStorageAccountAnalysisResultsCount.Count -gt 0) {
+        $arrayStorageAccountAnalysisResultsCount = $arrayStorageAccountAnalysisResults.Count 
+        if ($arrayStorageAccountAnalysisResultsCount.Count -gt 0) {
 
-                if (-not $NoCsvExport) {
-                    $storageAccountAccessAnalysisCSVPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_StorageAccountAccessAnalysis.csv"
-                    Write-Host "   Exporting 'Storage Account Access Analysis' CSV '$storageAccountAccessAnalysisCSVPath'"
-                    $arrayStorageAccountAnalysisResults | Sort-Object -Property StorageAccount | Export-Csv -Path $storageAccountAccessAnalysisCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
-                }
+            if (-not $NoCsvExport) {
+                $storageAccountAccessAnalysisCSVPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_StorageAccountAccessAnalysis.csv"
+                Write-Host "   Exporting 'Storage Account Access Analysis' CSV '$storageAccountAccessAnalysisCSVPath'"
+                $arrayStorageAccountAnalysisResults | Sort-Object -Property StorageAccount | Export-Csv -Path $storageAccountAccessAnalysisCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
+            }
 
-                $saAnonymousAccessCount = ($arrayStorageAccountAnalysisResults.where({ $_.containersAnonymousContainerCount -gt 0 -or $_.containersAnonymousBlobCount -gt 0 })).Count
-                $saStaticWebsitesEnabledCount = ($arrayStorageAccountAnalysisResults.where({ $_.staticWebsitesState -eq $true })).Count
+            $saAnonymousAccessCount = ($arrayStorageAccountAnalysisResults.where({ $_.containersAnonymousContainerCount -gt 0 -or $_.containersAnonymousBlobCount -gt 0 })).Count
+            $saStaticWebsitesEnabledCount = ($arrayStorageAccountAnalysisResults.where({ $_.staticWebsitesState -eq $true })).Count
 
-                $htmlTableId = 'TenantSummary_StorageAccountAccessAnalysis'
-                $tfCount = $arrayStorageAccountAnalysisResultsCount
-                [void]$htmlTenantSummary.AppendLine(@"
+            $htmlTableId = 'TenantSummary_StorageAccountAccessAnalysis'
+            $tfCount = $arrayStorageAccountAnalysisResultsCount
+            [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_StorageAccountAccessAnalysis"><i class="padlx fa fa-user-secret" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$tfCount Storage Accounts Access Analysis results - Anonymous Access Container/Blob: $saAnonymousAccessCount, Static Website enabled: $saStaticWebsitesEnabledCount</span></button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Check this article by Elli Shlomo (MVP) </span> <a class="externallink" href="https://misconfig.io/azure-blob-container-threats-attacks/" target="_blank" rel="noopener">Azure Blob Container Threats & Attacks <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
@@ -20106,9 +20401,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <tbody>
 "@)
 
-                foreach ($result in $arrayStorageAccountAnalysisResults | sort-Object -Property storageAccount) {
+            foreach ($result in $arrayStorageAccountAnalysisResults | sort-Object -Property storageAccount) {
 
-                    [void]$htmlTenantSummary.AppendLine(@"
+                [void]$htmlTenantSummary.AppendLine(@"
                         <tr>
                         <td>$($result.storageAccount)</td>
                         <td>$($result.kind)</td>
@@ -20140,9 +20435,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         </tr>
 "@)
 
-                }
+            }
 
-                [void]$htmlTenantSummary.AppendLine(@"
+            [void]$htmlTenantSummary.AppendLine(@"
 </tbody>
 </table>
 <script>
@@ -20151,31 +20446,31 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
-                if ($tfCount -gt 10) {
-                    $spectrum = "10, $tfCount"
-                    if ($tfCount -gt 50) {
-                        $spectrum = "10, 25, 50, $tfCount"
-                    }
-                    if ($tfCount -gt 100) {
-                        $spectrum = "10, 30, 50, 100, $tfCount"
-                    }
-                    if ($tfCount -gt 500) {
-                        $spectrum = "10, 30, 50, 100, 250, $tfCount"
-                    }
-                    if ($tfCount -gt 1000) {
-                        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-                    }
-                    if ($tfCount -gt 2000) {
-                        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-                    }
-                    if ($tfCount -gt 3000) {
-                        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-                    }
-                    [void]$htmlTenantSummary.AppendLine(@"
-paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
-"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
                 }
                 [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             linked_filters: true,
             col_1: 'select',
@@ -20229,28 +20524,472 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     </script>
 </div>
 "@)
-            }
-            else {
-                [void]$htmlTenantSummary.AppendLine(@'
-    <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No Storage Accounts found</span></p>
-'@)
-            }
-            $endStorageAccountAnalysis = Get-Date
-            Write-Host "   Storage Account Analysis processing duration: $((NEW-TIMESPAN -Start $startStorageAccountAnalysis -End $endStorageAccountAnalysis).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startStorageAccountAnalysis -End $endStorageAccountAnalysis).TotalSeconds) seconds)"
         }
         else {
-            [void]$htmlTenantSummary.AppendLine(@"
-            <i class="padlx fa fa-check-square-o" aria-hidden="true"></i> <span class="valignMiddle">Storage Account Access Analysis disabled - </span><span class="info">parameter -NoStorageAccountAccessAnalysis $($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis)</span>
-"@)
+            [void]$htmlTenantSummary.AppendLine(@'
+                <p><i class="padlx fa fa-user-secret" aria-hidden="true"></i> <span class="valignMiddle">No Storage Accounts found</span></p>
+'@)
         }
+        $endStorageAccountAnalysis = Get-Date
+        Write-Host "   Storage Account Analysis processing duration: $((NEW-TIMESPAN -Start $startStorageAccountAnalysis -End $endStorageAccountAnalysis).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startStorageAccountAnalysis -End $endStorageAccountAnalysis).TotalSeconds) seconds)"
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Storage Account Access Analysis disabled - </span><span class="info">parameter -NoStorageAccountAccessAnalysis = $($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis)</span></p>
+"@)
     }
     #endregion SUMMARYStorageAccountAnalysis
     
-
     [void]$htmlTenantSummary.AppendLine(@'
     </div>
 '@)
     #endregion tenantSummarySubscriptionsResourceDefenderPSRule
+
+    #region tenantSummaryNetwork
+    [void]$htmlTenantSummary.AppendLine(@'
+    <button type="button" class="collapsible" id="tenantSummaryNetwork"><hr class="hr-textNetwork" data-content="Network" /></button>
+    <div class="content TenantSummaryContent">
+'@)
+
+    #region SUMMARYVNets
+    if ($azAPICallConf['htParameters'].NoNetwork -eq $false) {
+        $startVNets = Get-Date
+        Write-Host '  processing TenantSummary VNets'
+        $Vnets = $arrayVirtualNetworks | Sort-Object -Property SubscriptionName, VNet, VNetId -Unique
+        $VNetsCount = $Vnets.Count
+
+        if (-not $NoCsvExport) {
+            $virtualNetworksCSVPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_VirtualNetworks.csv"
+            Write-Host "   Exporting VirtaulNetworks CSV '$virtualNetworksCSVPath'"
+            $Vnets | Export-Csv -Path $virtualNetworksCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
+        }
+
+        if ($VNetsCount -gt 0) {
+
+            $htmlTableId = 'TenantSummary_VNets'
+            $tfCount = $VNetsCount
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_VNets"><i class="padlx fa fa-arrows" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$tfCount Virtual Networks</span></button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Subscription Name</th>
+<th>Subscription</th>
+<th>MGPath</th>
+<th>VNet</th>
+<th>VNet Resource Group</th>
+<th>Location</th>
+<th>Address Prefixes</th>
+<th>DNS Servers</th>
+<th>Subnets</th>
+<th>Subnets with NSG</th>
+<th>Subnets with RouteTable</th>
+<th>Subnets with Delegations</th>
+<th>Connected device</th>
+<th>DDoS</th>
+<th>Peerings Count</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+            foreach ($result in $Vnets) {
+
+                [void]$htmlTenantSummary.AppendLine(@"
+                        <tr>
+                        <td>$($result.SubscriptionName)</td>
+                        <td>$($result.Subscription)</td>
+                        <td>$($result.MGPath)</td>
+                        <td>$($result.VNet)</td>
+                        <td>$($result.VNetResourceGroup)</td> 
+                        <td>$($result.Location)</td> 
+                        <td>$($result.AddressSpaceAddressPrefixes)</td>
+                        <td>$($result.DhcpoptionsDnsservers)</td> 
+                        <td>$($result.SubnetsCount)</td>
+                        <td>$($result.SubnetsWithNSGCount)</td>
+                        <td>$($result.SubnetsWithRouteTableCount)</td>
+                        <td>$($result.SubnetsWithDelegationsCount)</td>
+                        <td>$($result.ConnectedDevices)</td>
+                        <td>$($result.DdosProtection)</td>
+                        <td>$($result.PeeringsCount)</td>
+                        </tr>
+"@)
+
+            }
+
+            [void]$htmlTenantSummary.AppendLine(@"
+</tbody>
+</table>
+<script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            linked_filters: true,
+            col_5: 'select',
+            col_13: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number',
+                'number',
+                'number',
+                'number',
+                'number',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+            extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+</div>
+"@)
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@'
+    <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No Virtual Networks</span></p>
+'@)
+        }
+        $endVNets = Get-Date
+        Write-Host "   VNets processing duration: $((NEW-TIMESPAN -Start $startVNets -End $endVNets).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startVNets -End $endVNets).TotalSeconds) seconds)"
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Virtual Networks - Network Analysis disabled - </span><span class="info">parameter -NoNetwork = $($azAPICallConf['htParameters'].NoNetwork)</span></p>
+"@)
+    }
+    #endregion SUMMARYVNets
+
+    #region SUMMARYVNetPeerings
+    if ($azAPICallConf['htParameters'].NoNetwork -eq $false) {
+        $startVNetPeerings = Get-Date
+        Write-Host '  processing TenantSummary VNet Peerings'
+        $vnetPeerings = $arrayVirtualNetworks.where({ $_.PeeringsCount -gt 0}) | sort-Object -Property SubscriptionName, VNet, VNetId
+        $VNetsPeeringsCount = $vnetPeerings.Count
+
+        if (-not $NoCsvExport) {  
+            $virtualNetworkPeeringsCSVPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_VirtualNetworkPeerings.csv"
+            Write-Host "   Exporting VirtaulNetworks CSV '$virtualNetworkPeeringsCSVPath'"
+            $vnetPeerings | Export-Csv -Path $virtualNetworkPeeringsCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
+        }
+
+        if ($VNetsPeeringsCount -gt 0) {
+            $vnetPeeringsGroupedByPeeringState = $vnetPeerings | Group-Object -Property PeeringState
+            $arrayPeeringState = foreach ($peeringState in $vnetPeeringsGroupedByPeeringState) {
+                "$($peeringState.Name): $($peeringState.Count)"
+            }
+
+            $htmlTableId = 'TenantSummary_VNetPeerings'
+            $tfCount = $VNetsPeeringsCount
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_TenantSummary_VNetPeerings"><i class="padlx fa fa-exchange" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$VNetsPeeringsCount Virtual Network Peerings - ($($arrayPeeringState -join "$CSVDelimiterOpposite "))</span></button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Subscription Name</th>
+<th>Subscription</th>
+<th>MGPath</th>
+<th>VNet</th>
+<th>VNet Resource Group</th>
+<th>Location</th>
+<th>Address Prefixes</th>
+<th>DNS Servers</th>
+<th>Subnets</th>
+<th>Subnets with NSG</th>
+<th>Subnets with RouteTable</th>
+<th>Subnets with Delegations</th>
+<th>Connected device</th>
+<th>DDoS</th>
+<th class="uamiresaltbgc">Peerings Count</th>
+<th class="uamiresaltbgc">Peering Name</th>
+<th class="uamiresaltbgc">Peering State</th>
+<th class="uamiresaltbgc">Peering Sync Level</th>
+<th class="uamiresaltbgc">Allow Virtual Network Access</th>
+<th class="uamiresaltbgc">Allow Forwarded Traffic</th>
+<th class="uamiresaltbgc">Allow Gateway Transit</th> 
+<th class="uamiresaltbgc">Use Remote Gateways</th>
+<th class="uamiresaltbgc">Do Not Verify Remote Gateways</th>
+<th class="uamiresaltbgc">Peer Complete Vnets</th>
+<th class="uamiresaltbgc">Route Service Vips</th>
+
+<th class="uamiresaltbgc"><b>Remote</b> Peerings Count</th>
+<th class="uamiresaltbgc"><b>Remote</b> Peering Name</th>
+<th class="uamiresaltbgc"><b>Remote</b> Peering State</th>
+<th class="uamiresaltbgc"><b>Remote</b> Peering Sync Level</th>
+<th class="uamiresaltbgc"><b>Remote</b> Allow Virtual Network Access</th>
+<th class="uamiresaltbgc"><b>Remote</b> Allow Forwarded Traffic</th>
+<th class="uamiresaltbgc"><b>Remote</b> Allow Gateway Transit</th> 
+<th class="uamiresaltbgc"><b>Remote</b> Use Remote Gateways</th>
+<th class="uamiresaltbgc"><b>Remote</b> Do Not Verify Remote Gateways</th>
+<th class="uamiresaltbgc"><b>Remote</b> Peer Complete Vnets</th>
+<th class="uamiresaltbgc"><b>Remote</b> Route Service Vips</th>
+
+<th class="uamiresaltbgc"><b>Remote</b> Subscription Name</th>
+<th class="uamiresaltbgc"><b>Remote</b> Subscription</th>
+<th class="uamiresaltbgc"><b>Remote</b> MGPath</th>
+<th class="uamiresaltbgc"><b>Remote</b> VNet</th>
+<th class="uamiresaltbgc"><b>Remote</b> VNet State</th>
+<th class="uamiresaltbgc"><b>Remote</b> VNet Resource Group</th>
+<th class="uamiresaltbgc"><b>Remote</b> Location</th>
+<th class="uamiresaltbgc"><b>Remote</b> Address Space Address Prefixes</th>
+<th class="uamiresaltbgc"><b>Remote</b> Virtual Network AddressSpace Address Prefixes</th>
+
+<th class="uamiresaltbgc"><b>Remote</b> DNS Servers</th>
+<th class="uamiresaltbgc"><b>Remote</b> Subnets</th>
+<th class="uamiresaltbgc"><b>Remote</b> Subnets with NSG</th>
+<th class="uamiresaltbgc"><b>Remote</b> Subnets with RouteTable</th>
+<th class="uamiresaltbgc"><b>Remote</b> Subnets with Delegations</th>
+<th class="uamiresaltbgc"><b>Remote</b> Connected devices</th>
+<th class="uamiresaltbgc"><b>Remote</b> DDoS</th>
+
+</tr>
+</thead>
+<tbody>
+"@)
+
+            foreach ($result in $vnetPeerings) {
+
+                [void]$htmlTenantSummary.AppendLine(@"
+                        <tr>
+                        <td>$($result.SubscriptionName)</td>
+                        <td>$($result.Subscription)</td>
+                        <td>$($result.MGPath)</td>
+                        <td>$($result.VNet)</td>
+                        <td>$($result.VNetResourceGroup)</td> 
+                        <td>$($result.Location)</td> 
+                        <td>$($result.AddressSpaceAddressPrefixes)</td>
+                        <td>$($result.DhcpoptionsDnsservers)</td> 
+                        <td>$($result.SubnetsCount)</td>
+                        <td>$($result.SubnetsWithNSGCount)</td>
+                        <td>$($result.SubnetsWithRouteTableCount)</td>
+                        <td>$($result.SubnetsWithDelegationsCount)</td>
+                        <td>$($result.ConnectedDevices)</td>
+                        <td>$($result.DdosProtection)</td>
+                        <td>$($result.PeeringsCount)</td>
+                        <td>$($result.PeeringName)</td>
+                        <td>$($result.PeeringState)</td> 
+                        <td>$($result.PeeringSyncLevel)</td>
+                        <td>$($result.AllowVirtualNetworkAccess)</td>
+                        <td>$($result.AllowForwardedTraffic)</td>
+                        <td>$($result.AllowGatewayTransit)</td>
+                        <td>$($result.UseRemoteGateways)</td>
+                        <td>$($result.DoNotVerifyRemoteGateways)</td>
+                        <td>$($result.PeerCompleteVnets)</td> 
+                        <td>$($result.RouteServiceVips)</td>
+                        
+                        <td>$($result.RemotePeeringsCount)</td>
+                        <td>$($result.RemotePeeringName)</td>
+                        <td>$($result.RemotePeeringState)</td>
+                        <td>$($result.RemotePeeringSyncLevel)</td>
+                        <td>$($result.RemoteAllowVirtualNetworkAccess)</td>
+                        <td>$($result.RemoteAllowForwardedTraffic)</td>
+                        <td>$($result.RemoteAllowGatewayTransit)</td>
+                        <td>$($result.RemoteUseRemoteGateways)</td>
+                        <td>$($result.RemoteDoNotVerifyRemoteGateways)</td>
+                        <td>$($result.RemotePeerCompleteVnets)</td>
+                        <td>$($result.RemoteRouteServiceVips)</td>
+
+                        <td>$($result.RemoteSubscriptionName)</td>
+                        <td>$($result.RemoteSubscription)</td>
+                        <td>$($result.RemoteMGPath)</td>
+                        <td>$($result.RemoteVNet)</td>
+                        <td>$($result.RemoteVNetState)</td>
+                        <td>$($result.RemoteVNetResourceGroup)</td>
+                        <td>$($result.RemoteVNetLocation)</td>
+                        <td>$($result.RemoteAddressSpaceAddressPrefixes)</td>
+                        <td>$($result.RemoteVirtualNetworkAddressSpaceAddressPrefixes)</td>
+                        <td>$($result.RemoteDhcpoptionsDnsservers)</td>
+                        <td>$($result.RemoteSubnetsCount)</td>
+                        <td>$($result.RemoteSubnetsWithNSGCount)</td>
+                        <td>$($result.RemoteSubnetsWithRouteTable)</td>
+                        <td>$($result.RemoteSubnetsWithDelegations)</td>
+                        <td>$($result.RemoteConnectedDevices)</td>
+                        <td>$($result.RemoteDdosProtection)</td>
+                        </tr>
+"@)
+
+            }
+
+            [void]$htmlTenantSummary.AppendLine(@"
+</tbody>
+</table>
+<script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            linked_filters: true,
+            col_5: 'select',
+            col_13: 'select',
+            col_16: 'select',
+            col_17: 'select',
+            col_18: 'select',
+            col_19: 'select',
+            col_20: 'select',
+            col_21: 'select',
+            col_22: 'select',
+            col_23: 'select',
+            col_24: 'select',
+
+            col_27: 'select',
+            col_28: 'select',
+            col_29: 'select',
+            col_30: 'select',
+            col_31: 'select',
+            col_32: 'select',
+            col_33: 'select',
+            col_34: 'select',
+            col_35: 'select',
+
+            col_39: 'select',
+            col_41: 'select',
+            col_51: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number',
+                'number',
+                'number',
+                'number',
+                'number',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number',
+                'number',
+                'number',
+                'number',
+                'number',
+                'caseinsensitivestring'
+            ],
+            extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+</div>
+"@)
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@'
+    <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No Virtual Network Peerings</span></p>
+'@)
+        }
+        $endVNetPeerings = Get-Date
+        Write-Host "   VNet Peerings processing duration: $((NEW-TIMESPAN -Start $startVNetPeerings -End $endVNetPeerings).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startVNetPeerings -End $endVNetPeerings).TotalSeconds) seconds)"
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Virtual Network Peerings - Network Analysis disabled - </span><span class="info">parameter -NoNetwork = $($azAPICallConf['htParameters'].NoNetwork)</span></p>
+"@)
+    }
+    #endregion SUMMARYVNetPeerings
+
+    [void]$htmlTenantSummary.AppendLine(@'
+    </div>
+'@)
+    #endregion tenantSummaryNetwork
 
     showMemoryUsage
 
@@ -25637,6 +26376,15 @@ function runInfo {
             }
         }
 
+        if ($NoNetwork) {
+            Write-Host " NoNetwork = $($NoNetwork)" -ForegroundColor Green
+            #$script:paramsUsed += "NoNetwork: $($NoNetwork) &#13;"
+        }
+        else {
+            Write-Host " NoNetwork = $($NoNetwork)" -ForegroundColor Yellow
+            #$script:paramsUsed += "NoNetwork: $($NoNetwork) &#13;"
+        }
+
         if ($GitHubActionsOIDC) {
             Write-Host " GitHubActionsOIDC = $($GitHubActionsOIDC)" -ForegroundColor Green
             #$script:paramsUsed += "GitHubActionsOIDC: $($GitHubActionsOIDC) &#13;"
@@ -26472,10 +27220,34 @@ function dataCollectionDefenderEmailContacts {
                 }
             }
         }
-
     }
 }
 $funcDataCollectionDefenderEmailContacts = $function:dataCollectionDefenderEmailContacts.ToString()
+
+function dataCollectionVNets {
+    [CmdletBinding()]Param(
+        [string]$scopeId,
+        [string]$scopeDisplayName,
+        $SubscriptionQuotaId
+    )
+
+    $currentTask = "Getting Virtual Networks for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
+    #https://docs.microsoft.com/en-us/rest/api/securitycenter/pricings
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Network/virtualNetworks?api-version=2022-05-01"
+    $method = 'GET'
+    $networkResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+
+    if ($networkResult -eq 'someError') {
+    }
+    else {
+        if ($networkResult.Count -gt 0) {
+            foreach ($vnet in $networkResult) {
+                $null = $script:arrayVNets.Add($vnet)
+            }
+        }
+    }
+}
+$funcDataCollectionVNets = $function:dataCollectionVNets.ToString()
 
 function dataCollectionDiagnosticsSub {
     [CmdletBinding()]Param(
@@ -30896,6 +31668,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $storageAccounts = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayStorageAccountAnalysisResults = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htDefenderEmailContacts = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+    $arrayVNets = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
 if (-not $HierarchyMapOnly) {
@@ -30960,6 +31733,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $startDataCollection = Get-Date
 
     processDataCollection -mgId $ManagementGroupId
+
     showMemoryUsage
 
     if (-not $NoPIMEligibility) {
@@ -31431,7 +32205,7 @@ $html = @"
         link.media = "screen,print";
         document.getElementsByTagName( "head" )[0].appendChild( link );
     </script>
-    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_047.css">
+    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_048.css">
     <script src="https://www.azadvertizer.net/azgovvizv4/js/jquery-3.6.0.min.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/jquery-ui-1.13.0.min.js"></script>
     <script type="text/javascript" src="https://www.azadvertizer.net/azgovvizv4/js/highlight_v004_002.js"></script>
@@ -31939,6 +32713,10 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $html = $null
 
     $startSummary = Get-Date
+
+    if (-not $azAPICallConf['htParameters'].NoNetwork) {
+        processNetwork
+    }
 
     processTenantSummary
     showMemoryUsage
