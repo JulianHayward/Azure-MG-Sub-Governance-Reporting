@@ -2,7 +2,7 @@ function addHtParameters {
     Write-Host 'Add AzGovViz htParameters'
     if ($LargeTenant -eq $true) {
         $script:NoScopeInsights = $true
-        $NoResourceProvidersDetailed = $true
+        $NoResourceProvidersAtAll = $true
         $PolicyAtScopeOnly = $true
         $RBACAtScopeOnly = $true
     }
@@ -26,6 +26,7 @@ function addHtParameters {
         NoJsonExport                                 = [bool]$NoJsonExport
         NoMDfCSecureScore                            = [bool]$NoMDfCSecureScore
         NoResourceProvidersDetailed                  = [bool]$NoResourceProvidersDetailed
+        NoResourceProvidersAtAll                     = [bool]$NoResourceProvidersAtAll
         NoPolicyComplianceStates                     = [bool]$NoPolicyComplianceStates
         NoResources                                  = [bool]$NoResources
         ProductVersion                               = $ProductVersion

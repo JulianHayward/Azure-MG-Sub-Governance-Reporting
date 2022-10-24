@@ -63,7 +63,7 @@ function getResourceDiagnosticsCapability {
                         $method = 'GET'
     
                         $responseJSON = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
-                        if ($responseJSON -notlike 'meanwhile_deleted*') {
+                        if ($responseJSON -ne 'skipResource') {
                             if ($responseJSON -eq 'ResourceTypeOrResourceProviderNotSupported') {
                                 Write-Host "  ResourceTypeOrResourceProviderNotSupported | The resource type '$($resourcetype)' does not support diagnostic settings."
     
@@ -73,13 +73,13 @@ function getResourceDiagnosticsCapability {
                             }
                         }
                         else {
-                            Write-Host "resId '$resourceId' meanwhile deleted"
+                            Write-Host "resId '$resourceId' skipped"
                         }
                     }
-                    until ($resourceAvailability -lt 0 -or $responseJSON -notlike 'meanwhile_deleted*')
+                    until ($resourceAvailability -lt 0 -or $responseJSON -ne 'skipResource')
     
-                    if ($resourceAvailability -lt 0 -and $responseJSON -like 'meanwhile_deleted*') {
-                        Write-Host "tried for all available resourceIds ($($resourceCount)) for resourceType $resourceType, but seems all resources meanwhile have been deleted"
+                    if ($resourceAvailability -lt 0 -and $responseJSON -eq 'skipResource') {
+                        Write-Host "tried for all available resourceIds ($($resourceCount)) for resourceType $resourceType, but seems all resourceIds needed to be skipped"
                         $null = $script:resourceTypesDiagnosticsArray.Add([PSCustomObject]@{
                                 ResourceType  = $resourcetype
                                 Metrics       = "n/a - $responseJSON"

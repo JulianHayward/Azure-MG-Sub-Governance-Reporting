@@ -6697,7 +6697,7 @@ extensions: [{ name: 'sort' }]
             #pim eligibility owner and userAccountAdministrator
             $pimEligibleOwnersAtScopeForThisSubscriptionCount = ''
             $pimEligibleUAAsAtScopeForThisSubscriptionCount = ''
-            if(-not $NoPIMEligibility) {
+            if (-not $NoPIMEligibility) {
                 $pimEligibleAtScopeForThisSubscription = ($arrayPIMEligibleGroupedBySubscription.where( { $_.name -eq $summarySubscription.subscriptionId } )).group
                 $pimEligibleOwnersAtScopeForThisSubscriptionCount = ($pimEligibleAtScopeForThisSubscription.where( { $_.RoleIdGuid -eq '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' } )).Count
                 $pimEligibleUAAsAtScopeForThisSubscriptionCount = ($pimEligibleAtScopeForThisSubscription.where( { $_.RoleIdGuid -eq '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9' } )).Count
@@ -7591,74 +7591,75 @@ extensions: [{ name: 'sort' }]
     #endregion SUMMARYOrphanedResources
 
     #region SUMMARYSubResourceProviders
-    $startSUMMARYSubResourceProviders = Get-Date
-    Write-Host '  processing TenantSummary Subscriptions Resource Providers'
-    $resourceProvidersAllCount = (($htResourceProvidersAll).Keys | Measure-Object).count
-    if ($resourceProvidersAllCount -gt 0) {
-        $grped = (($htResourceProvidersAll).values.Providers) | Sort-Object -property namespace, registrationState | Group-Object namespace
-        $htResProvSummary = @{}
-        foreach ($grp in $grped) {
-            $htResProvSummary.($grp.name) = @{}
-            $regstates = ($grp.group | Sort-Object -property registrationState -unique).registrationstate
-            foreach ($regstate in $regstates) {
-                $htResProvSummary.($grp.name).$regstate = (($grp.group).where( { $_.registrationstate -eq $regstate }) | measure-object).count
+    if ($azAPICallConf['htParameters'].NoResourceProvidersAtAll -eq $false) {
+        $startSUMMARYSubResourceProviders = Get-Date
+        Write-Host '  processing TenantSummary Subscriptions Resource Providers'
+        $resourceProvidersAllCount = (($htResourceProvidersAll).Keys | Measure-Object).count
+        if ($resourceProvidersAllCount -gt 0) {
+            $grped = (($htResourceProvidersAll).values.Providers) | Sort-Object -property namespace, registrationState | Group-Object namespace
+            $htResProvSummary = @{}
+            foreach ($grp in $grped) {
+                $htResProvSummary.($grp.name) = @{}
+                $regstates = ($grp.group | Sort-Object -property registrationState -unique).registrationstate
+                foreach ($regstate in $regstates) {
+                    $htResProvSummary.($grp.name).$regstate = (($grp.group).where( { $_.registrationstate -eq $regstate }) | measure-object).count
+                }
             }
-        }
-        $providerSummary = [System.Collections.ArrayList]@()
-        foreach ($provider in $htResProvSummary.keys) {
-            $hlperProvider = $htResProvSummary.$provider
-            if ($hlperProvider.registered) {
-                $registered = $hlperProvider.registered
-            }
-            else {
-                $registered = '0'
+            $providerSummary = [System.Collections.ArrayList]@()
+            foreach ($provider in $htResProvSummary.keys) {
+                $hlperProvider = $htResProvSummary.$provider
+                if ($hlperProvider.registered) {
+                    $registered = $hlperProvider.registered
+                }
+                else {
+                    $registered = '0'
+                }
+
+                if ($hlperProvider.registering) {
+                    $registering = $hlperProvider.registering
+                }
+                else {
+                    $registering = '0'
+                }
+
+                if ($hlperProvider.notregistered) {
+                    $notregistered = $hlperProvider.notregistered
+                }
+                else {
+                    $notregistered = '0'
+                }
+
+                if ($hlperProvider.unregistering) {
+                    $unregistering = $hlperProvider.unregistering
+                }
+                else {
+                    $unregistering = '0'
+                }
+
+                $null = $providerSummary.Add([PSCustomObject]@{
+                        Provider      = $provider
+                        Registered    = $registered
+                        NotRegistered = $notregistered
+                        Registering   = $registering
+                        Unregistering = $unregistering
+                    })
             }
 
-            if ($hlperProvider.registering) {
-                $registering = $hlperProvider.registering
-            }
-            else {
-                $registering = '0'
-            }
+            $uniqueNamespaces = (($htResourceProvidersAll).values.Providers) | Sort-Object -Property namespace -Unique
+            $uniqueNamespacesCount = ($uniqueNamespaces | Measure-Object).count
+            $uniqueNamespaceRegistrationState = (($htResourceProvidersAll).values.Providers) | Sort-Object -Property namespace, registrationState -Unique
+            $providersRegistered = ($uniqueNamespaceRegistrationState.where( { $_.registrationState -eq 'registered' -or $_.registrationState -eq 'registering' }) | Sort-Object namespace -Unique).namespace
+            $providersRegisteredCount = ($providersRegistered | Measure-Object).count
 
-            if ($hlperProvider.notregistered) {
-                $notregistered = $hlperProvider.notregistered
+            $providersNotRegisteredUniqueCount = 0
+            foreach ($uniqueNamespace in $uniqueNamespaces) {
+                if ($providersRegistered -notcontains ($uniqueNamespace.namespace)) {
+                    $providersNotRegisteredUniqueCount++
+                }
             }
-            else {
-                $notregistered = '0'
-            }
-
-            if ($hlperProvider.unregistering) {
-                $unregistering = $hlperProvider.unregistering
-            }
-            else {
-                $unregistering = '0'
-            }
-
-            $null = $providerSummary.Add([PSCustomObject]@{
-                    Provider      = $provider
-                    Registered    = $registered
-                    NotRegistered = $notregistered
-                    Registering   = $registering
-                    Unregistering = $unregistering
-                })
-        }
-
-        $uniqueNamespaces = (($htResourceProvidersAll).values.Providers) | Sort-Object -Property namespace -Unique
-        $uniqueNamespacesCount = ($uniqueNamespaces | Measure-Object).count
-        $uniqueNamespaceRegistrationState = (($htResourceProvidersAll).values.Providers) | Sort-Object -Property namespace, registrationState -Unique
-        $providersRegistered = ($uniqueNamespaceRegistrationState.where( { $_.registrationState -eq 'registered' -or $_.registrationState -eq 'registering' }) | Sort-Object namespace -Unique).namespace
-        $providersRegisteredCount = ($providersRegistered | Measure-Object).count
-
-        $providersNotRegisteredUniqueCount = 0
-        foreach ($uniqueNamespace in $uniqueNamespaces) {
-            if ($providersRegistered -notcontains ($uniqueNamespace.namespace)) {
-                $providersNotRegisteredUniqueCount++
-            }
-        }
-        $tfCount = $uniqueNamespacesCount
-        $htmlTableId = 'TenantSummary_SubResourceProviders'
-        [void]$htmlTenantSummary.AppendLine(@"
+            $tfCount = $uniqueNamespacesCount
+            $htmlTableId = 'TenantSummary_SubResourceProviders'
+            [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubResourceProviders"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Total: $uniqueNamespacesCount Registered/Registering: $providersRegisteredCount NotRegistered/Unregistering: $providersNotRegisteredUniqueCount</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -7674,9 +7675,9 @@ extensions: [{ name: 'sort' }]
 </thead>
 <tbody>
 "@)
-        $htmlSUMMARYSubResourceProviders = $null
-        $htmlSUMMARYSubResourceProviders = foreach ($provider in ($providerSummary | Sort-Object -Property Provider)) {
-            @"
+            $htmlSUMMARYSubResourceProviders = $null
+            $htmlSUMMARYSubResourceProviders = foreach ($provider in ($providerSummary | Sort-Object -Property Provider)) {
+                @"
 <tr>
 <td>$($provider.Provider)</td>
 <td>$($provider.Registered)</td>
@@ -7685,9 +7686,9 @@ extensions: [{ name: 'sort' }]
 <td>$($provider.Unregistering)</td>
 </tr>
 "@
-        }
-        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYSubResourceProviders)
-        [void]$htmlTenantSummary.AppendLine(@"
+            }
+            [void]$htmlTenantSummary.AppendLine($htmlSUMMARYSubResourceProviders)
+            [void]$htmlTenantSummary.AppendLine(@"
             </tbody>
         </table>
     </div>
@@ -7697,31 +7698,31 @@ extensions: [{ name: 'sort' }]
             var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
-        if ($tfCount -gt 10) {
-            $spectrum = "10, $tfCount"
-            if ($tfCount -gt 50) {
-                $spectrum = "10, 25, 50, $tfCount"
-            }
-            if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, 100, $tfCount"
-            }
-            if ($tfCount -gt 500) {
-                $spectrum = "10, 30, 50, 100, 250, $tfCount"
-            }
-            if ($tfCount -gt 1000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-            }
-            if ($tfCount -gt 2000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-            }
-            if ($tfCount -gt 3000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-            }
-            [void]$htmlTenantSummary.AppendLine(@"
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
 paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
 "@)
-        }
-        [void]$htmlTenantSummary.AppendLine(@"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_types: [
                 'caseinsensitivestring',
@@ -7736,27 +7737,29 @@ extensions: [{ name: 'sort' }]
         tf.init();}}
     </script>
 "@)
-    }
-    else {
-        [void]$htmlTenantSummary.AppendLine(@"
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@"
     <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$resourceProvidersAllCount Resource Providers</span></p>
 "@)
+        }
+        $endSUMMARYSubResourceProviders = Get-Date
+        Write-Host "   TenantSummary Subscriptions Resource Providers duration: $((NEW-TIMESPAN -Start $startSUMMARYSubResourceProviders -End $endSUMMARYSubResourceProviders).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYSubResourceProviders -End $endSUMMARYSubResourceProviders).TotalSeconds) seconds)"
     }
-    $endSUMMARYSubResourceProviders = Get-Date
-    Write-Host "   TenantSummary Subscriptions Resource Providers duration: $((NEW-TIMESPAN -Start $startSUMMARYSubResourceProviders -End $endSUMMARYSubResourceProviders).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYSubResourceProviders -End $endSUMMARYSubResourceProviders).TotalSeconds) seconds)"
     #endregion SUMMARYSubResourceProviders
 
     #region SUMMARYSubResourceProvidersDetailed
-    if ($azAPICallConf['htParameters'].NoResourceProvidersDetailed -eq $false) {
+    if ($azAPICallConf['htParameters'].NoResourceProvidersAtAll -eq $false) {
+        if ($azAPICallConf['htParameters'].NoResourceProvidersDetailed -eq $false) {
 
-        Write-Host '  processing TenantSummary Subscriptions Resource Providers detailed'
-        $startsumRPDetailed = Get-Date
-        $resourceProvidersAllCount = (($htResourceProvidersAll).Keys).count
-        if ($resourceProvidersAllCount -gt 0) {
-            $tfCount = ($htResourceProvidersAll).values.Providers.Count
-            if ($tfCount -lt $HtmlTableRowsLimit) {
-                $htmlTableId = 'TenantSummary_SubResourceProvidersDetailed'
-                [void]$htmlTenantSummary.AppendLine(@"
+            Write-Host '  processing TenantSummary Subscriptions Resource Providers detailed'
+            $startsumRPDetailed = Get-Date
+            $resourceProvidersAllCount = (($htResourceProvidersAll).Keys).count
+            if ($resourceProvidersAllCount -gt 0) {
+                $tfCount = ($htResourceProvidersAll).values.Providers.Count
+                if ($tfCount -lt $HtmlTableRowsLimit) {
+                    $htmlTableId = 'TenantSummary_SubResourceProvidersDetailed'
+                    [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubResourceProvidersDetailed"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -7773,36 +7776,36 @@ extensions: [{ name: 'sort' }]
 <tbody>
 "@)
 
-            }
-            else {
-                Write-Host "   !Skipping TenantSummary ResourceProvidersDetailed HTML processing as $tfCount lines is exceeding the critical rows limit of $HtmlTableRowsLimit" -ForegroundColor Yellow
-            }
-            $cnter = 0
-            $startResProvDetailed = Get-Date
-            $htmlSUMMARYSubResourceProvidersDetailed = $null
+                }
+                else {
+                    Write-Host "   !Skipping TenantSummary ResourceProvidersDetailed HTML processing as $tfCount lines is exceeding the critical rows limit of $HtmlTableRowsLimit" -ForegroundColor Yellow
+                }
+                $cnter = 0
+                $startResProvDetailed = Get-Date
+                $htmlSUMMARYSubResourceProvidersDetailed = $null
 
-            $arrayResourceProvidersDetailedForCSVExport = [System.Collections.ArrayList]@()
-            $htmlSUMMARYSubResourceProvidersDetailed = foreach ($subscriptionResProv in (($htResourceProvidersAll).Keys | Sort-Object)) {
-                $subscriptionResProvDetails = $htSubscriptionsMgPath.($subscriptionResProv)
-                foreach ($provider in ($htResourceProvidersAll).($subscriptionResProv).Providers | Sort-Object @{Expression = { $_.namespace } }) {
-                    $cnter++
-                    if ($cnter % 1000 -eq 0) {
-                        $etappeResProvDetailed = Get-Date
-                        Write-Host "   $cnter ResProv processed; $((NEW-TIMESPAN -Start $startResProvDetailed -End $etappeResProvDetailed).TotalSeconds) seconds"
-                    }
+                $arrayResourceProvidersDetailedForCSVExport = [System.Collections.ArrayList]@()
+                $htmlSUMMARYSubResourceProvidersDetailed = foreach ($subscriptionResProv in (($htResourceProvidersAll).Keys | Sort-Object)) {
+                    $subscriptionResProvDetails = $htSubscriptionsMgPath.($subscriptionResProv)
+                    foreach ($provider in ($htResourceProvidersAll).($subscriptionResProv).Providers | Sort-Object @{Expression = { $_.namespace } }) {
+                        $cnter++
+                        if ($cnter % 1000 -eq 0) {
+                            $etappeResProvDetailed = Get-Date
+                            Write-Host "   $cnter ResProv processed; $((NEW-TIMESPAN -Start $startResProvDetailed -End $etappeResProvDetailed).TotalSeconds) seconds"
+                        }
 
-                    #array for exportCSV
-                    if (-not $NoCsvExport) {
-                        $null = $arrayResourceProvidersDetailedForCSVExport.Add([PSCustomObject]@{
-                                Subscription       = $subscriptionResProvDetails.DisplayName
-                                SubscriptionId     = $subscriptionResProv
-                                SubscriptionMGpath = $subscriptionResProvDetails.pathDelimited
-                                Provider           = $provider.namespace
-                                State              = $provider.registrationState
-                            })
-                    }
+                        #array for exportCSV
+                        if (-not $NoCsvExport) {
+                            $null = $arrayResourceProvidersDetailedForCSVExport.Add([PSCustomObject]@{
+                                    Subscription       = $subscriptionResProvDetails.DisplayName
+                                    SubscriptionId     = $subscriptionResProv
+                                    SubscriptionMGpath = $subscriptionResProvDetails.pathDelimited
+                                    Provider           = $provider.namespace
+                                    State              = $provider.registrationState
+                                })
+                        }
 
-                    @"
+                        @"
 <tr>
 <td>$($subscriptionResProvDetails.DisplayName)</td>
 <td>$($subscriptionResProv)</td>
@@ -7811,21 +7814,21 @@ extensions: [{ name: 'sort' }]
 <td>$($provider.registrationState)</td>
 </tr>
 "@
+                    }
                 }
-            }
 
-            #region exportCSV
-            if (-not $NoCsvExport) {
-                $csvFilename = "$($filename)_ResourceProviders"
-                Write-Host "   Exporting ResourceProviders CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-                $arrayResourceProvidersDetailedForCSVExport | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
-                $arrayResourceProvidersDetailedForCSVExport = $null
-            }
-            #endregion exportCSV
+                #region exportCSV
+                if (-not $NoCsvExport) {
+                    $csvFilename = "$($filename)_ResourceProviders"
+                    Write-Host "   Exporting ResourceProviders CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
+                    $arrayResourceProvidersDetailedForCSVExport | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
+                    $arrayResourceProvidersDetailedForCSVExport = $null
+                }
+                #endregion exportCSV
 
-            if ($tfCount -lt $HtmlTableRowsLimit) {
-                [void]$htmlTenantSummary.AppendLine($htmlSUMMARYSubResourceProvidersDetailed)
-                [void]$htmlTenantSummary.AppendLine(@"
+                if ($tfCount -lt $HtmlTableRowsLimit) {
+                    [void]$htmlTenantSummary.AppendLine($htmlSUMMARYSubResourceProvidersDetailed)
+                    [void]$htmlTenantSummary.AppendLine(@"
             </tbody>
         </table>
     </div>
@@ -7836,31 +7839,31 @@ extensions: [{ name: 'sort' }]
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 
 "@)
-                if ($tfCount -gt 10) {
-                    $spectrum = "10, $tfCount"
-                    if ($tfCount -gt 50) {
-                        $spectrum = "10, 25, 50, $tfCount"
-                    }
-                    if ($tfCount -gt 100) {
-                        $spectrum = "10, 30, 50, 100, $tfCount"
-                    }
-                    if ($tfCount -gt 500) {
-                        $spectrum = "10, 30, 50, 100, 250, $tfCount"
-                    }
-                    if ($tfCount -gt 1000) {
-                        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-                    }
-                    if ($tfCount -gt 2000) {
-                        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-                    }
-                    if ($tfCount -gt 3000) {
-                        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-                    }
-                    [void]$htmlTenantSummary.AppendLine(@"
+                    if ($tfCount -gt 10) {
+                        $spectrum = "10, $tfCount"
+                        if ($tfCount -gt 50) {
+                            $spectrum = "10, 25, 50, $tfCount"
+                        }
+                        if ($tfCount -gt 100) {
+                            $spectrum = "10, 30, 50, 100, $tfCount"
+                        }
+                        if ($tfCount -gt 500) {
+                            $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                        }
+                        if ($tfCount -gt 1000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                        }
+                        if ($tfCount -gt 2000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                        }
+                        if ($tfCount -gt 3000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                        }
+                        [void]$htmlTenantSummary.AppendLine(@"
 paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
 "@)
-                }
-                [void]$htmlTenantSummary.AppendLine(@"
+                    }
+                    [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_4: 'select',
             col_types: [
@@ -7876,9 +7879,9 @@ extensions: [{ name: 'sort' }]
         tf.init();}}
     </script>
 "@)
-            }
-            else {
-                [void]$htmlTenantSummary.AppendLine(@"
+                }
+                else {
+                    [void]$htmlTenantSummary.AppendLine(@"
             <button type="button" class="collapsible" id="buttonTenantSummary_SubResourceProvidersDetailed"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
                 <div class="content TenantSummary padlxx">
                     <i class="fa fa-exclamation-triangle orange" aria-hidden="true"></i><span style="color:#ff0000"> Output of $tfCount lines would exceed the html rows limit of $HtmlTableRowsLimit (html file potentially would become unresponsive). Work with the CSV file <i>$($csvFilename).csv</i> | Note: the CSV file will only exist if you did NOT use parameter <i>-NoCsvExport</i></span><br>
@@ -7886,15 +7889,16 @@ extensions: [{ name: 'sort' }]
                     <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">AzGovViz docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
                 </div>
 "@)
+                }
             }
-        }
-        else {
-            [void]$htmlTenantSummary.AppendLine(@"
+            else {
+                [void]$htmlTenantSummary.AppendLine(@"
     <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$resourceProvidersAllCount Resource Providers</span></p>
 "@)
+            }
+            $endsumRPDetailed = Get-Date
+            Write-Host "   RP detailed processing duration: $((NEW-TIMESPAN -Start $startsumRPDetailed -End $endsumRPDetailed).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startsumRPDetailed -End $endsumRPDetailed).TotalSeconds) seconds)"
         }
-        $endsumRPDetailed = Get-Date
-        Write-Host "   RP detailed processing duration: $((NEW-TIMESPAN -Start $startsumRPDetailed -End $endsumRPDetailed).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startsumRPDetailed -End $endsumRPDetailed).TotalSeconds) seconds)"
     }
     #endregion SUMMARYSubResourceProvidersDetailed
 
@@ -9149,7 +9153,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     if ($azAPICallConf['htParameters'].NoNetwork -eq $false) {
         $startVNetPeerings = Get-Date
         Write-Host '  processing TenantSummary VNet Peerings'
-        $vnetPeerings = $arrayVirtualNetworks.where({ $_.PeeringsCount -gt 0}) | sort-Object -Property SubscriptionName, VNet, VNetId
+        $vnetPeerings = $arrayVirtualNetworks.where({ $_.PeeringsCount -gt 0 }) | sort-Object -Property SubscriptionName, VNet, VNetId
         $VNetsPeeringsCount = $vnetPeerings.Count
 
         if (-not $NoCsvExport) {  

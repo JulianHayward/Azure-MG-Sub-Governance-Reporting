@@ -111,6 +111,7 @@ function stats {
                 "statsParametersNoSingleSubscriptionOutput": "$($NoSingleSubscriptionOutput)",
                 "statsParametersNoPolicyComplianceStates": "$($azAPICallConf['htParameters'].NoPolicyComplianceStates)",
                 "statsParametersNoResourceProvidersDetailed": "$($azAPICallConf['htParameters'].NoResourceProvidersDetailed)",
+                "statsParametersNoResourceProvidersAtAll": "$($azAPICallConf['htParameters'].NoResourceProvidersAtAll)",
                 "statsParametersNoResources": "$($azAPICallConf['htParameters'].NoResources)",
                 "statsParametersPolicyAtScopeOnly": "$($azAPICallConf['htParameters'].PolicyAtScopeOnly)",
                 "statsParametersRBACAtScopeOnly": "$($azAPICallConf['htParameters'].RBACAtScopeOnly)",

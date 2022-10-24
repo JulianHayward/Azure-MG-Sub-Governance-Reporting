@@ -469,7 +469,9 @@ function processDataCollection {
                         DataCollectionResourceGroups @baseParameters
 
                         #resourceProviders
-                        DataCollectionResourceProviders @baseParameters
+                        if ($azAPICallConf['htParameters'].NoResourceProvidersAtAll -eq $false) {
+                            DataCollectionResourceProviders @baseParameters
+                        }
 
                         #features
                         DataCollectionFeatures @baseParameters -MgParentNameChain $childMgParentNameChain

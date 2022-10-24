@@ -102,7 +102,7 @@
     If the parameter switch is true then the following parameters will be set:
     -PolicyAtScopeOnly $true
     -RBACAtScopeOnly $true
-    -NoResourceProvidersDetailed $true
+    -NoResourceProvidersAtAll $true
     -NoScopeInsights $true
 
 .PARAMETER PolicyAtScopeOnly
@@ -112,8 +112,12 @@
     Removing 'inherited' lines in the HTML file; use this parameter if you run against a larger tenants
 
 .PARAMETER NoResourceProvidersDetailed
-    Note if you use parameter -LargeTenant then parameter -NoResourceProvidersDetailed will be set to true
     default is to output all ResourceProvider states for all Subscriptions in the TenantSummary. In large Tenants this can become time consuming and may blow off the html file.
+
+.PARAMETER NoResourceProvidersAtAll
+    Note if you use parameter -LargeTenant then parameter NoResourceProvidersAtAll will be set to true
+    Resource Provider states will not be collected
+
 
 .PARAMETER NoScopeInsights
     Note if you use parameter -LargeTenant then parameter -NoScopeInsights will be set to true
@@ -265,7 +269,7 @@
     If the parameter switch is true then the following parameters will be set:
     -PolicyAtScopeOnly $true
     -RBACAtScopeOnly $true
-    -NoResourceProvidersDetailed $true
+    - NoResourceProvidersAtAll $true
     -NoScopeInsights $true
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -LargeTenant
 
@@ -278,8 +282,11 @@
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -RBACAtScopeOnly
 
     Define if a detailed summary on Resource Provider states per Subscription should be created in the TenantSummary section
-    Note if you use parameter -LargeTenant then parameter -NoResourceProvidersDetailed will be set to true
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoResourceProvidersDetailed
+
+    Define if Resource Provider states should be collected
+    Note if you use parameter -LargeTenant then parameter -NoResourceProvidersAtAll will be set to true
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoResourceProvidersAtAll
 
     Define if ScopeInsights should be created or not. Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
     Note if you use parameter -LargeTenant then parameter -NoScopeInsights will be set to true
@@ -345,10 +352,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.43',
+    $AzAPICallVersion = '1.1.44',
 
     [string]
-    $ProductVersion = 'v6_major_20221023_1',
+    $ProductVersion = 'v6_major_20221024_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -389,6 +396,9 @@ Param
 
     [switch]
     $NoResourceProvidersDetailed,
+
+    [switch]
+    $NoResourceProvidersAtAll,
 
     [int]
     $LimitCriticalPercentage = 80,
