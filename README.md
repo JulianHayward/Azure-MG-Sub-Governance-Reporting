@@ -68,6 +68,7 @@ __Changes__ (2022-Oct-24 / Major)
 * Minor optimizations
 * Fix issue #139
 * Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.44
+* Add reference to [Media](#media): Microsoft Tech Talks - Bevan Sinclair (Cloud Solution Architect Microsoft) [Automated Governance Reporting in Azure (MTT0AEDT)](https://mtt.eventbuilder.com/event/66431) (register to view)
 
 __Changes__ (2022-Oct-19 / Major)
 
@@ -92,6 +93,7 @@ More [demo output](https://github.com/JulianHayward/AzGovViz)
 
 ### Media
 
+* Microsoft Tech Talks - Bevan Sinclair (Cloud Solution Architect Microsoft) [Automated Governance Reporting in Azure (MTT0AEDT)](https://mtt.eventbuilder.com/event/66431) (register to view)
 * Microsoft Dev Radio (YouTube) [Get visibility into your environment with AzGovViz](https://www.youtube.com/watch?v=hZXvF5oypLE)  
 * Jack Tracey (Cloud Solution Architect Microsoft) [AzGovViz With Azure DevOps](https://jacktracey.co.uk/azgovviz-with-azure-devops/)
 
