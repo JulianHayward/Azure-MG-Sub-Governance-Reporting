@@ -355,7 +355,7 @@ Param
     $AzAPICallVersion = '1.1.44',
 
     [string]
-    $ProductVersion = 'v6_major_20221027_1',
+    $ProductVersion = 'v6_major_20221027_2',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -19059,19 +19059,22 @@ extensions: [{ name: 'sort' }]
 
         $htmlSUMMARYOrphanedResources = $null
         $htmlSUMMARYOrphanedResources = foreach ($orphanedResourceType in $arrayOrphanedResourcesGroupedByType | Sort-Object -Property Name) {
+            $orphCostForDailySummary = $null
             $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)" = ($orphanedResourceType.count)
 
             if ($orphanedIncludingCost) {
                 if ($orphanedResourceType.Group.Intent[0] -eq 'cost savings') {
                     $orphCost = ($orphanedResourceType.Group.Cost | Measure-Object -Sum).Sum
                     $orphCurrency = $orphanedResourceType.Group.Currency[0]
-                    $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)_Costs" = $orphCost
-                    $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)_Costs_ConsumptionPeriodInDays" = $AzureConsumptionPeriod
+                    $orphCostForDailySummary = $orphCost
                 }
                 else {
                     $orphCost = ''
                     $orphCurrency = ''
+                    $orphCostForDailySummary = 0
                 }
+                $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)_Costs" = $orphCostForDailySummary
+                $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)_Costs_ConsumptionPeriodInDays" = $AzureConsumptionPeriod
             }
             else {
                 if ($orphanedResourceType.Group.Intent[0] -eq 'cost savings') {
