@@ -355,7 +355,7 @@ Param
     $AzAPICallVersion = '1.1.44',
 
     [string]
-    $ProductVersion = 'v6_major_20221024_1',
+    $ProductVersion = 'v6_major_20221026_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -11697,7 +11697,7 @@ function processTenantSummary() {
         }
 
         if ($rbac.RoleAssignmentId -like '/providers/Microsoft.Management/managementGroups/*') {
-            $tenOrMgOrSubOrRGOrRes = 'Mg'
+            $scopeTenOrMgOrSubOrRGOrRes = 'Mg'
             if (-not [String]::IsNullOrEmpty($rbac.SubscriptionId)) {
                 $scope = "inherited $($rbac.RoleAssignmentScopeName)"
             }
@@ -11713,22 +11713,22 @@ function processTenantSummary() {
 
         if ($rbac.RoleAssignmentId -like '/subscriptions/*') {
             $scope = 'thisScope Sub'
-            $tenOrMgOrSubOrRGOrRes = 'Sub'
+            $scopeTenOrMgOrSubOrRGOrRes = 'Sub'
         }
 
         if ($rbac.RoleAssignmentId -like '/subscriptions/*/resourcegroups/*') {
             $scope = 'thisScope Sub RG'
-            $tenOrMgOrSubOrRGOrRes = 'RG'
+            $scopeTenOrMgOrSubOrRGOrRes = 'RG'
         }
 
         if ($rbac.RoleAssignmentId -like '/subscriptions/*/resourcegroups/*/providers/*/providers/*') {
             $scope = 'thisScope Sub RG Res'
-            $tenOrMgOrSubOrRGOrRes = 'Res'
+            $scopeTenOrMgOrSubOrRGOrRes = 'Res'
         }
 
         if ($rbac.RoleAssignmentId -like '/providers/Microsoft.Authorization/roleAssignments/*') {
             $scope = 'inherited Tenant'
-            $tenOrMgOrSubOrRGOrRes = 'Ten'
+            $scopeTenOrMgOrSubOrRGOrRes = 'Ten'
         }
 
         $objectTypeUserType = ''
@@ -11761,9 +11761,6 @@ function processTenantSummary() {
                         RoleAssignmentPIMAssignmentType      = $pimAssignmentType
                         RoleAssignmentPIMAssignmentSlotStart = $pimSlotStart
                         RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
-                        RoleAssignmentScopeName              = $rbac.RoleAssignmentScopeName
-                        RoleAssignmentScopeRG                = $rbac.RoleAssignmentScopeRG
-                        RoleAssignmentScopeRes               = $rbac.RoleAssignmentScopeRes
                         CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                         CreatedOn                            = $rbac.RoleAssignmentCreatedOn
                         #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
@@ -11775,6 +11772,10 @@ function processTenantSummary() {
                         SubscriptionId                       = $rbac.SubscriptionId
                         SubscriptionName                     = $rbac.Subscription
                         Scope                                = $scope
+                        ScopeTenOrMgOrSubOrRGOrRes           = $scopeTenOrMgOrSubOrRGOrRes
+                        RoleAssignmentScopeName              = $rbac.RoleAssignmentScopeName
+                        RoleAssignmentScopeRG                = $rbac.RoleAssignmentScopeRG
+                        RoleAssignmentScopeRes               = $rbac.RoleAssignmentScopeRes
                         Role                                 = $hlpRoleAssignmentRelatedPolicyAssignments.roleWithWithoutLinkToAzAdvertizer
                         RoleClear                            = $hlpRoleAssignmentRelatedPolicyAssignments.roleClear
                         RoleId                               = $rbac.RoleDefinitionId
@@ -11787,7 +11788,6 @@ function processTenantSummary() {
                         ObjectSignInName                     = $rbac.RoleAssignmentIdentitySignInName
                         ObjectId                             = $rbac.RoleAssignmentIdentityObjectId
                         ObjectType                           = $rbac.RoleAssignmentIdentityObjectType
-                        TenOrMgOrSubOrRGOrRes                = $tenOrMgOrSubOrRGOrRes
                         RbacRelatedPolicyAssignment          = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignment
                         RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
                         RoleSecurityCustomRoleOwner          = $rbac.RoleSecurityCustomRoleOwner
@@ -11848,9 +11848,6 @@ function processTenantSummary() {
                                     RoleAssignmentPIMAssignmentType      = $pimAssignmentType
                                     RoleAssignmentPIMAssignmentSlotStart = $pimSlotStart
                                     RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
-                                    RoleAssignmentScopeName              = $rbac.RoleAssignmentScopeName
-                                    RoleAssignmentScopeRG                = $rbac.RoleAssignmentScopeRG
-                                    RoleAssignmentScopeRes               = $rbac.RoleAssignmentScopeRes
                                     CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                                     CreatedOn                            = $rbac.RoleAssignmentCreatedOn
                                     #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
@@ -11862,6 +11859,10 @@ function processTenantSummary() {
                                     SubscriptionId                       = $rbac.SubscriptionId
                                     SubscriptionName                     = $rbac.Subscription
                                     Scope                                = $scope
+                                    ScopeTenOrMgOrSubOrRGOrRes           = $scopeTenOrMgOrSubOrRGOrRes
+                                    RoleAssignmentScopeName              = $rbac.RoleAssignmentScopeName
+                                    RoleAssignmentScopeRG                = $rbac.RoleAssignmentScopeRG
+                                    RoleAssignmentScopeRes               = $rbac.RoleAssignmentScopeRes
                                     Role                                 = $hlpRoleAssignmentRelatedPolicyAssignments.roleWithWithoutLinkToAzAdvertizer
                                     RoleClear                            = $hlpRoleAssignmentRelatedPolicyAssignments.roleClear
                                     RoleId                               = $rbac.RoleDefinitionId
@@ -11874,7 +11875,6 @@ function processTenantSummary() {
                                     ObjectSignInName                     = $grpMemberSignInName
                                     ObjectId                             = $grpMemberId
                                     ObjectType                           = $identityTypeFull
-                                    TenOrMgOrSubOrRGOrRes                = $tenOrMgOrSubOrRGOrRes
                                     RbacRelatedPolicyAssignment          = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignment
                                     RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
                                     RoleSecurityCustomRoleOwner          = $rbac.RoleSecurityCustomRoleOwner
@@ -11891,9 +11891,6 @@ function processTenantSummary() {
                                 RoleAssignmentPIMAssignmentType      = $pimAssignmentType
                                 RoleAssignmentPIMAssignmentSlotStart = $pimSlotStart
                                 RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
-                                RoleAssignmentScopeName              = $rbac.RoleAssignmentScopeName
-                                RoleAssignmentScopeRG                = $rbac.RoleAssignmentScopeRG
-                                RoleAssignmentScopeRes               = $rbac.RoleAssignmentScopeRes
                                 CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                                 CreatedOn                            = $rbac.RoleAssignmentCreatedOn
                                 #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
@@ -11905,6 +11902,10 @@ function processTenantSummary() {
                                 SubscriptionId                       = $rbac.SubscriptionId
                                 SubscriptionName                     = $rbac.Subscription
                                 Scope                                = $scope
+                                ScopeTenOrMgOrSubOrRGOrRes           = $scopeTenOrMgOrSubOrRGOrRes
+                                RoleAssignmentScopeName              = $rbac.RoleAssignmentScopeName
+                                RoleAssignmentScopeRG                = $rbac.RoleAssignmentScopeRG
+                                RoleAssignmentScopeRes               = $rbac.RoleAssignmentScopeRes
                                 Role                                 = $hlpRoleAssignmentRelatedPolicyAssignments.roleWithWithoutLinkToAzAdvertizer
                                 RoleClear                            = $hlpRoleAssignmentRelatedPolicyAssignments.roleClear
                                 RoleId                               = $rbac.RoleDefinitionId
@@ -11917,7 +11918,6 @@ function processTenantSummary() {
                                 ObjectSignInName                     = "AzGovViz:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
                                 ObjectId                             = "AzGovViz:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
                                 ObjectType                           = 'unresolved'
-                                TenOrMgOrSubOrRGOrRes                = $tenOrMgOrSubOrRGOrRes
                                 RbacRelatedPolicyAssignment          = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignment
                                 RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
                                 RoleSecurityCustomRoleOwner          = $rbac.RoleSecurityCustomRoleOwner
@@ -11950,9 +11950,6 @@ function processTenantSummary() {
                         RoleAssignmentPIMAssignmentType      = $pimAssignmentType
                         RoleAssignmentPIMAssignmentSlotStart = $pimSlotStart
                         RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
-                        RoleAssignmentScopeName              = $rbac.RoleAssignmentScopeName
-                        RoleAssignmentScopeRG                = $rbac.RoleAssignmentScopeRG
-                        RoleAssignmentScopeRes               = $rbac.RoleAssignmentScopeRes
                         CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                         CreatedOn                            = $rbac.RoleAssignmentCreatedOn
                         #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
@@ -11964,6 +11961,10 @@ function processTenantSummary() {
                         SubscriptionId                       = $rbac.SubscriptionId
                         SubscriptionName                     = $rbac.Subscription
                         Scope                                = $scope
+                        ScopeTenOrMgOrSubOrRGOrRes           = $scopeTenOrMgOrSubOrRGOrRes
+                        RoleAssignmentScopeName              = $rbac.RoleAssignmentScopeName
+                        RoleAssignmentScopeRG                = $rbac.RoleAssignmentScopeRG
+                        RoleAssignmentScopeRes               = $rbac.RoleAssignmentScopeRes
                         Role                                 = $hlpRoleAssignmentRelatedPolicyAssignments.roleWithWithoutLinkToAzAdvertizer
                         RoleClear                            = $hlpRoleAssignmentRelatedPolicyAssignments.roleClear
                         RoleId                               = $rbac.RoleDefinitionId
@@ -11976,7 +11977,6 @@ function processTenantSummary() {
                         ObjectSignInName                     = $rbac.RoleAssignmentIdentitySignInName
                         ObjectId                             = $rbac.RoleAssignmentIdentityObjectId
                         ObjectType                           = $identityTypeFull
-                        TenOrMgOrSubOrRGOrRes                = $tenOrMgOrSubOrRGOrRes
                         RbacRelatedPolicyAssignment          = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignment
                         RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
                         RoleSecurityCustomRoleOwner          = $rbac.RoleSecurityCustomRoleOwner
@@ -12011,9 +12011,6 @@ function processTenantSummary() {
                     RoleAssignmentPIMAssignmentType      = $pimAssignmentType
                     RoleAssignmentPIMAssignmentSlotStart = $pimSlotStart
                     RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
-                    RoleAssignmentScopeName              = $rbac.RoleAssignmentScopeName
-                    RoleAssignmentScopeRG                = $rbac.RoleAssignmentScopeRG
-                    RoleAssignmentScopeRes               = $rbac.RoleAssignmentScopeRes
                     CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                     CreatedOn                            = $rbac.RoleAssignmentCreatedOn
                     #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
@@ -12025,6 +12022,10 @@ function processTenantSummary() {
                     SubscriptionId                       = $rbac.SubscriptionId
                     SubscriptionName                     = $rbac.Subscription
                     Scope                                = $scope
+                    ScopeTenOrMgOrSubOrRGOrRes           = $scopeTenOrMgOrSubOrRGOrRes
+                    RoleAssignmentScopeName              = $rbac.RoleAssignmentScopeName
+                    RoleAssignmentScopeRG                = $rbac.RoleAssignmentScopeRG
+                    RoleAssignmentScopeRes               = $rbac.RoleAssignmentScopeRes
                     Role                                 = $hlpRoleAssignmentRelatedPolicyAssignments.roleWithWithoutLinkToAzAdvertizer
                     RoleClear                            = $hlpRoleAssignmentRelatedPolicyAssignments.roleClear
                     RoleId                               = $rbac.RoleDefinitionId
@@ -12037,7 +12038,6 @@ function processTenantSummary() {
                     ObjectSignInName                     = $rbac.RoleAssignmentIdentitySignInName
                     ObjectId                             = $rbac.RoleAssignmentIdentityObjectId
                     ObjectType                           = $identityTypeFull
-                    TenOrMgOrSubOrRGOrRes                = $tenOrMgOrSubOrRGOrRes
                     RbacRelatedPolicyAssignment          = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignment
                     RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
                     RoleSecurityCustomRoleOwner          = $rbac.RoleSecurityCustomRoleOwner
@@ -12165,9 +12165,6 @@ function processTenantSummary() {
                         RoleAssignmentPIMAssignmentType      = 'Eligible'
                         RoleAssignmentPIMAssignmentSlotStart = $PIMEligibleRoleAssignment.PIMEligibilityStartDateTime
                         RoleAssignmentPIMAssignmentSlotEnd   = $PIMEligibleRoleAssignment.PIMEligibilityEndDateTime
-                        RoleAssignmentScopeName              = $PIMEligibleRoleAssignment.Scope
-                        RoleAssignmentScopeRG                = ''
-                        RoleAssignmentScopeRes               = ''
                         CreatedBy                            = ''
                         CreatedOn                            = ''
                         #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
@@ -12179,6 +12176,10 @@ function processTenantSummary() {
                         SubscriptionId                       = $PIMEligibleRoleAssignment.SubscriptionId
                         SubscriptionName                     = $PIMEligibleRoleAssignment.SubscriptionDisplayName
                         Scope                                = $scope
+                        ScopeTenOrMgOrSubOrRGOrRes           = $PIMEligibleRoleAssignment.Scope
+                        RoleAssignmentScopeName              = $PIMEligibleRoleAssignment.Scope
+                        RoleAssignmentScopeRG                = ''
+                        RoleAssignmentScopeRes               = ''
                         Role                                 = $PIMEligibleRoleAssignment.Role
                         RoleClear                            = $PIMEligibleRoleAssignment.RoleClear
                         RoleId                               = $PIMEligibleRoleAssignment.RoleIdGuid
@@ -12191,7 +12192,6 @@ function processTenantSummary() {
                         ObjectSignInName                     = $PIMEligibleRoleAssignment.IdentitySignInName
                         ObjectId                             = $PIMEligibleRoleAssignment.IdentityObjectId
                         ObjectType                           = $PIMEligibleRoleAssignment.IdentityType
-                        TenOrMgOrSubOrRGOrRes                = $PIMEligibleRoleAssignment.Scope
                         RbacRelatedPolicyAssignment          = ''
                         RbacRelatedPolicyAssignmentClear     = ''
                         RoleSecurityCustomRoleOwner          = '' #check $rbac.RoleSecurityCustomRoleOwner
@@ -16621,7 +16621,7 @@ extensions: [{ name: 'sort' }]
 <td class="breakwordall">{24}</td>
 <td class="breakwordall">{25}</td>
 </tr>
-'@, $roleAssignment.TenOrMgOrSubOrRGOrRes,
+'@, $roleAssignment.ScopeTenOrMgOrSubOrRGOrRes,
                     $roleAssignment.MgId,
                     ($roleAssignment.MgName -replace '<', '&lt;' -replace '>', '&gt;'),
                     $roleAssignment.SubscriptionId,
@@ -24018,15 +24018,15 @@ tf.init();}}
     $roleAssignmentsCreatedImpactedIdentitiesCount = $roleAssignmentsCreated.Count
 
     #rbac assignments createdMg
-    $roleAssignmentsCreatedMg = $roleAssignmentsCreatedUnique.where( { $_.TenOrMgOrSubOrRGOrRes -eq 'MG' -or $_.TenOrMgOrSubOrRGOrRes -eq 'Ten' })
+    $roleAssignmentsCreatedMg = $roleAssignmentsCreatedUnique.where( { $_.ScopeTenOrMgOrSubOrRGOrRes -eq 'MG' -or $_.ScopeTenOrMgOrSubOrRGOrRes -eq 'Ten' })
     $roleAssignmentsCreatedMgCount = $roleAssignmentsCreatedMg.Count
     #rbac assignments createdSub
-    $roleAssignmentsCreatedSub = $roleAssignmentsCreatedUnique.where( { $_.TenOrMgOrSubOrRGOrRes -eq 'Sub' })
+    $roleAssignmentsCreatedSub = $roleAssignmentsCreatedUnique.where( { $_.ScopeTenOrMgOrSubOrRGOrRes -eq 'Sub' })
     $roleAssignmentsCreatedSubCount = $roleAssignmentsCreatedSub.Count
     if (-not $azAPICallConf['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
-        $roleAssignmentsCreatedSubRg = $roleAssignmentsCreatedUnique.where( { $_.TenOrMgOrSubOrRGOrRes -eq 'RG' })
+        $roleAssignmentsCreatedSubRg = $roleAssignmentsCreatedUnique.where( { $_.ScopeTenOrMgOrSubOrRGOrRes -eq 'RG' })
         $roleAssignmentsCreatedSubRgCount = $roleAssignmentsCreatedSubRg.Count
-        $roleAssignmentsCreatedSubRgRes = $roleAssignmentsCreatedUnique.where( { $_.TenOrMgOrSubOrRGOrRes -eq 'Res' })
+        $roleAssignmentsCreatedSubRgRes = $roleAssignmentsCreatedUnique.where( { $_.ScopeTenOrMgOrSubOrRGOrRes -eq 'Res' })
         $roleAssignmentsCreatedSubRgResCount = $roleAssignmentsCreatedSubRgRes.Count
     }
 
@@ -24905,7 +24905,7 @@ tf.init();}}
 <td class="breakwordall">{18}</td>
 <td class="breakwordall">{19}</td>
 </tr>
-'@, $entry.TenOrMgOrSubOrRGOrRes,
+'@, $entry.ScopeTenOrMgOrSubOrRGOrRes,
                 $roleName,
                 $entry.RoleId,
                 $entry.RoleType,

@@ -17,3 +17,13 @@ $textBefore = $AzGovVizScriptFile.SubString(0, $startIndex)
 $textAfter = $AzGovVizScriptFile.SubString($endIndex)
 
 $textBefore.TrimEnd(), $newContent, $textAfter | Set-Content -Path .\pwsh\AzGovVizParallel.ps1
+
+$versionPattern = 'ProductVersion = '
+$versiontxt = (Select-String -Path .\pwsh\AzGovVizParallel.ps1 -Pattern $versionPattern) -replace ".*$Pattern" -replace "'" -replace ','
+if ($versiontxt.Count -ne 1 -or $versiontxt -notlike "v6_major*" -or $versiontxt.length -ne 19){
+    Write-Host "version '$version' unexpected"
+    throw
+}
+$versiontxt | Set-Content -NoNewline -Path .\version.txt
+
+Write-Host "'AzGovVizParallel.ps1' $versiontxt created"
