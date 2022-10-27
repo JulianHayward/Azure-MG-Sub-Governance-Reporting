@@ -484,7 +484,7 @@ function processTenantSummary() {
     #region PIMEligible
     if (-not $NoPIMEligibility) {
         $startPIMEnrichment = Get-Date
-        Write-Host "   Processing PIMEnrichment"
+        Write-Host '   Processing PIMEnrichment'
         $PIMEligibleEnriched = [System.Collections.ArrayList]@()
         #$tfCountCnt = 0
         foreach ($PIMEligible in $arrayPIMEligible) {
@@ -503,7 +503,7 @@ function processTenantSummary() {
                     ManagementGroupDisplayName       = $PIMEligible.ManagementGroupDisplayName
                     SubscriptionId                   = $PIMEligible.SubscriptionId
                     SubscriptionDisplayName          = $PIMEligible.SubscriptionDisplayName
-                    MgPath                           = $PIMEligible.MgPath -join "/"
+                    MgPath                           = $PIMEligible.MgPath -join '/'
                     MgLevel                          = $PIMEligible.MgLevel
                     Role                             = $roleName
                     RoleClear                        = $PIMEligible.RoleName
@@ -523,7 +523,7 @@ function processTenantSummary() {
                     PIMEligibilityStartDateTime      = [string]$PIMEligible.PIMStartDateTime
                     PIMEligibilityEndDateTime        = [string]$PIMEligible.PIMEndDateTime
                 })
-        
+
             if (-not $NoAADGroupsResolveMembers) {
                 if ($PIMEligible.IdentityType -eq 'Group') {
                     if ($htAADGroupsDetails.($PIMEligible.IdentityObjectId)) {
@@ -537,7 +537,7 @@ function processTenantSummary() {
                                     ManagementGroupDisplayName       = $PIMEligible.ManagementGroupDisplayName
                                     SubscriptionId                   = $PIMEligible.SubscriptionId
                                     SubscriptionDisplayName          = $PIMEligible.SubscriptionDisplayName
-                                    MgPath                           = $PIMEligible.MgPath -join "/"
+                                    MgPath                           = $PIMEligible.MgPath -join '/'
                                     MgLevel                          = $PIMEligible.MgLevel
                                     Role                             = $roleName
                                     RoleClear                        = $PIMEligible.RoleName
@@ -570,7 +570,7 @@ function processTenantSummary() {
 
         if (-not $NoPIMEligibilityIntegrationRoleAssignmentsAll) {
             $startPIMEnrichmentToRBACAll = Get-Date
-            Write-Host "   Processing PIMEnrichment to RBACAll"
+            Write-Host '   Processing PIMEnrichment to RBACAll'
             foreach ($PIMEligibleRoleAssignment in $PIMEligibleEnriched) {
                 if ($PIMEligibleRoleAssignment.PIMEligibility -eq 'Inherited') {
                     $scope = "inherited $($PIMEligibleRoleAssignment.PIMEligibilityInheritedFromClear)"
@@ -1342,10 +1342,10 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 "@)
             }
             [void]$htmlTenantSummary.AppendLine(@"
-            btn_reset: true, 
-            highlight_keywords: true, 
-            alternate_rows: true, 
-            auto_filter: { delay: 1100 }, 
+            btn_reset: true,
+            highlight_keywords: true,
+            alternate_rows: true,
+            auto_filter: { delay: 1100 },
             no_results_message: true,
             col_widths: ['50px', '150px', '150px', '150px', '250px', '150px', '50px', '150px', '150px', '150px', '250px', '75px', '150px', '75px', '150px'],
             col_0: 'select',
@@ -2367,7 +2367,7 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYALZPolicies
     Write-Host '  processing TenantSummary ALZPolicies'
-    
+
     if (-not $NoALZPolicyVersionChecker) {
 
         $alzPoliciesInTenant = [System.Collections.ArrayList]@()
@@ -2586,9 +2586,9 @@ extensions: [{ name: 'sort' }]
 "@)
         }
         else {
-            [void]$htmlTenantSummary.AppendLine(@"
+            [void]$htmlTenantSummary.AppendLine(@'
     <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Azure Landing Zones (ALZ) Policy Version Checker</span></p>
-"@)
+'@)
         }
     }
     else {
@@ -2995,8 +2995,8 @@ extensions: [{ name: 'sort' }]
             $policiesTotalCount = $null
             if ($htCacheAssignmentsPolicy.(($exemption.properties.policyAssignmentId).tolower()).Assignment.properties.policyDefinitionId) {
                 $policyDefinitionId = $htCacheAssignmentsPolicy.(($exemption.properties.policyAssignmentId).tolower()).Assignment.properties.policyDefinitionId
-                
-                if ($policyDefinitionId -like "*/providers/Microsoft.Authorization/policyDefinitions/*") {
+
+                if ($policyDefinitionId -like '*/providers/Microsoft.Authorization/policyDefinitions/*') {
                     $policyType = 'Policy'
                     if ($htCacheDefinitionsPolicy.($policyDefinitionId.tolower())) {
                         $policyDetail = $htCacheDefinitionsPolicy.($policyDefinitionId.tolower())
@@ -3011,7 +3011,7 @@ extensions: [{ name: 'sort' }]
                     }
                 }
 
-                if ($policyDefinitionId -like "*/providers/Microsoft.Authorization/policySetDefinitions/*") {
+                if ($policyDefinitionId -like '*/providers/Microsoft.Authorization/policySetDefinitions/*') {
                     $policyType = 'PolicySet'
                     if ($htCacheDefinitionsPolicySet.($policyDefinitionId.tolower())) {
                         $policyDetail = $htCacheDefinitionsPolicySet.($policyDefinitionId.tolower())
@@ -3037,14 +3037,14 @@ extensions: [{ name: 'sort' }]
                                             $policyExempted = "$($policyExemptedDetail.DisplayName) ($($policyExemptedDetail.Id))"
                                         }
                                         $policyExemptedCSV = "$($policyExemptedDetail.DisplayName) ($($policyExemptedDetail.Id))"
-                                        
+
                                     }
                                 }
                                 $arrayExemptedPolicies += $policyExempted
                                 $arrayExemptedPoliciesCSV += $policyExemptedCSV
                             }
-                            
-                            $policiesExempted = "$($arrayExemptedPolicies.Count)/$($policiesTotalCount) (<br>$(($arrayExemptedPolicies | Sort-Object) -join "<br>"))"
+
+                            $policiesExempted = "$($arrayExemptedPolicies.Count)/$($policiesTotalCount) (<br>$(($arrayExemptedPolicies | Sort-Object) -join '<br>'))"
                             $policiesExemptedCSV = ($arrayExemptedPoliciesCSV | Sort-Object) -join "$CsvDelimiterOpposite "
                             $policiesExemptedCSVCount = $arrayExemptedPoliciesCSV.Count
                         }
@@ -3053,7 +3053,7 @@ extensions: [{ name: 'sort' }]
                             $policiesExemptedCSV = "all $policiesTotalCount"
                             $policiesExemptedCSVCount = $policiesTotalCount
                         }
-                        
+
                         $policyClear = "$($policyDetail.DisplayName) ($($policyDetail.Id))"
                     }
                 }
@@ -3077,7 +3077,7 @@ extensions: [{ name: 'sort' }]
                         PolicyAssignmentId        = $exemption.properties.policyAssignmentId
                         PolicyType                = $policyType
                         Policy                    = $policyClear
-                        PoliciesTotalCount        = $policiesTotalCount            
+                        PoliciesTotalCount        = $policiesTotalCount
                         PoliciesExemptedCount     = $policiesExemptedCSVCount
                         PoliciesExempted          = $policiesExemptedCSV
                         CreatedBy                 = "$($exemption.systemData.createdBy) ($($exemption.systemData.createdByType))"
@@ -4861,9 +4861,9 @@ extensions: [{ name: 'sort' }]
 "@)
     }
     else {
-        [void]$htmlTenantSummary.AppendLine(@"
+        [void]$htmlTenantSummary.AppendLine(@'
     <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No ClassicAdministrators</span></p>
-"@)
+'@)
     }
     #endregion SUMMARYClassicAdministrators
 
@@ -4930,7 +4930,7 @@ extensions: [{ name: 'sort' }]
         else {
 
             $roleAssignmentsInfo = @()
-            #all 
+            #all
             $roleAssignmentsInfo += "All: $($rbacAllUniqueCount)"
             #static
             $roleAssignmentsInfo += "Standing: $((($rbacAll.where({ $_.RoleAssignmentPIMRelated -eq $false })).roleAssignmentId | Sort-Object -Unique).count)"
@@ -4942,7 +4942,7 @@ extensions: [{ name: 'sort' }]
             $htmlTableId = 'TenantSummary_roleAssignmentsAll'
             $noteOrNot = ''
             [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsAll"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($rbacAllCount) Role assignment related entries (unique -> $($roleAssignmentsInfo -join ", "))</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsAll"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($rbacAllCount) Role assignment related entries (unique -> $($roleAssignmentsInfo -join ', '))</span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a><br>
@@ -5236,7 +5236,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <td>$($PIMEligible.Scope)</td>
 <td>$($PIMEligible.ScopeId)</td>
 <td>$($PIMEligible.ScopeName)</td>
-<td>$($PIMEligible.MgPath -join "/")</td>
+<td>$($PIMEligible.MgPath -join '/')</td>
 <td>$($PIMEligible.MgLevel)</td>
 <td>$($PIMEligible.Role)</td>
 <td>$($PIMEligible.RoleIdGuid)</td>
@@ -5334,9 +5334,9 @@ extensions: [{ name: 'sort' }]
 "@)
         }
         else {
-            [void]$htmlTenantSummary.AppendLine(@"
+            [void]$htmlTenantSummary.AppendLine(@'
     <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No PIM Eligibility</span></p>
-"@)
+'@)
         }
 
         $endPIMEligibility = Get-Date
@@ -5349,9 +5349,9 @@ extensions: [{ name: 'sort' }]
 "@)
         }
         else {
-            [void]$htmlTenantSummary.AppendLine(@"
+            [void]$htmlTenantSummary.AppendLine(@'
             <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No PIM Eligibility - </span><span class="info valignMiddle">run AzGovViz with a Service Principal to get PIM Eligibility insights</span></p>
-"@)
+'@)
         }
     }
     #endregion SUMMARYPIMEligibility
@@ -6639,7 +6639,7 @@ extensions: [{ name: 'sort' }]
 '@)
 
         Write-Host " Exporting MDfC Email Notifications CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv'"
-        $htDefenderEmailContacts.values | Select-Object -Property subscriptionId, subscriptionName, alertNotificationsState, alertNotificationsminimalSeverity, roles, emails | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv" -Delimiter "$csvDelimiter" -NoTypeInformation      
+        $htDefenderEmailContacts.values | Select-Object -Property subscriptionId, subscriptionName, alertNotificationsState, alertNotificationsminimalSeverity, roles, emails | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
 
         $htmlSUMMARYSubs = $null
         $htmlSUMMARYSubs = foreach ($summarySubscription in $summarySubscriptions) {
@@ -6676,7 +6676,7 @@ extensions: [{ name: 'sort' }]
                 $MDfCEmailNotificationsRoles = $hlpDefenderEmailContacts.roles
                 $MDfCEmailNotificationsEmails = $hlpDefenderEmailContacts.emails
             }
-            else { 
+            else {
                 $MDfCEmailNotificationsState = ''
                 $MDfCEmailNotificationsSeverity = ''
                 $MDfCEmailNotificationsRoles = ''
@@ -6685,15 +6685,15 @@ extensions: [{ name: 'sort' }]
 
             #rbac assignments owner and userAccountAdministrator
             $rbacAtScopeForThisSubscription = ($rbacAllGroupedBySubscription.where( { $_.name -eq $summarySubscription.subscriptionId } )).group
-            
+
             $rbacOwnersAtScopeForThisSubscription = ($rbacAtScopeForThisSubscription.where({ $_.Scope -eq 'thisScope Sub' -and $_.RoleId -eq '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' }))
             $rbacOwnersAtScopeForThisSubscriptionDirectCount = ($rbacOwnersAtScopeForThisSubscription.where( { $_.AssignmentType -eq 'direct' } )).Count
             $rbacOwnersAtScopeForThisSubscriptionInDirectCount = $rbacOwnersAtScopeForThisSubscription.Count - $rbacOwnersAtScopeForThisSubscriptionDirectCount
-            
+
             $rbacUAAsAtScopeForThisSubscription = ($rbacAtScopeForThisSubscription.where({ $_.Scope -eq 'thisScope Sub' -and $_.RoleId -eq '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9' }))
             $rbacUAAsAtScopeForThisSubscriptionDirectCount = ($rbacUAAsAtScopeForThisSubscription.where( { $_.AssignmentType -eq 'direct' } )).Count
             $rbacUAAsAtScopeForThisSubscriptionInDirectCount = $rbacUAAsAtScopeForThisSubscription.Count - $rbacUAAsAtScopeForThisSubscriptionDirectCount
-            
+
             #pim eligibility owner and userAccountAdministrator
             $pimEligibleOwnersAtScopeForThisSubscriptionCount = ''
             $pimEligibleUAAsAtScopeForThisSubscriptionCount = ''
@@ -7288,7 +7288,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             }
             [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-        col_0: 'select',  
+        col_0: 'select',
         col_types: [
             'caseinsensitivestring',
             'caseinsensitivestring',
@@ -7345,7 +7345,7 @@ extensions: [{ name: 'sort' }]
 
             $htmlSUMMARYCAFResourceNamingALL = $null
             $htmlSUMMARYCAFResourceNamingALL = foreach ($entry in $resourcesIdsAllCAFNamingRelevantGroupedByType) {
-                    
+
                 $resourceTypeGroupedByCAFResourceNamingResult = $entry.Group | Group-Object -Property cafResourceNamingResult, cafResourceNaming
                 if ($entry.Group.cafResourceNaming.Count -gt 1) {
                     $namingConvention = ($entry.Group.cafResourceNaming)[0]
@@ -7355,18 +7355,18 @@ extensions: [{ name: 'sort' }]
                     $namingConvention = $entry.Group.cafResourceNaming
                     $namingConventionFriendlyName = $entry.Group.cafResourceNamingFriendlyName
                 }
-                    
+
                 $passed = 0
                 $failed = 0
                 foreach ($result in $resourceTypeGroupedByCAFResourceNamingResult) {
-                    $resultNameSplitted = $result.Name -split ", "
+                    $resultNameSplitted = $result.Name -split ', '
                     if ($resultNameSplitted[0] -eq 'passed') {
                         $passed = $result.Count
                     }
-                        
+
                     if ($resultNameSplitted[0] -eq 'failed') {
                         $failed = $result.Count
-                    }        
+                    }
                 }
 
                 if ($passed -gt 0) {
@@ -7386,7 +7386,7 @@ extensions: [{ name: 'sort' }]
 <td>$($percentage)%</td>
 </tr>
 "@
-            
+
             }
             [void]$htmlTenantSummary.AppendLine($htmlSUMMARYCAFResourceNamingALL)
             [void]$htmlTenantSummary.AppendLine(@"
@@ -7424,7 +7424,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 "@)
             }
             [void]$htmlTenantSummary.AppendLine(@"
-btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true, 
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
         col_types: [
             'caseinsensitivestring',
             'caseinsensitivestring',
@@ -7464,7 +7464,7 @@ extensions: [{ name: 'sort' }]
         }
         else {
             $orphanedIncludingCost = $false
-            $hintTableTH = ""
+            $hintTableTH = ''
         }
 
         $tfCount = $orphanedResourceTypesCount
@@ -7493,25 +7493,27 @@ extensions: [{ name: 'sort' }]
         $htmlSUMMARYOrphanedResources = $null
         $htmlSUMMARYOrphanedResources = foreach ($orphanedResourceType in $arrayOrphanedResourcesGroupedByType | Sort-Object -Property Name) {
             $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)" = ($orphanedResourceType.count)
-            
+
             if ($orphanedIncludingCost) {
-                if ($orphanedResourceType.Group.Intent[0] -eq "cost savings") {
+                if ($orphanedResourceType.Group.Intent[0] -eq 'cost savings') {
                     $orphCost = ($orphanedResourceType.Group.Cost | Measure-Object -Sum).Sum
                     $orphCurrency = $orphanedResourceType.Group.Currency[0]
+                    $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)_Costs" = $orphCost
+                    $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)_Costs_ConsumptionPeriodInDays" = $AzureConsumptionPeriod
                 }
                 else {
-                    $orphCost = ""
-                    $orphCurrency = ""
+                    $orphCost = ''
+                    $orphCurrency = ''
                 }
             }
             else {
-                if ($orphanedResourceType.Group.Intent[0] -eq "cost savings") {
+                if ($orphanedResourceType.Group.Intent[0] -eq 'cost savings') {
                     $orphCost = "<span class=`"info`">use parameter <b>-DoAzureConsumption</b> to show potential savings</span>"
-                    $orphCurrency = ""
+                    $orphCurrency = ''
                 }
                 else {
-                    $orphCost = ""
-                    $orphCurrency = ""
+                    $orphCost = ''
+                    $orphCurrency = ''
                 }
             }
 
@@ -7564,8 +7566,8 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         }
         [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-        col_3: 'select',  
-        col_5: 'select',      
+        col_3: 'select',
+        col_5: 'select',
         col_types: [
             'caseinsensitivestring',
             'number',
@@ -7934,7 +7936,7 @@ extensions: [{ name: 'sort' }]
 <tbody>
 "@)
 
-        
+
         $cnter = 0
         $startResProvDetailed = Get-Date
         $htmlSUMMARYSubFeatures = $null
@@ -7998,9 +8000,9 @@ extensions: [{ name: 'sort' }]
 
     }
     else {
-        [void]$htmlTenantSummary.AppendLine(@"
+        [void]$htmlTenantSummary.AppendLine(@'
     <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No enabled Subscriptions Features</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/preview-features" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
-"@)
+'@)
     }
     $endSubFeatures = Get-Date
     Write-Host "   Subscriptions Features processing duration: $((NEW-TIMESPAN -Start $startSubFeatures -End $endSubFeatures).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSubFeatures -End $endSubFeatures).TotalSeconds) seconds)"
@@ -8640,13 +8642,13 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                     $PSRuleCSVPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PSRule.csv"
                     Write-Host "   Exporting 'PSRule for Azure' CSV '$PSRuleCSVPath'"
                     $arrayPsRule | Sort-Object -Property resourceId, pillar, category, severity, rule, recommendation | Export-Csv -Path $PSRuleCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
-                    
+
                     if ($azAPICallConf['htParameters'].onGitHubActions -eq $true) {
                         $exportCSVPSRuleFileSize = (Get-Item -Path $PSRuleCSVPath).length / 1MB
                         if ($exportCSVPSRuleFileSize -gt 100) {
                             Write-Host "   The exported 'PSRule for Azure' CSV '$PSRuleCSVPath' exceeds the GitHub file limit of 100MB"
-                            Write-Host "   more info: https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits"
-                            Write-Host "   ! ---> Hint: Consider using additional parameter -PSRuleFailedOnly / results will only include failed resources"
+                            Write-Host '   more info: https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits'
+                            Write-Host '   ! ---> Hint: Consider using additional parameter -PSRuleFailedOnly / results will only include failed resources'
                             Write-Host "   Re-Exporting 'PSRule for Azure' CSV '$PSRuleCSVPath' excluding column 'description'"
                             $arrayPsRule | Select-Object -ExcludeProperty description | Sort-Object -Property resourceId, pillar, category, severity, rule, recommendation | Export-Csv -Path "$PSRuleCSVPath" -Delimiter "$csvDelimiter" -NoTypeInformation
 
@@ -8786,9 +8788,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             Write-Host "   PSRule for Azure processing duration: $((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalSeconds) seconds)"
         }
         else {
-            [void]$htmlTenantSummary.AppendLine(@"
+            [void]$htmlTenantSummary.AppendLine(@'
             <i class="padlx fa fa-check-square-o" aria-hidden="true"></i> <span class="valignMiddle">PSRule for Azure - </span><span class="info">use parameter <b>-DoPSRule</b></span> - <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure/integrations" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a>
-"@)
+'@)
         }
         #endregion SUMMARYPSRule
     }
@@ -8797,8 +8799,8 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     if ($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis -eq $false) {
         $startStorageAccountAnalysis = Get-Date
         Write-Host '  processing TenantSummary Storage Account Access Analysis'
-            
-        $arrayStorageAccountAnalysisResultsCount = $arrayStorageAccountAnalysisResults.Count 
+
+        $arrayStorageAccountAnalysisResultsCount = $arrayStorageAccountAnalysisResults.Count
         if ($arrayStorageAccountAnalysisResultsCount.Count -gt 0) {
 
             if (-not $NoCsvExport) {
@@ -8829,14 +8831,14 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>Subscription</th>
 <th>Subscription MGPath</th>
 <th>ResourceGroup</th>
-<th>Allow Blob Public Access</th> 
-<th>Public Network Access</th> 
+<th>Allow Blob Public Access</th>
+<th>Public Network Access</th>
 <th>NetworkAcls defaultAction</th>
 <th>StaticWebsites State</th>
 <th>StaticWebsites Response</th>
 <th>Containers CanBeListed</th>
 <th>Containers Count</th>
-<th>Containers Anonymous Container Count</th> 
+<th>Containers Anonymous Container Count</th>
 <th>Containers Anonymous Blob Count</th>
 <th>IpRules Count</th>
 <th>IpRules IPAddress List</th>
@@ -8861,18 +8863,18 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.kind)</td>
                         <td>$($result.skuName)</td>
                         <td>$($result.skuTier)</td>
-                        <td>$($result.location)</td> 
-                        <td>$($result.SubscriptionName)</td> 
+                        <td>$($result.location)</td>
+                        <td>$($result.SubscriptionName)</td>
                         <td>$($result.subscriptionMGPath)</td>
                         <td>$($result.resourceGroup)</td>
-                        <td>$($result.allowBlobPublicAccess)</td> 
+                        <td>$($result.allowBlobPublicAccess)</td>
                         <td>$($result.publicNetworkAccess)</td>
                         <td>$($result.networkAclsdefaultAction)</td>
                         <td>$($result.staticWebsitesState)</td>
                         <td>$($result.staticWebsitesResponse)</td>
                         <td>$($result.containersCanBeListed)</td>
                         <td>$($result.containersCount)</td>
-                        <td>$($result.containersAnonymousContainerCount)</td> 
+                        <td>$($result.containersAnonymousContainerCount)</td>
                         <td>$($result.containersAnonymousBlobCount)</td>
                         <td>$($result.ipRulesCount)</td>
                         <td>$($result.ipRulesIPAddressList)</td>
@@ -8991,7 +8993,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 "@)
     }
     #endregion SUMMARYStorageAccountAnalysis
-    
+
     [void]$htmlTenantSummary.AppendLine(@'
     </div>
 '@)
@@ -9055,10 +9057,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.Subscription)</td>
                         <td>$($result.MGPath)</td>
                         <td>$($result.VNet)</td>
-                        <td>$($result.VNetResourceGroup)</td> 
-                        <td>$($result.Location)</td> 
+                        <td>$($result.VNetResourceGroup)</td>
+                        <td>$($result.Location)</td>
                         <td>$($result.AddressSpaceAddressPrefixes)</td>
-                        <td>$($result.DhcpoptionsDnsservers)</td> 
+                        <td>$($result.DhcpoptionsDnsservers)</td>
                         <td>$($result.SubnetsCount)</td>
                         <td>$($result.SubnetsWithNSGCount)</td>
                         <td>$($result.SubnetsWithRouteTableCount)</td>
@@ -9156,7 +9158,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         $vnetPeerings = $arrayVirtualNetworks.where({ $_.PeeringsCount -gt 0 }) | sort-Object -Property SubscriptionName, VNet, VNetId
         $VNetsPeeringsCount = $vnetPeerings.Count
 
-        if (-not $NoCsvExport) {  
+        if (-not $NoCsvExport) {
             $virtualNetworkPeeringsCSVPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_VirtualNetworkPeerings.csv"
             Write-Host "   Exporting VirtaulNetworks CSV '$virtualNetworkPeeringsCSVPath'"
             $vnetPeerings | Export-Csv -Path $virtualNetworkPeeringsCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
@@ -9197,7 +9199,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th class="uamiresaltbgc">Peering Sync Level</th>
 <th class="uamiresaltbgc">Allow Virtual Network Access</th>
 <th class="uamiresaltbgc">Allow Forwarded Traffic</th>
-<th class="uamiresaltbgc">Allow Gateway Transit</th> 
+<th class="uamiresaltbgc">Allow Gateway Transit</th>
 <th class="uamiresaltbgc">Use Remote Gateways</th>
 <th class="uamiresaltbgc">Do Not Verify Remote Gateways</th>
 <th class="uamiresaltbgc">Peer Complete Vnets</th>
@@ -9209,7 +9211,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th class="uamiresaltbgc"><b>Remote</b> Peering Sync Level</th>
 <th class="uamiresaltbgc"><b>Remote</b> Allow Virtual Network Access</th>
 <th class="uamiresaltbgc"><b>Remote</b> Allow Forwarded Traffic</th>
-<th class="uamiresaltbgc"><b>Remote</b> Allow Gateway Transit</th> 
+<th class="uamiresaltbgc"><b>Remote</b> Allow Gateway Transit</th>
 <th class="uamiresaltbgc"><b>Remote</b> Use Remote Gateways</th>
 <th class="uamiresaltbgc"><b>Remote</b> Do Not Verify Remote Gateways</th>
 <th class="uamiresaltbgc"><b>Remote</b> Peer Complete Vnets</th>
@@ -9246,10 +9248,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.Subscription)</td>
                         <td>$($result.MGPath)</td>
                         <td>$($result.VNet)</td>
-                        <td>$($result.VNetResourceGroup)</td> 
-                        <td>$($result.Location)</td> 
+                        <td>$($result.VNetResourceGroup)</td>
+                        <td>$($result.Location)</td>
                         <td>$($result.AddressSpaceAddressPrefixes)</td>
-                        <td>$($result.DhcpoptionsDnsservers)</td> 
+                        <td>$($result.DhcpoptionsDnsservers)</td>
                         <td>$($result.SubnetsCount)</td>
                         <td>$($result.SubnetsWithNSGCount)</td>
                         <td>$($result.SubnetsWithRouteTableCount)</td>
@@ -9258,16 +9260,16 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.DdosProtection)</td>
                         <td>$($result.PeeringsCount)</td>
                         <td>$($result.PeeringName)</td>
-                        <td>$($result.PeeringState)</td> 
+                        <td>$($result.PeeringState)</td>
                         <td>$($result.PeeringSyncLevel)</td>
                         <td>$($result.AllowVirtualNetworkAccess)</td>
                         <td>$($result.AllowForwardedTraffic)</td>
                         <td>$($result.AllowGatewayTransit)</td>
                         <td>$($result.UseRemoteGateways)</td>
                         <td>$($result.DoNotVerifyRemoteGateways)</td>
-                        <td>$($result.PeerCompleteVnets)</td> 
+                        <td>$($result.PeerCompleteVnets)</td>
                         <td>$($result.RouteServiceVips)</td>
-                        
+
                         <td>$($result.RemotePeeringsCount)</td>
                         <td>$($result.RemotePeeringName)</td>
                         <td>$($result.RemotePeeringState)</td>
@@ -10304,7 +10306,7 @@ extensions: [{ name: 'sort' }]
                             }
                         }
                     }
-                    
+
                     $diagnosticsPolicyAnalysisCount = ($diagnosticsPolicyAnalysis).count
 
                     if ($diagnosticsPolicyAnalysisCount -gt 0) {

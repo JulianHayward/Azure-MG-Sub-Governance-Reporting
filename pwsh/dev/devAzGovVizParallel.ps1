@@ -159,11 +159,11 @@
 .PARAMETER NoALZPolicyVersionChecker
     'Azure Landing Zones (ALZ) Policy Version Checker' for Policy and Set definitions. AzGovViz will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The 'Azure Landing Zones (ALZ) Policy Version Checker' results will be displayed in the TenantSummary and a CSV export `*_ALZPolicyVersionChecker.csv` will be provided.
     If you do not want to execute the 'Azure Landing Zones (ALZ) Policy Version Checker' feature then use this parameter
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker 
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 
 .PARAMETER NoDefinitionInsightsDedicatedHTML
     DefinitionInsights will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep DefinitionInsights in the main html file then use this parameter
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML  
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML
 
 .PARAMETER NoStorageAccountAccessAnalysis
     Analysis on Storage Accounts, specially focused on anonymous access.
@@ -355,7 +355,7 @@ Param
     $AzAPICallVersion = '1.1.44',
 
     [string]
-    $ProductVersion = 'v6_major_20221026_1',
+    $ProductVersion = 'v6_major_20221027_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -599,10 +599,10 @@ $startAzGovViz = Get-Date
 $startTime = Get-Date -Format 'dd-MMM-yyyy HH:mm:ss'
 Write-Host "Start AzGovViz $($startTime) (#$($ProductVersion))"
 
-if ($ManagementGroupId -match " ") {
+if ($ManagementGroupId -match ' ') {
     Write-Host "Provided Management Group ID: '$($ManagementGroupId)'" -ForegroundColor Yellow
-    Write-Host "The Management Group ID may not contain spaces - provide the Management Group ID, not the displayName." -ForegroundColor DarkRed
-    throw "Management Group ID validation failed!"
+    Write-Host 'The Management Group ID may not contain spaces - provide the Management Group ID, not the displayName.' -ForegroundColor DarkRed
+    throw 'Management Group ID validation failed!'
 }
 
 #region Functions
@@ -689,7 +689,7 @@ $null = $modules.Add([PSCustomObject]@{
     })
 
 if ($DoPSRule) {
-    
+
     <#temporary workaround / PSRule/Azure DevOps Az.Resources module requirements
     if ($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) {
         $PSRuleVersion = '1.14.3'
@@ -739,12 +739,12 @@ if (-not $HierarchyMapOnly) {
     #region recommendPSRule
     if (-not $azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
         if (-not $DoPSRule) {
-            Write-Host ""
-            Write-Host " * * * RECOMMENDATION: PSRule for Azure * * *" -ForegroundColor Magenta
+            Write-Host ''
+            Write-Host ' * * * RECOMMENDATION: PSRule for Azure * * *' -ForegroundColor Magenta
             Write-Host "Parameter -DoPSRule == '$DoPSRule'"
             Write-Host "'PSRule for Azure' based ouputs provide aggregated Microsoft Azure Well-Architected Framework (WAF) aligned resource analysis results including guidance for remediation."
-            Write-Host "Consider running AzGovViz with the parameter -DoPSRule (example: .\pwsh\AzGovVizParallel.ps1 -DoPSRule)"
-            Write-Host " * * * * * * * * * * * * * * * * * * * * * *" -ForegroundColor Magenta
+            Write-Host 'Consider running AzGovViz with the parameter -DoPSRule (example: .\pwsh\AzGovVizParallel.ps1 -DoPSRule)'
+            Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor Magenta
             pause
         }
     }
@@ -753,15 +753,15 @@ if (-not $HierarchyMapOnly) {
     #region hintPIMEligibility
     if ($azAPICallConf['htParameters'].accountType -eq 'User') {
         if (-not $NoPIMEligibility) {
-            Write-Host ""
-            Write-Host " * * * HINT: PIM (Privileged Identity Management) Eligibility reporting * * *" -ForegroundColor DarkBlue
+            Write-Host ''
+            Write-Host ' * * * HINT: PIM (Privileged Identity Management) Eligibility reporting * * *' -ForegroundColor DarkBlue
             Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
             Write-Host "Executing principal accountType: '$($azAPICallConf['htParameters'].accountType)'"
             Write-Host "PIM Eligibility reporting requires to execute the script as ServicePrincipal. API Permission 'PrivilegedAccess.Read.AzureResources' is required"
             Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
             $NoPIMEligibility = $true
             Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
-            Write-Host " * * * * * * * * * * * * * * * * * * * * * *" -ForegroundColor DarkBlue
+            Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor DarkBlue
             pause
         }
     }
@@ -904,17 +904,17 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 if (-not $HierarchyMapOnly) {
     if (-not $NoALZPolicyVersionChecker) {
         switch ($azAPICallConf['checkContext'].Environment.Name) {
-            'Azurecloud' { 
-                Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                processALZPolicyVersionChecker 
-            }
-            'AzureChinaCloud' { 
+            'Azurecloud' {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
                 processALZPolicyVersionChecker
             }
-            'AzureUSGovernment' { 
+            'AzureChinaCloud' {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                processALZPolicyVersionChecker 
+                processALZPolicyVersionChecker
+            }
+            'AzureUSGovernment' {
+                Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZPolicyVersionChecker
             }
             Default {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
@@ -1556,7 +1556,7 @@ $html = @"
 
 if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
-    if (-not $NoDefinitionInsightsDedicatedHTML){
+    if (-not $NoDefinitionInsightsDedicatedHTML) {
         $htmlDefinitionInsightsDedicatedStart = $html
         $htmlDefinitionInsightsDedicatedStart += @'
     <body>
@@ -1605,14 +1605,14 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
                 style: {
                     transform: 'scale('+scale+')',
                     transformOrigin: 'top left'
-            }})          
+            }})
                 .then(function (dataUrl) {
                 var link = document.createElement('a');
                 link.download = '$($fileName).png';
                 link.href = dataUrl;
                 link.click();
             });
-                    
+
             })
         </script>
     </body>
@@ -1682,14 +1682,14 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
                 style: {
                     transform: 'scale('+scale+')',
                     transformOrigin: 'top left'
-            }})          
+            }})
                 .then(function (dataUrl) {
                 var link = document.createElement('a');
                 link.download = '$($fileName).png';
                 link.href = dataUrl;
                 link.click();
             });
-                    
+
             })
         </script>
     </body>
@@ -1966,13 +1966,13 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $endSummary = Get-Date
     Write-Host " Building TenantSummary duration: $((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalSeconds) seconds)"
 
-    $html += @"
+    $html += @'
     </div><!--summary-->
     </div><!--summprnt-->
 
     <div class="definitioninsightsprnt" id="definitioninsightsprnt">
     <div class="definitioninsights" id="definitioninsights"><p class="pbordered">DefinitionInsights</p>
-"@
+'@
     $html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
     $html = $null
 
@@ -2068,28 +2068,28 @@ $html += @"
 
     <script>
         `$("#getImage").on('click', function () {
-    
+
             element = document.getElementById('saveAsImageArea')
             var images = element.getElementsByTagName('img');
             var l = images.length;
             for (var i = 0; i < l; i++) {
                 images[0].parentNode.removeChild(images[0]);
             }
-    
+
             var scale = 3;
             domtoimage.toPng(element, { quality: 0.95 , width: element.clientWidth * scale,
                 height: element.clientHeight * scale,
                 style: {
                     transform: 'scale('+scale+')',
                     transformOrigin: 'top left'
-            }})          
+            }})
                 .then(function (dataUrl) {
                 var link = document.createElement('a');
                 link.download = '$($fileName).png';
                 link.href = dataUrl;
                 link.click();
             });
-    
+
             // domtoimage.toJpeg(element)
             //     .then(function (dataUrl) {
             //         var link = document.createElement('a');
@@ -2097,7 +2097,7 @@ $html += @"
             //         link.href = dataUrl;
             //         link.click();
             //     });
-                    
+
             })
     </script>
 </body>
@@ -2161,7 +2161,7 @@ if ($DoPSRule) {
     if ($psRuleErrors) {
         Write-Host ''
         Write-Host "$($psRuleErrors.Count) 'PSRule for Azure' error(s) encountered"
-        Write-Host "Please review the error(s) and consider filing an issue at the PSRule.Rules.Azure GitHub repository https://github.com/Azure/PSRule.Rules.Azure - thank you"
+        Write-Host 'Please review the error(s) and consider filing an issue at the PSRule.Rules.Azure GitHub repository https://github.com/Azure/PSRule.Rules.Azure - thank you'
         $psRuleErrorsGrouped = $psRuleErrors | Group-Object -Property resourceType, errorMsg
         foreach ($errorGroupedByResourceTypeAndMessage in $psRuleErrorsGrouped) {
             Write-Host "$($errorGroupedByResourceTypeAndMessage.Count) x $($errorGroupedByResourceTypeAndMessage.Name)"
