@@ -1,7 +1,7 @@
 # AzGovViz v6_major_20221023_1
 # First things first:
 # 1. Mandatory: In the AzGovViz.variables.yml file set needed variables 'ServiceConnection' and 'ManagementGroupId
-# 2. Mandatory: Check line 20  
+# 2. Mandatory: Check line 20
 # Documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 
 trigger: none
@@ -145,7 +145,7 @@ jobs:
                 else {
                     Compress-Archive -Path "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID).html", "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID)_DefinitionInsights.html" -DestinationPath "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID).zip"
                 }
-                
+
                 $null = Select-AzSubscription -SubscriptionId $($env:WEBAPPSUBSCRIPTIONID)
                 if (Publish-AzWebApp -ResourceGroupName $($env:WEBAPPRESOURCEGROUP) -Name $($env:WEBAPPNAME) -ArchivePath "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID).zip" -Force) {
                     if ($($env:NODEFINITIONINSIGHTSDEDICATEDHTML)) {
@@ -169,4 +169,4 @@ jobs:
             exit 1
         }
       azurePowerShellVersion: latestVersion
-    displayName: 'Publish HTML to WebApp'  
+    displayName: 'Publish HTML to WebApp'

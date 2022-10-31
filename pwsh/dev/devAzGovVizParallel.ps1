@@ -352,10 +352,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.44',
+    $AzAPICallVersion = '1.1.45',
 
     [string]
-    $ProductVersion = 'v6_major_20221027_2',
+    $ProductVersion = 'v6_major_20221031_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -728,7 +728,7 @@ if ($azGovVizNewerVersionAvailable) {
         Write-Host " * * * This AzGovViz version ($ProductVersion) is not up to date. Get the latest AzGovViz version ($azGovVizVersionOnRepositoryFull)! * * *" -ForegroundColor Green
         Write-Host 'Check the AzGovViz history: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md'
         Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor Green
-        pause
+        Pause
     }
 }
 #endregion promptNewAzGovVizVersionAvailable
@@ -745,7 +745,7 @@ if (-not $HierarchyMapOnly) {
             Write-Host "'PSRule for Azure' based ouputs provide aggregated Microsoft Azure Well-Architected Framework (WAF) aligned resource analysis results including guidance for remediation."
             Write-Host 'Consider running AzGovViz with the parameter -DoPSRule (example: .\pwsh\AzGovVizParallel.ps1 -DoPSRule)'
             Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor Magenta
-            pause
+            Pause
         }
     }
     #endregion recommendPSRule
@@ -762,7 +762,7 @@ if (-not $HierarchyMapOnly) {
             $NoPIMEligibility = $true
             Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
             Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor DarkBlue
-            pause
+            Pause
         }
     }
     #endregion hintPIMEligibility
@@ -974,7 +974,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     exportBaseCSV
 
     $endDataCollection = Get-Date
-    Write-Host "Collecting custom data duration: $((NEW-TIMESPAN -Start $startDataCollection -End $endDataCollection).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDataCollection -End $endDataCollection).TotalSeconds) seconds)"
+    Write-Host "Collecting custom data duration: $((New-TimeSpan -Start $startDataCollection -End $endDataCollection).TotalMinutes) minutes ($((New-TimeSpan -Start $startDataCollection -End $endDataCollection).TotalSeconds) seconds)"
 }
 else {
     processHierarchyMapOnly
@@ -1069,7 +1069,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         }
     }
     $endHelperHt = Get-Date
-    Write-Host "Create Policy/Set helper hash table duration: $((NEW-TIMESPAN -Start $startHelperHt -End $endHelperHt).TotalSeconds) seconds"
+    Write-Host "Create Policy/Set helper hash table duration: $((New-TimeSpan -Start $startHelperHt -End $endHelperHt).TotalSeconds) seconds"
 
     if (-not $azAPICallConf['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
         $policyBaseQuery = $newTable.where({ -not [String]::IsNullOrEmpty($_.PolicyVariant) } ) | Sort-Object -Property PolicyType, Policy | Select-Object -Property Level, Policy*, mg*, Subscription*
@@ -1102,7 +1102,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     }
 
     $policyPolicySetBaseQueryUniqueAssignments = $policyBaseQueryUniqueAssignments.where({ $_.PolicyVariant -eq 'PolicySet' } )
-    $policyBaseQueryUniqueCustomDefinitions = ($policyBaseQuery.where({ $_.PolicyType -eq 'Custom' } )) | select-object PolicyVariant, PolicyDefinitionId -Unique
+    $policyBaseQueryUniqueCustomDefinitions = ($policyBaseQuery.where({ $_.PolicyType -eq 'Custom' } )) | Select-Object PolicyVariant, PolicyDefinitionId -Unique
     $policyPolicyBaseQueryUniqueCustomDefinitions = ($policyBaseQueryUniqueCustomDefinitions.where({ $_.PolicyVariant -eq 'Policy' } )).PolicyDefinitionId
     $policyPolicySetBaseQueryUniqueCustomDefinitions = ($policyBaseQueryUniqueCustomDefinitions.where({ $_.PolicyVariant -eq 'PolicySet' } )).PolicyDefinitionId
 
@@ -1118,7 +1118,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     }
 
     $blueprintBaseQuery = ($newTable | Select-Object mgid, SubscriptionId, Blueprint*).where({ -not [String]::IsNullOrEmpty($_.BlueprintName) } )
-    $mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | select-object MgId, SubscriptionId -unique)
+    $mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | Select-Object MgId, SubscriptionId -Unique)
 
     #region create array Policy definitions
     $tenantAllPoliciesCount = (($htCacheDefinitionsPolicy).Values).count
@@ -1182,10 +1182,10 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $diagnosticSettingsMgManagementGroupsCount = ($diagnosticSettingsMgGrouped | Measure-Object).Count
 
     foreach ($entry in $diagnosticSettingsMgGrouped) {
-        $dsgrouped = $entry.group | Group-Object -property DiagnosticSettingName
+        $dsgrouped = $entry.group | Group-Object -Property DiagnosticSettingName
 
         foreach ($ds in $dsgrouped) {
-            $targetTypegrouped = $ds.group | Group-Object -property DiagnosticTargetType
+            $targetTypegrouped = $ds.group | Group-Object -Property DiagnosticTargetType
             foreach ($tt in $targetTypegrouped) {
                 if (-not ($htDiagnosticSettingsMgSub).mg.($entry.Name)) {
                     ($htDiagnosticSettingsMgSub).mg.($entry.Name) = @{}
@@ -1250,10 +1250,10 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $diagnosticSettingsSubSubscriptionsCount = ($diagnosticSettingsSubGrouped | Measure-Object).Count
 
     foreach ($entry in $diagnosticSettingsSubGrouped) {
-        $dsgrouped = $entry.group | Group-Object -property DiagnosticSettingName
+        $dsgrouped = $entry.group | Group-Object -Property DiagnosticSettingName
 
         foreach ($ds in $dsgrouped) {
-            $targetTypegrouped = $ds.group | Group-Object -property DiagnosticTargetType
+            $targetTypegrouped = $ds.group | Group-Object -Property DiagnosticTargetType
             foreach ($tt in $targetTypegrouped) {
                 if (-not ($htDiagnosticSettingsMgSub).sub.($entry.Name)) {
                     ($htDiagnosticSettingsMgSub).sub.($entry.Name) = @{}
@@ -1287,7 +1287,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     #endregion DefenderPlans
 
     $endPreQueries = Get-Date
-    Write-Host " Pre Queries duration: $((NEW-TIMESPAN -Start $startPreQueries -End $endPreQueries).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPreQueries -End $endPreQueries).TotalSeconds) seconds)"
+    Write-Host " Pre Queries duration: $((New-TimeSpan -Start $startPreQueries -End $endPreQueries).TotalMinutes) minutes ($((New-TimeSpan -Start $startPreQueries -End $endPreQueries).TotalSeconds) seconds)"
     showMemoryUsage
     #endregion preQueries
 
@@ -1295,7 +1295,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $startSummarizeDataCollectionResults = Get-Date
     Write-Host 'Summary data collection'
     $mgsDetails = ($optimizedTableForPathQueryMg | Select-Object Level, MgId -Unique)
-    $mgDepth = ($mgsDetails.Level  | measure-object -maximum).Maximum
+    $mgDepth = ($mgsDetails.Level | Measure-Object -Maximum).Maximum
     $totalMgCount = ($mgsDetails).count
     $totalSubCount = ($optimizedTableForPathQuerySub).count
     $totalSubOutOfScopeCount = ($outOfScopeSubscriptions).count
@@ -1411,7 +1411,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     }
 
     $endSummarizeDataCollectionResults = Get-Date
-    Write-Host " Summary data collection duration: $((NEW-TIMESPAN -Start $startSummarizeDataCollectionResults -End $endSummarizeDataCollectionResults).TotalSeconds) seconds"
+    Write-Host " Summary data collection duration: $((New-TimeSpan -Start $startSummarizeDataCollectionResults -End $endSummarizeDataCollectionResults).TotalSeconds) seconds"
     showMemoryUsage
     #endregion summarizeDataCollectionResults
 }
@@ -1633,7 +1633,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
             Write-Host " Creating new state ($($HTMLPath)) (local only))"
         }
 
-        $null = new-item -Name $HTMLPath -ItemType directory -path $outputPath
+        $null = New-Item -Name $HTMLPath -ItemType directory -Path $outputPath
 
         $htmlSubscriptionOnlyStart = $html
         $htmlSubscriptionOnlyStart += @'
@@ -1908,7 +1908,7 @@ HierarchyMgHTML -mgChild $ManagementGroupId
 showMemoryUsage
 
 $endhierarchyMap = Get-Date
-Write-Host " Building HierarchyMap duration: $((NEW-TIMESPAN -Start $starthierarchyMap -End $endhierarchyMap).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $starthierarchyMap -End $endhierarchyMap).TotalSeconds) seconds)"
+Write-Host " Building HierarchyMap duration: $((New-TimeSpan -Start $starthierarchyMap -End $endhierarchyMap).TotalMinutes) minutes ($((New-TimeSpan -Start $starthierarchyMap -End $endhierarchyMap).TotalSeconds) seconds)"
 
 if ($getMgParentName -eq 'Tenant Root') {
     $html += @'
@@ -1953,7 +1953,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
     #region BuildDailySummaryCSV
     $dailySummary4ExportToCSV = [System.Collections.ArrayList]@()
-    foreach ($entry in $htDailySummary.keys | sort-Object) {
+    foreach ($entry in $htDailySummary.keys | Sort-Object) {
         $null = $dailySummary4ExportToCSV.Add([PSCustomObject]@{
                 capability = $entry
                 count      = $htDailySummary.($entry)
@@ -1964,7 +1964,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     #endregion BuildDailySummaryCSV
 
     $endSummary = Get-Date
-    Write-Host " Building TenantSummary duration: $((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalSeconds) seconds)"
+    Write-Host " Building TenantSummary duration: $((New-TimeSpan -Start $startSummary -End $endSummary).TotalMinutes) minutes ($((New-TimeSpan -Start $startSummary -End $endSummary).TotalSeconds) seconds)"
 
     $html += @'
     </div><!--summary-->
@@ -2000,12 +2000,12 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         $script:scopescnter = 0
         if ($azAPICallConf['htParameters'].NoResources -eq $false) {
             if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
-                $grpPSRuleSubscriptions = $arrayPsRule | group-object -Property subscriptionId
-                $grpPSRuleManagementGroups = $arrayPsRule | group-object -Property mgPath
+                $grpPSRuleSubscriptions = $arrayPsRule | Group-Object -Property subscriptionId
+                $grpPSRuleManagementGroups = $arrayPsRule | Group-Object -Property mgPath
             }
         }
         if ($arrayFeaturesAll.Count -gt 0) {
-            $script:subFeaturesGroupedBySubscription = $arrayFeaturesAll | Group-Object -property subscriptionId
+            $script:subFeaturesGroupedBySubscription = $arrayFeaturesAll | Group-Object -Property subscriptionId
         }
         if ($arrayOrphanedResourcesSlim.Count -gt 0) {
             $arrayOrphanedResourcesGroupedBySubscription = $arrayOrphanedResourcesSlim | Group-Object subscriptionId
@@ -2016,7 +2016,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         showMemoryUsage
 
         $endHierarchyTable = Get-Date
-        Write-Host " Building ScopeInsights duration: $((NEW-TIMESPAN -Start $startHierarchyTable -End $endHierarchyTable).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startHierarchyTable -End $endHierarchyTable).TotalSeconds) seconds)"
+        Write-Host " Building ScopeInsights duration: $((New-TimeSpan -Start $startHierarchyTable -End $endHierarchyTable).TotalMinutes) minutes ($((New-TimeSpan -Start $startHierarchyTable -End $endHierarchyTable).TotalSeconds) seconds)"
 
         if ((-not $NoScopeInsights)) {
             $html += @'
@@ -2036,7 +2036,7 @@ $html += @'
 
 if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $endAzGovVizHTML = Get-Date
-    $AzGovVizHTMLDuration = (NEW-TIMESPAN -Start $startAzGovViz -End $endAzGovVizHTML).TotalMinutes
+    $AzGovVizHTMLDuration = (New-TimeSpan -Start $startAzGovViz -End $endAzGovVizHTML).TotalMinutes
     $paramsUsed += "Creation duration: $AzGovVizHTMLDuration minutes &#13;"
     if (-not $NoScopeInsights) {
         $html += @"
@@ -2107,7 +2107,7 @@ $html += @"
 $html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
 
 $endBuildHTML = Get-Date
-Write-Host "Building HTML total duration: $((NEW-TIMESPAN -Start $startBuildHTML -End $endBuildHTML).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startBuildHTML -End $endBuildHTML).TotalSeconds) seconds)"
+Write-Host "Building HTML total duration: $((New-TimeSpan -Start $startBuildHTML -End $endBuildHTML).TotalMinutes) minutes ($((New-TimeSpan -Start $startBuildHTML -End $endBuildHTML).TotalSeconds) seconds)"
 #endregion BuildHTML
 
 buildMD
@@ -2126,7 +2126,7 @@ if (-not $HierarchyMapOnly) {
 apiCallTracking -stage 'Summary' -spacing ''
 
 $endAzGovViz = Get-Date
-$durationProduct = (NEW-TIMESPAN -Start $startAzGovViz -End $endAzGovViz)
+$durationProduct = (New-TimeSpan -Start $startAzGovViz -End $endAzGovViz)
 Write-Host "AzGovViz duration: $($durationProduct.TotalMinutes) minutes"
 
 #end
@@ -2136,7 +2136,7 @@ Write-Host "End AzGovViz $endTime"
 Write-Host 'Checking for errors'
 if ($Error.Count -gt 0) {
     Write-Host "Dumping $($Error.Count) Errors (handled by AzGovViz):"
-    $Error | Out-host
+    $Error | Out-Host
 }
 else {
     Write-Host 'Error count is 0'

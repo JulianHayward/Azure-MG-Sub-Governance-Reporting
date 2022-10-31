@@ -28,5 +28,5 @@ function prepareData {
     $script:parentMgIdx = $parentMgBaseQuery.mgParentId | Get-Unique
 
     $endPreparingArrays = Get-Date
-    Write-Host "Preparing Arrays duration: $((NEW-TIMESPAN -Start $startPreparingArrays -End $endPreparingArrays).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPreparingArrays -End $endPreparingArrays).TotalSeconds) seconds)"
+    Write-Host "Preparing Arrays duration: $((New-TimeSpan -Start $startPreparingArrays -End $endPreparingArrays).TotalMinutes) minutes ($((New-TimeSpan -Start $startPreparingArrays -End $endPreparingArrays).TotalSeconds) seconds)"
 }

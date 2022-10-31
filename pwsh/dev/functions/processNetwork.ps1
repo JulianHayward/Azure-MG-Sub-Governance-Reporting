@@ -44,11 +44,11 @@ function processNetwork {
 
     foreach ($vnet in $arrayVNets) {
         #peeringsStuff
-    
+
         #$vnetIdSplit = "/subscriptions/19f26644-2e08-4119-8ade-5e1e93e3dca3/resourceGroups/AzAdvertizer/providers/Microsoft.Network/virtualNetworks/azadvertizer" -split "/"
         $vnetIdSplit = ($vnet.id -split "/")
         $subscriptionId = $vnetIdSplit[2]
-        
+
         $subscriptionName = 'n/a'
         $MGPath = 'n/a'
         if ($htSubscriptionsMgPath.($subscriptionId)) {
@@ -62,7 +62,7 @@ function processNetwork {
             foreach ($peering in $vnet.properties.virtualNetworkPeerings) {
                 $remotevnetIdSplit = ($peering.properties.remoteVirtualNetwork.id -split "/")
                 $remotesubscriptionId = $remotevnetIdSplit[2]
-            
+
 
                 $remotesubscriptionName = 'n/a'
                 $remoteMGPath = 'n/a'
@@ -72,9 +72,9 @@ function processNetwork {
                     $remoteMGPath = $remotesubHelper.ParentNameChainDelimited
                 }
 
-                $remotevnetName = $remotevnetIdSplit[8] 
-                $remotevnetResourceGroup = $remotevnetIdSplit[4] 
-            
+                $remotevnetName = $remotevnetIdSplit[8]
+                $remotevnetResourceGroup = $remotevnetIdSplit[4]
+
                 if ($htVNets.($peering.properties.remoteVirtualNetwork.id)) {
                     $remotevnetState = 'existent'
                     $remoteLocation = $htVNets.($peering.properties.remoteVirtualNetwork.id).location
@@ -155,9 +155,9 @@ function processNetwork {
                         SubnetsWithNSGCount                             = $vnet.properties.subnets.properties.networkSecurityGroup.Count
                         SubnetsWithRouteTableCount                      = $vnet.properties.subnets.properties.routeTable.Count
                         SubnetsWithDelegationsCount                     = $vnet.properties.subnets.properties.delegations.Count
-                        ConnectedDevices                                = $vnet.properties.subnets.properties.ipConfigurations.id.Count 
+                        ConnectedDevices                                = $vnet.properties.subnets.properties.ipConfigurations.id.Count
                         DdosProtection                                  = $vnet.properties.enableDdosProtection
-                
+
                         PeeringsCount                                   = $vnet.properties.virtualNetworkPeerings.Count
                         PeeringName                                     = $peering.name
                         PeeringState                                    = $peering.properties.peeringState
@@ -169,7 +169,7 @@ function processNetwork {
                         DoNotVerifyRemoteGateways                       = $peering.properties.doNotVerifyRemoteGateways
                         PeerCompleteVnets                               = $peering.properties.peerCompleteVnets
                         RouteServiceVips                                = $peering.properties.routeServiceVips
-                
+
                         RemotePeeringsCount                             = $remotePeeringsCount
                         RemotePeeringName                               = $remotePeeringName
                         RemotePeeringState                              = $remotePeeringState
@@ -192,7 +192,7 @@ function processNetwork {
                         RemoteVNetLocation                              = $remoteLocation
                         RemoteAddressSpaceAddressPrefixes               = $peering.properties.remoteAddressSpace.addressPrefixes
                         RemoteVirtualNetworkAddressSpaceAddressPrefixes = $peering.properties.remoteVirtualNetworkAddressSpace.addressPrefixes
-                        
+
                         RemoteDhcpoptionsDnsservers                     = $remoteDhcpoptionsDnsservers
                         RemoteSubnetsCount                              = $remoteSubnetsCount
                         RemoteSubnetsWithNSGCount                       = $remoteSubnetsWithNSGCount
@@ -202,7 +202,7 @@ function processNetwork {
                         RemoteDdosProtection                            = $remoteDdosProtection
                     })
             }
-        
+
         }
         else {
             $null = $script:arrayVirtualNetworks.Add([PSCustomObject]@{
@@ -213,16 +213,16 @@ function processNetwork {
                     VNetId                                          = $vnet.id
                     VNetResourceGroup                               = $vnetResourceGroup
                     Location                                        = $vnet.location
-            
+
                     AddressSpaceAddressPrefixes                     = $vnet.properties.addressSpace.addressPrefixes
                     DhcpoptionsDnsservers                           = $vnet.properties.dhcpoptions.dnsservers
                     SubnetsCount                                    = $vnet.properties.subnets.Count
                     SubnetsWithNSGCount                             = $vnet.properties.subnets.properties.networkSecurityGroup.Count
                     SubnetsWithRouteTableCount                      = $vnet.properties.subnets.properties.routeTable.Count
                     SubnetsWithDelegationsCount                     = $vnet.properties.subnets.properties.delegations.Count
-                    ConnectedDevices                                = $vnet.properties.subnets.properties.ipConfigurations.id.Count 
+                    ConnectedDevices                                = $vnet.properties.subnets.properties.ipConfigurations.id.Count
                     DdosProtection                                  = $vnet.properties.enableDdosProtection
-            
+
                     PeeringsCount                                   = $vnet.properties.virtualNetworkPeerings.Count
                     PeeringName                                     = ''
                     PeeringState                                    = ''
@@ -266,7 +266,7 @@ function processNetwork {
                     RemoteDdosProtection                            = ''
                 })
         }
-    
+
 
         #subnetStuff
         if ($vnet.properties.subnets.Count -gt 0) {

@@ -75,7 +75,7 @@ function dataCollectionDefenderEmailContacts {
     }
     else {
 
-        if ($defenderSecurityContactsResult -like "azgvzerrorMessage_*") {
+        if ($defenderSecurityContactsResult -like 'azgvzerrorMessage_*') {
             $errorInfo = $defenderSecurityContactsResult -replace 'azgvzerrorMessage_'
             $script:htDefenderEmailContacts.($scopeId) = @{
                 subscriptionId                    = $scopeId
@@ -89,7 +89,7 @@ function dataCollectionDefenderEmailContacts {
         else {
             if ($defenderSecurityContactsResult.Count -gt 0) {
                 foreach ($entry in $defenderSecurityContactsResult) {
-    
+
                     if ($entry.properties) {
                         if ($entry.properties.notificationsByRole.roles.count -gt 0) {
                             $roles = ($entry.properties.notificationsByRole.roles | Sort-Object) -join "$CsvDelimiterOpposite "
@@ -97,7 +97,7 @@ function dataCollectionDefenderEmailContacts {
                         else {
                             $roles = 'none'
                         }
-    
+
                         if ($entry.properties.emails) {
                             if (-not [string]::IsNullOrWhiteSpace($entry.properties.emails)) {
                                 $emailsSplitted = $entry.properties.emails -split ';'
@@ -114,11 +114,11 @@ function dataCollectionDefenderEmailContacts {
                         else {
                             $emails = 'none'
                         }
-    
+
                         if ($entry.properties.alertNotifications.state) {
                             $alertNotificationsState = $entry.properties.alertNotifications.state
                         }
-    
+
                         if ($entry.properties.alertNotifications.minimalSeverity) {
                             $alertNotificationsminimalSeverity = $entry.properties.alertNotifications.minimalSeverity
                         }
@@ -129,7 +129,7 @@ function dataCollectionDefenderEmailContacts {
                         $alertNotificationsState = 'n/a'
                         $alertNotificationsminimalSeverity = 'n/a'
                     }
-    
+
                     $script:htDefenderEmailContacts.($scopeId) = @{
                         subscriptionId                    = $scopeId
                         subscriptionName                  = $scopeDisplayName
@@ -428,7 +428,7 @@ function dataCollectionResources {
                 Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')
                 #>
                 if ($azAPICallConf['htParameters'].PSRuleFailedOnly -eq $true) {
-                    $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue -outcome Fail, Error
+                    $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue -Outcome Fail, Error
                 }
                 else {
                     $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
@@ -437,9 +437,9 @@ function dataCollectionResources {
             catch {
                 Write-Host "   Please report 'PSRule for Azure' error '$($scopeDisplayName)' ('$scopeId'): $_"
             }
-            
+
             $endPSRule = Get-Date
-            $durationPSRule = $((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalSeconds)
+            $durationPSRule = $((New-TimeSpan -Start $startPSRule -End $endPSRule).TotalSeconds)
 
             $null = $script:arrayPSRuleTracking.Add([PSCustomObject]@{
                     subscriptionId = $scopeId
@@ -481,7 +481,7 @@ function dataCollectionResources {
     foreach ($resourceType in ($resourcesSubscriptionResult | Group-Object -Property type)) {
         if (-not $htResourceTypesUniqueResource.(($resourceType.name).ToLower())) {
             $script:htResourceTypesUniqueResource.(($resourceType.name).ToLower()) = @{}
-            $script:htResourceTypesUniqueResource.(($resourceType.name).ToLower()).resourceId = $resourceType.Group.Id | Select-Object -first 1
+            $script:htResourceTypesUniqueResource.(($resourceType.name).ToLower()).resourceId = $resourceType.Group.Id | Select-Object -First 1
         }
     }
 
@@ -508,7 +508,7 @@ function dataCollectionResources {
                 namingConvention = $namingConvention
             })
         }
-    } 
+    }
 
     $htCAFNamingConvention = [ordered]@{}
     $arrayCAFNamingConventionGroupedByType = $arrayCAFNamingConvention | Sort-Object -Property resourceType | Group-Object -Property resourceType
@@ -1071,20 +1071,20 @@ function dataCollectionResources {
         }
 
         foreach ($resource in ($entry.Group)) {
-            
+
             if ($doCAFResourceNamingCheck) {
-                $cafResourceNamingCheck = "failed"
+                $cafResourceNamingCheck = 'failed'
                 $applicableNaming = $namingConvention -join "$CsvDelimiterOpposite "
                 foreach ($naming in $namingConvention) {
                     if (($resource.name).StartsWith($naming, 'CurrentCultureIgnoreCase')) {
-                        $cafResourceNamingCheck = "passed"
+                        $cafResourceNamingCheck = 'passed'
                         #$applicableNaming = $naming
                     }
                 }
             }
             else {
                 $cafResourceNamingCheck = 'n/a'
-                $applicableNaming = "n/a"
+                $applicableNaming = 'n/a'
             }
             $null = $script:resourcesIdsAll.Add([PSCustomObject]@{
                     subscriptionId                = $scopeId
@@ -1132,7 +1132,7 @@ function dataCollectionResources {
     $endSubResourceIdsThis = Get-Date
     $null = $script:arraySubResourcesAddArrayDuration.Add([PSCustomObject]@{
             sub         = $scopeId
-            DurationSec = (NEW-TIMESPAN -Start $startSubResourceIdsThis -End $endSubResourceIdsThis).TotalSeconds
+            DurationSec = (New-TimeSpan -Start $startSubResourceIdsThis -End $endSubResourceIdsThis).TotalSeconds
         })
 
 
@@ -1436,22 +1436,22 @@ function dataCollectionPolicyComplianceStates {
         [string]$scopeDisplayName,
         $subscriptionQuotaId
     )
-    
-    
-    if ($TargetMgOrSub -eq 'Sub') { 
+
+
+    if ($TargetMgOrSub -eq 'Sub') {
         $currentTask = "Getting Policy Compliance for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01" 
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
     }
     if ($TargetMgOrSub -eq 'MG') {
         $currentTask = "Getting Policy Compliance for Management Group: '$($scopeDisplayName)' ('$scopeId')"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01" 
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.PolicyInsights/policyStates/latest/summarize?api-version=2019-10-01"
     }
     $method = 'POST'
     $policyComplianceResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     if ($policyComplianceResult -eq 'ResponseTooLarge') {
-        if ($TargetMgOrSub -eq 'Sub') { 
-            $script:htCachePolicyComplianceResponseTooLargeSUB.($scopeId) = @{} 
+        if ($TargetMgOrSub -eq 'Sub') {
+            $script:htCachePolicyComplianceResponseTooLargeSUB.($scopeId) = @{}
         }
         if ($TargetMgOrSub -eq 'MG') {
             $script:htCachePolicyComplianceResponseTooLargeMG.($scopeId) = @{}
@@ -1845,7 +1845,7 @@ function dataCollectionPolicyDefinitions {
                     $htTemp.ScopeId = (($hlpPolicyDefinitionId).split('/'))[4]
                     $htTemp.ScopeMGLevel = $htManagementGroupsMgPath.((($hlpPolicyDefinitionId).split('/'))[4]).ParentNameChainCount
                 }
-                
+
                 if ($hlpPolicyDefinitionId -like '/subscriptions/*') {
                     $htTemp.Scope = (($hlpPolicyDefinitionId).split('/'))[0..2] -join '/'
                     $htTemp.ScopeMgSub = 'Sub'
@@ -1856,9 +1856,9 @@ function dataCollectionPolicyDefinitions {
 
                 if ($azAPICallConf['htParameters'].NoALZPolicyVersionChecker -eq $false) {
 
-                    $policyJsonRule = $scopePolicyDefinition.properties.policyRule | ConvertTo-Json -depth 99
-                    $hash = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonRule))
-                    $stringHash = [System.BitConverter]::ToString($hash) 
+                    $policyJsonRule = $scopePolicyDefinition.properties.policyRule | ConvertTo-Json -Depth 99
+                    $hash = [System.Security.Cryptography.HashAlgorithm]::Create('sha256').ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonRule))
+                    $stringHash = [System.BitConverter]::ToString($hash)
 
                     if ($alzPolicies.($scopePolicyDefinition.name) -or $alzPolicyHashes.($stringHash) -or $scopePolicyDefinition.properties.metadata.source -eq 'https://github.com/Azure/Enterprise-Scale/') {
 
@@ -1907,7 +1907,7 @@ function dataCollectionPolicyDefinitions {
                             else {
                                 $htTemp.ALZIdentificationLevel = 'Policy Name'
                             }
-                                    
+
                             $htTemp.ALZPolicyName = $alzPolicies.($scopePolicyDefinition.name).policyName
                             $htTemp.hash = $stringHash
                             if ($alzPolicies.($scopePolicyDefinition.name).status -eq 'obsolete') {
@@ -2077,7 +2077,7 @@ function dataCollectionPolicySetDefinitions {
         [string]$scopeDisplayName,
         $subscriptionQuotaId
     )
-    
+
     if ($TargetMgOrSub -eq 'Sub') {
         $currentTask = "Getting PolicySet definitions for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Custom'"
@@ -2138,12 +2138,12 @@ function dataCollectionPolicySetDefinitions {
 
                 if ($azAPICallConf['htParameters'].NoALZPolicyVersionChecker -eq $false) {
 
-                    $policyJsonParameters = $scopePolicySetDefinition.properties.parameters | ConvertTo-Json -depth 99
-                    $policyJsonPolicyDefinitions = $scopePolicySetDefinition.properties.policyDefinitions | ConvertTo-Json -depth 99
-                    $hashParameters = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonParameters))
-                    $stringHashParameters = [System.BitConverter]::ToString($hashParameters) 
-                    $hashPolicyDefinitions = [System.Security.Cryptography.HashAlgorithm]::Create("sha256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonPolicyDefinitions))
-                    $stringHashPolicyDefinitions = [System.BitConverter]::ToString($hashPolicyDefinitions) 
+                    $policyJsonParameters = $scopePolicySetDefinition.properties.parameters | ConvertTo-Json -Depth 99
+                    $policyJsonPolicyDefinitions = $scopePolicySetDefinition.properties.policyDefinitions | ConvertTo-Json -Depth 99
+                    $hashParameters = [System.Security.Cryptography.HashAlgorithm]::Create('sha256').ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonParameters))
+                    $stringHashParameters = [System.BitConverter]::ToString($hashParameters)
+                    $hashPolicyDefinitions = [System.Security.Cryptography.HashAlgorithm]::Create('sha256').ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonPolicyDefinitions))
+                    $stringHashPolicyDefinitions = [System.BitConverter]::ToString($hashPolicyDefinitions)
                     $stringHash = "$($stringHashParameters)_$($stringHashPolicyDefinitions)"
 
                     if ($alzPolicySets.($scopePolicySetDefinition.name) -or $allESLZPolicySetHashes.($stringHash) -or $scopePolicySetDefinition.properties.metadata.source -eq 'https://github.com/Azure/Enterprise-Scale/') {
@@ -2415,7 +2415,7 @@ function dataCollectionPolicyAssignmentsMG {
                         else {
                             #test
                             Write-Host "   attention! $scopeDisplayName ($scopeId); policyAssignment '$($L0mgmtGroupPolicyAssignment.Id)' policyDefinition (Policy) could not be found: '$($policyDefinitionId)' -retry"
-                            start-sleep -seconds 1
+                            Start-Sleep -Seconds 1
                         }
                     }
                     until ($policyReturnedFromHt -or $tryCounter -gt 2)
@@ -2597,7 +2597,7 @@ function dataCollectionPolicyAssignmentsMG {
                     else {
                         #test
                         #Write-Host "pa '($L0mgmtGroupPolicyAssignment.Id)' scope: '$($scopeId)' - policySetDefinition not available: $policySetDefinitionId"
-                        start-sleep -seconds 1
+                        Start-Sleep -Seconds 1
                     }
                 }
                 until ($policySetReturnedFromHt -or $tryCounter -gt 2)
@@ -2866,13 +2866,13 @@ function dataCollectionPolicyAssignmentsSub {
                         }
                         else {
                             Write-Host " **INCONSISTENCY! processing policyId:'$policyDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; policyAssignmentsPolicyDefinition.Type: '$($policyAssignmentsPolicyDefinition.Type)'"
-                            start-sleep -seconds 1
+                            Start-Sleep -Seconds 1
                         }
                     }
                     until($policyReturnedFromHt -or $tryCounter -gt 5)
                     if (-not $policyReturnedFromHt) {
                         Write-Host "FinalHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policyId:'$policyDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; policyAssignmentsPolicyDefinition.Type: '$($policyAssignmentsPolicyDefinition.Type)'"
-                        Write-Host ($policyAssignmentsPolicyDefinition | ConvertTo-Json -depth 99)
+                        Write-Host ($policyAssignmentsPolicyDefinition | ConvertTo-Json -Depth 99)
                         Write-Host "!Please report this error: $($azAPICallConf['htParameters'].GithubRepository)" -ForegroundColor Yellow
                         throw
                     }
@@ -3096,7 +3096,7 @@ function dataCollectionPolicyAssignmentsSub {
                         }
                         else {
                             #Write-Host "TryHandler - $scopeDisplayName ($scopeId) $policyVariant was processing: policySetId:'$policySetDefinitionId'; policyAss:'$($L1mgmtGroupSubPolicyAssignment.Id)'; type:'$(($policyAssignmentsPolicySetDefinition).Type)' - sleeping '$tryCounter' seconds"
-                            start-sleep -seconds 1
+                            Start-Sleep -Seconds 1
                         }
                     }
                     until($policySetReturnedFromHt -or $tryCounter -gt 5)
@@ -4003,7 +4003,7 @@ function dataCollectionClassicAdministratorsSub {
                         Identity           = $roleAll.properties.emailAddress
                         Role               = $role
                         Id                 = $roleAll.id
-                    }) 
+                    })
             }
         }
         $script:htClassicAdministrators.($scopeId) = @{}

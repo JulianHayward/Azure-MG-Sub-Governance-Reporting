@@ -27,17 +27,17 @@ on:
 jobs:
   AzGovViz:
     runs-on: ubuntu-latest
-    
+
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout
         uses: actions/checkout@v2
-      
+
       - name: Connect Azure
         uses: azure/login@v1
         with:
           creds: ${{secrets.CREDS}}
-          enable-AzPSSession: true 
+          enable-AzPSSession: true
           # Create secret CREDS (GitHub/Setting/Secrets)
           # CREDS looks like this:
           # {
@@ -60,9 +60,9 @@ jobs:
           inlineScript: |
             . .\$($env:ScriptDir)\$($env:ScriptFile) -ManagementGroupId ${env:ManagementGroupId} -ScriptPath ${env:ScriptDir} -OutputPath ${env:OutputPath}
           azPSVersion: "latest"
-      
+
       - name: Push AzGovViz output to repository
-        run: |        
+        run: |
           git config --global user.email "AzGovVizGHActions@ghActions.com"
           git config --global user.name "$GITHUB_ACTOR"
           git config pull.rebase false

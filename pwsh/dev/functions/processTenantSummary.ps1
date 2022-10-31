@@ -101,7 +101,7 @@ function processTenantSummary() {
         }
     }
     $endRelatedPolicyAssignmentsAll = Get-Date
-    Write-Host "   RelatedPolicyAssignmentsAll duration: $((NEW-TIMESPAN -Start $startRelatedPolicyAssignmentsAll -End $endRelatedPolicyAssignmentsAll).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startRelatedPolicyAssignmentsAll -End $endRelatedPolicyAssignmentsAll).TotalSeconds) seconds)"
+    Write-Host "   RelatedPolicyAssignmentsAll duration: $((New-TimeSpan -Start $startRelatedPolicyAssignmentsAll -End $endRelatedPolicyAssignmentsAll).TotalMinutes) minutes ($((New-TimeSpan -Start $startRelatedPolicyAssignmentsAll -End $endRelatedPolicyAssignmentsAll).TotalSeconds) seconds)"
     #endregion RelatedPolicyAssignments
 
     #region createRBACAll
@@ -112,7 +112,7 @@ function processTenantSummary() {
         $cnter++
         if ($cnter % 1000 -eq 0) {
             $etappeRoleAssignmentsAll = Get-Date
-            Write-Host "   $cnter of $roleAssignmentsallCount RoleAssignments processed; $((NEW-TIMESPAN -Start $startRoleAssignmentsAllPre -End $etappeRoleAssignmentsAll).TotalSeconds) seconds"
+            Write-Host "   $cnter of $roleAssignmentsallCount RoleAssignments processed; $((New-TimeSpan -Start $startRoleAssignmentsAllPre -End $etappeRoleAssignmentsAll).TotalSeconds) seconds"
         }
         $scope = $null
 
@@ -566,7 +566,7 @@ function processTenantSummary() {
             }
         }
         $endPIMEnrichment = Get-Date
-        Write-Host "    PIMEnrichment duration: $((NEW-TIMESPAN -Start $startPIMEnrichment -End $endPIMEnrichment).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPIMEnrichment -End $endPIMEnrichment).TotalSeconds) seconds)"
+        Write-Host "    PIMEnrichment duration: $((New-TimeSpan -Start $startPIMEnrichment -End $endPIMEnrichment).TotalMinutes) minutes ($((New-TimeSpan -Start $startPIMEnrichment -End $endPIMEnrichment).TotalSeconds) seconds)"
 
         if (-not $NoPIMEligibilityIntegrationRoleAssignmentsAll) {
             $startPIMEnrichmentToRBACAll = Get-Date
@@ -633,7 +633,7 @@ function processTenantSummary() {
                     })
             }
             $endPIMEnrichmentToRBACAll = Get-Date
-            Write-Host "    PIMEnrichment to RBACAll duration: $((NEW-TIMESPAN -Start $startPIMEnrichmentToRBACAll -End $endPIMEnrichmentToRBACAll).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPIMEnrichmentToRBACAll -End $endPIMEnrichmentToRBACAll).TotalSeconds) seconds)"
+            Write-Host "    PIMEnrichment to RBACAll duration: $((New-TimeSpan -Start $startPIMEnrichmentToRBACAll -End $endPIMEnrichmentToRBACAll).TotalMinutes) minutes ($((New-TimeSpan -Start $startPIMEnrichmentToRBACAll -End $endPIMEnrichmentToRBACAll).TotalSeconds) seconds)"
         }
     }
     #endregion PIMEligible
@@ -643,8 +643,8 @@ function processTenantSummary() {
     #prep prepUnresoledIdentities
     #region identitiesThatCreatedRoleAssignmentsButDontHaveARoleAssignmentThemselve
     $script:htIdentitiesWithRoleAssignmentsUnique = @{}
-    $identitiesWithRoleAssignmentsUnique = $rbacAll.where( { $_.ObjectType -ne 'Unknown' } ) | Sort-Object -property ObjectId -Unique | select-object ObjectType, ObjectDisplayName, ObjectSignInName, ObjectId
-    foreach ($identityWithRoleAssignment in $identitiesWithRoleAssignmentsUnique | Sort-Object -property objectType) {
+    $identitiesWithRoleAssignmentsUnique = $rbacAll.where( { $_.ObjectType -ne 'Unknown' } ) | Sort-Object -Property ObjectId -Unique | Select-Object ObjectType, ObjectDisplayName, ObjectSignInName, ObjectId
+    foreach ($identityWithRoleAssignment in $identitiesWithRoleAssignmentsUnique | Sort-Object -Property objectType) {
 
         if (-not $htIdentitiesWithRoleAssignmentsUnique.($identityWithRoleAssignment.ObjectId)) {
             $script:htIdentitiesWithRoleAssignmentsUnique.($identityWithRoleAssignment.ObjectId) = @{}
@@ -841,16 +841,16 @@ function processTenantSummary() {
         }
     }
     $endUnResolvedIdentitiesCreatedBy = Get-Date
-    Write-Host "   UnresolvedIdentities (createdBy) duration: $((NEW-TIMESPAN -Start $startUnResolvedIdentitiesCreatedBy -End $endUnResolvedIdentitiesCreatedBy).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startUnResolvedIdentitiesCreatedBy -End $endUnResolvedIdentitiesCreatedBy).TotalSeconds) seconds)"
+    Write-Host "   UnresolvedIdentities (createdBy) duration: $((New-TimeSpan -Start $startUnResolvedIdentitiesCreatedBy -End $endUnResolvedIdentitiesCreatedBy).TotalMinutes) minutes ($((New-TimeSpan -Start $startUnResolvedIdentitiesCreatedBy -End $endUnResolvedIdentitiesCreatedBy).TotalSeconds) seconds)"
     #endregion nonResolvedIdentities
 
     $startRBACAllGrouping = Get-Date
     $script:rbacAllGroupedBySubscription = $rbacAll | Group-Object -Property SubscriptionId
     $script:rbacAllGroupedByManagementGroup = $rbacAll | Group-Object -Property MgId
     $endRBACAllGrouping = Get-Date
-    Write-Host "   RBACAll Grouping duration: $((NEW-TIMESPAN -Start $startRBACAllGrouping -End $endRBACAllGrouping).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startRBACAllGrouping -End $endRBACAllGrouping).TotalSeconds) seconds)"
+    Write-Host "   RBACAll Grouping duration: $((New-TimeSpan -Start $startRBACAllGrouping -End $endRBACAllGrouping).TotalMinutes) minutes ($((New-TimeSpan -Start $startRBACAllGrouping -End $endRBACAllGrouping).TotalSeconds) seconds)"
     $endCreateRBACAll = Get-Date
-    Write-Host "   CreateRBACAll duration: $((NEW-TIMESPAN -Start $startCreateRBACAll -End $endCreateRBACAll).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startCreateRBACAll -End $endCreateRBACAll).TotalSeconds) seconds)"
+    Write-Host "   CreateRBACAll duration: $((New-TimeSpan -Start $startCreateRBACAll -End $endCreateRBACAll).TotalMinutes) minutes ($((New-TimeSpan -Start $startCreateRBACAll -End $endCreateRBACAll).TotalSeconds) seconds)"
     #endregion tenantSummaryPre
 
     showMemoryUsage
@@ -1382,7 +1382,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         }
     }
     $endCustPolLoop = Get-Date
-    Write-Host "   Custom Policy processing duration: $((NEW-TIMESPAN -Start $startCustPolLoop -End $endCustPolLoop).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startCustPolLoop -End $endCustPolLoop).TotalSeconds) seconds)"
+    Write-Host "   Custom Policy processing duration: $((New-TimeSpan -Start $startCustPolLoop -End $endCustPolLoop).TotalMinutes) minutes ($((New-TimeSpan -Start $startCustPolLoop -End $endCustPolLoop).TotalSeconds) seconds)"
     #endregion SUMMARYcustompolicies
 
     $startcustpolorph = Get-Date
@@ -1630,7 +1630,7 @@ extensions: [{ name: 'sort' }]
     }
     #endregion SUMMARYCustomPoliciesOrphandedTenantRoot
     $endcustpolorph = Get-Date
-    Write-Host "   processing TenantSummary Custom Policy definitions orphaned duration: $((NEW-TIMESPAN -Start $startcustpolorph -End $endcustpolorph).TotalSeconds) seconds"
+    Write-Host "   processing TenantSummary Custom Policy definitions orphaned duration: $((New-TimeSpan -Start $startcustpolorph -End $endcustpolorph).TotalSeconds) seconds"
 
     #region SUMMARYtenanttotalcustompolicySets
     $startCustPolSetLoop = Get-Date
@@ -1720,8 +1720,8 @@ extensions: [{ name: 'sort' }]
 
         $policySetPoliciesCount = ($policySetPoliciesArray).count
         if ($policySetPoliciesCount -gt 0) {
-            $policiesUsed = "$policySetPoliciesCount ($(($policySetPoliciesArray | sort-Object) -join "$CsvDelimiterOpposite "))"
-            $policiesUsedClean = "$policySetPoliciesCount ($(($policySetPoliciesArrayClean | sort-Object) -join "$CsvDelimiterOpposite "))"
+            $policiesUsed = "$policySetPoliciesCount ($(($policySetPoliciesArray | Sort-Object) -join "$CsvDelimiterOpposite "))"
+            $policiesUsedClean = "$policySetPoliciesCount ($(($policySetPoliciesArrayClean | Sort-Object) -join "$CsvDelimiterOpposite "))"
         }
         else {
             $policiesUsed = '0 really?'
@@ -2140,7 +2140,7 @@ extensions: [{ name: 'sort' }]
         }
     }
     $endCustPolSetLoop = Get-Date
-    Write-Host "   Custom PolicySet processing duration: $((NEW-TIMESPAN -Start $startCustPolSetLoop -End $endCustPolSetLoop).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startCustPolSetLoop -End $endCustPolSetLoop).TotalSeconds) seconds)"
+    Write-Host "   Custom PolicySet processing duration: $((New-TimeSpan -Start $startCustPolSetLoop -End $endCustPolSetLoop).TotalMinutes) minutes ($((New-TimeSpan -Start $startCustPolSetLoop -End $endCustPolSetLoop).TotalSeconds) seconds)"
     #endregion SUMMARYtenanttotalcustompolicySets
 
     #region SUMMARYCustompolicySetOrphandedTenantRoot
@@ -2273,7 +2273,7 @@ extensions: [{ name: 'sort' }]
                     }
                 }
                 else {
-                    write-host 'unexpected'
+                    Write-Host 'unexpected'
                 }
 
                 if ($isInScope -eq 'inScope') {
@@ -2522,7 +2522,7 @@ extensions: [{ name: 'sort' }]
 
             if (-not $NoCsvExport) {
                 Write-Host "Exporting 'Azure Landing Zones (ALZ) Policy Version Checker' CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZPolicyVersionChecker.csv'"
-                $alzPoliciesInTenant | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZPolicyVersionChecker.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                $alzPoliciesInTenant | Sort-Object -Property PolicyName, PolicyId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZPolicyVersionChecker.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
             }
 
             [void]$htmlTenantSummary.AppendLine($htmlSUMMARYALZPolicyVersionChecker)
@@ -2719,7 +2719,7 @@ extensions: [{ name: 'sort' }]
     }
     #endregion SUMMARYPolicySetsDeprecatedPolicy
     $endcustpolsetdeprpol = Get-Date
-    Write-Host "   processing PolicySetsDeprecatedPolicy duration: $((NEW-TIMESPAN -Start $startcustpolsetdeprpol -End $endcustpolsetdeprpol).TotalSeconds) seconds"
+    Write-Host "   processing PolicySetsDeprecatedPolicy duration: $((New-TimeSpan -Start $startcustpolsetdeprpol -End $endcustpolsetdeprpol).TotalSeconds) seconds"
 
     $startcustpolassdeprpol = Get-Date
     #region SUMMARYPolicyAssignmentsDeprecatedPolicy
@@ -2871,7 +2871,7 @@ extensions: [{ name: 'sort' }]
     }
     #endregion SUMMARYPolicyAssignmentsDeprecatedPolicy
     $endcustpolassdeprpol = Get-Date
-    Write-Host "   processing PolicyAssignmentsDeprecatedPolicy duration: $((NEW-TIMESPAN -Start $startcustpolassdeprpol -End $endcustpolassdeprpol).TotalSeconds) seconds"
+    Write-Host "   processing PolicyAssignmentsDeprecatedPolicy duration: $((New-TimeSpan -Start $startcustpolassdeprpol -End $endcustpolassdeprpol).TotalSeconds) seconds"
 
     #region SUMMARYPolicyExemptions
     Write-Host '  processing TenantSummary Policy exemptions'
@@ -2881,7 +2881,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $policyExemptionsCount
         $htmlTableId = 'TenantSummary_policyExemptions'
 
-        $expiredExemptionsCount = ($htPolicyAssignmentExemptions.Keys | where-object { $htPolicyAssignmentExemptions.($_).exemption.properties.expiresOn -and $htPolicyAssignmentExemptions.($_).exemption.properties.expiresOn -lt (Get-Date).ToUniversalTime() } | Measure-Object).count
+        $expiredExemptionsCount = ($htPolicyAssignmentExemptions.Keys | Where-Object { $htPolicyAssignmentExemptions.($_).exemption.properties.expiresOn -and $htPolicyAssignmentExemptions.($_).exemption.properties.expiresOn -lt (Get-Date).ToUniversalTime() } | Measure-Object).count
 
         [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_policyExemptions"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($policyExemptionsCount) Policy exemptions | Expired: $($expiredExemptionsCount)</span>
@@ -3366,7 +3366,7 @@ extensions: [{ name: 'sort' }]
     }
     $htPolicyAssignmentRoleAssignmentMappingCount = ($htPolicyAssignmentRoleAssignmentMapping.keys).Count
     $endPolicyAssignmentsRoleAssignmentMapping = Get-Date
-    Write-Host "   PolicyAssignmentsRoleAssignmentMapping processing duration: $((NEW-TIMESPAN -Start $startPolicyAssignmentsRoleAssignmentMapping -End $endPolicyAssignmentsRoleAssignmentMapping).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPolicyAssignmentsRoleAssignmentMapping -End $endPolicyAssignmentsRoleAssignmentMapping).TotalSeconds) seconds)"
+    Write-Host "   PolicyAssignmentsRoleAssignmentMapping processing duration: $((New-TimeSpan -Start $startPolicyAssignmentsRoleAssignmentMapping -End $endPolicyAssignmentsRoleAssignmentMapping).TotalMinutes) minutes ($((New-TimeSpan -Start $startPolicyAssignmentsRoleAssignmentMapping -End $endPolicyAssignmentsRoleAssignmentMapping).TotalSeconds) seconds)"
     #endregion PolicyAssignmentsRoleAssignmentMapping
 
     #region PolicyAssignmentsUniqueRelations
@@ -3424,7 +3424,7 @@ extensions: [{ name: 'sort' }]
         #endregion exemptions
     }
     $endPolicyAssignmnetsUniqueRelations = Get-Date
-    Write-Host "   PolicyAssignmnetsUniqueRelations processing duration: $((NEW-TIMESPAN -Start $startPolicyAssignmnetsUniqueRelations -End $endPolicyAssignmnetsUniqueRelations).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPolicyAssignmnetsUniqueRelations -End $endPolicyAssignmnetsUniqueRelations).TotalSeconds) seconds)"
+    Write-Host "   PolicyAssignmnetsUniqueRelations processing duration: $((New-TimeSpan -Start $startPolicyAssignmnetsUniqueRelations -End $endPolicyAssignmnetsUniqueRelations).TotalMinutes) minutes ($((New-TimeSpan -Start $startPolicyAssignmnetsUniqueRelations -End $endPolicyAssignmnetsUniqueRelations).TotalSeconds) seconds)"
     #endregion PolicyAssignmentsUniqueRelations
 
     #region PolicyAssignmentsAllCreateEnriched
@@ -3435,7 +3435,7 @@ extensions: [{ name: 'sort' }]
         $cnter++
         if ($cnter % 1000 -eq 0) {
             $etappeSummaryPolicyAssignmentsAll = Get-Date
-            Write-Host "    $cnter of $allPolicyAssignments PolicyAssignments processed: $((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAll -End $etappeSummaryPolicyAssignmentsAll).TotalSeconds) seconds"
+            Write-Host "    $cnter of $allPolicyAssignments PolicyAssignments processed: $((New-TimeSpan -Start $startSummaryPolicyAssignmentsAll -End $etappeSummaryPolicyAssignmentsAll).TotalSeconds) seconds"
         }
 
         #region AzAdvertizerLinkOrNot
@@ -3788,7 +3788,7 @@ extensions: [{ name: 'sort' }]
         }
     }
     $EndPolicyAssignmentsAllCreateEnriched = Get-Date
-    Write-Host "   PolicyAssignmentsAllCreateEnriched processing duration: $((NEW-TIMESPAN -Start $startPolicyAssignmentsAllCreateEnriched -End $EndPolicyAssignmentsAllCreateEnriched).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPolicyAssignmentsAllCreateEnriched -End $EndPolicyAssignmentsAllCreateEnriched).TotalSeconds) seconds)"
+    Write-Host "   PolicyAssignmentsAllCreateEnriched processing duration: $((New-TimeSpan -Start $startPolicyAssignmentsAllCreateEnriched -End $EndPolicyAssignmentsAllCreateEnriched).TotalMinutes) minutes ($((New-TimeSpan -Start $startPolicyAssignmentsAllCreateEnriched -End $EndPolicyAssignmentsAllCreateEnriched).TotalSeconds) seconds)"
     #endregion PolicyAssignmentsAllCreateEnriched
 
     #region PolicyAssignmentsAllResolveIdentities
@@ -3926,7 +3926,7 @@ extensions: [{ name: 'sort' }]
     }
 
     $endUnResolvedIdentitiesCreatedByUpdatedByPolicy = Get-Date
-    Write-Host "    UnresolvedIdentities (createdBy/updatedBy) duration: $((NEW-TIMESPAN -Start $startUnResolvedIdentitiesCreatedByUpdatedByPolicy -End $endUnResolvedIdentitiesCreatedByUpdatedByPolicy).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startUnResolvedIdentitiesCreatedByUpdatedByPolicy -End $endUnResolvedIdentitiesCreatedByUpdatedByPolicy).TotalSeconds) seconds)"
+    Write-Host "    UnresolvedIdentities (createdBy/updatedBy) duration: $((New-TimeSpan -Start $startUnResolvedIdentitiesCreatedByUpdatedByPolicy -End $endUnResolvedIdentitiesCreatedByUpdatedByPolicy).TotalMinutes) minutes ($((New-TimeSpan -Start $startUnResolvedIdentitiesCreatedByUpdatedByPolicy -End $endUnResolvedIdentitiesCreatedByUpdatedByPolicy).TotalSeconds) seconds)"
     #endregion PolicyAssignmentsAllResolveIdentities
 
     $script:arrayPolicyAssignmentsEnrichedGroupedBySubscription = $arrayPolicyAssignmentsEnriched | Group-Object -Property subscriptionId
@@ -4098,14 +4098,14 @@ extensions: [{ name: 'sort' }]
             }
 
             $endloop = Get-Date
-            Write-Host "    html foreach loop duration: $((NEW-TIMESPAN -Start $startloop -End $endloop).TotalSeconds) seconds"
+            Write-Host "    html foreach loop duration: $((New-TimeSpan -Start $startloop -End $endloop).TotalSeconds) seconds"
 
             $start = Get-Date
             [void]$htmlTenantSummary.AppendLine($htmlSummaryPolicyAssignmentsAll)
             $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
             $htmlTenantSummary = [System.Text.StringBuilder]::new()
             $end = Get-Date
-            Write-Host "    html append file duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
+            Write-Host "    html append file duration: $((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds"
 
             [void]$htmlTenantSummary.AppendLine(@"
             </tbody>
@@ -4253,10 +4253,10 @@ extensions: [{ name: 'sort' }]
 "@)
     }
     $endSummaryPolicyAssignmentsAllHTML = Get-Date
-    Write-Host "   SummaryPolicyAssignmentsAllHTML duration: $((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAllHTML -End $endSummaryPolicyAssignmentsAllHTML).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAllHTML -End $endSummaryPolicyAssignmentsAllHTML).TotalSeconds) seconds)"
+    Write-Host "   SummaryPolicyAssignmentsAllHTML duration: $((New-TimeSpan -Start $startSummaryPolicyAssignmentsAllHTML -End $endSummaryPolicyAssignmentsAllHTML).TotalMinutes) minutes ($((New-TimeSpan -Start $startSummaryPolicyAssignmentsAllHTML -End $endSummaryPolicyAssignmentsAllHTML).TotalSeconds) seconds)"
     #endregion policyAssignmentsAllHTML
     $endSummaryPolicyAssignmentsAll = Get-Date
-    Write-Host "   SummaryPolicyAssignmentsAll duration: $((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAll -End $endSummaryPolicyAssignmentsAll).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSummaryPolicyAssignmentsAll -End $endSummaryPolicyAssignmentsAll).TotalSeconds) seconds)"
+    Write-Host "   SummaryPolicyAssignmentsAll duration: $((New-TimeSpan -Start $startSummaryPolicyAssignmentsAll -End $endSummaryPolicyAssignmentsAll).TotalMinutes) minutes ($((New-TimeSpan -Start $startSummaryPolicyAssignmentsAll -End $endSummaryPolicyAssignmentsAll).TotalSeconds) seconds)"
     #endregion SUMMARYPolicyAssignmentsAll
 
     [void]$htmlTenantSummary.AppendLine(@'
@@ -4539,7 +4539,7 @@ extensions: [{ name: 'sort' }]
         #not renant root
     }
     else {
-        $mgs = (($optimizedTableForPathQueryMg.where( { $_.mgId -ne '' -and $_.Level -ne '0' })) | select-object MgId -unique)
+        $mgs = (($optimizedTableForPathQueryMg.where( { $_.mgId -ne '' -and $_.Level -ne '0' })) | Select-Object MgId -Unique)
         $arrayCustomRolesOrphanedFinalIncludingResourceGroups = [System.Collections.ArrayList]@()
 
         $mgSubRoleAssignmentsArrayRoleDefinitionIdUnique = $mgSubRoleAssignmentsArrayFromHTValues.RoleDefinitionId | Sort-Object -Unique
@@ -4668,7 +4668,7 @@ extensions: [{ name: 'sort' }]
         }
     }
     $endSUMMARYOrphanedCustomRoles = Get-Date
-    Write-Host "   SUMMARYOrphanedCustomRoles duration: $((NEW-TIMESPAN -Start $startSUMMARYOrphanedCustomRoles -End $endSUMMARYOrphanedCustomRoles).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYOrphanedCustomRoles -End $endSUMMARYOrphanedCustomRoles).TotalSeconds) seconds)"
+    Write-Host "   SUMMARYOrphanedCustomRoles duration: $((New-TimeSpan -Start $startSUMMARYOrphanedCustomRoles -End $endSUMMARYOrphanedCustomRoles).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYOrphanedCustomRoles -End $endSUMMARYOrphanedCustomRoles).TotalSeconds) seconds)"
 
     #endregion SUMMARYOrphanedCustomRoles
 
@@ -4910,7 +4910,7 @@ extensions: [{ name: 'sort' }]
             }
 
             $endCreateRBACAllCSV = Get-Date
-            Write-Host "   CreateRBACAll CSV duration: $((NEW-TIMESPAN -Start $startCreateRBACAllCSV -End $endCreateRBACAllCSV).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startCreateRBACAllCSV -End $endCreateRBACAllCSV).TotalSeconds) seconds)"
+            Write-Host "   CreateRBACAll CSV duration: $((New-TimeSpan -Start $startCreateRBACAllCSV -End $endCreateRBACAllCSV).TotalMinutes) minutes ($((New-TimeSpan -Start $startCreateRBACAllCSV -End $endCreateRBACAllCSV).TotalSeconds) seconds)"
         }
 
         if ($tfCount -gt $HtmlTableRowsLimit) {
@@ -4991,7 +4991,7 @@ extensions: [{ name: 'sort' }]
             $htmlTenantSummary = [System.Text.StringBuilder]::new()
 
             $endCreateRBACAllHTMLbeforeForeach = Get-Date
-            Write-Host "   CreateRBACAll HTML before Foreach duration: $((NEW-TIMESPAN -Start $startCreateRBACAllHTMLbeforeForeach -End $endCreateRBACAllHTMLbeforeForeach).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startCreateRBACAllHTMLbeforeForeach -End $endCreateRBACAllHTMLbeforeForeach).TotalSeconds) seconds)"
+            Write-Host "   CreateRBACAll HTML before Foreach duration: $((New-TimeSpan -Start $startCreateRBACAllHTMLbeforeForeach -End $endCreateRBACAllHTMLbeforeForeach).TotalMinutes) minutes ($((New-TimeSpan -Start $startCreateRBACAllHTMLbeforeForeach -End $endCreateRBACAllHTMLbeforeForeach).TotalSeconds) seconds)"
 
             $startSortRBACAll = Get-Date
             if ($azAPICallConf['htParameters'].LargeTenant -or $azAPICallConf['htParameters'].RBACAtScopeOnly) {
@@ -5002,7 +5002,7 @@ extensions: [{ name: 'sort' }]
             }
 
             $endSortRBACAll = Get-Date
-            Write-Host "   Sort RBACAll duration: $((NEW-TIMESPAN -Start $startSortRBACAll -End $endSortRBACAll).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSortRBACAll -End $endSortRBACAll).TotalSeconds) seconds)"
+            Write-Host "   Sort RBACAll duration: $((New-TimeSpan -Start $startSortRBACAll -End $endSortRBACAll).TotalMinutes) minutes ($((New-TimeSpan -Start $startSortRBACAll -End $endSortRBACAll).TotalSeconds) seconds)"
 
             $startCreateRBACAllHTMLForeach = Get-Date
             $htmlSummaryRoleAssignmentsAll = [System.Text.StringBuilder]::new()
@@ -5092,7 +5092,7 @@ extensions: [{ name: 'sort' }]
             $end = Get-Date
 
             $endCreateRBACAllHTMLForeach = Get-Date
-            Write-Host "   CreateRBACAll HTML Foreach duration: $((NEW-TIMESPAN -Start $startCreateRBACAllHTMLForeach -End $endCreateRBACAllHTMLForeach).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startCreateRBACAllHTMLForeach -End $endCreateRBACAllHTMLForeach).TotalSeconds) seconds)"
+            Write-Host "   CreateRBACAll HTML Foreach duration: $((New-TimeSpan -Start $startCreateRBACAllHTMLForeach -End $endCreateRBACAllHTMLForeach).TotalMinutes) minutes ($((New-TimeSpan -Start $startCreateRBACAllHTMLForeach -End $endCreateRBACAllHTMLForeach).TotalSeconds) seconds)"
 
             [void]$htmlTenantSummary.AppendLine(@"
             </tbody>
@@ -5185,7 +5185,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     }
 
     $endRoleAssignmentsAll = Get-Date
-    Write-Host "   SummaryRoleAssignmentsAll duration: $((NEW-TIMESPAN -Start $startRoleAssignmentsAll -End $endRoleAssignmentsAll).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startRoleAssignmentsAll -End $endRoleAssignmentsAll).TotalSeconds) seconds)"
+    Write-Host "   SummaryRoleAssignmentsAll duration: $((New-TimeSpan -Start $startRoleAssignmentsAll -End $endRoleAssignmentsAll).TotalMinutes) minutes ($((New-TimeSpan -Start $startRoleAssignmentsAll -End $endRoleAssignmentsAll).TotalSeconds) seconds)"
     #endregion SUMMARYRoleAssignmentsAll
 
     #region SUMMARYPIMEligibility
@@ -5340,7 +5340,7 @@ extensions: [{ name: 'sort' }]
         }
 
         $endPIMEligibility = Get-Date
-        Write-Host "   TenantSummary PIMEligibility duration: $((NEW-TIMESPAN -Start $startPIMEligibility -End $endPIMEligibility).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPIMEligibility -End $endPIMEligibility).TotalSeconds) seconds)"
+        Write-Host "   TenantSummary PIMEligibility duration: $((New-TimeSpan -Start $startPIMEligibility -End $endPIMEligibility).TotalMinutes) minutes ($((New-TimeSpan -Start $startPIMEligibility -End $endPIMEligibility).TotalSeconds) seconds)"
     }
     else {
         if ($azAPICallConf['htParameters'].accountType -ne 'User' -and $NoPIMEligibility) {
@@ -5617,7 +5617,7 @@ extensions: [{ name: 'sort' }]
 <td>$($roleAssignmentOwnerAssignmentSP.RoleDefinitionId)</td>
 <td>$($roleAssignmentOwnerAssignmentSP.RoleAssignmentId)</td>
 <td>$($servicePrincipal.RoleAssignmentIdentityDisplayname) ($($servicePrincipal.RoleAssignmentIdentityObjectId))</td>
-<td>Mg: $(($impactedMgs.mgid | Sort-Object -unique).count); Sub: $(($impactedSubs.subscriptionId | Sort-Object -unique).count)</td>
+<td>Mg: $(($impactedMgs.mgid | Sort-Object -Unique).count); Sub: $(($impactedSubs.subscriptionId | Sort-Object -Unique).count)</td>
 </tr>
 "@
         }
@@ -5678,7 +5678,7 @@ extensions: [{ name: 'sort' }]
 "@)
     }
     $endSUMMARYSecurityOwnerAssignmentSP = Get-Date
-    Write-Host "   TenantSummary RoleAssignments security (owner SP) duration: $((NEW-TIMESPAN -Start $startSUMMARYSecurityOwnerAssignmentSP -End $endSUMMARYSecurityOwnerAssignmentSP).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYSecurityOwnerAssignmentSP -End $endSUMMARYSecurityOwnerAssignmentSP).TotalSeconds) seconds)"
+    Write-Host "   TenantSummary RoleAssignments security (owner SP) duration: $((New-TimeSpan -Start $startSUMMARYSecurityOwnerAssignmentSP -End $endSUMMARYSecurityOwnerAssignmentSP).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYSecurityOwnerAssignmentSP -End $endSUMMARYSecurityOwnerAssignmentSP).TotalSeconds) seconds)"
     #endregion SUMMARYSecurityOwnerAssignmentSP
 
     #region SUMMARYSecurityOwnerAssignmentNotGroup
@@ -5686,7 +5686,7 @@ extensions: [{ name: 'sort' }]
     $startSUMMARYSecurityOwnerAssignmentNotGroup = Get-Date
 
     $roleAssignmentsOwnerAssignmentNotGroup = $rbacBaseQueryArrayListNotGroupOwner | Sort-Object -Property RoleAssignmentId -Unique
-    $roleAssignmentsOwnerAssignmentNotGroupGrouped = ($rbacBaseQueryArrayListNotGroupOwner | Group-Object -property roleassignmentId)
+    $roleAssignmentsOwnerAssignmentNotGroupGrouped = ($rbacBaseQueryArrayListNotGroupOwner | Group-Object -Property roleassignmentId)
 
     if (($roleAssignmentsOwnerAssignmentNotGroup).count -gt 0) {
         $tfCount = ($roleAssignmentsOwnerAssignmentNotGroup).count
@@ -5725,7 +5725,7 @@ extensions: [{ name: 'sort' }]
 <td>$($roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentIdentityDisplayname)</td>
 <td class="breakwordall">$($roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentIdentitySignInName)</td>
 <td class="breakwordall">$($roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentIdentityObjectId)</td>
-<td>Mg: $(($impactedMgs.mgid | Sort-Object -unique).count); Sub: $(($impactedSubs.subscriptionId | Sort-Object -unique).count)</td>
+<td>Mg: $(($impactedMgs.mgid | Sort-Object -Unique).count); Sub: $(($impactedSubs.subscriptionId | Sort-Object -Unique).count)</td>
 </tr>
 "@
         }
@@ -5791,14 +5791,14 @@ extensions: [{ name: 'sort' }]
 "@)
     }
     $endSUMMARYSecurityOwnerAssignmentNotGroup = Get-Date
-    Write-Host "   TenantSummary RoleAssignments security (owner notGroup) duration: $((NEW-TIMESPAN -Start $startSUMMARYSecurityOwnerAssignmentNotGroup -End $endSUMMARYSecurityOwnerAssignmentNotGroup).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYSecurityOwnerAssignmentNotGroup -End $endSUMMARYSecurityOwnerAssignmentNotGroup).TotalSeconds) seconds)"
+    Write-Host "   TenantSummary RoleAssignments security (owner notGroup) duration: $((New-TimeSpan -Start $startSUMMARYSecurityOwnerAssignmentNotGroup -End $endSUMMARYSecurityOwnerAssignmentNotGroup).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYSecurityOwnerAssignmentNotGroup -End $endSUMMARYSecurityOwnerAssignmentNotGroup).TotalSeconds) seconds)"
     #endregion SUMMARYSecurityOwnerAssignmentNotGroup
 
     #region SUMMARYSecurityUserAccessAdministratorAssignmentNotGroup
     $startSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup = Get-Date
     Write-Host '  processing TenantSummary RoleAssignments security (userAccessAdministrator notGroup)'
     $roleAssignmentsUserAccessAdministratorAssignmentNotGroup = $rbacBaseQueryArrayListNotGroupUserAccessAdministrator | Sort-Object -Property RoleAssignmentId -Unique
-    $roleAssignmentsUserAccessAdministratorAssignmentNotGroupGrouped = ($rbacBaseQueryArrayListNotGroupUserAccessAdministrator | Group-Object -property roleassignmentId)
+    $roleAssignmentsUserAccessAdministratorAssignmentNotGroupGrouped = ($rbacBaseQueryArrayListNotGroupUserAccessAdministrator | Group-Object -Property roleassignmentId)
 
     if (($roleAssignmentsUserAccessAdministratorAssignmentNotGroup).count -gt 0) {
         $tfCount = ($roleAssignmentsUserAccessAdministratorAssignmentNotGroup).count
@@ -5837,7 +5837,7 @@ extensions: [{ name: 'sort' }]
 <td>$($roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentIdentityDisplayname)</td>
 <td class="breakwordall">$($roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentIdentitySignInName)</td>
 <td class="breakwordall">$($roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentIdentityObjectId)</td>
-<td>Mg: $(($impactedMgs.mgid | Sort-Object -unique).count); Sub: $(($impactedSubs.subscriptionId | Sort-Object -unique).count)</td>
+<td>Mg: $(($impactedMgs.mgid | Sort-Object -Unique).count); Sub: $(($impactedSubs.subscriptionId | Sort-Object -Unique).count)</td>
 </tr>
 "@
         }
@@ -5902,14 +5902,14 @@ extensions: [{ name: 'sort' }]
 "@)
     }
     $endSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup = Get-Date
-    Write-Host "   TenantSummary RoleAssignments security (userAccessAdministrator notGroup) duration: $((NEW-TIMESPAN -Start $startSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup -End $endSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup -End $endSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup).TotalSeconds) seconds)"
+    Write-Host "   TenantSummary RoleAssignments security (userAccessAdministrator notGroup) duration: $((New-TimeSpan -Start $startSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup -End $endSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup -End $endSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup).TotalSeconds) seconds)"
     #endregion SUMMARYSecurityUserAccessAdministratorAssignmentNotGroup
 
     #region SUMMARYSecurityGuestUserHighPriviledgesAssignments
 
     $startSUMMARYSecurityGuestUserHighPriviledgesAssignments = Get-Date
     Write-Host '  processing TenantSummary RoleAssignments security (high privileged Guest User)'
-    $highPrivilegedGuestUserRoleAssignments = $rbacAll.where( { ($_.RoleId -eq '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' -or $_.RoleId -eq '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9') -and $_.ObjectType -eq 'User Guest' }) | Sort-Object -property RoleAssignmentId, ObjectId -Unique
+    $highPrivilegedGuestUserRoleAssignments = $rbacAll.where( { ($_.RoleId -eq '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' -or $_.RoleId -eq '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9') -and $_.ObjectType -eq 'User Guest' }) | Sort-Object -Property RoleAssignmentId, ObjectId -Unique
     $highPrivilegedGuestUserRoleAssignmentsCount = ($highPrivilegedGuestUserRoleAssignments).Count
     if ($highPrivilegedGuestUserRoleAssignmentsCount -gt 0) {
         $tfCount = $highPrivilegedGuestUserRoleAssignmentsCount
@@ -6016,7 +6016,7 @@ extensions: [{ name: 'sort' }]
 "@)
     }
     $endSUMMARYSecurityGuestUserHighPriviledgesAssignments = Get-Date
-    Write-Host "   TenantSummary RoleAssignments security (high privileged Guest User) duration: $((NEW-TIMESPAN -Start $startSUMMARYSecurityGuestUserHighPriviledgesAssignments -End $endSUMMARYSecurityGuestUserHighPriviledgesAssignments).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYSecurityGuestUserHighPriviledgesAssignments -End $endSUMMARYSecurityGuestUserHighPriviledgesAssignments).TotalSeconds) seconds)"
+    Write-Host "   TenantSummary RoleAssignments security (high privileged Guest User) duration: $((New-TimeSpan -Start $startSUMMARYSecurityGuestUserHighPriviledgesAssignments -End $endSUMMARYSecurityGuestUserHighPriviledgesAssignments).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYSecurityGuestUserHighPriviledgesAssignments -End $endSUMMARYSecurityGuestUserHighPriviledgesAssignments).TotalSeconds) seconds)"
     #endregion SUMMARYSecurityGuestUserHighPriviledgesAssignments
 
 
@@ -6558,7 +6558,7 @@ extensions: [{ name: 'sort' }]
 "@)
     }
     $endSUMMARYMGs = Get-Date
-    Write-Host "   SUMMARYMGs duration: $((NEW-TIMESPAN -Start $startSUMMARYMGs -End $endSUMMARYMGs).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYMGs -End $endSUMMARYMGs).TotalSeconds) seconds)"
+    Write-Host "   SUMMARYMGs duration: $((New-TimeSpan -Start $startSUMMARYMGs -End $endSUMMARYMGs).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYMGs -End $endSUMMARYMGs).TotalSeconds) seconds)"
     #endregion SUMMARYMGs
 
     #region SUMMARYMGdefault
@@ -6639,7 +6639,7 @@ extensions: [{ name: 'sort' }]
 '@)
 
         Write-Host " Exporting MDfC Email Notifications CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv'"
-        $htDefenderEmailContacts.values | Select-Object -Property subscriptionId, subscriptionName, alertNotificationsState, alertNotificationsminimalSeverity, roles, emails | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        $htDefenderEmailContacts.values | Sort-Object -Property subscriptionName | Select-Object -Property subscriptionId, subscriptionName, alertNotificationsState, alertNotificationsminimalSeverity, roles, emails | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
 
         $htmlSUMMARYSubs = $null
         $htmlSUMMARYSubs = foreach ($summarySubscription in $summarySubscriptions) {
@@ -7104,7 +7104,7 @@ extensions: [{ name: 'sort' }]
 '@)
         }
         $endSUMMARYResources = Get-Date
-        Write-Host "   SUMMARY Resources processing duration: $((NEW-TIMESPAN -Start $startSUMMARYResources -End $endSUMMARYResources).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYResources -End $endSUMMARYResources).TotalSeconds) seconds)"
+        Write-Host "   SUMMARY Resources processing duration: $((New-TimeSpan -Start $startSUMMARYResources -End $endSUMMARYResources).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYResources -End $endSUMMARYResources).TotalSeconds) seconds)"
         #endregion SUMMARYResources
 
         #region SUMMARYResourcesByLocation
@@ -7210,7 +7210,7 @@ extensions: [{ name: 'sort' }]
 '@)
         }
         $endSUMMARYResources = Get-Date
-        Write-Host "   SUMMARY Resources ByLocation processing duration: $((NEW-TIMESPAN -Start $startSUMMARYResources -End $endSUMMARYResources).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYResources -End $endSUMMARYResources).TotalSeconds) seconds)"
+        Write-Host "   SUMMARY Resources ByLocation processing duration: $((New-TimeSpan -Start $startSUMMARYResources -End $endSUMMARYResources).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYResources -End $endSUMMARYResources).TotalSeconds) seconds)"
         #endregion SUMMARYResourcesByLocation
 
         #region SUMMARYResourceFluctuation
@@ -7308,7 +7308,7 @@ extensions: [{ name: 'sort' }]
 '@)
         }
         $endSUMMARYResourceFluctuation = Get-Date
-        Write-Host "   SUMMARY Resource fluctuation processing duration: $((NEW-TIMESPAN -Start $startSUMMARYResourceFluctuation -End $endSUMMARYResourceFluctuation).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYResourceFluctuation -End $endSUMMARYResourceFluctuation).TotalSeconds) seconds)"
+        Write-Host "   SUMMARY Resource fluctuation processing duration: $((New-TimeSpan -Start $startSUMMARYResourceFluctuation -End $endSUMMARYResourceFluctuation).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYResourceFluctuation -End $endSUMMARYResourceFluctuation).TotalSeconds) seconds)"
         #endregion SUMMARYResourceFluctuation
 
         #region SUMMARYCAFResourceNamingALL
@@ -7446,7 +7446,7 @@ extensions: [{ name: 'sort' }]
 '@)
         }
         $endSUMMARYCAFResourceNamingALL = Get-Date
-        Write-Host "   SUMMARY CAFResourceNamingALL processing duration: $((NEW-TIMESPAN -Start $startSUMMARYCAFResourceNamingALL -End $endSUMMARYCAFResourceNamingALL).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYCAFResourceNamingALL -End $endSUMMARYCAFResourceNamingALL).TotalSeconds) seconds)"
+        Write-Host "   SUMMARY CAFResourceNamingALL processing duration: $((New-TimeSpan -Start $startSUMMARYCAFResourceNamingALL -End $endSUMMARYCAFResourceNamingALL).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYCAFResourceNamingALL -End $endSUMMARYCAFResourceNamingALL).TotalSeconds) seconds)"
         #endregion SUMMARYCAFResourceNamingALL
     }
 
@@ -7492,22 +7492,20 @@ extensions: [{ name: 'sort' }]
 
         $htmlSUMMARYOrphanedResources = $null
         $htmlSUMMARYOrphanedResources = foreach ($orphanedResourceType in $arrayOrphanedResourcesGroupedByType | Sort-Object -Property Name) {
-            $orphCostForDailySummary = $null
             $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)" = ($orphanedResourceType.count)
 
             if ($orphanedIncludingCost) {
                 if ($orphanedResourceType.Group.Intent[0] -eq 'cost savings') {
                     $orphCost = ($orphanedResourceType.Group.Cost | Measure-Object -Sum).Sum
                     $orphCurrency = $orphanedResourceType.Group.Currency[0]
-                    $orphCostForDailySummary = $orphCost
+                    $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)_Costs" = $orphCost
+                    $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)_Costs_ConsumptionPeriodInDays" = $AzureConsumptionPeriod
                 }
                 else {
                     $orphCost = ''
                     $orphCurrency = ''
-                    $orphCostForDailySummary = 0
                 }
-                $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)_Costs" = $orphCostForDailySummary
-                $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)_Costs_ConsumptionPeriodInDays" = $AzureConsumptionPeriod
+
             }
             else {
                 if ($orphanedResourceType.Group.Intent[0] -eq 'cost savings') {
@@ -7592,7 +7590,7 @@ extensions: [{ name: 'sort' }]
 '@)
     }
     $endSUMMARYOrphanedResources = Get-Date
-    Write-Host "   SUMMARY Orphaned Resources processing duration: $((NEW-TIMESPAN -Start $startSUMMARYOrphanedResources -End $endSUMMARYOrphanedResources).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYOrphanedResources -End $endSUMMARYOrphanedResources).TotalSeconds) seconds)"
+    Write-Host "   SUMMARY Orphaned Resources processing duration: $((New-TimeSpan -Start $startSUMMARYOrphanedResources -End $endSUMMARYOrphanedResources).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYOrphanedResources -End $endSUMMARYOrphanedResources).TotalSeconds) seconds)"
     #endregion SUMMARYOrphanedResources
 
     #region SUMMARYSubResourceProviders
@@ -7601,13 +7599,13 @@ extensions: [{ name: 'sort' }]
         Write-Host '  processing TenantSummary Subscriptions Resource Providers'
         $resourceProvidersAllCount = (($htResourceProvidersAll).Keys | Measure-Object).count
         if ($resourceProvidersAllCount -gt 0) {
-            $grped = (($htResourceProvidersAll).values.Providers) | Sort-Object -property namespace, registrationState | Group-Object namespace
+            $grped = (($htResourceProvidersAll).values.Providers) | Sort-Object -Property namespace, registrationState | Group-Object namespace
             $htResProvSummary = @{}
             foreach ($grp in $grped) {
                 $htResProvSummary.($grp.name) = @{}
-                $regstates = ($grp.group | Sort-Object -property registrationState -unique).registrationstate
+                $regstates = ($grp.group | Sort-Object -Property registrationState -Unique).registrationstate
                 foreach ($regstate in $regstates) {
-                    $htResProvSummary.($grp.name).$regstate = (($grp.group).where( { $_.registrationstate -eq $regstate }) | measure-object).count
+                    $htResProvSummary.($grp.name).$regstate = (($grp.group).where( { $_.registrationstate -eq $regstate }) | Measure-Object).count
                 }
             }
             $providerSummary = [System.Collections.ArrayList]@()
@@ -7749,7 +7747,7 @@ extensions: [{ name: 'sort' }]
 "@)
         }
         $endSUMMARYSubResourceProviders = Get-Date
-        Write-Host "   TenantSummary Subscriptions Resource Providers duration: $((NEW-TIMESPAN -Start $startSUMMARYSubResourceProviders -End $endSUMMARYSubResourceProviders).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYSubResourceProviders -End $endSUMMARYSubResourceProviders).TotalSeconds) seconds)"
+        Write-Host "   TenantSummary Subscriptions Resource Providers duration: $((New-TimeSpan -Start $startSUMMARYSubResourceProviders -End $endSUMMARYSubResourceProviders).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYSubResourceProviders -End $endSUMMARYSubResourceProviders).TotalSeconds) seconds)"
     }
     #endregion SUMMARYSubResourceProviders
 
@@ -7796,7 +7794,7 @@ extensions: [{ name: 'sort' }]
                         $cnter++
                         if ($cnter % 1000 -eq 0) {
                             $etappeResProvDetailed = Get-Date
-                            Write-Host "   $cnter ResProv processed; $((NEW-TIMESPAN -Start $startResProvDetailed -End $etappeResProvDetailed).TotalSeconds) seconds"
+                            Write-Host "   $cnter ResProv processed; $((New-TimeSpan -Start $startResProvDetailed -End $etappeResProvDetailed).TotalSeconds) seconds"
                         }
 
                         #array for exportCSV
@@ -7902,7 +7900,7 @@ extensions: [{ name: 'sort' }]
 "@)
             }
             $endsumRPDetailed = Get-Date
-            Write-Host "   RP detailed processing duration: $((NEW-TIMESPAN -Start $startsumRPDetailed -End $endsumRPDetailed).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startsumRPDetailed -End $endsumRPDetailed).TotalSeconds) seconds)"
+            Write-Host "   RP detailed processing duration: $((New-TimeSpan -Start $startsumRPDetailed -End $endsumRPDetailed).TotalMinutes) minutes ($((New-TimeSpan -Start $startsumRPDetailed -End $endsumRPDetailed).TotalSeconds) seconds)"
         }
     }
     #endregion SUMMARYSubResourceProvidersDetailed
@@ -7921,7 +7919,7 @@ extensions: [{ name: 'sort' }]
         }
         #endregion exportCSV
 
-        $subFeaturesGroupedByFeature = $arrayFeaturesAll | Group-Object -property feature
+        $subFeaturesGroupedByFeature = $arrayFeaturesAll | Group-Object -Property feature
         $tfCount = ($subFeaturesGroupedByFeature | Measure-Object).Count
         $htmlTableId = 'TenantSummary_SubFeatures'
         [void]$htmlTenantSummary.AppendLine(@"
@@ -8008,7 +8006,7 @@ extensions: [{ name: 'sort' }]
 '@)
     }
     $endSubFeatures = Get-Date
-    Write-Host "   Subscriptions Features processing duration: $((NEW-TIMESPAN -Start $startSubFeatures -End $endSubFeatures).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSubFeatures -End $endSubFeatures).TotalSeconds) seconds)"
+    Write-Host "   Subscriptions Features processing duration: $((New-TimeSpan -Start $startSubFeatures -End $endSubFeatures).TotalMinutes) minutes ($((New-TimeSpan -Start $startSubFeatures -End $endSubFeatures).TotalSeconds) seconds)"
     #endregion SUMMARYSubFeatures
 
     #region SUMMARYSubResourceLocks
@@ -8103,7 +8101,7 @@ extensions: [{ name: 'sort' }]
 '@)
     }
     $endResourceLocks = Get-Date
-    Write-Host "   ResourceLocks processing duration: $((NEW-TIMESPAN -Start $startResourceLocks -End $endResourceLocks).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startResourceLocks -End $endResourceLocks).TotalSeconds) seconds)"
+    Write-Host "   ResourceLocks processing duration: $((New-TimeSpan -Start $startResourceLocks -End $endResourceLocks).TotalMinutes) minutes ($((New-TimeSpan -Start $startResourceLocks -End $endResourceLocks).TotalSeconds) seconds)"
     #endregion SUMMARYSubResourceLocks
 
     #SUMMARYSubDefenderPlansSubscriptionsSkipped
@@ -8198,7 +8196,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 "@)
 
         $endDefenderPlans = Get-Date
-        Write-Host "   Microsoft Defender for Cloud plans SubscriptionsSkipped processing duration: $((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalSeconds) seconds)"
+        Write-Host "   Microsoft Defender for Cloud plans SubscriptionsSkipped processing duration: $((New-TimeSpan -Start $startDefenderPlans -End $endDefenderPlans).TotalMinutes) minutes ($((New-TimeSpan -Start $startDefenderPlans -End $endDefenderPlans).TotalSeconds) seconds)"
         #endregion SUMMARYSubDefenderPlansSubscriptionsSkipped
     }
 
@@ -8282,7 +8280,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 '@)
     }
     $endDefenderPlans = Get-Date
-    Write-Host "   Microsoft Defender for Cloud plans by plan processing duration: $((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalSeconds) seconds)"
+    Write-Host "   Microsoft Defender for Cloud plans by plan processing duration: $((New-TimeSpan -Start $startDefenderPlans -End $endDefenderPlans).TotalMinutes) minutes ($((New-TimeSpan -Start $startDefenderPlans -End $endDefenderPlans).TotalSeconds) seconds)"
     #endregion SUMMARYSubDefenderPlansByPlan
 
     #region SUMMARYSubDefenderPlansBySubscription
@@ -8439,7 +8437,7 @@ extensions: [{ name: 'sort' }]
 '@)
     }
     $endDefenderPlans = Get-Date
-    Write-Host "   Microsoft Defender for Cloud plans by Subscription processing duration: $((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefenderPlans -End $endDefenderPlans).TotalSeconds) seconds)"
+    Write-Host "   Microsoft Defender for Cloud plans by Subscription processing duration: $((New-TimeSpan -Start $startDefenderPlans -End $endDefenderPlans).TotalMinutes) minutes ($((New-TimeSpan -Start $startDefenderPlans -End $endDefenderPlans).TotalSeconds) seconds)"
     #endregion SUMMARYSubDefenderPlansBySubscription
 
     if ($azAPICallConf['htParameters'].NoResources -eq $false) {
@@ -8630,7 +8628,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 '@)
         }
         $endUserAssignedIdentities4Resources = Get-Date
-        Write-Host "   UserAssigned Managed Identities assigned to Resources processing duration: $((NEW-TIMESPAN -Start $startUserAssignedIdentities4Resources -End $endUserAssignedIdentities4Resources).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startUserAssignedIdentities4Resources -End $endUserAssignedIdentities4Resources).TotalSeconds) seconds)"
+        Write-Host "   UserAssigned Managed Identities assigned to Resources processing duration: $((New-TimeSpan -Start $startUserAssignedIdentities4Resources -End $endUserAssignedIdentities4Resources).TotalMinutes) minutes ($((New-TimeSpan -Start $startUserAssignedIdentities4Resources -End $endUserAssignedIdentities4Resources).TotalSeconds) seconds)"
         #endregion SUMMARYSubUserAssignedIdentities4Resources
 
         #region SUMMARYPSRule
@@ -8675,7 +8673,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                     }
                 }
 
-                $grpPSRuleAll = $arrayPsRule | group-object -Property resourceType, pillar, category, severity, rule, result
+                $grpPSRuleAll = $arrayPsRule | Group-Object -Property resourceType, pillar, category, severity, rule, result
                 $tfCount = $grpPSRuleAll.Name.Count
 
                 $htmlTableId = 'TenantSummary_PSRule'
@@ -8703,7 +8701,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <tbody>
 "@)
 
-                foreach ($result in $grpPSRuleAll | sort-Object -Property Name) {
+                foreach ($result in $grpPSRuleAll | Sort-Object -Property Name) {
                     $resultNameSplit = $result.Name.split(', ')
                     [void]$htmlTenantSummary.AppendLine(@"
                         <tr>
@@ -8788,7 +8786,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 '@)
             }
             $endPSRule = Get-Date
-            Write-Host "   PSRule for Azure processing duration: $((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPSRule -End $endPSRule).TotalSeconds) seconds)"
+            Write-Host "   PSRule for Azure processing duration: $((New-TimeSpan -Start $startPSRule -End $endPSRule).TotalMinutes) minutes ($((New-TimeSpan -Start $startPSRule -End $endPSRule).TotalSeconds) seconds)"
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@'
@@ -8858,7 +8856,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <tbody>
 "@)
 
-            foreach ($result in $arrayStorageAccountAnalysisResults | sort-Object -Property storageAccount) {
+            foreach ($result in $arrayStorageAccountAnalysisResults | Sort-Object -Property storageAccount) {
 
                 [void]$htmlTenantSummary.AppendLine(@"
                         <tr>
@@ -8988,7 +8986,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 '@)
         }
         $endStorageAccountAnalysis = Get-Date
-        Write-Host "   Storage Account Analysis processing duration: $((NEW-TIMESPAN -Start $startStorageAccountAnalysis -End $endStorageAccountAnalysis).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startStorageAccountAnalysis -End $endStorageAccountAnalysis).TotalSeconds) seconds)"
+        Write-Host "   Storage Account Analysis processing duration: $((New-TimeSpan -Start $startStorageAccountAnalysis -End $endStorageAccountAnalysis).TotalMinutes) minutes ($((New-TimeSpan -Start $startStorageAccountAnalysis -End $endStorageAccountAnalysis).TotalSeconds) seconds)"
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
@@ -9145,7 +9143,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 '@)
         }
         $endVNets = Get-Date
-        Write-Host "   VNets processing duration: $((NEW-TIMESPAN -Start $startVNets -End $endVNets).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startVNets -End $endVNets).TotalSeconds) seconds)"
+        Write-Host "   VNets processing duration: $((New-TimeSpan -Start $startVNets -End $endVNets).TotalMinutes) minutes ($((New-TimeSpan -Start $startVNets -End $endVNets).TotalSeconds) seconds)"
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
@@ -9158,7 +9156,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     if ($azAPICallConf['htParameters'].NoNetwork -eq $false) {
         $startVNetPeerings = Get-Date
         Write-Host '  processing TenantSummary VNet Peerings'
-        $vnetPeerings = $arrayVirtualNetworks.where({ $_.PeeringsCount -gt 0 }) | sort-Object -Property SubscriptionName, VNet, VNetId
+        $vnetPeerings = $arrayVirtualNetworks.where({ $_.PeeringsCount -gt 0 }) | Sort-Object -Property SubscriptionName, VNet, VNetId
         $VNetsPeeringsCount = $vnetPeerings.Count
 
         if (-not $NoCsvExport) {
@@ -9434,7 +9432,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 '@)
         }
         $endVNetPeerings = Get-Date
-        Write-Host "   VNet Peerings processing duration: $((NEW-TIMESPAN -Start $startVNetPeerings -End $endVNetPeerings).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startVNetPeerings -End $endVNetPeerings).TotalSeconds) seconds)"
+        Write-Host "   VNet Peerings processing duration: $((New-TimeSpan -Start $startVNetPeerings -End $endVNetPeerings).TotalMinutes) minutes ($((New-TimeSpan -Start $startVNetPeerings -End $endVNetPeerings).TotalSeconds) seconds)"
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
@@ -9950,7 +9948,7 @@ extensions: [{ name: 'sort' }]
         #region SUMMARYResourcesDiagnosticsCapable
         Write-Host '  processing TenantSummary Diagnostics Resources Diagnostics Capable (1st party only)'
         $resourceTypesDiagnosticsArraySorted = $resourceTypesDiagnosticsArray | Sort-Object -Property ResourceType, ResourceCount, Metrics, Logs, LogCategories
-        $resourceTypesDiagnosticsArraySortedCount = ($resourceTypesDiagnosticsArraySorted | measure-object).count
+        $resourceTypesDiagnosticsArraySortedCount = ($resourceTypesDiagnosticsArraySorted | Measure-Object).count
         $resourceTypesDiagnosticsMetricsTrueCount = ($resourceTypesDiagnosticsArray.where( { $_.Metrics -eq $True }) | Measure-Object).count
         $resourceTypesDiagnosticsLogsTrueCount = ($resourceTypesDiagnosticsArray.where( { $_.Logs -eq $True }) | Measure-Object).count
         $resourceTypesDiagnosticsMetricsLogsTrueCount = ($resourceTypesDiagnosticsArray.where( { $_.Metrics -eq $True -or $_.Logs -eq $True }) | Measure-Object).count
@@ -10126,7 +10124,7 @@ extensions: [{ name: 'sort' }]
                                     }
                                 }
 
-                                $policyHasPolicyAssignments = $policyBaseQuery | Where-Object { $_.PolicyDefinitionId -eq $policy.Id } | Sort-Object -property PolicyDefinitionId, PolicyAssignmentId -unique
+                                $policyHasPolicyAssignments = $policyBaseQuery | Where-Object { $_.PolicyDefinitionId -eq $policy.Id } | Sort-Object -Property PolicyDefinitionId, PolicyAssignmentId -Unique
                                 $policyHasPolicyAssignmentCount = ($policyHasPolicyAssignments | Measure-Object).count
                                 if ($policyHasPolicyAssignmentCount -gt 0) {
                                     $policyAssignmentsArray = @()
@@ -10342,7 +10340,7 @@ extensions: [{ name: 'sort' }]
 <tbody>
 "@)
 
-                        foreach ($diagnosticsFinding in $diagnosticsPolicyAnalysis | Sort-Object -property @{Expression = { $_.Priority } }, @{Expression = { $_.Recommendation } }, @{Expression = { $_.ResourceType } }, @{Expression = { $_.PolicyName } }, @{Expression = { $_.PolicyId } }) {
+                        foreach ($diagnosticsFinding in $diagnosticsPolicyAnalysis | Sort-Object -Property @{Expression = { $_.Priority } }, @{Expression = { $_.Recommendation } }, @{Expression = { $_.ResourceType } }, @{Expression = { $_.PolicyName } }, @{Expression = { $_.PolicyId } }) {
                             [void]$htmlTenantSummary.AppendLine(@"
             <tr>
                 <td>
@@ -10468,7 +10466,7 @@ extensions: [{ name: 'sort' }]
 '@)
             }
             $endsumDiagLifecycle = Get-Date
-            Write-Host "   Resource Diagnostics Policy Lifecycle processing duration: $((NEW-TIMESPAN -Start $startsumDiagLifecycle -End $endsumDiagLifecycle).TotalSeconds) seconds"
+            Write-Host "   Resource Diagnostics Policy Lifecycle processing duration: $((New-TimeSpan -Start $startsumDiagLifecycle -End $endsumDiagLifecycle).TotalSeconds) seconds"
         }
         #endregion SUMMARYDiagnosticsPolicyLifecycle
 
@@ -10528,11 +10526,11 @@ extensions: [{ name: 'sort' }]
     #region SUMMARYMgsapproachingLimitsPolicyAssignments
     Write-Host '  processing TenantSummary ManagementGroups Limit PolicyAssignments'
     $mgsApproachingLimitPolicyAssignments = (($policyBaseQueryManagementGroups.where( { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.PolicyAndPolicySetAssignmentAtScopeCount -gt 0 -and (($_.PolicyAndPolicySetAssignmentAtScopeCount -gt ($LimitPOLICYPolicyAssignmentsManagementGroup * ($LimitCriticalPercentage / 100)))) })) | Select-Object MgId, MgName, PolicyAssignmentAtScopeCount, PolicySetAssignmentAtScopeCount, PolicyAndPolicySetAssignmentAtScopeCount, PolicyAssignmentLimit -Unique)
-    if (($mgsApproachingLimitPolicyAssignments | measure-object).count -gt 0) {
-        $tfCount = ($mgsApproachingLimitPolicyAssignments | measure-object).count
+    if (($mgsApproachingLimitPolicyAssignments | Measure-Object).count -gt 0) {
+        $tfCount = ($mgsApproachingLimitPolicyAssignments | Measure-Object).count
         $htmlTableId = 'TenantSummary_MgsapproachingLimitsPolicyAssignments'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_MgsapproachingLimitsPolicyAssignments"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyAssignments | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicyAssignmentsManagementGroup) for PolicyAssignment</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_MgsapproachingLimitsPolicyAssignments"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyAssignments | Measure-Object).count) Management Groups approaching Limit ($LimitPOLICYPolicyAssignmentsManagementGroup) for PolicyAssignment</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Policy Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -10607,7 +10605,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-    <p><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyAssignments | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicyAssignmentsManagementGroup) for PolicyAssignment</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+    <p><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyAssignments | Measure-Object).count) Management Groups approaching Limit ($LimitPOLICYPolicyAssignmentsManagementGroup) for PolicyAssignment</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
 "@)
     }
     #endregion SUMMARYMgsapproachingLimitsPolicyAssignments
@@ -10615,11 +10613,11 @@ extensions: [{ name: 'sort' }]
     #region SUMMARYMgsapproachingLimitsPolicyScope
     Write-Host '  processing TenantSummary ManagementGroups Limit PolicyScope'
     $mgsApproachingLimitPolicyScope = (($policyBaseQueryManagementGroups.where( { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.PolicyDefinitionsScopedCount -gt 0 -and (($_.PolicyDefinitionsScopedCount -gt ($LimitPOLICYPolicyDefinitionsScopedManagementGroup * ($LimitCriticalPercentage / 100)))) })) | Select-Object MgId, MgName, PolicyDefinitionsScopedCount, PolicyDefinitionsScopedLimit -Unique)
-    if (($mgsApproachingLimitPolicyScope | measure-object).count -gt 0) {
-        $tfCount = ($mgsApproachingLimitPolicyScope | measure-object).count
+    if (($mgsApproachingLimitPolicyScope | Measure-Object).count -gt 0) {
+        $tfCount = ($mgsApproachingLimitPolicyScope | Measure-Object).count
         $htmlTableId = 'TenantSummary_MgsapproachingLimitsPolicyScope'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_MgsapproachingLimitsPolicyScope"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyScope | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicyDefinitionsScopedManagementGroup) for Policy Scope</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_MgsapproachingLimitsPolicyScope"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicyScope | Measure-Object).count) Management Groups approaching Limit ($LimitPOLICYPolicyDefinitionsScopedManagementGroup) for Policy Scope</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Policy Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -10703,10 +10701,10 @@ extensions: [{ name: 'sort' }]
     Write-Host '  processing TenantSummary ManagementGroups Limit PolicySetScope'
     $mgsApproachingLimitPolicySetScope = (($policyBaseQueryManagementGroups.where( { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.PolicySetDefinitionsScopedCount -gt 0 -and (($_.PolicySetDefinitionsScopedCount -gt ($LimitPOLICYPolicySetDefinitionsScopedManagementGroup * ($LimitCriticalPercentage / 100)))) })) | Select-Object MgId, MgName, PolicySetDefinitionsScopedCount, PolicySetDefinitionsScopedLimit -Unique)
     if ($mgsApproachingLimitPolicySetScope.count -gt 0) {
-        $tfCount = ($mgsApproachingLimitPolicySetScope | measure-object).count
+        $tfCount = ($mgsApproachingLimitPolicySetScope | Measure-Object).count
         $htmlTableId = 'TenantSummary_MgsapproachingLimitsPolicySetScope'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_MgsapproachingLimitsPolicySetScope"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicySetScope | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedManagementGroup) for PolicySet Scope</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_MgsapproachingLimitsPolicySetScope"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicySetScope | Measure-Object).count) Management Groups approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedManagementGroup) for PolicySet Scope</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Policy Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -10781,20 +10779,20 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-<p><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicySetScope | measure-object).count) Management Groups approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedManagementGroup) for PolicySet Scope</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+<p><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingLimitPolicySetScope | Measure-Object).count) Management Groups approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedManagementGroup) for PolicySet Scope</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
 "@)
     }
     #endregion SUMMARYMgsapproachingLimitsPolicySetScope
 
     #region SUMMARYMgsapproachingLimitsRoleAssignment
     Write-Host '  processing TenantSummary ManagementGroups Limit RoleAssignments'
-    $mgsApproachingRoleAssignmentLimit = $rbacBaseQuery.where( { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.RoleAssignmentsCount -gt ($LimitRBACRoleAssignmentsManagementGroup * $LimitCriticalPercentage / 100) }) | Sort-Object -Property MgId -Unique | select-object -Property MgId, MgName, RoleAssignmentsCount, RoleAssignmentsLimit
+    $mgsApproachingRoleAssignmentLimit = $rbacBaseQuery.where( { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.RoleAssignmentsCount -gt ($LimitRBACRoleAssignmentsManagementGroup * $LimitCriticalPercentage / 100) }) | Sort-Object -Property MgId -Unique | Select-Object -Property MgId, MgName, RoleAssignmentsCount, RoleAssignmentsLimit
 
     if (($mgsApproachingRoleAssignmentLimit).count -gt 0) {
         $tfCount = ($mgsApproachingRoleAssignmentLimit).count
         $htmlTableId = 'TenantSummary_MgsapproachingLimitsRoleAssignment'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_MgsapproachingLimitsRoleAssignment"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingRoleAssignmentLimit | measure-object).count) Management Groups approaching Limit ($LimitRBACRoleAssignmentsManagementGroup) for RoleAssignment</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_MgsapproachingLimitsRoleAssignment"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($mgsApproachingRoleAssignmentLimit | Measure-Object).count) Management Groups approaching Limit ($LimitRBACRoleAssignmentsManagementGroup) for RoleAssignment</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure RBAC Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-rbac-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -10869,7 +10867,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-    <p><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($mgApproachingRoleAssignmentLimit | measure-object).count) Management Groups approaching Limit ($LimitRBACRoleAssignmentsManagementGroup) for RoleAssignment</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-rbac-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+    <p><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($mgApproachingRoleAssignmentLimit | Measure-Object).count) Management Groups approaching Limit ($LimitRBACRoleAssignmentsManagementGroup) for RoleAssignment</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-rbac-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
 "@)
     }
     #endregion SUMMARYMgsapproachingLimitsRoleAssignment
@@ -10884,11 +10882,11 @@ extensions: [{ name: 'sort' }]
     #region SUMMARYSubsapproachingLimitsResourceGroups
     Write-Host '  processing TenantSummary Subscriptions Limit Resource Groups'
     $subscriptionsApproachingLimitFromResourceGroupsAll = $resourceGroupsAll.where( { $_.count_ -gt ($LimitResourceGroups * ($LimitCriticalPercentage / 100)) })
-    if (($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count -gt 0) {
-        $tfCount = ($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count
+    if (($subscriptionsApproachingLimitFromResourceGroupsAll | Measure-Object).count -gt 0) {
+        $tfCount = ($subscriptionsApproachingLimitFromResourceGroupsAll | Measure-Object).count
         $htmlTableId = 'TenantSummary_SubsapproachingLimitsResourceGroups'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsResourceGroups"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count) Subscriptions approaching Limit ($LimitResourceGroups) for ResourceGroups</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsResourceGroups"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitFromResourceGroupsAll | Measure-Object).count) Subscriptions approaching Limit ($LimitResourceGroups) for ResourceGroups</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Subscription Resource Group Limit</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#subscription-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -10964,7 +10962,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-    <p"><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitFromResourceGroupsAll | measure-object).count) Subscriptions approaching Limit ($LimitResourceGroups) for ResourceGroups</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#subscription-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+    <p"><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitFromResourceGroupsAll | Measure-Object).count) Subscriptions approaching Limit ($LimitResourceGroups) for ResourceGroups</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#subscription-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
 "@)
     }
     #endregion SUMMARYSubsapproachingLimitsResourceGroups
@@ -10972,11 +10970,11 @@ extensions: [{ name: 'sort' }]
     #region SUMMARYSubsapproachingLimitsSubscriptionTags
     Write-Host '  processing TenantSummary Subscriptions Limit Subscription Tags'
     $subscriptionsApproachingLimitTags = ($optimizedTableForPathQueryMgAndSub.where( { (($_.SubscriptionTagsCount -gt ($LimitTagsSubscription * ($LimitCriticalPercentage / 100)))) }))
-    if (($subscriptionsApproachingLimitTags | measure-object).count -gt 0) {
-        $tfCount = ($subscriptionsApproachingLimitTags | measure-object).count
+    if (($subscriptionsApproachingLimitTags | Measure-Object).count -gt 0) {
+        $tfCount = ($subscriptionsApproachingLimitTags | Measure-Object).count
         $htmlTableId = 'TenantSummary_SubsapproachingLimitsSubscriptionTags'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsSubscriptionTags"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitTags | measure-object).count) Subscriptions approaching Limit ($LimitTagsSubscription) for Tags</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsSubscriptionTags"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitTags | Measure-Object).count) Subscriptions approaching Limit ($LimitTagsSubscription) for Tags</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Subscription Tag Limit</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#subscription-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -11060,10 +11058,10 @@ extensions: [{ name: 'sort' }]
     Write-Host '  processing TenantSummary Subscriptions Limit PolicyAssignments'
     $subscriptionsApproachingLimitPolicyAssignments = (($policyBaseQuerySubscriptions.where( { -not [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.PolicyAndPolicySetAssignmentAtScopeCount -gt 0 -and (($_.PolicyAndPolicySetAssignmentAtScopeCount -gt ($_.PolicyAssignmentLimit * ($LimitCriticalPercentage / 100)))) })) | Select-Object MgId, Subscription, SubscriptionId, PolicyAssignmentAtScopeCount, PolicySetAssignmentAtScopeCount, PolicyAndPolicySetAssignmentAtScopeCount, PolicyAssignmentLimit -Unique)
     if ($subscriptionsApproachingLimitPolicyAssignments.count -gt 0) {
-        $tfCount = ($subscriptionsApproachingLimitPolicyAssignments | measure-object).count
+        $tfCount = ($subscriptionsApproachingLimitPolicyAssignments | Measure-Object).count
         $htmlTableId = 'TenantSummary_SubsapproachingLimitsPolicyAssignments'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsPolicyAssignments"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyAssignments | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicyAssignmentsSubscription) for PolicyAssignment</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsPolicyAssignments"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyAssignments | Measure-Object).count) Subscriptions approaching Limit ($LimitPOLICYPolicyAssignmentsSubscription) for PolicyAssignment</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Policy Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -11138,7 +11136,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-    <p><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyAssignments | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicyAssignmentsSubscription) for PolicyAssignment</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+    <p><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyAssignments | Measure-Object).count) Subscriptions approaching Limit ($LimitPOLICYPolicyAssignmentsSubscription) for PolicyAssignment</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
 "@)
     }
     #endregion SUMMARYSubsapproachingLimitsPolicyAssignments
@@ -11146,11 +11144,11 @@ extensions: [{ name: 'sort' }]
     #region SUMMARYSubsapproachingLimitsPolicyScope
     Write-Host '  processing TenantSummary Subscriptions Limit PolicyScope'
     $subscriptionsApproachingLimitPolicyScope = (($policyBaseQuerySubscriptions.where( { -not [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.PolicyDefinitionsScopedCount -gt 0 -and (($_.PolicyDefinitionsScopedCount -gt ($_.PolicyDefinitionsScopedLimit * ($LimitCriticalPercentage / 100)))) })) | Select-Object MgId, Subscription, SubscriptionId, PolicyDefinitionsScopedCount, PolicyDefinitionsScopedLimit -Unique)
-    if (($subscriptionsApproachingLimitPolicyScope | measure-object).count -gt 0) {
-        $tfCount = ($subscriptionsApproachingLimitPolicyScope | measure-object).count
+    if (($subscriptionsApproachingLimitPolicyScope | Measure-Object).count -gt 0) {
+        $tfCount = ($subscriptionsApproachingLimitPolicyScope | Measure-Object).count
         $htmlTableId = 'TenantSummary_SubsapproachingLimitsPolicyScope'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsPolicyScope"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicyDefinitionsScopedSubscription) for Policy Scope</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsPolicyScope"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | Measure-Object).count) Subscriptions approaching Limit ($LimitPOLICYPolicyDefinitionsScopedSubscription) for Policy Scope</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Policy Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -11234,10 +11232,10 @@ extensions: [{ name: 'sort' }]
     Write-Host '  processing TenantSummary Subscriptions Limit PolicySetScope'
     $subscriptionsApproachingLimitPolicySetScope = (($policyBaseQuerySubscriptions.where( { -not [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.PolicySetDefinitionsScopedCount -gt 0 -and (($_.PolicySetDefinitionsScopedCount -gt ($_.PolicySetDefinitionsScopedLimit * ($LimitCriticalPercentage / 100)))) })) | Select-Object MgId, Subscription, SubscriptionId, PolicySetDefinitionsScopedCount, PolicySetDefinitionsScopedLimit -Unique)
     if ($subscriptionsApproachingLimitPolicySetScope.count -gt 0) {
-        $tfCount = ($subscriptionsApproachingLimitPolicySetScope | measure-object).count
+        $tfCount = ($subscriptionsApproachingLimitPolicySetScope | Measure-Object).count
         $htmlTableId = 'TenantSummary_SubsapproachingLimitsPolicySetScope'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsPolicySetScope"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedSubscription) for PolicySet Scope</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsPolicySetScope"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | Measure-Object).count) Subscriptions approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedSubscription) for PolicySet Scope</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Policy Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -11312,14 +11310,14 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-    <p><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | measure-object).count) Subscriptions approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedSubscription) for PolicySet Scope</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+    <p><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingLimitPolicyScope | Measure-Object).count) Subscriptions approaching Limit ($LimitPOLICYPolicySetDefinitionsScopedSubscription) for PolicySet Scope</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-policy-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
 "@)
     }
     #endregion SUMMARYSubsapproachingLimitsPolicySetScope
 
     #region SUMMARYSubsapproachingLimitsRoleAssignment
     Write-Host '  processing TenantSummary Subscriptions Limit RoleAssignments'
-    $subscriptionsApproachingRoleAssignmentLimit = $rbacBaseQuery.where( { -not [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.RoleAssignmentsCount -gt ($_.RoleAssignmentsLimit * $LimitCriticalPercentage / 100) }) | Sort-Object -Property SubscriptionId -Unique | select-object -Property MgId, SubscriptionId, Subscription, RoleAssignmentsCount, RoleAssignmentsLimit
+    $subscriptionsApproachingRoleAssignmentLimit = $rbacBaseQuery.where( { -not [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.RoleAssignmentsCount -gt ($_.RoleAssignmentsLimit * $LimitCriticalPercentage / 100) }) | Sort-Object -Property SubscriptionId -Unique | Select-Object -Property MgId, SubscriptionId, Subscription, RoleAssignmentsCount, RoleAssignmentsLimit
 
     $availableSubscriptionsRoleAssignmentLimits = ($htSubscriptionsRoleAssignmentLimit.values | Sort-Object -Unique) -join ' | '
 
@@ -11327,7 +11325,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($subscriptionsApproachingRoleAssignmentLimit).count
         $htmlTableId = 'TenantSummary_SubsapproachingLimitsRoleAssignment'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsRoleAssignment"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingRoleAssignmentLimit | measure-object).count) Subscriptions approaching Limit ($($availableSubscriptionsRoleAssignmentLimits)) for RoleAssignment</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubsapproachingLimitsRoleAssignment"><i class="padlx fa fa-exclamation-triangle" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingRoleAssignmentLimit | Measure-Object).count) Subscriptions approaching Limit ($($availableSubscriptionsRoleAssignmentLimits)) for RoleAssignment</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure RBAC Limits</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-rbac-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -11402,7 +11400,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-    <p"><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingRoleAssignmentLimit | measure-object).count) Subscriptions approaching Limit ($availableSubscriptionsRoleAssignmentLimits) for RoleAssignment</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-rbac-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+    <p"><i class="padlx fa fa-check green" aria-hidden="true"></i> <span class="valignMiddle">$(($subscriptionsApproachingRoleAssignmentLimit | Measure-Object).count) Subscriptions approaching Limit ($availableSubscriptionsRoleAssignmentLimits) for RoleAssignment</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-rbac-limits" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
 "@)
     }
     #endregion SUMMARYSubsapproachingLimitsRoleAssignment
@@ -11905,7 +11903,7 @@ tf.init();}}
     }
 
     $endAADSPManagedIdentityLoop = Get-Date
-    Write-Host "   TenantSummary AAD SP Managed Identities processing duration: $((NEW-TIMESPAN -Start $startAADSPManagedIdentityLoop -End $endAADSPManagedIdentityLoop).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startAADSPManagedIdentityLoop -End $endAADSPManagedIdentityLoop).TotalSeconds) seconds)"
+    Write-Host "   TenantSummary AAD SP Managed Identities processing duration: $((New-TimeSpan -Start $startAADSPManagedIdentityLoop -End $endAADSPManagedIdentityLoop).TotalMinutes) minutes ($((New-TimeSpan -Start $startAADSPManagedIdentityLoop -End $endAADSPManagedIdentityLoop).TotalSeconds) seconds)"
     #endregion AADSPManagedIdentity
 
     #region AADSPCredExpiry
@@ -12075,7 +12073,7 @@ tf.init();}}
         }
 
         $endAADSPCredExpiryLoop = Get-Date
-        Write-Host "   TenantSummary AAD SP Apps CredExpiry processing duration: $((NEW-TIMESPAN -Start $startAADSPCredExpiryLoop -End $endAADSPCredExpiryLoop).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startAADSPCredExpiryLoop -End $endAADSPCredExpiryLoop).TotalSeconds) seconds)"
+        Write-Host "   TenantSummary AAD SP Apps CredExpiry processing duration: $((New-TimeSpan -Start $startAADSPCredExpiryLoop -End $endAADSPCredExpiryLoop).TotalMinutes) minutes ($((New-TimeSpan -Start $startAADSPCredExpiryLoop -End $endAADSPCredExpiryLoop).TotalSeconds) seconds)"
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@'
@@ -12214,7 +12212,7 @@ tf.init();}}
     }
 
     $endAADSPExternalSP = Get-Date
-    Write-Host "   TenantSummary AAD External ServicePrincipals processing duration: $((NEW-TIMESPAN -Start $startAADSPExternalSP -End $endAADSPExternalSP).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startAADSPExternalSP -End $endAADSPExternalSP).TotalSeconds) seconds)"
+    Write-Host "   TenantSummary AAD External ServicePrincipals processing duration: $((New-TimeSpan -Start $startAADSPExternalSP -End $endAADSPExternalSP).TotalMinutes) minutes ($((New-TimeSpan -Start $startAADSPExternalSP -End $endAADSPExternalSP).TotalSeconds) seconds)"
     #endregion AADSPExternalSP
 
     [void]$htmlTenantSummary.AppendLine(@'
@@ -12331,7 +12329,7 @@ tf.init();}}
         }
 
         $endConsumption = Get-Date
-        Write-Host "   TenantSummary Consumption processing duration: $((NEW-TIMESPAN -Start $startConsumption -End $endConsumption).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startConsumption -End $endConsumption).TotalSeconds) seconds)"
+        Write-Host "   TenantSummary Consumption processing duration: $((New-TimeSpan -Start $startConsumption -End $endConsumption).TotalMinutes) minutes ($((New-TimeSpan -Start $startConsumption -End $endConsumption).TotalSeconds) seconds)"
 
     }
     else {
@@ -12353,7 +12351,7 @@ tf.init();}}
     $xdaysAgo = (Get-Date).AddDays(-$ChangeTrackingDays)
 
     #region ctpolicydata
-    write-host '   processing Policy'
+    Write-Host '   processing Policy'
     $customPolicyCreatedOrUpdated = ($customPoliciesDetailed.where( { (-not [string]::IsNullOrEmpty($_.CreatedOn) -and [datetime]$_.CreatedOn -gt $xdaysAgo) -or (-not [string]::IsNullOrEmpty($_.UpdatedOn) -and [datetime]$_.UpdatedOn -gt $xdaysAgo) }))
     $customPolicyCreatedOrUpdatedCount = $customPolicyCreatedOrUpdated.Count
     $customPolicyCreatedMgSub = ($customPolicyCreatedOrUpdated.where( { -not [string]::IsNullOrEmpty($_.CreatedOn) -and [datetime]$_.CreatedOn -gt $xdaysAgo }))
@@ -12370,7 +12368,7 @@ tf.init();}}
     #endregion ctpolicydata
 
     #region ctpolicySetdata
-    write-host '   processing PolicySet'
+    Write-Host '   processing PolicySet'
     $customPolicySetCreatedOrUpdated = ($customPolicySetsDetailed.where( { (-not [string]::IsNullOrEmpty($_.CreatedOn) -and [datetime]$_.CreatedOn -gt $xdaysAgo) -or (-not [string]::IsNullOrEmpty($_.UpdatedOn) -and [datetime]$_.UpdatedOn -gt $xdaysAgo) }))
     $customPolicySetCreatedOrUpdatedCount = $customPolicySetCreatedOrUpdated.Count
 
@@ -12388,7 +12386,7 @@ tf.init();}}
     #endregion ctpolicySetdata
 
     #region ctpolicyAssignmentsData
-    write-host '   processing Policy assignment'
+    Write-Host '   processing Policy assignment'
     $policyAssignmentsCreatedOrUpdated = (($arrayPolicyAssignmentsEnriched.where( { $_.Inheritance -notlike 'inherited*' } )).where( { (-not [string]::IsNullOrEmpty($_.CreatedOn) -and [datetime]$_.CreatedOn -gt $xdaysAgo) -or (-not [string]::IsNullOrEmpty($_.UpdatedOn) -and [datetime]$_.UpdatedOn -gt $xdaysAgo) }))
     $policyAssignmentsCreatedOrUpdatedCount = $policyAssignmentsCreatedOrUpdated.Count
 
@@ -12432,24 +12430,24 @@ tf.init();}}
     ##RBAC
     #region ctRbacData
     #rbac defs
-    write-host '   processing RBAC'
+    Write-Host '   processing RBAC'
     $customRoleDefinitionsCreatedOrUpdated = $tenantCustomRoles.where( { $_.IsCustom -eq $true -and $_.Json.properties.createdOn -gt $xdaysAgo -or $_.Json.properties.updatedOn -gt $xdaysAgo })
     $customRoleDefinitionsCreatedOrUpdatedCount = $customRoleDefinitionsCreatedOrUpdated.Count
 
     #rbac defs created
-    write-host '   processing RBAC Role definition created'
+    Write-Host '   processing RBAC Role definition created'
     $customRoleDefinitionsCreated = $customRoleDefinitionsCreatedOrUpdated.where( { $_.Json.properties.createdOn -gt $xdaysAgo })
     $customRoleDefinitionsCreatedCount = $customRoleDefinitionsCreated.Count
 
     #rbac defs updated
-    write-host '   processing RBAC Role definition updated'
+    Write-Host '   processing RBAC Role definition updated'
     $customRoleDefinitionsUpdated = $customRoleDefinitionsCreatedOrUpdated.where( { $_.Json.properties.updatedOn -ne $_.Json.properties.createdOn -and $_.Json.properties.updatedOn -gt $xdaysAgo })
     $customRoleDefinitionsUpdatedCount = $customRoleDefinitionsUpdated.Count
     #endregion ctRbacData
 
     #region ctrbacassignments
     #rbac roleassignments
-    write-host '   processing RBAC Role assignments'
+    Write-Host '   processing RBAC Role assignments'
     $roleAssignmentsCreated = ($rbacAll | Sort-Object -Property RoleAssignmentId, ObjectId -Unique).where( { -not [string]::IsNullOrEmpty($_.CreatedOn) -and [datetime]$_.CreatedOn -gt $xdaysAgo })
     $roleAssignmentsCreatedUnique = ($roleAssignmentsCreated | Sort-Object -Property RoleAssignmentId -Unique)
     $roleAssignmentsCreatedCount = ($roleAssignmentsCreated | Sort-Object -Property RoleAssignmentId -Unique).Count
@@ -12486,7 +12484,7 @@ tf.init();}}
 
     if ($azAPICallConf['htParameters'].NoResources -eq $false) {
         #region ctresources
-        write-host '   processing Resources'
+        Write-Host '   processing Resources'
         $resourcesCreatedOrChanged = $resourcesIdsAll.where( { $_.createdTime -gt $xdaysAgo -or $_.changedTime -gt $xdaysAgo })
         $resourcesCreatedOrChangedCount = $resourcesCreatedOrChanged.Count
 
@@ -13584,7 +13582,7 @@ tf.init();}}
 '@)
 
     $endChangeTracking = Get-Date
-    Write-Host "   ChangeTracking duration: $((NEW-TIMESPAN -Start $startChangeTracking -End $endChangeTracking).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startChangeTracking -End $endChangeTracking).TotalSeconds) seconds)"
+    Write-Host "   ChangeTracking duration: $((New-TimeSpan -Start $startChangeTracking -End $endChangeTracking).TotalMinutes) minutes ($((New-TimeSpan -Start $startChangeTracking -End $endChangeTracking).TotalSeconds) seconds)"
     #endregion tenantSummaryChangeTracking
 
     showMemoryUsage
@@ -14218,7 +14216,7 @@ extensions: [{ name: 'sort' }]
     }
 
     $endSUMMARYNaming = Get-Date
-    Write-Host "   SUMMARYMGs duration: $((NEW-TIMESPAN -Start $startSUMMARYNaming -End $endSUMMARYNaming).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSUMMARYNaming -End $endSUMMARYNaming).TotalSeconds) seconds)"
+    Write-Host "   SUMMARYMGs duration: $((New-TimeSpan -Start $startSUMMARYNaming -End $endSUMMARYNaming).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYNaming -End $endSUMMARYNaming).TotalSeconds) seconds)"
 
     [void]$htmlTenantSummary.AppendLine(@'
 </div>

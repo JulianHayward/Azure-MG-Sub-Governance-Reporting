@@ -11,7 +11,7 @@ function getEntities {
     Write-Host "  $($arrayEntitiesFromAPI.Count) Entities returned"
 
     $endEntities = Get-Date
-    Write-Host " Getting Entities duration: $((NEW-TIMESPAN -Start $startEntities -End $endEntities).TotalSeconds) seconds"
+    Write-Host " Getting Entities duration: $((New-TimeSpan -Start $startEntities -End $endEntities).TotalSeconds) seconds"
 
     $startEntitiesdata = Get-Date
     Write-Host ' Processing Entities data'
@@ -80,11 +80,11 @@ function getEntities {
     Write-Host "  $(($htSubscriptionsMgPath.Keys).Count) Subscriptions returned"
 
     $endEntitiesdata = Get-Date
-    Write-Host " Processing Entities data duration: $((NEW-TIMESPAN -Start $startEntitiesdata -End $endEntitiesdata).TotalSeconds) seconds"
+    Write-Host " Processing Entities data duration: $((New-TimeSpan -Start $startEntitiesdata -End $endEntitiesdata).TotalSeconds) seconds"
 
     $script:arrayEntitiesFromAPISubscriptionsCount = ($arrayEntitiesFromAPI.where( { $_.type -eq '/subscriptions' -and $_.properties.parentNameChain -contains $ManagementGroupId } ) | Sort-Object -Property id -Unique).count
-    $script:arrayEntitiesFromAPIManagementGroupsCount = ($arrayEntitiesFromAPI.where( { $_.type -eq 'Microsoft.Management/managementGroups' -and $_.properties.parentNameChain -contains $ManagementGroupId } )  | Sort-Object -Property id -Unique).count + 1
+    $script:arrayEntitiesFromAPIManagementGroupsCount = ($arrayEntitiesFromAPI.where( { $_.type -eq 'Microsoft.Management/managementGroups' -and $_.properties.parentNameChain -contains $ManagementGroupId } ) | Sort-Object -Property id -Unique).count + 1
 
     $endEntities = Get-Date
-    Write-Host "Processing Entities duration: $((NEW-TIMESPAN -Start $startEntities -End $endEntities).TotalSeconds) seconds"
+    Write-Host "Processing Entities duration: $((New-TimeSpan -Start $startEntities -End $endEntities).TotalSeconds) seconds"
 }

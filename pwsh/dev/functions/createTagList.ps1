@@ -21,5 +21,5 @@ function createTagList {
         }
     }
     $endTagListArray = Get-Date
-    Write-Host "Creating TagList array duration: $((NEW-TIMESPAN -Start $startTagListArray -End $endTagListArray).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startTagListArray -End $endTagListArray).TotalSeconds) seconds)"
+    Write-Host "Creating TagList array duration: $((New-TimeSpan -Start $startTagListArray -End $endTagListArray).TotalMinutes) minutes ($((New-TimeSpan -Start $startTagListArray -End $endTagListArray).TotalSeconds) seconds)"
 }

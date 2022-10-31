@@ -18,7 +18,7 @@ function processDefinitionInsights() {
     $htPolicyWithAssignments.policy = @{}
     $htPolicyWithAssignments.policySet = @{}
 
-    foreach ($policyOrPolicySet in $arrayPolicyAssignmentsEnriched | Sort-Object -Property PolicyAssignmentId -Unique | Group-Object -property PolicyId, PolicyVariant) {
+    foreach ($policyOrPolicySet in $arrayPolicyAssignmentsEnriched | Sort-Object -Property PolicyAssignmentId -Unique | Group-Object -Property PolicyId, PolicyVariant) {
         $policyOrPolicySetNameSplit = $policyOrPolicySet.name.split(', ')
         if ($policyOrPolicySetNameSplit[1] -eq 'Policy') {
             #policy
@@ -254,7 +254,7 @@ function processDefinitionInsights() {
         $scopeDetails = 'n/a'
         if ($policy.ScopeId -ne 'n/a') {
             if ([string]::IsNullOrEmpty($policy.ScopeId)) {
-                Write-Host "unexpected IsNullOrEmpty - processing: $($policy | ConvertTo-Json -depth 99)"
+                Write-Host "unexpected IsNullOrEmpty - processing: $($policy | ConvertTo-Json -Depth 99)"
             }
             $scopeDetails = "$($policy.ScopeId) ($($htEntities.($policy.ScopeId).DisplayName))"
         }
@@ -269,7 +269,7 @@ function processDefinitionInsights() {
             $usedInPolicySets = ($htPoliciesUsedInPolicySets.($policy.PolicyDefinitionId).policySet | Sort-Object) -join "$CsvDelimiterOpposite "
         }
 
-        $json = $($policy.Json | convertto-json -depth 99)
+        $json = $($policy.Json | ConvertTo-Json -Depth 99)
         $guid = ([System.BitConverter]::ToString($md5.ComputeHash($utf8.GetBytes($policy.PolicyDefinitionId)))) -replace '-'
         @"
 <tr>
@@ -443,7 +443,7 @@ tf.init();}}
 </div>
 "@)
     $endDefinitionInsightsPolicyDefinitions = Get-Date
-    Write-Host "   DefinitionInsights Policy definitions duration: $((NEW-TIMESPAN -Start $startDefinitionInsightsPolicyDefinitions -End $endDefinitionInsightsPolicyDefinitions).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefinitionInsightsPolicyDefinitions -End $endDefinitionInsightsPolicyDefinitions).TotalSeconds) seconds)"
+    Write-Host "   DefinitionInsights Policy definitions duration: $((New-TimeSpan -Start $startDefinitionInsightsPolicyDefinitions -End $endDefinitionInsightsPolicyDefinitions).TotalMinutes) minutes ($((New-TimeSpan -Start $startDefinitionInsightsPolicyDefinitions -End $endDefinitionInsightsPolicyDefinitions).TotalSeconds) seconds)"
     showMemoryUsage
     #endregion definitionInsightsPolicyDefinitions
 
@@ -557,7 +557,7 @@ tf.init();}}
         if ($policySet.ScopeId -ne 'n/a') {
             $scopeDetails = "$($policySet.ScopeId) ($($htEntities.($policySet.ScopeId).DisplayName))"
         }
-        $json = $($policySet.Json | convertto-json -depth 99)
+        $json = $($policySet.Json | ConvertTo-Json -Depth 99)
         $guid = ([System.BitConverter]::ToString($md5.ComputeHash($utf8.GetBytes($policySet.PolicyDefinitionId)))) -replace '-'
         @"
 <tr>
@@ -712,7 +712,7 @@ tf.init();}}
 </div>
 "@)
     $endDefinitionInsightsPolicySetDefinitions = Get-Date
-    Write-Host "   DefinitionInsights PolicySet definitions duration: $((NEW-TIMESPAN -Start $startDefinitionInsightsPolicySetDefinitions -End $endDefinitionInsightsPolicySetDefinitions).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefinitionInsightsPolicySetDefinitions -End $endDefinitionInsightsPolicySetDefinitions).TotalSeconds) seconds)"
+    Write-Host "   DefinitionInsights PolicySet definitions duration: $((New-TimeSpan -Start $startDefinitionInsightsPolicySetDefinitions -End $endDefinitionInsightsPolicySetDefinitions).TotalMinutes) minutes ($((New-TimeSpan -Start $startDefinitionInsightsPolicySetDefinitions -End $endDefinitionInsightsPolicySetDefinitions).TotalSeconds) seconds)"
     showMemoryUsage
     #endregion definitionInsightsPolicySetDefinitions
 
@@ -729,7 +729,7 @@ tf.init();}}
 
     #RBAC preQuery
     $htRoleWithAssignments = @{}
-    foreach ($roleDef in $rbacAll | Sort-Object -Property RoleAssignmentId -Unique | Group-Object -property RoleId) {
+    foreach ($roleDef in $rbacAll | Sort-Object -Property RoleAssignmentId -Unique | Group-Object -Property RoleId) {
         if (-not ($htRoleWithAssignments).($roleDef.Name)) {
             ($htRoleWithAssignments).($roleDef.Name) = @{}
             ($htRoleWithAssignments).($roleDef.Name).Assignments = $roleDef.group
@@ -854,7 +854,7 @@ tf.init();}}
                 })
         }
 
-        $json = $role.Json | convertto-json -depth 99
+        $json = $role.Json | ConvertTo-Json -Depth 99
         $guid = $role.Id -replace '-'
         @"
 <tr>
@@ -1003,7 +1003,7 @@ tf.init();}}
 </div>
 "@)
     $endDefinitionInsightsRoleDefinitions = Get-Date
-    Write-Host "   DefinitionInsights Role definitions duration: $((NEW-TIMESPAN -Start $startDefinitionInsightsRoleDefinitions -End $endDefinitionInsightsRoleDefinitions).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefinitionInsightsRoleDefinitions -End $endDefinitionInsightsRoleDefinitions).TotalSeconds) seconds)"
+    Write-Host "   DefinitionInsights Role definitions duration: $((New-TimeSpan -Start $startDefinitionInsightsRoleDefinitions -End $endDefinitionInsightsRoleDefinitions).TotalMinutes) minutes ($((New-TimeSpan -Start $startDefinitionInsightsRoleDefinitions -End $endDefinitionInsightsRoleDefinitions).TotalSeconds) seconds)"
     showMemoryUsage
     #endregion definitionInsightsRoleDefinitions
 
@@ -1014,7 +1014,7 @@ tf.init();}}
 
     Write-Host "   NoDefinitionInsightsDedicatedHTML: $NoDefinitionInsightsDedicatedHTML"
     if ($NoDefinitionInsightsDedicatedHTML) {
-        Write-Host "   Appending DefinitionInsights to HTML"
+        Write-Host '   Appending DefinitionInsights to HTML'
         $script:html += $htmlDefinitionInsights
         $htmlDefinitionInsights = $null
         $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
@@ -1042,5 +1042,5 @@ tf.init();}}
 
 
     $endDefinitionInsights = Get-Date
-    Write-Host "  DefinitionInsights processing duration: $((NEW-TIMESPAN -Start $startDefinitionInsights -End $endDefinitionInsights).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDefinitionInsights -End $endDefinitionInsights).TotalSeconds) seconds)"
+    Write-Host "  DefinitionInsights processing duration: $((New-TimeSpan -Start $startDefinitionInsights -End $endDefinitionInsights).TotalMinutes) minutes ($((New-TimeSpan -Start $startDefinitionInsights -End $endDefinitionInsights).TotalSeconds) seconds)"
 }

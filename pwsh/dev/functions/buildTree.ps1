@@ -5,7 +5,7 @@ function buildTree($mgId, $prnt) {
     $mgDisplayNameValid = removeInvalidFileNameChars $getMg.properties.displayName
     $prntx = "$($prnt)$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)")) {
-        $null = new-item -Name $prntx -ItemType directory -path $outputPath
+        $null = New-Item -Name $prntx -ItemType directory -Path $outputPath
     }
 
     if (-not $json.'ManagementGroups') {
@@ -28,7 +28,7 @@ function buildTree($mgId, $prnt) {
                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
                 $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicyDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
-                    $null = new-item -Name $path -ItemType directory -path $outputPath
+                    $null = New-Item -Name $path -ItemType directory -Path $outputPath
                 }
                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
             }
@@ -47,7 +47,7 @@ function buildTree($mgId, $prnt) {
                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
                 $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicySetDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
-                    $null = new-item -Name $path -ItemType directory -path $outputPath
+                    $null = New-Item -Name $path -ItemType directory -Path $outputPath
                 }
                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
             }
@@ -66,7 +66,7 @@ function buildTree($mgId, $prnt) {
                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
                 $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($mgCap)$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
-                    $null = new-item -Name $path -ItemType directory -path $outputPath
+                    $null = New-Item -Name $path -ItemType directory -Path $outputPath
                 }
 
                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
@@ -87,7 +87,7 @@ function buildTree($mgId, $prnt) {
                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json" -Encoding utf8
                 $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($mgCap)$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
-                    $null = new-item -Name $path -ItemType directory -path $outputPath
+                    $null = New-Item -Name $path -ItemType directory -Path $outputPath
                 }
                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json" -Encoding utf8
             }
@@ -97,7 +97,7 @@ function buildTree($mgId, $prnt) {
             foreach ($sub in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys) {
                 $subNameValid = removeInvalidFileNameChars $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).SubscriptionName
                 $subFolderName = "$($prntx)$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
-                $null = new-item -Name $subFolderName -ItemType directory -path $outputPath
+                $null = New-Item -Name $subFolderName -ItemType directory -Path $outputPath
                 foreach ($subCap in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).Keys) {
                     if ($subCap -eq 'PolicyDefinitionsCustom') {
                         $subCapShort = 'pd'
@@ -113,7 +113,7 @@ function buildTree($mgId, $prnt) {
                             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
                             $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicyDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
                             if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
-                                $null = new-item -Name $path -ItemType directory -path $outputPath
+                                $null = New-Item -Name $path -ItemType directory -Path $outputPath
                             }
                             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
                         }
@@ -132,7 +132,7 @@ function buildTree($mgId, $prnt) {
                             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
                             $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicySetDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
                             if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
-                                $null = new-item -Name $path -ItemType directory -path $outputPath
+                                $null = New-Item -Name $path -ItemType directory -Path $outputPath
                             }
                             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
                         }
@@ -151,7 +151,7 @@ function buildTree($mgId, $prnt) {
                             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
                             $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($subCap)$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
                             if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
-                                $null = new-item -Name $path -ItemType directory -path $outputPath
+                                $null = New-Item -Name $path -ItemType directory -Path $outputPath
                             }
                             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
                         }
@@ -171,7 +171,7 @@ function buildTree($mgId, $prnt) {
                             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($pim)$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace '.*/').json" -Encoding utf8
                             $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($subCap)$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
                             if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
-                                $null = new-item -Name $path -ItemType directory -path $outputPath
+                                $null = New-Item -Name $path -ItemType directory -Path $outputPath
                             }
                             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json" -Encoding utf8
                         }
@@ -183,7 +183,7 @@ function buildTree($mgId, $prnt) {
                             if ($subCap -eq 'ResourceGroups') {
                                 foreach ($rg in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys | Sort-Object) {
                                     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)")) {
-                                        $null = new-item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)" -ItemType directory -path "$($outputPath)"
+                                        $null = New-Item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)" -ItemType directory -Path "$($outputPath)"
                                     }
                                     foreach ($pa in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).PolicyAssignments.keys) {
                                         $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).PolicyAssignments.($pa)
@@ -197,7 +197,7 @@ function buildTree($mgId, $prnt) {
                                         $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)pa_$($displayName) ($($hlp.name)).json" -Encoding utf8
                                         $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)PolicyAssignments$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))$($DirectorySeparatorChar)$($rg)"
                                         if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
-                                            $null = new-item -Name $path -ItemType directory -path $outputPath
+                                            $null = New-Item -Name $path -ItemType directory -Path $outputPath
                                         }
                                         $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($hlp.name)).json" -Encoding utf8
                                     }
@@ -213,7 +213,7 @@ function buildTree($mgId, $prnt) {
                             if ($subCap -eq 'ResourceGroups') {
                                 foreach ($rg in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys | Sort-Object) {
                                     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)")) {
-                                        $null = new-item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)" -ItemType directory -path "$($outputPath)"
+                                        $null = New-Item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)" -ItemType directory -Path "$($outputPath)"
                                     }
                                     foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).RoleAssignments.keys) {
                                         $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).RoleAssignments.($ra)
@@ -227,7 +227,7 @@ function buildTree($mgId, $prnt) {
                                         $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)ra_$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json" -Encoding utf8
                                         $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)RoleAssignments$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))$($DirectorySeparatorChar)$($rg)"
                                         if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
-                                            $null = new-item -Name $path -ItemType directory -path $outputPath
+                                            $null = New-Item -Name $path -ItemType directory -Path $outputPath
                                         }
                                         $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json" -Encoding utf8
                                     }
@@ -236,7 +236,7 @@ function buildTree($mgId, $prnt) {
 
                                         foreach ($res in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).Resources.keys) {
                                             if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)")) {
-                                                $null = new-item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)" -ItemType directory -path "$($outputPath)"
+                                                $null = New-Item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)" -ItemType directory -Path "$($outputPath)"
                                             }
                                             foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.keys) {
                                                 $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.($ra)
@@ -250,7 +250,7 @@ function buildTree($mgId, $prnt) {
                                                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)$($DirectorySeparatorChar)ra_$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json" -Encoding utf8
                                                 $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)RoleAssignments$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)"
                                                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
-                                                    $null = new-item -Name $path -ItemType directory -path $outputPath
+                                                    $null = New-Item -Name $path -ItemType directory -Path $outputPath
                                                 }
                                                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json" -Encoding utf8
                                             }

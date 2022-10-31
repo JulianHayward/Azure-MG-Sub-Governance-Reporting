@@ -7,13 +7,13 @@ function getDefaultManagementGroup {
     $settingsMG = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
 
     if (($settingsMG).count -gt 0) {
-        write-host " default ManagementGroup Id: $($settingsMG.properties.defaultManagementGroup)"
+        Write-Host " default ManagementGroup Id: $($settingsMG.properties.defaultManagementGroup)"
         $script:defaultManagementGroupId = $settingsMG.properties.defaultManagementGroup
-        write-host " requireAuthorizationForGroupCreation: $($settingsMG.properties.requireAuthorizationForGroupCreation)"
+        Write-Host " requireAuthorizationForGroupCreation: $($settingsMG.properties.requireAuthorizationForGroupCreation)"
         $script:requireAuthorizationForGroupCreation = $settingsMG.properties.requireAuthorizationForGroupCreation
     }
     else {
-        write-host " default ManagementGroup: $(($azAPICallConf['checkContext']).Tenant.Id) (Tenant Root)"
+        Write-Host " default ManagementGroup: $(($azAPICallConf['checkContext']).Tenant.Id) (Tenant Root)"
         $script:defaultManagementGroupId = ($azAPICallConf['checkContext']).Tenant.Id
         $script:requireAuthorizationForGroupCreation = $false
     }

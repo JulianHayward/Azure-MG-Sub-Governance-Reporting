@@ -1,9 +1,9 @@
 function checkAzGovVizVersion {
     try {
-        $getRepoVersion = Invoke-WebRequest -uri 'https://raw.githubusercontent.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/master/version.txt'
-        $azGovVizVersionThis = ($ProductVersion -split "_")[2]
+        $getRepoVersion = Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/master/version.txt'
+        $azGovVizVersionThis = ($ProductVersion -split '_')[2]
         $script:azGovVizVersionOnRepositoryFull = $getRepoVersion.Content -replace "`n"
-        $azGovVizVersionOnRepository = ($azGovVizVersionOnRepositoryFull -split "_")[2]
+        $azGovVizVersionOnRepository = ($azGovVizVersionOnRepositoryFull -split '_')[2]
         $script:azGovVizNewerVersionAvailable = $false
         if ([int]$azGovVizVersionOnRepository -gt [int]$azGovVizVersionThis) {
             $script:azGovVizNewerVersionAvailable = $true

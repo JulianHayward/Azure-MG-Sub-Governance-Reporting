@@ -4,7 +4,7 @@ function setOutput {
     }
     $outputPath = Join-Path -Path $outputPath -ChildPath '.'
     $script:outputPath = [IO.Path]::GetFullPath($outputPath)
-    if (-not (test-path $outputPath)) {
+    if (-not (Test-Path $outputPath)) {
         Write-Host "path $outputPath does not exist - please create it!" -ForegroundColor Red
         Throw 'Error - check the last console output for details'
     }

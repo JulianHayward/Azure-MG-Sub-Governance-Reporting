@@ -1,4 +1,4 @@
-$allFunctionLines = foreach ($file in Get-ChildItem -path .\pwsh\dev\functions -Recurse -filter *.ps1) {
+$allFunctionLines = foreach ($file in Get-ChildItem -Path .\pwsh\dev\functions -Recurse -Filter *.ps1) {
     Get-Content -LiteralPath $file.FullName
 }
 $functionCode = $allFunctionLines -join "`n"

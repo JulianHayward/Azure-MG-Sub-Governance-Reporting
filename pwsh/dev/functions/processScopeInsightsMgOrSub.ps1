@@ -115,7 +115,7 @@ function processScopeInsightsMgOrSub($mgOrSub, $mgChild, $subscriptionId, $subsc
         if ($subFeaturesGroupedBySubscription) {
             $subscriptionFeatures = $subFeaturesGroupedBySubscription.where({ $_.name -eq $subscriptionId })
         }
-        
+
         $cssClass = 'subDetailsTable'
 
         #$endScopeInsightsPreQuerySub = Get-Date
@@ -132,7 +132,7 @@ function processScopeInsightsMgOrSub($mgOrSub, $mgChild, $subscriptionId, $subsc
             $MDfCEmailNotificationsRoles = $hlpDefenderEmailContacts.roles
             $MDfCEmailNotificationsEmails = $hlpDefenderEmailContacts.emails
         }
-        else { 
+        else {
             $MDfCEmailNotificationsState = ''
             $MDfCEmailNotificationsSeverity = ''
             $MDfCEmailNotificationsRoles = ''
@@ -292,7 +292,7 @@ tf.init();}}
                 else {
                     [void]$htmlScopeInsights.AppendLine(@"
                     <p><i class=`"fa fa-shield`" aria-hidden=`"true`"></i> Microsoft Defender for Cloud plans - Subscription skipped ($($subscriptionSkippedMDfC.reason))</p>
-"@)   
+"@)
                 }
 
             }
@@ -1603,7 +1603,7 @@ extensions: [{ name: 'sort' }]
             if ($resourcesIdsAllCAFNamingRelevantThisSubscription) {
                 $resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByType = $resourcesIdsAllCAFNamingRelevantThisSubscription.Group | Group-Object -Property type
                 $resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByTypeCount = ($resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByType | Measure-Object).Count
-                
+
                 $tfCount = $resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByTypeCount
                 $htmlTableId = "ScopeInsights_CAFResourceNamingALL_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
@@ -1628,7 +1628,7 @@ extensions: [{ name: 'sort' }]
 "@)
                 $htmlScopeInsightsCAFResourceNamingALL = $null
                 $htmlScopeInsightsCAFResourceNamingALL = foreach ($entry in $resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByType) {
-                    
+
                     $resourceTypeGroupedByCAFResourceNamingResult = $entry.Group | Group-Object -Property cafResourceNamingResult, cafResourceNaming
                     if ($entry.Group.cafResourceNaming.Count -gt 1) {
                         $namingConvention = ($entry.Group.cafResourceNaming)[0]
@@ -1638,7 +1638,7 @@ extensions: [{ name: 'sort' }]
                         $namingConvention = $entry.Group.cafResourceNaming
                         $namingConventionFriendlyName = $entry.Group.cafResourceNamingFriendlyName
                     }
-                        
+
                     $passed = 0
                     $failed = 0
                     foreach ($result in $resourceTypeGroupedByCAFResourceNamingResult) {
@@ -1646,12 +1646,12 @@ extensions: [{ name: 'sort' }]
                         if ($resultNameSplitted[0] -eq 'passed') {
                             $passed = $result.Count
                         }
-                            
+
                         if ($resultNameSplitted[0] -eq 'failed') {
                             $failed = $result.Count
-                        }        
+                        }
                     }
-    
+
                     if ($passed -gt 0) {
                         $percentage = [math]::Round(($passed / ($passed + $failed) * 100), 2)
                     }
@@ -1777,7 +1777,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 "@)
                 $htmlScopeInsightsOrphanedResources = $null
                 $htmlScopeInsightsOrphanedResources = foreach ($resourceType in $orphanedResourcesThisSubscriptionGroupedByType | Sort-Object -Property Name) {
-                    
+
                     if ($orphanedIncludingCost) {
                         if ($resourceType.Group.Intent[0] -eq "cost savings") {
                             $orphCost = ($resourceType.Group.Cost | Measure-Object -Sum).Sum
@@ -1845,8 +1845,8 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                 }
                 [void]$htmlScopeInsights.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-                col_2: 'select',   
-                col_4: 'select',             
+                col_2: 'select',
+                col_4: 'select',
                 col_types: [
                     'caseinsensitivestring',
                     'number',
@@ -2403,7 +2403,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         </script>
     </div>
 "@)
-                    
+
                 }
                 else {
                     [void]$htmlScopeInsights.AppendLine(@'
@@ -2523,7 +2523,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         </script>
     </div>
 "@)
-                    
+
                 }
                 else {
                     [void]$htmlScopeInsights.AppendLine(@'

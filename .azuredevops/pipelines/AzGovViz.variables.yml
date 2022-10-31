@@ -293,7 +293,7 @@ variables:
   - name: PIMEligibilityIgnoreScope
     # Switch | example: value: true
     value:
-  
+
 # Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
   - name: NoPIMEligibilityIntegrationRoleAssignmentsAll
     # Switch | example: value: true
@@ -304,7 +304,7 @@ variables:
     # Switch | example: value: true
     value:
 
-# Create a dedicated DefinitionInsights HTML file 
+# Create a dedicated DefinitionInsights HTML file
   - name: NoDefinitionInsightsDedicatedHTML
     # Switch | example: value: true
     value:

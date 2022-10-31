@@ -40,6 +40,6 @@ function addHtParameters {
         NoNetwork                                    = [bool]$NoNetwork
     }
     Write-Host 'htParameters:'
-    $azAPICallConf['htParameters'] | format-table -AutoSize | Out-String
+    $azAPICallConf['htParameters'] | Format-Table -AutoSize | Out-String
     Write-Host 'Add AzGovViz htParameters succeeded' -ForegroundColor Green
 }

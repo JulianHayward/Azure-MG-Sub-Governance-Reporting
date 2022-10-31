@@ -60,7 +60,7 @@ function processApplications {
                         $appPasswordCredentialsExpiryOKCount = 0
                         $appPasswordCredentialsExpiryOKMoreThan2YearsCount = 0
                         foreach ($appPasswordCredential in $getApplication.passwordCredentials) {
-                            $passwordExpiryTotalDays = (NEW-TIMESPAN -Start $currentDateUTC -End $appPasswordCredential.endDateTime).TotalDays
+                            $passwordExpiryTotalDays = (New-TimeSpan -Start $currentDateUTC -End $appPasswordCredential.endDateTime).TotalDays
                             if ($passwordExpiryTotalDays -lt 0) {
                                 $appPasswordCredentialsExpiredCount++
                             }
@@ -90,7 +90,7 @@ function processApplications {
                         $appKeyCredentialsExpiryOKCount = 0
                         $appKeyCredentialsExpiryOKMoreThan2YearsCount = 0
                         foreach ($appKeyCredential in $getApplication.keyCredentials) {
-                            $keyCredentialExpiryTotalDays = (NEW-TIMESPAN -Start $currentDateUTC -End $appKeyCredential.endDateTime).TotalDays
+                            $keyCredentialExpiryTotalDays = (New-TimeSpan -Start $currentDateUTC -End $appKeyCredential.endDateTime).TotalDays
                             if ($keyCredentialExpiryTotalDays -lt 0) {
                                 $appKeyCredentialsExpiredCount++
                             }
@@ -114,9 +114,9 @@ function processApplications {
                 }
             }
 
-        } -Throttlelimit ($ThrottleLimit * 2)
+        } -ThrottleLimit ($ThrottleLimit * 2)
 
         $endSPApp = Get-Date
-        Write-Host "Processing Service Principals - Applications duration: $((NEW-TIMESPAN -Start $startSPApp -End $endSPApp).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSPApp -End $endSPApp).TotalSeconds) seconds)"
+        Write-Host "Processing Service Principals - Applications duration: $((New-TimeSpan -Start $startSPApp -End $endSPApp).TotalMinutes) minutes ($((New-TimeSpan -Start $startSPApp -End $endSPApp).TotalSeconds) seconds)"
     }
 }
