@@ -27,7 +27,7 @@ function verifyModules3rd {
                 if (-not $moduleVersion) {
                     Write-Host '  Check latest module version'
                     try {
-                        $moduleVersion = (Find-Module -name $($module.ModuleName)).Version
+                        $moduleVersion = (Find-Module -Name $($module.ModuleName)).Version
                         Write-Host "  Latest module version: $moduleVersion"
                     }
                     catch {
@@ -38,7 +38,7 @@ function verifyModules3rd {
 
                 if (-not $installModuleSuccess) {
                     try {
-                        $moduleVersionLoaded = (Get-InstalledModule -name $($module.ModuleName)).Version
+                        $moduleVersionLoaded = (Get-InstalledModule -Name $($module.ModuleName)).Version
                         if ($moduleVersionLoaded -eq $moduleVersion) {
                             $installModuleSuccess = $true
                         }

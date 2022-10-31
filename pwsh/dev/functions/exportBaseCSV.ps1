@@ -12,5 +12,5 @@ function exportBaseCSV {
     }
 
     $endBuildCSV = Get-Date
-    Write-Host "Exporting CSV total duration: $((NEW-TIMESPAN -Start $startBuildCSV -End $endBuildCSV).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startBuildCSV -End $endBuildCSV).TotalSeconds) seconds)"
+    Write-Host "Exporting CSV total duration: $((New-TimeSpan -Start $startBuildCSV -End $endBuildCSV).TotalMinutes) minutes ($((New-TimeSpan -Start $startBuildCSV -End $endBuildCSV).TotalSeconds) seconds)"
 }

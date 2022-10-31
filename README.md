@@ -59,10 +59,19 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Oct-19 / Major)
+__Changes__ (2022-Oct-31 / Major)
 
-* Fix error for feature 'Storage Account Access Analysis' in sovereign clouds
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.43
+* New feature - Network analysis (__TenantSummary__ and CSV export)
+  * Virtual Networks
+  * Virtual Network Peerings
+* New parameter `-NoResourceProvidersAtAll` - processing Resource Providers in large tenants can consume a lot of memory / increase processing time significantly
+* Fix issue #139
+* Update `*_DailySummary.csv` with orphaned resources costs (disks, public IP addresses) - thanks @kaiaschulz
+* Slight adjustment on `*_RoleAssignments.csv` output - rename column tenOrMgOrSubOrRGOrRes to scopeTenOrMgOrSubOrRGOrRes
+* Publish .vscode
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.45
+* Minor optimizations
+* Add reference to [Media](#media): Microsoft Tech Talks - Bevan Sinclair (Cloud Solution Architect Microsoft) [Automated Governance Reporting in Azure (MTT0AEDT)](https://mtt.eventbuilder.com/event/66431) (register to view)
 
 Passed tests: Powershell Core 7.2.6 on Windows  
 Passed tests: Powershell Core 7.2.6 Azure DevOps hosted agent ubuntu-20.04  
@@ -82,6 +91,7 @@ More [demo output](https://github.com/JulianHayward/AzGovViz)
 
 ### Media
 
+* Microsoft Tech Talks - Bevan Sinclair (Cloud Solution Architect Microsoft) [Automated Governance Reporting in Azure (MTT0AEDT)](https://mtt.eventbuilder.com/event/66431) (register to view)
 * Microsoft Dev Radio (YouTube) [Get visibility into your environment with AzGovViz](https://www.youtube.com/watch?v=hZXvF5oypLE)  
 * Jack Tracey (Cloud Solution Architect Microsoft) [AzGovViz With Azure DevOps](https://jacktracey.co.uk/azgovviz-with-azure-devops/)
 
@@ -213,6 +223,9 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
     * Well-Architected Framework aligned best practice analysis for resources, including guidance for remediation
   * Storage Account Access Analysis
     * Provides insights on Storage Accounts with focus on anonymous access (containers/blobs and 'Static website' feature)
+* __Network__
+  * Virtual Networks
+  * Virtual Network Peerings
 * __Diagnostics__
   * Management Groups Diagnostic settings report
     * Management Group, Diagnostic setting name, target type (LA, SA, EH), target Id, Log Category status
@@ -442,6 +455,7 @@ AzAPICall resources:
   * ~~`-HierarchyTreeOnly`~~ `-HierarchyMapOnly` - Output only the __HierarchyMap__ for Management Groups including linked Subscriptions
   * `-SubscriptionQuotaIdWhitelist` - Process only Subscriptions with defined QuotaId(s). Example: .\AzGovVizParallel.ps1 `-SubscriptionQuotaIdWhitelist MSDN_,Enterprise_`
   * `-NoResourceProvidersDetailed` - Disables output for ResourceProvider states for all Subscriptions in the __TenantSummary__ section, in large Tenants this can become time consuming
+  * `-NoResourceProvidersAtAll` - Resource Providers will not be collected
   * `-NoMDfCSecureScore` - Disables Microsoft Defender for Cloud Secure Score request for Subscriptions and Management Groups.
   * ~~`-DisablePolicyComplianceStates`~~ `-NoPolicyComplianceStates` - Will not query policy compliance states. You may want to use this parameter to accellerate script execution or when receiving error 'ResponseTooLarge'. 
   * `-NoResourceDiagnosticsPolicyLifecycle` - Disables Resource Diagnostics Policy Lifecycle recommendations
@@ -487,6 +501,10 @@ AzAPICall resources:
     * `-NoPIMEligibilityIntegrationRoleAssignmentsAll` - Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
   * ~~`-DefinitionInsightsDedicatedHTML`~~ `-NoDefinitionInsightsDedicatedHTML` - __DefinitionInsights__ will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep __DefinitionInsights__ in the main html file then use this parameter
   * ~~`-NoALZEvergreen`~~ `-NoALZPolicyVersionChecker` - Do not execute the ~~'ALZ EverGreen'~~ 'Azure Landing Zones (ALZ) Policy Version Checker' feature
+  * `-NoStorageAccountAccessAnalysis` - Do not execute Storage Account Access Analysis (focus on anonymous access)
+  * `-StorageAccountAccessAnalysisSubscriptionTags` - Define Subscription tag names that should be added to the CSV output per Storage Account
+  * `-StorageAccountAccessAnalysisStorageAccountTags` - Define Storage Account tag names that should be added to the CSV output per Storage Account
+  * `-NoNetwork` - Do not execute Network analysis / Virtual Network and Virtual Network Peerings
 
 ### API reference
 

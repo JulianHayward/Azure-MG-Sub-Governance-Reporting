@@ -22,5 +22,5 @@ function processManagedIdentities {
         }
     }
     $endSPMI = Get-Date
-    Write-Host "Processing Service Principals - Managed Identities duration: $((NEW-TIMESPAN -Start $startSPMI -End $endSPMI).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSPMI -End $endSPMI).TotalSeconds) seconds)"
+    Write-Host "Processing Service Principals - Managed Identities duration: $((New-TimeSpan -Start $startSPMI -End $endSPMI).TotalMinutes) minutes ($((New-TimeSpan -Start $startSPMI -End $endSPMI).TotalSeconds) seconds)"
 }

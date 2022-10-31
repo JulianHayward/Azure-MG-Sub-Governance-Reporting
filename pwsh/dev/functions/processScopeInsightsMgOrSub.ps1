@@ -115,7 +115,7 @@ function processScopeInsightsMgOrSub($mgOrSub, $mgChild, $subscriptionId, $subsc
         if ($subFeaturesGroupedBySubscription) {
             $subscriptionFeatures = $subFeaturesGroupedBySubscription.where({ $_.name -eq $subscriptionId })
         }
-        
+
         $cssClass = 'subDetailsTable'
 
         #$endScopeInsightsPreQuerySub = Get-Date
@@ -132,7 +132,7 @@ function processScopeInsightsMgOrSub($mgOrSub, $mgChild, $subscriptionId, $subsc
             $MDfCEmailNotificationsRoles = $hlpDefenderEmailContacts.roles
             $MDfCEmailNotificationsEmails = $hlpDefenderEmailContacts.emails
         }
-        else { 
+        else {
             $MDfCEmailNotificationsState = ''
             $MDfCEmailNotificationsSeverity = ''
             $MDfCEmailNotificationsRoles = ''
@@ -292,7 +292,7 @@ tf.init();}}
                 else {
                     [void]$htmlScopeInsights.AppendLine(@"
                     <p><i class=`"fa fa-shield`" aria-hidden=`"true`"></i> Microsoft Defender for Cloud plans - Subscription skipped ($($subscriptionSkippedMDfC.reason))</p>
-"@)   
+"@)
                 }
 
             }
@@ -818,12 +818,13 @@ tf.init();}}
 
         #ResourceProvider
         #region ScopeInsightsResourceProvidersDetailed
-        if ($azAPICallConf['htParameters'].NoResourceProvidersDetailed -eq $false) {
-            if (($htResourceProvidersAll).($subscriptionId)) {
-                $tfCount = ($htResourceProvidersAll).($subscriptionId).Providers.Count
-                $htmlTableId = "ScopeInsights_ResourceProvider_$($subscriptionId -replace '-','_')"
-                $randomFunctionName = "func_$htmlTableId"
-                [void]$htmlScopeInsights.AppendLine(@"
+        if ($azAPICallConf['htParameters'].NoResourceProvidersAtAll -eq $false) {
+            if ($azAPICallConf['htParameters'].NoResourceProvidersDetailed -eq $false) {
+                if (($htResourceProvidersAll).($subscriptionId)) {
+                    $tfCount = ($htResourceProvidersAll).($subscriptionId).Providers.Count
+                    $htmlTableId = "ScopeInsights_ResourceProvider_$($subscriptionId -replace '-','_')"
+                    $randomFunctionName = "func_$htmlTableId"
+                    [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -836,17 +837,17 @@ tf.init();}}
 </thead>
 <tbody>
 "@)
-                $htmlScopeInsightsResourceProvidersDetailed = $null
-                $htmlScopeInsightsResourceProvidersDetailed = foreach ($provider in ($htResourceProvidersAll).($subscriptionId).Providers) {
-                    @"
+                    $htmlScopeInsightsResourceProvidersDetailed = $null
+                    $htmlScopeInsightsResourceProvidersDetailed = foreach ($provider in ($htResourceProvidersAll).($subscriptionId).Providers) {
+                        @"
 <tr>
 <td>$($provider.namespace)</td>
 <td>$($provider.registrationState)</td>
 </tr>
 "@
-                }
-                [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsResourceProvidersDetailed)
-                [void]$htmlScopeInsights.AppendLine(@"
+                    }
+                    [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsResourceProvidersDetailed)
+                    [void]$htmlScopeInsights.AppendLine(@"
             </tbody>
         </table>
     </div>
@@ -856,31 +857,31 @@ tf.init();}}
             var tfConfig4$htmlTableId = {
             base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
 "@)
-                if ($tfCount -gt 10) {
-                    $spectrum = "10, $tfCount"
-                    if ($tfCount -gt 50) {
-                        $spectrum = "10, 25, 50, $tfCount"
-                    }
-                    if ($tfCount -gt 100) {
-                        $spectrum = "10, 30, 50, 100, $tfCount"
-                    }
-                    if ($tfCount -gt 500) {
-                        $spectrum = "10, 30, 50, 100, 250, $tfCount"
-                    }
-                    if ($tfCount -gt 1000) {
-                        $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-                    }
-                    if ($tfCount -gt 2000) {
-                        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-                    }
-                    if ($tfCount -gt 3000) {
-                        $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-                    }
-                    [void]$htmlScopeInsights.AppendLine(@"
+                    if ($tfCount -gt 10) {
+                        $spectrum = "10, $tfCount"
+                        if ($tfCount -gt 50) {
+                            $spectrum = "10, 25, 50, $tfCount"
+                        }
+                        if ($tfCount -gt 100) {
+                            $spectrum = "10, 30, 50, 100, $tfCount"
+                        }
+                        if ($tfCount -gt 500) {
+                            $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                        }
+                        if ($tfCount -gt 1000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                        }
+                        if ($tfCount -gt 2000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                        }
+                        if ($tfCount -gt 3000) {
+                            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                        }
+                        [void]$htmlScopeInsights.AppendLine(@"
 paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
 "@)
-                }
-                [void]$htmlScopeInsights.AppendLine(@"
+                    }
+                    [void]$htmlScopeInsights.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             col_1: 'select',
             col_types: [
@@ -893,16 +894,17 @@ extensions: [{ name: 'sort' }]
         tf.init();}}
     </script>
 "@)
-            }
-            else {
-                [void]$htmlScopeInsights.AppendLine(@"
+                }
+                else {
+                    [void]$htmlScopeInsights.AppendLine(@"
     <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($htResourceProvidersAll.Keys).count) Resource Providers</span></p>
 "@)
-            }
-            [void]$htmlScopeInsights.AppendLine(@'
+                }
+                [void]$htmlScopeInsights.AppendLine(@'
 </td></tr>
 <tr><td class="detailstd">
 '@)
+            }
         }
         #endregion ScopeInsightsResourceProvidersDetailed
 
@@ -1601,7 +1603,7 @@ extensions: [{ name: 'sort' }]
             if ($resourcesIdsAllCAFNamingRelevantThisSubscription) {
                 $resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByType = $resourcesIdsAllCAFNamingRelevantThisSubscription.Group | Group-Object -Property type
                 $resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByTypeCount = ($resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByType | Measure-Object).Count
-                
+
                 $tfCount = $resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByTypeCount
                 $htmlTableId = "ScopeInsights_CAFResourceNamingALL_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
@@ -1626,7 +1628,7 @@ extensions: [{ name: 'sort' }]
 "@)
                 $htmlScopeInsightsCAFResourceNamingALL = $null
                 $htmlScopeInsightsCAFResourceNamingALL = foreach ($entry in $resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByType) {
-                    
+
                     $resourceTypeGroupedByCAFResourceNamingResult = $entry.Group | Group-Object -Property cafResourceNamingResult, cafResourceNaming
                     if ($entry.Group.cafResourceNaming.Count -gt 1) {
                         $namingConvention = ($entry.Group.cafResourceNaming)[0]
@@ -1636,7 +1638,7 @@ extensions: [{ name: 'sort' }]
                         $namingConvention = $entry.Group.cafResourceNaming
                         $namingConventionFriendlyName = $entry.Group.cafResourceNamingFriendlyName
                     }
-                        
+
                     $passed = 0
                     $failed = 0
                     foreach ($result in $resourceTypeGroupedByCAFResourceNamingResult) {
@@ -1644,12 +1646,12 @@ extensions: [{ name: 'sort' }]
                         if ($resultNameSplitted[0] -eq 'passed') {
                             $passed = $result.Count
                         }
-                            
+
                         if ($resultNameSplitted[0] -eq 'failed') {
                             $failed = $result.Count
-                        }        
+                        }
                     }
-    
+
                     if ($passed -gt 0) {
                         $percentage = [math]::Round(($passed / ($passed + $failed) * 100), 2)
                     }
@@ -1775,7 +1777,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 "@)
                 $htmlScopeInsightsOrphanedResources = $null
                 $htmlScopeInsightsOrphanedResources = foreach ($resourceType in $orphanedResourcesThisSubscriptionGroupedByType | Sort-Object -Property Name) {
-                    
+
                     if ($orphanedIncludingCost) {
                         if ($resourceType.Group.Intent[0] -eq "cost savings") {
                             $orphCost = ($resourceType.Group.Cost | Measure-Object -Sum).Sum
@@ -1843,8 +1845,8 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                 }
                 [void]$htmlScopeInsights.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-                col_2: 'select',   
-                col_4: 'select',             
+                col_2: 'select',
+                col_4: 'select',
                 col_types: [
                     'caseinsensitivestring',
                     'number',
@@ -2401,7 +2403,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         </script>
     </div>
 "@)
-                    
+
                 }
                 else {
                     [void]$htmlScopeInsights.AppendLine(@'
@@ -2521,7 +2523,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         </script>
     </div>
 "@)
-                    
+
                 }
                 else {
                     [void]$htmlScopeInsights.AppendLine(@'

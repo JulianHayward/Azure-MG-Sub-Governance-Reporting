@@ -2,7 +2,7 @@ function processAADGroups {
     if ($NoPIMEligibility) {
         Write-Host 'Resolving AAD Groups (for which a RBAC Role assignment exists)'
     }
-    else{
+    else {
         Write-Host 'Resolving AAD Groups (for which a RBAC Role assignment or PIM Eligibility exists)'
     }
 
@@ -11,7 +11,7 @@ function processAADGroups {
 
     $roleAssignmentsforGroups = ($roleAssignmentsUniqueById.where( { $_.RoleAssignmentIdentityObjectType -eq 'Group' } ) | Select-Object -Property RoleAssignmentIdentityObjectId, RoleAssignmentIdentityDisplayname) | Sort-Object -Property RoleAssignmentIdentityObjectId -Unique
     $optimizedTableForAADGroupsQuery = [System.Collections.ArrayList]@()
-    if ($roleAssignmentsforGroups.Count -gt 0){
+    if ($roleAssignmentsforGroups.Count -gt 0) {
         foreach ($roleAssignmentforGroups in $roleAssignmentsforGroups) {
             $null = $optimizedTableForAADGroupsQuery.Add($roleAssignmentforGroups)
         }
@@ -21,17 +21,17 @@ function processAADGroups {
     Write-Host " $aadGroupsCount Groups from RoleAssignments"
 
     if (-not $NoPIMEligibility) {
-        $PIMEligibleGroups = $arrayPIMEligible.where({$_.IdentityType -eq 'Group'}) | Select-Object IdentityObjectId, IdentityDisplayName | Sort-Object -Property IdentityObjectId -Unique
+        $PIMEligibleGroups = $arrayPIMEligible.where({ $_.IdentityType -eq 'Group' }) | Select-Object IdentityObjectId, IdentityDisplayName | Sort-Object -Property IdentityObjectId -Unique
         $cntPIMEligibleGroupsTotal = 0
         $cntPIMEligibleGroupsNotCoveredFromRoleAssignments = 0
         foreach ($PIMEligibleGroup in  $PIMEligibleGroups) {
             $cntPIMEligibleGroupsTotal++
-            if ($optimizedTableForAADGroupsQuery.RoleAssignmentIdentityObjectId -notcontains $PIMEligibleGroup.IdentityObjectId){
+            if ($optimizedTableForAADGroupsQuery.RoleAssignmentIdentityObjectId -notcontains $PIMEligibleGroup.IdentityObjectId) {
                 $cntPIMEligibleGroupsNotCoveredFromRoleAssignments++
                 $null = $optimizedTableForAADGroupsQuery.Add([PSCustomObject]@{
-                    RoleAssignmentIdentityObjectId = $PIMEligibleGroup.IdentityObjectId
-                    RoleAssignmentIdentityDisplayname = $PIMEligibleGroup.IdentityDisplayName
-                })
+                        RoleAssignmentIdentityObjectId    = $PIMEligibleGroup.IdentityObjectId
+                        RoleAssignmentIdentityDisplayname = $PIMEligibleGroup.IdentityDisplayName
+                    })
             }
         }
         Write-Host " $cntPIMEligibleGroupsTotal Groups from PIM Eligibility; $cntPIMEligibleGroupsNotCoveredFromRoleAssignments Groups added ($($cntPIMEligibleGroupsTotal - $cntPIMEligibleGroupsNotCoveredFromRoleAssignments) already covered in RoleAssignments)"
@@ -75,7 +75,7 @@ function processAADGroups {
             #endregion UsingVARs
 
             $rndom = Get-Random -Minimum 10 -Maximum 750
-            start-sleep -Millisecond $rndom
+            Start-Sleep -Millisecond $rndom
 
             $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/groups/$($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)/transitiveMembers/`$count"
             $method = 'GET'
@@ -121,6 +121,6 @@ function processAADGroups {
 
     Write-Host " processed $($arrayProgressedAADGroups.Count) AAD Groups"
     $endAADGroupsResolveMembers = Get-Date
-    Write-Host "Resolving AAD Groups duration: $((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
+    Write-Host "Resolving AAD Groups duration: $((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
     Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (after Resolving AAD Groups)"
 }

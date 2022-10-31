@@ -1,7 +1,7 @@
 function getPIMEligible {
     $start = Get-Date
-        
-    $currentTask = "Get PIM onboarded Subscriptions and Management Groups"
+
+    $currentTask = 'Get PIM onboarded Subscriptions and Management Groups'
     Write-Host $currentTask
     $uriExt = "&`$expand=parent&`$filter=(type eq 'subscription' or type eq 'managementgroup')"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/privilegedAccess/azureResources/resources?`$select=id,displayName,type,externalId" + $uriExt
@@ -42,7 +42,7 @@ function getPIMEligible {
         }
 
         $htPIMEligibleDirect = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-        $scopesToIterate | ForEach-Object -parallel {
+        $scopesToIterate | ForEach-Object -Parallel {
             $scope = $_
             $azAPICallConf = $using:azAPICallConf
             $arrayPIMEligible = $using:arrayPIMEligible
@@ -53,7 +53,7 @@ function getPIMEligible {
             $function:resolveObjectIds = $using:funcResolveObjectIds
             $function:testGuid = $using:funcTestGuid
             #Write-Host "$($scope.type) $($scope.externalId -replace '.*/') - $($scope.id)"
-    
+
             $currentTask = "Get Eligible assignments for Scope $($scope.type): $($scope.externalId -replace '.*/')"
             $extUri = "?`$expand=linkedEligibleRoleAssignment,subject,roleDefinition(`$expand=resource)&`$count=true&`$filter=(roleDefinition/resource/id eq '$($scope.id)')+and+(assignmentState eq 'Eligible')&`$top=100"
             $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/privilegedAccess/azureResources/roleAssignments" + $extUri
@@ -78,13 +78,13 @@ function getPIMEligible {
                             $ManagementGroupDisplayName = $MgDetails.DisplayName
                             $ScopeDisplayName = $MgDetails.DisplayName
                             $MgPath = $MgDetails.path
-                            $MgLevel = $MgDetails.level 
+                            $MgLevel = $MgDetails.level
                         }
                         else {
                             $ManagementGroupDisplayName = 'notAccessible'
                             $ScopeDisplayName = 'notAccessible'
                             $MgPath = 'notAccessible'
-                            $MgLevel = 'notAccessible' 
+                            $MgLevel = 'notAccessible'
                         }
 
                         if ($entry.memberType -eq 'direct') {
@@ -107,7 +107,7 @@ function getPIMEligible {
                             $SubscriptionDisplayName = $MgDetails.DisplayName
                             $ScopeDisplayName = $MgDetails.DisplayName
                             $MgPath = $MgDetails.path
-                            $MgLevel = $MgDetails.level 
+                            $MgLevel = $MgDetails.level
                             $ManagementGroupId = $MgDetails.Parent
                             $ManagementGroupDisplayName = $MgDetails.ParentName
                         }
@@ -135,8 +135,8 @@ function getPIMEligible {
                     }
 
                     $roleType = 'undefined'
-                    if ($entry.roleDefinition.type -eq 'BuiltInRole') { $roleType = 'Builtin'}
-                    if ($entry.roleDefinition.type -eq 'CustomRole') { $roleType = 'Custom'}
+                    if ($entry.roleDefinition.type -eq 'BuiltInRole') { $roleType = 'Builtin' }
+                    if ($entry.roleDefinition.type -eq 'CustomRole') { $roleType = 'Custom' }
 
                     $null = $script:arrayPIMEligible.Add([PSCustomObject]@{
                             ScopeType                  = $ScopeType
@@ -158,10 +158,10 @@ function getPIMEligible {
                             IdentityPrincipalName      = $entry.subject.principalName
                             PIMId                      = $entry.id
                             PIMInheritance             = $entry.memberType
-                            PIMInheritedFromClear = ''
+                            PIMInheritedFromClear      = ''
                             PIMInheritedFrom           = ''
-                            PIMStartDateTime = $entry.startDateTime
-                            PIMEndDateTime = $entry.endDateTime
+                            PIMStartDateTime           = $entry.startDateTime
+                            PIMEndDateTime             = $entry.endDateTime
                         })
                 }
             }
@@ -181,5 +181,5 @@ function getPIMEligible {
     }
 
     $end = Get-Date
-    Write-Host "Getting PIM Eligible assignments processing duration: $((NEW-TIMESPAN -Start $start -End $end).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds)"
+    Write-Host "Getting PIM Eligible assignments processing duration: $((New-TimeSpan -Start $start -End $end).TotalMinutes) minutes ($((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds)"
 }

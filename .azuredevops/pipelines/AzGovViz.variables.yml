@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20220930_1
+# AzGovViz v6_major_20221023_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -293,7 +293,7 @@ variables:
   - name: PIMEligibilityIgnoreScope
     # Switch | example: value: true
     value:
-  
+
 # Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
   - name: NoPIMEligibilityIntegrationRoleAssignmentsAll
     # Switch | example: value: true
@@ -304,13 +304,18 @@ variables:
     # Switch | example: value: true
     value:
 
-# Create a dedicated DefinitionInsights HTML file 
+# Create a dedicated DefinitionInsights HTML file
   - name: NoDefinitionInsightsDedicatedHTML
     # Switch | example: value: true
     value:
 
 # Do not execute Storage Account Access Analysis
   - name: NoStorageAccountAccessAnalysis
+    # Switch | example: value: true
+    value:
+
+# Do not execute Network analysis / Virtual Network and Virtual Network Peerings
+  - name: NoNetwork
     # Switch | example: value: true
     value:
 

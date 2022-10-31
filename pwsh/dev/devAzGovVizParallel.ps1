@@ -102,7 +102,7 @@
     If the parameter switch is true then the following parameters will be set:
     -PolicyAtScopeOnly $true
     -RBACAtScopeOnly $true
-    -NoResourceProvidersDetailed $true
+    -NoResourceProvidersAtAll $true
     -NoScopeInsights $true
 
 .PARAMETER PolicyAtScopeOnly
@@ -112,8 +112,12 @@
     Removing 'inherited' lines in the HTML file; use this parameter if you run against a larger tenants
 
 .PARAMETER NoResourceProvidersDetailed
-    Note if you use parameter -LargeTenant then parameter -NoResourceProvidersDetailed will be set to true
     default is to output all ResourceProvider states for all Subscriptions in the TenantSummary. In large Tenants this can become time consuming and may blow off the html file.
+
+.PARAMETER NoResourceProvidersAtAll
+    Note if you use parameter -LargeTenant then parameter NoResourceProvidersAtAll will be set to true
+    Resource Provider states will not be collected
+
 
 .PARAMETER NoScopeInsights
     Note if you use parameter -LargeTenant then parameter -NoScopeInsights will be set to true
@@ -155,11 +159,11 @@
 .PARAMETER NoALZPolicyVersionChecker
     'Azure Landing Zones (ALZ) Policy Version Checker' for Policy and Set definitions. AzGovViz will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The 'Azure Landing Zones (ALZ) Policy Version Checker' results will be displayed in the TenantSummary and a CSV export `*_ALZPolicyVersionChecker.csv` will be provided.
     If you do not want to execute the 'Azure Landing Zones (ALZ) Policy Version Checker' feature then use this parameter
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker 
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 
 .PARAMETER NoDefinitionInsightsDedicatedHTML
     DefinitionInsights will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep DefinitionInsights in the main html file then use this parameter
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML  
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML
 
 .PARAMETER NoStorageAccountAccessAnalysis
     Analysis on Storage Accounts, specially focused on anonymous access.
@@ -173,6 +177,11 @@
 .PARAMETER StorageAccountAccessAnalysisStorageAccountTags
     If the Storage Account Access Analysis feature is executed with this parameter you can define the Storage Account (resource) tags that should be added to the CSV output
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
+
+.PARAMETER NoNetwork
+    Network analysis / Virtual Network and Virtual Network Peerings
+    If you do not want to execute this feature then use this parameter
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoNetwork
 
 .EXAMPLE
     Define the ManagementGroup ID
@@ -260,7 +269,7 @@
     If the parameter switch is true then the following parameters will be set:
     -PolicyAtScopeOnly $true
     -RBACAtScopeOnly $true
-    -NoResourceProvidersDetailed $true
+    - NoResourceProvidersAtAll $true
     -NoScopeInsights $true
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -LargeTenant
 
@@ -273,8 +282,11 @@
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -RBACAtScopeOnly
 
     Define if a detailed summary on Resource Provider states per Subscription should be created in the TenantSummary section
-    Note if you use parameter -LargeTenant then parameter -NoResourceProvidersDetailed will be set to true
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoResourceProvidersDetailed
+
+    Define if Resource Provider states should be collected
+    Note if you use parameter -LargeTenant then parameter -NoResourceProvidersAtAll will be set to true
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoResourceProvidersAtAll
 
     Define if ScopeInsights should be created or not. Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
     Note if you use parameter -LargeTenant then parameter -NoScopeInsights will be set to true
@@ -321,6 +333,9 @@
     Additionally you can define Subscription and/or Storage Account Tag names that should be added to the CSV output per Storage Account
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> --StorageAccountAccessAnalysisSubscriptionTags @('Responsible', 'TeamEmail') -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
 
+    Define if Network analysis / Virtual Network and Virtual Network Peerings should not be executed
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoNetwork
+
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
@@ -337,10 +352,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.43',
+    $AzAPICallVersion = '1.1.45',
 
     [string]
-    $ProductVersion = 'v6_major_20221019_1',
+    $ProductVersion = 'v6_major_20221031_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -381,6 +396,9 @@ Param
 
     [switch]
     $NoResourceProvidersDetailed,
+
+    [switch]
+    $NoResourceProvidersAtAll,
 
     [int]
     $LimitCriticalPercentage = 80,
@@ -524,6 +542,9 @@ Param
     [switch]
     $GitHubActionsOIDC,
 
+    [switch]
+    $NoNetwork,
+
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
     $LimitRBACCustomRoleDefinitionsTenant = 5000,
@@ -578,13 +599,14 @@ $startAzGovViz = Get-Date
 $startTime = Get-Date -Format 'dd-MMM-yyyy HH:mm:ss'
 Write-Host "Start AzGovViz $($startTime) (#$($ProductVersion))"
 
-if ($ManagementGroupId -match " ") {
+if ($ManagementGroupId -match ' ') {
     Write-Host "Provided Management Group ID: '$($ManagementGroupId)'" -ForegroundColor Yellow
-    Write-Host "The Management Group ID may not contain spaces - provide the Management Group ID, not the displayName." -ForegroundColor DarkRed
-    throw "Management Group ID validation failed!"
+    Write-Host 'The Management Group ID may not contain spaces - provide the Management Group ID, not the displayName.' -ForegroundColor DarkRed
+    throw 'Management Group ID validation failed!'
 }
 
 #region Functions
+. ".\$($ScriptPath)\functions\processNetwork.ps1"
 . ".\$($ScriptPath)\functions\processStorageAccountAnalysis.ps1"
 . ".\$($ScriptPath)\functions\processALZPolicyVersionChecker.ps1"
 . ".\$($ScriptPath)\functions\getPIMEligible.ps1"
@@ -667,7 +689,7 @@ $null = $modules.Add([PSCustomObject]@{
     })
 
 if ($DoPSRule) {
-    
+
     <#temporary workaround / PSRule/Azure DevOps Az.Resources module requirements
     if ($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) {
         $PSRuleVersion = '1.14.3'
@@ -706,7 +728,7 @@ if ($azGovVizNewerVersionAvailable) {
         Write-Host " * * * This AzGovViz version ($ProductVersion) is not up to date. Get the latest AzGovViz version ($azGovVizVersionOnRepositoryFull)! * * *" -ForegroundColor Green
         Write-Host 'Check the AzGovViz history: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md'
         Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor Green
-        pause
+        Pause
     }
 }
 #endregion promptNewAzGovVizVersionAvailable
@@ -717,13 +739,13 @@ if (-not $HierarchyMapOnly) {
     #region recommendPSRule
     if (-not $azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
         if (-not $DoPSRule) {
-            Write-Host ""
-            Write-Host " * * * RECOMMENDATION: PSRule for Azure * * *" -ForegroundColor Magenta
+            Write-Host ''
+            Write-Host ' * * * RECOMMENDATION: PSRule for Azure * * *' -ForegroundColor Magenta
             Write-Host "Parameter -DoPSRule == '$DoPSRule'"
             Write-Host "'PSRule for Azure' based ouputs provide aggregated Microsoft Azure Well-Architected Framework (WAF) aligned resource analysis results including guidance for remediation."
-            Write-Host "Consider running AzGovViz with the parameter -DoPSRule (example: .\pwsh\AzGovVizParallel.ps1 -DoPSRule)"
-            Write-Host " * * * * * * * * * * * * * * * * * * * * * *" -ForegroundColor Magenta
-            pause
+            Write-Host 'Consider running AzGovViz with the parameter -DoPSRule (example: .\pwsh\AzGovVizParallel.ps1 -DoPSRule)'
+            Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor Magenta
+            Pause
         }
     }
     #endregion recommendPSRule
@@ -731,16 +753,16 @@ if (-not $HierarchyMapOnly) {
     #region hintPIMEligibility
     if ($azAPICallConf['htParameters'].accountType -eq 'User') {
         if (-not $NoPIMEligibility) {
-            Write-Host ""
-            Write-Host " * * * HINT: PIM (Privileged Identity Management) Eligibility reporting * * *" -ForegroundColor DarkBlue
+            Write-Host ''
+            Write-Host ' * * * HINT: PIM (Privileged Identity Management) Eligibility reporting * * *' -ForegroundColor DarkBlue
             Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
             Write-Host "Executing principal accountType: '$($azAPICallConf['htParameters'].accountType)'"
             Write-Host "PIM Eligibility reporting requires to execute the script as ServicePrincipal. API Permission 'PrivilegedAccess.Read.AzureResources' is required"
             Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
             $NoPIMEligibility = $true
             Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
-            Write-Host " * * * * * * * * * * * * * * * * * * * * * *" -ForegroundColor DarkBlue
-            pause
+            Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor DarkBlue
+            Pause
         }
     }
     #endregion hintPIMEligibility
@@ -876,22 +898,23 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $storageAccounts = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayStorageAccountAnalysisResults = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htDefenderEmailContacts = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+    $arrayVNets = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
 if (-not $HierarchyMapOnly) {
     if (-not $NoALZPolicyVersionChecker) {
         switch ($azAPICallConf['checkContext'].Environment.Name) {
-            'Azurecloud' { 
-                Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                processALZPolicyVersionChecker 
-            }
-            'AzureChinaCloud' { 
+            'Azurecloud' {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
                 processALZPolicyVersionChecker
             }
-            'AzureUSGovernment' { 
+            'AzureChinaCloud' {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                processALZPolicyVersionChecker 
+                processALZPolicyVersionChecker
+            }
+            'AzureUSGovernment' {
+                Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZPolicyVersionChecker
             }
             Default {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
@@ -940,6 +963,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $startDataCollection = Get-Date
 
     processDataCollection -mgId $ManagementGroupId
+
     showMemoryUsage
 
     if (-not $NoPIMEligibility) {
@@ -950,7 +974,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     exportBaseCSV
 
     $endDataCollection = Get-Date
-    Write-Host "Collecting custom data duration: $((NEW-TIMESPAN -Start $startDataCollection -End $endDataCollection).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startDataCollection -End $endDataCollection).TotalSeconds) seconds)"
+    Write-Host "Collecting custom data duration: $((New-TimeSpan -Start $startDataCollection -End $endDataCollection).TotalMinutes) minutes ($((New-TimeSpan -Start $startDataCollection -End $endDataCollection).TotalSeconds) seconds)"
 }
 else {
     processHierarchyMapOnly
@@ -1045,7 +1069,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         }
     }
     $endHelperHt = Get-Date
-    Write-Host "Create Policy/Set helper hash table duration: $((NEW-TIMESPAN -Start $startHelperHt -End $endHelperHt).TotalSeconds) seconds"
+    Write-Host "Create Policy/Set helper hash table duration: $((New-TimeSpan -Start $startHelperHt -End $endHelperHt).TotalSeconds) seconds"
 
     if (-not $azAPICallConf['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
         $policyBaseQuery = $newTable.where({ -not [String]::IsNullOrEmpty($_.PolicyVariant) } ) | Sort-Object -Property PolicyType, Policy | Select-Object -Property Level, Policy*, mg*, Subscription*
@@ -1078,7 +1102,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     }
 
     $policyPolicySetBaseQueryUniqueAssignments = $policyBaseQueryUniqueAssignments.where({ $_.PolicyVariant -eq 'PolicySet' } )
-    $policyBaseQueryUniqueCustomDefinitions = ($policyBaseQuery.where({ $_.PolicyType -eq 'Custom' } )) | select-object PolicyVariant, PolicyDefinitionId -Unique
+    $policyBaseQueryUniqueCustomDefinitions = ($policyBaseQuery.where({ $_.PolicyType -eq 'Custom' } )) | Select-Object PolicyVariant, PolicyDefinitionId -Unique
     $policyPolicyBaseQueryUniqueCustomDefinitions = ($policyBaseQueryUniqueCustomDefinitions.where({ $_.PolicyVariant -eq 'Policy' } )).PolicyDefinitionId
     $policyPolicySetBaseQueryUniqueCustomDefinitions = ($policyBaseQueryUniqueCustomDefinitions.where({ $_.PolicyVariant -eq 'PolicySet' } )).PolicyDefinitionId
 
@@ -1094,7 +1118,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     }
 
     $blueprintBaseQuery = ($newTable | Select-Object mgid, SubscriptionId, Blueprint*).where({ -not [String]::IsNullOrEmpty($_.BlueprintName) } )
-    $mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | select-object MgId, SubscriptionId -unique)
+    $mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | Select-Object MgId, SubscriptionId -Unique)
 
     #region create array Policy definitions
     $tenantAllPoliciesCount = (($htCacheDefinitionsPolicy).Values).count
@@ -1158,10 +1182,10 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $diagnosticSettingsMgManagementGroupsCount = ($diagnosticSettingsMgGrouped | Measure-Object).Count
 
     foreach ($entry in $diagnosticSettingsMgGrouped) {
-        $dsgrouped = $entry.group | Group-Object -property DiagnosticSettingName
+        $dsgrouped = $entry.group | Group-Object -Property DiagnosticSettingName
 
         foreach ($ds in $dsgrouped) {
-            $targetTypegrouped = $ds.group | Group-Object -property DiagnosticTargetType
+            $targetTypegrouped = $ds.group | Group-Object -Property DiagnosticTargetType
             foreach ($tt in $targetTypegrouped) {
                 if (-not ($htDiagnosticSettingsMgSub).mg.($entry.Name)) {
                     ($htDiagnosticSettingsMgSub).mg.($entry.Name) = @{}
@@ -1226,10 +1250,10 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $diagnosticSettingsSubSubscriptionsCount = ($diagnosticSettingsSubGrouped | Measure-Object).Count
 
     foreach ($entry in $diagnosticSettingsSubGrouped) {
-        $dsgrouped = $entry.group | Group-Object -property DiagnosticSettingName
+        $dsgrouped = $entry.group | Group-Object -Property DiagnosticSettingName
 
         foreach ($ds in $dsgrouped) {
-            $targetTypegrouped = $ds.group | Group-Object -property DiagnosticTargetType
+            $targetTypegrouped = $ds.group | Group-Object -Property DiagnosticTargetType
             foreach ($tt in $targetTypegrouped) {
                 if (-not ($htDiagnosticSettingsMgSub).sub.($entry.Name)) {
                     ($htDiagnosticSettingsMgSub).sub.($entry.Name) = @{}
@@ -1263,7 +1287,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     #endregion DefenderPlans
 
     $endPreQueries = Get-Date
-    Write-Host " Pre Queries duration: $((NEW-TIMESPAN -Start $startPreQueries -End $endPreQueries).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startPreQueries -End $endPreQueries).TotalSeconds) seconds)"
+    Write-Host " Pre Queries duration: $((New-TimeSpan -Start $startPreQueries -End $endPreQueries).TotalMinutes) minutes ($((New-TimeSpan -Start $startPreQueries -End $endPreQueries).TotalSeconds) seconds)"
     showMemoryUsage
     #endregion preQueries
 
@@ -1271,7 +1295,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $startSummarizeDataCollectionResults = Get-Date
     Write-Host 'Summary data collection'
     $mgsDetails = ($optimizedTableForPathQueryMg | Select-Object Level, MgId -Unique)
-    $mgDepth = ($mgsDetails.Level  | measure-object -maximum).Maximum
+    $mgDepth = ($mgsDetails.Level | Measure-Object -Maximum).Maximum
     $totalMgCount = ($mgsDetails).count
     $totalSubCount = ($optimizedTableForPathQuerySub).count
     $totalSubOutOfScopeCount = ($outOfScopeSubscriptions).count
@@ -1387,7 +1411,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     }
 
     $endSummarizeDataCollectionResults = Get-Date
-    Write-Host " Summary data collection duration: $((NEW-TIMESPAN -Start $startSummarizeDataCollectionResults -End $endSummarizeDataCollectionResults).TotalSeconds) seconds"
+    Write-Host " Summary data collection duration: $((New-TimeSpan -Start $startSummarizeDataCollectionResults -End $endSummarizeDataCollectionResults).TotalSeconds) seconds"
     showMemoryUsage
     #endregion summarizeDataCollectionResults
 }
@@ -1411,7 +1435,7 @@ $html = @"
         link.media = "screen,print";
         document.getElementsByTagName( "head" )[0].appendChild( link );
     </script>
-    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_047.css">
+    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_048.css">
     <script src="https://www.azadvertizer.net/azgovvizv4/js/jquery-3.6.0.min.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/jquery-ui-1.13.0.min.js"></script>
     <script type="text/javascript" src="https://www.azadvertizer.net/azgovvizv4/js/highlight_v004_002.js"></script>
@@ -1532,7 +1556,7 @@ $html = @"
 
 if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
-    if (-not $NoDefinitionInsightsDedicatedHTML){
+    if (-not $NoDefinitionInsightsDedicatedHTML) {
         $htmlDefinitionInsightsDedicatedStart = $html
         $htmlDefinitionInsightsDedicatedStart += @'
     <body>
@@ -1581,14 +1605,14 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
                 style: {
                     transform: 'scale('+scale+')',
                     transformOrigin: 'top left'
-            }})          
+            }})
                 .then(function (dataUrl) {
                 var link = document.createElement('a');
                 link.download = '$($fileName).png';
                 link.href = dataUrl;
                 link.click();
             });
-                    
+
             })
         </script>
     </body>
@@ -1609,7 +1633,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
             Write-Host " Creating new state ($($HTMLPath)) (local only))"
         }
 
-        $null = new-item -Name $HTMLPath -ItemType directory -path $outputPath
+        $null = New-Item -Name $HTMLPath -ItemType directory -Path $outputPath
 
         $htmlSubscriptionOnlyStart = $html
         $htmlSubscriptionOnlyStart += @'
@@ -1658,14 +1682,14 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
                 style: {
                     transform: 'scale('+scale+')',
                     transformOrigin: 'top left'
-            }})          
+            }})
                 .then(function (dataUrl) {
                 var link = document.createElement('a');
                 link.download = '$($fileName).png';
                 link.href = dataUrl;
                 link.click();
             });
-                    
+
             })
         </script>
     </body>
@@ -1884,7 +1908,7 @@ HierarchyMgHTML -mgChild $ManagementGroupId
 showMemoryUsage
 
 $endhierarchyMap = Get-Date
-Write-Host " Building HierarchyMap duration: $((NEW-TIMESPAN -Start $starthierarchyMap -End $endhierarchyMap).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $starthierarchyMap -End $endhierarchyMap).TotalSeconds) seconds)"
+Write-Host " Building HierarchyMap duration: $((New-TimeSpan -Start $starthierarchyMap -End $endhierarchyMap).TotalMinutes) minutes ($((New-TimeSpan -Start $starthierarchyMap -End $endhierarchyMap).TotalSeconds) seconds)"
 
 if ($getMgParentName -eq 'Tenant Root') {
     $html += @'
@@ -1920,12 +1944,16 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
     $startSummary = Get-Date
 
+    if (-not $azAPICallConf['htParameters'].NoNetwork) {
+        processNetwork
+    }
+
     processTenantSummary
     showMemoryUsage
 
     #region BuildDailySummaryCSV
     $dailySummary4ExportToCSV = [System.Collections.ArrayList]@()
-    foreach ($entry in $htDailySummary.keys | sort-Object) {
+    foreach ($entry in $htDailySummary.keys | Sort-Object) {
         $null = $dailySummary4ExportToCSV.Add([PSCustomObject]@{
                 capability = $entry
                 count      = $htDailySummary.($entry)
@@ -1936,15 +1964,15 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     #endregion BuildDailySummaryCSV
 
     $endSummary = Get-Date
-    Write-Host " Building TenantSummary duration: $((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startSummary -End $endSummary).TotalSeconds) seconds)"
+    Write-Host " Building TenantSummary duration: $((New-TimeSpan -Start $startSummary -End $endSummary).TotalMinutes) minutes ($((New-TimeSpan -Start $startSummary -End $endSummary).TotalSeconds) seconds)"
 
-    $html += @"
+    $html += @'
     </div><!--summary-->
     </div><!--summprnt-->
 
     <div class="definitioninsightsprnt" id="definitioninsightsprnt">
     <div class="definitioninsights" id="definitioninsights"><p class="pbordered">DefinitionInsights</p>
-"@
+'@
     $html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
     $html = $null
 
@@ -1972,12 +2000,12 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         $script:scopescnter = 0
         if ($azAPICallConf['htParameters'].NoResources -eq $false) {
             if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
-                $grpPSRuleSubscriptions = $arrayPsRule | group-object -Property subscriptionId
-                $grpPSRuleManagementGroups = $arrayPsRule | group-object -Property mgPath
+                $grpPSRuleSubscriptions = $arrayPsRule | Group-Object -Property subscriptionId
+                $grpPSRuleManagementGroups = $arrayPsRule | Group-Object -Property mgPath
             }
         }
         if ($arrayFeaturesAll.Count -gt 0) {
-            $script:subFeaturesGroupedBySubscription = $arrayFeaturesAll | Group-Object -property subscriptionId
+            $script:subFeaturesGroupedBySubscription = $arrayFeaturesAll | Group-Object -Property subscriptionId
         }
         if ($arrayOrphanedResourcesSlim.Count -gt 0) {
             $arrayOrphanedResourcesGroupedBySubscription = $arrayOrphanedResourcesSlim | Group-Object subscriptionId
@@ -1988,7 +2016,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         showMemoryUsage
 
         $endHierarchyTable = Get-Date
-        Write-Host " Building ScopeInsights duration: $((NEW-TIMESPAN -Start $startHierarchyTable -End $endHierarchyTable).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startHierarchyTable -End $endHierarchyTable).TotalSeconds) seconds)"
+        Write-Host " Building ScopeInsights duration: $((New-TimeSpan -Start $startHierarchyTable -End $endHierarchyTable).TotalMinutes) minutes ($((New-TimeSpan -Start $startHierarchyTable -End $endHierarchyTable).TotalSeconds) seconds)"
 
         if ((-not $NoScopeInsights)) {
             $html += @'
@@ -2008,7 +2036,7 @@ $html += @'
 
 if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $endAzGovVizHTML = Get-Date
-    $AzGovVizHTMLDuration = (NEW-TIMESPAN -Start $startAzGovViz -End $endAzGovVizHTML).TotalMinutes
+    $AzGovVizHTMLDuration = (New-TimeSpan -Start $startAzGovViz -End $endAzGovVizHTML).TotalMinutes
     $paramsUsed += "Creation duration: $AzGovVizHTMLDuration minutes &#13;"
     if (-not $NoScopeInsights) {
         $html += @"
@@ -2040,28 +2068,28 @@ $html += @"
 
     <script>
         `$("#getImage").on('click', function () {
-    
+
             element = document.getElementById('saveAsImageArea')
             var images = element.getElementsByTagName('img');
             var l = images.length;
             for (var i = 0; i < l; i++) {
                 images[0].parentNode.removeChild(images[0]);
             }
-    
+
             var scale = 3;
             domtoimage.toPng(element, { quality: 0.95 , width: element.clientWidth * scale,
                 height: element.clientHeight * scale,
                 style: {
                     transform: 'scale('+scale+')',
                     transformOrigin: 'top left'
-            }})          
+            }})
                 .then(function (dataUrl) {
                 var link = document.createElement('a');
                 link.download = '$($fileName).png';
                 link.href = dataUrl;
                 link.click();
             });
-    
+
             // domtoimage.toJpeg(element)
             //     .then(function (dataUrl) {
             //         var link = document.createElement('a');
@@ -2069,7 +2097,7 @@ $html += @"
             //         link.href = dataUrl;
             //         link.click();
             //     });
-                    
+
             })
     </script>
 </body>
@@ -2079,7 +2107,7 @@ $html += @"
 $html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
 
 $endBuildHTML = Get-Date
-Write-Host "Building HTML total duration: $((NEW-TIMESPAN -Start $startBuildHTML -End $endBuildHTML).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startBuildHTML -End $endBuildHTML).TotalSeconds) seconds)"
+Write-Host "Building HTML total duration: $((New-TimeSpan -Start $startBuildHTML -End $endBuildHTML).TotalMinutes) minutes ($((New-TimeSpan -Start $startBuildHTML -End $endBuildHTML).TotalSeconds) seconds)"
 #endregion BuildHTML
 
 buildMD
@@ -2098,7 +2126,7 @@ if (-not $HierarchyMapOnly) {
 apiCallTracking -stage 'Summary' -spacing ''
 
 $endAzGovViz = Get-Date
-$durationProduct = (NEW-TIMESPAN -Start $startAzGovViz -End $endAzGovViz)
+$durationProduct = (New-TimeSpan -Start $startAzGovViz -End $endAzGovViz)
 Write-Host "AzGovViz duration: $($durationProduct.TotalMinutes) minutes"
 
 #end
@@ -2108,7 +2136,7 @@ Write-Host "End AzGovViz $endTime"
 Write-Host 'Checking for errors'
 if ($Error.Count -gt 0) {
     Write-Host "Dumping $($Error.Count) Errors (handled by AzGovViz):"
-    $Error | Out-host
+    $Error | Out-Host
 }
 else {
     Write-Host 'Error count is 0'
@@ -2133,7 +2161,7 @@ if ($DoPSRule) {
     if ($psRuleErrors) {
         Write-Host ''
         Write-Host "$($psRuleErrors.Count) 'PSRule for Azure' error(s) encountered"
-        Write-Host "Please review the error(s) and consider filing an issue at the PSRule.Rules.Azure GitHub repository https://github.com/Azure/PSRule.Rules.Azure - thank you"
+        Write-Host 'Please review the error(s) and consider filing an issue at the PSRule.Rules.Azure GitHub repository https://github.com/Azure/PSRule.Rules.Azure - thank you'
         $psRuleErrorsGrouped = $psRuleErrors | Group-Object -Property resourceType, errorMsg
         foreach ($errorGroupedByResourceTypeAndMessage in $psRuleErrorsGrouped) {
             Write-Host "$($errorGroupedByResourceTypeAndMessage.Count) x $($errorGroupedByResourceTypeAndMessage.Name)"

@@ -66,7 +66,7 @@ function getOrphanedResources {
             intent    = $intent
         })
 
-    $queries | foreach-object -Parallel {
+    $queries | ForEach-Object -Parallel {
         $queryDetail = $_
         $arrayOrphanedResources = $using:arrayOrphanedResources
         $subsToProcessInCustomDataCollection = $using:subsToProcessInCustomDataCollection
@@ -74,12 +74,12 @@ function getOrphanedResources {
 
         #Batching: https://docs.microsoft.com/en-us/azure/governance/resource-graph/troubleshoot/general#toomanysubscription
         $counterBatch = [PSCustomObject] @{ Value = 0 }
-        $batchSize = 1000    
+        $batchSize = 1000
         $subscriptionsBatch = $subsToProcessInCustomDataCollection | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
 
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01"
-        $method = "POST"
-        foreach ($batch in $subscriptionsBatch) { 
+        $method = 'POST'
+        foreach ($batch in $subscriptionsBatch) {
             Write-Host " Getting orphaned $($queryDetail.queryName) for $($batch.Group.subscriptionId.Count) Subscriptions"
             $subscriptions = '"{0}"' -f ($batch.Group.subscriptionId -join '","')
             $body = @"
@@ -105,10 +105,10 @@ function getOrphanedResources {
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
             $allConsumptionDataGroupedByTypeAndCurrency = $allConsumptionData | Group-Object -Property ResourceType, Currency
             $orphanedResourcesResourceTypesCostRelevant = ($queries.where({ $_.intent -eq 'cost savings' })).queryName
-        
+
             $htC = @{}
             foreach ($consumptionResourceTypeAndCurrency in $allConsumptionDataGroupedByTypeAndCurrency) {
-                $consumptionResourceTypeAndCurrencySplitted = $consumptionResourceTypeAndCurrency.Name.split(', ')        
+                $consumptionResourceTypeAndCurrencySplitted = $consumptionResourceTypeAndCurrency.Name.split(', ')
                 if ($consumptionResourceTypeAndCurrencySplitted[0] -in $orphanedResourcesResourceTypesCostRelevant ) {
                     foreach ($entry in $consumptionResourceTypeAndCurrency.Group) {
                         if (-not $htC.($entry.resourceId)) {
@@ -122,9 +122,9 @@ function getOrphanedResources {
                     }
                 }
             }
-        
-            $costrelevantOrphanedResourcesGroupedByType = ($arrayOrphanedResources | group-object -property intent).where({ $_.name -eq 'cost savings' }).group | Group-Object -Property type
-            $nonCostrelevantOrphanedResourcesGroupedByType = ($arrayOrphanedResources | group-object -property intent).where({ $_.name -ne 'cost savings' }).group | Group-Object -Property type
+
+            $costrelevantOrphanedResourcesGroupedByType = ($arrayOrphanedResources | Group-Object -Property intent).where({ $_.name -eq 'cost savings' }).group | Group-Object -Property type
+            $nonCostrelevantOrphanedResourcesGroupedByType = ($arrayOrphanedResources | Group-Object -Property intent).where({ $_.name -ne 'cost savings' }).group | Group-Object -Property type
             $script:arrayOrphanedResources = [System.Collections.ArrayList]@()
 
             foreach ($costrelevantOrphanedResourceType in $costrelevantOrphanedResourcesGroupedByType) {
@@ -151,7 +151,7 @@ function getOrphanedResources {
                     }
                 }
             }
-        
+
             foreach ($nonCostrelevantOrphanedResourceType in $nonCostrelevantOrphanedResourcesGroupedByType) {
                 Write-Host "Processing $($nonCostrelevantOrphanedResourceType.Name)"
                 foreach ($resource in $nonCostrelevantOrphanedResourceType.Group) {
@@ -172,9 +172,9 @@ function getOrphanedResources {
         $arrayOrphanedResources | Sort-Object -Property Resource | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesOrphaned.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
     }
     else {
-        Write-Host " No orphaned Resources found"
+        Write-Host ' No orphaned Resources found'
     }
 
     $end = Get-Date
-    Write-Host "Getting orphaned resources (ARG) processing duration: $((NEW-TIMESPAN -Start $start -End $end).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds)"
+    Write-Host "Getting orphaned resources (ARG) processing duration: $((New-TimeSpan -Start $start -End $end).TotalMinutes) minutes ($((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds)"
 }

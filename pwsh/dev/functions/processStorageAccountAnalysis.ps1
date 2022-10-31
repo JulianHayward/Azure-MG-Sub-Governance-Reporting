@@ -6,7 +6,7 @@ function processStorageAccountAnalysis {
         Write-Host " Executing Storage Account Analysis for $storageAccountscount Storage Accounts"
         $script:arrayStorageAccountAnalysisResults = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
         createBearerToken -AzAPICallConfiguration $azapicallconf -targetEndPoint 'Storage'
-        
+
         $storageAccounts | ForEach-Object -Parallel {
             $storageAccount = $_
             $azAPICallConf = $using:azAPICallConf
@@ -24,13 +24,13 @@ function processStorageAccountAnalysis {
             $arrayContainersAnonymousBlob = @()
             $staticWebsitesState = 'n/a'
             $webSiteResponds = 'n/a'
-    
+
             $subscriptionId = ($storageAccount.id -split '/')[2]
             $resourceGroupName = ($storageAccount.id -split '/')[4]
             $subDetails = $htAllSubscriptionsFromAPI.($subscriptionId).subDetails
-    
+
             Write-Host "Processing SA; Subscription: $($subDetails.displayName) ($subscriptionId) [$($subDetails.subscriptionPolicies.quotaId)] - Storage Account: $($storageAccount.name)"
-    
+
             if ($storageAccount.Properties.primaryEndpoints.blob) {
 
                 $urlServiceProps = "$($storageAccount.Properties.primaryEndpoints.blob)?restype=service&comp=properties"
@@ -71,11 +71,11 @@ function processStorageAccountAnalysis {
                 else {
                     $listContainersSuccess = $true
                 }
-    
+
                 if ($listContainersSuccess -eq $true) {
                     $xmlListContainers = [xml]([string]$listContainers -replace $listContainers.Substring(0, 3))
                     $containersCount = $xmlListContainers.EnumerationResults.Containers.Container.Count
-                
+
                     foreach ($container in $xmlListContainers.EnumerationResults.Containers.Container) {
                         $arrayContainers += $container.Name
                         if ($container.Name -eq '$web' -and $staticWebsitesState) {
@@ -89,7 +89,7 @@ function processStorageAccountAnalysis {
                                 }
                             }
                         }
-    
+
                         if ($container.Properties.PublicAccess) {
                             if ($container.Properties.PublicAccess -eq 'blob') {
                                 $arrayContainersAnonymousBlob += $container.Name
@@ -101,7 +101,7 @@ function processStorageAccountAnalysis {
                     }
                 }
             }
-    
+
             $allowSharedKeyAccess = $storageAccount.properties.allowSharedKeyAccess
             if ([string]::IsNullOrWhiteSpace($storageAccount.properties.allowSharedKeyAccess)) {
                 $allowSharedKeyAccess = 'likely True'
@@ -110,48 +110,48 @@ function processStorageAccountAnalysis {
             if ([string]::IsNullOrWhiteSpace($storageAccount.properties.encryption.requireInfrastructureEncryption)) {
                 $requireInfrastructureEncryption = 'likely False'
             }
-    
+
             $arrayResourceAccessRules = [System.Collections.ArrayList]@()
             if ($storageAccount.properties.networkAcls.resourceAccessRules) {
                 if ($storageAccount.properties.networkAcls.resourceAccessRules.count -gt 0) {
                     foreach ($resourceAccessRule in $storageAccount.properties.networkAcls.resourceAccessRules) {
-    
+
                         $resourceAccessRuleResourceIdSplitted = $resourceAccessRule.resourceId -split '/'
                         $resourceType = "$($resourceAccessRuleResourceIdSplitted[6])/$($resourceAccessRuleResourceIdSplitted[7])"
-                    
+
                         [regex]$regex = '\*+'
                         $resourceAccessRule.resourceId
                         switch ($regex.matches($resourceAccessRule.resourceId).count) {
-                            { $_ -eq 1 } { 
+                            { $_ -eq 1 } {
                                 $null = $arrayResourceAccessRules.Add([PSCustomObject]@{
-                                        resourcetype = $resourceType 
+                                        resourcetype = $resourceType
                                         range        = 'resourceGroup'
                                         sort         = 3
                                     })
                             }
-                            { $_ -eq 2 } { 
+                            { $_ -eq 2 } {
                                 $null = $arrayResourceAccessRules.Add([PSCustomObject]@{
-                                        resourcetype = $resourceType 
+                                        resourcetype = $resourceType
                                         range        = 'subscription'
                                         sort         = 2
                                     })
                             }
-                            { $_ -eq 3 } { 
+                            { $_ -eq 3 } {
                                 $null = $arrayResourceAccessRules.Add([PSCustomObject]@{
-                                        resourcetype = $resourceType 
+                                        resourcetype = $resourceType
                                         range        = 'tenant'
                                         sort         = 1
                                     })
                             }
-                            default { 
+                            default {
                                 $null = $arrayResourceAccessRules.Add([PSCustomObject]@{
-                                        resourcetype = $resourceType 
+                                        resourcetype = $resourceType
                                         range        = 'resource'
                                         resource     = $resourceAccessRule.resourceId
                                         sort         = 0
                                     })
                             }
-                        } 
+                        }
                     }
                 }
             }
@@ -162,7 +162,7 @@ function processStorageAccountAnalysis {
             else {
                 $ht = @{}
                 foreach ($accessRulePerRange in $arrayResourceAccessRules | Group-Object -Property range | Sort-Object -Property Name -Descending) {
-    
+
                     if ($accessRulePerRange.Name -eq 'resource') {
                         $arrayResources = @()
                         foreach ($resource in $accessRulePerRange.Group.resource | Sort-Object) {
@@ -176,7 +176,7 @@ function processStorageAccountAnalysis {
                             $arrayResourceTypes += $resourceType
                         }
                         $ht.($accessRulePerRange.Name) = [array]($arrayResourceTypes)
-                    }              
+                    }
                 }
                 $resourceAccessRules = $ht | ConvertTo-Json
             }
@@ -187,7 +187,7 @@ function processStorageAccountAnalysis {
             else {
                 $publicNetworkAccess = $storageAccount.properties.publicNetworkAccess
             }
-    
+
             $temp = [System.Collections.ArrayList]@()
             $null = $temp.Add([PSCustomObject]@{
                     storageAccount                    = $storageAccount.name
@@ -225,7 +225,7 @@ function processStorageAccountAnalysis {
                     allowSharedKeyAccess              = $allowSharedKeyAccess
                     requireInfrastructureEncryption   = $requireInfrastructureEncryption
                 })
-    
+
             if ($StorageAccountAccessAnalysisSubscriptionTags[0] -ne 'undefined' -and $StorageAccountAccessAnalysisSubscriptionTags.Count -gt 0) {
                 foreach ($subTag4StorageAccountAccessAnalysis in $StorageAccountAccessAnalysisSubscriptionTags) {
                     if ($htSubscriptionTags.($subscriptionId).$subTag4StorageAccountAccessAnalysis) {
@@ -236,7 +236,7 @@ function processStorageAccountAnalysis {
                     }
                 }
             }
-    
+
             if ($StorageAccountAccessAnalysisStorageAccountTags[0] -ne 'undefined' -and $StorageAccountAccessAnalysisStorageAccountTags.Count -gt 0) {
                 if ($storageAccount.tags) {
                     $htAllSATags = @{}
@@ -253,9 +253,9 @@ function processStorageAccountAnalysis {
                     }
                 }
             }
-    
+
             $null = $script:arrayStorageAccountAnalysisResults.AddRange($temp)
-    
+
         } -ThrottleLimit $ThrottleLimit
     }
     else {

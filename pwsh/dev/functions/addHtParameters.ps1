@@ -2,7 +2,7 @@ function addHtParameters {
     Write-Host 'Add AzGovViz htParameters'
     if ($LargeTenant -eq $true) {
         $script:NoScopeInsights = $true
-        $NoResourceProvidersDetailed = $true
+        $NoResourceProvidersAtAll = $true
         $PolicyAtScopeOnly = $true
         $RBACAtScopeOnly = $true
     }
@@ -26,6 +26,7 @@ function addHtParameters {
         NoJsonExport                                 = [bool]$NoJsonExport
         NoMDfCSecureScore                            = [bool]$NoMDfCSecureScore
         NoResourceProvidersDetailed                  = [bool]$NoResourceProvidersDetailed
+        NoResourceProvidersAtAll                     = [bool]$NoResourceProvidersAtAll
         NoPolicyComplianceStates                     = [bool]$NoPolicyComplianceStates
         NoResources                                  = [bool]$NoResources
         ProductVersion                               = $ProductVersion
@@ -36,8 +37,9 @@ function addHtParameters {
         NoALZPolicyVersionChecker                    = [bool]$NoALZPolicyVersionChecker
         NoStorageAccountAccessAnalysis               = [bool]$NoStorageAccountAccessAnalysis
         GitHubActionsOIDC                            = [bool]$GitHubActionsOIDC
+        NoNetwork                                    = [bool]$NoNetwork
     }
     Write-Host 'htParameters:'
-    $azAPICallConf['htParameters'] | format-table -AutoSize | Out-String
+    $azAPICallConf['htParameters'] | Format-Table -AutoSize | Out-String
     Write-Host 'Add AzGovViz htParameters succeeded' -ForegroundColor Green
 }

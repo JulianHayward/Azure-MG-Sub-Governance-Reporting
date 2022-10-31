@@ -182,7 +182,7 @@ function getConsumption {
 
                         $currentTask = "  Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)) (whitelist))"
                         #test
-                        write-host $currentTask
+                        Write-Host $currentTask
                         #https://docs.microsoft.com/en-us/rest/api/cost-management/query/usage
                         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
                         $method = 'POST'
@@ -374,7 +374,7 @@ function getConsumption {
 
                         $currentTask = "  Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
                         #test
-                        write-host $currentTask
+                        Write-Host $currentTask
                         #https://docs.microsoft.com/en-us/rest/api/cost-management/query/usage
                         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2019-11-01&`$top=5000"
                         $method = 'POST'
@@ -451,7 +451,7 @@ function getConsumption {
                 Write-Host "  $($allConsumptionDataCount) relevant Consumption data entries"
 
                 $script:consumptionData = $allConsumptionData
-                $script:consumptionDataGroupedByCurrency = $consumptionData | Group-Object -property Currency
+                $script:consumptionDataGroupedByCurrency = $consumptionData | Group-Object -Property Currency
 
                 foreach ($currency in $consumptionDataGroupedByCurrency) {
 
@@ -531,7 +531,7 @@ function getConsumption {
                     }
 
                     $totalCost = 0
-                    $script:tenantSummaryConsumptionDataGrouped = $currency.group | Group-Object -property ResourceType, ChargeType, MeterCategory
+                    $script:tenantSummaryConsumptionDataGrouped = $currency.group | Group-Object -Property ResourceType, ChargeType, MeterCategory
                     $subsCount = ($tenantSummaryConsumptionDataGrouped.group.subscriptionId | Sort-Object -Unique | Measure-Object).Count
                     $consumedServiceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceType | Sort-Object -Unique | Measure-Object).Count
                     $resourceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceId | Sort-Object -Unique | Measure-Object).Count
@@ -584,10 +584,10 @@ function getConsumption {
                 $allConsumptionData | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
             }
             $endBuildConsumptionCSV = Get-Date
-            Write-Host " Exporting Consumption CSV total duration: $((NEW-TIMESPAN -Start $startBuildConsumptionCSV -End $endBuildConsumptionCSV).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startBuildConsumptionCSV -End $endBuildConsumptionCSV).TotalSeconds) seconds)"
+            Write-Host " Exporting Consumption CSV total duration: $((New-TimeSpan -Start $startBuildConsumptionCSV -End $endBuildConsumptionCSV).TotalMinutes) minutes ($((New-TimeSpan -Start $startBuildConsumptionCSV -End $endBuildConsumptionCSV).TotalSeconds) seconds)"
         }
         #endregion BuildConsumptionCSV
     }
     $endConsumptionData = Get-Date
-    Write-Host "Getting Consumption data duration: $((NEW-TIMESPAN -Start $startConsumptionData -End $endConsumptionData).TotalSeconds) seconds"
+    Write-Host "Getting Consumption data duration: $((New-TimeSpan -Start $startConsumptionData -End $endConsumptionData).TotalSeconds) seconds"
 }

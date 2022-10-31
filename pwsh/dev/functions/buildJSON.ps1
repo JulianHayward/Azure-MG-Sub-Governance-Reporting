@@ -9,7 +9,7 @@ function buildJSON {
     $htJSON = [ordered]@{}
     $htJSON.ManagementGroups = [ordered]@{}
 
-    $MgIds = ($optimizedTableForPathQuery) | select-object -property level, MgId, MgName, mgParentId, mgParentName | Sort-Object -property level, MgId -unique
+    $MgIds = ($optimizedTableForPathQuery) | Select-Object -Property level, MgId, MgName, mgParentId, mgParentName | Sort-Object -Property level, MgId -Unique
     $grpScopePolicyDefinitionsCustom = (($htCacheDefinitionsPolicy).values).where( { $_.Type -eq 'Custom' }) | Group-Object ScopeMgSub
     $grpMgScopePolicyDefinitionsCustom = ($grpScopePolicyDefinitionsCustom.where( { $_.Name -eq 'Mg' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId)
     $grpSubScopePolicyDefinitionsCustom = ($grpScopePolicyDefinitionsCustom.where( { $_.Name -eq 'Sub' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId)
@@ -321,13 +321,13 @@ function buildJSON {
         Write-Host " Creating new state ($($JSONPath)) (local only))"
     }
 
-    $null = new-item -Name $JSONPath -ItemType directory -path $outputPath
+    $null = New-Item -Name $JSONPath -ItemType directory -Path $outputPath
 
     if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
         "The directory '$($JSONPath)' will be rebuilt during the AzDO Pipeline run. __Do not save any files in this directory, files and folders will be deleted!__" | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)ReadMe_important.md" -Encoding utf8
     }
 
-    $null = new-item -Name "$($JSONPath)$($DirectorySeparatorChar)Definitions" -ItemType directory -path $outputPath
+    $null = New-Item -Name "$($JSONPath)$($DirectorySeparatorChar)Definitions" -ItemType directory -Path $outputPath
 
 
 
@@ -335,11 +335,11 @@ function buildJSON {
     $htJSON.RoleDefinitions = [ordered]@{}
     $pathRoleDefinitions = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)RoleDefinitions"
     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitions)")) {
-        $null = new-item -Name $pathRoleDefinitions -ItemType directory -path $outputPath
+        $null = New-Item -Name $pathRoleDefinitions -ItemType directory -Path $outputPath
         $pathRoleDefinitionCustom = "$($pathRoleDefinitions)$($DirectorySeparatorChar)Custom"
         $pathRoleDefinitionBuiltIn = "$($pathRoleDefinitions)$($DirectorySeparatorChar)BuiltIn"
-        $null = new-item -Name "$($pathRoleDefinitionCustom)" -ItemType directory -path $outputPath
-        $null = new-item -Name "$($pathRoleDefinitionBuiltIn)" -ItemType directory -path $outputPath
+        $null = New-Item -Name "$($pathRoleDefinitionCustom)" -ItemType directory -Path $outputPath
+        $null = New-Item -Name "$($pathRoleDefinitionBuiltIn)" -ItemType directory -Path $outputPath
     }
 
     if (($htCacheDefinitionsRole).Keys.Count -gt 0) {
@@ -356,9 +356,9 @@ function buildJSON {
 
     $pathPolicyDefinitions = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicyDefinitions"
     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicyDefinitions)")) {
-        $null = new-item -Name $pathPolicyDefinitions -ItemType directory -path $outputPath
+        $null = New-Item -Name $pathPolicyDefinitions -ItemType directory -Path $outputPath
         $pathPolicyDefinitionBuiltIn = "$($pathPolicyDefinitions)$($DirectorySeparatorChar)BuiltIn"
-        $null = new-item -Name "$($pathPolicyDefinitionBuiltIn)" -ItemType directory -path $outputPath
+        $null = New-Item -Name "$($pathPolicyDefinitionBuiltIn)" -ItemType directory -Path $outputPath
     }
     if (($htCacheDefinitionsPolicy).Keys.Count -gt 0) {
         foreach ($policyDefinition in ($htCacheDefinitionsPolicy).Keys.where( { ($htCacheDefinitionsPolicy).($_).Type -eq 'BuiltIn' })) {
@@ -369,9 +369,9 @@ function buildJSON {
 
     $pathPolicySetDefinitions = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicySetDefinitions"
     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicySetDefinitions)")) {
-        $null = new-item -Name $pathPolicySetDefinitions -ItemType directory -path $outputPath
+        $null = New-Item -Name $pathPolicySetDefinitions -ItemType directory -Path $outputPath
         $pathPolicySetDefinitionBuiltIn = "$($pathPolicySetDefinitions)$($DirectorySeparatorChar)BuiltIn"
-        $null = new-item -Name "$($pathPolicySetDefinitionBuiltIn)" -ItemType directory -path $outputPath
+        $null = New-Item -Name "$($pathPolicySetDefinitionBuiltIn)" -ItemType directory -Path $outputPath
     }
     if (($htCacheDefinitionsPolicySet).Keys.Count -gt 0) {
         foreach ($policySetDefinition in ($htCacheDefinitionsPolicySet).Keys.where( { ($htCacheDefinitionsPolicySet).($_).Type -eq 'BuiltIn' })) {
@@ -381,13 +381,13 @@ function buildJSON {
     }
 
     $endBuildHt = Get-Date
-    Write-Host " ht for JSON creation duration: $((NEW-TIMESPAN -Start $startBuildHt -End $endBuildHt).TotalSeconds) seconds"
+    Write-Host " ht for JSON creation duration: $((New-TimeSpan -Start $startBuildHt -End $endBuildHt).TotalSeconds) seconds"
 
     $startBuildJSON = Get-Date
     Write-Host ' Build JSON'
 
 
-    $null = new-item -Name "$($JSONPath)$($DirectorySeparatorChar)Tenant" -ItemType directory -path $outputPath
+    $null = New-Item -Name "$($JSONPath)$($DirectorySeparatorChar)Tenant" -ItemType directory -Path $outputPath
 
     $htTree = [ordered]@{}
     $htTree.'Tenant' = [ordered] @{}
@@ -408,7 +408,7 @@ function buildJSON {
         $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)Tenant$($DirectorySeparatorChar)ra_$($RoleAssignment.Assignment.ObjectType)_$($pim)$($RoleAssignment.Assignment.RoleAssignmentId -replace '.*/').json" -Encoding utf8
         $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)RoleAssignments$($DirectorySeparatorChar)Tenant"
         if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
-            $null = new-item -Name $path -ItemType directory -path $outputPath
+            $null = New-Item -Name $path -ItemType directory -Path $outputPath
         }
         $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($RoleAssignment.Assignment.ObjectType)_$($pim)$($RoleAssignment.Assignment.RoleAssignmentId -replace '.*/').json" -Encoding utf8
     }
@@ -417,7 +417,7 @@ function buildJSON {
     $json = $htTree.'Tenant'
 
     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)Assignments")) {
-        $null = new-item -Name "$($JSONPath)$($DirectorySeparatorChar)Assignments" -ItemType directory -path $outputPath
+        $null = New-Item -Name "$($JSONPath)$($DirectorySeparatorChar)Assignments" -ItemType directory -Path $outputPath
     }
 
     buildTree -mgId $ManagementGroupId -json $json -prnt "$($JSONPath)$($DirectorySeparatorChar)Tenant"
@@ -425,11 +425,11 @@ function buildJSON {
     $htTree.'Tenant'.'CustomRoleDefinitions' = $htJSON.RoleDefinitions
 
     Write-Host " Exporting Tenant JSON '$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)$($fileName).json'"
-    $htTree | ConvertTo-JSON -Depth 99 | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)$($fileName).json" -Encoding utf8 -Force
+    $htTree | ConvertTo-Json -Depth 99 | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)$($fileName).json" -Encoding utf8 -Force
 
     $endBuildJSON = Get-Date
-    Write-Host " Building JSON duration: $((NEW-TIMESPAN -Start $startBuildJSON -End $endBuildJSON).TotalSeconds) seconds"
+    Write-Host " Building JSON duration: $((New-TimeSpan -Start $startBuildJSON -End $endBuildJSON).TotalSeconds) seconds"
 
     $endJSON = Get-Date
-    Write-Host "Creating Hierarchy JSON duration: $((NEW-TIMESPAN -Start $startJSON -End $endJSON).TotalSeconds) seconds"
+    Write-Host "Creating Hierarchy JSON duration: $((New-TimeSpan -Start $startJSON -End $endJSON).TotalSeconds) seconds"
 }

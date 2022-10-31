@@ -4,9 +4,9 @@ function getResourceDiagnosticsCapability {
     if (($resourcesAll).count -gt 0) {
 
         $startGroupResourceIdsByType = Get-Date
-        $script:resourceTypesUnique = ($resourcesIdsAll | Group-Object -property type)
+        $script:resourceTypesUnique = ($resourcesIdsAll | Group-Object -Property type)
         $endGroupResourceIdsByType = Get-Date
-        Write-Host " GroupResourceIdsByType processing duration: $((NEW-TIMESPAN -Start $startGroupResourceIdsByType -End $endGroupResourceIdsByType).TotalSeconds) seconds)"
+        Write-Host " GroupResourceIdsByType processing duration: $((New-TimeSpan -Start $startGroupResourceIdsByType -End $endGroupResourceIdsByType).TotalSeconds) seconds)"
         $resourceTypesUniqueCount = ($resourceTypesUnique | Measure-Object).count
         Write-Host " $($resourceTypesUniqueCount) unique Resource Types"
         $script:resourceTypesSummarizedArray = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
@@ -27,7 +27,7 @@ function getResourceDiagnosticsCapability {
                 $htResourceTypesUniqueResource = $using:htResourceTypesUniqueResource
                 $resourceTypesSummarizedArray = $using:resourceTypesSummarizedArray
                 #endregion UsingVARs
-    
+
                 $skipThisResourceType = $false
                 if (($ExcludedResourceTypesDiagnosticsCapable).Count -gt 0) {
                     foreach ($excludedResourceType in $ExcludedResourceTypesDiagnosticsCapable) {
@@ -36,16 +36,16 @@ function getResourceDiagnosticsCapability {
                         }
                     }
                 }
-    
+
                 if ($skipThisResourceType -eq $false) {
                     $resourceCount = $resourceTypesUniqueGroup.Count
-    
+
                     #thx @Jim Britt (Microsoft) https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts Create-AzDiagPolicy.ps1
                     $responseJSON = ''
                     $logCategories = @()
                     $metrics = $false
                     $logs = $false
-    
+
                     $resourceAvailability = ($resourceCount - 1)
                     $counterTryForResourceType = 0
                     do {
@@ -56,30 +56,30 @@ function getResourceDiagnosticsCapability {
                         else {
                             $resourceId = $resourceTypesUniqueGroup.Group.Id
                         }
-    
+
                         $resourceAvailability = $resourceAvailability - 1
                         $currentTask = "Checking if ResourceType '$resourceType' is capable for Resource Diagnostics using $counterTryForResourceType ResourceId: '$($resourceId)'"
                         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/$($resourceId)/providers/microsoft.insights/diagnosticSettingsCategories?api-version=2021-05-01-preview"
                         $method = 'GET'
-    
+
                         $responseJSON = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
-                        if ($responseJSON -notlike 'meanwhile_deleted*') {
+                        if ($responseJSON -ne 'skipResource') {
                             if ($responseJSON -eq 'ResourceTypeOrResourceProviderNotSupported') {
                                 Write-Host "  ResourceTypeOrResourceProviderNotSupported | The resource type '$($resourcetype)' does not support diagnostic settings."
-    
+
                             }
                             else {
                                 Write-Host "  ResourceTypeSupported | The resource type '$($resourcetype)' supports diagnostic settings."
                             }
                         }
                         else {
-                            Write-Host "resId '$resourceId' meanwhile deleted"
+                            Write-Host "resId '$resourceId' skipped"
                         }
                     }
-                    until ($resourceAvailability -lt 0 -or $responseJSON -notlike 'meanwhile_deleted*')
-    
-                    if ($resourceAvailability -lt 0 -and $responseJSON -like 'meanwhile_deleted*') {
-                        Write-Host "tried for all available resourceIds ($($resourceCount)) for resourceType $resourceType, but seems all resources meanwhile have been deleted"
+                    until ($resourceAvailability -lt 0 -or $responseJSON -ne 'skipResource')
+
+                    if ($resourceAvailability -lt 0 -and $responseJSON -eq 'skipResource') {
+                        Write-Host "tried for all available resourceIds ($($resourceCount)) for resourceType $resourceType, but seems all resourceIds needed to be skipped"
                         $null = $script:resourceTypesDiagnosticsArray.Add([PSCustomObject]@{
                                 ResourceType  = $resourcetype
                                 Metrics       = "n/a - $responseJSON"
@@ -100,7 +100,7 @@ function getResourceDiagnosticsCapability {
                                 }
                             }
                         }
-    
+
                         $null = $script:resourceTypesDiagnosticsArray.Add([PSCustomObject]@{
                                 ResourceType  = $resourcetype
                                 Metrics       = $metrics
@@ -124,5 +124,5 @@ function getResourceDiagnosticsCapability {
         Write-Host ' No Resources at all'
     }
     $endResourceDiagnosticsCheck = Get-Date
-    Write-Host "Checking Resource Types Diagnostics capability duration: $((NEW-TIMESPAN -Start $startResourceDiagnosticsCheck -End $endResourceDiagnosticsCheck).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startResourceDiagnosticsCheck -End $endResourceDiagnosticsCheck).TotalSeconds) seconds)"
+    Write-Host "Checking Resource Types Diagnostics capability duration: $((New-TimeSpan -Start $startResourceDiagnosticsCheck -End $endResourceDiagnosticsCheck).TotalMinutes) minutes ($((New-TimeSpan -Start $startResourceDiagnosticsCheck -End $endResourceDiagnosticsCheck).TotalSeconds) seconds)"
 }

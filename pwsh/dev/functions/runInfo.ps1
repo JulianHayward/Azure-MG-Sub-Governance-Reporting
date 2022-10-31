@@ -177,6 +177,15 @@ function runInfo {
             $script:paramsUsed += "NoResourceProvidersDetailed: $($azAPICallConf['htParameters'].NoResourceProvidersDetailed) &#13;"
         }
 
+        if ($azAPICallConf['htParameters'].NoResourceProvidersAtAll -eq $true) {
+            Write-Host " ResourceProvider collection disabled (NoResourceProvidersAtAll = $($azAPICallConf['htParameters'].NoResourceProvidersAtAll))" -ForegroundColor Green
+            $script:paramsUsed += "NoResourceProvidersAtAll: $($azAPICallConf['htParameters'].NoResourceProvidersAtAll) &#13;"
+        }
+        else {
+            Write-Host " ResourceProvider collection enabled - use parameter: 'NoResourceProvidersAtAll' to disable" -ForegroundColor Yellow
+            $script:paramsUsed += "NoResourceProvidersAtAll: $($azAPICallConf['htParameters'].NoResourceProvidersAtAll) &#13;"
+        }
+
         if ($azAPICallConf['htParameters'].LargeTenant -or $azAPICallConf['htParameters'].PolicyAtScopeOnly -or $azAPICallConf['htParameters'].RBACAtScopeOnly) {
             if ($azAPICallConf['htParameters'].LargeTenant) {
                 Write-Host " TenantSummary Policy assignments and Role assignments will not include assignment information on scopes where assignment is inherited, ScopeInsights will not be created, ResourceProvidersDetailed will not be created (-LargeTenant = $($azAPICallConf['htParameters'].LargeTenant))" -ForegroundColor Green
@@ -419,6 +428,15 @@ function runInfo {
             if ($StorageAccountAccessAnalysisStorageAccountTags[0] -ne 'undefined' -and $StorageAccountAccessAnalysisStorageAccountTags.Count -gt 0) {
                 Write-Host "   StorageAccountAccessAnalysisStorageAccountTags: $($StorageAccountAccessAnalysisStorageAccountTags -join ', ')" -ForegroundColor Green
             }
+        }
+
+        if ($NoNetwork) {
+            Write-Host " NoNetwork = $($NoNetwork)" -ForegroundColor Green
+            #$script:paramsUsed += "NoNetwork: $($NoNetwork) &#13;"
+        }
+        else {
+            Write-Host " NoNetwork = $($NoNetwork)" -ForegroundColor Yellow
+            #$script:paramsUsed += "NoNetwork: $($NoNetwork) &#13;"
         }
 
         if ($GitHubActionsOIDC) {

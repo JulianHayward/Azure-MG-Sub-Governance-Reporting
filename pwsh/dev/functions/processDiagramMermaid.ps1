@@ -32,7 +32,7 @@ function processDiagramMermaid() {
 $mgParentId(`"$mgParentNameId`") --> $mgInLevel(`"$mgNameId`")`n
 "@
             $subsUnderMg = ($optimizedTableForPathQueryMgAndSub.where( { -not [string]::IsNullOrEmpty($_.SubscriptionId) -and $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel } )).SubscriptionId
-            if (($subsUnderMg | measure-object).count -gt 0) {
+            if (($subsUnderMg | Measure-Object).count -gt 0) {
                 foreach ($subUnderMg in $subsUnderMg) {
                     $null = $script:arraySubs.Add("SubsOf$mgInLevel")
                     $mgDetalsN = ($optimizedTableForPathQueryMg.where( { $_.Level -eq $mgLevel -and $_.MgId -eq $mgInLevel } ))
@@ -52,7 +52,7 @@ $mgParentId(`"$mgParentNameId`") --> $mgInLevel(`"$mgNameId`")`n
                     $mgNameId = "$mgName<br/>$mgInLevel"
                 }
                 $script:markdownhierarchySubs += @"
-$mgInLevel(`"$mgNameId`") --> SubsOf$mgInLevel(`"$(($subsUnderMg | measure-object).count)`")`n
+$mgInLevel(`"$mgNameId`") --> SubsOf$mgInLevel(`"$(($subsUnderMg | Measure-Object).count)`")`n
 "@
             }
             else {
@@ -67,7 +67,7 @@ $mgInLevel(`"$mgNameId`") --> SubsOf$mgInLevel(`"$(($subsUnderMg | measure-objec
 
             if (($script:outOfScopeSubscriptions | Measure-Object).count -gt 0) {
                 $subsoosUnderMg = ($outOfScopeSubscriptions | Where-Object { $_.Level -eq $mgLevel -and $_.ManagementGroupId -eq $mgInLevel }).SubscriptionId | Get-Unique
-                if (($subsoosUnderMg | measure-object).count -gt 0) {
+                if (($subsoosUnderMg | Measure-Object).count -gt 0) {
                     foreach ($subUnderMg in $subsoosUnderMg) {
                         $null = $script:arraySubsOos.Add("SubsoosOf$mgInLevel")
                         $mgDetalsN = ($optimizedTableForPathQueryMg.where( { $_.Level -eq $mgLevel -and $_.ManagementGroupId -eq $mgInLevel } ))
@@ -81,7 +81,7 @@ $mgInLevel(`"$mgNameId`") --> SubsOf$mgInLevel(`"$(($subsUnderMg | measure-objec
                         $mgNameId = "$mgName<br/>$mgInLevel"
                     }
                     $script:markdownhierarchySubs += @"
-$mgInLevel(`"$mgNameId`") --> SubsoosOf$mgInLevel(`"$(($subsoosUnderMg | measure-object).count)`")`n
+$mgInLevel(`"$mgNameId`") --> SubsoosOf$mgInLevel(`"$(($subsoosUnderMg | Measure-Object).count)`")`n
 "@
                 }
             }

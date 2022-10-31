@@ -6,7 +6,7 @@ function stats {
         if ($durationProduct.TotalMinutes -lt 5) {
             $dur = 5
         }
-        
+
         if ($azAPICallConf['htParameters'].onAzureDevOps) {
             if ($env:BUILD_REPOSITORY_ID) {
                 $hashTenantIdOrRepositoryId = [string]($env:BUILD_REPOSITORY_ID)
@@ -72,7 +72,7 @@ function stats {
         $tryCounter = 0
         do {
             if ($tryCounter -gt 0) {
-                start-sleep -seconds ($tryCounter * 3)
+                Start-Sleep -Seconds ($tryCounter * 3)
             }
             $tryCounter++
             $statsSuccess = $true
@@ -111,6 +111,7 @@ function stats {
                 "statsParametersNoSingleSubscriptionOutput": "$($NoSingleSubscriptionOutput)",
                 "statsParametersNoPolicyComplianceStates": "$($azAPICallConf['htParameters'].NoPolicyComplianceStates)",
                 "statsParametersNoResourceProvidersDetailed": "$($azAPICallConf['htParameters'].NoResourceProvidersDetailed)",
+                "statsParametersNoResourceProvidersAtAll": "$($azAPICallConf['htParameters'].NoResourceProvidersAtAll)",
                 "statsParametersNoResources": "$($azAPICallConf['htParameters'].NoResources)",
                 "statsParametersPolicyAtScopeOnly": "$($azAPICallConf['htParameters'].PolicyAtScopeOnly)",
                 "statsParametersRBACAtScopeOnly": "$($azAPICallConf['htParameters'].RBACAtScopeOnly)",
@@ -122,7 +123,7 @@ function stats {
     }
 }
 "@
-                $stats = Invoke-WebRequest -Uri 'https://dc.services.visualstudio.com/v2/track' -Method 'POST' -body $statusBody
+                $stats = Invoke-WebRequest -Uri 'https://dc.services.visualstudio.com/v2/track' -Method 'POST' -Body $statusBody
             }
             catch {
                 $statsSuccess = $false
@@ -136,7 +137,7 @@ function stats {
         $tryCounter = 0
         do {
             if ($tryCounter -gt 0) {
-                start-sleep -seconds ($tryCounter * 3)
+                Start-Sleep -Seconds ($tryCounter * 3)
             }
             $tryCounter++
             $statsSuccess = $true
@@ -159,7 +160,7 @@ function stats {
     }
 }
 "@
-                $stats = Invoke-WebRequest -Uri 'https://dc.services.visualstudio.com/v2/track' -Method 'POST' -body $statusBody
+                $stats = Invoke-WebRequest -Uri 'https://dc.services.visualstudio.com/v2/track' -Method 'POST' -Body $statusBody
             }
             catch {
                 $statsSuccess = $false
