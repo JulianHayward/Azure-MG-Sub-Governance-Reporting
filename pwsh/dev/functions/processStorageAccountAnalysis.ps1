@@ -35,7 +35,7 @@ function processStorageAccountAnalysis {
 
                 $urlServiceProps = "$($storageAccount.Properties.primaryEndpoints.blob)?restype=service&comp=properties"
                 $saProperties = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlServiceProps -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get restype=service&comp=properties" -saResourceGroupName $resourceGroupName
-                if ($saProperties -eq 'AuthorizationFailure' -or $saProperties -eq 'AuthorizationPermissionDenied' -or $saProperties -eq 'ResourceUnavailable') {
+                if ($saProperties -eq 'AuthorizationFailure' -or $saProperties -eq 'AuthorizationPermissionDenied' -or $saProperties -eq 'ResourceUnavailable' or $saProperties -eq 'AuthorizationPermissionMismatch' ) {
                     if ($saProperties -eq 'ResourceUnavailable') {
                         $staticWebsitesState = $saProperties
                     }
@@ -60,7 +60,7 @@ function processStorageAccountAnalysis {
 
                 $urlCompList = "$($storageAccount.Properties.primaryEndpoints.blob)?comp=list"
                 $listContainers = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlCompList -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get comp=list"
-                if ($listContainers -eq 'AuthorizationFailure' -or $listContainers -eq 'AuthorizationPermissionDenied' -or $listContainers -eq 'ResourceUnavailable') {
+                if ($listContainers -eq 'AuthorizationFailure' -or $listContainers -eq 'AuthorizationPermissionDenied' -or $listContainers -eq 'ResourceUnavailable' or $listContainers -eq 'AuthorizationPermissionMismatch') {
                     if ($listContainers -eq 'ResourceUnavailable') {
                         $listContainersSuccess = $listContainers
                     }
