@@ -59,25 +59,9 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Oct-31 / Major)
+__Changes__ (2022-Nov-01 / Minor)
 
-* New feature - Network analysis (__TenantSummary__ and CSV export)
-  * Virtual Networks
-  * Virtual Network Peerings
-* New parameter `-NoResourceProvidersAtAll` - processing Resource Providers in large tenants can consume a lot of memory / increase processing time significantly
-* Fix issue #139
-* Update `*_DailySummary.csv` with orphaned resources costs (disks, public IP addresses) - thanks @kaiaschulz
-* Slight adjustment on `*_RoleAssignments.csv` output - rename column tenOrMgOrSubOrRGOrRes to scopeTenOrMgOrSubOrRGOrRes
-* Publish .vscode
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.45
-* Minor optimizations
-* Add reference to [Media](#media): Microsoft Tech Talks - Bevan Sinclair (Cloud Solution Architect Microsoft) [Automated Governance Reporting in Azure (MTT0AEDT)](https://mtt.eventbuilder.com/event/66431) (register to view)
-
-Passed tests: Powershell Core 7.2.6 on Windows  
-Passed tests: Powershell Core 7.2.6 Azure DevOps hosted agent ubuntu-20.04  
-Passed tests: Powershell Core 7.2.6 Github Actions hosted agent ubuntu-latest  
-Passed tests: Powershell Core 7.2.6 GitHub Codespaces mcr.microsoft.com/powershell:latest  
-Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
+* Updated Storage Account analysis to handle permission issues on databricks storage accounts
 
 [Full release history](history.md)
 

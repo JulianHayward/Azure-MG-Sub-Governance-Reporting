@@ -4,6 +4,10 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Nov-01 / Minor)
+
+* Updated Storage Account analysis to handle permission issues on databricks storage accounts
+
 __Changes__ (2022-Oct-31 / Major)
 
 * New feature - Network analysis (__TenantSummary__ and CSV export)
