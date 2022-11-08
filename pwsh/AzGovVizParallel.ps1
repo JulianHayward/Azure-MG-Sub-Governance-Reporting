@@ -7176,7 +7176,6 @@ function processNetwork {
                         }
                     }
                     else {
-                        $remotesubscriptionId = '099fca2a-af24-401a-b1ca-42f0ec56e474'
                         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($remotesubscriptionId)?api-version=2020-01-01"
                         $remoteTenantId = AzAPICall -AzAPICallConfiguration $azApiCallConf -uri $uri -listenOn 'content' -currentTask "getTenantId for subscriptionId '$($remotesubscriptionId)'"
                         $arrayRemoteMGPath = @()
