@@ -2496,7 +2496,8 @@ extensions: [{ name: 'sort' }]
 
             $htmlSUMMARYALZPolicyVersionChecker = $null
             $exemptionData4CSVExport = [System.Collections.ArrayList]@()
-            $htmlSUMMARYALZPolicyVersionChecker = foreach ($entry in $alzPoliciesInTenant) {
+            $alzPoliciesInTenantSorted = $alzPoliciesInTenant | Sort-Object -Property PolicyName, PolicyId, ALZPolicyName
+            $htmlSUMMARYALZPolicyVersionChecker = foreach ($entry in $alzPoliciesInTenantSorted) {
                 if ([string]::IsNullOrWhiteSpace($entry.AzAdvertizerUrl)) {
                     $link = ''
                 }
@@ -2522,7 +2523,7 @@ extensions: [{ name: 'sort' }]
 
             if (-not $NoCsvExport) {
                 Write-Host "Exporting 'Azure Landing Zones (ALZ) Policy Version Checker' CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZPolicyVersionChecker.csv'"
-                $alzPoliciesInTenant | Sort-Object -Property PolicyName, PolicyId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZPolicyVersionChecker.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                $alzPoliciesInTenantSorted | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZPolicyVersionChecker.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
             }
 
             [void]$htmlTenantSummary.AppendLine($htmlSUMMARYALZPolicyVersionChecker)
@@ -9171,10 +9172,12 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 "$($peeringState.Name): $($peeringState.Count)"
             }
 
+            $xTenantPeeringsCount = $vnetPeerings.where({ $_.PeeringXTenant -eq 'true' }).Count
+
             $htmlTableId = 'TenantSummary_VNetPeerings'
             $tfCount = $VNetsPeeringsCount
             [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_TenantSummary_VNetPeerings"><i class="padlx fa fa-exchange" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$VNetsPeeringsCount Virtual Network Peerings - ($($arrayPeeringState -join "$CSVDelimiterOpposite "))</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_TenantSummary_VNetPeerings"><i class="padlx fa fa-exchange" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$VNetsPeeringsCount Virtual Network Peerings - ($($arrayPeeringState -join "$CSVDelimiterOpposite ")) (Cross Tenant: $($xTenantPeeringsCount))</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -9195,6 +9198,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>Connected device</th>
 <th>DDoS</th>
 <th class="uamiresaltbgc">Peerings Count</th>
+<th class="uamiresaltbgc">Peering Cross Tenant</th>
 <th class="uamiresaltbgc">Peering Name</th>
 <th class="uamiresaltbgc">Peering State</th>
 <th class="uamiresaltbgc">Peering Sync Level</th>
@@ -9260,6 +9264,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.ConnectedDevices)</td>
                         <td>$($result.DdosProtection)</td>
                         <td>$($result.PeeringsCount)</td>
+                        <td>$($result.PeeringXTenant)</td>
                         <td>$($result.PeeringName)</td>
                         <td>$($result.PeeringState)</td>
                         <td>$($result.PeeringSyncLevel)</td>
@@ -9342,7 +9347,8 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             linked_filters: true,
             col_5: 'select',
             col_13: 'select',
-            col_16: 'select',
+            col_15: 'select',
+
             col_17: 'select',
             col_18: 'select',
             col_19: 'select',
@@ -9351,8 +9357,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_22: 'select',
             col_23: 'select',
             col_24: 'select',
+            col_25: 'select',
 
-            col_27: 'select',
+
             col_28: 'select',
             col_29: 'select',
             col_30: 'select',
@@ -9361,10 +9368,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_33: 'select',
             col_34: 'select',
             col_35: 'select',
+            col_36: 'select',
 
-            col_39: 'select',
-            col_41: 'select',
-            col_51: 'select',
+            col_40: 'select',
+            col_42: 'select',
+            col_52: 'select',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -9379,6 +9387,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'number',
                 'number',
                 'number',
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',

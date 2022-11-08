@@ -352,10 +352,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.45',
+    $AzAPICallVersion = '1.1.49',
 
     [string]
-    $ProductVersion = 'v6_major_20221101_1',
+    $ProductVersion = 'v6_major_20221108_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -504,7 +504,7 @@ Param
     $ShowMemoryUsage,
 
     [int]
-    $CriticalMemoryUsage = 90,
+    $CriticalMemoryUsage = 99,
 
     [switch]
     $DoPSRule,
@@ -544,6 +544,9 @@ Param
 
     [switch]
     $NoNetwork,
+
+    [switch]
+    $ShowRunIdentifier,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
@@ -1081,7 +1084,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $policyBaseQuerySubscriptions = $policyBaseQuery.where({ -not [String]::IsNullOrEmpty($_.SubscriptionId) } )
     $policyBaseQueryManagementGroups = $policyBaseQuery.where({ [String]::IsNullOrEmpty($_.SubscriptionId) } )
     $policyPolicyBaseQueryScopeInsights = ($policyBaseQuery | Select-Object Mg*, Subscription*, PolicyAssignmentAtScopeCount, PolicySetAssignmentAtScopeCount, PolicyAndPolicySetAssignmentAtScopeCount, PolicyAssignmentLimit -Unique)
-    $policyBaseQueryUniqueAssignments = $policyBaseQuery | Select-Object -Property Policy* | Sort-Object -Property PolicyAssignmentId -Unique
+    #$policyBaseQueryUniqueAssignments = $policyBaseQuery | Select-Object -Property Policy* | Sort-Object -Property PolicyAssignmentId -Unique
+    $policyBaseQueryUniqueAssignments = $policyBaseQuery | Sort-Object -Property PolicyAssignmentId -Unique | Select-Object -Property Policy*
     $policyAssignmentsOrphaned = $policyBaseQuery.where({ $_.PolicyAvailability -eq 'na' } ) | Sort-Object -Property PolicyAssignmentId -Unique
     $policyAssignmentsOrphanedCount = $policyAssignmentsOrphaned.Count
     Write-Host "  $policyAssignmentsOrphanedCount orphaned Policy assignments found"
@@ -1102,7 +1106,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     }
 
     $policyPolicySetBaseQueryUniqueAssignments = $policyBaseQueryUniqueAssignments.where({ $_.PolicyVariant -eq 'PolicySet' } )
-    $policyBaseQueryUniqueCustomDefinitions = ($policyBaseQuery.where({ $_.PolicyType -eq 'Custom' } )) | Select-Object PolicyVariant, PolicyDefinitionId -Unique
+    #$policyBaseQueryUniqueCustomDefinitions = ($policyBaseQuery.where({ $_.PolicyType -eq 'Custom' } )) | Select-Object PolicyVariant, PolicyDefinitionId -Unique
+    $policyBaseQueryUniqueCustomDefinitions = ($policyBaseQuery.where({ $_.PolicyType -eq 'Custom' } )) | Sort-Object -Property PolicyVariant, PolicyDefinitionId -Unique | Select-Object PolicyVariant, PolicyDefinitionId
     $policyPolicyBaseQueryUniqueCustomDefinitions = ($policyBaseQueryUniqueCustomDefinitions.where({ $_.PolicyVariant -eq 'Policy' } )).PolicyDefinitionId
     $policyPolicySetBaseQueryUniqueCustomDefinitions = ($policyBaseQueryUniqueCustomDefinitions.where({ $_.PolicyVariant -eq 'PolicySet' } )).PolicyDefinitionId
 
@@ -1118,7 +1123,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     }
 
     $blueprintBaseQuery = ($newTable | Select-Object mgid, SubscriptionId, Blueprint*).where({ -not [String]::IsNullOrEmpty($_.BlueprintName) } )
-    $mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | Select-Object MgId, SubscriptionId -Unique)
+    #$mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | Select-Object MgId, SubscriptionId -Unique)
+    $mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | Sort-Object -Property MgId, SubscriptionId -Unique | Select-Object MgId, SubscriptionId)
 
     #region create array Policy definitions
     $tenantAllPoliciesCount = (($htCacheDefinitionsPolicy).Values).count
@@ -1294,7 +1300,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     #region summarizeDataCollectionResults
     $startSummarizeDataCollectionResults = Get-Date
     Write-Host 'Summary data collection'
-    $mgsDetails = ($optimizedTableForPathQueryMg | Select-Object Level, MgId -Unique)
+    #$mgsDetails = ($optimizedTableForPathQueryMg | Select-Object Level, MgId -Unique)
+    $mgsDetails = ($optimizedTableForPathQueryMg | Sort-Object -Property Level, MgId -Unique | Select-Object Level, MgId)
     $mgDepth = ($mgsDetails.Level | Measure-Object -Maximum).Maximum
     $totalMgCount = ($mgsDetails).count
     $totalSubCount = ($optimizedTableForPathQuerySub).count
@@ -2182,3 +2189,9 @@ if ($azGovVizNewerVersionAvailable) {
     }
 }
 #endregion infoNewAzGovVizVersionAvailable
+
+#region runIdentifier
+if ($ShowRunIdentifier) {
+    Write-Host "AzGovViz run identifier: '$($statsIdentifier)'"
+}
+#endregion runIdentifier

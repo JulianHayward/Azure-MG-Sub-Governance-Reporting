@@ -42,11 +42,10 @@ function processNetwork {
         # }
     }
 
+    $htUnknownTenantsForSubscription = @{}
     foreach ($vnet in $arrayVNets) {
         #peeringsStuff
-
-        #$vnetIdSplit = "/subscriptions/19f26644-2e08-4119-8ade-5e1e93e3dca3/resourceGroups/AzAdvertizer/providers/Microsoft.Network/virtualNetworks/azadvertizer" -split "/"
-        $vnetIdSplit = ($vnet.id -split "/")
+        $vnetIdSplit = ($vnet.id -split '/')
         $subscriptionId = $vnetIdSplit[2]
 
         $subscriptionName = 'n/a'
@@ -60,16 +59,50 @@ function processNetwork {
         $vnetResourceGroup = $vnetIdSplit[4]
         if ($vnet.properties.virtualNetworkPeerings.Count -gt 0) {
             foreach ($peering in $vnet.properties.virtualNetworkPeerings) {
-                $remotevnetIdSplit = ($peering.properties.remoteVirtualNetwork.id -split "/")
+                $remotevnetIdSplit = ($peering.properties.remoteVirtualNetwork.id -split '/')
                 $remotesubscriptionId = $remotevnetIdSplit[2]
-
 
                 $remotesubscriptionName = 'n/a'
                 $remoteMGPath = 'n/a'
-                if ($htSubscriptionsMgPath.($subscriptionId)) {
+                $peeringXTenant = 'unknown'
+                if ($htSubscriptionsMgPath.($remotesubscriptionId)) {
+                    $peeringXTenant = 'false'
                     $remotesubHelper = $htSubscriptionsMgPath.($remotesubscriptionId)
                     $remotesubscriptionName = $remotesubHelper.displayName
                     $remoteMGPath = $remotesubHelper.ParentNameChainDelimited
+                }
+                else {
+                    if ($htUnknownTenantsForSubscription.($remotesubscriptionId)) {
+                        $remoteTenantId = $htUnknownTenantsForSubscription.($remotesubscriptionId).TenantId
+                        $remoteMGPath = $remoteTenantId
+                        if ($remoteTenantId -eq $azApiCallConf['checkcontext'].tenant.id) {
+                            $peeringXTenant = 'false'
+                        }
+                        else {
+                            $peeringXTenant = 'true'
+                        }
+                    }
+                    else {
+                        $remotesubscriptionId = '099fca2a-af24-401a-b1ca-42f0ec56e474'
+                        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($remotesubscriptionId)?api-version=2020-01-01"
+                        $remoteTenantId = AzAPICall -AzAPICallConfiguration $azApiCallConf -uri $uri -listenOn 'content' -currentTask "getTenantId for subscriptionId '$($remotesubscriptionId)'"
+                        $arrayRemoteMGPath = @()
+                        foreach ($remoteId in $remoteTenantId) {
+                            $objectGuid = [System.Guid]::empty
+                            if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
+                                $arrayRemoteMGPath += $remoteId
+                                if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
+                                    $peeringXTenant = 'false'
+                                }
+                                else {
+                                    $peeringXTenant = 'true'
+                                }
+                            }
+                            $htUnknownTenantsForSubscription.($remotesubscriptionId) = @{}
+                            $htUnknownTenantsForSubscription.($remotesubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
+                            $remoteMGPath = $arrayRemoteMGPath -join ', '
+                        }
+                    }
                 }
 
                 $remotevnetName = $remotevnetIdSplit[8]
@@ -99,7 +132,7 @@ function processNetwork {
                         $remotePeerCompleteVnets = $remotePeering.properties.peerCompleteVnets
                         $remoteRouteServiceVips = $remotePeering.properties.routeServiceVips
                     }
-                    else{
+                    else {
                         $remotePeeringName = 'n/a'
                         $remotePeeringState = 'n/a'
                         $remotePeeringSyncLevel = 'n/a'
@@ -143,10 +176,10 @@ function processNetwork {
 
                 $null = $script:arrayVirtualNetworks.Add([PSCustomObject]@{
                         SubscriptionName                                = $subscriptionName
-                        Subscription                                    = ($vnet.id -split "/")[2]
+                        Subscription                                    = ($vnet.id -split '/')[2]
                         MGPath                                          = $MGPath
                         VNet                                            = $vnet.name
-                        VNetId                                            = $vnet.id
+                        VNetId                                          = $vnet.id
                         VNetResourceGroup                               = $vnetResourceGroup
                         Location                                        = $vnet.location
                         AddressSpaceAddressPrefixes                     = $vnet.properties.addressSpace.addressPrefixes
@@ -159,6 +192,7 @@ function processNetwork {
                         DdosProtection                                  = $vnet.properties.enableDdosProtection
 
                         PeeringsCount                                   = $vnet.properties.virtualNetworkPeerings.Count
+                        PeeringXTenant                                  = $peeringXTenant
                         PeeringName                                     = $peering.name
                         PeeringState                                    = $peering.properties.peeringState
                         PeeringSyncLevel                                = $peering.properties.peeringSyncLevel
@@ -207,7 +241,7 @@ function processNetwork {
         else {
             $null = $script:arrayVirtualNetworks.Add([PSCustomObject]@{
                     SubscriptionName                                = $subscriptionName
-                    Subscription                                    = ($vnet.id -split "/")[2]
+                    Subscription                                    = ($vnet.id -split '/')[2]
                     MGPath                                          = $MGPath
                     VNet                                            = $vnet.name
                     VNetId                                          = $vnet.id
@@ -224,6 +258,7 @@ function processNetwork {
                     DdosProtection                                  = $vnet.properties.enableDdosProtection
 
                     PeeringsCount                                   = $vnet.properties.virtualNetworkPeerings.Count
+                    PeeringXTenant                                  = 'n/a'
                     PeeringName                                     = ''
                     PeeringState                                    = ''
                     PeeringSyncLevel                                = ''

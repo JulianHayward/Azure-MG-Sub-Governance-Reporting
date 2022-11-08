@@ -59,9 +59,18 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Nov-01 / Minor)
+__Changes__ (2022-Nov-06 / Major)
 
-* Updated Storage Account analysis to handle permission issues on databricks storage accounts
+* Network analysis - VNet peerings detect cross tenant peering -> triggered by @TimWanierke, thanks!
+* Updated Storage Account Analysis to handle error 'AuthorizationPermissionMismatch'
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.49
+* Update __[Contribution Guide](contributionGuide.md)__
+
+Passed tests: Powershell Core 7.2.6 on Windows  
+Passed tests: Powershell Core 7.2.6 Azure DevOps hosted agent ubuntu-20.04  
+Passed tests: Powershell Core 7.2.6 Github Actions hosted agent ubuntu-latest  
+Passed tests: Powershell Core 7.2.6 GitHub Codespaces mcr.microsoft.com/powershell:latest  
+Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
 
 [Full release history](history.md)
 
@@ -465,7 +474,7 @@ AzAPICall resources:
   * ~~`-JsonExport`~~ `-NoJsonExport` - Do not enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON 
   * `-JsonExportExcludeResourceGroups` - JSON Export will not include ResourceGroups (Policy & Role assignments)
   * `-JsonExportExcludeResources`- JSON Export will not include Resources (Role assignments)
-  * `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big. Using this parameter the following parameters will be set: -PolicyAtScopeOnly $true, -RBACAtScopeOnly $true, -NoResourceProvidersDetailed $true, -NoScopeInsights $true
+  * `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big. Using this parameter the following parameters will be set: `-PolicyAtScopeOnly`, `-RBACAtScopeOnly`, `-NoResourceProvidersAtAll`, `-NoScopeInsights`
   * `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
   * `-AADGroupMembersLimit` - Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved 
   * `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability, resource type stats, UserAssigned Identities assigned to Resources is excluded (featured for large tenants)

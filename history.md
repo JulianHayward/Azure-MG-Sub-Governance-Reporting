@@ -4,6 +4,13 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Nov-06 / Major)
+
+* Network analysis - VNet peerings detect cross tenant peering -> triggered by @TimWanierke, thanks!
+* Updated Storage Account Analysis to handle error 'AuthorizationPermissionMismatch'
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.49
+* Update __[Contribution Guide](contributionGuide.md)__
+
 __Changes__ (2022-Nov-01 / Minor)
 
 * Updated Storage Account analysis to handle permission issues on databricks storage accounts
