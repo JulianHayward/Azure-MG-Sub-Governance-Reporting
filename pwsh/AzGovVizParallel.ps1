@@ -352,10 +352,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.49',
+    $AzAPICallVersion = '1.1.50',
 
     [string]
-    $ProductVersion = 'v6_major_20221108_1',
+    $ProductVersion = 'v6_major_20221113_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -3214,7 +3214,7 @@ function getOrphanedResources {
     $intent = 'cost savings'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/publicIpAddresses'
-            query     = "Resources | where type =~ 'microsoft.network/publicIpAddresses' | where properties.ipConfiguration == '' | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = "Resources | where type =~ 'microsoft.network/publicIpAddresses' | where properties.ipConfiguration == '' and properties.natGateway == '' | project type, subscriptionId, Resource=id, Intent='$intent'"
             intent    = $intent
         })
 
@@ -5225,7 +5225,7 @@ function processDataCollection {
                     try {
                         $previous = Get-ChildItem -Path $outputPath -Filter "*$($ManagementGroupId)_ResourcesAll.csv" | Sort-Object -Descending -Property LastWriteTime | Select-Object -First 1 -ErrorAction Stop
                         $importPrevious = Import-Csv -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($previous.Name)" -Encoding utf8 -Delimiter $CsvDelimiter | Select-Object -ExpandProperty id
-                        Write-Host " Import previous ($($previous.Name)) duration: $((New-TimeSpan -Start $startImportPrevious -End (Get-Date)).TotalSeconds)"
+                        Write-Host " Import previous ($($previous.Name)) duration: $((New-TimeSpan -Start $startImportPrevious -End (Get-Date)).TotalSeconds) seconds"
                     }
                     catch {
                         Write-Host " FAILED: importing previous CSV '$($outputPath)$($DirectorySeparatorChar)$($previous.Name)' OR it does not exist (*$($ManagementGroupId)_ResourcesAll.csv)"
@@ -11336,8 +11336,8 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 
 }
 function processStorageAccountAnalysis {
-    $start = get-date
-    Write-Host "Processing Storage Account Analysis"
+    $start = Get-Date
+    Write-Host 'Processing Storage Account Analysis'
     $storageAccountscount = $storageAccounts.count
     if ($storageAccountscount -gt 0) {
         Write-Host " Executing Storage Account Analysis for $storageAccountscount Storage Accounts"
@@ -11371,68 +11371,72 @@ function processStorageAccountAnalysis {
             if ($storageAccount.Properties.primaryEndpoints.blob) {
 
                 $urlServiceProps = "$($storageAccount.Properties.primaryEndpoints.blob)?restype=service&comp=properties"
-                $saProperties = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlServiceProps -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get restype=service&comp=properties" -saResourceGroupName $resourceGroupName
-                if ($saProperties -eq 'AuthorizationFailure' -or $saProperties -eq 'AuthorizationPermissionDenied' -or $saProperties -eq 'ResourceUnavailable' -or $saProperties -eq 'AuthorizationPermissionMismatch' ) {
-                    if ($saProperties -eq 'ResourceUnavailable') {
-                        $staticWebsitesState = $saProperties
-                    }
-                }
-                else {
-                    try {
-                        $xmlSaProperties = [xml]([string]$saProperties -replace $saProperties.Substring(0, 3))
-                        if ($xmlSaProperties.StorageServiceProperties.StaticWebsite) {
-                            if ($xmlSaProperties.StorageServiceProperties.StaticWebsite.Enabled -eq $true) {
-                                $staticWebsitesState = $true
-                            }
-                            else {
-                                $staticWebsitesState = $false
-                            }
+                $saProperties = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlServiceProps -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get restype=service&comp=properties" -saResourceGroupName $resourceGroupName -unhandledErrorAction Continue
+                if ($saProperties) {
+                    if ($saProperties -eq 'AuthorizationFailure' -or $saProperties -eq 'AuthorizationPermissionDenied' -or $saProperties -eq 'ResourceUnavailable' -or $saProperties -eq 'AuthorizationPermissionMismatch' ) {
+                        if ($saProperties -eq 'ResourceUnavailable') {
+                            $staticWebsitesState = $saProperties
                         }
                     }
-                    catch {
-                        Write-Host "XMLSAPropertiesFailed: Subscription: $($subDetails.displayName) ($subscriptionId) - Storage Account: $($storageAccount.name)"
-                        Write-Host $($saProperties.ForEach({[char]$_}) -join '') -ForegroundColor Cyan
+                    else {
+                        try {
+                            $xmlSaProperties = [xml]([string]$saProperties -replace $saProperties.Substring(0, 3))
+                            if ($xmlSaProperties.StorageServiceProperties.StaticWebsite) {
+                                if ($xmlSaProperties.StorageServiceProperties.StaticWebsite.Enabled -eq $true) {
+                                    $staticWebsitesState = $true
+                                }
+                                else {
+                                    $staticWebsitesState = $false
+                                }
+                            }
+                        }
+                        catch {
+                            Write-Host "XMLSAPropertiesFailed: Subscription: $($subDetails.displayName) ($subscriptionId) - Storage Account: $($storageAccount.name)"
+                            Write-Host $($saProperties.ForEach({ [char]$_ }) -join '') -ForegroundColor Cyan
+                        }
                     }
                 }
 
                 $urlCompList = "$($storageAccount.Properties.primaryEndpoints.blob)?comp=list"
-                $listContainers = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlCompList -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get comp=list"
-                if ($listContainers -eq 'AuthorizationFailure' -or $listContainers -eq 'AuthorizationPermissionDenied' -or $listContainers -eq 'ResourceUnavailable' -or $listContainers -eq 'AuthorizationPermissionMismatch') {
-                    if ($listContainers -eq 'ResourceUnavailable') {
-                        $listContainersSuccess = $listContainers
+                $listContainers = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlCompList -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get comp=list" -unhandledErrorAction Continue
+                if ($listContainers) {
+                    if ($listContainers -eq 'AuthorizationFailure' -or $listContainers -eq 'AuthorizationPermissionDenied' -or $listContainers -eq 'ResourceUnavailable' -or $listContainers -eq 'AuthorizationPermissionMismatch') {
+                        if ($listContainers -eq 'ResourceUnavailable') {
+                            $listContainersSuccess = $listContainers
+                        }
+                        else {
+                            $listContainersSuccess = $false
+                        }
                     }
                     else {
-                        $listContainersSuccess = $false
+                        $listContainersSuccess = $true
                     }
-                }
-                else {
-                    $listContainersSuccess = $true
-                }
 
-                if ($listContainersSuccess -eq $true) {
-                    $xmlListContainers = [xml]([string]$listContainers -replace $listContainers.Substring(0, 3))
-                    $containersCount = $xmlListContainers.EnumerationResults.Containers.Container.Count
+                    if ($listContainersSuccess -eq $true) {
+                        $xmlListContainers = [xml]([string]$listContainers -replace $listContainers.Substring(0, 3))
+                        $containersCount = $xmlListContainers.EnumerationResults.Containers.Container.Count
 
-                    foreach ($container in $xmlListContainers.EnumerationResults.Containers.Container) {
-                        $arrayContainers += $container.Name
-                        if ($container.Name -eq '$web' -and $staticWebsitesState) {
-                            if ($storageAccount.properties.primaryEndpoints.web) {
-                                try {
-                                    $testStaticWebsiteResponse = Invoke-WebRequest -Uri $storageAccount.properties.primaryEndpoints.web -Method 'HEAD'
-                                    $webSiteResponds = $true
-                                }
-                                catch {
-                                    $webSiteResponds = $false
+                        foreach ($container in $xmlListContainers.EnumerationResults.Containers.Container) {
+                            $arrayContainers += $container.Name
+                            if ($container.Name -eq '$web' -and $staticWebsitesState) {
+                                if ($storageAccount.properties.primaryEndpoints.web) {
+                                    try {
+                                        $testStaticWebsiteResponse = Invoke-WebRequest -Uri $storageAccount.properties.primaryEndpoints.web -Method 'HEAD'
+                                        $webSiteResponds = $true
+                                    }
+                                    catch {
+                                        $webSiteResponds = $false
+                                    }
                                 }
                             }
-                        }
 
-                        if ($container.Properties.PublicAccess) {
-                            if ($container.Properties.PublicAccess -eq 'blob') {
-                                $arrayContainersAnonymousBlob += $container.Name
-                            }
-                            if ($container.Properties.PublicAccess -eq 'container') {
-                                $arrayContainersAnonymousContainer += $container.Name
+                            if ($container.Properties.PublicAccess) {
+                                if ($container.Properties.PublicAccess -eq 'blob') {
+                                    $arrayContainersAnonymousBlob += $container.Name
+                                }
+                                if ($container.Properties.PublicAccess -eq 'container') {
+                                    $arrayContainersAnonymousContainer += $container.Name
+                                }
                             }
                         }
                     }
@@ -11596,11 +11600,11 @@ function processStorageAccountAnalysis {
         } -ThrottleLimit $ThrottleLimit
     }
     else {
-        Write-Host " No Storage Accounts present"
+        Write-Host ' No Storage Accounts present'
     }
 
     $end = Get-Date
-    Write-Host " Processing Storage Account Analysis duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
+    Write-Host " Processing Storage Account Analysis duration: $((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds"
 }
 function processTenantSummary() {
     Write-Host ' Building TenantSummary'
@@ -27066,11 +27070,11 @@ function verifyModules3rd {
                     Write-Host '  Check latest module version'
                     try {
                         $moduleVersion = (Find-Module -Name $($module.ModuleName)).Version
-                        Write-Host "  Latest module version: $moduleVersion"
+                        Write-Host "  $($module.ModuleName) Latest module version: $moduleVersion"
                     }
                     catch {
-                        Write-Host '  Check latest module version failed'
-                        throw
+                        Write-Host "  $($module.ModuleName) - Check latest module version failed"
+                        throw "  $($module.ModuleName) - Check latest module version failed"
                     }
                 }
 
@@ -27081,8 +27085,8 @@ function verifyModules3rd {
                             $installModuleSuccess = $true
                         }
                         else {
-                            Write-Host "  Deviating module version $moduleVersionLoaded"
-                            throw
+                            Write-Host "  $($module.ModuleName) - Deviating module version $moduleVersionLoaded"
+                            throw "  $($module.ModuleName) - Deviating module version $moduleVersionLoaded"
                         }
                     }
                     catch {
@@ -27101,16 +27105,6 @@ function verifyModules3rd {
                             RequiredVersion = $moduleVersion
                         }
                         Install-Module @params
-                        <#
-                        if ($module.ModuleName -eq 'PSRule.Rules.Azure') {
-                            if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID)) {
-                                #Azure DevOps /noDeps
-                                $path = (Get-Module PSRule.Rules.Azure -ListAvailable | Sort-Object Version -Descending -Top 1).ModuleBase
-                                Write-Host "Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')"
-                                Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')
-                            }
-                        }
-                        #>
                     }
                     catch {
                         throw "  Installing '$($module.ModuleName)' module ($($moduleVersion)) failed"

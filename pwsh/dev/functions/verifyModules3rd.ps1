@@ -28,11 +28,11 @@ function verifyModules3rd {
                     Write-Host '  Check latest module version'
                     try {
                         $moduleVersion = (Find-Module -Name $($module.ModuleName)).Version
-                        Write-Host "  Latest module version: $moduleVersion"
+                        Write-Host "  $($module.ModuleName) Latest module version: $moduleVersion"
                     }
                     catch {
-                        Write-Host '  Check latest module version failed'
-                        throw
+                        Write-Host "  $($module.ModuleName) - Check latest module version failed"
+                        throw "  $($module.ModuleName) - Check latest module version failed"
                     }
                 }
 
@@ -43,8 +43,8 @@ function verifyModules3rd {
                             $installModuleSuccess = $true
                         }
                         else {
-                            Write-Host "  Deviating module version $moduleVersionLoaded"
-                            throw
+                            Write-Host "  $($module.ModuleName) - Deviating module version $moduleVersionLoaded"
+                            throw "  $($module.ModuleName) - Deviating module version $moduleVersionLoaded"
                         }
                     }
                     catch {
@@ -63,16 +63,6 @@ function verifyModules3rd {
                             RequiredVersion = $moduleVersion
                         }
                         Install-Module @params
-                        <#
-                        if ($module.ModuleName -eq 'PSRule.Rules.Azure') {
-                            if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID)) {
-                                #Azure DevOps /noDeps
-                                $path = (Get-Module PSRule.Rules.Azure -ListAvailable | Sort-Object Version -Descending -Top 1).ModuleBase
-                                Write-Host "Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')"
-                                Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')
-                            }
-                        }
-                        #>
                     }
                     catch {
                         throw "  Installing '$($module.ModuleName)' module ($($moduleVersion)) failed"
