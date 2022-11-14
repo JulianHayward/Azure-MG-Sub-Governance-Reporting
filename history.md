@@ -4,11 +4,12 @@
 
 ### AzGovViz version 6
 
-__Changes__ (2022-Nov-06 / Major)
+__Changes__ (2022-Nov-13 / Major)
 
 * Network analysis - VNet peerings detect cross tenant peering -> triggered by @TimWanierke, thanks!
 * Updated Storage Account Analysis to handle error 'AuthorizationPermissionMismatch'
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.49
+* Updated orphaned resources query for punlic IP addressen following the source repository [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources/commit/52ea4f12626f62338f5c354a74bf429c1244c382)
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.50
 * Update __[Contribution Guide](contributionGuide.md)__
 
 __Changes__ (2022-Nov-01 / Minor)
