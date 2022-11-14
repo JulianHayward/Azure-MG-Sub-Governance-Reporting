@@ -52,7 +52,7 @@ function stats {
         }
 
         $identifierBase = $hasher512.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($hashUse))
-        $identifier = "$(([System.BitConverter]::ToString($identifierBase)) -replace '-')"
+        $script:statsIdentifier = "$(([System.BitConverter]::ToString($identifierBase)) -replace '-')"
 
         $accountInfo = "$($azAPICallConf['htParameters'].accountType)$($azAPICallConf['htParameters'].userType)"
         if ($azAPICallConf['htParameters'].accountType -eq 'ServicePrincipal' -or $azAPICallConf['htParameters'].accountType -eq 'ManagedService' -or $azAPICallConf['htParameters'].accountType -eq 'ClientAssertion') {
@@ -90,7 +90,7 @@ function stats {
             "properties": {
                 "accType": "$($accountInfo)",
                 "azCloud": "$($azAPICallConf['checkContext'].Environment.Name)",
-                "identifier": "$($identifier)",
+                "identifier": "$($statsIdentifier)",
                 "platform": "$($azAPICallConf['htParameters'].CodeRunPlatform)",
                 "productVersion": "$($ProductVersion)",
                 "psAzAccountsVersion": "$($azAPICallConf['htParameters'].AzAccountsVersion)",
@@ -116,6 +116,10 @@ function stats {
                 "statsParametersPolicyAtScopeOnly": "$($azAPICallConf['htParameters'].PolicyAtScopeOnly)",
                 "statsParametersRBACAtScopeOnly": "$($azAPICallConf['htParameters'].RBACAtScopeOnly)",
                 "statsParametersDoPSRule": "$($azAPICallConf['htParameters'].DoPSRule)",
+                "statsParametersNoPIMEligibility": "$($NoPIMEligibility)",
+                "statsParametersNoALZPolicyVersionChecker": "$($NoALZPolicyVersionChecker)",
+                "statsParametersNoStorageAccountAccessAnalysis": "$($NoStorageAccountAccessAnalysis)",
+                "statsParametersNoNetwork": "$($NoNetwork)",
                 "statsTry": "$($tryCounter)",
                 "statsDurationProduct": "$($dur)"
             }
@@ -133,7 +137,7 @@ function stats {
     }
     else {
         #noStats
-        $identifier = (New-Guid).Guid
+        $script:statsIdentifier = (New-Guid).Guid
         $tryCounter = 0
         do {
             if ($tryCounter -gt 0) {
@@ -153,7 +157,7 @@ function stats {
             "name": "$($Product)",
             "ver": 2,
             "properties": {
-                "identifier": "$($identifier)",
+                "identifier": "$($statsIdentifier)",
                 "statsTry": "$($tryCounter)"
             }
         }

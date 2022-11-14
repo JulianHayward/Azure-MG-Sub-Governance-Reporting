@@ -352,10 +352,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.45',
+    $AzAPICallVersion = '1.1.50',
 
     [string]
-    $ProductVersion = 'v6_major_20221101_1',
+    $ProductVersion = 'v6_major_20221113_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -504,7 +504,7 @@ Param
     $ShowMemoryUsage,
 
     [int]
-    $CriticalMemoryUsage = 90,
+    $CriticalMemoryUsage = 99,
 
     [switch]
     $DoPSRule,
@@ -544,6 +544,9 @@ Param
 
     [switch]
     $NoNetwork,
+
+    [switch]
+    $ShowRunIdentifier,
 
     #https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#role-based-access-control-limits
     [int]
@@ -3211,7 +3214,7 @@ function getOrphanedResources {
     $intent = 'cost savings'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/publicIpAddresses'
-            query     = "Resources | where type =~ 'microsoft.network/publicIpAddresses' | where properties.ipConfiguration == '' | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = "Resources | where type =~ 'microsoft.network/publicIpAddresses' | where properties.ipConfiguration == '' and properties.natGateway == '' | project type, subscriptionId, Resource=id, Intent='$intent'"
             intent    = $intent
         })
 
@@ -5222,7 +5225,7 @@ function processDataCollection {
                     try {
                         $previous = Get-ChildItem -Path $outputPath -Filter "*$($ManagementGroupId)_ResourcesAll.csv" | Sort-Object -Descending -Property LastWriteTime | Select-Object -First 1 -ErrorAction Stop
                         $importPrevious = Import-Csv -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($previous.Name)" -Encoding utf8 -Delimiter $CsvDelimiter | Select-Object -ExpandProperty id
-                        Write-Host " Import previous ($($previous.Name)) duration: $((New-TimeSpan -Start $startImportPrevious -End (Get-Date)).TotalSeconds)"
+                        Write-Host " Import previous ($($previous.Name)) duration: $((New-TimeSpan -Start $startImportPrevious -End (Get-Date)).TotalSeconds) seconds"
                     }
                     catch {
                         Write-Host " FAILED: importing previous CSV '$($outputPath)$($DirectorySeparatorChar)$($previous.Name)' OR it does not exist (*$($ManagementGroupId)_ResourcesAll.csv)"
@@ -7132,11 +7135,10 @@ function processNetwork {
         # }
     }
 
+    $htUnknownTenantsForSubscription = @{}
     foreach ($vnet in $arrayVNets) {
         #peeringsStuff
-
-        #$vnetIdSplit = "/subscriptions/19f26644-2e08-4119-8ade-5e1e93e3dca3/resourceGroups/AzAdvertizer/providers/Microsoft.Network/virtualNetworks/azadvertizer" -split "/"
-        $vnetIdSplit = ($vnet.id -split "/")
+        $vnetIdSplit = ($vnet.id -split '/')
         $subscriptionId = $vnetIdSplit[2]
 
         $subscriptionName = 'n/a'
@@ -7150,16 +7152,49 @@ function processNetwork {
         $vnetResourceGroup = $vnetIdSplit[4]
         if ($vnet.properties.virtualNetworkPeerings.Count -gt 0) {
             foreach ($peering in $vnet.properties.virtualNetworkPeerings) {
-                $remotevnetIdSplit = ($peering.properties.remoteVirtualNetwork.id -split "/")
+                $remotevnetIdSplit = ($peering.properties.remoteVirtualNetwork.id -split '/')
                 $remotesubscriptionId = $remotevnetIdSplit[2]
-
 
                 $remotesubscriptionName = 'n/a'
                 $remoteMGPath = 'n/a'
-                if ($htSubscriptionsMgPath.($subscriptionId)) {
+                $peeringXTenant = 'unknown'
+                if ($htSubscriptionsMgPath.($remotesubscriptionId)) {
+                    $peeringXTenant = 'false'
                     $remotesubHelper = $htSubscriptionsMgPath.($remotesubscriptionId)
                     $remotesubscriptionName = $remotesubHelper.displayName
                     $remoteMGPath = $remotesubHelper.ParentNameChainDelimited
+                }
+                else {
+                    if ($htUnknownTenantsForSubscription.($remotesubscriptionId)) {
+                        $remoteTenantId = $htUnknownTenantsForSubscription.($remotesubscriptionId).TenantId
+                        $remoteMGPath = $remoteTenantId
+                        if ($remoteTenantId -eq $azApiCallConf['checkcontext'].tenant.id) {
+                            $peeringXTenant = 'false'
+                        }
+                        else {
+                            $peeringXTenant = 'true'
+                        }
+                    }
+                    else {
+                        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($remotesubscriptionId)?api-version=2020-01-01"
+                        $remoteTenantId = AzAPICall -AzAPICallConfiguration $azApiCallConf -uri $uri -listenOn 'content' -currentTask "getTenantId for subscriptionId '$($remotesubscriptionId)'"
+                        $arrayRemoteMGPath = @()
+                        foreach ($remoteId in $remoteTenantId) {
+                            $objectGuid = [System.Guid]::empty
+                            if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
+                                $arrayRemoteMGPath += $remoteId
+                                if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
+                                    $peeringXTenant = 'false'
+                                }
+                                else {
+                                    $peeringXTenant = 'true'
+                                }
+                            }
+                            $htUnknownTenantsForSubscription.($remotesubscriptionId) = @{}
+                            $htUnknownTenantsForSubscription.($remotesubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
+                            $remoteMGPath = $arrayRemoteMGPath -join ', '
+                        }
+                    }
                 }
 
                 $remotevnetName = $remotevnetIdSplit[8]
@@ -7189,7 +7224,7 @@ function processNetwork {
                         $remotePeerCompleteVnets = $remotePeering.properties.peerCompleteVnets
                         $remoteRouteServiceVips = $remotePeering.properties.routeServiceVips
                     }
-                    else{
+                    else {
                         $remotePeeringName = 'n/a'
                         $remotePeeringState = 'n/a'
                         $remotePeeringSyncLevel = 'n/a'
@@ -7233,10 +7268,10 @@ function processNetwork {
 
                 $null = $script:arrayVirtualNetworks.Add([PSCustomObject]@{
                         SubscriptionName                                = $subscriptionName
-                        Subscription                                    = ($vnet.id -split "/")[2]
+                        Subscription                                    = ($vnet.id -split '/')[2]
                         MGPath                                          = $MGPath
                         VNet                                            = $vnet.name
-                        VNetId                                            = $vnet.id
+                        VNetId                                          = $vnet.id
                         VNetResourceGroup                               = $vnetResourceGroup
                         Location                                        = $vnet.location
                         AddressSpaceAddressPrefixes                     = $vnet.properties.addressSpace.addressPrefixes
@@ -7249,6 +7284,7 @@ function processNetwork {
                         DdosProtection                                  = $vnet.properties.enableDdosProtection
 
                         PeeringsCount                                   = $vnet.properties.virtualNetworkPeerings.Count
+                        PeeringXTenant                                  = $peeringXTenant
                         PeeringName                                     = $peering.name
                         PeeringState                                    = $peering.properties.peeringState
                         PeeringSyncLevel                                = $peering.properties.peeringSyncLevel
@@ -7297,7 +7333,7 @@ function processNetwork {
         else {
             $null = $script:arrayVirtualNetworks.Add([PSCustomObject]@{
                     SubscriptionName                                = $subscriptionName
-                    Subscription                                    = ($vnet.id -split "/")[2]
+                    Subscription                                    = ($vnet.id -split '/')[2]
                     MGPath                                          = $MGPath
                     VNet                                            = $vnet.name
                     VNetId                                          = $vnet.id
@@ -7314,6 +7350,7 @@ function processNetwork {
                     DdosProtection                                  = $vnet.properties.enableDdosProtection
 
                     PeeringsCount                                   = $vnet.properties.virtualNetworkPeerings.Count
+                    PeeringXTenant                                  = 'n/a'
                     PeeringName                                     = ''
                     PeeringState                                    = ''
                     PeeringSyncLevel                                = ''
@@ -11299,8 +11336,8 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 
 }
 function processStorageAccountAnalysis {
-    $start = get-date
-    Write-Host "Processing Storage Account Analysis"
+    $start = Get-Date
+    Write-Host 'Processing Storage Account Analysis'
     $storageAccountscount = $storageAccounts.count
     if ($storageAccountscount -gt 0) {
         Write-Host " Executing Storage Account Analysis for $storageAccountscount Storage Accounts"
@@ -11334,68 +11371,72 @@ function processStorageAccountAnalysis {
             if ($storageAccount.Properties.primaryEndpoints.blob) {
 
                 $urlServiceProps = "$($storageAccount.Properties.primaryEndpoints.blob)?restype=service&comp=properties"
-                $saProperties = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlServiceProps -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get restype=service&comp=properties" -saResourceGroupName $resourceGroupName
-                if ($saProperties -eq 'AuthorizationFailure' -or $saProperties -eq 'AuthorizationPermissionDenied' -or $saProperties -eq 'ResourceUnavailable' -or $saProperties -eq 'AuthorizationPermissionMismatch' ) {
-                    if ($saProperties -eq 'ResourceUnavailable') {
-                        $staticWebsitesState = $saProperties
-                    }
-                }
-                else {
-                    try {
-                        $xmlSaProperties = [xml]([string]$saProperties -replace $saProperties.Substring(0, 3))
-                        if ($xmlSaProperties.StorageServiceProperties.StaticWebsite) {
-                            if ($xmlSaProperties.StorageServiceProperties.StaticWebsite.Enabled -eq $true) {
-                                $staticWebsitesState = $true
-                            }
-                            else {
-                                $staticWebsitesState = $false
-                            }
+                $saProperties = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlServiceProps -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get restype=service&comp=properties" -saResourceGroupName $resourceGroupName -unhandledErrorAction Continue
+                if ($saProperties) {
+                    if ($saProperties -eq 'AuthorizationFailure' -or $saProperties -eq 'AuthorizationPermissionDenied' -or $saProperties -eq 'ResourceUnavailable' -or $saProperties -eq 'AuthorizationPermissionMismatch' ) {
+                        if ($saProperties -eq 'ResourceUnavailable') {
+                            $staticWebsitesState = $saProperties
                         }
                     }
-                    catch {
-                        Write-Host "XMLSAPropertiesFailed: Subscription: $($subDetails.displayName) ($subscriptionId) - Storage Account: $($storageAccount.name)"
-                        Write-Host $($saProperties.ForEach({[char]$_}) -join '') -ForegroundColor Cyan
+                    else {
+                        try {
+                            $xmlSaProperties = [xml]([string]$saProperties -replace $saProperties.Substring(0, 3))
+                            if ($xmlSaProperties.StorageServiceProperties.StaticWebsite) {
+                                if ($xmlSaProperties.StorageServiceProperties.StaticWebsite.Enabled -eq $true) {
+                                    $staticWebsitesState = $true
+                                }
+                                else {
+                                    $staticWebsitesState = $false
+                                }
+                            }
+                        }
+                        catch {
+                            Write-Host "XMLSAPropertiesFailed: Subscription: $($subDetails.displayName) ($subscriptionId) - Storage Account: $($storageAccount.name)"
+                            Write-Host $($saProperties.ForEach({ [char]$_ }) -join '') -ForegroundColor Cyan
+                        }
                     }
                 }
 
                 $urlCompList = "$($storageAccount.Properties.primaryEndpoints.blob)?comp=list"
-                $listContainers = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlCompList -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get comp=list"
-                if ($listContainers -eq 'AuthorizationFailure' -or $listContainers -eq 'AuthorizationPermissionDenied' -or $listContainers -eq 'ResourceUnavailable' -or $listContainers -eq 'AuthorizationPermissionMismatch') {
-                    if ($listContainers -eq 'ResourceUnavailable') {
-                        $listContainersSuccess = $listContainers
+                $listContainers = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlCompList -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get comp=list" -unhandledErrorAction Continue
+                if ($listContainers) {
+                    if ($listContainers -eq 'AuthorizationFailure' -or $listContainers -eq 'AuthorizationPermissionDenied' -or $listContainers -eq 'ResourceUnavailable' -or $listContainers -eq 'AuthorizationPermissionMismatch') {
+                        if ($listContainers -eq 'ResourceUnavailable') {
+                            $listContainersSuccess = $listContainers
+                        }
+                        else {
+                            $listContainersSuccess = $false
+                        }
                     }
                     else {
-                        $listContainersSuccess = $false
+                        $listContainersSuccess = $true
                     }
-                }
-                else {
-                    $listContainersSuccess = $true
-                }
 
-                if ($listContainersSuccess -eq $true) {
-                    $xmlListContainers = [xml]([string]$listContainers -replace $listContainers.Substring(0, 3))
-                    $containersCount = $xmlListContainers.EnumerationResults.Containers.Container.Count
+                    if ($listContainersSuccess -eq $true) {
+                        $xmlListContainers = [xml]([string]$listContainers -replace $listContainers.Substring(0, 3))
+                        $containersCount = $xmlListContainers.EnumerationResults.Containers.Container.Count
 
-                    foreach ($container in $xmlListContainers.EnumerationResults.Containers.Container) {
-                        $arrayContainers += $container.Name
-                        if ($container.Name -eq '$web' -and $staticWebsitesState) {
-                            if ($storageAccount.properties.primaryEndpoints.web) {
-                                try {
-                                    $testStaticWebsiteResponse = Invoke-WebRequest -Uri $storageAccount.properties.primaryEndpoints.web -Method 'HEAD'
-                                    $webSiteResponds = $true
-                                }
-                                catch {
-                                    $webSiteResponds = $false
+                        foreach ($container in $xmlListContainers.EnumerationResults.Containers.Container) {
+                            $arrayContainers += $container.Name
+                            if ($container.Name -eq '$web' -and $staticWebsitesState) {
+                                if ($storageAccount.properties.primaryEndpoints.web) {
+                                    try {
+                                        $testStaticWebsiteResponse = Invoke-WebRequest -Uri $storageAccount.properties.primaryEndpoints.web -Method 'HEAD'
+                                        $webSiteResponds = $true
+                                    }
+                                    catch {
+                                        $webSiteResponds = $false
+                                    }
                                 }
                             }
-                        }
 
-                        if ($container.Properties.PublicAccess) {
-                            if ($container.Properties.PublicAccess -eq 'blob') {
-                                $arrayContainersAnonymousBlob += $container.Name
-                            }
-                            if ($container.Properties.PublicAccess -eq 'container') {
-                                $arrayContainersAnonymousContainer += $container.Name
+                            if ($container.Properties.PublicAccess) {
+                                if ($container.Properties.PublicAccess -eq 'blob') {
+                                    $arrayContainersAnonymousBlob += $container.Name
+                                }
+                                if ($container.Properties.PublicAccess -eq 'container') {
+                                    $arrayContainersAnonymousContainer += $container.Name
+                                }
                             }
                         }
                     }
@@ -11559,11 +11600,11 @@ function processStorageAccountAnalysis {
         } -ThrottleLimit $ThrottleLimit
     }
     else {
-        Write-Host " No Storage Accounts present"
+        Write-Host ' No Storage Accounts present'
     }
 
     $end = Get-Date
-    Write-Host " Processing Storage Account Analysis duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
+    Write-Host " Processing Storage Account Analysis duration: $((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds"
 }
 function processTenantSummary() {
     Write-Host ' Building TenantSummary'
@@ -14063,7 +14104,8 @@ extensions: [{ name: 'sort' }]
 
             $htmlSUMMARYALZPolicyVersionChecker = $null
             $exemptionData4CSVExport = [System.Collections.ArrayList]@()
-            $htmlSUMMARYALZPolicyVersionChecker = foreach ($entry in $alzPoliciesInTenant) {
+            $alzPoliciesInTenantSorted = $alzPoliciesInTenant | Sort-Object -Property PolicyName, PolicyId, ALZPolicyName
+            $htmlSUMMARYALZPolicyVersionChecker = foreach ($entry in $alzPoliciesInTenantSorted) {
                 if ([string]::IsNullOrWhiteSpace($entry.AzAdvertizerUrl)) {
                     $link = ''
                 }
@@ -14089,7 +14131,7 @@ extensions: [{ name: 'sort' }]
 
             if (-not $NoCsvExport) {
                 Write-Host "Exporting 'Azure Landing Zones (ALZ) Policy Version Checker' CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZPolicyVersionChecker.csv'"
-                $alzPoliciesInTenant | Sort-Object -Property PolicyName, PolicyId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZPolicyVersionChecker.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                $alzPoliciesInTenantSorted | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZPolicyVersionChecker.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
             }
 
             [void]$htmlTenantSummary.AppendLine($htmlSUMMARYALZPolicyVersionChecker)
@@ -20738,10 +20780,12 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 "$($peeringState.Name): $($peeringState.Count)"
             }
 
+            $xTenantPeeringsCount = $vnetPeerings.where({ $_.PeeringXTenant -eq 'true' }).Count
+
             $htmlTableId = 'TenantSummary_VNetPeerings'
             $tfCount = $VNetsPeeringsCount
             [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_TenantSummary_VNetPeerings"><i class="padlx fa fa-exchange" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$VNetsPeeringsCount Virtual Network Peerings - ($($arrayPeeringState -join "$CSVDelimiterOpposite "))</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_TenantSummary_VNetPeerings"><i class="padlx fa fa-exchange" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$VNetsPeeringsCount Virtual Network Peerings - ($($arrayPeeringState -join "$CSVDelimiterOpposite ")) (Cross Tenant: $($xTenantPeeringsCount))</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
@@ -20762,6 +20806,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>Connected device</th>
 <th>DDoS</th>
 <th class="uamiresaltbgc">Peerings Count</th>
+<th class="uamiresaltbgc">Peering Cross Tenant</th>
 <th class="uamiresaltbgc">Peering Name</th>
 <th class="uamiresaltbgc">Peering State</th>
 <th class="uamiresaltbgc">Peering Sync Level</th>
@@ -20827,6 +20872,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.ConnectedDevices)</td>
                         <td>$($result.DdosProtection)</td>
                         <td>$($result.PeeringsCount)</td>
+                        <td>$($result.PeeringXTenant)</td>
                         <td>$($result.PeeringName)</td>
                         <td>$($result.PeeringState)</td>
                         <td>$($result.PeeringSyncLevel)</td>
@@ -20909,7 +20955,8 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             linked_filters: true,
             col_5: 'select',
             col_13: 'select',
-            col_16: 'select',
+            col_15: 'select',
+
             col_17: 'select',
             col_18: 'select',
             col_19: 'select',
@@ -20918,8 +20965,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_22: 'select',
             col_23: 'select',
             col_24: 'select',
+            col_25: 'select',
 
-            col_27: 'select',
+
             col_28: 'select',
             col_29: 'select',
             col_30: 'select',
@@ -20928,10 +20976,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_33: 'select',
             col_34: 'select',
             col_35: 'select',
+            col_36: 'select',
 
-            col_39: 'select',
-            col_41: 'select',
-            col_51: 'select',
+            col_40: 'select',
+            col_42: 'select',
+            col_52: 'select',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -20946,6 +20995,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'number',
                 'number',
                 'number',
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -26652,7 +26702,7 @@ function stats {
         }
 
         $identifierBase = $hasher512.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($hashUse))
-        $identifier = "$(([System.BitConverter]::ToString($identifierBase)) -replace '-')"
+        $script:statsIdentifier = "$(([System.BitConverter]::ToString($identifierBase)) -replace '-')"
 
         $accountInfo = "$($azAPICallConf['htParameters'].accountType)$($azAPICallConf['htParameters'].userType)"
         if ($azAPICallConf['htParameters'].accountType -eq 'ServicePrincipal' -or $azAPICallConf['htParameters'].accountType -eq 'ManagedService' -or $azAPICallConf['htParameters'].accountType -eq 'ClientAssertion') {
@@ -26690,7 +26740,7 @@ function stats {
             "properties": {
                 "accType": "$($accountInfo)",
                 "azCloud": "$($azAPICallConf['checkContext'].Environment.Name)",
-                "identifier": "$($identifier)",
+                "identifier": "$($statsIdentifier)",
                 "platform": "$($azAPICallConf['htParameters'].CodeRunPlatform)",
                 "productVersion": "$($ProductVersion)",
                 "psAzAccountsVersion": "$($azAPICallConf['htParameters'].AzAccountsVersion)",
@@ -26716,6 +26766,10 @@ function stats {
                 "statsParametersPolicyAtScopeOnly": "$($azAPICallConf['htParameters'].PolicyAtScopeOnly)",
                 "statsParametersRBACAtScopeOnly": "$($azAPICallConf['htParameters'].RBACAtScopeOnly)",
                 "statsParametersDoPSRule": "$($azAPICallConf['htParameters'].DoPSRule)",
+                "statsParametersNoPIMEligibility": "$($NoPIMEligibility)",
+                "statsParametersNoALZPolicyVersionChecker": "$($NoALZPolicyVersionChecker)",
+                "statsParametersNoStorageAccountAccessAnalysis": "$($NoStorageAccountAccessAnalysis)",
+                "statsParametersNoNetwork": "$($NoNetwork)",
                 "statsTry": "$($tryCounter)",
                 "statsDurationProduct": "$($dur)"
             }
@@ -26733,7 +26787,7 @@ function stats {
     }
     else {
         #noStats
-        $identifier = (New-Guid).Guid
+        $script:statsIdentifier = (New-Guid).Guid
         $tryCounter = 0
         do {
             if ($tryCounter -gt 0) {
@@ -26753,7 +26807,7 @@ function stats {
             "name": "$($Product)",
             "ver": 2,
             "properties": {
-                "identifier": "$($identifier)",
+                "identifier": "$($statsIdentifier)",
                 "statsTry": "$($tryCounter)"
             }
         }
@@ -27016,11 +27070,11 @@ function verifyModules3rd {
                     Write-Host '  Check latest module version'
                     try {
                         $moduleVersion = (Find-Module -Name $($module.ModuleName)).Version
-                        Write-Host "  Latest module version: $moduleVersion"
+                        Write-Host "  $($module.ModuleName) Latest module version: $moduleVersion"
                     }
                     catch {
-                        Write-Host '  Check latest module version failed'
-                        throw
+                        Write-Host "  $($module.ModuleName) - Check latest module version failed"
+                        throw "  $($module.ModuleName) - Check latest module version failed"
                     }
                 }
 
@@ -27031,8 +27085,8 @@ function verifyModules3rd {
                             $installModuleSuccess = $true
                         }
                         else {
-                            Write-Host "  Deviating module version $moduleVersionLoaded"
-                            throw
+                            Write-Host "  $($module.ModuleName) - Deviating module version $moduleVersionLoaded"
+                            throw "  $($module.ModuleName) - Deviating module version $moduleVersionLoaded"
                         }
                     }
                     catch {
@@ -27051,16 +27105,6 @@ function verifyModules3rd {
                             RequiredVersion = $moduleVersion
                         }
                         Install-Module @params
-                        <#
-                        if ($module.ModuleName -eq 'PSRule.Rules.Azure') {
-                            if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID)) {
-                                #Azure DevOps /noDeps
-                                $path = (Get-Module PSRule.Rules.Azure -ListAvailable | Sort-Object Version -Descending -Top 1).ModuleBase
-                                Write-Host "Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')"
-                                Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')
-                            }
-                        }
-                        #>
                     }
                     catch {
                         throw "  Installing '$($module.ModuleName)' module ($($moduleVersion)) failed"
@@ -31883,7 +31927,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $policyBaseQuerySubscriptions = $policyBaseQuery.where({ -not [String]::IsNullOrEmpty($_.SubscriptionId) } )
     $policyBaseQueryManagementGroups = $policyBaseQuery.where({ [String]::IsNullOrEmpty($_.SubscriptionId) } )
     $policyPolicyBaseQueryScopeInsights = ($policyBaseQuery | Select-Object Mg*, Subscription*, PolicyAssignmentAtScopeCount, PolicySetAssignmentAtScopeCount, PolicyAndPolicySetAssignmentAtScopeCount, PolicyAssignmentLimit -Unique)
-    $policyBaseQueryUniqueAssignments = $policyBaseQuery | Select-Object -Property Policy* | Sort-Object -Property PolicyAssignmentId -Unique
+    #$policyBaseQueryUniqueAssignments = $policyBaseQuery | Select-Object -Property Policy* | Sort-Object -Property PolicyAssignmentId -Unique
+    $policyBaseQueryUniqueAssignments = $policyBaseQuery | Sort-Object -Property PolicyAssignmentId -Unique | Select-Object -Property Policy*
     $policyAssignmentsOrphaned = $policyBaseQuery.where({ $_.PolicyAvailability -eq 'na' } ) | Sort-Object -Property PolicyAssignmentId -Unique
     $policyAssignmentsOrphanedCount = $policyAssignmentsOrphaned.Count
     Write-Host "  $policyAssignmentsOrphanedCount orphaned Policy assignments found"
@@ -31904,7 +31949,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     }
 
     $policyPolicySetBaseQueryUniqueAssignments = $policyBaseQueryUniqueAssignments.where({ $_.PolicyVariant -eq 'PolicySet' } )
-    $policyBaseQueryUniqueCustomDefinitions = ($policyBaseQuery.where({ $_.PolicyType -eq 'Custom' } )) | Select-Object PolicyVariant, PolicyDefinitionId -Unique
+    #$policyBaseQueryUniqueCustomDefinitions = ($policyBaseQuery.where({ $_.PolicyType -eq 'Custom' } )) | Select-Object PolicyVariant, PolicyDefinitionId -Unique
+    $policyBaseQueryUniqueCustomDefinitions = ($policyBaseQuery.where({ $_.PolicyType -eq 'Custom' } )) | Sort-Object -Property PolicyVariant, PolicyDefinitionId -Unique | Select-Object PolicyVariant, PolicyDefinitionId
     $policyPolicyBaseQueryUniqueCustomDefinitions = ($policyBaseQueryUniqueCustomDefinitions.where({ $_.PolicyVariant -eq 'Policy' } )).PolicyDefinitionId
     $policyPolicySetBaseQueryUniqueCustomDefinitions = ($policyBaseQueryUniqueCustomDefinitions.where({ $_.PolicyVariant -eq 'PolicySet' } )).PolicyDefinitionId
 
@@ -31920,7 +31966,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     }
 
     $blueprintBaseQuery = ($newTable | Select-Object mgid, SubscriptionId, Blueprint*).where({ -not [String]::IsNullOrEmpty($_.BlueprintName) } )
-    $mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | Select-Object MgId, SubscriptionId -Unique)
+    #$mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | Select-Object MgId, SubscriptionId -Unique)
+    $mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | Sort-Object -Property MgId, SubscriptionId -Unique | Select-Object MgId, SubscriptionId)
 
     #region create array Policy definitions
     $tenantAllPoliciesCount = (($htCacheDefinitionsPolicy).Values).count
@@ -32096,7 +32143,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     #region summarizeDataCollectionResults
     $startSummarizeDataCollectionResults = Get-Date
     Write-Host 'Summary data collection'
-    $mgsDetails = ($optimizedTableForPathQueryMg | Select-Object Level, MgId -Unique)
+    #$mgsDetails = ($optimizedTableForPathQueryMg | Select-Object Level, MgId -Unique)
+    $mgsDetails = ($optimizedTableForPathQueryMg | Sort-Object -Property Level, MgId -Unique | Select-Object Level, MgId)
     $mgDepth = ($mgsDetails.Level | Measure-Object -Maximum).Maximum
     $totalMgCount = ($mgsDetails).count
     $totalSubCount = ($optimizedTableForPathQuerySub).count
@@ -32984,3 +33032,10 @@ if ($azGovVizNewerVersionAvailable) {
     }
 }
 #endregion infoNewAzGovVizVersionAvailable
+
+#region runIdentifier
+if ($ShowRunIdentifier) {
+    Write-Host "AzGovViz run identifier: '$($statsIdentifier)'"
+}
+#endregion runIdentifier
+

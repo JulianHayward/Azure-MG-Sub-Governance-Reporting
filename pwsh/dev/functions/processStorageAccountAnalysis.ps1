@@ -1,6 +1,6 @@
 function processStorageAccountAnalysis {
-    $start = get-date
-    Write-Host "Processing Storage Account Analysis"
+    $start = Get-Date
+    Write-Host 'Processing Storage Account Analysis'
     $storageAccountscount = $storageAccounts.count
     if ($storageAccountscount -gt 0) {
         Write-Host " Executing Storage Account Analysis for $storageAccountscount Storage Accounts"
@@ -34,68 +34,72 @@ function processStorageAccountAnalysis {
             if ($storageAccount.Properties.primaryEndpoints.blob) {
 
                 $urlServiceProps = "$($storageAccount.Properties.primaryEndpoints.blob)?restype=service&comp=properties"
-                $saProperties = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlServiceProps -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get restype=service&comp=properties" -saResourceGroupName $resourceGroupName
-                if ($saProperties -eq 'AuthorizationFailure' -or $saProperties -eq 'AuthorizationPermissionDenied' -or $saProperties -eq 'ResourceUnavailable' -or $saProperties -eq 'AuthorizationPermissionMismatch' ) {
-                    if ($saProperties -eq 'ResourceUnavailable') {
-                        $staticWebsitesState = $saProperties
-                    }
-                }
-                else {
-                    try {
-                        $xmlSaProperties = [xml]([string]$saProperties -replace $saProperties.Substring(0, 3))
-                        if ($xmlSaProperties.StorageServiceProperties.StaticWebsite) {
-                            if ($xmlSaProperties.StorageServiceProperties.StaticWebsite.Enabled -eq $true) {
-                                $staticWebsitesState = $true
-                            }
-                            else {
-                                $staticWebsitesState = $false
-                            }
+                $saProperties = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlServiceProps -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get restype=service&comp=properties" -saResourceGroupName $resourceGroupName -unhandledErrorAction Continue
+                if ($saProperties) {
+                    if ($saProperties -eq 'AuthorizationFailure' -or $saProperties -eq 'AuthorizationPermissionDenied' -or $saProperties -eq 'ResourceUnavailable' -or $saProperties -eq 'AuthorizationPermissionMismatch' ) {
+                        if ($saProperties -eq 'ResourceUnavailable') {
+                            $staticWebsitesState = $saProperties
                         }
                     }
-                    catch {
-                        Write-Host "XMLSAPropertiesFailed: Subscription: $($subDetails.displayName) ($subscriptionId) - Storage Account: $($storageAccount.name)"
-                        Write-Host $($saProperties.ForEach({[char]$_}) -join '') -ForegroundColor Cyan
+                    else {
+                        try {
+                            $xmlSaProperties = [xml]([string]$saProperties -replace $saProperties.Substring(0, 3))
+                            if ($xmlSaProperties.StorageServiceProperties.StaticWebsite) {
+                                if ($xmlSaProperties.StorageServiceProperties.StaticWebsite.Enabled -eq $true) {
+                                    $staticWebsitesState = $true
+                                }
+                                else {
+                                    $staticWebsitesState = $false
+                                }
+                            }
+                        }
+                        catch {
+                            Write-Host "XMLSAPropertiesFailed: Subscription: $($subDetails.displayName) ($subscriptionId) - Storage Account: $($storageAccount.name)"
+                            Write-Host $($saProperties.ForEach({ [char]$_ }) -join '') -ForegroundColor Cyan
+                        }
                     }
                 }
 
                 $urlCompList = "$($storageAccount.Properties.primaryEndpoints.blob)?comp=list"
-                $listContainers = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlCompList -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get comp=list"
-                if ($listContainers -eq 'AuthorizationFailure' -or $listContainers -eq 'AuthorizationPermissionDenied' -or $listContainers -eq 'ResourceUnavailable' -or $listContainers -eq 'AuthorizationPermissionMismatch') {
-                    if ($listContainers -eq 'ResourceUnavailable') {
-                        $listContainersSuccess = $listContainers
+                $listContainers = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlCompList -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get comp=list" -unhandledErrorAction Continue
+                if ($listContainers) {
+                    if ($listContainers -eq 'AuthorizationFailure' -or $listContainers -eq 'AuthorizationPermissionDenied' -or $listContainers -eq 'ResourceUnavailable' -or $listContainers -eq 'AuthorizationPermissionMismatch') {
+                        if ($listContainers -eq 'ResourceUnavailable') {
+                            $listContainersSuccess = $listContainers
+                        }
+                        else {
+                            $listContainersSuccess = $false
+                        }
                     }
                     else {
-                        $listContainersSuccess = $false
+                        $listContainersSuccess = $true
                     }
-                }
-                else {
-                    $listContainersSuccess = $true
-                }
 
-                if ($listContainersSuccess -eq $true) {
-                    $xmlListContainers = [xml]([string]$listContainers -replace $listContainers.Substring(0, 3))
-                    $containersCount = $xmlListContainers.EnumerationResults.Containers.Container.Count
+                    if ($listContainersSuccess -eq $true) {
+                        $xmlListContainers = [xml]([string]$listContainers -replace $listContainers.Substring(0, 3))
+                        $containersCount = $xmlListContainers.EnumerationResults.Containers.Container.Count
 
-                    foreach ($container in $xmlListContainers.EnumerationResults.Containers.Container) {
-                        $arrayContainers += $container.Name
-                        if ($container.Name -eq '$web' -and $staticWebsitesState) {
-                            if ($storageAccount.properties.primaryEndpoints.web) {
-                                try {
-                                    $testStaticWebsiteResponse = Invoke-WebRequest -Uri $storageAccount.properties.primaryEndpoints.web -Method 'HEAD'
-                                    $webSiteResponds = $true
-                                }
-                                catch {
-                                    $webSiteResponds = $false
+                        foreach ($container in $xmlListContainers.EnumerationResults.Containers.Container) {
+                            $arrayContainers += $container.Name
+                            if ($container.Name -eq '$web' -and $staticWebsitesState) {
+                                if ($storageAccount.properties.primaryEndpoints.web) {
+                                    try {
+                                        $testStaticWebsiteResponse = Invoke-WebRequest -Uri $storageAccount.properties.primaryEndpoints.web -Method 'HEAD'
+                                        $webSiteResponds = $true
+                                    }
+                                    catch {
+                                        $webSiteResponds = $false
+                                    }
                                 }
                             }
-                        }
 
-                        if ($container.Properties.PublicAccess) {
-                            if ($container.Properties.PublicAccess -eq 'blob') {
-                                $arrayContainersAnonymousBlob += $container.Name
-                            }
-                            if ($container.Properties.PublicAccess -eq 'container') {
-                                $arrayContainersAnonymousContainer += $container.Name
+                            if ($container.Properties.PublicAccess) {
+                                if ($container.Properties.PublicAccess -eq 'blob') {
+                                    $arrayContainersAnonymousBlob += $container.Name
+                                }
+                                if ($container.Properties.PublicAccess -eq 'container') {
+                                    $arrayContainersAnonymousContainer += $container.Name
+                                }
                             }
                         }
                     }
@@ -259,9 +263,9 @@ function processStorageAccountAnalysis {
         } -ThrottleLimit $ThrottleLimit
     }
     else {
-        Write-Host " No Storage Accounts present"
+        Write-Host ' No Storage Accounts present'
     }
 
     $end = Get-Date
-    Write-Host " Processing Storage Account Analysis duration: $((NEW-TIMESPAN -Start $start -End $end).TotalSeconds) seconds"
+    Write-Host " Processing Storage Account Analysis duration: $((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds"
 }
