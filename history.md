@@ -4,6 +4,15 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Nov-17 / Major)
+
+* Update Azure DevOps pipeline YAML 
+  * checkout `fetchDepth: 1`  
+[Azure DevOps pipelines shallow fetch =1 is now default](https://dev.to/kkazala/azure-devops-pipelines-shallow-fetch-1-is-now-default-4656)
+  * pool `vmImage: 'ubuntu-22.04'`
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.52
+  * retry mechanism fix 
+
 __Changes__ (2022-Nov-13 / Major)
 
 * Network analysis - VNet peerings detect cross tenant peering -> triggered by @TimWanierke, thanks!

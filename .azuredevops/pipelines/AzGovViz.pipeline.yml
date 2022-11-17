@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20221023_1
+# AzGovViz v6_major_20221117_1
 # First things first:
 # 1. Mandatory: In the AzGovViz.variables.yml file set needed variables 'ServiceConnection' and 'ManagementGroupId
 # 2. Mandatory: Check line 20
@@ -35,9 +35,12 @@ jobs:
   timeoutInMinutes: 0
 
   pool:
-    vmImage: 'ubuntu-20.04'
+    vmImage: 'ubuntu-22.04'
 
   steps:
+  - checkout: self
+    fetchDepth: 1
+
   - pwsh: |
       Write-Host 'Build Script Arguments String...'
 

@@ -59,17 +59,18 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Nov-13 / Major)
+__Changes__ (2022-Nov-17 / Major)
 
-* Network analysis - VNet peerings detect cross tenant peering -> triggered by @TimWanierke, thanks!
-* Updated Storage Account Analysis to handle error 'AuthorizationPermissionMismatch'
-* Updated orphaned resources query for punlic IP addressen following the source repository [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources/commit/52ea4f12626f62338f5c354a74bf429c1244c382)
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.50
-* Update __[Contribution Guide](contributionGuide.md)__
+* Update Azure DevOps pipeline YAML 
+  * checkout `fetchDepth: 1`  
+[Azure DevOps pipelines shallow fetch =1 is now default](https://dev.to/kkazala/azure-devops-pipelines-shallow-fetch-1-is-now-default-4656)
+  * pool `vmImage: 'ubuntu-22.04'`
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.52
+  * retry mechanism fix 
 
 Passed tests: Powershell Core 7.2.6 on Windows  
-Passed tests: Powershell Core 7.2.6 Azure DevOps hosted agent ubuntu-20.04  
-Passed tests: Powershell Core 7.2.6 Github Actions hosted agent ubuntu-latest  
+Passed tests: Powershell Core 7.2.7 Azure DevOps hosted agent ubuntu-22.04  
+Passed tests: Powershell Core 7.2.7 Github Actions hosted agent ubuntu-latest  
 Passed tests: Powershell Core 7.2.6 GitHub Codespaces mcr.microsoft.com/powershell:latest  
 Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
 
