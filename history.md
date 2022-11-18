@@ -4,6 +4,11 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Nov-18 / Major)
+
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.53
+  * retry mechanism fix 
+
 __Changes__ (2022-Nov-17 / Major)
 
 * Update Azure DevOps pipeline YAML 

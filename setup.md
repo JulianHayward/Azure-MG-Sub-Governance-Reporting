@@ -83,6 +83,7 @@ Proceed with step [__Clone the AzGovViz repository__](#clone-the-azgovviz-reposi
 If the tenant is hardened (AAD External Identities / Guest user access = most restrictive) then Guest User must be assigned the AAD Role '__Directory readers__'
 
 &#x1F4A1; [Compare member and guest default permissions](https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/fundamentals/users-default-permissions.md#compare-member-and-guest-default-permissions)
+
 &#x1F4A1; [Restrict Guest permissions](https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions)
 
 #### Assign AAD Role - Directory readers
@@ -121,11 +122,11 @@ Grant API permissions for the Service Principal´s Application
         * __User / User.Read.All__
         * __PrivilegedAccess / PrivilegedAccess.Read.AzureResources__
     * Click on 'Add a permissions'
-    * Back in the main '__API permissions__' menu you will find 3 permissions with status 'Not granted for...'. Click on '__Grant admin consent for _TenantName___' and confirm by click on '__Yes__'
-    * Now you will find the 3 permissions with status '__Granted for _TenantName___'
+    * Back in the main '__API permissions__' menu you will find permissions with status 'Not granted for...'. Click on '__Grant admin consent for _TenantName___' and confirm by click on '__Yes__'
+    * Now you will find the permissions with status '__Granted for _TenantName___'
 
 Permissions in Azure Active Directory for App registration:
-![alt text](img/aadpermissionsportal.jpg "Permissions in Azure Active Directory")
+![alt text](img/aadpermissionsportal_4.jpg "Permissions in Azure Active Directory")
 
 Proceed with step [__Clone the AzGovViz repository__](#clone-the-azgovviz-repository)
 
@@ -315,11 +316,11 @@ Grant API permissions for the Service Principal´s Application that we created e
         * __User / User.Read.All__
         * __PrivilegedAccess / PrivilegedAccess.Read.AzureResources__
     * Click on 'Add a permissions'
-    * Back in the main '__API permissions__' menu you will find the 3 permissions with status 'Not granted for...'. Click on '__Grant admin consent for _TenantName___' and confirm by click on '__Yes__'
-    * Now you will find the 3 permissions with status '__Granted for _TenantName___'
+    * Back in the main '__API permissions__' menu you will find the permissions with status 'Not granted for...'. Click on '__Grant admin consent for _TenantName___' and confirm by click on '__Yes__'
+    * Now you will find the permissions with status '__Granted for _TenantName___'
 
 Permissions in Azure Active Directory for App registration:
-![alt text](img/aadpermissionsportal.jpg "Permissions in Azure Active Directory")
+![alt text](img/aadpermissionsportal_4.jpg "Permissions in Azure Active Directory")
 
 ## Grant permissions on AzGovViz AzDO repository
 
@@ -405,7 +406,9 @@ Create a 'private' repository
 ## Import Code
 
 Click on 'Import code'
+
 Use 'https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting.git' as clone URL
+
 Click on 'Begin import'
 
 Navigate to your newly created repository
