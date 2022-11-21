@@ -9042,8 +9042,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>Subnets</th>
 <th>Subnets with NSG</th>
 <th>Subnets with RouteTable</th>
-<th>Subnets with Delegations</th>
+<th>Subnets with Delegation</th>
+<th>Private Endpoints</th>
+<th>Subnets with Private Endpoints</th>
 <th>Connected device</th>
+<th>Subnets with connected device</th>
 <th>DDoS</th>
 <th>Peerings Count</th>
 </tr>
@@ -9067,7 +9070,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.SubnetsWithNSGCount)</td>
                         <td>$($result.SubnetsWithRouteTableCount)</td>
                         <td>$($result.SubnetsWithDelegationsCount)</td>
+                        <td>$($result.PrivateEndpointsCount)</td>
+                        <td>$($result.SubnetsWithPrivateEndPointsCount)</td>
                         <td>$($result.ConnectedDevices)</td>
+                        <td>$($result.SubnetsWithConnectedDevicesCount)</td>
                         <td>$($result.DdosProtection)</td>
                         <td>$($result.PeeringsCount)</td>
                         </tr>
@@ -9112,7 +9118,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             linked_filters: true,
             col_5: 'select',
-            col_13: 'select',
+            col_16: 'select',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -9122,6 +9128,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+                'number',
+                'number',
+                'number',
                 'number',
                 'number',
                 'number',
@@ -9140,7 +9149,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@'
-    <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No Virtual Networks</span></p>
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Virtual Networks</span></p>
 '@)
         }
         $endVNets = Get-Date
@@ -9152,6 +9161,186 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 "@)
     }
     #endregion SUMMARYVNets
+
+    #region SUMMARYSubnets
+    if ($azAPICallConf['htParameters'].NoNetwork -eq $false) {
+        $startSubnets = Get-Date
+        Write-Host '  processing TenantSummary Subnets'
+        $subnets = $arraySubnets | Sort-Object -Property SubscriptionName, VNet, VNetId, SubnetName
+        $subnetsCount = $subnets.Count
+
+        if (-not $NoCsvExport) {
+            $subnetsCSVPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_VirtualNetworkSubnets.csv"
+            Write-Host "   Exporting Subnets CSV '$subnetsCSVPath'"
+            $subnets | Export-Csv -Path $subnetsCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
+        }
+
+        if ($subnetsCount -gt 0) {
+
+            $subnetIPAddressUsageCriticalCount = ($subnets.where({ $_.SubnetIPAddressUsageCritical -eq $true })).Count
+            $criticalUsageText = ''
+            if ($subnetIPAddressUsageCriticalCount -gt 0) {
+                $criticalUsageText = " ($subnetIPAddressUsageCriticalCount > $($NetworkSubnetIPAddressUsageCriticalPercentage)% IP addresses used)"
+            }
+
+            $htmlTableId = 'TenantSummary_Subnets'
+            $tfCount = $subnetsCount
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_Subnets"><i class="padlx fa fa-arrows-h" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$tfCount Subnets$($criticalUsageText)</span></button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Subscription Name</th>
+<th>Subscription</th>
+<th>MGPath</th>
+<th>VNet</th>
+<th>VNet Resource Group</th>
+<th>Location</th>
+<th>Name</th>
+<th>Id</th>
+<th>Subnet</th>
+<th>Prefix</th>
+<th>Mask</th>
+<th>Range</th>
+<th>Connected devices</th>
+<th>Free IP addresses</th>
+<th>Used IP addresses %</th>
+<th>Private Endpoint Network Policies</th>
+<th>Private Link Service Network Policies</th>
+<th>Service Endpoints count</th>
+<th>Service Endpoints</th>
+<th>Delegation</th>
+<th>NSG</th>
+<th>Route Table</th>
+<th>Nat Gateway</th>
+<th>Private Endpoints</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+            foreach ($result in $subnets) {
+
+                [void]$htmlTenantSummary.AppendLine(@"
+                        <tr>
+                        <td>$($result.SubscriptionName)</td>
+                        <td>$($result.Subscription)</td>
+                        <td style="min-width: 150px" class="breakwordall">$($result.MGPath)</td>
+                        <td>$($result.VNet)</td>
+                        <td>$($result.VNetResourceGroup)</td>
+                        <td>$($result.Location)</td>
+                        <td>$($result.SubnetName)</td>
+                        <td style="min-width: 200px" class="breakwordall">$($result.SubnetId)</td>
+                        <td>$($result.SubnetNet)</td>
+                        <td>$($result.SubnetPrefix)</td>
+                        <td>$($result.Subnetmask)</td>
+                        <td>$($result.Range)</td>
+                        <td>$($result.ConnectedDevices)</td>
+                        <td>$($result.AvailableIPAddresses)</td>
+                        <td>$($result.UsedIPAddressesPercent)</td>
+                        <td>$($result.PrivateEndpointNetworkPolicies)</td>
+                        <td>$($result.PrivateLinkServiceNetworkPolicies)</td>
+                        <td>$($result.ServiceEndpointsCount)</td>
+                        <td>$($result.ServiceEndpoints)</td>
+                        <td>$($result.Delegation)</td>
+                        <td style="min-width: 200px" class="breakwordall">$($result.NetworkSecurityGroup)</td>
+                        <td style="min-width: 200px" class="breakwordall">$($result.RouteTable)</td>
+                        <td>$($result.NatGateway)</td>
+                        <td>$($result.PrivateEndpoints)</td>
+                        </tr>
+"@)
+
+            }
+
+            [void]$htmlTenantSummary.AppendLine(@"
+</tbody>
+</table>
+<script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            linked_filters: true,
+            col_5: 'select',
+            col_9: 'select',
+            col_10: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number',
+                'number',
+                'number',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+            extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+</div>
+"@)
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@'
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Subnets</span></p>
+'@)
+        }
+        $endSubnets = Get-Date
+        Write-Host "   Subnets processing duration: $((New-TimeSpan -Start $startSubnets -End $endSubnets).TotalMinutes) minutes ($((New-TimeSpan -Start $startSubnets -End $endSubnets).TotalSeconds) seconds)"
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Virtual Networks - Network Analysis disabled - </span><span class="info">parameter -NoNetwork = $($azAPICallConf['htParameters'].NoNetwork)</span></p>
+"@)
+    }
+    #endregion SUMMARYSubnets
 
     #region SUMMARYVNetPeerings
     if ($azAPICallConf['htParameters'].NoNetwork -eq $false) {
@@ -9194,8 +9383,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>Subnets</th>
 <th>Subnets with NSG</th>
 <th>Subnets with RouteTable</th>
-<th>Subnets with Delegations</th>
+<th>Subnets with Delegation</th>
+<th>Private Endpoints</th>
+<th>Subnets with Private Endpoints</th>
 <th>Connected device</th>
+<th>Subnets with connected device</th>
 <th>DDoS</th>
 <th class="uamiresaltbgc">Peerings Count</th>
 <th class="uamiresaltbgc">Peering Cross Tenant</th>
@@ -9236,8 +9428,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th class="uamiresaltbgc"><b>Remote</b> Subnets</th>
 <th class="uamiresaltbgc"><b>Remote</b> Subnets with NSG</th>
 <th class="uamiresaltbgc"><b>Remote</b> Subnets with RouteTable</th>
-<th class="uamiresaltbgc"><b>Remote</b> Subnets with Delegations</th>
+<th class="uamiresaltbgc"><b>Remote</b> Subnets with Delegation</th>
+<th class="uamiresaltbgc"><b>Remote</b> Private Endpoints</th>
+<th class="uamiresaltbgc"><b>Remote</b> Subnets with Private Endpoints</th>
 <th class="uamiresaltbgc"><b>Remote</b> Connected devices</th>
+<th class="uamiresaltbgc"><b>Remote</b> Subnets with connected devices</th>
 <th class="uamiresaltbgc"><b>Remote</b> DDoS</th>
 
 </tr>
@@ -9261,7 +9456,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.SubnetsWithNSGCount)</td>
                         <td>$($result.SubnetsWithRouteTableCount)</td>
                         <td>$($result.SubnetsWithDelegationsCount)</td>
+                        <td>$($result.PrivateEndpointsCount)</td>
+                        <td>$($result.SubnetsWithPrivateEndPointsCount)</td>
                         <td>$($result.ConnectedDevices)</td>
+                        <td>$($result.SubnetsWithConnectedDevicesCount)</td>
                         <td>$($result.DdosProtection)</td>
                         <td>$($result.PeeringsCount)</td>
                         <td>$($result.PeeringXTenant)</td>
@@ -9302,7 +9500,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.RemoteSubnetsWithNSGCount)</td>
                         <td>$($result.RemoteSubnetsWithRouteTable)</td>
                         <td>$($result.RemoteSubnetsWithDelegations)</td>
+                        <td>$($result.RemotePrivateEndPoints)</td>
+                        <td>$($result.RemoteSubnetsWithPrivateEndPoints)</td>
                         <td>$($result.RemoteConnectedDevices)</td>
+                        <td>$($result.RemoteSubnetsWithConnectedDevices)</td>
                         <td>$($result.RemoteDdosProtection)</td>
                         </tr>
 "@)
@@ -9346,33 +9547,33 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             linked_filters: true,
             col_5: 'select',
-            col_13: 'select',
-            col_15: 'select',
-
-            col_17: 'select',
+            col_16: 'select',
             col_18: 'select',
-            col_19: 'select',
+
             col_20: 'select',
             col_21: 'select',
             col_22: 'select',
             col_23: 'select',
             col_24: 'select',
             col_25: 'select',
-
-
+            col_26: 'select',
+            col_27: 'select',
             col_28: 'select',
-            col_29: 'select',
-            col_30: 'select',
+
+
             col_31: 'select',
             col_32: 'select',
             col_33: 'select',
             col_34: 'select',
             col_35: 'select',
             col_36: 'select',
+            col_37: 'select',
+            col_38: 'select',
+            col_39: 'select',
 
-            col_40: 'select',
-            col_42: 'select',
-            col_52: 'select',
+            col_43: 'select',
+            col_45: 'select',
+            col_58: 'select',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -9387,6 +9588,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'number',
                 'number',
                 'number',
+                'number',
+                'number',
+                'number',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -9420,6 +9624,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+                'number',
+                'number',
+                'number',
                 'number',
                 'number',
                 'number',
@@ -9437,7 +9644,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@'
-    <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No Virtual Network Peerings</span></p>
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Virtual Network Peerings</span></p>
 '@)
         }
         $endVNetPeerings = Get-Date
@@ -9449,6 +9656,204 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 "@)
     }
     #endregion SUMMARYVNetPeerings
+
+    #region SUMMARYPrivateEndpoints
+    if ($azAPICallConf['htParameters'].NoNetwork -eq $false) {
+        $startPrivateEndpoints = Get-Date
+        Write-Host '  processing TenantSummary PrivateEndpoints'
+        $privateEndPoints = $arrayPrivateEndpointsEnriched | Sort-Object -Property PESubscriptionName, PEName
+        $privateEndPointsCount = $privateEndPoints.Count
+
+        if (-not $NoCsvExport) {
+            $peCSVPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PrivateEndpoints.csv"
+            Write-Host "   Exporting PrivateEndpoints CSV '$peCSVPath'"
+            $privateEndPoints | Export-Csv -Path $peCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
+        }
+
+        if ($privateEndPointsCount -gt 0) {
+
+            $crossSubPECount = ($privateEndPoints.where({ $_.crossSubscriptionPE -eq $true })).Count
+            $crossSubPEText = ''
+            if ($crossSubPECount -gt 0) {
+                $crossSubPEText = " ($crossSubPECount cross Subscription)"
+            }
+
+            $htmlTableId = 'TenantSummary_PrivateEndpoints'
+            $tfCount = $privateEndPointsCount
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_PrivateEndpoints"><i class="padlx fa fa-map-pin" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$tfCount Private Endpoints$($crossSubPEText)</span></button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+
+<th>PE Name</th>
+<th>PE Id</th>
+<th>PE Location</th>
+<th>PE Resource Group</th>
+<th>PE Subscription Name</th>
+<th>PE Subscription</th>
+<th>PE MGPath</th>
+<th>Cross Subscription PE</th>
+
+<th class="uamiresaltbgc">Resource</th>
+<th class="uamiresaltbgc">Resource Type</th>
+<th class="uamiresaltbgc">Resource Id</th>
+<th class="uamiresaltbgc">Target Subresource</th>
+<th class="uamiresaltbgc">NIC Name</th>
+<th class="uamiresaltbgc">FQDN</th>
+<th class="uamiresaltbgc">IP addresses</th>
+<th class="uamiresaltbgc">Resource Resource Group</th>
+<th class="uamiresaltbgc">Resource Subscription Name</th>
+<th class="uamiresaltbgc">Resource Subscription</th>
+<th class="uamiresaltbgc">Resource MGPath</th>
+
+<th>Subnet</th>
+<th>Subnet Id</th>
+<th>VNet</th>
+<th>VNet Id</th>
+<th>VNet Location</th>
+<th>VNet Resource Group</th>
+<th>Subnet Subscription Name</th>
+<th>Subnet Subscription</th>
+<th>Subnet MGPath</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+            foreach ($result in $privateEndPoints) {
+
+                [void]$htmlTenantSummary.AppendLine(@"
+                        <tr>
+                        <td>$($result.PEName)</td>
+                        <td style="min-width: 200px" class="breakwordall">$($result.PEId)</td>
+                        <td>$($result.PELocation)</td>
+                        <td>$($result.PEResourceGroup)</td>
+                        <td>$($result.PESubscriptionName)</td>
+                        <td>$($result.PESubscription)</td>
+                        <td style="min-width: 150px" class="breakwordall">$($result.PEMGPath)</td>
+                        <td>$($result.crossSubscriptionPE)</td>
+
+                        <td>$($result.Resource)</td>
+                        <td>$($result.ResourceType)</td>
+                        <td style="min-width: 200px" class="breakwordall">$($result.ResourceId)</td>
+                        <td>$($result.TargetSubresource)</td>
+                        <td>$($result.NICName)</td>
+                        <td>$($result.FQDN)</td>
+                        <td>$($result.ipAddresses)</td>
+                        <td>$($result.ResourceResourceGroup)</td>
+                        <td>$($result.ResourceSubscriptionId)</td>
+                        <td>$($result.ResourceSubscriptionName)</td>
+                        <td style="min-width: 150px" class="breakwordall">$($result.ResourceMGPath)</td>
+
+                        <td>$($result.Subnet)</td>
+                        <td style="min-width: 200px" class="breakwordall">$($result.SubnetId)</td>
+                        <td>$($result.SubnetVNet)</td>
+                        <td style="min-width: 200px" class="breakwordall">$($result.SubnetVNetId)</td>
+                        <td>$($result.SubnetVNetLocation)</td>
+                        <td>$($result.SubnetVNetResourceGroup)</td>
+                        <td>$($result.SubnetSubscriptionName)</td>
+                        <td>$($result.SubnetSubscription)</td>
+                        <td style="min-width: 150px" class="breakwordall">$($result.SubnetMGPath)</td>
+                        </tr>
+"@)
+
+            }
+
+            [void]$htmlTenantSummary.AppendLine(@"
+</tbody>
+</table>
+<script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            linked_filters: true,
+            col_2: 'select',
+            col_7: 'select',
+            col_9: 'select',
+            col_11: 'select',
+            col_23: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+            extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+</div>
+"@)
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@'
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Subnets</span></p>
+'@)
+        }
+        $endPrivateEndpoints = Get-Date
+        Write-Host "   PrivateEndpoints processing duration: $((New-TimeSpan -Start $startPrivateEndpoints -End $endPrivateEndpoints).TotalMinutes) minutes ($((New-TimeSpan -Start $startPrivateEndpoints -End $endPrivateEndpoints).TotalSeconds) seconds)"
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Virtual Networks - Network Analysis disabled - </span><span class="info">parameter -NoNetwork = $($azAPICallConf['htParameters'].NoNetwork)</span></p>
+"@)
+    }
+    #endregion SUMMARYPrivateEndpoints
 
     [void]$htmlTenantSummary.AppendLine(@'
     </div>

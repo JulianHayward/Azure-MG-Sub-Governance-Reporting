@@ -4,6 +4,18 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Nov-21 / Major)
+
+* Network analysis - new features
+  * Subnets
+    * new parameter `-NetworkSubnetIPAddressUsageCriticalPercentage` warning level when certain percentage of IP addresses is used (default = 90%). Kudos to @ElanShudnow [AzSubnetAvailability - GitHub](https://github.com/ElanShudnow/AzureCode/tree/main/PowerShell/AzSubnetAvailability)
+  * Private Endpoints
+* Enhance Network feature - Virtual Networks and Virtual Network Peerings
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.54
+  * another retry mechanism fix 
+* Bugfix PIM eligible / Guest User - thanks @nanigan
+* Updated [API reference](#api-reference)
+
 __Changes__ (2022-Nov-18 / Major)
 
 * Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.53

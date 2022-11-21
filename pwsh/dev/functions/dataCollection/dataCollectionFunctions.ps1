@@ -180,6 +180,31 @@ function dataCollectionVNets {
 }
 $funcDataCollectionVNets = $function:dataCollectionVNets.ToString()
 
+function dataCollectionPrivateEndpoints {
+    [CmdletBinding()]Param(
+        [string]$scopeId,
+        [string]$scopeDisplayName,
+        $SubscriptionQuotaId
+    )
+
+    $currentTask = "Getting Private Endpoints for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
+    #https://docs.microsoft.com/en-us/rest/api/securitycenter/pricings
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Network/privateEndpoints?api-version=2022-05-01"
+    $method = 'GET'
+    $privateEndpointsResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -unhandledErrorAction Continue
+
+    # if ($privateEndpointsResult -eq 'someError') {
+    # }
+    # else {
+    if ($privateEndpointsResult.Count -gt 0) {
+        foreach ($pe in $privateEndpointsResult) {
+            $null = $script:arrayPrivateEndPoints.Add($pe)
+        }
+    }
+    #}
+}
+$funcDataCollectionPrivateEndpoints = $function:dataCollectionPrivateEndpoints.ToString()
+
 function dataCollectionDiagnosticsSub {
     [CmdletBinding()]Param(
         [string]$scopeId,

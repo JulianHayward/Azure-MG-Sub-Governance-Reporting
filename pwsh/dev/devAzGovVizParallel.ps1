@@ -179,9 +179,13 @@
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
 
 .PARAMETER NoNetwork
-    Network analysis / Virtual Network and Virtual Network Peerings
+    Network analysis / Virtual Network, Subnets, Virtual Network Peerings and Private Endpoints
     If you do not want to execute this feature then use this parameter
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoNetwork
+
+.PARAMETER NetworkSubnetIPAddressUsageCriticalPercentage
+    Define warning level when ceratin percentage of IP addresses is used (default = 90%)
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NetworkSubnetIPAddressUsageCriticalPercentage 96
 
 .EXAMPLE
     Define the ManagementGroup ID
@@ -336,6 +340,9 @@
     Define if Network analysis / Virtual Network and Virtual Network Peerings should not be executed
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoNetwork
 
+    Define warning level when ceratin percentage of IP addresses is used (default = 90%)
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NetworkSubnetIPAddressUsageCriticalPercentage 96
+
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
@@ -352,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.53',
+    $AzAPICallVersion = '1.1.54',
 
     [string]
-    $ProductVersion = 'v6_major_20221118_1',
+    $ProductVersion = 'v6_major_20221121_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -545,6 +552,9 @@ Param
     [switch]
     $NoNetwork,
 
+    [int]
+    $NetworkSubnetIPAddressUsageCriticalPercentage = 80,
+
     [switch]
     $ShowRunIdentifier,
 
@@ -609,6 +619,7 @@ if ($ManagementGroupId -match ' ') {
 }
 
 #region Functions
+. ".\$($ScriptPath)\functions\processPrivateEndpoints.ps1"
 . ".\$($ScriptPath)\functions\processNetwork.ps1"
 . ".\$($ScriptPath)\functions\processStorageAccountAnalysis.ps1"
 . ".\$($ScriptPath)\functions\processALZPolicyVersionChecker.ps1"
@@ -902,6 +913,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $arrayStorageAccountAnalysisResults = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htDefenderEmailContacts = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
     $arrayVNets = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayPrivateEndPoints = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
 if (-not $HierarchyMapOnly) {
@@ -1953,6 +1965,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
     if (-not $azAPICallConf['htParameters'].NoNetwork) {
         processNetwork
+        processPrivateEndpoints
     }
 
     processTenantSummary

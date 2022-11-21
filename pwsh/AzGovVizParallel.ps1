@@ -179,9 +179,13 @@
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
 
 .PARAMETER NoNetwork
-    Network analysis / Virtual Network and Virtual Network Peerings
+    Network analysis / Virtual Network, Subnets, Virtual Network Peerings and Private Endpoints
     If you do not want to execute this feature then use this parameter
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoNetwork
+
+.PARAMETER NetworkSubnetIPAddressUsageCriticalPercentage
+    Define warning level when ceratin percentage of IP addresses is used (default = 90%)
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NetworkSubnetIPAddressUsageCriticalPercentage 96
 
 .EXAMPLE
     Define the ManagementGroup ID
@@ -336,6 +340,9 @@
     Define if Network analysis / Virtual Network and Virtual Network Peerings should not be executed
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoNetwork
 
+    Define warning level when ceratin percentage of IP addresses is used (default = 90%)
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NetworkSubnetIPAddressUsageCriticalPercentage 96
+
 .NOTES
     AUTHOR: Julian Hayward - Customer Engineer - Customer Success Unit | Azure Infrastucture/Automation/Devops/Governance | Microsoft
 
@@ -352,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.53',
+    $AzAPICallVersion = '1.1.54',
 
     [string]
-    $ProductVersion = 'v6_major_20221118_1',
+    $ProductVersion = 'v6_major_20221121_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -544,6 +551,9 @@ Param
 
     [switch]
     $NoNetwork,
+
+    [int]
+    $NetworkSubnetIPAddressUsageCriticalPercentage = 80,
 
     [switch]
     $ShowRunIdentifier,
@@ -3403,6 +3413,8 @@ function getPIMEligible {
             if ($scope.type -eq 'managementgroup') { $htManagementGroupsMgPath = $using:htManagementGroupsMgPath }
             if ($scope.type -eq 'subscription') { $htSubscriptionsMgPath = $using:htSubscriptionsMgPath }
             $htPrincipals = $using:htPrincipals
+            $htUserTypesGuest = $using:htUserTypesGuest
+            $htServicePrincipals = $using:htServicePrincipals
             $function:resolveObjectIds = $using:funcResolveObjectIds
             $function:testGuid = $using:funcTestGuid
             #Write-Host "$($scope.type) $($scope.externalId -replace '.*/') - $($scope.id)"
@@ -4940,6 +4952,7 @@ function processDataCollection {
                 $htDoARMRoleAssignmentScheduleInstances = $using:htDoARMRoleAssignmentScheduleInstances
                 $htDefenderEmailContacts = $using:htDefenderEmailContacts
                 $arrayVNets = $using:arrayVNets
+                $arrayPrivateEndPoints = $using:arrayPrivateEndPoints
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation
@@ -4968,6 +4981,7 @@ function processDataCollection {
                 $function:dataCollectionClassicAdministratorsSub = $using:funcDataCollectionClassicAdministratorsSub
                 $function:dataCollectionDefenderEmailContacts = $using:funcDataCollectionDefenderEmailContacts
                 $function:dataCollectionVNets = $using:funcDataCollectionVNets
+                $function:dataCollectionPrivateEndpoints = $using:funcDataCollectionPrivateEndpoints
                 #endregion UsingVARs
 
                 $addRowToTableDone = $false
@@ -5024,6 +5038,8 @@ function processDataCollection {
                         if (-not $azAPICallConf['htParameters'].NoNetwork) {
                             #VNets
                             DataCollectionVNets @baseParameters
+                            #PE
+                            DataCollectionPrivateEndpoints @baseParameters
                         }
 
                         #diagnostics
@@ -7092,52 +7108,22 @@ function processManagedIdentities {
     Write-Host "Processing Service Principals - Managed Identities duration: $((New-TimeSpan -Start $startSPMI -End $endSPMI).TotalMinutes) minutes ($((New-TimeSpan -Start $startSPMI -End $endSPMI).TotalSeconds) seconds)"
 }
 function processNetwork {
-    $script:arrayVirtualNetworks = [System.Collections.ArrayList]@()
-    $script:arraySubnets = [System.Collections.ArrayList]@()
+    $start = Get-Date
+    Write-Host "Processing Network enrichment ($($arrayVNets.Count) Virtual Networks)"
 
     $htVNets = @{}
-    #$htPeerings = @{}
     foreach ($vnet in $arrayVNets) {
         $htVNets.($vnet.id) = $vnet
-        if ($vnet.properties.subnets.Count -gt 0) {
-            foreach ($subnet in $vnet.properties.subnets) {
-                if ($subnet.properties.ipConfigurations.Count -gt 0) {
-                    foreach ($ipConfiguration in $subnet.properties.ipConfigurations) {
-                        #$vnet | convertto-json -depth 99
-                        #$ipConfiguration.id
-                        #  pause
-                    }
-                }
-                if ($subnet.properties.networkSecurityGroup.Count -gt 0) {
-                    foreach ($networkSecurityGroup in $subnet.properties.networkSecurityGroup) {
-                        # $networkSecurityGroup
-                    }
-                }
-                if ($subnet.properties.serviceEndpoints.Count -gt 0) {
-                    foreach ($serviceEndpoints in $subnet.properties.serviceEndpoints) {
-                        # $serviceEndpoints
-                    }
-                }
-                if ($subnet.properties.routeTable.Count -gt 0) {
-                    foreach ($routeTable in $subnet.properties.routeTable) {
-                        #  $routeTable
-                    }
-                }
-                if ($subnet.properties.delegations.Count -gt 0) {
-                    foreach ($delegations in $subnet.properties.delegations) {
-                        # $delegations
-                    }
-                }
-            }
-        }
-        # if ($vnet.properties.virtualNetworkPeerings.Count -gt 0) {
-        #     $htPeerings.($vnet.id) = $vnet.properties.virtualNetworkPeerings
-        # }
     }
 
+    $script:htSubnets = @{}
+    $script:arrayVirtualNetworks = [System.Collections.ArrayList]@()
+    $script:arraySubnets = [System.Collections.ArrayList]@()
     $htUnknownTenantsForSubscription = @{}
+
     foreach ($vnet in $arrayVNets) {
-        #peeringsStuff
+
+        #region peerings
         $vnetIdSplit = ($vnet.id -split '/')
         $subscriptionId = $vnetIdSplit[2]
 
@@ -7149,8 +7135,18 @@ function processNetwork {
             $MGPath = $subHelper.ParentNameChainDelimited
         }
 
+        $subnetsWithPrivateEndPointsCount = 0
+        if ($vnet.properties.subnets.properties.privateEndpoints.id.Count -gt 0) {
+            $subnetsWithPrivateEndPointsCount = $vnet.properties.subnets.where({ $_.properties.privateEndpoints.id.Count -gt 0 }).Count
+        }
+
+        $subnetsWithConnectedDevicesCount = 0
+        if ($vnet.properties.subnets.properties.ipConfigurations.id.Count -gt 0) {
+            $subnetsWithConnectedDevicesCount = $vnet.properties.subnets.where({ $_.properties.ipConfigurations.id.Count -gt 0 }).Count
+        }
+
         $vnetResourceGroup = $vnetIdSplit[4]
-        if ($vnet.properties.virtualNetworkPeerings.Count -gt 0) {
+        if ($vnet.properties.virtualNetworkPeerings.id.Count -gt 0) {
             foreach ($peering in $vnet.properties.virtualNetworkPeerings) {
                 $remotevnetIdSplit = ($peering.properties.remoteVirtualNetwork.id -split '/')
                 $remotesubscriptionId = $remotevnetIdSplit[2]
@@ -7203,13 +7199,16 @@ function processNetwork {
                 if ($htVNets.($peering.properties.remoteVirtualNetwork.id)) {
                     $remotevnetState = 'existent'
                     $remoteLocation = $htVNets.($peering.properties.remoteVirtualNetwork.id).location
-                    $remotePeeringsCount = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.virtualNetworkPeerings.Count
-                    $remoteSubnetsCount = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.subnets.Count
-                    $remoteSubnetsWithNSGCount = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.subnets.properties.networkSecurityGroup.Count
-                    $remoteSubnetsWithRouteTable = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.subnets.properties.routeTable.Count
-                    $remoteSubnetsWithDelegations = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.subnets.properties.delegations.Count
+                    $remotePeeringsCount = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.virtualNetworkPeerings.id.Count
                     $remoteDhcpoptionsDnsservers = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.dhcpoptions.dnsservers
+                    $remoteSubnetsCount = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.subnets.id.Count
+                    $remoteSubnetsWithNSGCount = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.subnets.properties.networkSecurityGroup.id.Count
+                    $remoteSubnetsWithRouteTable = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.subnets.properties.routeTable.id.Count
+                    $remoteSubnetsWithDelegations = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.subnets.properties.delegations.id.Count
+                    $remotePrivateEndPoints = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.subnets.properties.privateEndpoints.id.Count
+                    $remoteSubnetsWithPrivateEndPoints = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.subnets.where({ $_.properties.privateEndpoints.id.Count -gt 0 }).Count
                     $remoteConnectedDevices = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.subnets.properties.ipConfigurations.id.Count
+                    $remoteSubnetsWithConnectedDevices = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.subnets.where({ $_.properties.ipConfigurations.id.Count -gt 0 }).Count
                     $remoteDdosProtection = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.enableDdosProtection
                     $remotePeering = $htVNets.($peering.properties.remoteVirtualNetwork.id).properties.virtualNetworkPeerings.where({ $_.properties.remoteVirtualNetwork.id -eq $vnet.id })
                     if ($remotePeering.count -eq 1) {
@@ -7247,12 +7246,15 @@ function processNetwork {
                     }
                     $remoteLocation = 'n/a'
                     $remotePeeringsCount = 'n/a'
+                    $remoteDhcpoptionsDnsservers = 'n/a'
                     $remoteSubnetsCount = 'n/a'
                     $remoteSubnetsWithNSGCount = 'n/a'
                     $remoteSubnetsWithRouteTable = 'n/a'
                     $remoteSubnetsWithDelegations = 'n/a'
-                    $remoteDhcpoptionsDnsservers = 'n/a'
+                    $remotePrivateEndPoints = 'n/a'
+                    $remoteSubnetsWithPrivateEndPoints = 'n/a'
                     $remoteConnectedDevices = 'n/a'
+                    $remoteSubnetsWithConnectedDevices = 'n/a'
                     $remoteDdosProtection = 'n/a'
                     $remotePeeringName = 'n/a'
                     $remotePeeringState = 'n/a'
@@ -7276,14 +7278,17 @@ function processNetwork {
                         Location                                        = $vnet.location
                         AddressSpaceAddressPrefixes                     = $vnet.properties.addressSpace.addressPrefixes
                         DhcpoptionsDnsservers                           = $vnet.properties.dhcpoptions.dnsservers
-                        SubnetsCount                                    = $vnet.properties.subnets.Count
-                        SubnetsWithNSGCount                             = $vnet.properties.subnets.properties.networkSecurityGroup.Count
-                        SubnetsWithRouteTableCount                      = $vnet.properties.subnets.properties.routeTable.Count
-                        SubnetsWithDelegationsCount                     = $vnet.properties.subnets.properties.delegations.Count
+                        SubnetsCount                                    = $vnet.properties.subnets.id.Count
+                        SubnetsWithNSGCount                             = $vnet.properties.subnets.properties.networkSecurityGroup.id.Count
+                        SubnetsWithRouteTableCount                      = $vnet.properties.subnets.properties.routeTable.id.Count
+                        SubnetsWithDelegationsCount                     = $vnet.properties.subnets.properties.delegations.id.Count
+                        PrivateEndpointsCount                           = $vnet.properties.subnets.properties.privateEndpoints.id.Count
+                        SubnetsWithPrivateEndPointsCount                = $subnetsWithPrivateEndPointsCount
                         ConnectedDevices                                = $vnet.properties.subnets.properties.ipConfigurations.id.Count
+                        SubnetsWithConnectedDevicesCount                = $subnetsWithConnectedDevicesCount
                         DdosProtection                                  = $vnet.properties.enableDdosProtection
 
-                        PeeringsCount                                   = $vnet.properties.virtualNetworkPeerings.Count
+                        PeeringsCount                                   = $vnet.properties.virtualNetworkPeerings.id.Count
                         PeeringXTenant                                  = $peeringXTenant
                         PeeringName                                     = $peering.name
                         PeeringState                                    = $peering.properties.peeringState
@@ -7324,7 +7329,10 @@ function processNetwork {
                         RemoteSubnetsWithNSGCount                       = $remoteSubnetsWithNSGCount
                         RemoteSubnetsWithRouteTable                     = $remoteSubnetsWithRouteTable
                         RemoteSubnetsWithDelegations                    = $remoteSubnetsWithDelegations
+                        RemotePrivateEndPoints                          = $remotePrivateEndPoints
+                        RemoteSubnetsWithPrivateEndPoints               = $remoteSubnetsWithPrivateEndPoints
                         RemoteConnectedDevices                          = $remoteConnectedDevices
+                        RemoteSubnetsWithConnectedDevices               = $remoteSubnetsWithConnectedDevices
                         RemoteDdosProtection                            = $remoteDdosProtection
                     })
             }
@@ -7342,14 +7350,17 @@ function processNetwork {
 
                     AddressSpaceAddressPrefixes                     = $vnet.properties.addressSpace.addressPrefixes
                     DhcpoptionsDnsservers                           = $vnet.properties.dhcpoptions.dnsservers
-                    SubnetsCount                                    = $vnet.properties.subnets.Count
-                    SubnetsWithNSGCount                             = $vnet.properties.subnets.properties.networkSecurityGroup.Count
-                    SubnetsWithRouteTableCount                      = $vnet.properties.subnets.properties.routeTable.Count
-                    SubnetsWithDelegationsCount                     = $vnet.properties.subnets.properties.delegations.Count
+                    SubnetsCount                                    = $vnet.properties.subnets.id.Count
+                    SubnetsWithNSGCount                             = $vnet.properties.subnets.properties.networkSecurityGroup.id.Count
+                    SubnetsWithRouteTableCount                      = $vnet.properties.subnets.properties.routeTable.id.Count
+                    SubnetsWithDelegationsCount                     = $vnet.properties.subnets.properties.delegations.id.Count
+                    PrivateEndpointsCount                           = $vnet.properties.subnets.properties.privateEndpoints.id.Count
+                    SubnetsWithPrivateEndPointsCount                = $subnetsWithPrivateEndPointsCount
                     ConnectedDevices                                = $vnet.properties.subnets.properties.ipConfigurations.id.Count
+                    SubnetsWithConnectedDevicesCount                = $subnetsWithConnectedDevicesCount
                     DdosProtection                                  = $vnet.properties.enableDdosProtection
 
-                    PeeringsCount                                   = $vnet.properties.virtualNetworkPeerings.Count
+                    PeeringsCount                                   = $vnet.properties.virtualNetworkPeerings.id.Count
                     PeeringXTenant                                  = 'n/a'
                     PeeringName                                     = ''
                     PeeringState                                    = ''
@@ -7389,21 +7400,249 @@ function processNetwork {
                     RemoteSubnetsWithNSGCount                       = ''
                     RemoteSubnetsWithRouteTable                     = ''
                     RemoteSubnetsWithDelegations                    = ''
+                    RemotePrivateEndPoints                          = ''
+                    RemoteSubnetsWithPrivateEndPoints               = ''
                     RemoteConnectedDevices                          = ''
+                    RemoteSubnetsWithConnectedDevices               = ''
                     RemoteDdosProtection                            = ''
                 })
         }
+        #endregion peerings
 
+        #region subnets
 
-        #subnetStuff
         if ($vnet.properties.subnets.Count -gt 0) {
-            #"$($vnet.name) has $($vnet.properties.subnets.Count) subnets"
             foreach ($subnet in $vnet.properties.subnets) {
-                #"  subnet: $($subnet.name)"
-                #"  addressPrefix: $($subnet.properties.addressPrefix)"
+
+                $script:htSubnets.($subnet.id) = @{
+                    SubscriptionName = $subscriptionName
+                    Subscription     = ($vnet.id -split '/')[2]
+                    MGPath           = $MGPath
+                    VNet             = $vnet.name
+                    VNetId           = $vnet.id
+                    Location         = $vnet.location
+                    ResourceGroup    = $vnetResourceGroup
+                }
+
+                $arrayServiceEndPoints = @()
+                if ($subnet.properties.serviceEndpoints.service.Count -gt 0) {
+                    $arrayServiceEndPoints = foreach ($serviceEndpoint in $subnet.properties.serviceEndpoints) {
+                        "$($serviceEndpoint.service) ($(($serviceEndpoint.locations | Sort-Object) -join ', '))"
+                    }
+                }
+
+                $delegation = ''
+                if ($subnet.properties.delegations.Count -gt 0) {
+                    $delegation = "$($subnet.properties.delegations.properties.serviceName) ($(($subnet.properties.delegations.properties.actions | Sort-Object) -join ', '))"
+                }
+
+                #region IP address usage
+                #https://github.com/ElanShudnow/AzureCode/blob/242b923eada55fa795b930473a50dedf14bdc409/PowerShell/AzSubnetAvailability/AzSubnetAvailability.ps1
+                # Gets the mask from the IP configuration (I.e 10.0.0.0/24, turns to just "24")
+
+                if (-not [string]::IsNullOrWhiteSpace($subnet.properties.addressPrefix)) {
+                    $AddressPrefix = $subnet.properties.addressPrefix
+                    $subnetNet = $AddressPrefix -replace '/.*'
+                    $subnetNetOutput = $subnetNet
+                }
+
+                #ignore IPv6
+                if (-not [string]::IsNullOrWhiteSpace($subnet.properties.addressPrefixes)) {
+                    $arr = foreach ($entry in $subnet.properties.addressPrefixes) {
+                        if ($entry -match '^(([01]?\d?\d|2[0-4]\d|25[0-5])\.){3}([01]?\d?\d|2[0-4]\d|25[0-5])\/(\d{1}|[0-2]{1}\d{1}|3[0-2])$') {
+                            $AddressPrefix = $entry
+                            $AddressPrefix -replace '/.*'
+                            $subnetNet = $AddressPrefix -replace '/.*'
+                        }
+                        else {
+                            "(ignoring IPv6 $entry)"
+                        }
+                    }
+                    $subnetNetOutput = $arr
+                }
+
+                $Mask = $AddressPrefix.substring($AddressPrefix.Length - 2, 2)
+
+                #Amount of available IP Addresses minus the 3 IPs that Azure consumes, minus net and broadcast
+                #https://learn.microsoft.com/en-us/azure/virtual-network/virtual-networks-faq#are-there-any-restrictions-on-using-ip-addresses-within-these-subnets
+                switch ($Mask) {
+                    '30' { $AvailableAddresses = [Math]::Pow(2, 2) - 5 }
+                    '29' { $AvailableAddresses = [Math]::Pow(2, 3) - 5 }
+                    '28' { $AvailableAddresses = [Math]::Pow(2, 4) - 5 }
+                    '27' { $AvailableAddresses = [Math]::Pow(2, 5) - 5 }
+                    '26' { $AvailableAddresses = [Math]::Pow(2, 6) - 5 }
+                    '25' { $AvailableAddresses = [Math]::Pow(2, 7) - 5 }
+                    '24' { $AvailableAddresses = [Math]::Pow(2, 8) - 5 }
+                    '23' { $AvailableAddresses = [Math]::Pow(2, 9) - 5 }
+                    '22' { $AvailableAddresses = [Math]::Pow(2, 10) - 5 }
+                    '21' { $AvailableAddresses = [Math]::Pow(2, 11) - 5 }
+                    '20' { $AvailableAddresses = [Math]::Pow(2, 12) - 5 }
+                    '19' { $AvailableAddresses = [Math]::Pow(2, 13) - 5 }
+                    '18' { $AvailableAddresses = [Math]::Pow(2, 14) - 5 }
+                    '17' { $AvailableAddresses = [Math]::Pow(2, 15) - 5 }
+                    '16' { $AvailableAddresses = [Math]::Pow(2, 16) - 5 }
+                    '15' { $AvailableAddresses = [Math]::Pow(2, 17) - 5 }
+                    '14' { $AvailableAddresses = [Math]::Pow(2, 18) - 5 }
+                    '13' { $AvailableAddresses = [Math]::Pow(2, 19) - 5 }
+                    '12' { $AvailableAddresses = [Math]::Pow(2, 20) - 5 }
+                    '11' { $AvailableAddresses = [Math]::Pow(2, 21) - 5 }
+                    '10' { $AvailableAddresses = [Math]::Pow(2, 22) - 5 }
+                    '9' { $AvailableAddresses = [Math]::Pow(2, 23) - 5 }
+                    '8' { $AvailableAddresses = [Math]::Pow(2, 24) - 5 }
+                }
+
+                $IPsLeft = $AvailableAddresses - $subnet.properties.ipConfigurations.Count
+                $PercentIPsUsed = [math]::Round((($subnet.properties.ipConfigurations.Count / $AvailableAddresses) * 100), 1)
+                $subnetIPAddressUsageCritical = $false
+                if ($PercentIPsUsed -gt $NetworkSubnetIPAddressUsageCriticalPercentage) {
+                    $subnetIPAddressUsageCritical = $true
+                }
+
+                #endregion IP address usage
+
+                $subnetPrefix = $AddressPrefix -replace '.*/'
+
+                $subnetmask = ([IPAddress]"$([system.convert]::ToInt64(('1'*$subnetPrefix).PadRight(32,'0'),2))").IPAddressToString
+                $IPBits = [int[]]$subnetNet.Split('.')
+                $MaskBits = [int[]]$subnetmask.Split('.')
+                $NetworkIDBits = 0..3 | ForEach-Object { $IPBits[$_] -band $MaskBits[$_] }
+                $Broadcast = (0..3 | ForEach-Object { $NetworkIDBits[$_] + ($MaskBits[$_] -bxor 255) }) -join '.'
+                $Range = "$subnetNet - $Broadcast"
+
+                $null = $script:arraySubnets.Add([PSCustomObject]@{
+                        SubscriptionName                  = $subscriptionName
+                        Subscription                      = ($vnet.id -split '/')[2]
+                        MGPath                            = $MGPath
+                        VNet                              = $vnet.name
+                        VNetId                            = $vnet.id
+                        VNetResourceGroup                 = $vnetResourceGroup
+                        Location                          = $vnet.location
+                        SubnetName                        = $subnet.name
+                        SubnetId                          = $subnet.id
+                        SubnetNet                         = $subnetNetOutput -join "$CsvDelimiterOpposite "
+                        SubnetPrefix                      = $subnetPrefix
+                        Subnetmask                        = $subnetmask
+                        Range                             = $Range
+                        ConnectedDevices                  = $subnet.properties.ipConfigurations.Count
+                        AvailableIPAddresses              = $IPsLeft
+                        UsedIPAddressesPercent            = "$PercentIPsUsed %"
+                        SubnetIPAddressUsageCritical      = $subnetIPAddressUsageCritical
+                        PrivateEndpointNetworkPolicies    = $subnet.properties.privateEndpointNetworkPolicies
+                        PrivateLinkServiceNetworkPolicies = $subnet.properties.privateLinkServiceNetworkPolicies
+                        ServiceEndpointsCount             = $subnet.properties.serviceEndpoints.service.Count
+                        ServiceEndpoints                  = $arrayServiceEndPoints -join ', '
+                        Delegation                        = $delegation
+                        NetworkSecurityGroup              = $subnet.properties.networkSecurityGroup.id
+                        RouteTable                        = $subnet.properties.routeTable
+                        NatGateway                        = ''
+                        PrivateEndpoints                  = $subnet.properties.privateEndpoints.Count
+                    })
             }
         }
+        #endregion subnets
     }
+
+    $end = Get-Date
+    Write-Host " Processing Network enrichment duration: $((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds"
+}
+function processPrivateEndpoints {
+    $start = Get-Date
+    Write-Host "Processing Private Endpoints enrichment ($($arrayPrivateEndPoints.Count) Private Endpoints)"
+
+    $htVPrivateEndPoints = @{}
+    foreach ($pe in $arrayPrivateEndPoints) {
+        $htVPrivateEndPoints.($pe.id) = $pe
+    }
+
+    $script:arrayPrivateEndpointsEnriched = [System.Collections.ArrayList]@()
+
+    foreach ($pe in $arrayPrivateEndPoints) {
+
+        $peIdSplit = ($pe.id -split '/')
+        $subscriptionId = $peIdSplit[2]
+        $resourceGroup = $peIdSplit[4]
+
+        $subscriptionName = 'n/a'
+        $MGPath = 'n/a'
+        if ($htSubscriptionsMgPath.($subscriptionId)) {
+            $subHelper = $htSubscriptionsMgPath.($subscriptionId)
+            $subscriptionName = $subHelper.displayName
+            $MGPath = $subHelper.ParentNameChainDelimited
+        }
+
+        $SubnetSubscriptionName = 'n/a'
+        $SubnetSubscription = 'n/a'
+        $SubnetMGPath = 'n/a'
+        $SubnetVNet = 'n/a'
+        $SubnetVNetId = 'n/a'
+        $SubnetVNetLocation = 'n/a'
+        $SubnetVNetResourceGroup = 'n/a'
+        if ($htSubnets.($pe.properties.subnet.id)) {
+            $hlper = $htSubnets.($pe.properties.subnet.id)
+            $SubnetSubscriptionName = $hlper.SubscriptionName
+            $SubnetSubscription = $hlper.Subscription
+            $SubnetMGPath = $hlper.MGPath
+            $SubnetVNet = $hlper.VNet
+            $SubnetVNetId = $hlper.VNetId
+            $SubnetVNetLocation = $hlper.Location
+            $SubnetVNetResourceGroup = $hlper.ResourceGroup
+        }
+
+        $resourceSubscriptionId = ($pe.properties.privateLinkServiceConnections.properties.privateLinkServiceId -split '/')[2]
+        $resourceSubscriptionName = 'n/a'
+        $resourceMGPath = 'n/a'
+        if ($htSubscriptionsMgPath.($resourceSubscriptionId)) {
+            $subHelper = $htSubscriptionsMgPath.($resourceSubscriptionId)
+            $resourceSubscriptionName = $subHelper.displayName
+            $resourceMGPath = $subHelper.ParentNameChainDelimited
+        }
+
+        if ($SubnetSubscription -eq $resourceSubscriptionId) {
+            $crossSubscriptionPE = $false
+        }
+        else {
+            $crossSubscriptionPE = $true
+        }
+
+        $resourceSplit = $pe.properties.privateLinkServiceConnections.properties.privateLinkServiceId -split '/'
+
+        $null = $script:arrayPrivateEndpointsEnriched.Add([PSCustomObject]@{
+                PEName                   = $pe.name
+                PEId                     = $pe.id
+                PELocation               = $pe.location
+                PEResourceGroup          = $resourceGroup
+                PESubscriptionName       = $subscriptionName
+                PESubscription           = ($pe.id -split '/')[2]
+                PEMGPath                 = $MGPath
+                CrossSubscriptionPE      = $crossSubscriptionPE
+
+                Resource                 = $resourceSplit[8]
+                ResourceType             = "$($resourceSplit[6])/$($resourceSplit[7])"
+                ResourceId               = $pe.properties.privateLinkServiceConnections.properties.privateLinkServiceId
+                TargetSubresource        = $pe.properties.privateLinkServiceConnections.properties.groupIds -join ', '
+                NICName                  = $pe.properties.customNetworkInterfaceName
+                FQDN                     = $pe.properties.customDnsConfigs.fqdn -join ', '
+                ipAddresses              = $pe.properties.customDnsConfigs.ipAddresses -join ', '
+                ResourceResourceGroup    = $resourceSplit[4]
+                ResourceSubscriptionName = $resourceSubscriptionName
+                ResourceSubscriptionId   = $resourceSubscriptionId
+                ResourceMGPath           = $resourceMGPath
+
+                Subnet                   = $pe.properties.subnet.id -replace '.*/'
+                SubnetId                 = $pe.properties.subnet.id
+                SubnetVNet               = $SubnetVNet
+                SubnetVNetId             = $SubnetVNetId
+                SubnetVNetLocation       = $SubnetVNetLocation
+                SubnetVNetResourceGroup  = $SubnetVNetResourceGroup
+                SubnetSubscriptionName   = $SubnetSubscriptionName
+                SubnetSubscription       = $SubnetSubscription
+                SubnetMGPath             = $SubnetMGPath
+            })
+    }
+
+
+    $end = Get-Date
+    Write-Host " Processing Private Endpoints enrichment duration: $((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds"
 }
 function processScopeInsightsMgOrSub($mgOrSub, $mgChild, $subscriptionId, $subscriptionsMgId) {
     $script:scopescnter++
@@ -20650,8 +20889,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>Subnets</th>
 <th>Subnets with NSG</th>
 <th>Subnets with RouteTable</th>
-<th>Subnets with Delegations</th>
+<th>Subnets with Delegation</th>
+<th>Private Endpoints</th>
+<th>Subnets with Private Endpoints</th>
 <th>Connected device</th>
+<th>Subnets with connected device</th>
 <th>DDoS</th>
 <th>Peerings Count</th>
 </tr>
@@ -20675,7 +20917,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.SubnetsWithNSGCount)</td>
                         <td>$($result.SubnetsWithRouteTableCount)</td>
                         <td>$($result.SubnetsWithDelegationsCount)</td>
+                        <td>$($result.PrivateEndpointsCount)</td>
+                        <td>$($result.SubnetsWithPrivateEndPointsCount)</td>
                         <td>$($result.ConnectedDevices)</td>
+                        <td>$($result.SubnetsWithConnectedDevicesCount)</td>
                         <td>$($result.DdosProtection)</td>
                         <td>$($result.PeeringsCount)</td>
                         </tr>
@@ -20720,7 +20965,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             linked_filters: true,
             col_5: 'select',
-            col_13: 'select',
+            col_16: 'select',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -20730,6 +20975,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+                'number',
+                'number',
+                'number',
                 'number',
                 'number',
                 'number',
@@ -20748,7 +20996,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@'
-    <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No Virtual Networks</span></p>
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Virtual Networks</span></p>
 '@)
         }
         $endVNets = Get-Date
@@ -20760,6 +21008,186 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 "@)
     }
     #endregion SUMMARYVNets
+
+    #region SUMMARYSubnets
+    if ($azAPICallConf['htParameters'].NoNetwork -eq $false) {
+        $startSubnets = Get-Date
+        Write-Host '  processing TenantSummary Subnets'
+        $subnets = $arraySubnets | Sort-Object -Property SubscriptionName, VNet, VNetId, SubnetName
+        $subnetsCount = $subnets.Count
+
+        if (-not $NoCsvExport) {
+            $subnetsCSVPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_VirtualNetworkSubnets.csv"
+            Write-Host "   Exporting Subnets CSV '$subnetsCSVPath'"
+            $subnets | Export-Csv -Path $subnetsCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
+        }
+
+        if ($subnetsCount -gt 0) {
+
+            $subnetIPAddressUsageCriticalCount = ($subnets.where({ $_.SubnetIPAddressUsageCritical -eq $true })).Count
+            $criticalUsageText = ''
+            if ($subnetIPAddressUsageCriticalCount -gt 0) {
+                $criticalUsageText = " ($subnetIPAddressUsageCriticalCount > $($NetworkSubnetIPAddressUsageCriticalPercentage)% IP addresses used)"
+            }
+
+            $htmlTableId = 'TenantSummary_Subnets'
+            $tfCount = $subnetsCount
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_Subnets"><i class="padlx fa fa-arrows-h" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$tfCount Subnets$($criticalUsageText)</span></button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Subscription Name</th>
+<th>Subscription</th>
+<th>MGPath</th>
+<th>VNet</th>
+<th>VNet Resource Group</th>
+<th>Location</th>
+<th>Name</th>
+<th>Id</th>
+<th>Subnet</th>
+<th>Prefix</th>
+<th>Mask</th>
+<th>Range</th>
+<th>Connected devices</th>
+<th>Free IP addresses</th>
+<th>Used IP addresses %</th>
+<th>Private Endpoint Network Policies</th>
+<th>Private Link Service Network Policies</th>
+<th>Service Endpoints count</th>
+<th>Service Endpoints</th>
+<th>Delegation</th>
+<th>NSG</th>
+<th>Route Table</th>
+<th>Nat Gateway</th>
+<th>Private Endpoints</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+            foreach ($result in $subnets) {
+
+                [void]$htmlTenantSummary.AppendLine(@"
+                        <tr>
+                        <td>$($result.SubscriptionName)</td>
+                        <td>$($result.Subscription)</td>
+                        <td style="min-width: 150px" class="breakwordall">$($result.MGPath)</td>
+                        <td>$($result.VNet)</td>
+                        <td>$($result.VNetResourceGroup)</td>
+                        <td>$($result.Location)</td>
+                        <td>$($result.SubnetName)</td>
+                        <td style="min-width: 200px" class="breakwordall">$($result.SubnetId)</td>
+                        <td>$($result.SubnetNet)</td>
+                        <td>$($result.SubnetPrefix)</td>
+                        <td>$($result.Subnetmask)</td>
+                        <td>$($result.Range)</td>
+                        <td>$($result.ConnectedDevices)</td>
+                        <td>$($result.AvailableIPAddresses)</td>
+                        <td>$($result.UsedIPAddressesPercent)</td>
+                        <td>$($result.PrivateEndpointNetworkPolicies)</td>
+                        <td>$($result.PrivateLinkServiceNetworkPolicies)</td>
+                        <td>$($result.ServiceEndpointsCount)</td>
+                        <td>$($result.ServiceEndpoints)</td>
+                        <td>$($result.Delegation)</td>
+                        <td style="min-width: 200px" class="breakwordall">$($result.NetworkSecurityGroup)</td>
+                        <td style="min-width: 200px" class="breakwordall">$($result.RouteTable)</td>
+                        <td>$($result.NatGateway)</td>
+                        <td>$($result.PrivateEndpoints)</td>
+                        </tr>
+"@)
+
+            }
+
+            [void]$htmlTenantSummary.AppendLine(@"
+</tbody>
+</table>
+<script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            linked_filters: true,
+            col_5: 'select',
+            col_9: 'select',
+            col_10: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number',
+                'number',
+                'number',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+            extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+</div>
+"@)
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@'
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Subnets</span></p>
+'@)
+        }
+        $endSubnets = Get-Date
+        Write-Host "   Subnets processing duration: $((New-TimeSpan -Start $startSubnets -End $endSubnets).TotalMinutes) minutes ($((New-TimeSpan -Start $startSubnets -End $endSubnets).TotalSeconds) seconds)"
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Virtual Networks - Network Analysis disabled - </span><span class="info">parameter -NoNetwork = $($azAPICallConf['htParameters'].NoNetwork)</span></p>
+"@)
+    }
+    #endregion SUMMARYSubnets
 
     #region SUMMARYVNetPeerings
     if ($azAPICallConf['htParameters'].NoNetwork -eq $false) {
@@ -20802,8 +21230,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>Subnets</th>
 <th>Subnets with NSG</th>
 <th>Subnets with RouteTable</th>
-<th>Subnets with Delegations</th>
+<th>Subnets with Delegation</th>
+<th>Private Endpoints</th>
+<th>Subnets with Private Endpoints</th>
 <th>Connected device</th>
+<th>Subnets with connected device</th>
 <th>DDoS</th>
 <th class="uamiresaltbgc">Peerings Count</th>
 <th class="uamiresaltbgc">Peering Cross Tenant</th>
@@ -20844,8 +21275,11 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th class="uamiresaltbgc"><b>Remote</b> Subnets</th>
 <th class="uamiresaltbgc"><b>Remote</b> Subnets with NSG</th>
 <th class="uamiresaltbgc"><b>Remote</b> Subnets with RouteTable</th>
-<th class="uamiresaltbgc"><b>Remote</b> Subnets with Delegations</th>
+<th class="uamiresaltbgc"><b>Remote</b> Subnets with Delegation</th>
+<th class="uamiresaltbgc"><b>Remote</b> Private Endpoints</th>
+<th class="uamiresaltbgc"><b>Remote</b> Subnets with Private Endpoints</th>
 <th class="uamiresaltbgc"><b>Remote</b> Connected devices</th>
+<th class="uamiresaltbgc"><b>Remote</b> Subnets with connected devices</th>
 <th class="uamiresaltbgc"><b>Remote</b> DDoS</th>
 
 </tr>
@@ -20869,7 +21303,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.SubnetsWithNSGCount)</td>
                         <td>$($result.SubnetsWithRouteTableCount)</td>
                         <td>$($result.SubnetsWithDelegationsCount)</td>
+                        <td>$($result.PrivateEndpointsCount)</td>
+                        <td>$($result.SubnetsWithPrivateEndPointsCount)</td>
                         <td>$($result.ConnectedDevices)</td>
+                        <td>$($result.SubnetsWithConnectedDevicesCount)</td>
                         <td>$($result.DdosProtection)</td>
                         <td>$($result.PeeringsCount)</td>
                         <td>$($result.PeeringXTenant)</td>
@@ -20910,7 +21347,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.RemoteSubnetsWithNSGCount)</td>
                         <td>$($result.RemoteSubnetsWithRouteTable)</td>
                         <td>$($result.RemoteSubnetsWithDelegations)</td>
+                        <td>$($result.RemotePrivateEndPoints)</td>
+                        <td>$($result.RemoteSubnetsWithPrivateEndPoints)</td>
                         <td>$($result.RemoteConnectedDevices)</td>
+                        <td>$($result.RemoteSubnetsWithConnectedDevices)</td>
                         <td>$($result.RemoteDdosProtection)</td>
                         </tr>
 "@)
@@ -20954,33 +21394,33 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             linked_filters: true,
             col_5: 'select',
-            col_13: 'select',
-            col_15: 'select',
-
-            col_17: 'select',
+            col_16: 'select',
             col_18: 'select',
-            col_19: 'select',
+
             col_20: 'select',
             col_21: 'select',
             col_22: 'select',
             col_23: 'select',
             col_24: 'select',
             col_25: 'select',
-
-
+            col_26: 'select',
+            col_27: 'select',
             col_28: 'select',
-            col_29: 'select',
-            col_30: 'select',
+
+
             col_31: 'select',
             col_32: 'select',
             col_33: 'select',
             col_34: 'select',
             col_35: 'select',
             col_36: 'select',
+            col_37: 'select',
+            col_38: 'select',
+            col_39: 'select',
 
-            col_40: 'select',
-            col_42: 'select',
-            col_52: 'select',
+            col_43: 'select',
+            col_45: 'select',
+            col_58: 'select',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -20995,6 +21435,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'number',
                 'number',
                 'number',
+                'number',
+                'number',
+                'number',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -21028,6 +21471,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
+                'number',
+                'number',
+                'number',
                 'number',
                 'number',
                 'number',
@@ -21045,7 +21491,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@'
-    <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No Virtual Network Peerings</span></p>
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Virtual Network Peerings</span></p>
 '@)
         }
         $endVNetPeerings = Get-Date
@@ -21057,6 +21503,204 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 "@)
     }
     #endregion SUMMARYVNetPeerings
+
+    #region SUMMARYPrivateEndpoints
+    if ($azAPICallConf['htParameters'].NoNetwork -eq $false) {
+        $startPrivateEndpoints = Get-Date
+        Write-Host '  processing TenantSummary PrivateEndpoints'
+        $privateEndPoints = $arrayPrivateEndpointsEnriched | Sort-Object -Property PESubscriptionName, PEName
+        $privateEndPointsCount = $privateEndPoints.Count
+
+        if (-not $NoCsvExport) {
+            $peCSVPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PrivateEndpoints.csv"
+            Write-Host "   Exporting PrivateEndpoints CSV '$peCSVPath'"
+            $privateEndPoints | Export-Csv -Path $peCSVPath -Delimiter "$csvDelimiter" -NoTypeInformation
+        }
+
+        if ($privateEndPointsCount -gt 0) {
+
+            $crossSubPECount = ($privateEndPoints.where({ $_.crossSubscriptionPE -eq $true })).Count
+            $crossSubPEText = ''
+            if ($crossSubPECount -gt 0) {
+                $crossSubPEText = " ($crossSubPECount cross Subscription)"
+            }
+
+            $htmlTableId = 'TenantSummary_PrivateEndpoints'
+            $tfCount = $privateEndPointsCount
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_PrivateEndpoints"><i class="padlx fa fa-map-pin" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$tfCount Private Endpoints$($crossSubPEText)</span></button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+
+<th>PE Name</th>
+<th>PE Id</th>
+<th>PE Location</th>
+<th>PE Resource Group</th>
+<th>PE Subscription Name</th>
+<th>PE Subscription</th>
+<th>PE MGPath</th>
+<th>Cross Subscription PE</th>
+
+<th class="uamiresaltbgc">Resource</th>
+<th class="uamiresaltbgc">Resource Type</th>
+<th class="uamiresaltbgc">Resource Id</th>
+<th class="uamiresaltbgc">Target Subresource</th>
+<th class="uamiresaltbgc">NIC Name</th>
+<th class="uamiresaltbgc">FQDN</th>
+<th class="uamiresaltbgc">IP addresses</th>
+<th class="uamiresaltbgc">Resource Resource Group</th>
+<th class="uamiresaltbgc">Resource Subscription Name</th>
+<th class="uamiresaltbgc">Resource Subscription</th>
+<th class="uamiresaltbgc">Resource MGPath</th>
+
+<th>Subnet</th>
+<th>Subnet Id</th>
+<th>VNet</th>
+<th>VNet Id</th>
+<th>VNet Location</th>
+<th>VNet Resource Group</th>
+<th>Subnet Subscription Name</th>
+<th>Subnet Subscription</th>
+<th>Subnet MGPath</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+            foreach ($result in $privateEndPoints) {
+
+                [void]$htmlTenantSummary.AppendLine(@"
+                        <tr>
+                        <td>$($result.PEName)</td>
+                        <td style="min-width: 200px" class="breakwordall">$($result.PEId)</td>
+                        <td>$($result.PELocation)</td>
+                        <td>$($result.PEResourceGroup)</td>
+                        <td>$($result.PESubscriptionName)</td>
+                        <td>$($result.PESubscription)</td>
+                        <td style="min-width: 150px" class="breakwordall">$($result.PEMGPath)</td>
+                        <td>$($result.crossSubscriptionPE)</td>
+
+                        <td>$($result.Resource)</td>
+                        <td>$($result.ResourceType)</td>
+                        <td style="min-width: 200px" class="breakwordall">$($result.ResourceId)</td>
+                        <td>$($result.TargetSubresource)</td>
+                        <td>$($result.NICName)</td>
+                        <td>$($result.FQDN)</td>
+                        <td>$($result.ipAddresses)</td>
+                        <td>$($result.ResourceResourceGroup)</td>
+                        <td>$($result.ResourceSubscriptionId)</td>
+                        <td>$($result.ResourceSubscriptionName)</td>
+                        <td style="min-width: 150px" class="breakwordall">$($result.ResourceMGPath)</td>
+
+                        <td>$($result.Subnet)</td>
+                        <td style="min-width: 200px" class="breakwordall">$($result.SubnetId)</td>
+                        <td>$($result.SubnetVNet)</td>
+                        <td style="min-width: 200px" class="breakwordall">$($result.SubnetVNetId)</td>
+                        <td>$($result.SubnetVNetLocation)</td>
+                        <td>$($result.SubnetVNetResourceGroup)</td>
+                        <td>$($result.SubnetSubscriptionName)</td>
+                        <td>$($result.SubnetSubscription)</td>
+                        <td style="min-width: 150px" class="breakwordall">$($result.SubnetMGPath)</td>
+                        </tr>
+"@)
+
+            }
+
+            [void]$htmlTenantSummary.AppendLine(@"
+</tbody>
+</table>
+<script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            linked_filters: true,
+            col_2: 'select',
+            col_7: 'select',
+            col_9: 'select',
+            col_11: 'select',
+            col_23: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+            extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+</div>
+"@)
+        }
+        else {
+            [void]$htmlTenantSummary.AppendLine(@'
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Subnets</span></p>
+'@)
+        }
+        $endPrivateEndpoints = Get-Date
+        Write-Host "   PrivateEndpoints processing duration: $((New-TimeSpan -Start $startPrivateEndpoints -End $endPrivateEndpoints).TotalMinutes) minutes ($((New-TimeSpan -Start $startPrivateEndpoints -End $endPrivateEndpoints).TotalSeconds) seconds)"
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@"
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Virtual Networks - Network Analysis disabled - </span><span class="info">parameter -NoNetwork = $($azAPICallConf['htParameters'].NoNetwork)</span></p>
+"@)
+    }
+    #endregion SUMMARYPrivateEndpoints
 
     [void]$htmlTenantSummary.AppendLine(@'
     </div>
@@ -25893,7 +26537,7 @@ function ResolveObjectIds {
 
         foreach ($batch in $ObjectBatch) {
             $batchCnt++
-            $objectsToProcess = '"{0}"' -f ($batch.Group.where({testGuid $_}) -join '","')
+            $objectsToProcess = '"{0}"' -f ($batch.Group.where({ testGuid $_ }) -join '","')
             $currentTask = " Resolving ObjectIds - Batch #$batchCnt/$($ObjectBatchCount) ($(($batch.Group).Count))"
             if ($showActivity) {
                 Write-Host $currentTask
@@ -26464,6 +27108,15 @@ function runInfo {
         else {
             Write-Host " NoNetwork = $($NoNetwork)" -ForegroundColor Yellow
             #$script:paramsUsed += "NoNetwork: $($NoNetwork) &#13;"
+
+            if ($NetworkSubnetIPAddressUsageCriticalPercentage -ne 90) {
+                Write-Host " NetworkSubnetIPAddressUsageCriticalPercentage = $($NetworkSubnetIPAddressUsageCriticalPercentage)" -ForegroundColor Green
+                #$script:paramsUsed += "NetworkSubnetIPAddressUsageCriticalPercentage: $($NetworkSubnetIPAddressUsageCriticalPercentage) &#13;"
+            }
+            else {
+                Write-Host " NoNetwork = $($NetworkSubnetIPAddressUsageCriticalPercentage)" -ForegroundColor Yellow
+                #$script:paramsUsed += "NetworkSubnetIPAddressUsageCriticalPercentage: $($NetworkSubnetIPAddressUsageCriticalPercentage) &#13;"
+            }
         }
 
         if ($GitHubActionsOIDC) {
@@ -27324,6 +27977,31 @@ function dataCollectionVNets {
     }
 }
 $funcDataCollectionVNets = $function:dataCollectionVNets.ToString()
+
+function dataCollectionPrivateEndpoints {
+    [CmdletBinding()]Param(
+        [string]$scopeId,
+        [string]$scopeDisplayName,
+        $SubscriptionQuotaId
+    )
+
+    $currentTask = "Getting Private Endpoints for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
+    #https://docs.microsoft.com/en-us/rest/api/securitycenter/pricings
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Network/privateEndpoints?api-version=2022-05-01"
+    $method = 'GET'
+    $privateEndpointsResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -unhandledErrorAction Continue
+
+    # if ($privateEndpointsResult -eq 'someError') {
+    # }
+    # else {
+    if ($privateEndpointsResult.Count -gt 0) {
+        foreach ($pe in $privateEndpointsResult) {
+            $null = $script:arrayPrivateEndPoints.Add($pe)
+        }
+    }
+    #}
+}
+$funcDataCollectionPrivateEndpoints = $function:dataCollectionPrivateEndpoints.ToString()
 
 function dataCollectionDiagnosticsSub {
     [CmdletBinding()]Param(
@@ -31745,6 +32423,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $arrayStorageAccountAnalysisResults = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htDefenderEmailContacts = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
     $arrayVNets = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayPrivateEndPoints = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
 if (-not $HierarchyMapOnly) {
@@ -32796,6 +33475,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
     if (-not $azAPICallConf['htParameters'].NoNetwork) {
         processNetwork
+        processPrivateEndpoints
     }
 
     processTenantSummary

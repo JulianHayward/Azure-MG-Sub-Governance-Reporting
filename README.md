@@ -59,19 +59,17 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Nov-18 / Major)
+__Changes__ (2022-Nov-21 / Major)
 
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.53
-  * retry mechanism fix 
-
-__Changes__ (2022-Nov-17 / Major)
-
-* Update Azure DevOps pipeline YAML 
-  * checkout `fetchDepth: 1`  
-[Azure DevOps pipelines shallow fetch =1 is now default](https://dev.to/kkazala/azure-devops-pipelines-shallow-fetch-1-is-now-default-4656)
-  * pool `vmImage: 'ubuntu-22.04'`
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.52
-  * retry mechanism fix 
+* Network analysis - new features
+  * Subnets
+    * new parameter `-NetworkSubnetIPAddressUsageCriticalPercentage` warning level when certain percentage of IP addresses is used (default = 90%). Kudos to @ElanShudnow [AzSubnetAvailability - GitHub](https://github.com/ElanShudnow/AzureCode/tree/main/PowerShell/AzSubnetAvailability)
+  * Private Endpoints
+* Enhance Network feature - Virtual Networks and Virtual Network Peerings
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.54
+  * another retry mechanism fix 
+* Bugfix PIM eligible / Guest User - thanks @nanigan
+* Updated [API reference](#api-reference)
 
 Passed tests: Powershell Core 7.2.6 on Windows  
 Passed tests: Powershell Core 7.2.7 Azure DevOps hosted agent ubuntu-22.04  
@@ -225,7 +223,9 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
     * Provides insights on Storage Accounts with focus on anonymous access (containers/blobs and 'Static website' feature)
 * __Network__
   * Virtual Networks
+  * Subnets
   * Virtual Network Peerings
+  * Private Endpoints
 * __Diagnostics__
   * Management Groups Diagnostic settings report
     * Management Group, Diagnostic setting name, target type (LA, SA, EH), target Id, Log Category status
@@ -505,6 +505,7 @@ AzAPICall resources:
   * `-StorageAccountAccessAnalysisSubscriptionTags` - Define Subscription tag names that should be added to the CSV output per Storage Account
   * `-StorageAccountAccessAnalysisStorageAccountTags` - Define Storage Account tag names that should be added to the CSV output per Storage Account
   * `-NoNetwork` - Do not execute Network analysis / Virtual Network and Virtual Network Peerings
+    * `-NetworkSubnetIPAddressUsageCriticalPercentage` - Warning level when certain percentage of IP addresses is used (default = 90%)
 
 ### API reference
 
@@ -554,6 +555,8 @@ AzGovViz polls the following APIs
 | ARM | 2019-11-01 | /subscriptions/`subscriptionId`/providers/Microsoft.CostManagement/query |
 | ARM | 2021-05-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Insights/diagnosticSettings |
 | ARM | 2019-10-01 | /subscriptions/`subscriptionId`/providers/Microsoft.PolicyInsights/policyStates/latest/summarize |
+| ARM | 2022-05-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Network/privateEndpoints |
+| ARM | 2022-05-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Network/virtualNetworks |
 | ARM | 2020-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Resources/tags/default |
 | ARM | 2018-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Security/pricings |
 | ARM | 2020-01-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securescores |
@@ -712,7 +715,9 @@ Kudos to [LorDOniX](https://github.com/LorDOniX/json-viewer) for JSON-viewer!
 
 Kudos to Bernie White and [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure) team!
 
-Kudos to Dolev Shor for [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources) _ARG queries and workbooks_!
+Kudos to @dolevshor for [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources) _ARG queries and workbooks_!
+
+Kudos to @ElanShudnow for [AzSubnetAvailability - GitHub](https://github.com/ElanShudnow/AzureCode/tree/main/PowerShell/AzSubnetAvailability)
 
 ## AzAdvertizer
 

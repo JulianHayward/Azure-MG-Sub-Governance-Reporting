@@ -354,6 +354,7 @@ function processDataCollection {
                 $htDoARMRoleAssignmentScheduleInstances = $using:htDoARMRoleAssignmentScheduleInstances
                 $htDefenderEmailContacts = $using:htDefenderEmailContacts
                 $arrayVNets = $using:arrayVNets
+                $arrayPrivateEndPoints = $using:arrayPrivateEndPoints
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation
@@ -382,6 +383,7 @@ function processDataCollection {
                 $function:dataCollectionClassicAdministratorsSub = $using:funcDataCollectionClassicAdministratorsSub
                 $function:dataCollectionDefenderEmailContacts = $using:funcDataCollectionDefenderEmailContacts
                 $function:dataCollectionVNets = $using:funcDataCollectionVNets
+                $function:dataCollectionPrivateEndpoints = $using:funcDataCollectionPrivateEndpoints
                 #endregion UsingVARs
 
                 $addRowToTableDone = $false
@@ -438,6 +440,8 @@ function processDataCollection {
                         if (-not $azAPICallConf['htParameters'].NoNetwork) {
                             #VNets
                             DataCollectionVNets @baseParameters
+                            #PE
+                            DataCollectionPrivateEndpoints @baseParameters
                         }
 
                         #diagnostics

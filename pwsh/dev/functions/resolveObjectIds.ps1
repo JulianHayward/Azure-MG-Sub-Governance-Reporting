@@ -27,7 +27,7 @@ function ResolveObjectIds {
 
         foreach ($batch in $ObjectBatch) {
             $batchCnt++
-            $objectsToProcess = '"{0}"' -f ($batch.Group.where({testGuid $_}) -join '","')
+            $objectsToProcess = '"{0}"' -f ($batch.Group.where({ testGuid $_ }) -join '","')
             $currentTask = " Resolving ObjectIds - Batch #$batchCnt/$($ObjectBatchCount) ($(($batch.Group).Count))"
             if ($showActivity) {
                 Write-Host $currentTask

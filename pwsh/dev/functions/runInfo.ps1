@@ -437,6 +437,15 @@ function runInfo {
         else {
             Write-Host " NoNetwork = $($NoNetwork)" -ForegroundColor Yellow
             #$script:paramsUsed += "NoNetwork: $($NoNetwork) &#13;"
+
+            if ($NetworkSubnetIPAddressUsageCriticalPercentage -ne 90) {
+                Write-Host " NetworkSubnetIPAddressUsageCriticalPercentage = $($NetworkSubnetIPAddressUsageCriticalPercentage)" -ForegroundColor Green
+                #$script:paramsUsed += "NetworkSubnetIPAddressUsageCriticalPercentage: $($NetworkSubnetIPAddressUsageCriticalPercentage) &#13;"
+            }
+            else {
+                Write-Host " NoNetwork = $($NetworkSubnetIPAddressUsageCriticalPercentage)" -ForegroundColor Yellow
+                #$script:paramsUsed += "NetworkSubnetIPAddressUsageCriticalPercentage: $($NetworkSubnetIPAddressUsageCriticalPercentage) &#13;"
+            }
         }
 
         if ($GitHubActionsOIDC) {

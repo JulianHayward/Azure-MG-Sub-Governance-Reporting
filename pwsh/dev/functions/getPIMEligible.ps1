@@ -50,6 +50,8 @@ function getPIMEligible {
             if ($scope.type -eq 'managementgroup') { $htManagementGroupsMgPath = $using:htManagementGroupsMgPath }
             if ($scope.type -eq 'subscription') { $htSubscriptionsMgPath = $using:htSubscriptionsMgPath }
             $htPrincipals = $using:htPrincipals
+            $htUserTypesGuest = $using:htUserTypesGuest
+            $htServicePrincipals = $using:htServicePrincipals
             $function:resolveObjectIds = $using:funcResolveObjectIds
             $function:testGuid = $using:funcTestGuid
             #Write-Host "$($scope.type) $($scope.externalId -replace '.*/') - $($scope.id)"
