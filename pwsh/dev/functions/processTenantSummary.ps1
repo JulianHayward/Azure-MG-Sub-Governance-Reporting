@@ -9695,6 +9695,8 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>PE Subscription Name</th>
 <th>PE Subscription</th>
 <th>PE MGPath</th>
+<th>PE Type</th>
+<th>PE State</th>
 <th>Cross Subscription PE</th>
 
 <th class="uamiresaltbgc">Resource</th>
@@ -9734,7 +9736,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.PESubscriptionName)</td>
                         <td>$($result.PESubscription)</td>
                         <td style="min-width: 150px" class="breakwordall">$($result.PEMGPath)</td>
-                        <td>$($result.crossSubscriptionPE)</td>
+                        <td>$($result.PEConnectionType)</td>
+                        <td>$($result.PEConnectionState)</td>
+                        <td>$($result.CrossSubscriptionPE)</td>
 
                         <td>$($result.Resource)</td>
                         <td>$($result.ResourceType)</td>
@@ -9800,10 +9804,14 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             linked_filters: true,
             col_2: 'select',
             col_7: 'select',
+            col_8: 'select',
             col_9: 'select',
             col_11: 'select',
-            col_23: 'select',
+            col_13: 'select',
+            col_25: 'select',
             col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',

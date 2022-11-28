@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.54',
 
     [string]
-    $ProductVersion = 'v6_major_20221121_1',
+    $ProductVersion = 'v6_major_20221128_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -448,7 +448,7 @@ Param
 
     [Alias('ExludedResourceTypesDiagnosticsCapable')]
     [array]
-    $ExcludedResourceTypesDiagnosticsCapable = @('microsoft.web/certificates'),
+    $ExcludedResourceTypesDiagnosticsCapable = @('microsoft.web/certificates', 'microsoft.chaos/chaosexperiments'),
 
     [switch]
     $DoNotIncludeResourceGroupsOnPolicy,

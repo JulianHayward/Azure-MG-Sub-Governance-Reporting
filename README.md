@@ -59,17 +59,11 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Nov-21 / Major)
+__Changes__ (2022-Nov-28 / Major)
 
-* Network analysis - new features
-  * Subnets
-    * new parameter `-NetworkSubnetIPAddressUsageCriticalPercentage` warning level when certain percentage of IP addresses is used (default = 90%). Kudos to @ElanShudnow [AzSubnetAvailability - GitHub](https://github.com/ElanShudnow/AzureCode/tree/main/PowerShell/AzSubnetAvailability)
-  * Private Endpoints
-* Enhance Network feature - Virtual Networks and Virtual Network Peerings
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.54
-  * another retry mechanism fix 
-* Bugfix PIM eligible / Guest User - thanks @nanigan
-* Updated [API reference](#api-reference)
+* Network analysis - fix Private Endpoints feature
+  * Handle manual manualPrivateLinkServiceConnections
+* Update parameter `-ExcludedResourceTypesDiagnosticsCapable` default with `microsoft.chaos/chaosexperiments`
 
 Passed tests: Powershell Core 7.2.6 on Windows  
 Passed tests: Powershell Core 7.2.7 Azure DevOps hosted agent ubuntu-22.04  

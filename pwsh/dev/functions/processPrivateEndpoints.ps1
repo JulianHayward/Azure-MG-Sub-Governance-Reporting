@@ -41,7 +41,22 @@ function processPrivateEndpoints {
             $SubnetVNetResourceGroup = $hlper.ResourceGroup
         }
 
-        $resourceSubscriptionId = ($pe.properties.privateLinkServiceConnections.properties.privateLinkServiceId -split '/')[2]
+        if ($pe.properties.privateLinkServiceConnections.Count -gt 0) {
+            $resourceId = $pe.properties.privateLinkServiceConnections.properties.privateLinkServiceId
+            $targetSubresource = $pe.properties.privateLinkServiceConnections.properties.groupIds -join ', '
+            $resourceSplit = $pe.properties.privateLinkServiceConnections.properties.privateLinkServiceId -split '/'
+            $peConnectionType = 'direct'
+            $peConnectionState = $pe.properties.privateLinkServiceConnections.properties.privateLinkServiceConnectionState.status
+        }
+        if ($pe.properties.manualPrivateLinkServiceConnections.Count -gt 0) {
+            $resourceId = $pe.properties.manualPrivateLinkServiceConnections.properties.privateLinkServiceId
+            $targetSubresource = $pe.properties.manualPrivateLinkServiceConnections.properties.groupIds -join ', '
+            $resourceSplit = $pe.properties.manualPrivateLinkServiceConnections.properties.privateLinkServiceId -split '/'
+            $peConnectionType = 'manual'
+            $peConnectionState = $pe.properties.manualPrivateLinkServiceConnections.properties.privateLinkServiceConnectionState.status
+        }
+
+        $resourceSubscriptionId = $resourceSplit[2]
         $resourceSubscriptionName = 'n/a'
         $resourceMGPath = 'n/a'
         if ($htSubscriptionsMgPath.($resourceSubscriptionId)) {
@@ -57,7 +72,7 @@ function processPrivateEndpoints {
             $crossSubscriptionPE = $true
         }
 
-        $resourceSplit = $pe.properties.privateLinkServiceConnections.properties.privateLinkServiceId -split '/'
+
 
         $null = $script:arrayPrivateEndpointsEnriched.Add([PSCustomObject]@{
                 PEName                   = $pe.name
@@ -67,12 +82,14 @@ function processPrivateEndpoints {
                 PESubscriptionName       = $subscriptionName
                 PESubscription           = ($pe.id -split '/')[2]
                 PEMGPath                 = $MGPath
+                PEConnectionType         = $peConnectionType
+                PEConnectionState        = $peConnectionState
                 CrossSubscriptionPE      = $crossSubscriptionPE
 
                 Resource                 = $resourceSplit[8]
                 ResourceType             = "$($resourceSplit[6])/$($resourceSplit[7])"
-                ResourceId               = $pe.properties.privateLinkServiceConnections.properties.privateLinkServiceId
-                TargetSubresource        = $pe.properties.privateLinkServiceConnections.properties.groupIds -join ', '
+                ResourceId               = $resourceId
+                TargetSubresource        = $targetSubresource -join ', '
                 NICName                  = $pe.properties.customNetworkInterfaceName
                 FQDN                     = $pe.properties.customDnsConfigs.fqdn -join ', '
                 ipAddresses              = $pe.properties.customDnsConfigs.ipAddresses -join ', '

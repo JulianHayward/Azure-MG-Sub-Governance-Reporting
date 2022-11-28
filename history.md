@@ -4,6 +4,12 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Nov-28 / Major)
+
+* Network analysis - fix Private Endpoints feature
+  * Handle manual manualPrivateLinkServiceConnections
+* Update parameter `-ExcludedResourceTypesDiagnosticsCapable` default with `microsoft.chaos/chaosexperiments`
+
 __Changes__ (2022-Nov-21 / Major)
 
 * Network analysis - new features
