@@ -59,6 +59,12 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
+__Changes__ (2022-Nov-29 / Major)
+
+* Network analysis - fix TenantSummary info if feature is disabled (`-NoNetwork`)
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.55
+* Updated TenantSummary screenshot issue #148
+
 __Changes__ (2022-Nov-28 / Major)
 
 * Network analysis - fix Private Endpoints feature
@@ -276,7 +282,7 @@ HTML file
 __HierarchyMap__  
 ![alt text](img/HierarchyMap.png "HierarchyMap")  
 __TenantSummary__  
-![alt text](img/TenantSummary.png "TenantSummary")  
+![alt text](img/TenantSummary_20221129.png "TenantSummary")  
 __DefinitionInsights__  
 ![alt text](img/DefinitionInsights.png "DefinitionInsights") 
 __ScopeInsights__  

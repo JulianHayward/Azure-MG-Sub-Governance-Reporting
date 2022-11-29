@@ -9337,7 +9337,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Virtual Networks - Network Analysis disabled - </span><span class="info">parameter -NoNetwork = $($azAPICallConf['htParameters'].NoNetwork)</span></p>
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Subnets - Network Analysis disabled - </span><span class="info">parameter -NoNetwork = $($azAPICallConf['htParameters'].NoNetwork)</span></p>
 "@)
     }
     #endregion SUMMARYSubnets
@@ -9850,7 +9850,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@'
-    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Subnets</span></p>
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">No Private Endpoints</span></p>
 '@)
         }
         $endPrivateEndpoints = Get-Date
@@ -9858,7 +9858,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Virtual Networks - Network Analysis disabled - </span><span class="info">parameter -NoNetwork = $($azAPICallConf['htParameters'].NoNetwork)</span></p>
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">Private Endpoints - Network Analysis disabled - </span><span class="info">parameter -NoNetwork = $($azAPICallConf['htParameters'].NoNetwork)</span></p>
 "@)
     }
     #endregion SUMMARYPrivateEndpoints
