@@ -359,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.55',
+    $AzAPICallVersion = '1.1.57',
 
     [string]
-    $ProductVersion = 'v6_major_20221202_3',
+    $ProductVersion = 'v6_major_20221202_5',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -659,6 +659,7 @@ function addHtParameters {
         NoStorageAccountAccessAnalysis               = [bool]$NoStorageAccountAccessAnalysis
         GitHubActionsOIDC                            = [bool]$GitHubActionsOIDC
         NoNetwork                                    = [bool]$NoNetwork
+        ThrottleLimit                                = $ThrottleLimit
     }
     Write-Host 'htParameters:'
     $azAPICallConf['htParameters'] | Format-Table -AutoSize | Out-String
@@ -3267,8 +3268,11 @@ function getOrphanedResources {
             $subscriptions = '"{0}"' -f ($batch.Group.subscriptionId -join '","')
             $body = @"
 {
-"query": "$($queryDetail.query)",
-"subscriptions": [$($subscriptions)]
+    "query": "$($queryDetail.query)",
+    "subscriptions": [$($subscriptions)],
+    "options": {
+        "`$top": 100
+    }
 }
 "@
 
@@ -14361,7 +14365,7 @@ extensions: [{ name: 'sort' }]
 
             $htmlSUMMARYALZPolicyVersionChecker = $null
             $exemptionData4CSVExport = [System.Collections.ArrayList]@()
-            $alzPoliciesInTenantSorted = $alzPoliciesInTenant | Sort-Object -Property PolicyName, PolicyId, ALZPolicyName
+            $alzPoliciesInTenantSorted = $alzPoliciesInTenant | Sort-Object -Property PolicyName, PolicyId, ALZPolicyName, Type
             $htmlSUMMARYALZPolicyVersionChecker = foreach ($entry in $alzPoliciesInTenantSorted) {
                 if ([string]::IsNullOrWhiteSpace($entry.AzAdvertizerUrl)) {
                     $link = ''
@@ -28281,11 +28285,13 @@ function dataCollectionResources {
 
                 if ($htResourceProvidersRef.($resource.type)) {
                     $apiVersionToUse = $htResourceProvidersRef.($resource.type).APIFirst
-                    $currentTask = "Getting Resource for PSRule API-version: '{0}'; ResourceId: '{1}'" -f $apiVersionToUse, $resourceId
+                    $currentTask = "Getting Resource for PSRule API-version: '$apiVersionToUse'; ResourceType: '$($resource.type)'; ResourceId: '$resourceId'"
                     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($resourceId)?api-version=$apiVersionToUse"
                     $method = 'GET'
-                    $resource = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -listenOn Content -unhandledErrorAction Continue
-                    $null = $script:arrayResourcesWithProperties.Add($resource)
+                    $resourceResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -listenOn Content -unhandledErrorAction Continue
+                    if ($resourceResult -ne 'ResourceOrResourcegroupNotFound') {
+                        $null = $script:arrayResourcesWithProperties.Add($resourceResult)
+                    }
                 }
                 else {
                     Write-Host 'Please report at AzGovViz Repo ... No API-version matches!'
@@ -28293,7 +28299,7 @@ function dataCollectionResources {
                     Write-Host 'ResourceId:' $resourceId
                 }
 
-            } -ThrottleLimit 20
+            } -ThrottleLimit $azAPICallConf['htParameters'].ThrottleLimit
             #Write-Host 'arm resGet count:' $arrayResourcesWithProperties.Count
 
             #             $currentTask = "Getting Resources (ARG) for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"

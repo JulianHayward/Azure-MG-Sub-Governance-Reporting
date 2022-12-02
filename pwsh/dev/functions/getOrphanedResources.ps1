@@ -84,8 +84,11 @@ function getOrphanedResources {
             $subscriptions = '"{0}"' -f ($batch.Group.subscriptionId -join '","')
             $body = @"
 {
-"query": "$($queryDetail.query)",
-"subscriptions": [$($subscriptions)]
+    "query": "$($queryDetail.query)",
+    "subscriptions": [$($subscriptions)],
+    "options": {
+        "`$top": 100
+    }
 }
 "@
 

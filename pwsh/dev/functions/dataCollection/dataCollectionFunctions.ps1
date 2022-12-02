@@ -457,11 +457,13 @@ function dataCollectionResources {
 
                 if ($htResourceProvidersRef.($resource.type)) {
                     $apiVersionToUse = $htResourceProvidersRef.($resource.type).APIFirst
-                    $currentTask = "Getting Resource for PSRule API-version: '{0}'; ResourceId: '{1}'" -f $apiVersionToUse, $resourceId
+                    $currentTask = "Getting Resource for PSRule API-version: '$apiVersionToUse'; ResourceType: '$($resource.type)'; ResourceId: '$resourceId'"
                     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($resourceId)?api-version=$apiVersionToUse"
                     $method = 'GET'
-                    $resource = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -listenOn Content -unhandledErrorAction Continue
-                    $null = $script:arrayResourcesWithProperties.Add($resource)
+                    $resourceResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -listenOn Content -unhandledErrorAction Continue
+                    if ($resourceResult -ne 'ResourceOrResourcegroupNotFound') {
+                        $null = $script:arrayResourcesWithProperties.Add($resourceResult)
+                    }
                 }
                 else {
                     Write-Host 'Please report at AzGovViz Repo ... No API-version matches!'
@@ -469,7 +471,7 @@ function dataCollectionResources {
                     Write-Host 'ResourceId:' $resourceId
                 }
 
-            } -ThrottleLimit 20
+            } -ThrottleLimit $azAPICallConf['htParameters'].ThrottleLimit
             #Write-Host 'arm resGet count:' $arrayResourcesWithProperties.Count
 
             #             $currentTask = "Getting Resources (ARG) for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
