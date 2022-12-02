@@ -437,14 +437,62 @@ function dataCollectionResources {
         $subscriptionQuotaId
     )
 
-    $currentTask = "Getting ResourceTypes for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime&api-version=2021-04-01"
+    $currentTask = "Getting Resources for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime,properties&api-version=2021-04-01"
     $method = 'GET'
     $resourcesSubscriptionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    #Write-Host 'arm resList count:'$resourcesSubscriptionResult.Count
 
     #region PSRule
     if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
         if ($resourcesSubscriptionResult.Count -gt 0) {
+
+            $arrayResourcesWithProperties = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+            $resourcesSubscriptionResult | ForEach-Object -Parallel {
+                $resource = $_
+                $resourceId = $resource.id
+                $arrayResourcesWithProperties = $using:arrayResourcesWithProperties
+                $azAPICallConf = $using:azAPICallConf
+                $htResourceProvidersRef = $using:htResourceProvidersRef
+
+                if ($htResourceProvidersRef.($resource.type)) {
+                    $apiVersionToUse = $htResourceProvidersRef.($resource.type).APIFirst
+                    $currentTask = "Getting Resource for PSRule API-version: '{0}'; ResourceId: '{1}'" -f $apiVersionToUse, $resourceId
+                    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($resourceId)?api-version=$apiVersionToUse"
+                    $method = 'GET'
+                    $resource = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -listenOn Content -unhandledErrorAction Continue
+                    $null = $script:arrayResourcesWithProperties.Add($resource)
+                }
+                else {
+                    Write-Host 'Please report at AzGovViz Repo ... No API-version matches!'
+                    Write-Host 'ResourceType:' $resource.type
+                    Write-Host 'ResourceId:' $resourceId
+                }
+
+            } -ThrottleLimit 20
+            #Write-Host 'arm resGet count:' $arrayResourcesWithProperties.Count
+
+            #             $currentTask = "Getting Resources (ARG) for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
+            #             $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01"
+            #             $method = 'POST'
+
+            #             $body = @"
+            #                 {
+            #                     "query": "Resources",
+            #                     "subscriptions":[
+            #                         "$($scopeId)"
+            #                     ],
+            #                     "options": {
+            #                         "`$top": 100
+            #                       }
+            #                 }
+            # "@
+            #             $resourcesSubscriptionResultARG = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -body $body -listenOn Content
+
+            if ($resourcesSubscriptionResult.Count -ne $arrayResourcesWithProperties.Count) {
+                Write-Host " FYI: Getting Resources for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']  - ARM list count: $($resourcesSubscriptionResult.Count); ARG get count: $($arrayResourcesWithProperties.Count)"
+            }
+
             $startPSRule = Get-Date
             try {
                 <#
@@ -453,10 +501,10 @@ function dataCollectionResources {
                 Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')
                 #>
                 if ($azAPICallConf['htParameters'].PSRuleFailedOnly -eq $true) {
-                    $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue -Outcome Fail, Error
+                    $psruleResults = $arrayResourcesWithProperties | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue -Outcome Fail, Error
                 }
                 else {
-                    $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
+                    $psruleResults = $arrayResourcesWithProperties | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
                 }
             }
             catch {

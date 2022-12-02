@@ -4,6 +4,10 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Dec-02 / Major)
+
+* PSRule for Azure fix | Get resources using ARM API inside Foreach-Object -parallel loop
+
 __Changes__ (2022-Nov-29 / Major)
 
 * Network analysis - fix TenantSummary info if feature is disabled (`-NoNetwork`)

@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.55',
 
     [string]
-    $ProductVersion = 'v6_major_20221129_1',
+    $ProductVersion = 'v6_major_20221202_3',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -976,6 +976,26 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
     Write-Host 'Collecting custom data'
     $startDataCollection = Get-Date
+
+    $startGetRPs = Get-Date
+    $currentTask = 'Getting RPs'
+    Write-Host $currentTask
+    $uri = 'https://management.azure.com/providers?api-version=2021-04-01'
+    $method = 'GET'
+    $resourceProviders = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+
+    $htResourceProvidersRef = @{}
+    foreach ($resourceProvider in $resourceProviders) {
+        foreach ($resourceProviderResourceType in $resourceProvider.resourceTypes) {
+            $APIs = $resourceProviderResourceType.apiVersions | Sort-Object -Descending
+            $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)") = @{
+                APIFirst = $APIs | Select-Object -First 1
+                APIs     = $APIs
+            }
+        }
+    }
+    $endGetRPs = Get-Date
+    Write-Host "Getting RPs duration: $((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalMinutes) minutes ($((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalSeconds) seconds)"
 
     processDataCollection -mgId $ManagementGroupId
 
