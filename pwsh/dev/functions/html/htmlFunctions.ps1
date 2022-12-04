@@ -224,17 +224,17 @@ function processScopeInsights($mgChild, $mgChildOf) {
         }
 
         if ($mgName -eq $mgId) {
-            $mgNameAndOrId = "<b>$($mgName -replace '<', '&lt;' -replace '>', '&gt;')</b>"
+            $mgNameAndOrId = "$($mgName -replace '<', '&lt;' -replace '>', '&gt;')"
         }
         else {
-            $mgNameAndOrId = "<b>$($mgName -replace '<', '&lt;' -replace '>', '&gt;')</b> ($mgId)"
+            $mgNameAndOrId = "$($mgName -replace '<', '&lt;' -replace '>', '&gt;') ($mgId)"
         }
 
         $script:html += @"
 <button type="button" class="collapsible" id="table_$mgId">$levelSpacing<img class="imgMg $($classDefaultMG)" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg"> <span class="valignMiddle">$mgNameAndOrId $subInfo</span></button>
 <div class="content">
 <table class="bottomrow">
-<tr><td class="detailstd"><p><a href="#hierarchy_$mgId"><i class="fa fa-eye" aria-hidden="true" style="color: #0078df"></i> <i>Highlight Management Group in HierarchyMap</i></a></p></td></tr>
+<tr><td class="detailstd"><a href="#hierarchy_$mgId"><i class="fa fa-eye" aria-hidden="true" style="color: #0078df"></i> <i><span>Highlight Management Group in HierarchyMap</span></i></a></td></tr>
 "@
         if ($mgId -eq $defaultManagementGroupId) {
             $script:html += @'
@@ -275,7 +275,7 @@ function processScopeInsightsMGSubs($mgChild) {
             $script:html += @"
     <tr>
         <td class="detailstd">
-            <button type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionLinkedCount Subscriptions linked $subscriptionsOutOfScopelinkedDetail</p></button>
+            <button type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span>$subscriptionLinkedCount Subscriptions linked $subscriptionsOutOfScopelinkedDetail</span></button>
             <div class="content"><!--collapsible-->
 "@
         }
@@ -284,7 +284,7 @@ function processScopeInsightsMGSubs($mgChild) {
             if ($subscriptionLinkedCount -gt 1) {
                 if (-not $NoScopeInsights) {
                     $script:html += @"
-                <button type="button" class="collapsible"> <img class="imgSub" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle"><b>$($subEntry.subscription -replace '<', '&lt;' -replace '>', '&gt;')</b> ($($subEntry.subscriptionId))</span></button>
+                <button type="button" class="collapsible"> <img class="imgSub" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle">$($subEntry.subscription -replace '<', '&lt;' -replace '>', '&gt;') ($($subEntry.subscriptionId))</span></button>
                 <div class="contentSub"><!--collapsiblePerSub-->
 "@
                 }
@@ -293,14 +293,14 @@ function processScopeInsightsMGSubs($mgChild) {
             else {
                 if (-not $NoScopeInsights) {
                     $script:html += @"
-                <img class="imgSub" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle"><b>$($subEntry.subscription -replace '<', '&lt;' -replace '>', '&gt;')</b> ($($subEntry.subscriptionId))</span></button>
+                <img class="imgSub" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle">$($subEntry.subscription -replace '<', '&lt;' -replace '>', '&gt;') ($($subEntry.subscriptionId))</span></button>
 "@
                 }
             }
             if (-not $NoScopeInsights) {
                 $script:html += @"
                 <table class="subTable">
-                <tr><td class="detailstd"><p><a href="#hierarchySub_$mgChild"><i class="fa fa-eye" aria-hidden="true" style="color: #0078df"></i> <i>Highlight Subscription in HierarchyMap</i></a></p></td></tr>
+                <tr><td class="detailstd"><a href="#hierarchySub_$mgChild"><i class="fa fa-eye" aria-hidden="true" style="color: #0078df"></i> <i><span>Highlight Subscription in HierarchyMap</span></i></a></td></tr>
 "@
             }
 
@@ -333,7 +333,7 @@ function processScopeInsightsMGSubs($mgChild) {
             $script:html += @"
     <tr>
         <td class="detailstd">
-            <p><i class="fa fa-ban" aria-hidden="true"></i> $subscriptionLinkedCount Subscriptions linked $subscriptionsOutOfScopelinkedDetail</p>
+            <i class="fa fa-ban" aria-hidden="true"></i> <span>$subscriptionLinkedCount Subscriptions linked $subscriptionsOutOfScopelinkedDetail</span>
 "@
         }
     }

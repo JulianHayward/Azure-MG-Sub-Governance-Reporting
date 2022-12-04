@@ -437,14 +437,75 @@ function dataCollectionResources {
         $subscriptionQuotaId
     )
 
-    $currentTask = "Getting ResourceTypes for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime&api-version=2021-04-01"
+    #region resources LIST
+    $currentTask = "Getting Resources for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime,properties&api-version=2021-04-01"
     $method = 'GET'
     $resourcesSubscriptionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+    #Write-Host 'arm resList count:'$resourcesSubscriptionResult.Count
+    #endregion resources LIST
+
+    #region resources GET
+    if ($resourcesSubscriptionResult.Count -gt 0) {
+        $arrayResourcesWithProperties = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+        $resourcesSubscriptionResult | ForEach-Object -Parallel {
+            $resource = $_
+
+            #region using
+            $arrayResourcesWithProperties = $using:arrayResourcesWithProperties
+            $htResourceProvidersRef = $using:htResourceProvidersRef
+            $arrayPrivateEndPointsFromResourceProperties = $using:arrayPrivateEndPointsFromResourceProperties
+            $scopeId = $using:scopeId
+            $scopeDisplayName = $using:scopeDisplayName
+            $ChildMgParentNameChainDelimited = $using:ChildMgParentNameChainDelimited
+            $azAPICallConf = $using:azAPICallConf
+            #endregion using
+
+            if ($htResourceProvidersRef.($resource.type)) {
+                $apiVersionToUse = $htResourceProvidersRef.($resource.type).APIFirst
+                $currentTask = "Getting Resource for PSRule API-version: '$apiVersionToUse'; ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)'"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($resource.id)?api-version=$apiVersionToUse"
+                $method = 'GET'
+                $resourceResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -listenOn Content -unhandledErrorAction Continue
+
+                if ($resourceResult -ne 'ResourceOrResourcegroupNotFound') {
+                    $null = $script:arrayResourcesWithProperties.Add($resourceResult)
+
+                    if ($resourceResult.properties.privateEndpointConnections.Count -gt 0) {
+                        foreach ($privateEndpointConnection in $resourceResult.properties.privateEndpointConnections) {
+                            $resourceResultIdSplit = $resourceResult.id -split '/'
+                            $null = $script:arrayPrivateEndPointsFromResourceProperties.Add([PSCustomObject]@{
+                                    ResourceName              = $resourceResult.name
+                                    ResourceType              = $resourceResult.type
+                                    ResourceId                = $resourceResult.id
+                                    ResourceResourceGroup     = $resourceResultIdSplit[4]
+                                    ResourceSubscriptionId    = $scopeId
+                                    ResourceSubscriptionName  = $scopeDisplayName
+                                    ResourceMGPath            = $ChildMgParentNameChainDelimited
+                                    privateEndpointConnection = $privateEndpointConnection
+                                })
+                        }
+                    }
+
+                }
+            }
+            else {
+                Write-Host "Please report at AzGovViz Repo ... No API-version matches! ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)'"
+            }
+
+        } -ThrottleLimit $azAPICallConf['htParameters'].ThrottleLimit
+    }
+    #Write-Host 'arm resGet count:' $arrayResourcesWithProperties.Count
+    #endregion resources GET
+
+    if ($resourcesSubscriptionResult.Count -ne $arrayResourcesWithProperties.Count) {
+        Write-Host " FYI: Getting Resources for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']  - ARM list count: $($resourcesSubscriptionResult.Count); ARG get count: $($arrayResourcesWithProperties.Count)"
+    }
 
     #region PSRule
     if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
         if ($resourcesSubscriptionResult.Count -gt 0) {
+
             $startPSRule = Get-Date
             try {
                 <#
@@ -453,10 +514,10 @@ function dataCollectionResources {
                 Import-Module (Join-Path $path -ChildPath 'PSRule.Rules.Azure-nodeps.psd1')
                 #>
                 if ($azAPICallConf['htParameters'].PSRuleFailedOnly -eq $true) {
-                    $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue -Outcome Fail, Error
+                    $psruleResults = $arrayResourcesWithProperties | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue -Outcome Fail, Error
                 }
                 else {
-                    $psruleResults = $resourcesSubscriptionResult | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
+                    $psruleResults = $arrayResourcesWithProperties | Invoke-PSRule -Module psrule.rules.Azure -As Detail -Culture en-us -WarningAction Ignore -ErrorAction SilentlyContinue
                 }
             }
             catch {

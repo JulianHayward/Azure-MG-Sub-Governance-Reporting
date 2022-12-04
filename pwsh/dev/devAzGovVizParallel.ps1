@@ -359,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.55',
+    $AzAPICallVersion = '1.1.58',
 
     [string]
-    $ProductVersion = 'v6_major_20221129_1',
+    $ProductVersion = 'v6_major_20221204_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -914,6 +914,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htDefenderEmailContacts = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
     $arrayVNets = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayPrivateEndPoints = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayPrivateEndPointsFromResourceProperties = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $htUnknownTenantsForSubscription = @{}
 }
 
 if (-not $HierarchyMapOnly) {
@@ -976,6 +978,26 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
     Write-Host 'Collecting custom data'
     $startDataCollection = Get-Date
+
+    $startGetRPs = Get-Date
+    $currentTask = 'Getting Tenant Resource Providers'
+    Write-Host $currentTask
+    $uri = 'https://management.azure.com/providers?api-version=2021-04-01'
+    $method = 'GET'
+    $resourceProviders = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+
+    $htResourceProvidersRef = @{}
+    foreach ($resourceProvider in $resourceProviders) {
+        foreach ($resourceProviderResourceType in $resourceProvider.resourceTypes) {
+            $APIs = $resourceProviderResourceType.apiVersions | Sort-Object -Descending
+            $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)") = @{
+                APIFirst = $APIs | Select-Object -First 1
+                APIs     = $APIs
+            }
+        }
+    }
+    $endGetRPs = Get-Date
+    Write-Host " Getting Tenant Resource Providers duration: $((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalMinutes) minutes ($((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalSeconds) seconds)"
 
     processDataCollection -mgId $ManagementGroupId
 
@@ -1454,7 +1476,7 @@ $html = @"
         link.media = "screen,print";
         document.getElementsByTagName( "head" )[0].appendChild( link );
     </script>
-    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_048.css">
+    <link rel="stylesheet" type="text/css" href="https://www.azadvertizer.net/azgovvizv4/css/azgovvizmain_004_052.css">
     <script src="https://www.azadvertizer.net/azgovvizv4/js/jquery-3.6.0.min.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/jquery-ui-1.13.0.min.js"></script>
     <script type="text/javascript" src="https://www.azadvertizer.net/azgovvizv4/js/highlight_v004_002.js"></script>

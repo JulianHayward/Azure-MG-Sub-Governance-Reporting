@@ -186,11 +186,31 @@ function processStorageAccountAnalysis {
             }
 
             if ([string]::IsNullOrWhiteSpace($storageAccount.properties.publicNetworkAccess)) {
-                $publicNetworkAccess = 'likely enabled'
+                $publicNetworkAccess = 'likely Enabled'
             }
             else {
                 $publicNetworkAccess = $storageAccount.properties.publicNetworkAccess
             }
+
+            if ([string]::IsNullOrWhiteSpace($storageAccount.properties.allowedCopyScope)) {
+                $allowedCopyScope = 'From any Storage Account'
+            }
+            else {
+                $allowedCopyScope = $storageAccount.properties.allowedCopyScope
+            }
+
+            if ([string]::IsNullOrWhiteSpace($storageAccount.properties.allowCrossTenantReplication)) {
+                if ($allowedCopyScope -ne 'From any Storage Account') {
+                    $allowCrossTenantReplication = "likely False (allowedCopyScope=$allowedCopyScope)"
+                }
+                else {
+                    $allowCrossTenantReplication = 'likely True'
+                }
+            }
+            else {
+                $allowCrossTenantReplication = $storageAccount.properties.allowCrossTenantReplication
+            }
+
 
             $temp = [System.Collections.ArrayList]@()
             $null = $temp.Add([PSCustomObject]@{
@@ -228,6 +248,8 @@ function processStorageAccountAnalysis {
                     minimumTlsVersion                 = $storageAccount.properties.minimumTlsVersion
                     allowSharedKeyAccess              = $allowSharedKeyAccess
                     requireInfrastructureEncryption   = $requireInfrastructureEncryption
+                    allowedCopyScope                  = $allowedCopyScope
+                    allowCrossTenantReplication       = $allowCrossTenantReplication
                 })
 
             if ($StorageAccountAccessAnalysisSubscriptionTags[0] -ne 'undefined' -and $StorageAccountAccessAnalysisSubscriptionTags.Count -gt 0) {

@@ -355,6 +355,8 @@ function processDataCollection {
                 $htDefenderEmailContacts = $using:htDefenderEmailContacts
                 $arrayVNets = $using:arrayVNets
                 $arrayPrivateEndPoints = $using:arrayPrivateEndPoints
+                $htResourceProvidersRef = $using:htResourceProvidersRef
+                $arrayPrivateEndPointsFromResourceProperties = $using:arrayPrivateEndPointsFromResourceProperties
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation

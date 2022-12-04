@@ -38,6 +38,7 @@ function addHtParameters {
         NoStorageAccountAccessAnalysis               = [bool]$NoStorageAccountAccessAnalysis
         GitHubActionsOIDC                            = [bool]$GitHubActionsOIDC
         NoNetwork                                    = [bool]$NoNetwork
+        ThrottleLimit                                = $ThrottleLimit
     }
     Write-Host 'htParameters:'
     $azAPICallConf['htParameters'] | Format-Table -AutoSize | Out-String

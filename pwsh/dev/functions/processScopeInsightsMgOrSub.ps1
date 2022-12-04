@@ -37,8 +37,8 @@ function processScopeInsightsMgOrSub($mgOrSub, $mgChild, $subscriptionId, $subsc
                     })
             }
             $resourcesAllChildSubscriptions.count_ | ForEach-Object { $resourcesAllChildSubscriptionTotal += $_ }
-            $resourcesAllChildSubscriptionResourceTypeCount = (($resourcesAllChildSubscriptions | Sort-Object -Property type -Unique) | measure-object).count
-            $resourcesAllChildSubscriptionLocationCount = (($resourcesAllChildSubscriptions | Sort-Object -Property location -Unique) | measure-object).count
+            $resourcesAllChildSubscriptionResourceTypeCount = (($resourcesAllChildSubscriptions | Sort-Object -Property type -Unique) | Measure-Object).count
+            $resourcesAllChildSubscriptionLocationCount = (($resourcesAllChildSubscriptions | Sort-Object -Property location -Unique) | Measure-Object).count
         }
         #childrenMgInfo
         $mgAllChildMgs = [System.Collections.ArrayList]@()
@@ -140,16 +140,16 @@ function processScopeInsightsMgOrSub($mgOrSub, $mgChild, $subscriptionId, $subsc
         }
 
         [void]$htmlScopeInsights.AppendLine(@"
-<tr><td class="detailstd"><p>Subscription Name: <b>$($subscriptionDetailsReleatedQuery.subscription -replace '<', '&lt;' -replace '>', '&gt;')</b></p></td></tr>
-<tr><td class="detailstd"><p>Subscription Id: <b>$($subscriptionDetailsReleatedQuery.subscriptionId)</b></p></td></tr>
-<tr><td class="detailstd"><p>Subscription Path: $subPath</p></td></tr>
-<tr><td class="detailstd"><p>State: $subscriptionState</p></td></tr>
-<tr><td class="detailstd"><p>QuotaId: $subscriptionQuotaId</p></td></tr>
-<tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud Secure Score: $subscriptionASCPoints <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank" rel="noopener" rel="noopener">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank" rel="noopener" rel="noopener">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://docs.microsoft.com/en-us/azure/security-center/secure-score-security-controls#how-your-secure-score-is-calculated" target="_blank" rel="noopener" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p></td></tr>
-<tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud 'Email notifications' state: $MDfCEmailNotificationsState</p></td></tr>
-<tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud 'Email notifications' severity: $MDfCEmailNotificationsSeverity</p></td></tr>
-<tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud 'Email notifications' roles: $MDfCEmailNotificationsRoles</p></td></tr>
-<tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud 'Email notifications' emails: $MDfCEmailNotificationsEmails</p></td></tr>
+<tr><td class="detailstd">Subscription Name: <b>$($subscriptionDetailsReleatedQuery.subscription -replace '<', '&lt;' -replace '>', '&gt;')</b></td></tr>
+<tr><td class="detailstd">Subscription Id: <b>$($subscriptionDetailsReleatedQuery.subscriptionId)</b></td></tr>
+<tr><td class="detailstd">Subscription Path: $subPath</td></tr>
+<tr><td class="detailstd">State: $subscriptionState</td></tr>
+<tr><td class="detailstd">QuotaId: $subscriptionQuotaId</td></tr>
+<tr><td class="detailstd"><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud Secure Score: $subscriptionASCPoints <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank" rel="noopener" rel="noopener">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank" rel="noopener" rel="noopener">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://docs.microsoft.com/en-us/azure/security-center/secure-score-security-controls#how-your-secure-score-is-calculated" target="_blank" rel="noopener" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></td></tr>
+<tr><td class="detailstd"><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud 'Email notifications' state: $MDfCEmailNotificationsState</td></tr>
+<tr><td class="detailstd"><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud 'Email notifications' severity: $MDfCEmailNotificationsSeverity</td></tr>
+<tr><td class="detailstd"><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud 'Email notifications' roles: $MDfCEmailNotificationsRoles</td></tr>
+<tr><td class="detailstd"><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud 'Email notifications' emails: $MDfCEmailNotificationsEmails</td></tr>
 <tr><td class="detailstd">
 "@)
 
@@ -173,7 +173,7 @@ function processScopeInsightsMgOrSub($mgOrSub, $mgChild, $subscriptionId, $subsc
             $htmlTableId = "ScopeInsights_DefenderPlans_$($subscriptionId -replace '-','_')"
             $randomFunctionName = "func_$htmlTableId"
             [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-shield" aria-hidden="true" style="color: #0078df"></i> Microsoft Defender for Cloud plans <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-shield" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">Microsoft Defender for Cloud plans</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></button>
 <div class="content contentSISub">
 "@)
 
@@ -286,19 +286,19 @@ tf.init();}}
             if ($subscriptionSkippedMDfC.Count -gt 0) {
                 if ($subscriptionSkippedMDfC.reason -eq 'SubScriptionNotRegistered') {
                     [void]$htmlScopeInsights.AppendLine(@"
-                    <p><i class=`"fa fa-shield`" aria-hidden=`"true`"></i> Microsoft Defender for Cloud plans - Subscription skipped ($($subscriptionSkippedMDfC.reason)) (ResourceProvider: Microsoft.Security) <a class=`"externallink`" href=`"https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider`" target=`"_blank`" rel=`"noopener`">docs <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a></p>
+                    <i class=`"fa fa-shield`" aria-hidden=`"true`"></i> Microsoft Defender for Cloud plans - Subscription skipped ($($subscriptionSkippedMDfC.reason)) (ResourceProvider: Microsoft.Security) <a class=`"externallink`" href=`"https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider`" target=`"_blank`" rel=`"noopener`">docs <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>
 "@)
                 }
                 else {
                     [void]$htmlScopeInsights.AppendLine(@"
-                    <p><i class=`"fa fa-shield`" aria-hidden=`"true`"></i> Microsoft Defender for Cloud plans - Subscription skipped ($($subscriptionSkippedMDfC.reason))</p>
+                    <i class=`"fa fa-shield`" aria-hidden=`"true`"></i> Microsoft Defender for Cloud plans - Subscription skipped ($($subscriptionSkippedMDfC.reason))
 "@)
                 }
 
             }
             else {
                 [void]$htmlScopeInsights.AppendLine(@'
-<p><i class="fa fa-shield" aria-hidden="true"></i> No Microsoft Defender for Cloud plans <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+<i class="fa fa-shield" aria-hidden="true"></i> No Microsoft Defender for Cloud plans <a class="externallink" href="https://docs.microsoft.com/en-us/azure/defender-for-cloud/enhanced-security-features-overview" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
 '@)
             }
         }
@@ -315,7 +315,7 @@ tf.init();}}
             $htmlTableId = "ScopeInsights_DiagnosticsSub_$($subscriptionId -replace '-','_')"
             $randomFunctionName = "func_$htmlTableId"
             [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $diagnosticsSubCount Subscription Diagnostic settings</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$diagnosticsSubCount Subscription Diagnostic settings</span></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -440,7 +440,7 @@ tf.init();}}
         }
         else {
             [void]$htmlScopeInsights.AppendLine(@'
-<p><i class="fa fa-ban" aria-hidden="true"></i> No Subscription Diagnostic settings <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/essentials/quick-collect-activity-log-portal#create-diagnostic-setting" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+<i class="fa fa-ban" aria-hidden="true"></i> No Subscription Diagnostic settings <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-monitor/essentials/quick-collect-activity-log-portal#create-diagnostic-setting" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
 '@)
         }
         [void]$htmlScopeInsights.AppendLine(@'
@@ -458,7 +458,7 @@ tf.init();}}
             $randomFunctionName = "func_$htmlTableId"
             [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
-<p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $tagsSubscriptionCount Subscription Tags | Limit: ($tagsSubscriptionCount/$LimitTagsSubscription)</p></button>
+<i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tagsSubscriptionCount Subscription Tags | Limit: ($tagsSubscriptionCount/$LimitTagsSubscription)</span></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -529,7 +529,7 @@ extensions: [{ name: 'sort' }]
         }
         else {
             [void]$htmlScopeInsights.AppendLine(@"
-            <p><i class="fa fa-ban" aria-hidden="true"></i> $tagsSubscriptionCount Subscription Tags</p>
+            <i class="fa fa-ban" aria-hidden="true"></i> $tagsSubscriptionCount Subscription Tags
 "@)
         }
         [void]$htmlScopeInsights.AppendLine(@'
@@ -560,7 +560,7 @@ extensions: [{ name: 'sort' }]
             $randomFunctionName = "func_$htmlTableId"
             [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
-<p><i class="fa fa-check-circle blue" aria-hidden="true"></i> Tag Name Usage ($tagNamesUniqueCount unique Tag Names applied at $($tagNamesUsedInScopes)</p></button>
+<i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Tag Name Usage ($tagNamesUniqueCount unique Tag Names applied at $($tagNamesUsedInScopes)</span></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Resource naming and tagging decision guide</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/decision-guides/resource-tagging" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -636,7 +636,7 @@ extensions: [{ name: 'sort' }]
         }
         else {
             [void]$htmlScopeInsights.AppendLine(@"
-            <p><i class="fa fa-ban" aria-hidden="true"></i> Tag Name Usage ($tagsUsageCount Tags) <a class="externallink" href="https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/decision-guides/resource-tagging" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+            <i class="fa fa-ban" aria-hidden="true"></i> Tag Name Usage ($tagsUsageCount Tags) <a class="externallink" href="https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/decision-guides/resource-tagging" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
 "@)
         }
         [void]$htmlScopeInsights.AppendLine(@'
@@ -661,7 +661,7 @@ extensions: [{ name: 'sort' }]
                 $currency = $htAzureConsumptionSubscriptions.($subscriptionId).Currency
                 $consumedServiceCount = ($consumptionData.ResourceType | Sort-Object -Unique | Measure-Object).Count
                 $resourceCount = ($consumptionData.ResourceId | Sort-Object -Unique | Measure-Object).Count
-                $subConsumptionDataGrouped = $consumptionData | Group-Object -property ResourceType, ChargeType, MeterCategory
+                $subConsumptionDataGrouped = $consumptionData | Group-Object -Property ResourceType, ChargeType, MeterCategory
 
                 foreach ($consumptionline in $subConsumptionDataGrouped) {
 
@@ -697,7 +697,7 @@ extensions: [{ name: 'sort' }]
                 $htmlTableId = "ScopeInsights_Consumption_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-credit-card blue" aria-hidden="true"></i> Total cost $($arrayTotalCostSummarySub -join ', ') last $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)</button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-credit-card blue" aria-hidden="true"></i> <span class="valignMiddle">Total cost $($arrayTotalCostSummarySub -join ', ') last $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)</span></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -780,13 +780,13 @@ tf.init();}}
             }
             else {
                 [void]$htmlScopeInsights.AppendLine(@'
-<p><i class="fa fa-credit-card" aria-hidden="true"></i> <span class="valignMiddle">No Consumption data available</span></p>
+<i class="fa fa-credit-card" aria-hidden="true"></i> No Consumption data available
 '@)
             }
         }
         else {
             [void]$htmlScopeInsights.AppendLine(@'
-<p><i class="fa fa-credit-card" aria-hidden="true"></i> <span class="valignMiddle">No Consumption data available as switch parameter -DoAzureConsumption was not applied</span></p>
+<i class="fa fa-credit-card" aria-hidden="true"></i> No Consumption data available as switch parameter -DoAzureConsumption was not applied
 '@)
         }
 
@@ -802,12 +802,12 @@ tf.init();}}
         #region ScopeInsightsResourceGroups
         if ($subscriptionResourceGroupsCount -gt 0) {
             [void]$htmlScopeInsights.AppendLine(@"
-    <p><i class="fa fa-check-circle" aria-hidden="true"></i> $subscriptionResourceGroupsCount Resource Groups | Limit: ($subscriptionResourceGroupsCount/$LimitResourceGroups)</p>
+    <i class="fa fa-check-circle" aria-hidden="true"></i> $subscriptionResourceGroupsCount Resource Groups | Limit: ($subscriptionResourceGroupsCount/$LimitResourceGroups)
 "@)
         }
         else {
             [void]$htmlScopeInsights.AppendLine(@"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> $subscriptionResourceGroupsCount Resource Groups</p>
+    <i class="fa fa-ban" aria-hidden="true"></i> $subscriptionResourceGroupsCount Resource Groups
 "@)
         }
         [void]$htmlScopeInsights.AppendLine(@'
@@ -897,7 +897,7 @@ extensions: [{ name: 'sort' }]
                 }
                 else {
                     [void]$htmlScopeInsights.AppendLine(@"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($htResourceProvidersAll.Keys).count) Resource Providers</span></p>
+    <i class="fa fa-ban" aria-hidden="true"></i> $(($htResourceProvidersAll.Keys).count) Resource Providers
 "@)
                 }
                 [void]$htmlScopeInsights.AppendLine(@'
@@ -918,7 +918,7 @@ extensions: [{ name: 'sort' }]
 
             [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
-<p><i class="fa fa-cube" aria-hidden="true" style="color: #0078df"></i> $tfCount enabled Subscription Features</p></button>
+<i class="fa fa-cube" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$tfCount enabled Subscription Features</span></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Set up preview features in Azure subscription</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/preview-features" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
 <table id="$htmlTableId" class="$cssClass">
@@ -986,7 +986,7 @@ extensions: [{ name: 'sort' }]
         }
         else {
             [void]$htmlScopeInsights.AppendLine(@'
-            <p><i class="fa fa-ban" aria-hidden="true"></i> 0 enabled Subscription Features <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/preview-features" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+            <i class="fa fa-ban" aria-hidden="true"></i> 0 enabled Subscription Features <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/preview-features" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
 '@)
         }
         [void]$htmlScopeInsights.AppendLine(@'
@@ -1011,7 +1011,7 @@ extensions: [{ name: 'sort' }]
 
             [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
-<p><i class="fa fa-check-circle blue" aria-hidden="true"></i> Resource Locks</p></button>
+<i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Locks</span></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Considerations before applying locks</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources#considerations-before-applying-locks" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
 <table id="$htmlTableId" class="$cssClass">
@@ -1081,7 +1081,7 @@ extensions: [{ name: 'sort' }]
         }
         else {
             [void]$htmlScopeInsights.AppendLine(@'
-            <p><i class="fa fa-ban" aria-hidden="true"></i> 0 Resource Locks <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources#considerations-before-applying-locks" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+            <i class="fa fa-ban" aria-hidden="true"></i> 0 Resource Locks <a class="externallink" href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources#considerations-before-applying-locks" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
 '@)
         }
         [void]$htmlScopeInsights.AppendLine(@'
@@ -1097,9 +1097,9 @@ extensions: [{ name: 'sort' }]
     if ($mgOrSub -eq 'mg') {
 
         [void]$htmlScopeInsights.AppendLine(@"
-<tr><td class="detailstd"><p>$(($mgAllChildMgs).count -1) ManagementGroups below this scope</p></td></tr>
-<tr><td class="detailstd"><p>$(($mgAllChildSubscriptions).count) Subscriptions below this scope</p></td></tr>
-<tr><td class="detailstd"><p><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud Secure Score: $managementGroupASCPoints <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank" rel="noopener">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank" rel="noopener">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://docs.microsoft.com/en-us/azure/security-center/secure-score-security-controls#how-your-secure-score-is-calculated" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p></td></tr>
+<tr><td class="detailstd">$(($mgAllChildMgs).count -1) ManagementGroups below this scope</td></tr>
+<tr><td class="detailstd">$(($mgAllChildSubscriptions).count) Subscriptions below this scope</td></tr>
+<tr><td class="detailstd"><i class="fa fa-shield" aria-hidden="true"></i> Microsoft Defender for Cloud Secure Score: $managementGroupASCPoints <a class="externallink" href="https://www.youtube.com/watch?v=2EMnzxdqDhA" target="_blank" rel="noopener">Video <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://techcommunity.microsoft.com/t5/azure-security-center/security-controls-in-azure-security-center-enable-endpoint/ba-p/1624653" target="_blank" rel="noopener">Blog <i class="fa fa-external-link" aria-hidden="true"></i></a>, <a class="externallink" href="https://docs.microsoft.com/en-us/azure/security-center/secure-score-security-controls#how-your-secure-score-is-calculated" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></td></tr>
 <tr><td class="detailstd">
 "@)
 
@@ -1110,7 +1110,7 @@ extensions: [{ name: 'sort' }]
             $htmlTableId = "ScopeInsights_DiagnosticsMg_$($mgChild -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
             $randomFunctionName = "func_$htmlTableId"
             [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $diagnosticsMgCount Management Group Diagnostic settings</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$diagnosticsMgCount Management Group Diagnostic settings</span></button>
 <div class="content contentSIMG">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -1235,7 +1235,7 @@ extensions: [{ name: 'sort' }]
         }
         else {
             [void]$htmlScopeInsights.AppendLine(@'
-    <p><i class="fa fa-ban" aria-hidden="true"></i> No Management Group Diagnostic settings <a class="externallink" href="https://docs.microsoft.com/en-us/rest/api/monitor/managementgroupdiagnosticsettings/createorupdate" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+    <i class="fa fa-ban" aria-hidden="true"></i> No Management Group Diagnostic settings <a class="externallink" href="https://docs.microsoft.com/en-us/rest/api/monitor/managementgroupdiagnosticsettings/createorupdate" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
 '@)
         }
         #endregion ScopeInsightsDiagnosticsMg
@@ -1254,10 +1254,10 @@ extensions: [{ name: 'sort' }]
                 if (($consumptionData | Measure-Object).Count -gt 0) {
                     $arrayTotalCostSummaryMg = @()
                     $arrayConsumptionData = [System.Collections.ArrayList]@()
-                    $consumptionDataGroupedByCurrency = $consumptionData | Group-Object -property Currency
+                    $consumptionDataGroupedByCurrency = $consumptionData | Group-Object -Property Currency
                     foreach ($currency in $consumptionDataGroupedByCurrency) {
                         $totalCost = 0
-                        $tenantSummaryConsumptionDataGrouped = $currency.group | Group-Object -property ResourceType, ChargeType, MeterCategory
+                        $tenantSummaryConsumptionDataGrouped = $currency.group | Group-Object -Property ResourceType, ChargeType, MeterCategory
                         $subsCount = ($tenantSummaryConsumptionDataGrouped.group.subscriptionId | Sort-Object -Unique).Count
                         $consumedServiceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceType | Sort-Object -Unique).Count
                         $resourceCount = ($tenantSummaryConsumptionDataGrouped.group.ResourceId | Sort-Object -Unique).Count
@@ -1296,7 +1296,7 @@ extensions: [{ name: 'sort' }]
                     $htmlTableId = "ScopeInsights_Consumption_$($mgChild -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
                     $randomFunctionName = "func_$htmlTableId"
                     [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-credit-card blue" aria-hidden="true"></i> Total cost $($arrayTotalCostSummaryMg -join "$CsvDelimiterOpposite ") last $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)</button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-credit-card blue" aria-hidden="true"></i> <span class="valignMiddle">Total cost $($arrayTotalCostSummaryMg -join "$CsvDelimiterOpposite ") last $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)</span></button>
 <div class="content contentSIMG">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV
 <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> |
@@ -1384,13 +1384,13 @@ tf.init();}}
                 }
                 else {
                     [void]$htmlScopeInsights.AppendLine(@'
-<p><i class="fa fa-credit-card" aria-hidden="true"></i> <span class="valignMiddle">No Consumption data available for Subscriptions under this ManagementGroup</span></p>
+<i class="fa fa-credit-card" aria-hidden="true"></i> No Consumption data available for Subscriptions under this ManagementGroup
 '@)
                 }
             }
             else {
                 [void]$htmlScopeInsights.AppendLine(@'
-<p><i class="fa fa-credit-card" aria-hidden="true"></i> <span class="valignMiddle">No Consumption data available</span></p>
+<i class="fa fa-credit-card" aria-hidden="true"></i> No Consumption data available
 '@)
             }
 
@@ -1401,7 +1401,7 @@ tf.init();}}
         }
         else {
             [void]$htmlScopeInsights.AppendLine(@'
-<p><i class="fa fa-credit-card" aria-hidden="true"></i> <span class="valignMiddle">No Consumption data available as switch parameter -DoAzureConsumption was not applied</span></p>
+<i class="fa fa-credit-card" aria-hidden="true"></i> <span class="valignMiddle">No Consumption data available as switch parameter -DoAzureConsumption was not applied</span>
 '@)
         }
         #endregion ScopeInsightsConsumptionMg
@@ -1422,7 +1422,7 @@ tf.init();}}
                 $htmlTableId = "ScopeInsights_Resources_$($mgChild -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $resourcesAllChildSubscriptionResourceTypeCount ResourceTypes ($resourcesAllChildSubscriptionTotal Resources) in $resourcesAllChildSubscriptionLocationCount Locations (all Subscriptions below this scope)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$resourcesAllChildSubscriptionResourceTypeCount ResourceTypes ($resourcesAllChildSubscriptionTotal Resources) in $resourcesAllChildSubscriptionLocationCount Locations (all Subscriptions below this scope)</span></button>
 <div class="content contentSIMG">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -1496,7 +1496,7 @@ extensions: [{ name: 'sort' }]
             }
             else {
                 [void]$htmlScopeInsights.AppendLine(@"
-            <p><i class="fa fa-ban" aria-hidden="true"></i> $resourcesAllChildSubscriptionResourceTypeCount ResourceTypes (all Subscriptions below this scope)</p>
+            <i class="fa fa-ban" aria-hidden="true"></i> $resourcesAllChildSubscriptionResourceTypeCount ResourceTypes (all Subscriptions below this scope)
 "@)
             }
             [void]$htmlScopeInsights.AppendLine(@'
@@ -1511,7 +1511,7 @@ extensions: [{ name: 'sort' }]
                 $htmlTableId = "ScopeInsights_Resources_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $resourcesSubscriptionResourceTypeCount ResourceTypes ($resourcesSubscriptionTotal Resources) in $resourcesSubscriptionLocationCount Locations</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$resourcesSubscriptionResourceTypeCount ResourceTypes ($resourcesSubscriptionTotal Resources) in $resourcesSubscriptionLocationCount Locations</span></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -1585,7 +1585,7 @@ extensions: [{ name: 'sort' }]
             }
             else {
                 [void]$htmlScopeInsights.AppendLine(@"
-            <p><i class="fa fa-ban" aria-hidden="true"></i> $resourcesSubscriptionResourceTypeCount ResourceTypes</p>
+            <i class="fa fa-ban" aria-hidden="true"></i> $resourcesSubscriptionResourceTypeCount ResourceTypes
 "@)
             }
             [void]$htmlScopeInsights.AppendLine(@'
@@ -1608,7 +1608,7 @@ extensions: [{ name: 'sort' }]
                 $htmlTableId = "ScopeInsights_CAFResourceNamingALL_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-star-o" aria-hidden="true" style="color: #0078df"></i> CAF Naming Recommendation Compliance</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-star-o" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">CAF Naming Recommendation Compliance</span></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">CAF - Recommended abbreviations for Azure resource types</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> Resource details can be found in the CSV output *_ResourcesAll.csv<br>
@@ -1642,7 +1642,7 @@ extensions: [{ name: 'sort' }]
                     $passed = 0
                     $failed = 0
                     foreach ($result in $resourceTypeGroupedByCAFResourceNamingResult) {
-                        $resultNameSplitted = $result.Name -split ", "
+                        $resultNameSplitted = $result.Name -split ', '
                         if ($resultNameSplitted[0] -eq 'passed') {
                             $passed = $result.Count
                         }
@@ -1723,9 +1723,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 "@)
             }
             else {
-                [void]$htmlScopeInsights.AppendLine(@"
-                <p><i class="fa fa-ban" aria-hidden="true"></i> No CAF Naming Recommendation Compliance data available</p>
-"@)
+                [void]$htmlScopeInsights.AppendLine(@'
+                <i class="fa fa-ban" aria-hidden="true"></i> No CAF Naming Recommendation Compliance data available
+'@)
             }
 
             [void]$htmlScopeInsights.AppendLine(@'
@@ -1752,13 +1752,13 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 }
                 else {
                     $orphanedIncludingCost = $false
-                    $hintTableTH = ""
+                    $hintTableTH = ''
                 }
 
                 $htmlTableId = "ScopeInsights_OrphanedResources_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-trash-o" aria-hidden="true" style="color: #0078df"></i> $orphanedResourcesThisSubscriptionCount Orphaned Resources ($orphanedResourcesThisSubscriptionGroupedByTypeCount ResourceTypes)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-trash-o" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$orphanedResourcesThisSubscriptionCount Orphaned Resources ($orphanedResourcesThisSubscriptionGroupedByTypeCount ResourceTypes)</span></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">'Azure Orphan Resources' ARG queries and workbooks</span> <a class="externallink" href="https://github.com/dolevshor/azure-orphan-resources" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> Resource details can be found in the CSV output *_ResourcesOrphaned.csv<br>
@@ -1779,23 +1779,23 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 $htmlScopeInsightsOrphanedResources = foreach ($resourceType in $orphanedResourcesThisSubscriptionGroupedByType | Sort-Object -Property Name) {
 
                     if ($orphanedIncludingCost) {
-                        if ($resourceType.Group.Intent[0] -eq "cost savings") {
+                        if ($resourceType.Group.Intent[0] -eq 'cost savings') {
                             $orphCost = ($resourceType.Group.Cost | Measure-Object -Sum).Sum
                             $orphCurrency = $resourceType.Group.Currency[0]
                         }
                         else {
-                            $orphCost = ""
-                            $orphCurrency = ""
+                            $orphCost = ''
+                            $orphCurrency = ''
                         }
                     }
                     else {
-                        if ($resourceType.Group.Intent[0] -eq "cost savings") {
+                        if ($resourceType.Group.Intent[0] -eq 'cost savings') {
                             $orphCost = "<span class=`"info`">use parameter <b>-DoAzureConsumption</b> to show potential savings</span>"
-                            $orphCurrency = ""
+                            $orphCurrency = ''
                         }
                         else {
-                            $orphCost = ""
-                            $orphCurrency = ""
+                            $orphCost = ''
+                            $orphCurrency = ''
                         }
                     }
 
@@ -1863,15 +1863,15 @@ extensions: [{ name: 'sort' }]
 "@)
             }
             else {
-                [void]$htmlScopeInsights.AppendLine(@"
-                <p><i class="fa fa-ban" aria-hidden="true"></i> 0 Orphaned Resources</p>
-"@)
+                [void]$htmlScopeInsights.AppendLine(@'
+                <i class="fa fa-ban" aria-hidden="true"></i> 0 Orphaned Resources
+'@)
             }
         }
         else {
-            [void]$htmlScopeInsights.AppendLine(@"
-            <p><i class="fa fa-ban" aria-hidden="true"></i> 0 Orphaned Resources</p>
-"@)
+            [void]$htmlScopeInsights.AppendLine(@'
+            <i class="fa fa-ban" aria-hidden="true"></i> 0 Orphaned Resources
+'@)
         }
         [void]$htmlScopeInsights.AppendLine(@'
 </td></tr>
@@ -1885,7 +1885,7 @@ extensions: [{ name: 'sort' }]
         #resourcesDiagnosticsCapable
         #region ScopeInsightsDiagnosticsCapable
         if ($mgOrSub -eq 'mg') {
-            $resourceTypesUnique = ($resourcesAllChildSubscriptions | select-object type -Unique).type
+            $resourceTypesUnique = ($resourcesAllChildSubscriptions | Select-Object type -Unique).type
             $resourceTypesSummarizedArray = [System.Collections.ArrayList]@()
             foreach ($resourceTypeUnique in $resourceTypesUnique) {
                 $resourcesTypeCountTotal = 0
@@ -1915,7 +1915,7 @@ extensions: [{ name: 'sort' }]
                 $htmlTableId = "ScopeInsights_resourcesDiagnosticsCapable_$($mgchild -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesAllChildSubscriptionResourceTypeCount ResourceTypes (1st party) Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs) (all Subscriptions below this scope)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesAllChildSubscriptionResourceTypeCount ResourceTypes (1st party) Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs) (all Subscriptions below this scope)</span></button>
 <div class="content contentSIMG">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -2002,7 +2002,7 @@ extensions: [{ name: 'sort' }]
             }
             else {
                 [void]$htmlScopeInsights.AppendLine(@"
-            <p><i class="fa fa-ban" aria-hidden="true"></i> $resourcesAllChildSubscriptionResourceTypeCount ResourceTypes (1st party) Diagnostics capable (all Subscriptions below this scope)</p>
+            <i class="fa fa-ban" aria-hidden="true"></i> $resourcesAllChildSubscriptionResourceTypeCount ResourceTypes (1st party) Diagnostics capable (all Subscriptions below this scope)
 "@)
             }
             [void]$htmlScopeInsights.AppendLine(@'
@@ -2012,7 +2012,7 @@ extensions: [{ name: 'sort' }]
         }
 
         if ($mgOrSub -eq 'sub') {
-            $resourceTypesUnique = ($resourcesSubscription | select-object type -Unique).type
+            $resourceTypesUnique = ($resourcesSubscription | Select-Object type -Unique).type
             $resourceTypesSummarizedArray = [System.Collections.ArrayList]@()
             foreach ($resourceTypeUnique in $resourceTypesUnique) {
                 $resourcesTypeCountTotal = 0
@@ -2043,7 +2043,7 @@ extensions: [{ name: 'sort' }]
                 $htmlTableId = "ScopeInsights_resourcesDiagnosticsCapable_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesSubscriptionResourceTypeCount ResourceTypes (1st party) Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$subscriptionResourceTypesDiagnosticsCapableMetricsLogsCount/$resourcesSubscriptionResourceTypeCount ResourceTypes (1st party) Diagnostics capable ($subscriptionResourceTypesDiagnosticsCapableMetricsCount Metrics, $subscriptionResourceTypesDiagnosticsCapableLogsCount Logs)</span></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -2130,7 +2130,7 @@ extensions: [{ name: 'sort' }]
             }
             else {
                 [void]$htmlScopeInsights.AppendLine(@"
-            <p><i class="fa fa-ban" aria-hidden="true"></i> $resourcesSubscriptionResourceTypeCount ResourceTypes (1st party) Diagnostics capable</p>
+            <i class="fa fa-ban" aria-hidden="true"></i> $resourcesSubscriptionResourceTypeCount ResourceTypes (1st party) Diagnostics capable
 "@)
             }
             [void]$htmlScopeInsights.AppendLine(@'
@@ -2151,7 +2151,7 @@ extensions: [{ name: 'sort' }]
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
-<p><i class="fa fa-user-circle-o" aria-hidden="true"></i> UserAssigned Managed Identities assigned to Resources / vice versa</p></button>
+<i class="fa fa-user-circle-o" aria-hidden="true"></i> <span class="valignMiddle">UserAssigned Managed Identities assigned to Resources / vice versa</span></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Managed identity 'user-assigned' vs 'system-assigned'</span> <a class="externallink" href="https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview#managed-identity-types" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -2270,7 +2270,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             }
             else {
                 [void]$htmlScopeInsights.AppendLine(@'
-            <p><i class="fa fa-ban" aria-hidden="true"></i> No UserAssigned Managed Identities assigned to Resources / vice versa - at all</p>
+            <i class="fa fa-ban" aria-hidden="true"></i> No UserAssigned Managed Identities assigned to Resources / vice versa - at all
 '@)
             }
             [void]$htmlScopeInsights.AppendLine(@'
@@ -2295,7 +2295,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                     }
                 }
 
-                $grpThisManagementGroup = $allPSRuleResultsUnderThisMg | group-object -Property resourceType, pillar, category, severity, rule, result
+                $grpThisManagementGroup = $allPSRuleResultsUnderThisMg | Group-Object -Property resourceType, pillar, category, severity, rule, result
 
                 if ($grpThisManagementGroup) {
                     $grpThisManagementGroupCount = $grpThisManagementGroup.Count
@@ -2304,8 +2304,8 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                     $randomFunctionName = "func_$htmlTableId"
                     [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
-<p><i class="fa fa-check-square-o" aria-hidden="true" style="color: #0078df"></i> $grpThisManagementGroupCount 'PSRule for Azure' results</p></button>
-<div class="content contentSISub">
+<i class="fa fa-check-square-o" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$grpThisManagementGroupCount 'PSRule for Azure' results</span></button>
+<div class="content contentSIMG">
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -2407,7 +2407,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                 }
                 else {
                     [void]$htmlScopeInsights.AppendLine(@'
-                    <p><i class="fa fa-ban" aria-hidden="true"></i> No PSRule for Azure results</p>
+                    <i class="fa fa-ban" aria-hidden="true"></i> No PSRule for Azure results
 '@)
                 }
                 [void]$htmlScopeInsights.AppendLine(@'
@@ -2418,7 +2418,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 
             if ($mgOrSub -eq 'sub') {
                 $grpThisSubscription = $grpPSRuleSubscriptions.where({ $_.Name -eq $subscriptionId })
-                $grpThisSubscriptionGrouped = $grpThisSubscription.Group | group-object -Property resourceType, pillar, category, severity, result
+                $grpThisSubscriptionGrouped = $grpThisSubscription.Group | Group-Object -Property resourceType, pillar, category, severity, rule, result
 
                 if ($grpThisSubscriptionGrouped) {
                     $grpThisSubscriptionGroupedCount = $grpThisSubscriptionGrouped.Count
@@ -2427,7 +2427,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                     $randomFunctionName = "func_$htmlTableId"
                     [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
-<p><i class="fa fa-check-square-o" aria-hidden="true"></i> $grpThisSubscriptionGroupedCount PSRule for Azure results</p></button>
+<i class="fa fa-check-square-o" aria-hidden="true"></i> <span class="valignMiddle">$grpThisSubscriptionGroupedCount PSRule for Azure results</span></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Learn about</span> <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -2527,7 +2527,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                 }
                 else {
                     [void]$htmlScopeInsights.AppendLine(@'
-                    <p><i class="fa fa-ban" aria-hidden="true"></i> No PSRule results</p>
+                    <i class="fa fa-ban" aria-hidden="true"></i> No PSRule results
 '@)
                 }
                 [void]$htmlScopeInsights.AppendLine(@'
@@ -2539,7 +2539,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         }
         else {
             [void]$htmlScopeInsights.AppendLine(@'
-            <p><i class="fa fa-check-square-o" aria-hidden="true"></i> PSRule for Azure - <span class="info">use parameter <b>-DoPSRule</b></span> - <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure/integrations" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a></p>
+            <i class="fa fa-check-square-o" aria-hidden="true"></i> PSRule for Azure - <span class="info">use parameter <b>-DoPSRule</b></span> - <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure/integrations" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a>
 '@)
         }
     }
@@ -2609,7 +2609,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         $randomFunctionName = "func_$htmlTableId"
         $noteOrNot = ''
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $policiesCount Policy assignments ($policiesAssignedAtScope at scope, $policiesInherited inherited) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$policiesCount Policy assignments ($policiesAssignedAtScope at scope, $policiesInherited inherited) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom)</span></button>
 <div class="content $SIDivContentClass">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a><br>
 &nbsp;&nbsp;<span class="hintTableSize">*Depending on the number of rows and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
@@ -2795,7 +2795,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     }
     else {
         [void]$htmlScopeInsights.AppendLine(@"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($policiesAssigned).count) Policy assignments</span></p>
+    <i class="fa fa-ban" aria-hidden="true"></i> $(($policiesAssigned).count) Policy assignments
 "@)
     }
     [void]$htmlScopeInsights.AppendLine(@'
@@ -2869,7 +2869,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         $randomFunctionName = "func_$htmlTableId"
         $noteOrNot = ''
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $policySetsCount PolicySet assignments ($policySetsAssignedAtScope at scope, $policySetsInherited inherited) (Builtin: $policySetsCountBuiltin | Custom: $policySetsCountCustom)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$policySetsCount PolicySet assignments ($policySetsAssignedAtScope at scope, $policySetsInherited inherited) (Builtin: $policySetsCountBuiltin | Custom: $policySetsCountCustom)</span></button>
 <div class="content $SIDivContentClass">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -3041,7 +3041,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     }
     else {
         [void]$htmlScopeInsights.AppendLine(@"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($policySetsAssigned).count) PolicySet assignments</span></p>
+    <i class="fa fa-ban" aria-hidden="true"></i> $(($policySetsAssigned).count) PolicySet assignments
 "@)
     }
     [void]$htmlScopeInsights.AppendLine(@'
@@ -3063,7 +3063,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         $faimage = "<i class=`"fa fa-ban`" aria-hidden=`"true`"></i>"
 
         [void]$htmlScopeInsights.AppendLine(@"
-            <p>$faImage Policy Assignment Limit: 0/$limit</p>
+            $faImage Policy Assignment Limit: 0/$limit
 "@)
     }
     else {
@@ -3081,7 +3081,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             $faimage = "<i class=`"fa fa-check-circle`" aria-hidden=`"true`"></i>"
         }
         [void]$htmlScopeInsights.AppendLine(@"
-            <p>$faImage Policy Assignment Limit: $($scopePolicyAssignmentsLimit.PolicyAndPolicySetAssignmentAtScopeCount)/$($limit)</p>
+            $faImage Policy Assignment Limit: $($scopePolicyAssignmentsLimit.PolicyAndPolicySetAssignmentAtScopeCount)/$($limit)
 "@)
     }
     [void]$htmlScopeInsights.AppendLine(@'
@@ -3129,7 +3129,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         }
 
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p>$faIcon $scopePoliciesCount Custom Policy definitions scoped | Limit: ($scopePoliciesCount/$LimitPOLICYPolicyScoped)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">$faIcon <span class="valignMiddle">$scopePoliciesCount Custom Policy definitions scoped | Limit: ($scopePoliciesCount/$LimitPOLICYPolicyScoped)</span></button>
 <div class="content $SIDivContentClass">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -3225,7 +3225,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlScopeInsights.AppendLine(@"
-                    <p><i class="fa fa-ban" aria-hidden="true"></i> $scopePoliciesCount Custom Policy definitions scoped</p>
+                    <i class="fa fa-ban" aria-hidden="true"></i> $scopePoliciesCount Custom Policy definitions scoped
 "@)
     }
     [void]$htmlScopeInsights.AppendLine(@'
@@ -3272,7 +3272,7 @@ extensions: [{ name: 'sort' }]
             }
         }
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p>$faIcon $scopePolicySetsCount Custom PolicySet definitions scoped | Limit: ($scopePolicySetsCount/$LimitPOLICYPolicySetScoped)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">$faIcon <span class="valignMiddle">$scopePolicySetsCount Custom PolicySet definitions scoped | Limit: ($scopePolicySetsCount/$LimitPOLICYPolicySetScoped)</span></button>
 <div class="content $SIDivContentClass">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -3356,7 +3356,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlScopeInsights.AppendLine(@"
-                    <p><i class="fa fa-ban" aria-hidden="true"></i> $scopePolicySetsCount Custom PolicySet definitions scoped</p>
+                    <i class="fa fa-ban" aria-hidden="true"></i> $scopePolicySetsCount Custom PolicySet definitions scoped
 "@)
     }
     [void]$htmlScopeInsights.AppendLine(@'
@@ -3379,7 +3379,7 @@ extensions: [{ name: 'sort' }]
             $htmlTableId = "ScopeInsights_BlueprintAssignment_$($htmlTableIdentifier -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
             $randomFunctionName = "func_$htmlTableId"
             [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintsAssignedCount Blueprints assigned</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$blueprintsAssignedCount Blueprints assigned</span></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -3462,7 +3462,7 @@ extensions: [{ name: 'sort' }]
         }
         else {
             [void]$htmlScopeInsights.AppendLine(@"
-                    <p><i class="fa fa-ban" aria-hidden="true"></i> $blueprintsAssignedCount Blueprints assigned</p>
+                    <i class="fa fa-ban" aria-hidden="true"></i> $blueprintsAssignedCount Blueprints assigned
 "@)
         }
         [void]$htmlScopeInsights.AppendLine(@'
@@ -3487,7 +3487,7 @@ extensions: [{ name: 'sort' }]
         $htmlTableId = "ScopeInsights_BlueprintScoped_$($htmlTableIdentifier -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
         $randomFunctionName = "func_$htmlTableId"
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $blueprintsScopedCount Blueprints scoped</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$blueprintsScopedCount Blueprints scoped</span></button>
 <div class="content $SIDivContentClass">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -3564,7 +3564,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlScopeInsights.AppendLine(@"
-                    <p><i class="fa fa-ban" aria-hidden="true"></i> $blueprintsScopedCount Blueprints scoped</p>
+                    <i class="fa fa-ban" aria-hidden="true"></i> $blueprintsScopedCount Blueprints scoped
 "@)
     }
     [void]$htmlScopeInsights.AppendLine(@'
@@ -3580,7 +3580,7 @@ extensions: [{ name: 'sort' }]
             $htmlTableId = "ScopeInsights_ClassicAdministrators_$($subscriptionId -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
             $randomFunctionName = "func_$htmlTableId"
             [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $tfCount Classic Administrators</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$tfCount Classic Administrators</span></button>
 <div class="content $SIDivContentClass">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
@@ -3650,9 +3650,9 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 "@)
         }
         else {
-            [void]$htmlScopeInsights.AppendLine(@"
-                    <p><i class="fa fa-ban" aria-hidden="true"></i> No Classic Administrators</p>
-"@)
+            [void]$htmlScopeInsights.AppendLine(@'
+                    <i class="fa fa-ban" aria-hidden="true"></i> No Classic Administrators
+'@)
         }
         [void]$htmlScopeInsights.AppendLine(@'
 </td></tr>
@@ -3765,7 +3765,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         $randomFunctionName = "func_$htmlTableId"
         $noteOrNot = ''
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><p><i class="fa fa-check-circle blue" aria-hidden="true"></i> $rolesAssignedCount Role assignments ($rolesAssignedInheritedCount inherited) (User: $rolesAssignedUser | Group: $rolesAssignedGroup | ServicePrincipal: $rolesAssignedServicePrincipal | Orphaned: $rolesAssignedUnknown) ($($roleSecurityFindingCustomRoleOwnerImg)CustomRoleOwner: $roleSecurityFindingCustomRoleOwner, $($RoleSecurityFindingOwnerAssignmentSPImg)OwnerAssignmentSP: $roleSecurityFindingOwnerAssignmentSP) (Policy related: $roleAssignmentsRelatedToPolicyCount) | Limit: ($rolesAssignedAtScopeCount/$LimitRoleAssignmentsScope)</p></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$rolesAssignedCount Role assignments ($rolesAssignedInheritedCount inherited) (User: $rolesAssignedUser | Group: $rolesAssignedGroup | ServicePrincipal: $rolesAssignedServicePrincipal | Orphaned: $rolesAssignedUnknown) ($($roleSecurityFindingCustomRoleOwnerImg)CustomRoleOwner: $roleSecurityFindingCustomRoleOwner, $($RoleSecurityFindingOwnerAssignmentSPImg)OwnerAssignmentSP: $roleSecurityFindingOwnerAssignmentSP) (Policy related: $roleAssignmentsRelatedToPolicyCount) | Limit: ($rolesAssignedAtScopeCount/$LimitRoleAssignmentsScope)</span></button>
 <div class="content $SIDivContentClass">
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a><br>
 &nbsp;&nbsp;<span class="hintTableSize">*Depending on the number of rows and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
@@ -3890,7 +3890,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     }
     else {
         [void]$htmlScopeInsights.AppendLine(@"
-    <p><i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">$(($rbacAll).count) Role assignments</span></p>
+    <i class="fa fa-ban" aria-hidden="true"></i> $(($rbacAll).count) Role assignments
 
 "@)
     }
