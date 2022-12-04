@@ -4,9 +4,16 @@
 
 ### AzGovViz version 6
 
-__Changes__ (2022-Dec-02 / Major)
+__Changes__ (2022-Dec-04 / Major)
 
 * PSRule for Azure fix | Get resources using ARM API inside Foreach-Object -parallel loop
+* Private Endpoints 
+  * fix resource identification
+  * add cross tenant detection
+* Storage Account Access Analysis - add insights on 'Allowed Copy Scope' and 'Allow Cross Tenant Replication'
+* Updated [API reference](#api-reference)
+* Cosmetics
+* Bugfixes
 
 __Changes__ (2022-Nov-29 / Major)
 

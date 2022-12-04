@@ -1,13 +1,107 @@
 function processPrivateEndpoints {
     $start = Get-Date
-    Write-Host "Processing Private Endpoints enrichment ($($arrayPrivateEndPoints.Count) Private Endpoints)"
+    Write-Host 'Processing Private Endpoints enrichment'
 
+    $script:arrayPrivateEndpointsEnriched = [System.Collections.ArrayList]@()
+
+    if ($arrayPrivateEndPointsFromResourceProperties.Count -gt 0) {
+        $privateEndPointsFromResourcePropertiesToProcess = ($arrayPrivateEndPointsFromResourceProperties.where({ $arrayPrivateEndPoints.id -notcontains $_.privateEndpointConnection.Properties.privateEndpoint.id }))
+        $privateEndPointsFromResourcePropertiesToProcessCount = $privateEndPointsFromResourcePropertiesToProcess.Count
+        Write-Host " Processing Private Endpoints enrichment for $privateEndPointsFromResourcePropertiesToProcessCount Private Endpoint(s) where the Private Endpoint was not returned from the PE API endpoint but from a resource property"
+        if ($privateEndPointsFromResourcePropertiesToProcessCount -gt 0) {
+            foreach ($entry in $privateEndPointsFromResourcePropertiesToProcess) {
+                $peResIdSplit = $entry.privateEndpointConnection.Properties.privateEndpoint.id -split '/'
+                $crossSubscriptionPE = 'n/a'
+                $peSubscriptionId = $peResIdSplit[2]
+                if ($peSubscriptionId -ne $entry.ResourceSubscriptionId) {
+                    $crossSubscriptionPE = $true
+                }
+                else {
+                    $crossSubscriptionPE = $false
+                }
+
+                $peMGPath = 'n/a'
+                $peXTenant = 'n/a'
+                if ($htUnknownTenantsForSubscription.($peSubscriptionId)) {
+                    $remoteTenantId = $htUnknownTenantsForSubscription.($peSubscriptionId).TenantId
+                    $peMGPath = $remoteTenantId
+                    if ($remoteTenantId -eq $azApiCallConf['checkcontext'].tenant.id) {
+                        $peXTenant = 'false'
+                    }
+                    else {
+                        $peXTenant = 'true'
+                    }
+                }
+                else {
+                    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($peSubscriptionId)?api-version=2020-01-01"
+                    $remoteTenantId = AzAPICall -AzAPICallConfiguration $azApiCallConf -uri $uri -listenOn 'content' -currentTask "getTenantId for subscriptionId '$($peSubscriptionId)'"
+                    $arrayRemoteMGPath = @()
+                    foreach ($remoteId in $remoteTenantId) {
+                        $objectGuid = [System.Guid]::empty
+                        if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
+                            $arrayRemoteMGPath += $remoteId
+                            if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
+                                $peXTenant = 'false'
+                            }
+                            else {
+                                $peXTenant = 'true'
+                            }
+                        }
+                        $script:htUnknownTenantsForSubscription.($peSubscriptionId) = @{}
+                        $script:htUnknownTenantsForSubscription.($peSubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
+                        $peMGPath = $arrayRemoteMGPath -join ' or '
+                    }
+                }
+
+                $null = $script:arrayPrivateEndpointsEnriched.Add([PSCustomObject]@{
+                        PEName                   = $entry.privateEndpointConnection.name
+                        PEId                     = $entry.privateEndpointConnection.Properties.privateEndpoint.id
+                        PELocation               = 'n/a'
+                        PEResourceGroup          = $peResIdSplit[4]
+                        PESubscriptionName       = 'n/a'
+                        PESubscription           = $peSubscriptionId
+                        PEMGPath                 = $peMGPath
+                        PEConnectionType         = 'n/a'
+                        PEConnectionState        = $entry.privateEndpointConnection.Properties.privateLinkServiceConnectionState.status
+                        CrossSubscriptionPE      = $crossSubscriptionPE
+                        CrossTenantPE            = $peXTenant
+
+                        Resource                 = $entry.ResourceName
+                        ResourceType             = $entry.ResourceType
+                        ResourceId               = $entry.ResourceId
+                        TargetSubresource        = 'n/a'
+                        NICName                  = 'n/a'
+                        FQDN                     = 'n/a'
+                        ipAddresses              = 'n/a'
+                        ResourceResourceGroup    = $entry.ResourceResourceGroup
+                        ResourceSubscriptionName = $entry.ResourceSubscriptionName
+                        ResourceSubscriptionId   = $entry.ResourceSubscriptionId
+                        ResourceMGPath           = $entry.ResourceMGPath
+
+                        Subnet                   = 'n/a'
+                        SubnetId                 = 'n/a'
+                        SubnetVNet               = 'n/a'
+                        SubnetVNetId             = 'n/a'
+                        SubnetVNetLocation       = 'n/a'
+                        SubnetVNetResourceGroup  = 'n/a'
+                        SubnetSubscriptionName   = 'n/a'
+                        SubnetSubscription       = 'n/a'
+                        SubnetMGPath             = 'n/a'
+                    })
+            }
+        }
+    }
+
+    Write-Host " Processing Private Endpoints enrichment for $($arrayPrivateEndPoints.Count) Private Endpoint(s) where the Private Endpoint was returned from the PE API endpoint"
     $htVPrivateEndPoints = @{}
     foreach ($pe in $arrayPrivateEndPoints) {
         $htVPrivateEndPoints.($pe.id) = $pe
     }
 
-    $script:arrayPrivateEndpointsEnriched = [System.Collections.ArrayList]@()
+    $htVPrivateEndPoints = @{}
+    foreach ($pe in $arrayPrivateEndPoints) {
+        $htVPrivateEndPoints.($pe.id) = $pe
+    }
 
     foreach ($pe in $arrayPrivateEndPoints) {
 
@@ -56,23 +150,34 @@ function processPrivateEndpoints {
             $peConnectionState = $pe.properties.manualPrivateLinkServiceConnections.properties.privateLinkServiceConnectionState.status
         }
 
-        $resourceSubscriptionId = $resourceSplit[2]
+        $resourceSubscriptionId = 'n/a'
+        $resource = 'n/a'
+        $resourceType = 'n/a'
+        $resourceResourceGroup = 'n/a'
         $resourceSubscriptionName = 'n/a'
         $resourceMGPath = 'n/a'
-        if ($htSubscriptionsMgPath.($resourceSubscriptionId)) {
-            $subHelper = $htSubscriptionsMgPath.($resourceSubscriptionId)
-            $resourceSubscriptionName = $subHelper.displayName
-            $resourceMGPath = $subHelper.ParentNameChainDelimited
-        }
+        $crossSubscriptionPE = 'n/a'
 
-        if ($SubnetSubscription -eq $resourceSubscriptionId) {
-            $crossSubscriptionPE = $false
-        }
-        else {
-            $crossSubscriptionPE = $true
-        }
+        $ObjectGuid = [System.Guid]::empty
+        if ([System.Guid]::TryParse($resourceSplit[2], [System.Management.Automation.PSReference]$ObjectGuid)) {
+            $resourceSubscriptionId = $resourceSplit[2]
+            $resource = $resourceSplit[8]
+            $resourceType = "$($resourceSplit[6])/$($resourceSplit[7])"
+            $resourceResourceGroup = $resourceSplit[4]
 
+            if ($htSubscriptionsMgPath.($resourceSubscriptionId)) {
+                $subHelper = $htSubscriptionsMgPath.($resourceSubscriptionId)
+                $resourceSubscriptionName = $subHelper.displayName
+                $resourceMGPath = $subHelper.ParentNameChainDelimited
+            }
 
+            if ($SubnetSubscription -eq $resourceSubscriptionId) {
+                $crossSubscriptionPE = $false
+            }
+            else {
+                $crossSubscriptionPE = $true
+            }
+        }
 
         $null = $script:arrayPrivateEndpointsEnriched.Add([PSCustomObject]@{
                 PEName                   = $pe.name
@@ -85,15 +190,16 @@ function processPrivateEndpoints {
                 PEConnectionType         = $peConnectionType
                 PEConnectionState        = $peConnectionState
                 CrossSubscriptionPE      = $crossSubscriptionPE
+                CrossTenantPE            = 'false'
 
-                Resource                 = $resourceSplit[8]
-                ResourceType             = "$($resourceSplit[6])/$($resourceSplit[7])"
+                Resource                 = $resource
+                ResourceType             = $resourceType
                 ResourceId               = $resourceId
                 TargetSubresource        = $targetSubresource -join ', '
                 NICName                  = $pe.properties.customNetworkInterfaceName
                 FQDN                     = $pe.properties.customDnsConfigs.fqdn -join ', '
                 ipAddresses              = $pe.properties.customDnsConfigs.ipAddresses -join ', '
-                ResourceResourceGroup    = $resourceSplit[4]
+                ResourceResourceGroup    = $resourceResourceGroup
                 ResourceSubscriptionName = $resourceSubscriptionName
                 ResourceSubscriptionId   = $resourceSubscriptionId
                 ResourceMGPath           = $resourceMGPath

@@ -59,11 +59,18 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Dec-02 / Major)
+__Changes__ (2022-Dec-04 / Major)
 
 * PSRule for Azure fix | Get resources using ARM API inside Foreach-Object -parallel loop
+* Private Endpoints 
+  * fix resource identification
+  * add cross tenant detection
+* Storage Account Access Analysis - add insights on 'Allowed Copy Scope' and 'Allow Cross Tenant Replication'
+* Updated [API reference](#api-reference)
+* Cosmetics
+* Bugfixes
 
-Passed tests: Powershell Core 7.2.6 on Windows  
+Passed tests: Powershell Core 7.3.0 on Windows  
 Passed tests: Powershell Core 7.2.7 Azure DevOps hosted agent ubuntu-22.04  
 Passed tests: Powershell Core 7.2.7 Github Actions hosted agent ubuntu-latest  
 Passed tests: Powershell Core 7.2.6 GitHub Codespaces mcr.microsoft.com/powershell:latest  
@@ -515,6 +522,7 @@ AzGovViz polls the following APIs
 | MS Graph | v1.0 | /servicePrincipals |
 | ARM | 2021-05-01-preview | /`resourceId`/providers/Microsoft.Insights/diagnosticSettingsCategories |
 | ARM | 2018-11-01-preview | /`scopeId`/providers/Microsoft.Blueprint/blueprints/`blueprintName` |
+| ARM | 2021-04-01 | /providers |
 | ARM | 2021-06-01 | /providers/Microsoft.Authorization/policyDefinitions |
 | ARM | 2021-06-01 | /providers/Microsoft.Authorization/policySetDefinitions |
 | ARM | 2020-02-01 | /providers/Microsoft.Management/getEntities |

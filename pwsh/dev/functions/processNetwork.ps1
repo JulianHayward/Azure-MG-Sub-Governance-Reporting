@@ -10,7 +10,6 @@ function processNetwork {
     $script:htSubnets = @{}
     $script:arrayVirtualNetworks = [System.Collections.ArrayList]@()
     $script:arraySubnets = [System.Collections.ArrayList]@()
-    $htUnknownTenantsForSubscription = @{}
 
     foreach ($vnet in $arrayVNets) {
 
@@ -77,9 +76,9 @@ function processNetwork {
                                     $peeringXTenant = 'true'
                                 }
                             }
-                            $htUnknownTenantsForSubscription.($remotesubscriptionId) = @{}
-                            $htUnknownTenantsForSubscription.($remotesubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
-                            $remoteMGPath = $arrayRemoteMGPath -join ', '
+                            $script:htUnknownTenantsForSubscription.($remotesubscriptionId) = @{}
+                            $script:htUnknownTenantsForSubscription.($remotesubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
+                            $remoteMGPath = $arrayRemoteMGPath -join ' or '
                         }
                     }
                 }
