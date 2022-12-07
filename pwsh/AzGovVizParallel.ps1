@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.58',
 
     [string]
-    $ProductVersion = 'v6_major_20221204_1',
+    $ProductVersion = 'v6_major_20221207_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -11890,7 +11890,7 @@ function processStorageAccountAnalysis {
             }
 
             if ([string]::IsNullOrWhiteSpace($storageAccount.properties.publicNetworkAccess)) {
-                $publicNetworkAccess = 'likely enabled'
+                $publicNetworkAccess = 'likely Enabled'
             }
             else {
                 $publicNetworkAccess = $storageAccount.properties.publicNetworkAccess
@@ -11905,10 +11905,10 @@ function processStorageAccountAnalysis {
 
             if ([string]::IsNullOrWhiteSpace($storageAccount.properties.allowCrossTenantReplication)) {
                 if ($allowedCopyScope -ne 'From any Storage Account') {
-                    $allowCrossTenantReplication = "likely disabled (allowedCopyScope=$allowedCopyScope)"
+                    $allowCrossTenantReplication = "likely False (allowedCopyScope=$allowedCopyScope)"
                 }
                 else {
-                    $allowCrossTenantReplication = 'likely enabled'
+                    $allowCrossTenantReplication = 'likely True'
                 }
             }
             else {
