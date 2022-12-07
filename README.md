@@ -59,6 +59,10 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
+__Changes__ (2022-Dec-07 / Major)
+
+* Minor change on Storage Account Access Analyisis feature HTML
+
 __Changes__ (2022-Dec-04 / Major)
 
 * PSRule for Azure fix | Get resources using ARM API inside Foreach-Object -parallel loop
