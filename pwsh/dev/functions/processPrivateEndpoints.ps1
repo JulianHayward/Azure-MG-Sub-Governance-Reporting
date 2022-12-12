@@ -21,15 +21,15 @@ function processPrivateEndpoints {
                 }
 
                 $peMGPath = 'n/a'
-                $peXTenant = 'n/a'
+                $peXTenant = 'unknown'
                 if ($htUnknownTenantsForSubscription.($peSubscriptionId)) {
                     $remoteTenantId = $htUnknownTenantsForSubscription.($peSubscriptionId).TenantId
                     $peMGPath = $remoteTenantId
                     if ($remoteTenantId -eq $azApiCallConf['checkcontext'].tenant.id) {
-                        $peXTenant = 'false'
+                        $peXTenant = $false
                     }
                     else {
-                        $peXTenant = 'true'
+                        $peXTenant = $true
                     }
                 }
                 else {
@@ -41,10 +41,10 @@ function processPrivateEndpoints {
                         if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
                             $arrayRemoteMGPath += $remoteId
                             if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
-                                $peXTenant = 'false'
+                                $peXTenant = $false
                             }
                             else {
-                                $peXTenant = 'true'
+                                $peXTenant = $true
                             }
                         }
                         $script:htUnknownTenantsForSubscription.($peSubscriptionId) = @{}
@@ -77,6 +77,7 @@ function processPrivateEndpoints {
                         ResourceSubscriptionName = $entry.ResourceSubscriptionName
                         ResourceSubscriptionId   = $entry.ResourceSubscriptionId
                         ResourceMGPath           = $entry.ResourceMGPath
+                        ResourceCrossTenant      = 'false'
 
                         Subnet                   = 'n/a'
                         SubnetId                 = 'n/a'
@@ -157,6 +158,7 @@ function processPrivateEndpoints {
         $resourceSubscriptionName = 'n/a'
         $resourceMGPath = 'n/a'
         $crossSubscriptionPE = 'n/a'
+        $resourceXTenant = 'unknown'
 
         $ObjectGuid = [System.Guid]::empty
         if ([System.Guid]::TryParse($resourceSplit[2], [System.Management.Automation.PSReference]$ObjectGuid)) {
@@ -169,6 +171,39 @@ function processPrivateEndpoints {
                 $subHelper = $htSubscriptionsMgPath.($resourceSubscriptionId)
                 $resourceSubscriptionName = $subHelper.displayName
                 $resourceMGPath = $subHelper.ParentNameChainDelimited
+                $resourceXTenant = $false
+            }
+            else {
+                if ($htUnknownTenantsForSubscription.($resourceSubscriptionId)) {
+                    $remoteTenantId = $htUnknownTenantsForSubscription.($resourceSubscriptionId).TenantId
+                    $resourceMGPath = $remoteTenantId
+                    if ($remoteTenantId -eq $azApiCallConf['checkcontext'].tenant.id) {
+                        $resourceXTenant = $false
+                    }
+                    else {
+                        $resourceXTenant = $true
+                    }
+                }
+                else {
+                    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($resourceSubscriptionId)?api-version=2020-01-01"
+                    $remoteTenantId = AzAPICall -AzAPICallConfiguration $azApiCallConf -uri $uri -listenOn 'content' -currentTask "getTenantId for subscriptionId '$($resourceSubscriptionId)'"
+                    $arrayRemoteMGPath = @()
+                    foreach ($remoteId in $remoteTenantId) {
+                        $objectGuid = [System.Guid]::empty
+                        if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
+                            $arrayRemoteMGPath += $remoteId
+                            if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
+                                $resourceXTenant = $false
+                            }
+                            else {
+                                $resourceXTenant = $true
+                            }
+                        }
+                        $script:htUnknownTenantsForSubscription.($resourceSubscriptionId) = @{}
+                        $script:htUnknownTenantsForSubscription.($resourceSubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
+                        $resourceMGPath = $arrayRemoteMGPath -join ' or '
+                    }
+                }
             }
 
             if ($SubnetSubscription -eq $resourceSubscriptionId) {
@@ -177,6 +212,12 @@ function processPrivateEndpoints {
             else {
                 $crossSubscriptionPE = $true
             }
+
+            $crossTenantPE = $false
+            if ($resourceXTenant -eq $true) {
+                $crossTenantPE = $true
+            }
+
         }
 
         $null = $script:arrayPrivateEndpointsEnriched.Add([PSCustomObject]@{
@@ -190,7 +231,7 @@ function processPrivateEndpoints {
                 PEConnectionType         = $peConnectionType
                 PEConnectionState        = $peConnectionState
                 CrossSubscriptionPE      = $crossSubscriptionPE
-                CrossTenantPE            = 'false'
+                CrossTenantPE            = $crossTenantPE
 
                 Resource                 = $resource
                 ResourceType             = $resourceType
@@ -203,6 +244,7 @@ function processPrivateEndpoints {
                 ResourceSubscriptionName = $resourceSubscriptionName
                 ResourceSubscriptionId   = $resourceSubscriptionId
                 ResourceMGPath           = $resourceMGPath
+                ResourceCrossTenant      = $resourceXTenant
 
                 Subnet                   = $pe.properties.subnet.id -replace '.*/'
                 SubnetId                 = $pe.properties.subnet.id

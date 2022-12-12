@@ -359,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.58',
+    $AzAPICallVersion = '1.1.59',
 
     [string]
-    $ProductVersion = 'v6_major_20221207_1',
+    $ProductVersion = 'v6_major_20221212_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -2178,6 +2178,21 @@ function detailSubscriptions {
     $childrenSubscriptions = $arrayEntitiesFromAPI.where( { $_.properties.parentNameChain -contains $ManagementGroupID -and $_.type -eq '/subscriptions' } ) | Sort-Object -Property id -Unique
     $script:childrenSubscriptionsCount = ($childrenSubscriptions).Count
     $script:subsToProcessInCustomDataCollection = [System.Collections.ArrayList]@()
+
+    if ($htSubscriptionsFromOtherTenants.keys.count -gt 0) {
+        foreach ($subscriptionExludedOtherTenant in $htSubscriptionsFromOtherTenants.keys) {
+            $subscriptionExludedOtherTenantDetail = $htSubscriptionsFromOtherTenants.($subscriptionExludedOtherTenant).subDetails
+            $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{
+                    subscriptionId      = $subscriptionExludedOtherTenantDetail.subscriptionId
+                    subscriptionName    = $subscriptionExludedOtherTenantDetail.displayName
+                    outOfScopeReason    = "Foreign tenant: Id: $($subscriptionExludedOtherTenantDetail.tenantId)"
+                    ManagementGroupId   = ''
+                    ManagementGroupName = ''
+                    Level               = ''
+                })
+        }
+    }
+
     foreach ($childrenSubscription in $childrenSubscriptions) {
 
         $sub = $htAllSubscriptionsFromAPI.($childrenSubscription.name)
@@ -2880,9 +2895,22 @@ function getEntities {
     #https://management.azure.com/providers/Microsoft.Management/getEntities?api-version=2020-02-01
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/getEntities?api-version=2020-02-01"
     $method = 'POST'
-    $script:arrayEntitiesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
+    $arrayEntitiesFromAPIInitial = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
+    Write-Host "  $($arrayEntitiesFromAPIInitial.Count) Entities returned"
 
-    Write-Host "  $($arrayEntitiesFromAPI.Count) Entities returned"
+    $script:arrayEntitiesFromAPI = [System.Collections.ArrayList]@()
+    foreach ($entry in $arrayEntitiesFromAPIInitial) {
+        if ($entry.Type -eq '/subscriptions') {
+            if ($htSubscriptionsFromOtherTenants.($entry.name)) {
+                $subdetail = $htSubscriptionsFromOtherTenants.($entry.name).subdetails
+                Write-Host "   Excluded Subscription '$($subDetail.displayName)' ($($entry.name)) (foreign tenantId: '$($subDetail.tenantId)')" -ForegroundColor DarkRed
+                continue
+            }
+        }
+        $null = $script:arrayEntitiesFromAPI.Add($entry)
+    }
+
+    Write-Host "  $($arrayEntitiesFromAPI.Count)/$($arrayEntitiesFromAPIInitial.Count) Entities relevant"
 
     $endEntities = Get-Date
     Write-Host " Getting Entities duration: $((New-TimeSpan -Start $startEntities -End $endEntities).TotalSeconds) seconds"
@@ -2950,8 +2978,8 @@ function getEntities {
         $script:htEntities.($entity.name).Id = $entity.Name
     }
 
-    Write-Host "  $(($htManagementGroupsMgPath.Keys).Count) Management Groups returned"
-    Write-Host "  $(($htSubscriptionsMgPath.Keys).Count) Subscriptions returned"
+    Write-Host "  $(($htManagementGroupsMgPath.Keys).Count) relevant Management Groups"
+    Write-Host "  $(($htSubscriptionsMgPath.Keys).Count) relevant Subscriptions"
 
     $endEntitiesdata = Get-Date
     Write-Host " Processing Entities data duration: $((New-TimeSpan -Start $startEntitiesdata -End $endEntitiesdata).TotalSeconds) seconds"
@@ -3688,11 +3716,31 @@ function getSubscriptions {
     $method = 'GET'
     $requestAllSubscriptionsAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
 
+    $script:htAllSubscriptionsFromAPI = @{}
+    $script:htSubscriptionsFromOtherTenants = @{}
+
     Write-Host " $($requestAllSubscriptionsAPI.Count) Subscriptions returned"
     foreach ($subscription in $requestAllSubscriptionsAPI) {
-        $script:htAllSubscriptionsFromAPI.($subscription.subscriptionId) = @{}
-        $script:htAllSubscriptionsFromAPI.($subscription.subscriptionId).subDetails = $subscription
+
+        # #test
+        # if ($subscription.subscriptionId -eq 'GUID') {
+        #     Write-Host "  Finding: $($subscription.displayName) ($($subscription.subscriptionId)) belongs to foreign tenant '$($subscription.tenantId)' - AzGovViz: excluding this Subscripion" -ForegroundColor DarkRed
+        #     $script:htSubscriptionsFromOtherTenants.($subscription.subscriptionId) = @{}
+        #     $script:htSubscriptionsFromOtherTenants.($subscription.subscriptionId).subDetails = $subscription
+        #     continue
+        # }
+
+        if ($subscription.tenantId -ne $azAPICallConf['checkcontext'].tenant.id) {
+            Write-Host "  Finding: $($subscription.displayName) ($($subscription.subscriptionId)) belongs to foreign tenant '$($subscription.tenantId)' - AzGovViz: excluding this Subscripion" -ForegroundColor DarkRed
+            $script:htSubscriptionsFromOtherTenants.($subscription.subscriptionId) = @{}
+            $script:htSubscriptionsFromOtherTenants.($subscription.subscriptionId).subDetails = $subscription
+        }
+        else {
+            $script:htAllSubscriptionsFromAPI.($subscription.subscriptionId) = @{}
+            $script:htAllSubscriptionsFromAPI.($subscription.subscriptionId).subDetails = $subscription
+        }
     }
+    Write-Host " $($htAllSubscriptionsFromAPI.Keys.Count) Subscriptions relevant"
 
     $endGetSubscriptions = Get-Date
     Write-Host "Getting all Subscriptions duration: $((New-TimeSpan -Start $startGetSubscriptions -End $endGetSubscriptions).TotalSeconds) seconds"
@@ -4856,14 +4904,23 @@ function processDataCollection {
 
     #region SUBSCRIPTION
     Write-Host ' CustomDataCollection Subscriptions'
-    $subsExcludedStateCount = ($outOfScopeSubscriptions.where( { $_.outOfScopeReason -like 'State*' } )).Count
-    $subsExcludedWhitelistCount = ($outOfScopeSubscriptions.where( { $_.outOfScopeReason -like 'QuotaId*' } )).Count
-    if ($subsExcludedStateCount -gt 0) {
-        Write-Host "  CustomDataCollection $($subsExcludedStateCount) Subscriptions excluded (State != enabled)"
+    # $subsExcludedStateCount = ($outOfScopeSubscriptions.where( { $_.outOfScopeReason -like 'State*' } )).Count
+    # $subsExcludedWhitelistCount = ($outOfScopeSubscriptions.where( { $_.outOfScopeReason -like 'QuotaId*' } )).Count
+    # if ($subsExcludedStateCount -gt 0) {
+    #     Write-Host "  CustomDataCollection $($subsExcludedStateCount) Subscriptions excluded (State != enabled)"
+    # }
+    # if ($subsExcludedWhitelistCount -gt 0) {
+    #     Write-Host "  CustomDataCollection $($subsExcludedWhitelistCount) Subscriptions excluded (not in quotaId whitelist: '$($SubscriptionQuotaIdWhitelist -join ', ')' OR is AAD_ quotaId)"
+    # }
+
+    if ($outOfScopeSubscriptions.Count -gt 0) {
+        Write-Host "  CustomDataCollection $($outOfScopeSubscriptions.Count) Subscriptions excluded" -ForegroundColor yellow
+        $outOfScopeSubscriptionsGroupedByOutOfScopeReason = $outOfScopeSubscriptions | Group-Object -Property outOfScopeReason
+        foreach ($exclusionreason in $outOfScopeSubscriptionsGroupedByOutOfScopeReason) {
+            Write-Host "   $($exclusionreason.Count): $($exclusionreason.Name)"
+        }
     }
-    if ($subsExcludedWhitelistCount -gt 0) {
-        Write-Host "  CustomDataCollection $($subsExcludedWhitelistCount) Subscriptions excluded (not in quotaId whitelist: '$($SubscriptionQuotaIdWhitelist -join ', ')' OR is AAD_ quotaId)"
-    }
+
     Write-Host " CustomDataCollection Subscriptions will process $subsToProcessInCustomDataCollectionCount of $childrenSubscriptionsCount"
 
     $startSubLoop = Get-Date
@@ -4959,6 +5016,8 @@ function processDataCollection {
                 $arrayPrivateEndPoints = $using:arrayPrivateEndPoints
                 $htResourceProvidersRef = $using:htResourceProvidersRef
                 $arrayPrivateEndPointsFromResourceProperties = $using:arrayPrivateEndPointsFromResourceProperties
+                $htResourcePropertiesConvertfromJSONFailed = $using:htResourcePropertiesConvertfromJSONFailed
+                #$htResourcesWithProperties = $using:htResourcesWithProperties
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
                 $function:namingValidation = $using:funcNamingValidation
@@ -7573,15 +7632,15 @@ function processPrivateEndpoints {
                 }
 
                 $peMGPath = 'n/a'
-                $peXTenant = 'n/a'
+                $peXTenant = 'unknown'
                 if ($htUnknownTenantsForSubscription.($peSubscriptionId)) {
                     $remoteTenantId = $htUnknownTenantsForSubscription.($peSubscriptionId).TenantId
                     $peMGPath = $remoteTenantId
                     if ($remoteTenantId -eq $azApiCallConf['checkcontext'].tenant.id) {
-                        $peXTenant = 'false'
+                        $peXTenant = $false
                     }
                     else {
-                        $peXTenant = 'true'
+                        $peXTenant = $true
                     }
                 }
                 else {
@@ -7593,10 +7652,10 @@ function processPrivateEndpoints {
                         if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
                             $arrayRemoteMGPath += $remoteId
                             if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
-                                $peXTenant = 'false'
+                                $peXTenant = $false
                             }
                             else {
-                                $peXTenant = 'true'
+                                $peXTenant = $true
                             }
                         }
                         $script:htUnknownTenantsForSubscription.($peSubscriptionId) = @{}
@@ -7629,6 +7688,7 @@ function processPrivateEndpoints {
                         ResourceSubscriptionName = $entry.ResourceSubscriptionName
                         ResourceSubscriptionId   = $entry.ResourceSubscriptionId
                         ResourceMGPath           = $entry.ResourceMGPath
+                        ResourceCrossTenant      = 'false'
 
                         Subnet                   = 'n/a'
                         SubnetId                 = 'n/a'
@@ -7709,6 +7769,7 @@ function processPrivateEndpoints {
         $resourceSubscriptionName = 'n/a'
         $resourceMGPath = 'n/a'
         $crossSubscriptionPE = 'n/a'
+        $resourceXTenant = 'unknown'
 
         $ObjectGuid = [System.Guid]::empty
         if ([System.Guid]::TryParse($resourceSplit[2], [System.Management.Automation.PSReference]$ObjectGuid)) {
@@ -7721,6 +7782,39 @@ function processPrivateEndpoints {
                 $subHelper = $htSubscriptionsMgPath.($resourceSubscriptionId)
                 $resourceSubscriptionName = $subHelper.displayName
                 $resourceMGPath = $subHelper.ParentNameChainDelimited
+                $resourceXTenant = $false
+            }
+            else {
+                if ($htUnknownTenantsForSubscription.($resourceSubscriptionId)) {
+                    $remoteTenantId = $htUnknownTenantsForSubscription.($resourceSubscriptionId).TenantId
+                    $resourceMGPath = $remoteTenantId
+                    if ($remoteTenantId -eq $azApiCallConf['checkcontext'].tenant.id) {
+                        $resourceXTenant = $false
+                    }
+                    else {
+                        $resourceXTenant = $true
+                    }
+                }
+                else {
+                    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($resourceSubscriptionId)?api-version=2020-01-01"
+                    $remoteTenantId = AzAPICall -AzAPICallConfiguration $azApiCallConf -uri $uri -listenOn 'content' -currentTask "getTenantId for subscriptionId '$($resourceSubscriptionId)'"
+                    $arrayRemoteMGPath = @()
+                    foreach ($remoteId in $remoteTenantId) {
+                        $objectGuid = [System.Guid]::empty
+                        if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
+                            $arrayRemoteMGPath += $remoteId
+                            if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
+                                $resourceXTenant = $false
+                            }
+                            else {
+                                $resourceXTenant = $true
+                            }
+                        }
+                        $script:htUnknownTenantsForSubscription.($resourceSubscriptionId) = @{}
+                        $script:htUnknownTenantsForSubscription.($resourceSubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
+                        $resourceMGPath = $arrayRemoteMGPath -join ' or '
+                    }
+                }
             }
 
             if ($SubnetSubscription -eq $resourceSubscriptionId) {
@@ -7729,6 +7823,12 @@ function processPrivateEndpoints {
             else {
                 $crossSubscriptionPE = $true
             }
+
+            $crossTenantPE = $false
+            if ($resourceXTenant -eq $true) {
+                $crossTenantPE = $true
+            }
+
         }
 
         $null = $script:arrayPrivateEndpointsEnriched.Add([PSCustomObject]@{
@@ -7742,7 +7842,7 @@ function processPrivateEndpoints {
                 PEConnectionType         = $peConnectionType
                 PEConnectionState        = $peConnectionState
                 CrossSubscriptionPE      = $crossSubscriptionPE
-                CrossTenantPE            = 'false'
+                CrossTenantPE            = $crossTenantPE
 
                 Resource                 = $resource
                 ResourceType             = $resourceType
@@ -7755,6 +7855,7 @@ function processPrivateEndpoints {
                 ResourceSubscriptionName = $resourceSubscriptionName
                 ResourceSubscriptionId   = $resourceSubscriptionId
                 ResourceMGPath           = $resourceMGPath
+                ResourceCrossTenant      = $resourceXTenant
 
                 Subnet                   = $pe.properties.subnet.id -replace '.*/'
                 SubnetId                 = $pe.properties.subnet.id
@@ -10313,7 +10414,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         }
         else {
             [void]$htmlScopeInsights.AppendLine(@'
-            <i class="fa fa-check-square-o" aria-hidden="true"></i> PSRule for Azure - <span class="info">use parameter <b>-DoPSRule</b></span> - <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure/integrations" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a>
+            <i class="fa fa-check-square-o" aria-hidden="true"></i> PSRule for Azure - <span class="info">integration paused - <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure/integrations" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a>
 '@)
         }
     }
@@ -20788,7 +20889,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@'
-            <i class="padlx fa fa-check-square-o" aria-hidden="true"></i> <span class="valignMiddle">PSRule for Azure - </span><span class="info">use parameter <b>-DoPSRule</b></span> - <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure/integrations" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a>
+            <i class="padlx fa fa-check-square-o" aria-hidden="true"></i> PSRule for Azure - <span class="info">integration paused - <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure/integrations" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a>
 '@)
         }
         #endregion SUMMARYPSRule
@@ -21719,8 +21820,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th class="uamiresaltbgc">IP addresses</th>
 <th class="uamiresaltbgc">Resource Resource Group</th>
 <th class="uamiresaltbgc">Resource Subscription Name</th>
-<th class="uamiresaltbgc">Resource Subscription</th>
+<th class="uamiresaltbgc">Resource Subscription Id</th>
 <th class="uamiresaltbgc">Resource MGPath</th>
+<th class="uamiresaltbgc">Resource Cross Tenant</th>
 
 <th>Subnet</th>
 <th>Subnet Id</th>
@@ -21729,7 +21831,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>VNet Location</th>
 <th>VNet Resource Group</th>
 <th>Subnet Subscription Name</th>
-<th>Subnet Subscription</th>
+<th>Subnet Subscription Id</th>
 <th>Subnet MGPath</th>
 </tr>
 </thead>
@@ -21760,9 +21862,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.FQDN)</td>
                         <td>$($result.ipAddresses)</td>
                         <td>$($result.ResourceResourceGroup)</td>
-                        <td>$($result.ResourceSubscriptionId)</td>
                         <td>$($result.ResourceSubscriptionName)</td>
+                        <td>$($result.ResourceSubscriptionId)</td>
                         <td style="min-width: 150px" class="breakwordall">$($result.ResourceMGPath)</td>
+                        <td>$($result.ResourceCrossTenant)</td>
 
                         <td>$($result.Subnet)</td>
                         <td style="min-width: 200px" class="breakwordall">$($result.SubnetId)</td>
@@ -21821,7 +21924,8 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_10: 'select',
             col_12: 'select',
             col_14: 'select',
-            col_26: 'select',
+            col_22: 'select',
+            col_27: 'select',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -27785,7 +27889,7 @@ function validateAccess {
         $getAzManagementGroups = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -validateAccess
 
         if ($getAzManagementGroups -eq 'failed') {
-            $permissionCheckResults += "RBAC 'Reader' permissions on Management Group - check FAILED"
+            $permissionCheckResults += "RBAC 'Reader' permissions on Management Group - check FAILED (use Id, not displayName)"
             $permissionsCheckFailed = $true
         }
         else {
@@ -27841,7 +27945,7 @@ function validateAccess {
         $selectedManagementGroupId = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -validateAccess
 
         if ($selectedManagementGroupId -eq 'failed') {
-            $permissionCheckResults += "RBAC 'Reader' permissions on Management Group '$($ManagementGroupId)' - check FAILED"
+            $permissionCheckResults += "RBAC 'Reader' permissions on Management Group '$($ManagementGroupId)' - check FAILED (use Id, not displayName)"
             $permissionsCheckFailed = $true
         }
         else {
@@ -28432,18 +28536,27 @@ function dataCollectionResources {
             $scopeDisplayName = $using:scopeDisplayName
             $ChildMgParentNameChainDelimited = $using:ChildMgParentNameChainDelimited
             $azAPICallConf = $using:azAPICallConf
+            #$htResourcesWithProperties = $using:htResourcesWithProperties
             #endregion using
 
             if ($htResourceProvidersRef.($resource.type)) {
-                $apiVersionToUse = $htResourceProvidersRef.($resource.type).APIFirst
-                $currentTask = "Getting Resource for PSRule API-version: '$apiVersionToUse'; ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)'"
+                if ($htResourceProvidersRef.($resource.type).APIDefault) {
+                    $apiVersionToUse = $htResourceProvidersRef.($resource.type).APIDefault
+                    $apiRef = 'default'
+                }
+                else {
+                    $apiVersionToUse = $htResourceProvidersRef.($resource.type).APILatest
+                    $apiRef = 'latest'
+                }
+
+                $currentTask = "Getting Resource Properties API-version: '$apiVersionToUse' ($apiRef); ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)'"
                 $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($resource.id)?api-version=$apiVersionToUse"
                 $method = 'GET'
                 $resourceResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -listenOn Content -unhandledErrorAction Continue
 
-                if ($resourceResult -ne 'ResourceOrResourcegroupNotFound') {
+                if ($resourceResult -ne 'ResourceOrResourcegroupNotFound' -and $resourceResult -ne 'convertfromJSONError') {
                     $null = $script:arrayResourcesWithProperties.Add($resourceResult)
-
+                    #$script:htResourcesWithProperties.($resourceResult.id) = $resourceResult
                     if ($resourceResult.properties.privateEndpointConnections.Count -gt 0) {
                         foreach ($privateEndpointConnection in $resourceResult.properties.privateEndpointConnections) {
                             $resourceResultIdSplit = $resourceResult.id -split '/'
@@ -28459,11 +28572,15 @@ function dataCollectionResources {
                                 })
                         }
                     }
-
+                }
+                else {
+                    if ($resourceResult -eq 'convertfromJSONError') {
+                        $script:htResourcePropertiesConvertfromJSONFailed.($resource.id) = @{}
+                    }
                 }
             }
             else {
-                Write-Host "Please report at AzGovViz Repo ... No API-version matches! ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)'"
+                Write-Host "[AzGovViz] Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide this information (scrub subscription Id and company identifyable names): No API-version matches! ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)' - Thank you!" -ForegroundColor DarkRed
             }
 
         } -ThrottleLimit $azAPICallConf['htParameters'].ThrottleLimit
@@ -32439,6 +32556,18 @@ if ($DoTranscript) {
     setTranscript
 }
 
+#region PSRule paused
+if ($DoPSRule) {
+    Write-Host ''
+    Write-Host ' * * * CHANGE: PSRule for Azure * * *' -ForegroundColor Magenta
+    Write-Host 'PSRule integration has been paused'
+    Write-Host 'AzGovViz leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.'
+    $DoPSRule = $false
+    Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor Magenta
+    Write-Host ''
+}
+#endregion PSRule paused
+
 #region verifyModules3rd
 $modules = [System.Collections.ArrayList]@()
 $null = $modules.Add([PSCustomObject]@{
@@ -32496,6 +32625,7 @@ if ($azGovVizNewerVersionAvailable) {
 handleCloudEnvironment
 
 if (-not $HierarchyMapOnly) {
+    <# PSRule paused
     #region recommendPSRule
     if (-not $azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
         if (-not $DoPSRule) {
@@ -32509,6 +32639,7 @@ if (-not $HierarchyMapOnly) {
         }
     }
     #endregion recommendPSRule
+    #>
 
     #region hintPIMEligibility
     if ($azAPICallConf['htParameters'].accountType -eq 'User') {
@@ -32572,7 +32703,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htCachePolicyComplianceResponseTooLargeMG = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htCachePolicyComplianceResponseTooLargeSUB = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $outOfScopeSubscriptions = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-    $htAllSubscriptionsFromAPI = @{}
     if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
         $htManagementGroupsCost = @{}
         $htAzureConsumptionSubscriptions = @{}
@@ -32662,6 +32792,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $arrayPrivateEndPoints = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayPrivateEndPointsFromResourceProperties = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htUnknownTenantsForSubscription = @{}
+    $htResourcePropertiesConvertfromJSONFailed = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    #$htResourcesWithProperties = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
 }
 
 if (-not $HierarchyMapOnly) {
@@ -32691,6 +32823,7 @@ if (-not $HierarchyMapOnly) {
     }
 }
 
+getSubscriptions
 getEntities
 showMemoryUsage
 setBaseVariablesMG
@@ -32705,7 +32838,7 @@ runInfo
 
 if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
-    getSubscriptions
+    #getSubscriptions
     detailSubscriptions
     showMemoryUsage
 
@@ -32732,16 +32865,20 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $method = 'GET'
     $resourceProviders = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
+    Write-Host " Returned $($resourceProviders.Count) Resource Provider namespaces"
     $htResourceProvidersRef = @{}
     foreach ($resourceProvider in $resourceProviders) {
         foreach ($resourceProviderResourceType in $resourceProvider.resourceTypes) {
             $APIs = $resourceProviderResourceType.apiVersions | Sort-Object -Descending
-            $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)") = @{
-                APIFirst = $APIs | Select-Object -First 1
-                APIs     = $APIs
+            $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)") = @{}
+            $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)").APILatest = $APIs | Select-Object -First 1
+            $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)").APIs = $APIs
+            if (-not [string]::IsNullOrWhiteSpace($resourceProviderResourceType.defaultApiVersion)) {
+                $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)").APIDefault = $resourceProviderResourceType.defaultApiVersion
             }
         }
     }
+    Write-Host " Created ht for $($htResourceProvidersRef.Keys.Count) Resource/sub types"
     $endGetRPs = Get-Date
     Write-Host " Getting Tenant Resource Providers duration: $((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalMinutes) minutes ($((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalSeconds) seconds)"
 
@@ -33970,6 +34107,18 @@ if ($azGovVizNewerVersionAvailable) {
     }
 }
 #endregion infoNewAzGovVizVersionAvailable
+
+#region reportErrors
+if ($htResourcePropertiesConvertfromJSONFailed.Keys.Count -gt 0) {
+    Write-Host ''
+    Write-Host ' * * * Please help * * *' -ForegroundColor DarkGreen
+    Write-Host 'For the following resource(s) an error occurred converting from JSON (different casing). Please inspect the resource(s) for keys with different casing. Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide the JSON dump for the resource(s) (scrub subscription Id and company identifyable names) - Thank you!'
+    foreach ($resourceId in $htResourcePropertiesConvertfromJSONFailed.Keys) {
+        Write-Host " resId: '$resourceId'"
+    }
+    Write-Host ' * * * * * *' -ForegroundColor DarkGreen
+}
+#endregion reportErrors
 
 #region runIdentifier
 if ($ShowRunIdentifier) {

@@ -6,9 +6,22 @@ function getEntities {
     #https://management.azure.com/providers/Microsoft.Management/getEntities?api-version=2020-02-01
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/getEntities?api-version=2020-02-01"
     $method = 'POST'
-    $script:arrayEntitiesFromAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
+    $arrayEntitiesFromAPIInitial = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
+    Write-Host "  $($arrayEntitiesFromAPIInitial.Count) Entities returned"
 
-    Write-Host "  $($arrayEntitiesFromAPI.Count) Entities returned"
+    $script:arrayEntitiesFromAPI = [System.Collections.ArrayList]@()
+    foreach ($entry in $arrayEntitiesFromAPIInitial) {
+        if ($entry.Type -eq '/subscriptions') {
+            if ($htSubscriptionsFromOtherTenants.($entry.name)) {
+                $subdetail = $htSubscriptionsFromOtherTenants.($entry.name).subdetails
+                Write-Host "   Excluded Subscription '$($subDetail.displayName)' ($($entry.name)) (foreign tenantId: '$($subDetail.tenantId)')" -ForegroundColor DarkRed
+                continue
+            }
+        }
+        $null = $script:arrayEntitiesFromAPI.Add($entry)
+    }
+
+    Write-Host "  $($arrayEntitiesFromAPI.Count)/$($arrayEntitiesFromAPIInitial.Count) Entities relevant"
 
     $endEntities = Get-Date
     Write-Host " Getting Entities duration: $((New-TimeSpan -Start $startEntities -End $endEntities).TotalSeconds) seconds"
@@ -76,8 +89,8 @@ function getEntities {
         $script:htEntities.($entity.name).Id = $entity.Name
     }
 
-    Write-Host "  $(($htManagementGroupsMgPath.Keys).Count) Management Groups returned"
-    Write-Host "  $(($htSubscriptionsMgPath.Keys).Count) Subscriptions returned"
+    Write-Host "  $(($htManagementGroupsMgPath.Keys).Count) relevant Management Groups"
+    Write-Host "  $(($htSubscriptionsMgPath.Keys).Count) relevant Subscriptions"
 
     $endEntitiesdata = Get-Date
     Write-Host " Processing Entities data duration: $((New-TimeSpan -Start $startEntitiesdata -End $endEntitiesdata).TotalSeconds) seconds"

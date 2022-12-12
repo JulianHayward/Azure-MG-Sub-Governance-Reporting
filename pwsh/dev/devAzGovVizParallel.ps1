@@ -359,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.58',
+    $AzAPICallVersion = '1.1.59',
 
     [string]
-    $ProductVersion = 'v6_major_20221207_1',
+    $ProductVersion = 'v6_major_20221212_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -693,6 +693,18 @@ if ($DoTranscript) {
     setTranscript
 }
 
+#region PSRule paused
+if ($DoPSRule) {
+    Write-Host ''
+    Write-Host ' * * * CHANGE: PSRule for Azure * * *' -ForegroundColor Magenta
+    Write-Host 'PSRule integration has been paused'
+    Write-Host 'AzGovViz leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.'
+    $DoPSRule = $false
+    Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor Magenta
+    Write-Host ''
+}
+#endregion PSRule paused
+
 #region verifyModules3rd
 $modules = [System.Collections.ArrayList]@()
 $null = $modules.Add([PSCustomObject]@{
@@ -750,6 +762,7 @@ if ($azGovVizNewerVersionAvailable) {
 handleCloudEnvironment
 
 if (-not $HierarchyMapOnly) {
+    <# PSRule paused
     #region recommendPSRule
     if (-not $azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
         if (-not $DoPSRule) {
@@ -763,6 +776,7 @@ if (-not $HierarchyMapOnly) {
         }
     }
     #endregion recommendPSRule
+    #>
 
     #region hintPIMEligibility
     if ($azAPICallConf['htParameters'].accountType -eq 'User') {
@@ -826,7 +840,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htCachePolicyComplianceResponseTooLargeMG = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htCachePolicyComplianceResponseTooLargeSUB = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $outOfScopeSubscriptions = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-    $htAllSubscriptionsFromAPI = @{}
     if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
         $htManagementGroupsCost = @{}
         $htAzureConsumptionSubscriptions = @{}
@@ -916,6 +929,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $arrayPrivateEndPoints = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayPrivateEndPointsFromResourceProperties = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htUnknownTenantsForSubscription = @{}
+    $htResourcePropertiesConvertfromJSONFailed = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    #$htResourcesWithProperties = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
 }
 
 if (-not $HierarchyMapOnly) {
@@ -945,6 +960,7 @@ if (-not $HierarchyMapOnly) {
     }
 }
 
+getSubscriptions
 getEntities
 showMemoryUsage
 setBaseVariablesMG
@@ -959,7 +975,7 @@ runInfo
 
 if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
-    getSubscriptions
+    #getSubscriptions
     detailSubscriptions
     showMemoryUsage
 
@@ -986,16 +1002,20 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $method = 'GET'
     $resourceProviders = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
+    Write-Host " Returned $($resourceProviders.Count) Resource Provider namespaces"
     $htResourceProvidersRef = @{}
     foreach ($resourceProvider in $resourceProviders) {
         foreach ($resourceProviderResourceType in $resourceProvider.resourceTypes) {
             $APIs = $resourceProviderResourceType.apiVersions | Sort-Object -Descending
-            $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)") = @{
-                APIFirst = $APIs | Select-Object -First 1
-                APIs     = $APIs
+            $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)") = @{}
+            $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)").APILatest = $APIs | Select-Object -First 1
+            $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)").APIs = $APIs
+            if (-not [string]::IsNullOrWhiteSpace($resourceProviderResourceType.defaultApiVersion)) {
+                $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)").APIDefault = $resourceProviderResourceType.defaultApiVersion
             }
         }
     }
+    Write-Host " Created ht for $($htResourceProvidersRef.Keys.Count) Resource/sub types"
     $endGetRPs = Get-Date
     Write-Host " Getting Tenant Resource Providers duration: $((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalMinutes) minutes ($((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalSeconds) seconds)"
 
@@ -2224,6 +2244,18 @@ if ($azGovVizNewerVersionAvailable) {
     }
 }
 #endregion infoNewAzGovVizVersionAvailable
+
+#region reportErrors
+if ($htResourcePropertiesConvertfromJSONFailed.Keys.Count -gt 0) {
+    Write-Host ''
+    Write-Host ' * * * Please help * * *' -ForegroundColor DarkGreen
+    Write-Host 'For the following resource(s) an error occurred converting from JSON (different casing). Please inspect the resource(s) for keys with different casing. Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide the JSON dump for the resource(s) (scrub subscription Id and company identifyable names) - Thank you!'
+    foreach ($resourceId in $htResourcePropertiesConvertfromJSONFailed.Keys) {
+        Write-Host " resId: '$resourceId'"
+    }
+    Write-Host ' * * * * * *' -ForegroundColor DarkGreen
+}
+#endregion reportErrors
 
 #region runIdentifier
 if ($ShowRunIdentifier) {

@@ -59,20 +59,14 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Dec-07 / Major)
+__Changes__ (2022-Dec-12 / Major)
 
-* Minor change on Storage Account Access Analyisis feature HTML
-
-__Changes__ (2022-Dec-04 / Major)
-
-* PSRule for Azure fix | Get resources using ARM API inside Foreach-Object -parallel loop
-* Private Endpoints 
-  * fix resource identification
-  * add cross tenant detection
-* Storage Account Access Analysis - add insights on 'Allowed Copy Scope' and 'Allow Cross Tenant Replication'
-* Updated [API reference](#api-reference)
-* Cosmetics
-* Bugfixes
+* Pausing 'PSRule for Azure' integration. AzGovViz leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation. 
+* Enhance Private Endpoints feature / cross tenant PE
+* Fix for migrated Subscriptions. In rare cases a subscription that was migrated to another tenant may still be returned from the [ARM API](https://learn.microsoft.com/en-us/rest/api/resources/subscriptions/list), if that is the case then these subscriptions will be added to the out-of-scope subscriptions collection
+* Update Azure Devops Pipeline YAML
+  * Enhance error handling if Management Group Id containing spaces is provided - thanks @cbezenco
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.59
 
 Passed tests: Powershell Core 7.3.0 on Windows  
 Passed tests: Powershell Core 7.2.7 Azure DevOps hosted agent ubuntu-22.04  

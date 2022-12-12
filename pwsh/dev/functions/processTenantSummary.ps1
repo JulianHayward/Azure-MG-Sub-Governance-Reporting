@@ -8791,7 +8791,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@'
-            <i class="padlx fa fa-check-square-o" aria-hidden="true"></i> <span class="valignMiddle">PSRule for Azure - </span><span class="info">use parameter <b>-DoPSRule</b></span> - <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure/integrations" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a>
+            <i class="padlx fa fa-check-square-o" aria-hidden="true"></i> PSRule for Azure - <span class="info">integration paused - <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure/integrations" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a>
 '@)
         }
         #endregion SUMMARYPSRule
@@ -9722,8 +9722,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th class="uamiresaltbgc">IP addresses</th>
 <th class="uamiresaltbgc">Resource Resource Group</th>
 <th class="uamiresaltbgc">Resource Subscription Name</th>
-<th class="uamiresaltbgc">Resource Subscription</th>
+<th class="uamiresaltbgc">Resource Subscription Id</th>
 <th class="uamiresaltbgc">Resource MGPath</th>
+<th class="uamiresaltbgc">Resource Cross Tenant</th>
 
 <th>Subnet</th>
 <th>Subnet Id</th>
@@ -9732,7 +9733,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>VNet Location</th>
 <th>VNet Resource Group</th>
 <th>Subnet Subscription Name</th>
-<th>Subnet Subscription</th>
+<th>Subnet Subscription Id</th>
 <th>Subnet MGPath</th>
 </tr>
 </thead>
@@ -9763,9 +9764,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.FQDN)</td>
                         <td>$($result.ipAddresses)</td>
                         <td>$($result.ResourceResourceGroup)</td>
-                        <td>$($result.ResourceSubscriptionId)</td>
                         <td>$($result.ResourceSubscriptionName)</td>
+                        <td>$($result.ResourceSubscriptionId)</td>
                         <td style="min-width: 150px" class="breakwordall">$($result.ResourceMGPath)</td>
+                        <td>$($result.ResourceCrossTenant)</td>
 
                         <td>$($result.Subnet)</td>
                         <td style="min-width: 200px" class="breakwordall">$($result.SubnetId)</td>
@@ -9824,7 +9826,8 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_10: 'select',
             col_12: 'select',
             col_14: 'select',
-            col_26: 'select',
+            col_22: 'select',
+            col_27: 'select',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',

@@ -459,18 +459,27 @@ function dataCollectionResources {
             $scopeDisplayName = $using:scopeDisplayName
             $ChildMgParentNameChainDelimited = $using:ChildMgParentNameChainDelimited
             $azAPICallConf = $using:azAPICallConf
+            #$htResourcesWithProperties = $using:htResourcesWithProperties
             #endregion using
 
             if ($htResourceProvidersRef.($resource.type)) {
-                $apiVersionToUse = $htResourceProvidersRef.($resource.type).APIFirst
-                $currentTask = "Getting Resource for PSRule API-version: '$apiVersionToUse'; ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)'"
+                if ($htResourceProvidersRef.($resource.type).APIDefault) {
+                    $apiVersionToUse = $htResourceProvidersRef.($resource.type).APIDefault
+                    $apiRef = 'default'
+                }
+                else {
+                    $apiVersionToUse = $htResourceProvidersRef.($resource.type).APILatest
+                    $apiRef = 'latest'
+                }
+
+                $currentTask = "Getting Resource Properties API-version: '$apiVersionToUse' ($apiRef); ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)'"
                 $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($resource.id)?api-version=$apiVersionToUse"
                 $method = 'GET'
                 $resourceResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -listenOn Content -unhandledErrorAction Continue
 
-                if ($resourceResult -ne 'ResourceOrResourcegroupNotFound') {
+                if ($resourceResult -ne 'ResourceOrResourcegroupNotFound' -and $resourceResult -ne 'convertfromJSONError') {
                     $null = $script:arrayResourcesWithProperties.Add($resourceResult)
-
+                    #$script:htResourcesWithProperties.($resourceResult.id) = $resourceResult
                     if ($resourceResult.properties.privateEndpointConnections.Count -gt 0) {
                         foreach ($privateEndpointConnection in $resourceResult.properties.privateEndpointConnections) {
                             $resourceResultIdSplit = $resourceResult.id -split '/'
@@ -486,11 +495,15 @@ function dataCollectionResources {
                                 })
                         }
                     }
-
+                }
+                else {
+                    if ($resourceResult -eq 'convertfromJSONError') {
+                        $script:htResourcePropertiesConvertfromJSONFailed.($resource.id) = @{}
+                    }
                 }
             }
             else {
-                Write-Host "Please report at AzGovViz Repo ... No API-version matches! ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)'"
+                Write-Host "[AzGovViz] Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide this information (scrub subscription Id and company identifyable names): No API-version matches! ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)' - Thank you!" -ForegroundColor DarkRed
             }
 
         } -ThrottleLimit $azAPICallConf['htParameters'].ThrottleLimit

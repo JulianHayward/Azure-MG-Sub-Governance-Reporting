@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20221117_1
+# AzGovViz v6_major_20221212_1
 # First things first:
 # 1. Mandatory: In the AzGovViz.variables.yml file set needed variables 'ServiceConnection' and 'ManagementGroupId
 # 2. Mandatory: Check line 20
@@ -58,6 +58,12 @@ jobs:
         if ($scriptParameterName -ne 'ScriptDir' -and $scriptParameterName -ne 'Script') {
           $argument = Get-ChildItem -Path "Env:$( $scriptParameterName.ToUpper() )" -ErrorAction SilentlyContinue
           if ($argument.value) {
+            if ($scriptParameterName -eq 'ManagementGroupId') {
+              if ($argument.Value -match ' ') {
+                Write-Host "##vso[task.logissue type=error]Management Group ID ($($argument.Value)) validation failed! Management Group ID may not contain spaces - provide the Management Group ID, not the displayName"
+                exit 1
+              }
+            }
             if ($scriptParameter.StaticType.Name -eq 'SwitchParameter' -and $argument.Value -eq 'True') {
               if ($scriptParameterName -eq 'WebAppPublish') {
                 #skipping
@@ -125,7 +131,7 @@ jobs:
     displayName: 'Push AzGovViz output to repository'
 
   - task: AzurePowerShell@5
-    condition: eq(variables['WebAppPublish'], 'true')
+    condition: and(succeeded(), eq(variables['WebAppPublish'], 'true'))
     inputs:
       azureSubscription: '$(ServiceConnection)'
       ScriptType: 'InlineScript'

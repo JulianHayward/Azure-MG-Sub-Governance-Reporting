@@ -4,6 +4,15 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Dec-12 / Major)
+
+* Pausing 'PSRule for Azure' integration. AzGovViz leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation. 
+* Enhance Private Endpoints feature / cross tenant PE
+* Fix for migrated Subscriptions. In rare cases a subscription that was migrated to another tenant may still be returned from the [ARM API](https://learn.microsoft.com/en-us/rest/api/resources/subscriptions/list), if that is the case then these subscriptions will be added to the out-of-scope subscriptions collection
+* Update Azure Devops Pipeline YAML
+  * Enhance error handling if Management Group Id containing spaces is provided - thanks @cbezenco
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.59
+
 __Changes__ (2022-Dec-07 / Major)
 
 * Minor change on Storage Account Access Analyisis feature HTML

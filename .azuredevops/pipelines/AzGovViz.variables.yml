@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20221202_4
+# AzGovViz v6_major_20221212_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -59,7 +59,7 @@ variables:
   # The Management Group ID for the script to process
   - name: ManagementGroupId
     # String | example: value: 'MyManagementGroupId'
-    value: '<YourManagementGroupId>' #provide the Management Group Id, not the displayName
+    value: '<YourManagementGroupId>' #ATTENTION! Provide the Management Group Id, not the displayName
 
 ### Default Variables - Modify as Needed
 

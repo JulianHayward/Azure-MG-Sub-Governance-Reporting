@@ -3,6 +3,21 @@ function detailSubscriptions {
     $childrenSubscriptions = $arrayEntitiesFromAPI.where( { $_.properties.parentNameChain -contains $ManagementGroupID -and $_.type -eq '/subscriptions' } ) | Sort-Object -Property id -Unique
     $script:childrenSubscriptionsCount = ($childrenSubscriptions).Count
     $script:subsToProcessInCustomDataCollection = [System.Collections.ArrayList]@()
+
+    if ($htSubscriptionsFromOtherTenants.keys.count -gt 0) {
+        foreach ($subscriptionExludedOtherTenant in $htSubscriptionsFromOtherTenants.keys) {
+            $subscriptionExludedOtherTenantDetail = $htSubscriptionsFromOtherTenants.($subscriptionExludedOtherTenant).subDetails
+            $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{
+                    subscriptionId      = $subscriptionExludedOtherTenantDetail.subscriptionId
+                    subscriptionName    = $subscriptionExludedOtherTenantDetail.displayName
+                    outOfScopeReason    = "Foreign tenant: Id: $($subscriptionExludedOtherTenantDetail.tenantId)"
+                    ManagementGroupId   = ''
+                    ManagementGroupName = ''
+                    Level               = ''
+                })
+        }
+    }
+
     foreach ($childrenSubscription in $childrenSubscriptions) {
 
         $sub = $htAllSubscriptionsFromAPI.($childrenSubscription.name)
