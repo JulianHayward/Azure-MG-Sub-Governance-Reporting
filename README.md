@@ -59,6 +59,12 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
+__Changes__ (2022-Dec-13 / Major)
+
+* Fix for sovereign clouds - replace hardcoded ARM endpoint uri with dynamic ([issue #155](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/155))
+* Update Azure Devops Pipeline YAML
+  * Add `microsoft.chaos/chaosexperiments`to `-ExcludedResourceTypesDiagnosticsCapableParameters` parameter defaults
+
 __Changes__ (2022-Dec-12 / Major)
 
 * Pausing 'PSRule for Azure' integration. AzGovViz leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation. 

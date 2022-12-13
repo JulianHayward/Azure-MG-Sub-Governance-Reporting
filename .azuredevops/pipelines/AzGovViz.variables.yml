@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20221212_1
+# AzGovViz v6_major_20221213_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -17,6 +17,7 @@ parameters:
     #     - Microsoft.VirtualMachineImages/imageTemplates
     default:
       - microsoft.web/certificates
+      - microsoft.chaos/chaosexperiments
 
   # Processes only Subscriptions that startWith the given QuotaIds
   - name: SubscriptionQuotaIdWhitelistParameters

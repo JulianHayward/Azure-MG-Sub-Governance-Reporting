@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.59',
 
     [string]
-    $ProductVersion = 'v6_major_20221212_1',
+    $ProductVersion = 'v6_major_20221213_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -32861,7 +32861,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $startGetRPs = Get-Date
     $currentTask = 'Getting Tenant Resource Providers'
     Write-Host $currentTask
-    $uri = 'https://management.azure.com/providers?api-version=2021-04-01'
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers?api-version=2021-04-01"
     $method = 'GET'
     $resourceProviders = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
