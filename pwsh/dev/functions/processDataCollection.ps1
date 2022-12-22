@@ -866,10 +866,10 @@ function processDataCollection {
 
                 if ($arrayResourceFluctuationFinal.Count -gt 0 -and $doResourceFluctuation) {
                     #DataCollection Export of Resource fluctuation
-                    Write-Host "Exporting ResourceFluctuation CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuation.csv'"
+                    Write-Host " Exporting ResourceFluctuation CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuation.csv'"
                     $arrayResourceFluctuationFinal | Sort-Object -Property ResourceType | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuation.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
 
-                    Write-Host "Exporting ResourceFluctuation detailed CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuationDetailed.csv'"
+                    Write-Host " Exporting ResourceFluctuation detailed CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuationDetailed.csv'"
                     $arrayAddedAndRemoved | Sort-Object -Property Resource | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuationDetailed.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
                 }
                 Write-Host "Process Resource fluctuation duration: $((New-TimeSpan -Start $start -End (Get-Date)).TotalSeconds) seconds"

@@ -6639,8 +6639,10 @@ extensions: [{ name: 'sort' }]
 <tbody>
 '@)
 
-        Write-Host " Exporting MDfC Email Notifications CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv'"
-        $htDefenderEmailContacts.values | Sort-Object -Property subscriptionName | Select-Object -Property subscriptionId, subscriptionName, alertNotificationsState, alertNotificationsminimalSeverity, roles, emails | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        if (-not $ManagementGroupsOnly) {
+            Write-Host " Exporting MDfC Email Notifications CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv'"
+            $htDefenderEmailContacts.values | Sort-Object -Property subscriptionName | Select-Object -Property subscriptionId, subscriptionName, alertNotificationsState, alertNotificationsminimalSeverity, roles, emails | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        }
 
         $htmlSUMMARYSubs = $null
         $htmlSUMMARYSubs = foreach ($summarySubscription in $summarySubscriptions) {
@@ -8277,7 +8279,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@'
-    <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No Microsoft Defender for Cloud plans at all</span></p>
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No Microsoft Defender for Cloud plans at all</p>
 '@)
     }
     $endDefenderPlans = Get-Date
@@ -8434,7 +8436,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@'
-    <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No Microsoft Defender for Cloud plans at all</span></p>
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No Microsoft Defender for Cloud plans at all</p>
 '@)
     }
     $endDefenderPlans = Get-Date
@@ -8625,7 +8627,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@'
-    <p><i class="padlx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle">No UserAssigned Managed Identities assigned to Resources / vice versa - at all</span></p>
+    <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No UserAssigned Managed Identities assigned to Resources / vice versa - at all</p>
 '@)
         }
         $endUserAssignedIdentities4Resources = Get-Date
@@ -8791,7 +8793,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@'
-            <i class="padlx fa fa-check-square-o" aria-hidden="true"></i> PSRule for Azure - <span class="info">integration paused - <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure/integrations" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a>
+            <i class="padlx fa fa-ban" aria-hidden="true"></i> PSRule for Azure - <span class="info">integration paused - <a class="externallink" href="https://azure.github.io/PSRule.Rules.Azure/integrations" target="_blank" rel="noopener">PSRule for Azure <i class="fa fa-external-link" aria-hidden="true"></i></a>
 '@)
         }
         #endregion SUMMARYPSRule
@@ -8803,7 +8805,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         Write-Host '  processing TenantSummary Storage Account Access Analysis'
 
         $arrayStorageAccountAnalysisResultsCount = $arrayStorageAccountAnalysisResults.Count
-        if ($arrayStorageAccountAnalysisResultsCount.Count -gt 0) {
+        if ($arrayStorageAccountAnalysisResultsCount -gt 0) {
 
             if (-not $NoCsvExport) {
                 $storageAccountAccessAnalysisCSVPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_StorageAccountAccessAnalysis.csv"
@@ -8991,7 +8993,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@'
-                <p><i class="padlx fa fa-user-secret" aria-hidden="true"></i> <span class="valignMiddle">No Storage Accounts found</span></p>
+                <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No Storage Accounts found</p>
 '@)
         }
         $endStorageAccountAnalysis = Get-Date

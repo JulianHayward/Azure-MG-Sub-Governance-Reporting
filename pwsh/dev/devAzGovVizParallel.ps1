@@ -359,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.59',
+    $AzAPICallVersion = '1.1.62',
 
     [string]
-    $ProductVersion = 'v6_major_20221213_1',
+    $ProductVersion = 'v6_major_20221222_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -931,6 +931,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htUnknownTenantsForSubscription = @{}
     $htResourcePropertiesConvertfromJSONFailed = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     #$htResourcesWithProperties = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $htResourceProvidersRef = @{}
 }
 
 if (-not $HierarchyMapOnly) {
@@ -992,32 +993,33 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     cacheBuiltIn
     showMemoryUsage
 
-    Write-Host 'Collecting custom data'
-    $startDataCollection = Get-Date
+    if (-not $ManagementGroupsOnly) {
+        $startGetRPs = Get-Date
+        $currentTask = 'Getting Tenant Resource Providers'
+        Write-Host $currentTask
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers?api-version=2021-04-01"
+        $method = 'GET'
+        $resourceProviders = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-    $startGetRPs = Get-Date
-    $currentTask = 'Getting Tenant Resource Providers'
-    Write-Host $currentTask
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers?api-version=2021-04-01"
-    $method = 'GET'
-    $resourceProviders = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
-
-    Write-Host " Returned $($resourceProviders.Count) Resource Provider namespaces"
-    $htResourceProvidersRef = @{}
-    foreach ($resourceProvider in $resourceProviders) {
-        foreach ($resourceProviderResourceType in $resourceProvider.resourceTypes) {
-            $APIs = $resourceProviderResourceType.apiVersions | Sort-Object -Descending
-            $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)") = @{}
-            $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)").APILatest = $APIs | Select-Object -First 1
-            $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)").APIs = $APIs
-            if (-not [string]::IsNullOrWhiteSpace($resourceProviderResourceType.defaultApiVersion)) {
-                $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)").APIDefault = $resourceProviderResourceType.defaultApiVersion
+        Write-Host " Returned $($resourceProviders.Count) Resource Provider namespaces"
+        foreach ($resourceProvider in $resourceProviders) {
+            foreach ($resourceProviderResourceType in $resourceProvider.resourceTypes) {
+                $APIs = $resourceProviderResourceType.apiVersions | Sort-Object -Descending
+                $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)") = @{}
+                $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)").APILatest = $APIs | Select-Object -First 1
+                $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)").APIs = $APIs
+                if (-not [string]::IsNullOrWhiteSpace($resourceProviderResourceType.defaultApiVersion)) {
+                    $htResourceProvidersRef.("$($resourceProvider.nameSpace)/$($resourceProviderResourceType.resourceType)").APIDefault = $resourceProviderResourceType.defaultApiVersion
+                }
             }
         }
+        Write-Host " Created ht for $($htResourceProvidersRef.Keys.Count) Resource/sub types"
+        $endGetRPs = Get-Date
+        Write-Host "Getting Tenant Resource Providers duration: $((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalMinutes) minutes ($((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalSeconds) seconds)"
     }
-    Write-Host " Created ht for $($htResourceProvidersRef.Keys.Count) Resource/sub types"
-    $endGetRPs = Get-Date
-    Write-Host " Getting Tenant Resource Providers duration: $((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalMinutes) minutes ($((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalSeconds) seconds)"
+
+    Write-Host 'Collecting custom data'
+    $startDataCollection = Get-Date
 
     processDataCollection -mgId $ManagementGroupId
 
@@ -1028,10 +1030,10 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         showMemoryUsage
     }
 
-    exportBaseCSV
-
     $endDataCollection = Get-Date
     Write-Host "Collecting custom data duration: $((New-TimeSpan -Start $startDataCollection -End $endDataCollection).TotalMinutes) minutes ($((New-TimeSpan -Start $startDataCollection -End $endDataCollection).TotalSeconds) seconds)"
+
+    exportBaseCSV
 }
 else {
     processHierarchyMapOnly
@@ -1056,17 +1058,22 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
     processManagedIdentities
     showMemoryUsage
-
-    createTagList
-    showMemoryUsage
-
-    if ($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis -eq $false) {
-        processStorageAccountAnalysis
+    if (-not $ManagementGroupsOnly) {
+        createTagList
         showMemoryUsage
     }
 
+    if ($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis -eq $false) {
+        if (-not $ManagementGroupsOnly) {
+            processStorageAccountAnalysis
+            showMemoryUsage
+        }
+    }
+
     if ($azAPICallConf['htParameters'].NoResources -eq $false) {
-        getResourceDiagnosticsCapability
+        if (-not $ManagementGroupsOnly) {
+            getResourceDiagnosticsCapability
+        }
         showMemoryUsage
     }
 }
@@ -1089,7 +1096,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     Write-Host ' Building preQueries'
     $startPreQueries = Get-Date
 
-    Write-Host 'Create Policy/Set helper hash table'
+    #region Create Policy/Set helper hash table
+    Write-Host '  Create Policy/Set helper hash table'
     $startHelperHt = Get-Date
     $tenantAllPolicySets = ($htCacheDefinitionsPolicySet).Values
     $tenantAllPolicySetsCount = ($tenantAllPolicySets).count
@@ -1107,27 +1115,40 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
                 $hlper4CSVOutput = "$($policySet.DisplayName) ($($policySet.PolicyDefinitionId))"
                 if (-not $htPoliciesUsedInPolicySets.($PolicySetPolicyId)) {
                     $htPoliciesUsedInPolicySets.($PolicySetPolicyId) = @{}
-                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet = [array]$hlperDisplayNameWithOrWithoutLinkToAzAdvertizer
-                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV = [array]$hlper4CSVOutput
-                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly = [array]($policySet.PolicyDefinitionId)
+                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet = [array]$hlperDisplayNameWithOrWithoutLinkToAzAdvertizer
+                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV = [array]$hlper4CSVOutput
+                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly = [array]($policySet.PolicyDefinitionId)
+                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet = [System.Collections.ArrayList]@()
+                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet.Add($hlperDisplayNameWithOrWithoutLinkToAzAdvertizer)
+                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV = [System.Collections.ArrayList]@()
+                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV.Add($hlper4CSVOutput)
+                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly = [System.Collections.ArrayList]@()
+                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly.Add($policySet.PolicyDefinitionId)
                 }
                 else {
-                    $array = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet
-                    $array += $hlperDisplayNameWithOrWithoutLinkToAzAdvertizer
-                    $arrayCSV = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV
-                    $arrayCSV += $hlper4CSVOutput
-                    $arrayIdOnly = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly
-                    $arrayIdOnly += $policySet.PolicyDefinitionId
-                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet = $array
-                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV = $arrayCSV
-                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly = $arrayIdOnly
+                    # $array = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet
+                    # $array += $hlperDisplayNameWithOrWithoutLinkToAzAdvertizer
+                    # $arrayCSV = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV
+                    # $arrayCSV += $hlper4CSVOutput
+                    # $arrayIdOnly = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly
+                    # $arrayIdOnly += $policySet.PolicyDefinitionId
+                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet = $array
+                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV = $arrayCSV
+                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly = $arrayIdOnly
+
+                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet.Add($hlperDisplayNameWithOrWithoutLinkToAzAdvertizer)
+                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV.Add($hlper4CSVOutput)
+                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly.Add($policySet.PolicyDefinitionId)
                 }
             }
         }
     }
     $endHelperHt = Get-Date
-    Write-Host "Create Policy/Set helper hash table duration: $((New-TimeSpan -Start $startHelperHt -End $endHelperHt).TotalSeconds) seconds"
+    Write-Host "  Create Policy/Set helper hash table duration: $((New-TimeSpan -Start $startHelperHt -End $endHelperHt).TotalSeconds) seconds"
+    #endregion Create Policy/Set helper hash table
 
+    #region PreQueriesPolicyRelated
+    $startPreQueriesPolicyRelated = Get-Date
     if (-not $azAPICallConf['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
         $policyBaseQuery = $newTable.where({ -not [String]::IsNullOrEmpty($_.PolicyVariant) } ) | Sort-Object -Property PolicyType, Policy | Select-Object -Property Level, Policy*, mg*, Subscription*
     }
@@ -1138,7 +1159,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $policyBaseQuerySubscriptions = $policyBaseQuery.where({ -not [String]::IsNullOrEmpty($_.SubscriptionId) } )
     $policyBaseQueryManagementGroups = $policyBaseQuery.where({ [String]::IsNullOrEmpty($_.SubscriptionId) } )
     $policyPolicyBaseQueryScopeInsights = ($policyBaseQuery | Select-Object Mg*, Subscription*, PolicyAssignmentAtScopeCount, PolicySetAssignmentAtScopeCount, PolicyAndPolicySetAssignmentAtScopeCount, PolicyAssignmentLimit -Unique)
-    #$policyBaseQueryUniqueAssignments = $policyBaseQuery | Select-Object -Property Policy* | Sort-Object -Property PolicyAssignmentId -Unique
     $policyBaseQueryUniqueAssignments = $policyBaseQuery | Sort-Object -Property PolicyAssignmentId -Unique | Select-Object -Property Policy*
     $policyAssignmentsOrphaned = $policyBaseQuery.where({ $_.PolicyAvailability -eq 'na' } ) | Sort-Object -Property PolicyAssignmentId -Unique
     $policyAssignmentsOrphanedCount = $policyAssignmentsOrphaned.Count
@@ -1165,21 +1185,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $policyPolicyBaseQueryUniqueCustomDefinitions = ($policyBaseQueryUniqueCustomDefinitions.where({ $_.PolicyVariant -eq 'Policy' } )).PolicyDefinitionId
     $policyPolicySetBaseQueryUniqueCustomDefinitions = ($policyBaseQueryUniqueCustomDefinitions.where({ $_.PolicyVariant -eq 'PolicySet' } )).PolicyDefinitionId
 
-    $rbacBaseQueryArrayListNotGroupOwner = $rbacBaseQuery.where({ $_.RoleAssignmentIdentityObjectType -ne 'Group' -and $_.RoleDefinitionName -eq 'Owner' }) | Select-Object -Property mgid, SubscriptionId, RoleAssignmentId, RoleDefinitionName, RoleDefinitionId, RoleAssignmentIdentityObjectType, RoleAssignmentIdentityDisplayname, RoleAssignmentIdentitySignInName, RoleAssignmentIdentityObjectId
-    $rbacBaseQueryArrayListNotGroupUserAccessAdministrator = $rbacBaseQuery.where({ $_.RoleAssignmentIdentityObjectType -ne 'Group' -and $_.RoleDefinitionName -eq 'User Access Administrator' }) | Select-Object -Property mgid, SubscriptionId, RoleAssignmentId, RoleDefinitionName, RoleDefinitionId, RoleAssignmentIdentityObjectType, RoleAssignmentIdentityDisplayname, RoleAssignmentIdentitySignInName, RoleAssignmentIdentityObjectId
-    $roleAssignmentsForServicePrincipals = (($roleAssignmentsUniqueById.where({ $_.RoleAssignmentIdentityObjectType -eq 'ServicePrincipal' })))
-    $htRoleAssignmentsForServicePrincipals = @{}
-    foreach ($spWithRoleAssignment in $roleAssignmentsForServicePrincipals | Group-Object -Property RoleAssignmentIdentityObjectId) {
-        if (-not $htRoleAssignmentsForServicePrincipals.($spWithRoleAssignment.Name)) {
-            $htRoleAssignmentsForServicePrincipals.($spWithRoleAssignment.Name) = @{}
-            $htRoleAssignmentsForServicePrincipals.($spWithRoleAssignment.Name).RoleAssignments = $spWithRoleAssignment.group
-        }
-    }
-
-    $blueprintBaseQuery = ($newTable | Select-Object mgid, SubscriptionId, Blueprint*).where({ -not [String]::IsNullOrEmpty($_.BlueprintName) } )
-    #$mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | Select-Object MgId, SubscriptionId -Unique)
-    $mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | Sort-Object -Property MgId, SubscriptionId -Unique | Select-Object MgId, SubscriptionId)
-
     #region create array Policy definitions
     $tenantAllPoliciesCount = (($htCacheDefinitionsPolicy).Values).count
     $tenantBuiltInPolicies = (($htCacheDefinitionsPolicy).Values).where({ $_.Type -eq 'BuiltIn' } )
@@ -1194,6 +1199,23 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $tenantCustomPolicySets = $tenantAllPolicySets.where({ $_.Type -eq 'Custom' } )
     $tenantCustompolicySetsCount = ($tenantCustomPolicySets).count
     #endregion create array PolicySet definitions
+
+    $endPreQueriesPolicyRelated = Get-Date
+    Write-Host "  PreQueriesPolicyRelated duration: $((New-TimeSpan -Start $startPreQueriesPolicyRelated -End $endPreQueriesPolicyRelated).TotalSeconds) seconds"
+    #endregion PreQueriesPolicyRelated
+
+    #region PreQueriesRBACRelated
+    $startPreQueriesRBACRelated = Get-Date
+    $rbacBaseQueryArrayListNotGroupOwner = $rbacBaseQuery.where({ $_.RoleAssignmentIdentityObjectType -ne 'Group' -and $_.RoleDefinitionName -eq 'Owner' }) | Select-Object -Property mgid, SubscriptionId, RoleAssignmentId, RoleDefinitionName, RoleDefinitionId, RoleAssignmentIdentityObjectType, RoleAssignmentIdentityDisplayname, RoleAssignmentIdentitySignInName, RoleAssignmentIdentityObjectId
+    $rbacBaseQueryArrayListNotGroupUserAccessAdministrator = $rbacBaseQuery.where({ $_.RoleAssignmentIdentityObjectType -ne 'Group' -and $_.RoleDefinitionName -eq 'User Access Administrator' }) | Select-Object -Property mgid, SubscriptionId, RoleAssignmentId, RoleDefinitionName, RoleDefinitionId, RoleAssignmentIdentityObjectType, RoleAssignmentIdentityDisplayname, RoleAssignmentIdentitySignInName, RoleAssignmentIdentityObjectId
+    $roleAssignmentsForServicePrincipals = (($roleAssignmentsUniqueById.where({ $_.RoleAssignmentIdentityObjectType -eq 'ServicePrincipal' })))
+    $htRoleAssignmentsForServicePrincipals = @{}
+    foreach ($spWithRoleAssignment in $roleAssignmentsForServicePrincipals | Group-Object -Property RoleAssignmentIdentityObjectId) {
+        if (-not $htRoleAssignmentsForServicePrincipals.($spWithRoleAssignment.Name)) {
+            $htRoleAssignmentsForServicePrincipals.($spWithRoleAssignment.Name) = @{}
+            $htRoleAssignmentsForServicePrincipals.($spWithRoleAssignment.Name).RoleAssignments = $spWithRoleAssignment.group
+        }
+    }
 
     #region assignmentRgRes
     $htPoliciesWithAssignmentOnRgRes = @{}
@@ -1234,7 +1256,18 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         $rgResRoleAssignmentsArrayFromHTValues = ($htCacheAssignmentsRBACOnResourceGroupsAndResources).Values
     }
 
-    #region diagnostics Mg/Sub
+    $endPreQueriesRBACRelated = Get-Date
+    Write-Host "  PreQueriesRBACRelated duration: $((New-TimeSpan -Start $startPreQueriesRBACRelated -End $endPreQueriesRBACRelated).TotalSeconds) seconds"
+    #endregion PreQueriesRBACRelated
+
+    #$blueprintBaseQuery = ($newTable | Select-Object mgid, SubscriptionId, Blueprint*).where({ -not [String]::IsNullOrEmpty($_.BlueprintName) } )
+    $blueprintBaseQuery = ($newTable.where({ -not [String]::IsNullOrEmpty($_.BlueprintName) } )) | Select-Object mgid, SubscriptionId, Blueprint*
+    #$mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | Select-Object MgId, SubscriptionId -Unique)
+    $mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | Sort-Object -Property MgId, SubscriptionId -Unique | Select-Object MgId, SubscriptionId)
+
+
+    #region PreQueriesDiagnosticsRelated
+    $startPreQueriesDiagnosticsRelated = Get-Date
     $diagnosticSettingsMg = $arrayDiagnosticSettingsMgSub.where({ $_.Scope -eq 'Mg' -and $_.DiagnosticsPresent -eq 'true' })
     $diagnosticSettingsMgCount = $diagnosticSettingsMg.Count
     $diagnosticSettingsMgCategories = ($diagnosticSettingsMg.DiagnosticCategories | Group-Object -Property Category).Name
@@ -1248,13 +1281,13 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
             $targetTypegrouped = $ds.group | Group-Object -Property DiagnosticTargetType
             foreach ($tt in $targetTypegrouped) {
                 if (-not ($htDiagnosticSettingsMgSub).mg.($entry.Name)) {
-                    ($htDiagnosticSettingsMgSub).mg.($entry.Name) = @{}
+                ($htDiagnosticSettingsMgSub).mg.($entry.Name) = @{}
                 }
                 if (-not ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name)) {
-                    ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name) = @{}
+                ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name) = @{}
                 }
                 if (-not ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name).($tt.Name)) {
-                    ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name).($tt.Name) = $tt.group
+                ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name).($tt.Name) = $tt.group
                 }
             }
         }
@@ -1300,7 +1333,6 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     }
     $arrayMgsWithoutDiagnosticsCount = $arrayMgsWithoutDiagnostics.Count
 
-
     $diagnosticSettingsSub = $arrayDiagnosticSettingsMgSub.where({ $_.Scope -eq 'Sub' -and $_.DiagnosticsPresent -eq 'true' })
     $diagnosticSettingsSubCount = $diagnosticSettingsSub.Count
     $diagnosticSettingsSubNoDiag = $arrayDiagnosticSettingsMgSub.where({ $_.Scope -eq 'Sub' -and $_.DiagnosticsPresent -eq 'false' })
@@ -1316,20 +1348,23 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
             $targetTypegrouped = $ds.group | Group-Object -Property DiagnosticTargetType
             foreach ($tt in $targetTypegrouped) {
                 if (-not ($htDiagnosticSettingsMgSub).sub.($entry.Name)) {
-                    ($htDiagnosticSettingsMgSub).sub.($entry.Name) = @{}
+                ($htDiagnosticSettingsMgSub).sub.($entry.Name) = @{}
                 }
                 if (-not ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name)) {
-                    ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name) = @{}
+                ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name) = @{}
                 }
                 if (-not ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name).($tt.Name)) {
-                    ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name).($tt.Name) = $tt.group
+                ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name).($tt.Name) = $tt.group
                 }
             }
         }
     }
-    #endregion diagnostics Mg/Sub
+    $endPreQueriesDiagnosticsRelated = Get-Date
+    Write-Host "  PreQueriesDiagnosticsRelated duration: $((New-TimeSpan -Start $startPreQueriesDiagnosticsRelated -End $endPreQueriesDiagnosticsRelated).TotalSeconds) seconds"
+    #endregion PreQueriesDiagnosticsRelated
 
-    #region DefenderPlans
+    #region PreQueriesDefenderRelated
+    $startPreQueriesDefenderRelated = Get-Date
     $defenderPlansGroupedBySub = $arrayDefenderPlans | Sort-Object -Property subscriptionName | Group-Object -Property subscriptionName, subscriptionId, subscriptionMgPath
     $subsDefenderPlansCount = ($defenderPlansGroupedBySub | Measure-Object).Count
     $defenderCapabilities = ($arrayDefenderPlans.defenderPlan | Sort-Object -Unique)
@@ -1344,7 +1379,9 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
             $defenderPlanDeprecatedKubernetesService = $true
         }
     }
-    #endregion DefenderPlans
+    $endPreQueriesDefenderRelated = Get-Date
+    Write-Host "  PreQueriesDefenderRelated duration: $((New-TimeSpan -Start $startPreQueriesDefenderRelated -End $endPreQueriesDefenderRelated).TotalSeconds) seconds"
+    #endregion PreQueriesDefenderRelated
 
     $endPreQueries = Get-Date
     Write-Host " Pre Queries duration: $((New-TimeSpan -Start $startPreQueries -End $endPreQueries).TotalMinutes) minutes ($((New-TimeSpan -Start $startPreQueries -End $endPreQueries).TotalSeconds) seconds)"
@@ -2006,8 +2043,10 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $startSummary = Get-Date
 
     if (-not $azAPICallConf['htParameters'].NoNetwork) {
-        processNetwork
-        processPrivateEndpoints
+        if (-not $ManagementGroupsOnly) {
+            processNetwork
+            processPrivateEndpoints
+        }
     }
 
     processTenantSummary

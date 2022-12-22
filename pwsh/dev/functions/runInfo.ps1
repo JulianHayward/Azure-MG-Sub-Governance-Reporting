@@ -343,7 +343,7 @@ function runInfo {
             #$script:paramsUsed += "ShowMemoryUsage: $($ShowMemoryUsage) &#13;"
         }
 
-        if ($CriticalMemoryUsage -ne 90) {
+        if ($CriticalMemoryUsage -ne 99) {
             Write-Host " CriticalMemoryUsage = $($CriticalMemoryUsage)%" -ForegroundColor green
             #$script:paramsUsed += "ShowMemoryUsage: $($ShowMemoryUsage) &#13;"
         }

@@ -10,6 +10,7 @@ function getEntities {
     Write-Host "  $($arrayEntitiesFromAPIInitial.Count) Entities returned"
 
     $script:arrayEntitiesFromAPI = [System.Collections.ArrayList]@()
+    $script:htsubscriptionsFromEntitiesThatAreNotInGetSubscriptions = @{}
     foreach ($entry in $arrayEntitiesFromAPIInitial) {
         if ($entry.Type -eq '/subscriptions') {
             if ($htSubscriptionsFromOtherTenants.($entry.name)) {
@@ -17,7 +18,20 @@ function getEntities {
                 Write-Host "   Excluded Subscription '$($subDetail.displayName)' ($($entry.name)) (foreign tenantId: '$($subDetail.tenantId)')" -ForegroundColor DarkRed
                 continue
             }
+            if (-not $htAllSubscriptionsFromAPI.($entry.name)) {
+                #not contained in subscriptions
+                $script:htsubscriptionsFromEntitiesThatAreNotInGetSubscriptions.($entry.name) = $entry
+                Write-Host "   Excluded Subscription '$($entry.properties.displayName)' ($($entry.name)) (contained in GetEntities, not contained in GetSubscriptions)" -ForegroundColor DarkRed
+                continue
+            }
+            #test
+            # if ($entry.name -eq '<subId>') {
+            #     $script:htsubscriptionsFromEntitiesThatAreNotInGetSubscriptions.($entry.name) = $entry
+            #     Write-Host "   Excluded Subscription '$($entry.properties.displayName)' ($($entry.name)) (contained in GetEntities, not contained in GetSubscriptions)" -ForegroundColor DarkRed
+            #     continue
+            # }
         }
+
         $null = $script:arrayEntitiesFromAPI.Add($entry)
     }
 

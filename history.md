@@ -4,6 +4,18 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Dec-22 / Major)
+
+* Fix issue for Private Endpoints feature
+* Add reference for Microsoft Defender for Cloud security alerts on AzGovViz activity - [Security](#security)
+* Fix for migrated Subscriptions. In rare cases a subscription that was migrated to another tenant may still be returned from the [Entities ARM API](https://learn.microsoft.com/en-us/rest/api/managementgroups/entities/list), but not from the [Subscriptions ARM API](https://learn.microsoft.com/en-us/rest/api/resources/subscriptions/list) - if that is the case then these subscriptions will be added to the out-of-scope subscriptions collection
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.62
+  * Fix issue [155](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/155) AzureChinaCloud
+* Minor optimizations 
+  * Using parameter `-ManagementGroupsOnly`
+  * Using parameter `-HierarchyMapOnly`
+  * Overall script optimizations
+
 __Changes__ (2022-Dec-13 / Major)
 
 * Fix for sovereign clouds - replace hardcoded ARM endpoint uri with dynamic ([issue #155](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/155))

@@ -18,6 +18,20 @@ function detailSubscriptions {
         }
     }
 
+    if ($htsubscriptionsFromEntitiesThatAreNotInGetSubscriptions.keys.count -gt 0) {
+        foreach ($subscriptionExludedInEntitiesNotInSubscriptions in $htsubscriptionsFromEntitiesThatAreNotInGetSubscriptions.keys) {
+            $subscriptionExludedInEntitiesNotInSubscriptionsDetail = $htsubscriptionsFromEntitiesThatAreNotInGetSubscriptions.($subscriptionExludedInEntitiesNotInSubscriptions)
+            $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{
+                    subscriptionId      = $subscriptionExludedInEntitiesNotInSubscriptions
+                    subscriptionName    = $subscriptionExludedInEntitiesNotInSubscriptionsDetail.properties.displayName
+                    outOfScopeReason    = 'Sub in GetEntities, not in GetSubscriptions'
+                    ManagementGroupId   = ''
+                    ManagementGroupName = ''
+                    Level               = ''
+                })
+        }
+    }
+
     foreach ($childrenSubscription in $childrenSubscriptions) {
 
         $sub = $htAllSubscriptionsFromAPI.($childrenSubscription.name)

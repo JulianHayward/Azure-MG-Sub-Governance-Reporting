@@ -1,10 +1,9 @@
 function processStorageAccountAnalysis {
     $start = Get-Date
     Write-Host 'Processing Storage Account Analysis'
-    $storageAccountscount = $storageAccounts.count
-    if ($storageAccountscount -gt 0) {
-        Write-Host " Executing Storage Account Analysis for $storageAccountscount Storage Accounts"
-        $script:arrayStorageAccountAnalysisResults = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $storageAccountsCount = $storageAccounts.count
+    if ($storageAccountsCount -gt 0) {
+        Write-Host " Executing Storage Account Analysis for $storageAccountsCount Storage Accounts"
         createBearerToken -AzAPICallConfiguration $azapicallconf -targetEndPoint 'Storage'
 
         $storageAccounts | ForEach-Object -Parallel {
@@ -29,7 +28,7 @@ function processStorageAccountAnalysis {
             $resourceGroupName = ($storageAccount.id -split '/')[4]
             $subDetails = $htAllSubscriptionsFromAPI.($subscriptionId).subDetails
 
-            Write-Host "Processing SA; Subscription: $($subDetails.displayName) ($subscriptionId) [$($subDetails.subscriptionPolicies.quotaId)] - Storage Account: $($storageAccount.name)"
+            Write-Host "Processing Storage Account '$($storageAccount.name)' - Subscription: '$($subDetails.displayName)' ($subscriptionId) [$($subDetails.subscriptionPolicies.quotaId)]"
 
             if ($storageAccount.Properties.primaryEndpoints.blob) {
 
@@ -124,7 +123,7 @@ function processStorageAccountAnalysis {
                         $resourceType = "$($resourceAccessRuleResourceIdSplitted[6])/$($resourceAccessRuleResourceIdSplitted[7])"
 
                         [regex]$regex = '\*+'
-                        $resourceAccessRule.resourceId
+                        #$resourceAccessRule.resourceId
                         switch ($regex.matches($resourceAccessRule.resourceId).count) {
                             { $_ -eq 1 } {
                                 $null = $arrayResourceAccessRules.Add([PSCustomObject]@{
@@ -289,5 +288,5 @@ function processStorageAccountAnalysis {
     }
 
     $end = Get-Date
-    Write-Host " Processing Storage Account Analysis duration: $((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds"
+    Write-Host " Processing Storage Account Analysis duration: $((New-TimeSpan -Start $start -End $end).TotalMinutes) minutes ($((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds)"
 }
