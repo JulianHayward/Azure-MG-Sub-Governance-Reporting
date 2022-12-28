@@ -367,6 +367,7 @@ function processDataCollection {
                 $htResourceProvidersRef = $using:htResourceProvidersRef
                 $arrayPrivateEndPointsFromResourceProperties = $using:arrayPrivateEndPointsFromResourceProperties
                 $htResourcePropertiesConvertfromJSONFailed = $using:htResourcePropertiesConvertfromJSONFailed
+                $htAvailablePrivateEndpointTypes = $using:htAvailablePrivateEndpointTypes
                 #$htResourcesWithProperties = $using:htResourcesWithProperties
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable

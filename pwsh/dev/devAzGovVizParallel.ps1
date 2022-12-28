@@ -359,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.62',
+    $AzAPICallVersion = '1.1.63',
 
     [string]
-    $ProductVersion = 'v6_major_20221222_1',
+    $ProductVersion = 'v6_major_20221228_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -932,6 +932,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htResourcePropertiesConvertfromJSONFailed = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     #$htResourcesWithProperties = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htResourceProvidersRef = @{}
+    $htAvailablePrivateEndpointTypes = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
 }
 
 if (-not $HierarchyMapOnly) {
@@ -994,6 +995,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     showMemoryUsage
 
     if (-not $ManagementGroupsOnly) {
+        #region Getting Tenant Resource Providers
         $startGetRPs = Get-Date
         $currentTask = 'Getting Tenant Resource Providers'
         Write-Host $currentTask
@@ -1016,6 +1018,39 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         Write-Host " Created ht for $($htResourceProvidersRef.Keys.Count) Resource/sub types"
         $endGetRPs = Get-Date
         Write-Host "Getting Tenant Resource Providers duration: $((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalMinutes) minutes ($((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalSeconds) seconds)"
+        #endregion Getting Tenant Resource Providers
+
+        #region Getting Available Private Endpoint Types
+        $startGetAvailablePrivateEndpointTypes = Get-Date
+
+        $currentTask = 'Getting Locations'
+        Write-Host $currentTask
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($azAPICallConf['checkcontext'].Subscription.Id)/locations?api-version=2020-01-01"
+        $method = 'GET'
+        $getLocations = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
+        Write-Host " Returned $($getLocations.Count) locations"
+
+        Write-Host "Getting 'Available Private Endpoint Types' for $($getLocations.Count) locations"
+        $getLocations | ForEach-Object -Parallel {
+            $location = $_
+            $azAPICallConf = $using:azAPICallConf
+            $htAvailablePrivateEndpointTypes = $using:htAvailablePrivateEndpointTypes
+            $currentTask = "Getting 'Available Private Endpoint Types' for location $($location.name)"
+            #Write-Host $currentTask
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($azAPICallConf['checkcontext'].Subscription.Id)/providers/Microsoft.Network/locations/$($location.name)/availablePrivateEndpointTypes?api-version=2022-07-01"
+            $method = 'GET'
+            $availablePrivateEndpointTypes = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -skipOnErrorCode 400
+            Write-Host " Returned $($availablePrivateEndpointTypes.Count) 'Available Private Endpoint Types' for location $($location.name)"
+            foreach ($availablePrivateEndpointType in $availablePrivateEndpointTypes) {
+                if (-not $htAvailablePrivateEndpointTypes.(($availablePrivateEndpointType.resourceName).ToLower())) {
+                    $script:htAvailablePrivateEndpointTypes.(($availablePrivateEndpointType.resourceName).ToLower()) = @{}
+                }
+            }
+        } -ThrottleLimit $ThrottleLimit
+        Write-Host " Created ht for $($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types'"
+        $endGetAvailablePrivateEndpointTypes = Get-Date
+        Write-Host "Getting 'Available Private Endpoint Types' duration: $((New-TimeSpan -Start $startGetAvailablePrivateEndpointTypes -End $endGetAvailablePrivateEndpointTypes).TotalMinutes) minutes ($((New-TimeSpan -Start $startGetAvailablePrivateEndpointTypes -End $endGetAvailablePrivateEndpointTypes).TotalSeconds) seconds)"
+        #endregion Getting Available Private Endpoint Types
     }
 
     Write-Host 'Collecting custom data'

@@ -455,6 +455,7 @@ function dataCollectionResources {
             $arrayResourcesWithProperties = $using:arrayResourcesWithProperties
             $htResourceProvidersRef = $using:htResourceProvidersRef
             $arrayPrivateEndPointsFromResourceProperties = $using:arrayPrivateEndPointsFromResourceProperties
+            $htAvailablePrivateEndpointTypes = $using:htAvailablePrivateEndpointTypes
             $scopeId = $using:scopeId
             $scopeDisplayName = $using:scopeDisplayName
             $ChildMgParentNameChainDelimited = $using:ChildMgParentNameChainDelimited
@@ -462,48 +463,54 @@ function dataCollectionResources {
             #$htResourcesWithProperties = $using:htResourcesWithProperties
             #endregion using
 
-            if ($htResourceProvidersRef.($resource.type)) {
-                if ($htResourceProvidersRef.($resource.type).APIDefault) {
-                    $apiVersionToUse = $htResourceProvidersRef.($resource.type).APIDefault
-                    $apiRef = 'default'
-                }
-                else {
-                    $apiVersionToUse = $htResourceProvidersRef.($resource.type).APILatest
-                    $apiRef = 'latest'
-                }
+            if ($htAvailablePrivateEndpointTypes.(($resource.type).ToLower())) {
+                #Write-Host "$($resource.type) in `$htAvailablePrivateEndpointTypes"
+                if ($htResourceProvidersRef.($resource.type)) {
+                    if ($htResourceProvidersRef.($resource.type).APIDefault) {
+                        $apiVersionToUse = $htResourceProvidersRef.($resource.type).APIDefault
+                        $apiRef = 'default'
+                    }
+                    else {
+                        $apiVersionToUse = $htResourceProvidersRef.($resource.type).APILatest
+                        $apiRef = 'latest'
+                    }
 
-                $currentTask = "Getting Resource Properties API-version: '$apiVersionToUse' ($apiRef); ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)'"
-                $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($resource.id)?api-version=$apiVersionToUse"
-                $method = 'GET'
-                $resourceResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -listenOn Content -unhandledErrorAction Continue
+                    $currentTask = "Getting Resource Properties API-version: '$apiVersionToUse' ($apiRef); ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)'"
+                    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($resource.id)?api-version=$apiVersionToUse"
+                    $method = 'GET'
+                    $resourceResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -listenOn Content -unhandledErrorAction Continue
 
-                if ($resourceResult -ne 'ResourceOrResourcegroupNotFound' -and $resourceResult -ne 'convertfromJSONError') {
-                    $null = $script:arrayResourcesWithProperties.Add($resourceResult)
-                    #$script:htResourcesWithProperties.($resourceResult.id) = $resourceResult
-                    if ($resourceResult.properties.privateEndpointConnections.Count -gt 0) {
-                        foreach ($privateEndpointConnection in $resourceResult.properties.privateEndpointConnections) {
-                            $resourceResultIdSplit = $resourceResult.id -split '/'
-                            $null = $script:arrayPrivateEndPointsFromResourceProperties.Add([PSCustomObject]@{
-                                    ResourceName              = $resourceResult.name
-                                    ResourceType              = $resourceResult.type
-                                    ResourceId                = $resourceResult.id
-                                    ResourceResourceGroup     = $resourceResultIdSplit[4]
-                                    ResourceSubscriptionId    = $scopeId
-                                    ResourceSubscriptionName  = $scopeDisplayName
-                                    ResourceMGPath            = $ChildMgParentNameChainDelimited
-                                    privateEndpointConnection = $privateEndpointConnection
-                                })
+                    if ($resourceResult -ne 'ResourceOrResourcegroupNotFound' -and $resourceResult -ne 'convertfromJSONError') {
+                        $null = $script:arrayResourcesWithProperties.Add($resourceResult)
+                        #$script:htResourcesWithProperties.($resourceResult.id) = $resourceResult
+                        if ($resourceResult.properties.privateEndpointConnections.Count -gt 0) {
+                            foreach ($privateEndpointConnection in $resourceResult.properties.privateEndpointConnections) {
+                                $resourceResultIdSplit = $resourceResult.id -split '/'
+                                $null = $script:arrayPrivateEndPointsFromResourceProperties.Add([PSCustomObject]@{
+                                        ResourceName              = $resourceResult.name
+                                        ResourceType              = $resourceResult.type
+                                        ResourceId                = $resourceResult.id
+                                        ResourceResourceGroup     = $resourceResultIdSplit[4]
+                                        ResourceSubscriptionId    = $scopeId
+                                        ResourceSubscriptionName  = $scopeDisplayName
+                                        ResourceMGPath            = $ChildMgParentNameChainDelimited
+                                        privateEndpointConnection = $privateEndpointConnection
+                                    })
+                            }
+                        }
+                    }
+                    else {
+                        if ($resourceResult -eq 'convertfromJSONError') {
+                            $script:htResourcePropertiesConvertfromJSONFailed.($resource.id) = @{}
                         }
                     }
                 }
                 else {
-                    if ($resourceResult -eq 'convertfromJSONError') {
-                        $script:htResourcePropertiesConvertfromJSONFailed.($resource.id) = @{}
-                    }
+                    Write-Host "[AzGovViz] Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide this information (scrub subscription Id and company identifyable names): No API-version matches! ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)' - Thank you!" -ForegroundColor DarkRed
                 }
             }
             else {
-                Write-Host "[AzGovViz] Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide this information (scrub subscription Id and company identifyable names): No API-version matches! ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)' - Thank you!" -ForegroundColor DarkRed
+                #Write-Host "$($resource.type) not in `$htAvailablePrivateEndpointTypes"
             }
 
         } -ThrottleLimit $azAPICallConf['htParameters'].ThrottleLimit
@@ -511,9 +518,9 @@ function dataCollectionResources {
     #Write-Host 'arm resGet count:' $arrayResourcesWithProperties.Count
     #endregion resources GET
 
-    if ($resourcesSubscriptionResult.Count -ne $arrayResourcesWithProperties.Count) {
-        Write-Host " FYI: Getting Resources for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']  - ARM list count: $($resourcesSubscriptionResult.Count); ARG get count: $($arrayResourcesWithProperties.Count)"
-    }
+    # if ($resourcesSubscriptionResult.Count -ne $arrayResourcesWithProperties.Count) {
+    #     Write-Host " FYI: Getting Resources for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']  - ARM list count: $($resourcesSubscriptionResult.Count); ARG get count: $($arrayResourcesWithProperties.Count)"
+    # }
 
     #region PSRule
     if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {

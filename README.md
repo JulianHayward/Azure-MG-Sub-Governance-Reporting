@@ -59,17 +59,13 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Dec-22 / Major)
+__Changes__ (2022-Dec-28 / Major)
 
-* Fix issue for Private Endpoints feature
-* Add reference for Microsoft Defender for Cloud security alerts on AzGovViz activity - [Security](#security)
-* Fix for migrated Subscriptions. In rare cases a subscription that was migrated to another tenant may still be returned from the [Entities ARM API](https://learn.microsoft.com/en-us/rest/api/managementgroups/entities/list), but not from the [Subscriptions ARM API](https://learn.microsoft.com/en-us/rest/api/resources/subscriptions/list) - if that is the case then these subscriptions will be added to the out-of-scope subscriptions collection
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.62
-  * Fix issue [155](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/155) AzureChinaCloud
-* Minor optimizations 
-  * Using parameter `-ManagementGroupsOnly`
-  * Using parameter `-HierarchyMapOnly`
-  * Overall script optimizations
+* Instead of trying to get full properties of all resource types only approach available Private Endpoint resource types
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.63
+  * Optimize error output for unknown convertFrom-JSON errors
+* Updated [API reference](#api-reference)
+* &#128640; By the way - checkout the updated 'well performing' [__Az__`Alias`__Advertizer__](https://www.azadvertizer.net/azpolicyaliasesadvertizer_singlelines.html)
 
 Passed tests: Powershell Core 7.3.0 on Windows  
 Passed tests: Powershell Core 7.2.7 Azure DevOps hosted agent ubuntu-22.04  
@@ -542,6 +538,7 @@ AzGovViz polls the following APIs
 | ARM | 2020-02-01 | /providers/Microsoft.Management/managementGroups/`tenantId`/settings |
 | ARM | 2020-05-01 | /providers/Microsoft.Management/managementGroups |
 | ARM | 2021-03-01 | /providers/Microsoft.ResourceGraph/resources |
+| ARM | 2020-01-01 | /subscriptions/`subscriptionId`/locations |
 | ARM | 2016-09-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/locks |
 | ARM | 2021-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyAssignments |
 | ARM | 2021-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyDefinitions |
@@ -556,6 +553,7 @@ AzGovViz polls the following APIs
 | ARM | 2019-11-01 | /subscriptions/`subscriptionId`/providers/Microsoft.CostManagement/query |
 | ARM | 2021-05-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Insights/diagnosticSettings |
 | ARM | 2019-10-01 | /subscriptions/`subscriptionId`/providers/Microsoft.PolicyInsights/policyStates/latest/summarize |
+| ARM | 2022-07-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Network/locations/`location`/availablePrivateEndpointTypes |
 | ARM | 2022-05-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Network/privateEndpoints |
 | ARM | 2022-05-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Network/virtualNetworks |
 | ARM | 2020-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Resources/tags/default |

@@ -4,6 +4,14 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Dec-28 / Major)
+
+* Instead of trying to get full properties of all resource types only approach available Private Endpoint resource types
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.63
+  * Optimize error output for unknown convertFrom-JSON errors
+* Updated [API reference](#api-reference)
+* &#128640; By the way - checkout the updated 'well performing' [__Az__`Alias`__Advertizer__](https://www.azadvertizer.net/azpolicyaliasesadvertizer_singlelines.html)
+
 __Changes__ (2022-Dec-22 / Major)
 
 * Fix issue for Private Endpoints feature
