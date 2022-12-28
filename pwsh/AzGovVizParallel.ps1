@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.63',
 
     [string]
-    $ProductVersion = 'v6_major_20221228_1',
+    $ProductVersion = 'v6_major_20221228_2',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -28566,6 +28566,7 @@ function dataCollectionResources {
             $htResourceProvidersRef = $using:htResourceProvidersRef
             $arrayPrivateEndPointsFromResourceProperties = $using:arrayPrivateEndPointsFromResourceProperties
             $htAvailablePrivateEndpointTypes = $using:htAvailablePrivateEndpointTypes
+            $htResourcePropertiesConvertfromJSONFailed = $using:htResourcePropertiesConvertfromJSONFailed
             $scopeId = $using:scopeId
             $scopeDisplayName = $using:scopeDisplayName
             $ChildMgParentNameChainDelimited = $using:ChildMgParentNameChainDelimited

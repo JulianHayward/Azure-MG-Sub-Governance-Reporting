@@ -66,6 +66,7 @@ __Changes__ (2022-Dec-28 / Major)
   * Optimize error output for unknown convertFrom-JSON errors
 * Updated [API reference](#api-reference)
 * &#128640; By the way - checkout the updated 'well performing' [__Az__`Alias`__Advertizer__](https://www.azadvertizer.net/azpolicyaliasesadvertizer_singlelines.html)
+* Fix: lock-in the synchrsonized hashTable `htResourcePropertiesConvertfromJSONFailed` in dataCollectionFunctions foreach parallel loop
 
 Passed tests: Powershell Core 7.3.0 on Windows  
 Passed tests: Powershell Core 7.2.7 Azure DevOps hosted agent ubuntu-22.04  

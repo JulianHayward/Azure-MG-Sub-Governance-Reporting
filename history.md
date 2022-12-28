@@ -11,6 +11,7 @@ __Changes__ (2022-Dec-28 / Major)
   * Optimize error output for unknown convertFrom-JSON errors
 * Updated [API reference](#api-reference)
 * &#128640; By the way - checkout the updated 'well performing' [__Az__`Alias`__Advertizer__](https://www.azadvertizer.net/azpolicyaliasesadvertizer_singlelines.html)
+* Fix: lock-in the synchrsonized hashTable `htResourcePropertiesConvertfromJSONFailed` in dataCollectionFunctions foreach parallel loop
 
 __Changes__ (2022-Dec-22 / Major)
 

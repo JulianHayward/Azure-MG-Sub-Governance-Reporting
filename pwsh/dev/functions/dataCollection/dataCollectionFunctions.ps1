@@ -456,6 +456,7 @@ function dataCollectionResources {
             $htResourceProvidersRef = $using:htResourceProvidersRef
             $arrayPrivateEndPointsFromResourceProperties = $using:arrayPrivateEndPointsFromResourceProperties
             $htAvailablePrivateEndpointTypes = $using:htAvailablePrivateEndpointTypes
+            $htResourcePropertiesConvertfromJSONFailed = $using:htResourcePropertiesConvertfromJSONFailed
             $scopeId = $using:scopeId
             $scopeDisplayName = $using:scopeDisplayName
             $ChildMgParentNameChainDelimited = $using:ChildMgParentNameChainDelimited
