@@ -22,7 +22,11 @@ function processPrivateEndpoints {
 
                 $peMGPath = 'n/a'
                 $peXTenant = 'unknown'
-                if ($htUnknownTenantsForSubscription.($peSubscriptionId)) {
+                if ($htSubscriptionsMgPath.($peSubscriptionId)) {
+                    $peMGPath = $htSubscriptionsMgPath.($peSubscriptionId).pathDelimited
+                    $peXTenant = $false
+                }
+                elseif ($htUnknownTenantsForSubscription.($peSubscriptionId)) {
                     $remoteTenantId = $htUnknownTenantsForSubscription.($peSubscriptionId).TenantId
                     $peMGPath = $remoteTenantId
                     if ($remoteTenantId -eq $azApiCallConf['checkcontext'].tenant.id) {

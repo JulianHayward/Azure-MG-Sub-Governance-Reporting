@@ -163,7 +163,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
       * Determine if the Role assignmet's Role definition is capable to write Role assignments
   * PIM (Privileged Identity Management) eligibility for Role assignments
     * Get a full report of all PIM eligible Role assignments for Management Groups and Subscriptions, including resolved User members of AAD Groups that have assigned eligibility
-    * &#x1F4A1; Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources``PrivilegedAccess.Read.AzureResources`
+    * &#x1F4A1; Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
   * Role assignments ClassicAdministrators
   * Security & Best practice analysis
     * Existence of custom Role definition that reflect 'Owner' permissions
