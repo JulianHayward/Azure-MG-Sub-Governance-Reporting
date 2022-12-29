@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.63',
 
     [string]
-    $ProductVersion = 'v6_major_20221228_2',
+    $ProductVersion = 'v6_major_20221229_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -7662,7 +7662,11 @@ function processPrivateEndpoints {
 
                 $peMGPath = 'n/a'
                 $peXTenant = 'unknown'
-                if ($htUnknownTenantsForSubscription.($peSubscriptionId)) {
+                if ($htSubscriptionsMgPath.($peSubscriptionId)) {
+                    $peMGPath = $htSubscriptionsMgPath.($peSubscriptionId).pathDelimited
+                    $peXTenant = $false
+                }
+                elseif ($htUnknownTenantsForSubscription.($peSubscriptionId)) {
                     $remoteTenantId = $htUnknownTenantsForSubscription.($peSubscriptionId).TenantId
                     $peMGPath = $remoteTenantId
                     if ($remoteTenantId -eq $azApiCallConf['checkcontext'].tenant.id) {

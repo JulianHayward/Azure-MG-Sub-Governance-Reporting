@@ -4,6 +4,10 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Dec-29 / Major)
+
+* Fix issue for Private Endpoints feature
+
 __Changes__ (2022-Dec-28 / Major)
 
 * Instead of trying to get full properties of all resource types only approach available Private Endpoint resource types
