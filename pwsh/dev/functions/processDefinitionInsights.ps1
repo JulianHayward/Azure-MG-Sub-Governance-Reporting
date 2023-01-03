@@ -84,6 +84,7 @@ function processDefinitionInsights() {
     #region definitionInsightsPolicyDefinitions
     $startDefinitionInsightsPolicyDefinitions = Get-Date
     Write-Host '  processing DefinitionInsights Policy definitions'
+    ShowMemoryUsage
     $tfCount = $tenantAllPoliciesCount
     $htmlTableId = 'definitionInsights_Policy'
     [void]$htmlDefinitionInsights.AppendLine( @"
@@ -208,6 +209,7 @@ function processDefinitionInsights() {
         $cnter++
         if ($cnter % 1000 -eq 0) {
             Write-Host "   $cnter Policy definitions processed"
+            ShowMemoryUsage
         }
 
         $hasAssignments = 'false'
@@ -450,6 +452,7 @@ tf.init();}}
     #region definitionInsightsPolicySetDefinitions
     $startDefinitionInsightsPolicySetDefinitions = Get-Date
     Write-Host '  processing DefinitionInsights PolicySet definitions'
+    ShowMemoryUsage
     $tfCount = $tenantAllPolicySetsCount
     $htmlTableId = 'definitionInsights_PolicySet'
     [void]$htmlDefinitionInsights.AppendLine( @"
@@ -739,6 +742,7 @@ tf.init();}}
     #region definitionInsightsRoleDefinitions
     $startDefinitionInsightsRoleDefinitions = Get-Date
     Write-Host '  processing DefinitionInsights Role definitions'
+    ShowMemoryUsage
     $tfCount = $tenantAllRolesCount
     $htmlTableId = 'definitionInsights_Roles'
     [void]$htmlDefinitionInsights.AppendLine( @"
@@ -1043,4 +1047,5 @@ tf.init();}}
 
     $endDefinitionInsights = Get-Date
     Write-Host "  DefinitionInsights processing duration: $((New-TimeSpan -Start $startDefinitionInsights -End $endDefinitionInsights).TotalMinutes) minutes ($((New-TimeSpan -Start $startDefinitionInsights -End $endDefinitionInsights).TotalSeconds) seconds)"
+    ShowMemoryUsage
 }

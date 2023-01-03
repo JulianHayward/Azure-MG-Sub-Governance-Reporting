@@ -359,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.63',
+    $AzAPICallVersion = '1.1.64',
 
     [string]
-    $ProductVersion = 'v6_major_20221229_1',
+    $ProductVersion = 'v6_major_20230103_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -6101,6 +6101,7 @@ function processDefinitionInsights() {
     #region definitionInsightsPolicyDefinitions
     $startDefinitionInsightsPolicyDefinitions = Get-Date
     Write-Host '  processing DefinitionInsights Policy definitions'
+    ShowMemoryUsage
     $tfCount = $tenantAllPoliciesCount
     $htmlTableId = 'definitionInsights_Policy'
     [void]$htmlDefinitionInsights.AppendLine( @"
@@ -6225,6 +6226,7 @@ function processDefinitionInsights() {
         $cnter++
         if ($cnter % 1000 -eq 0) {
             Write-Host "   $cnter Policy definitions processed"
+            ShowMemoryUsage
         }
 
         $hasAssignments = 'false'
@@ -6467,6 +6469,7 @@ tf.init();}}
     #region definitionInsightsPolicySetDefinitions
     $startDefinitionInsightsPolicySetDefinitions = Get-Date
     Write-Host '  processing DefinitionInsights PolicySet definitions'
+    ShowMemoryUsage
     $tfCount = $tenantAllPolicySetsCount
     $htmlTableId = 'definitionInsights_PolicySet'
     [void]$htmlDefinitionInsights.AppendLine( @"
@@ -6756,6 +6759,7 @@ tf.init();}}
     #region definitionInsightsRoleDefinitions
     $startDefinitionInsightsRoleDefinitions = Get-Date
     Write-Host '  processing DefinitionInsights Role definitions'
+    ShowMemoryUsage
     $tfCount = $tenantAllRolesCount
     $htmlTableId = 'definitionInsights_Roles'
     [void]$htmlDefinitionInsights.AppendLine( @"
@@ -7060,6 +7064,7 @@ tf.init();}}
 
     $endDefinitionInsights = Get-Date
     Write-Host "  DefinitionInsights processing duration: $((New-TimeSpan -Start $startDefinitionInsights -End $endDefinitionInsights).TotalMinutes) minutes ($((New-TimeSpan -Start $startDefinitionInsights -End $endDefinitionInsights).TotalSeconds) seconds)"
+    ShowMemoryUsage
 }
 function processDiagramMermaid() {
     if ($ManagementGroupId -ne $azAPICallConf['checkContext'].Tenant.Id) {
@@ -32947,7 +32952,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
             #Write-Host $currentTask
             $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($azAPICallConf['checkcontext'].Subscription.Id)/providers/Microsoft.Network/locations/$($location.name)/availablePrivateEndpointTypes?api-version=2022-07-01"
             $method = 'GET'
-            $availablePrivateEndpointTypes = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -skipOnErrorCode 400
+            $availablePrivateEndpointTypes = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -skipOnErrorCode 400, 409
             Write-Host " Returned $($availablePrivateEndpointTypes.Count) 'Available Private Endpoint Types' for location $($location.name)"
             foreach ($availablePrivateEndpointType in $availablePrivateEndpointTypes) {
                 if (-not $htAvailablePrivateEndpointTypes.(($availablePrivateEndpointType.resourceName).ToLower())) {
@@ -32955,7 +32960,16 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
                 }
             }
         } -ThrottleLimit $ThrottleLimit
-        Write-Host " Created ht for $($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types'"
+
+        if ($htAvailablePrivateEndpointTypes.Keys.Count -gt 0) {
+            Write-Host " Created ht for $($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types'"
+        }
+        else {
+            $throwmsg = "$($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types' - Please use another Subscription for the AzContext -> use parameter: -SubscriptionId4AzContext '<subscriptionId>'"
+            Write-Host $throwmsg -ForegroundColor DarkRed
+            Throw $throwmsg
+        }
+
         $endGetAvailablePrivateEndpointTypes = Get-Date
         Write-Host "Getting 'Available Private Endpoint Types' duration: $((New-TimeSpan -Start $startGetAvailablePrivateEndpointTypes -End $endGetAvailablePrivateEndpointTypes).TotalMinutes) minutes ($((New-TimeSpan -Start $startGetAvailablePrivateEndpointTypes -End $endGetAvailablePrivateEndpointTypes).TotalSeconds) seconds)"
         #endregion Getting Available Private Endpoint Types

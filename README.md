@@ -59,18 +59,12 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2022-Dec-29 / Major)
+__Changes__ (2023-Jan-03 / Major)
 
 * Fix issue for Private Endpoints feature
-
-__Changes__ (2022-Dec-28 / Major)
-
-* Instead of trying to get full properties of all resource types only approach available Private Endpoint resource types
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.63
-  * Optimize error output for unknown convertFrom-JSON errors
-* Updated [API reference](#api-reference)
-* &#128640; By the way - checkout the updated 'well performing' [__Az__`Alias`__Advertizer__](https://www.azadvertizer.net/azpolicyaliasesadvertizer_singlelines.html)
-* Fix: lock-in the synchrsonized hashTable `htResourcePropertiesConvertfromJSONFailed` in dataCollectionFunctions foreach parallel loop
+  * Subscription may not be registered for location / skip
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.64
+* Add ShowMemoryUsage at creation of __DefinitionInsights__
 
 Passed tests: Powershell Core 7.3.0 on Windows  
 Passed tests: Powershell Core 7.2.7 Azure DevOps hosted agent ubuntu-22.04  

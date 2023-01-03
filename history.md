@@ -4,6 +4,13 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2023-Jan-03 / Major)
+
+* Fix issue for Private Endpoints feature
+  * Subscription may not be registered for location / skip
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.64
+* Add ShowMemoryUsage at creation of __DefinitionInsights__
+
 __Changes__ (2022-Dec-29 / Major)
 
 * Fix issue for Private Endpoints feature

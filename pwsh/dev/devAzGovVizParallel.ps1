@@ -359,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.63',
+    $AzAPICallVersion = '1.1.64',
 
     [string]
-    $ProductVersion = 'v6_major_20221229_1',
+    $ProductVersion = 'v6_major_20230103_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -1039,7 +1039,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
             #Write-Host $currentTask
             $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($azAPICallConf['checkcontext'].Subscription.Id)/providers/Microsoft.Network/locations/$($location.name)/availablePrivateEndpointTypes?api-version=2022-07-01"
             $method = 'GET'
-            $availablePrivateEndpointTypes = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -skipOnErrorCode 400
+            $availablePrivateEndpointTypes = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -skipOnErrorCode 400, 409
             Write-Host " Returned $($availablePrivateEndpointTypes.Count) 'Available Private Endpoint Types' for location $($location.name)"
             foreach ($availablePrivateEndpointType in $availablePrivateEndpointTypes) {
                 if (-not $htAvailablePrivateEndpointTypes.(($availablePrivateEndpointType.resourceName).ToLower())) {
@@ -1047,7 +1047,16 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
                 }
             }
         } -ThrottleLimit $ThrottleLimit
-        Write-Host " Created ht for $($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types'"
+
+        if ($htAvailablePrivateEndpointTypes.Keys.Count -gt 0) {
+            Write-Host " Created ht for $($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types'"
+        }
+        else {
+            $throwmsg = "$($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types' - Please use another Subscription for the AzContext -> use parameter: -SubscriptionId4AzContext '<subscriptionId>'"
+            Write-Host $throwmsg -ForegroundColor DarkRed
+            Throw $throwmsg
+        }
+
         $endGetAvailablePrivateEndpointTypes = Get-Date
         Write-Host "Getting 'Available Private Endpoint Types' duration: $((New-TimeSpan -Start $startGetAvailablePrivateEndpointTypes -End $endGetAvailablePrivateEndpointTypes).TotalMinutes) minutes ($((New-TimeSpan -Start $startGetAvailablePrivateEndpointTypes -End $endGetAvailablePrivateEndpointTypes).TotalSeconds) seconds)"
         #endregion Getting Available Private Endpoint Types
