@@ -451,7 +451,7 @@ function processDataCollection {
                         DataCollectionDefenderPlans @baseParameters @dataCollectionDefenderPlansParameters
 
                         #defenderEmailContacts
-                        #DataCollectionDefenderEmailContacts @baseParameters
+                        DataCollectionDefenderEmailContacts @baseParameters
 
                         #advisorScores
                         DataCollectionAdvisorScores @baseParameters

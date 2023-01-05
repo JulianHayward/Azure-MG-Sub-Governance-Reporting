@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.64',
 
     [string]
-    $ProductVersion = 'v6_major_20230105_2',
+    $ProductVersion = 'v6_major_20230105_3',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -5174,7 +5174,7 @@ function processDataCollection {
                         DataCollectionDefenderPlans @baseParameters @dataCollectionDefenderPlansParameters
 
                         #defenderEmailContacts
-                        #DataCollectionDefenderEmailContacts @baseParameters
+                        DataCollectionDefenderEmailContacts @baseParameters
 
                         #advisorScores
                         DataCollectionAdvisorScores @baseParameters
