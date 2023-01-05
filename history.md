@@ -4,6 +4,15 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2023-Jan-05 / Major)
+
+* Fix issue PIM eligibility (do not process out-of-scope subscriptions) [issue #161](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/161)
+* Collect Advisor Scores foreach subscription
+* Update DailySummary
+  * Add count of subscriptions per quotaId
+  * Add 'Microsoft Defender for Cloud' Secure Score for Management Groups
+* Updated [API reference](#api-reference)
+
 __Changes__ (2023-Jan-03 / Major)
 
 * Fix issue for Private Endpoints feature

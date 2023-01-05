@@ -58,6 +58,50 @@ function dataCollectionDefenderPlans {
 }
 $funcDataCollectionDefenderPlans = $function:dataCollectionDefenderPlans.ToString()
 
+
+function dataCollectionAdvisorScores {
+    [CmdletBinding()]Param(
+        [string]$scopeId,
+        [string]$scopeDisplayName,
+        $SubscriptionQuotaId
+    )
+
+    $currentTask = "Getting Advisor Scores for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Advisor/advisorScore?api-version=2020-07-01-preview"
+    $method = 'GET'
+    $advisorScoreResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -skipOnErrorCode 404
+
+    if ($advisorScoreResult -eq 'SubScriptionNotRegistered' -or $advisorScoreResult -eq 'DisallowedProvider') {
+    }
+    else {
+        if ($advisorScoreResult -like 'azgvzerrorMessage_*') {
+
+        }
+        else {
+            if ($advisorScoreResult.Count -gt 0) {
+                foreach ($entry in $advisorScoreResult) {
+                    #Write-Host ($entry | ConvertTo-Json -Depth 99)
+                    if ($entry.Name) {
+                        $objectGuid = [System.Guid]::empty
+                        if ([System.Guid]::TryParse($entry.Name, [System.Management.Automation.PSReference]$ObjectGuid)) {
+                        }
+                        else {
+                            $null = $script:arrayAdvisorScores.Add([PSCustomObject]@{
+                                    subscriptionId      = $scopeId
+                                    subscriptionName    = $scopeDisplayName
+                                    subscriptionQuotaId = $SubscriptionQuotaId
+                                    category            = $entry.Name
+                                    score               = $entry.properties.lastRefreshedScore.score
+                                })
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+$funcDataCollectionAdvisorScores = $function:dataCollectionAdvisorScores.ToString()
+
 function dataCollectionDefenderEmailContacts {
     [CmdletBinding()]Param(
         [string]$scopeId,

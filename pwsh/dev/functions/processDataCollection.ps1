@@ -368,6 +368,7 @@ function processDataCollection {
                 $arrayPrivateEndPointsFromResourceProperties = $using:arrayPrivateEndPointsFromResourceProperties
                 $htResourcePropertiesConvertfromJSONFailed = $using:htResourcePropertiesConvertfromJSONFailed
                 $htAvailablePrivateEndpointTypes = $using:htAvailablePrivateEndpointTypes
+                $arrayAdvisorScores = $using:arrayAdvisorScores
                 #$htResourcesWithProperties = $using:htResourcesWithProperties
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
@@ -398,6 +399,7 @@ function processDataCollection {
                 $function:dataCollectionDefenderEmailContacts = $using:funcDataCollectionDefenderEmailContacts
                 $function:dataCollectionVNets = $using:funcDataCollectionVNets
                 $function:dataCollectionPrivateEndpoints = $using:funcDataCollectionPrivateEndpoints
+                $function:dataCollectionAdvisorScores = $using:funcDataCollectionAdvisorScores
                 #endregion UsingVARs
 
                 $addRowToTableDone = $false
@@ -449,7 +451,10 @@ function processDataCollection {
                         DataCollectionDefenderPlans @baseParameters @dataCollectionDefenderPlansParameters
 
                         #defenderEmailContacts
-                        DataCollectionDefenderEmailContacts @baseParameters
+                        #DataCollectionDefenderEmailContacts @baseParameters
+
+                        #advisorScores
+                        DataCollectionAdvisorScores @baseParameters
 
                         if (-not $azAPICallConf['htParameters'].NoNetwork) {
                             #VNets

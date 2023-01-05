@@ -59,12 +59,14 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2023-Jan-03 / Major)
+__Changes__ (2023-Jan-05 / Major)
 
-* Fix issue for Private Endpoints feature
-  * Subscription may not be registered for location / skip
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.64
-* Add ShowMemoryUsage at creation of __DefinitionInsights__
+* Fix issue PIM eligibility (do not process out-of-scope subscriptions) [issue #161](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/161)
+* Collect Advisor Scores foreach subscription
+* Update DailySummary
+  * Add count of subscriptions per quotaId
+  * Add 'Microsoft Defender for Cloud' Secure Score for Management Groups
+* Updated [API reference](#api-reference)
 
 Passed tests: Powershell Core 7.3.0 on Windows  
 Passed tests: Powershell Core 7.2.7 Azure DevOps hosted agent ubuntu-22.04  
@@ -538,6 +540,7 @@ AzGovViz polls the following APIs
 | ARM | 2020-05-01 | /providers/Microsoft.Management/managementGroups |
 | ARM | 2021-03-01 | /providers/Microsoft.ResourceGraph/resources |
 | ARM | 2020-01-01 | /subscriptions/`subscriptionId`/locations |
+| ARM | 2020-07-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Advisor/advisorScore |
 | ARM | 2016-09-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/locks |
 | ARM | 2021-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyAssignments |
 | ARM | 2021-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyDefinitions |

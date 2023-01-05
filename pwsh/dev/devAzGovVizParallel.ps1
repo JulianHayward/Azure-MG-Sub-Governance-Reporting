@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.64',
 
     [string]
-    $ProductVersion = 'v6_major_20230103_1',
+    $ProductVersion = 'v6_major_20230105_2',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -840,6 +840,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htCachePolicyComplianceResponseTooLargeMG = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htCachePolicyComplianceResponseTooLargeSUB = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $outOfScopeSubscriptions = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $htOutOfScopeSubscriptions = @{}
     if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
         $htManagementGroupsCost = @{}
         $htAzureConsumptionSubscriptions = @{}
@@ -933,6 +934,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     #$htResourcesWithProperties = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htResourceProvidersRef = @{}
     $htAvailablePrivateEndpointTypes = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $arrayAdvisorScores = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
 if (-not $HierarchyMapOnly) {
@@ -1066,6 +1068,11 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $startDataCollection = Get-Date
 
     processDataCollection -mgId $ManagementGroupId
+
+    if ($arrayAdvisorScores.Count -gt 0) {
+        Write-Host "Exporting AdvisorScores CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_AdvisorScores.csv'"
+        $arrayAdvisorScores | Sort-Object -Property subscriptionName, subscriptionId, category | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_AdvisorScores.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+    }
 
     showMemoryUsage
 
@@ -1482,6 +1489,14 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htDailySummary.'ManagementGroups' = $totalMgCount
     Write-Host " Total Subscriptions: $totalSubIncludedAndExcludedCount ($totalSubCount included; $totalSubOutOfScopeCount out-of-scope)"
     $htDailySummary.'Subscriptions' = $totalSubCount
+
+    $subscriptionsGroupedByQuotaId = $optimizedTableForPathQuerySub | Group-Object -Property SubscriptionQuotaId
+    if ($subscriptionsGroupedByQuotaId.Count -gt 0) {
+        foreach ($quotaId in $subscriptionsGroupedByQuotaId) {
+            $htDailySummary."Subscriptions_$($quotaId.Name)" = $quotaId.Count
+        }
+    }
+
     $htDailySummary.'SubscriptionsOutOfScope' = $totalSubOutOfScopeCount
     Write-Host " Total BuiltIn Policy definitions: $tenantBuiltInPoliciesCount"
     $htDailySummary.'PolicyDefinitionsBuiltIn' = $tenantBuiltInPoliciesCount
@@ -1550,6 +1565,20 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         }
         $htDailySummary.'TotalUniquePrincipalWithPermissionPIM_SP' = $rbacUniqueObjectIdsPIM.where({ $_.ObjectType -like 'SP*' } ).count
         $htDailySummary.'TotalUniquePrincipalWithPermissionPIM_User' = $rbacUniqueObjectIdsPIM.where({ $_.ObjectType -like 'User*' } ).count
+    }
+
+
+    # if ($arrayAdvisorScores.Count -gt 0) {
+    #     $arrayAdvisorScoresGroupedByCategory = $arrayAdvisorScores | Group-Object -Property category
+    #     foreach ($entry in $arrayAdvisorScoresGroupedByCategory) {
+    #         $htDailySummary."Advisor_$($entry.Name)" = ($entry.Group.Score | Measure-Object -Sum).Sum / $entry.Group.Count
+    #     }
+    # }
+
+    if ($htMgASCSecureScore.Keys.Count -gt 0) {
+        foreach ($mgASCSecureScore in $htMgASCSecureScore.Keys) {
+            $htDailySummary."MDfCSecureScore_$($mgASCSecureScore)" = $htMgASCSecureScore.($mgASCSecureScore).SecureScore
+        }
     }
 
     $endSummarizeDataCollectionResults = Get-Date
