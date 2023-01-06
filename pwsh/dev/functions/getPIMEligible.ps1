@@ -19,14 +19,24 @@ function getPIMEligible {
                     }
                     if ($entry.type -eq 'subscription') {
                         if ($htSubscriptionsMgPath.($entry.externalId -replace '.*/').ParentNameChain -contains $ManagementGroupId) {
-                            $null = $scopesToIterate.Add($entry)
+                            if ($htOutOfScopeSubscriptions.($entry.externalId -replace '.*/')) {
+                                Write-Host "excluding subscription $($entry.externalId -replace '.*/') (outOfScopeSubscription -> $($htOutOfScopeSubscriptions.($entry.externalId -replace '.*/').outOfScopeReason)) (`$PIMEligibilityIgnoreScope=$PIMEligibilityIgnoreScope)"
+                            }
+                            else {
+                                $null = $scopesToIterate.Add($entry)
+                            }
                         }
                     }
                 }
             }
             else {
                 foreach ($entry in $res) {
-                    $null = $scopesToIterate.Add($entry)
+                    if ($htOutOfScopeSubscriptions.($entry.externalId -replace '.*/')) {
+                        Write-Host "excluding subscription $($entry.externalId -replace '.*/') (outOfScopeSubscription -> $($htOutOfScopeSubscriptions.($entry.externalId -replace '.*/').outOfScopeReason)) (`$PIMEligibilityIgnoreScope=$PIMEligibilityIgnoreScope)"
+                    }
+                    else {
+                        $null = $scopesToIterate.Add($entry)
+                    }
                 }
             }
         }

@@ -47,7 +47,7 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
   * [Parameters](#parameters)
   * [API reference](#api-reference)
 * [Integrate with AzOps](#integrate-with-azops)
-* [Integrate PSRule for Azure](#integrate-psrule-for-azure)
+* [Integrate PSRule for Azure - paused](#integrate-psrule-for-azure)
 * [Stats](#stats)
 * [Security](#security)
 * [Known issues](#known-issues)
@@ -59,12 +59,15 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2023-Jan-03 / Major)
+__Changes__ (2023-Jan-06 / Major)
 
-* Fix issue for Private Endpoints feature
-  * Subscription may not be registered for location / skip
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.64
-* Add ShowMemoryUsage at creation of __DefinitionInsights__
+* Fix issue PIM eligibility (do not process out-of-scope subscriptions) [issue #161](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/161)
+* Collect Advisor Scores foreach subscription
+* Update DailySummary
+  * Add count of subscriptions per quotaId
+  * Add 'Microsoft Defender for Cloud' Secure Score for Management Groups
+* Updated [API reference](#api-reference)
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.65
 
 Passed tests: Powershell Core 7.3.0 on Windows  
 Passed tests: Powershell Core 7.2.7 Azure DevOps hosted agent ubuntu-22.04  
@@ -213,6 +216,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
     * Summary of all UserAssigned Managed Identities assigned to Resources
     * Summary of Resources that have an UserAssigned Managed Identity assigned
   * [Integrate PSRule for Azure](#integrate-psrule-for-azure)
+    * __Pausing 'PSRule for Azure' integration__. AzGovViz leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation. 
     * Well-Architected Framework aligned best practice analysis for resources, including guidance for remediation
   * Storage Account Access Analysis
     * Provides insights on Storage Accounts with focus on anonymous access (containers/blobs and 'Static website' feature)
@@ -487,6 +491,7 @@ AzAPICall resources:
   * `-CriticalMemoryUsage` - Define at what percentage of memory usage the garbage collection should kick in (default=90)
   * `-ExcludedResourceTypesDiagnosticsCapable` - Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
   * PSRule for Azure
+    * __Pausing 'PSRule for Azure' integration__. AzGovViz leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.
     * `-DoPSRule` - Execute [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure). Aggregated results are integrated in the HTML output, detailed results (per resource) are exported to CSV
     * `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
     * `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise). (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule -PSRuleFailedOnly`)
@@ -538,6 +543,7 @@ AzGovViz polls the following APIs
 | ARM | 2020-05-01 | /providers/Microsoft.Management/managementGroups |
 | ARM | 2021-03-01 | /providers/Microsoft.ResourceGraph/resources |
 | ARM | 2020-01-01 | /subscriptions/`subscriptionId`/locations |
+| ARM | 2020-07-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Advisor/advisorScore |
 | ARM | 2016-09-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/locks |
 | ARM | 2021-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyAssignments |
 | ARM | 2021-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyDefinitions |
@@ -581,6 +587,8 @@ You can integrate AzGovViz (same project as AzOps).
 ```
 
 ## Integrate PSRule for Azure
+
+__Pausing 'PSRule for Azure' integration__. AzGovViz leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.
 
 Let´s use [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure) and leverage over 260 pre-built rules to validate Azure resources based on the Microsoft Well-Architected Framework (WAF) principles.  
 PSRule for Azure is listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/architecture/framework/security/monitor-tools) in the Microsoft Well-Architected Framework.

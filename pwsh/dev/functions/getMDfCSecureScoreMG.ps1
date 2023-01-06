@@ -1,4 +1,5 @@
 function getMDfCSecureScoreMG {
+    $start = Get-Date
     $currentTask = 'Getting Microsoft Defender for Cloud Secure Score for Management Groups'
     Write-Host $currentTask
     #ref: https://docs.microsoft.com/en-us/azure/governance/management-groups/resource-graph-samples?tabs=azure-cli#secure-score-per-management-group
@@ -32,15 +33,14 @@ function getMDfCSecureScoreMG {
         }
 "@
 
-    $start = Get-Date
     $getMgAscSecureScore = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -body $body -listenOn 'Content'
-    $end = Get-Date
-    Write-Host " Getting Microsoft Defender for Cloud Secure Score for Management Groups duration: $((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds"
+
     if ($getMgAscSecureScore) {
         if ($getMgAscSecureScore -eq 'capitulation') {
-            Write-Host '  Microsoft Defender for Cloud SecureScore for Management Groups will not be available' -ForegroundColor Yellow
+            Write-Host ' Microsoft Defender for Cloud SecureScore for Management Groups will not be available' -ForegroundColor Yellow
         }
         else {
+            Write-Host " Retrieved 'Microsoft Defender for Cloud' SecureScore for $($getMgAscSecureScore.Count) Management Groups"
             foreach ($entry in $getMgAscSecureScore) {
                 $script:htMgASCSecureScore.($entry.mgId) = @{}
                 if ($entry.secureScore -eq 404) {
@@ -52,4 +52,7 @@ function getMDfCSecureScoreMG {
             }
         }
     }
+
+    $end = Get-Date
+    Write-Host "Getting Microsoft Defender for Cloud Secure Score for Management Groups duration: $((New-TimeSpan -Start $start -End $end).TotalMinutes) minutes ($((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds)"
 }

@@ -1,4 +1,6 @@
 function detailSubscriptions {
+    $start = Get-Date
+    Write-Host 'Subscription picking'
     #API in rare cases returns duplicates, therefor sorting unique (id)
     $childrenSubscriptions = $arrayEntitiesFromAPI.where( { $_.properties.parentNameChain -contains $ManagementGroupID -and $_.type -eq '/subscriptions' } ) | Sort-Object -Property id -Unique
     $script:childrenSubscriptionsCount = ($childrenSubscriptions).Count
@@ -95,5 +97,38 @@ function detailSubscriptions {
             }
         }
     }
+
+    if ($subsToProcessInCustomDataCollection.Count -lt $childrenSubscriptionsCount) {
+        Write-Host " $($subsToProcessInCustomDataCollection.Count) of $($childrenSubscriptionsCount) Subscriptions picked for processing" -ForegroundColor yellow
+    }
+    else {
+        Write-Host " $($subsToProcessInCustomDataCollection.Count) of $($childrenSubscriptionsCount) Subscriptions picked for processing"
+    }
+
+
+    if ($outOfScopeSubscriptions.Count -gt 0) {
+        Write-Host " $($outOfScopeSubscriptions.Count) Subscriptions excluded" -ForegroundColor yellow
+        $outOfScopeSubscriptionsGroupedByOutOfScopeReason = $outOfScopeSubscriptions | Group-Object -Property outOfScopeReason
+        foreach ($exclusionreason in $outOfScopeSubscriptionsGroupedByOutOfScopeReason) {
+            Write-Host "   $($exclusionreason.Count): $($exclusionreason.Name) ($($exclusionreason.Group.subscriptionId -join ', '))"
+        }
+
+        foreach ($outOfScopeSubscription in $outOfScopeSubscriptions) {
+            $script:htOutOfScopeSubscriptions.($outOfScopeSubscription.subscriptionId) = @{
+                subscriptionId      = $outOfScopeSubscription.subscriptionId
+                subscriptionName    = $outOfScopeSubscription.subscriptionName
+                outOfScopeReason    = $outOfScopeSubscription.outOfScopeReason
+                ManagementGroupId   = $outOfScopeSubscription.ManagementGroupId
+                ManagementGroupName = $outOfScopeSubscription.ManagementGroupName
+                Level               = $outOfScopeSubscription.Level
+            }
+        }
+    }
+    else {
+        Write-Host " $($outOfScopeSubscriptions.Count) Subscriptions excluded"
+    }
     $script:subsToProcessInCustomDataCollectionCount = ($subsToProcessInCustomDataCollection).Count
+
+    $end = Get-Date
+    Write-Host "Subscription picking duration: $((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds"
 }

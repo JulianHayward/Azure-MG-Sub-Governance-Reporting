@@ -359,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.64',
+    $AzAPICallVersion = '1.1.65',
 
     [string]
-    $ProductVersion = 'v6_major_20230103_1',
+    $ProductVersion = 'v6_major_20230106_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -2174,6 +2174,8 @@ function createTagList {
     Write-Host "Creating TagList array duration: $((New-TimeSpan -Start $startTagListArray -End $endTagListArray).TotalMinutes) minutes ($((New-TimeSpan -Start $startTagListArray -End $endTagListArray).TotalSeconds) seconds)"
 }
 function detailSubscriptions {
+    $start = Get-Date
+    Write-Host 'Subscription picking'
     #API in rare cases returns duplicates, therefor sorting unique (id)
     $childrenSubscriptions = $arrayEntitiesFromAPI.where( { $_.properties.parentNameChain -contains $ManagementGroupID -and $_.type -eq '/subscriptions' } ) | Sort-Object -Property id -Unique
     $script:childrenSubscriptionsCount = ($childrenSubscriptions).Count
@@ -2270,7 +2272,40 @@ function detailSubscriptions {
             }
         }
     }
+
+    if ($subsToProcessInCustomDataCollection.Count -lt $childrenSubscriptionsCount) {
+        Write-Host " $($subsToProcessInCustomDataCollection.Count) of $($childrenSubscriptionsCount) Subscriptions picked for processing" -ForegroundColor yellow
+    }
+    else {
+        Write-Host " $($subsToProcessInCustomDataCollection.Count) of $($childrenSubscriptionsCount) Subscriptions picked for processing"
+    }
+
+
+    if ($outOfScopeSubscriptions.Count -gt 0) {
+        Write-Host " $($outOfScopeSubscriptions.Count) Subscriptions excluded" -ForegroundColor yellow
+        $outOfScopeSubscriptionsGroupedByOutOfScopeReason = $outOfScopeSubscriptions | Group-Object -Property outOfScopeReason
+        foreach ($exclusionreason in $outOfScopeSubscriptionsGroupedByOutOfScopeReason) {
+            Write-Host "   $($exclusionreason.Count): $($exclusionreason.Name) ($($exclusionreason.Group.subscriptionId -join ', '))"
+        }
+
+        foreach ($outOfScopeSubscription in $outOfScopeSubscriptions) {
+            $script:htOutOfScopeSubscriptions.($outOfScopeSubscription.subscriptionId) = @{
+                subscriptionId      = $outOfScopeSubscription.subscriptionId
+                subscriptionName    = $outOfScopeSubscription.subscriptionName
+                outOfScopeReason    = $outOfScopeSubscription.outOfScopeReason
+                ManagementGroupId   = $outOfScopeSubscription.ManagementGroupId
+                ManagementGroupName = $outOfScopeSubscription.ManagementGroupName
+                Level               = $outOfScopeSubscription.Level
+            }
+        }
+    }
+    else {
+        Write-Host " $($outOfScopeSubscriptions.Count) Subscriptions excluded"
+    }
     $script:subsToProcessInCustomDataCollectionCount = ($subsToProcessInCustomDataCollection).Count
+
+    $end = Get-Date
+    Write-Host "Subscription picking duration: $((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds"
 }
 function exportBaseCSV {
     Write-Host "Exporting CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName).csv'"
@@ -3184,6 +3219,7 @@ function getGroupmembers($aadGroupId, $aadGroupDisplayName) {
     }
 }
 function getMDfCSecureScoreMG {
+    $start = Get-Date
     $currentTask = 'Getting Microsoft Defender for Cloud Secure Score for Management Groups'
     Write-Host $currentTask
     #ref: https://docs.microsoft.com/en-us/azure/governance/management-groups/resource-graph-samples?tabs=azure-cli#secure-score-per-management-group
@@ -3217,15 +3253,14 @@ function getMDfCSecureScoreMG {
         }
 "@
 
-    $start = Get-Date
     $getMgAscSecureScore = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -body $body -listenOn 'Content'
-    $end = Get-Date
-    Write-Host " Getting Microsoft Defender for Cloud Secure Score for Management Groups duration: $((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds"
+
     if ($getMgAscSecureScore) {
         if ($getMgAscSecureScore -eq 'capitulation') {
-            Write-Host '  Microsoft Defender for Cloud SecureScore for Management Groups will not be available' -ForegroundColor Yellow
+            Write-Host ' Microsoft Defender for Cloud SecureScore for Management Groups will not be available' -ForegroundColor Yellow
         }
         else {
+            Write-Host " Retrieved 'Microsoft Defender for Cloud' SecureScore for $($getMgAscSecureScore.Count) Management Groups"
             foreach ($entry in $getMgAscSecureScore) {
                 $script:htMgASCSecureScore.($entry.mgId) = @{}
                 if ($entry.secureScore -eq 404) {
@@ -3237,6 +3272,9 @@ function getMDfCSecureScoreMG {
             }
         }
     }
+
+    $end = Get-Date
+    Write-Host "Getting Microsoft Defender for Cloud Secure Score for Management Groups duration: $((New-TimeSpan -Start $start -End $end).TotalMinutes) minutes ($((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds)"
 }
 function getOrphanedResources {
     $start = Get-Date
@@ -3442,14 +3480,24 @@ function getPIMEligible {
                     }
                     if ($entry.type -eq 'subscription') {
                         if ($htSubscriptionsMgPath.($entry.externalId -replace '.*/').ParentNameChain -contains $ManagementGroupId) {
-                            $null = $scopesToIterate.Add($entry)
+                            if ($htOutOfScopeSubscriptions.($entry.externalId -replace '.*/')) {
+                                Write-Host "excluding subscription $($entry.externalId -replace '.*/') (outOfScopeSubscription -> $($htOutOfScopeSubscriptions.($entry.externalId -replace '.*/').outOfScopeReason)) (`$PIMEligibilityIgnoreScope=$PIMEligibilityIgnoreScope)"
+                            }
+                            else {
+                                $null = $scopesToIterate.Add($entry)
+                            }
                         }
                     }
                 }
             }
             else {
                 foreach ($entry in $res) {
-                    $null = $scopesToIterate.Add($entry)
+                    if ($htOutOfScopeSubscriptions.($entry.externalId -replace '.*/')) {
+                        Write-Host "excluding subscription $($entry.externalId -replace '.*/') (outOfScopeSubscription -> $($htOutOfScopeSubscriptions.($entry.externalId -replace '.*/').outOfScopeReason)) (`$PIMEligibilityIgnoreScope=$PIMEligibilityIgnoreScope)"
+                    }
+                    else {
+                        $null = $scopesToIterate.Add($entry)
+                    }
                 }
             }
         }
@@ -5046,6 +5094,7 @@ function processDataCollection {
                 $arrayPrivateEndPointsFromResourceProperties = $using:arrayPrivateEndPointsFromResourceProperties
                 $htResourcePropertiesConvertfromJSONFailed = $using:htResourcePropertiesConvertfromJSONFailed
                 $htAvailablePrivateEndpointTypes = $using:htAvailablePrivateEndpointTypes
+                $arrayAdvisorScores = $using:arrayAdvisorScores
                 #$htResourcesWithProperties = $using:htResourcesWithProperties
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
@@ -5076,6 +5125,7 @@ function processDataCollection {
                 $function:dataCollectionDefenderEmailContacts = $using:funcDataCollectionDefenderEmailContacts
                 $function:dataCollectionVNets = $using:funcDataCollectionVNets
                 $function:dataCollectionPrivateEndpoints = $using:funcDataCollectionPrivateEndpoints
+                $function:dataCollectionAdvisorScores = $using:funcDataCollectionAdvisorScores
                 #endregion UsingVARs
 
                 $addRowToTableDone = $false
@@ -5128,6 +5178,9 @@ function processDataCollection {
 
                         #defenderEmailContacts
                         DataCollectionDefenderEmailContacts @baseParameters
+
+                        #advisorScores
+                        DataCollectionAdvisorScores @baseParameters
 
                         if (-not $azAPICallConf['htParameters'].NoNetwork) {
                             #VNets
@@ -28177,6 +28230,50 @@ function dataCollectionDefenderPlans {
 }
 $funcDataCollectionDefenderPlans = $function:dataCollectionDefenderPlans.ToString()
 
+
+function dataCollectionAdvisorScores {
+    [CmdletBinding()]Param(
+        [string]$scopeId,
+        [string]$scopeDisplayName,
+        $SubscriptionQuotaId
+    )
+
+    $currentTask = "Getting Advisor Scores for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Advisor/advisorScore?api-version=2020-07-01-preview"
+    $method = 'GET'
+    $advisorScoreResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -skipOnErrorCode 404
+
+    if ($advisorScoreResult -eq 'SubScriptionNotRegistered' -or $advisorScoreResult -eq 'DisallowedProvider') {
+    }
+    else {
+        if ($advisorScoreResult -like 'azgvzerrorMessage_*') {
+
+        }
+        else {
+            if ($advisorScoreResult.Count -gt 0) {
+                foreach ($entry in $advisorScoreResult) {
+                    #Write-Host ($entry | ConvertTo-Json -Depth 99)
+                    if ($entry.Name) {
+                        $objectGuid = [System.Guid]::empty
+                        if ([System.Guid]::TryParse($entry.Name, [System.Management.Automation.PSReference]$ObjectGuid)) {
+                        }
+                        else {
+                            $null = $script:arrayAdvisorScores.Add([PSCustomObject]@{
+                                    subscriptionId      = $scopeId
+                                    subscriptionName    = $scopeDisplayName
+                                    subscriptionQuotaId = $SubscriptionQuotaId
+                                    category            = $entry.Name
+                                    score               = $entry.properties.lastRefreshedScore.score
+                                })
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+$funcDataCollectionAdvisorScores = $function:dataCollectionAdvisorScores.ToString()
+
 function dataCollectionDefenderEmailContacts {
     [CmdletBinding()]Param(
         [string]$scopeId,
@@ -32753,6 +32850,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htCachePolicyComplianceResponseTooLargeMG = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htCachePolicyComplianceResponseTooLargeSUB = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $outOfScopeSubscriptions = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $htOutOfScopeSubscriptions = @{}
     if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
         $htManagementGroupsCost = @{}
         $htAzureConsumptionSubscriptions = @{}
@@ -32846,6 +32944,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     #$htResourcesWithProperties = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htResourceProvidersRef = @{}
     $htAvailablePrivateEndpointTypes = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $arrayAdvisorScores = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 }
 
 if (-not $HierarchyMapOnly) {
@@ -32979,6 +33078,11 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $startDataCollection = Get-Date
 
     processDataCollection -mgId $ManagementGroupId
+
+    if ($arrayAdvisorScores.Count -gt 0) {
+        Write-Host "Exporting AdvisorScores CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_AdvisorScores.csv'"
+        $arrayAdvisorScores | Sort-Object -Property subscriptionName, subscriptionId, category | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_AdvisorScores.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+    }
 
     showMemoryUsage
 
@@ -33395,6 +33499,14 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     $htDailySummary.'ManagementGroups' = $totalMgCount
     Write-Host " Total Subscriptions: $totalSubIncludedAndExcludedCount ($totalSubCount included; $totalSubOutOfScopeCount out-of-scope)"
     $htDailySummary.'Subscriptions' = $totalSubCount
+
+    $subscriptionsGroupedByQuotaId = $optimizedTableForPathQuerySub | Group-Object -Property SubscriptionQuotaId
+    if ($subscriptionsGroupedByQuotaId.Count -gt 0) {
+        foreach ($quotaId in $subscriptionsGroupedByQuotaId) {
+            $htDailySummary."Subscriptions_$($quotaId.Name)" = $quotaId.Count
+        }
+    }
+
     $htDailySummary.'SubscriptionsOutOfScope' = $totalSubOutOfScopeCount
     Write-Host " Total BuiltIn Policy definitions: $tenantBuiltInPoliciesCount"
     $htDailySummary.'PolicyDefinitionsBuiltIn' = $tenantBuiltInPoliciesCount
@@ -33463,6 +33575,20 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
         }
         $htDailySummary.'TotalUniquePrincipalWithPermissionPIM_SP' = $rbacUniqueObjectIdsPIM.where({ $_.ObjectType -like 'SP*' } ).count
         $htDailySummary.'TotalUniquePrincipalWithPermissionPIM_User' = $rbacUniqueObjectIdsPIM.where({ $_.ObjectType -like 'User*' } ).count
+    }
+
+
+    # if ($arrayAdvisorScores.Count -gt 0) {
+    #     $arrayAdvisorScoresGroupedByCategory = $arrayAdvisorScores | Group-Object -Property category
+    #     foreach ($entry in $arrayAdvisorScoresGroupedByCategory) {
+    #         $htDailySummary."Advisor_$($entry.Name)" = ($entry.Group.Score | Measure-Object -Sum).Sum / $entry.Group.Count
+    #     }
+    # }
+
+    if ($htMgASCSecureScore.Keys.Count -gt 0) {
+        foreach ($mgASCSecureScore in $htMgASCSecureScore.Keys) {
+            $htDailySummary."MDfCSecureScore_$($mgASCSecureScore)" = $htMgASCSecureScore.($mgASCSecureScore).SecureScore
+        }
     }
 
     $endSummarizeDataCollectionResults = Get-Date
