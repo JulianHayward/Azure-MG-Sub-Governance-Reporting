@@ -59,6 +59,10 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
+__Changes__ (2023-Jan-06 / Major)
+
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.65
+
 __Changes__ (2023-Jan-05 / Major)
 
 * Fix issue PIM eligibility (do not process out-of-scope subscriptions) [issue #161](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/161)
