@@ -4,6 +4,14 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2023-Jan-19 / Major)
+
+* Cover Preview [Azure Storage Account with Azure DNS zone endpoints](https://learn.microsoft.com/en-us/azure/storage/common/storage-account-overview#azure-dns-zone-endpoints-preview) ([Issue #164](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/164))
+* Add feature to simulate Management Group Hierarchy Map
+ * New parameter `-HierarchyMapOnlyCustomData` (documentation update pending)
+* Private Endpoint feature - add Microsoft tenants (cross tenant PE) (`-MSTenantIds`)
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.67
+
 __Changes__ (2023-Jan-06 / Major)
 
 * Fix issue PIM eligibility (do not process out-of-scope subscriptions) [issue #161](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/161)

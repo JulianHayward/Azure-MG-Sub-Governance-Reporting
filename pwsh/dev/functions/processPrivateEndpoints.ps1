@@ -43,7 +43,12 @@ function processPrivateEndpoints {
                     foreach ($remoteId in $remoteTenantId) {
                         $objectGuid = [System.Guid]::empty
                         if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
-                            $arrayRemoteMGPath += $remoteId
+                            if ($remoteId -in $MSTenantIds) {
+                                $arrayRemoteMGPath += "$remoteId (MS)"
+                            }
+                            else {
+                                $arrayRemoteMGPath += $remoteId
+                            }
                             if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
                                 $peXTenant = $false
                             }
@@ -53,7 +58,7 @@ function processPrivateEndpoints {
                         }
                         $script:htUnknownTenantsForSubscription.($peSubscriptionId) = @{}
                         $script:htUnknownTenantsForSubscription.($peSubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
-                        $peMGPath = $arrayRemoteMGPath -join ' or '
+                        $peMGPath = $arrayRemoteMGPath -join ', '
                     }
                 }
 
@@ -197,7 +202,12 @@ function processPrivateEndpoints {
                         foreach ($remoteId in $remoteTenantId) {
                             $objectGuid = [System.Guid]::empty
                             if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
-                                $arrayRemoteMGPath += $remoteId
+                                if ($remoteId -in $MSTenantIds) {
+                                    $arrayRemoteMGPath += "$remoteId (MS)"
+                                }
+                                else {
+                                    $arrayRemoteMGPath += $remoteId
+                                }
                                 if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
                                     $resourceXTenant = $false
                                 }
@@ -207,7 +217,7 @@ function processPrivateEndpoints {
                             }
                             $script:htUnknownTenantsForSubscription.($resourceSubscriptionId) = @{}
                             $script:htUnknownTenantsForSubscription.($resourceSubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
-                            $resourceMGPath = $arrayRemoteMGPath -join ' or '
+                            $resourceMGPath = $arrayRemoteMGPath -join ', '
                         }
                     }
                 }

@@ -63,13 +63,13 @@ $markdownhierarchySubs
 
     $markdown += @"
  classDef mgrprnts fill:#FFFFFF,stroke:#56595E,color:#000000,stroke-width:1px;
- class $(($arrayMgs | Sort-Object -unique) -join ',') mgr;
- class $(($arraySubs | Sort-Object -unique) -join ',') subs;
+ class $(($arrayMgs | Sort-Object -Unique) -join ',') mgr;
+ class $(($arraySubs | Sort-Object -Unique) -join ',') subs;
 "@
 
     if (($arraySubsOos).count -gt 0) {
         $markdown += @"
- class $(($arraySubsOos | Sort-Object -unique) -join ',') subsoos;
+ class $(($arraySubsOos | Sort-Object -Unique) -join ',') subsoos;
 "@
     }
 
@@ -103,7 +103,7 @@ class $mermaidprnts mgrprnts;
 ## Summary
 `n
 "@
-    if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+    if (-not $HierarchyMapOnly) {
         $markdown += @"
 Total Management Groups: $totalMgCount (depth $mgDepth)\`n
 "@
@@ -139,9 +139,9 @@ Total Resource Types: $totalResourceTypesCount
 "@
 
     }
-    if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $true) {
+    if ($HierarchyMapOnly) {
         $mgsDetails = ($optimizedTableForPathQueryMg | Select-Object Level, MgId -Unique)
-        $mgDepth = ($mgsDetails.Level | Measure-Object -maximum).Maximum
+        $mgDepth = ($mgsDetails.Level | Measure-Object -Maximum).Maximum
         $totalMgCount = ($mgsDetails).count
         $totalSubCount = ($optimizedTableForPathQuerySub).count
 
@@ -163,5 +163,5 @@ $markdownTable
 
     $markdown | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).md" -Encoding utf8 -Force
     $endBuildMD = Get-Date
-    Write-Host "Building Markdown total duration: $((NEW-TIMESPAN -Start $startBuildMD -End $endBuildMD).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startBuildMD -End $endBuildMD).TotalSeconds) seconds)"
+    Write-Host "Building Markdown total duration: $((New-TimeSpan -Start $startBuildMD -End $endBuildMD).TotalMinutes) minutes ($((New-TimeSpan -Start $startBuildMD -End $endBuildMD).TotalSeconds) seconds)"
 }

@@ -210,6 +210,12 @@ function processStorageAccountAnalysis {
                 $allowCrossTenantReplication = $storageAccount.properties.allowCrossTenantReplication
             }
 
+            if ($storageAccount.properties.dnsEndpointType) {
+                $dnsEndpointType = $storageAccount.properties.dnsEndpointType
+            }
+            else {
+                $dnsEndpointType = 'standard'
+            }
 
             $temp = [System.Collections.ArrayList]@()
             $null = $temp.Add([PSCustomObject]@{
@@ -249,6 +255,7 @@ function processStorageAccountAnalysis {
                     requireInfrastructureEncryption   = $requireInfrastructureEncryption
                     allowedCopyScope                  = $allowedCopyScope
                     allowCrossTenantReplication       = $allowCrossTenantReplication
+                    dnsEndpointType                   = $dnsEndpointType
                 })
 
             if ($StorageAccountAccessAnalysisSubscriptionTags[0] -ne 'undefined' -and $StorageAccountAccessAnalysisSubscriptionTags.Count -gt 0) {

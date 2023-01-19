@@ -1,8 +1,8 @@
 function buildTree($mgId, $prnt) {
-    $getMg = $arrayEntitiesFromAPI.where( { $_.type -eq 'Microsoft.Management/managementGroups' -and $_.name -eq $mgId })
-    $childrenManagementGroups = $arrayEntitiesFromAPI.where( { $_.type -eq 'Microsoft.Management/managementGroups' -and $_.properties.parent.id -eq "/providers/Microsoft.Management/managementGroups/$($getMg.Name)" })
-    $mgNameValid = removeInvalidFileNameChars $getMg.Name
-    $mgDisplayNameValid = removeInvalidFileNameChars $getMg.properties.displayName
+    $getMg = $htEntities.values.where( { $_.type -eq 'Microsoft.Management/managementGroups' -and $_.id -eq $mgId })
+    $childrenManagementGroups = $htEntities.values.where( { $_.type -eq 'Microsoft.Management/managementGroups' -and $_.parentId -eq "/providers/Microsoft.Management/managementGroups/$($getMg.Id)" })
+    $mgNameValid = removeInvalidFileNameChars $getMg.Id
+    $mgDisplayNameValid = removeInvalidFileNameChars $getMg.displayName
     $prntx = "$($prnt)$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)")) {
         $null = New-Item -Name $prntx -ItemType directory -Path $outputPath
@@ -11,13 +11,13 @@ function buildTree($mgId, $prnt) {
     if (-not $json.'ManagementGroups') {
         $json.'ManagementGroups' = [ordered]@{}
     }
-    $json = $json.'ManagementGroups'.($getMg.Name) = [ordered]@{}
-    foreach ($mgCap in $htJSON.ManagementGroups.($getMg.Name).keys) {
-        $json.$mgCap = $htJSON.ManagementGroups.($getMg.Name).$mgCap
+    $json = $json.'ManagementGroups'.($getMg.Id) = [ordered]@{}
+    foreach ($mgCap in $htJSON.ManagementGroups.($getMg.Id).keys) {
+        $json.$mgCap = $htJSON.ManagementGroups.($getMg.Id).$mgCap
         if ($mgCap -eq 'PolicyDefinitionsCustom') {
             $mgCapShort = 'pd'
-            foreach ($pdc in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys) {
-                $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pdc)
+            foreach ($pdc in $htJSON.ManagementGroups.($getMg.Id).($mgCap).Keys) {
+                $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($pdc)
                 if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                     $displayName = 'noDisplayNameGiven'
                 }
@@ -35,8 +35,8 @@ function buildTree($mgId, $prnt) {
         }
         if ($mgCap -eq 'PolicySetDefinitionsCustom') {
             $mgCapShort = 'psd'
-            foreach ($psdc in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys) {
-                $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($psdc)
+            foreach ($psdc in $htJSON.ManagementGroups.($getMg.Id).($mgCap).Keys) {
+                $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($psdc)
                 if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                     $displayName = 'noDisplayNameGiven'
                 }
@@ -54,8 +54,8 @@ function buildTree($mgId, $prnt) {
         }
         if ($mgCap -eq 'PolicyAssignments') {
             $mgCapShort = 'pa'
-            foreach ($pa in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys) {
-                $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pa)
+            foreach ($pa in $htJSON.ManagementGroups.($getMg.Id).($mgCap).Keys) {
+                $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($pa)
                 if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                     $displayName = 'noDisplayNameGiven'
                 }
@@ -75,8 +75,8 @@ function buildTree($mgId, $prnt) {
         #marker
         if ($mgCap -eq 'RoleAssignments') {
             $mgCapShort = 'ra'
-            foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys) {
-                $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($ra)
+            foreach ($ra in $htJSON.ManagementGroups.($getMg.Id).($mgCap).Keys) {
+                $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($ra)
                 if ($hlp.PIM -eq 'true') {
                     $pim = 'PIM_'
                 }
@@ -94,15 +94,15 @@ function buildTree($mgId, $prnt) {
         }
 
         if ($mgCap -eq 'Subscriptions') {
-            foreach ($sub in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys) {
-                $subNameValid = removeInvalidFileNameChars $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).SubscriptionName
+            foreach ($sub in $htJSON.ManagementGroups.($getMg.Id).($mgCap).Keys) {
+                $subNameValid = removeInvalidFileNameChars $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).SubscriptionName
                 $subFolderName = "$($prntx)$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
                 $null = New-Item -Name $subFolderName -ItemType directory -Path $outputPath
-                foreach ($subCap in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).Keys) {
+                foreach ($subCap in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).Keys) {
                     if ($subCap -eq 'PolicyDefinitionsCustom') {
                         $subCapShort = 'pd'
-                        foreach ($pdc in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
-                            $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pdc)
+                        foreach ($pdc in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys) {
+                            $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($pdc)
                             if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                                 $displayName = 'noDisplayNameGiven'
                             }
@@ -120,8 +120,8 @@ function buildTree($mgId, $prnt) {
                     }
                     if ($subCap -eq 'PolicySetDefinitionsCustom') {
                         $subCapShort = 'psd'
-                        foreach ($psdc in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
-                            $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($psdc)
+                        foreach ($psdc in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys) {
+                            $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($psdc)
                             if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                                 $displayName = 'noDisplayNameGiven'
                             }
@@ -139,8 +139,8 @@ function buildTree($mgId, $prnt) {
                     }
                     if ($subCap -eq 'PolicyAssignments') {
                         $subCapShort = 'pa'
-                        foreach ($pa in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
-                            $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pa)
+                        foreach ($pa in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys) {
+                            $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($pa)
                             if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                                 $displayName = 'noDisplayNameGiven'
                             }
@@ -159,8 +159,8 @@ function buildTree($mgId, $prnt) {
                     #marker
                     if ($subCap -eq 'RoleAssignments') {
                         $subCapShort = 'ra'
-                        foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
-                            $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($ra)
+                        foreach ($ra in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys) {
+                            $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($ra)
                             if ($hlp.PIM -eq 'true') {
                                 $pim = 'PIM_'
                             }
@@ -181,12 +181,12 @@ function buildTree($mgId, $prnt) {
                     if (-not $azAPICallConf['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
                         if (-not $JsonExportExcludeResourceGroups) {
                             if ($subCap -eq 'ResourceGroups') {
-                                foreach ($rg in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys | Sort-Object) {
+                                foreach ($rg in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys | Sort-Object) {
                                     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)")) {
                                         $null = New-Item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)" -ItemType directory -Path "$($outputPath)"
                                     }
-                                    foreach ($pa in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).PolicyAssignments.keys) {
-                                        $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).PolicyAssignments.($pa)
+                                    foreach ($pa in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).PolicyAssignments.keys) {
+                                        $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).PolicyAssignments.($pa)
                                         if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                                             $displayName = 'noDisplayNameGiven'
                                         }
@@ -211,12 +211,12 @@ function buildTree($mgId, $prnt) {
                     if (-not $azAPICallConf['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
                         if (-not $JsonExportExcludeResourceGroups) {
                             if ($subCap -eq 'ResourceGroups') {
-                                foreach ($rg in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys | Sort-Object) {
+                                foreach ($rg in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys | Sort-Object) {
                                     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)")) {
                                         $null = New-Item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)" -ItemType directory -Path "$($outputPath)"
                                     }
-                                    foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).RoleAssignments.keys) {
-                                        $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).RoleAssignments.($ra)
+                                    foreach ($ra in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).RoleAssignments.keys) {
+                                        $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).RoleAssignments.($ra)
                                         if ($hlp.PIM -eq 'true') {
                                             $pim = 'PIM_'
                                         }
@@ -234,12 +234,12 @@ function buildTree($mgId, $prnt) {
                                     #res
                                     if (-not $JsonExportExcludeResources) {
 
-                                        foreach ($res in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).Resources.keys) {
+                                        foreach ($res in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).Resources.keys) {
                                             if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)")) {
                                                 $null = New-Item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)" -ItemType directory -Path "$($outputPath)"
                                             }
-                                            foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.keys) {
-                                                $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.($ra)
+                                            foreach ($ra in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.keys) {
+                                                $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.($ra)
                                                 if ($hlp.PIM -eq 'true') {
                                                     $pim = 'PIM_'
                                                 }
@@ -269,8 +269,8 @@ function buildTree($mgId, $prnt) {
         $json.'ManagementGroups' = @{}
     }
     else {
-        foreach ($childMg in $childrenManagementGroups) {
-            buildTree -mgId $childMg.Name -json $json -prnt $prntx
+        foreach ($childMg in $childrenManagementGroups | Sort-Object -Property Id) {
+            buildTree -mgId $childMg.Id -json $json -prnt $prntx
         }
     }
 }

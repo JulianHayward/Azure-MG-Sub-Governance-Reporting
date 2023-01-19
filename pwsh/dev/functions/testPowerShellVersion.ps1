@@ -1,6 +1,6 @@
 ﻿function testPowerShellVersion {
 
-    Write-Host ' Checking PowerShell edition and version'
+    Write-Host 'Checking PowerShell edition and version'
     $requiredPSVersion = '7.0.3'
     $splitRequiredPSVersion = $requiredPSVersion.split('.')
     $splitRequiredPSVersionMajor = $splitRequiredPSVersion[0]

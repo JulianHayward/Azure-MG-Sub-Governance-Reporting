@@ -359,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.65',
+    $AzAPICallVersion = '1.1.67',
 
     [string]
-    $ProductVersion = 'v6_major_20230106_1',
+    $ProductVersion = 'v6_major_20230119_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -396,6 +396,9 @@ Param
 
     [switch]
     $HierarchyMapOnly,
+
+    [string]
+    $HierarchyMapOnlyCustomDataJSON,
 
     [Alias('NoASCSecureScore')]
     [switch]
@@ -598,7 +601,10 @@ Param
     $LimitResourceGroups = 980,
 
     [int]
-    $LimitTagsSubscription = 50
+    $LimitTagsSubscription = 50,
+
+    [array]
+    $MSTenantIds = @('2f4a9838-26b7-47ee-be60-ccc1fdec5953', '33e01921-4d64-4f8c-a055-5bdaffd5e33d')
 )
 
 $Error.clear()
@@ -619,6 +625,7 @@ if ($ManagementGroupId -match ' ') {
 }
 
 #region Functions
+. ".\$($ScriptPath)\functions\processHierarchyMapOnlyCustomData.ps1"
 . ".\$($ScriptPath)\functions\processPrivateEndpoints.ps1"
 . ".\$($ScriptPath)\functions\processNetwork.ps1"
 . ".\$($ScriptPath)\functions\processStorageAccountAnalysis.ps1"
@@ -684,7 +691,14 @@ $funcResolveObjectIds = $function:ResolveObjectIds.ToString()
 $funcNamingValidation = $function:NamingValidation.ToString()
 $funcTestGuid = $function:testGuid.ToString()
 
-testPowerShellVersion
+if ($HierarchyMapOnly -and $HierarchyMapOnlyCustomDataJSON) {
+    processHierarchyMapOnlyCustomData
+    Write-Host 'Skipping PowerShell version check /Using custom data (`$HierarchyMapOnlyCustomDataJSON)'
+}
+else {
+    testPowerShellVersion
+}
+
 showMemoryUsage
 
 $outputPathGiven = $OutputPath
@@ -730,7 +744,6 @@ if ($DoPSRule) {
             ModulePathPipeline = 'PSRuleModule'
         })
 }
-
 verifyModules3rd -modules $modules
 #endregion verifyModules3rd
 
@@ -759,7 +772,9 @@ if ($azGovVizNewerVersionAvailable) {
 }
 #endregion promptNewAzGovVizVersionAvailable
 
-handleCloudEnvironment
+if (-not $HierarchyMapOnly) {
+    handleCloudEnvironment
+}
 
 if (-not $HierarchyMapOnly) {
     <# PSRule paused
@@ -796,8 +811,6 @@ if (-not $HierarchyMapOnly) {
     #endregion hintPIMEligibility
 }
 
-addHtParameters
-
 #region delimiterOpposite
 if ($CsvDelimiter -eq ';') {
     $CsvDelimiterOpposite = ','
@@ -810,8 +823,15 @@ if ($CsvDelimiter -eq ',') {
 #region runDataCollection
 
 #run
+if ($HierarchyMapOnly -and $HierarchyMapOnlyCustomDataJSON) {
+    Write-Host 'Skipping Access validation /Using custom data (`$HierarchyMapOnlyCustomDataJSON)'
+    Write-Host 'Skipping addHtParameters /Using custom data (`$HierarchyMapOnlyCustomDataJSON)'
+}
+else {
+    addHtParameters
+    validateAccess
+}
 
-validateAccess
 getFileNaming
 
 Write-Host "Running AzGovViz for ManagementGroupId: '$ManagementGroupId'" -ForegroundColor Yellow
@@ -820,7 +840,7 @@ $newTable = [System.Collections.ArrayList]::Synchronized((New-Object System.Coll
 $htMgDetails = @{}
 $htSubDetails = @{}
 
-if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+if (-not $HierarchyMapOnly) {
     #helper ht / collect results /save some time
     $htCacheDefinitionsPolicy = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htCacheDefinitionsPolicySet = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
@@ -964,20 +984,33 @@ if (-not $HierarchyMapOnly) {
     }
 }
 
-getSubscriptions
-getEntities
-showMemoryUsage
-setBaseVariablesMG
-
-if ($azAPICallConf['htParameters'].accountType -eq 'User') {
-    getTenantDetails
+if ($HierarchyMapOnly -and $HierarchyMapOnlyCustomDataJSON) {
+    $script:hierarchyLevel = -1
+    $script:mgSubPathTopMg = "$ManagementGroupId"
+    $script:getMgParentId = "'$ManagementGroupId'"
+    $script:getMgParentName = 'Tenant Root'
+    $script:mermaidprnts = "'$getMgParentId',$getMgParentId"
+}
+else {
+    getSubscriptions
+    getEntities
+    showMemoryUsage
+    setBaseVariablesMG
 }
 
-getDefaultManagementGroup
+if ($HierarchyMapOnly -and $HierarchyMapOnlyCustomDataJSON) {
+}
+else {
+    if ($azAPICallConf['htParameters'].accountType -eq 'User') {
+        getTenantDetails
+    }
+
+    getDefaultManagementGroup
+}
 
 runInfo
 
-if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+if (-not $HierarchyMapOnly) {
 
     #getSubscriptions
     detailSubscriptions
@@ -1094,7 +1127,7 @@ else {
 prepareData
 showMemoryUsage
 
-if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+if (-not $HierarchyMapOnly) {
 
     $rbacBaseQuery = $newTable.where({ -not [String]::IsNullOrEmpty($_.RoleDefinitionName) } ) | Sort-Object -Property RoleIsCustom, RoleDefinitionName | Select-Object -Property Level, Role*, mg*, Subscription*
     $roleAssignmentsUniqueById = $rbacBaseQuery | Sort-Object -Property RoleAssignmentId -Unique
@@ -1133,16 +1166,13 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 #region createoutputs
 
 #region BuildHTML
-#testhelper
-#$fileTimestamp = (Get-Date -Format $FileTimeStampFormat)
-
 $startBuildHTML = Get-Date
 Write-Host 'Building HTML'
 $html = $null
 
 #getFileNaming
 
-if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+if (-not $HierarchyMapOnly) {
     #region preQueries
     Write-Host ' Building preQueries'
     $startPreQueries = Get-Date
@@ -1257,8 +1287,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
     #region PreQueriesRBACRelated
     $startPreQueriesRBACRelated = Get-Date
-    $rbacBaseQueryArrayListNotGroupOwner = $rbacBaseQuery.where({ $_.RoleAssignmentIdentityObjectType -ne 'Group' -and $_.RoleDefinitionName -eq 'Owner' }) | Select-Object -Property mgid, SubscriptionId, RoleAssignmentId, RoleDefinitionName, RoleDefinitionId, RoleAssignmentIdentityObjectType, RoleAssignmentIdentityDisplayname, RoleAssignmentIdentitySignInName, RoleAssignmentIdentityObjectId
-    $rbacBaseQueryArrayListNotGroupUserAccessAdministrator = $rbacBaseQuery.where({ $_.RoleAssignmentIdentityObjectType -ne 'Group' -and $_.RoleDefinitionName -eq 'User Access Administrator' }) | Select-Object -Property mgid, SubscriptionId, RoleAssignmentId, RoleDefinitionName, RoleDefinitionId, RoleAssignmentIdentityObjectType, RoleAssignmentIdentityDisplayname, RoleAssignmentIdentitySignInName, RoleAssignmentIdentityObjectId
+    $rbacBaseQueryArrayListNotGroupOwner = $rbacBaseQuery.where({ $_.RoleAssignmentIdentityObjectType -ne 'Group' -and $_.RoleDefinitionName -eq 'Owner' }) | Select-Object -Property mgid, SubscriptionId, RoleAssignmentId, RoleDefinitionName, RoleDefinitionId, RoleAssignmentIdentityObjectType, RoleAssignmentIdentityDisplayname, RoleAssignmentIdentitySignInName, RoleAssignmentIdentityObjectId, RoleAssignmentScopeType
+    $rbacBaseQueryArrayListNotGroupUserAccessAdministrator = $rbacBaseQuery.where({ $_.RoleAssignmentIdentityObjectType -ne 'Group' -and $_.RoleDefinitionName -eq 'User Access Administrator' }) | Select-Object -Property mgid, SubscriptionId, RoleAssignmentId, RoleDefinitionName, RoleDefinitionId, RoleAssignmentIdentityObjectType, RoleAssignmentIdentityDisplayname, RoleAssignmentIdentitySignInName, RoleAssignmentIdentityObjectId, RoleAssignmentScopeType
     $roleAssignmentsForServicePrincipals = (($roleAssignmentsUniqueById.where({ $_.RoleAssignmentIdentityObjectType -eq 'ServicePrincipal' })))
     $htRoleAssignmentsForServicePrincipals = @{}
     foreach ($spWithRoleAssignment in $roleAssignmentsForServicePrincipals | Group-Object -Property RoleAssignmentIdentityObjectId) {
@@ -1311,9 +1341,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     Write-Host "  PreQueriesRBACRelated duration: $((New-TimeSpan -Start $startPreQueriesRBACRelated -End $endPreQueriesRBACRelated).TotalSeconds) seconds"
     #endregion PreQueriesRBACRelated
 
-    #$blueprintBaseQuery = ($newTable | Select-Object mgid, SubscriptionId, Blueprint*).where({ -not [String]::IsNullOrEmpty($_.BlueprintName) } )
     $blueprintBaseQuery = ($newTable.where({ -not [String]::IsNullOrEmpty($_.BlueprintName) } )) | Select-Object mgid, SubscriptionId, Blueprint*
-    #$mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | Select-Object MgId, SubscriptionId -Unique)
     $mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | Sort-Object -Property MgId, SubscriptionId -Unique | Select-Object MgId, SubscriptionId)
 
 
@@ -1725,7 +1753,7 @@ $html = @"
 </head>
 "@
 
-if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+if (-not $HierarchyMapOnly) {
 
     if (-not $NoDefinitionInsightsDedicatedHTML) {
         $htmlDefinitionInsightsDedicatedStart = $html
@@ -1912,7 +1940,12 @@ if ($tenantDisplayName) {
     $tenantDetailsDisplay = "$tenantDisplayName<br>$tenantDefaultDomain<br>$($azAPICallConf['checkContext'].Tenant.Id)"
 }
 else {
-    $tenantDetailsDisplay = "$($azAPICallConf['checkContext'].Tenant.Id)"
+    if ($HierarchyMapOnly -and $HierarchyMapOnlyCustomDataJSON) {
+        $tenantDetailsDisplay = $ManagementGroupId
+    }
+    else {
+        $tenantDetailsDisplay = "$($azAPICallConf['checkContext'].Tenant.Id)"
+    }
 }
 
 $tenantRoleAssignmentCount = 0
@@ -2103,7 +2136,7 @@ else {
 '@
 }
 
-if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+if (-not $HierarchyMapOnly) {
 
     $html += @'
     <div class="summprnt" id="summprnt">
@@ -2207,8 +2240,7 @@ $html += @'
     <div class="VersionDiv VersionThis"></div>
     <div class="VersionAlert"></div>
 '@
-
-if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+if (-not $HierarchyMapOnly) {
     $endAzGovVizHTML = Get-Date
     $AzGovVizHTMLDuration = (New-TimeSpan -Start $startAzGovViz -End $endAzGovVizHTML).TotalMinutes
     $paramsUsed += "Creation duration: $AzGovVizHTMLDuration minutes &#13;"

@@ -359,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.65',
+    $AzAPICallVersion = '1.1.67',
 
     [string]
-    $ProductVersion = 'v6_major_20230106_1',
+    $ProductVersion = 'v6_major_20230119_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -396,6 +396,9 @@ Param
 
     [switch]
     $HierarchyMapOnly,
+
+    [string]
+    $HierarchyMapOnlyCustomDataJSON,
 
     [Alias('NoASCSecureScore')]
     [switch]
@@ -598,7 +601,10 @@ Param
     $LimitResourceGroups = 980,
 
     [int]
-    $LimitTagsSubscription = 50
+    $LimitTagsSubscription = 50,
+
+    [array]
+    $MSTenantIds = @('2f4a9838-26b7-47ee-be60-ccc1fdec5953', '33e01921-4d64-4f8c-a055-5bdaffd5e33d')
 )
 
 $Error.clear()
@@ -1391,13 +1397,13 @@ $markdownhierarchySubs
 
     $markdown += @"
  classDef mgrprnts fill:#FFFFFF,stroke:#56595E,color:#000000,stroke-width:1px;
- class $(($arrayMgs | Sort-Object -unique) -join ',') mgr;
- class $(($arraySubs | Sort-Object -unique) -join ',') subs;
+ class $(($arrayMgs | Sort-Object -Unique) -join ',') mgr;
+ class $(($arraySubs | Sort-Object -Unique) -join ',') subs;
 "@
 
     if (($arraySubsOos).count -gt 0) {
         $markdown += @"
- class $(($arraySubsOos | Sort-Object -unique) -join ',') subsoos;
+ class $(($arraySubsOos | Sort-Object -Unique) -join ',') subsoos;
 "@
     }
 
@@ -1431,7 +1437,7 @@ class $mermaidprnts mgrprnts;
 ## Summary
 `n
 "@
-    if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+    if (-not $HierarchyMapOnly) {
         $markdown += @"
 Total Management Groups: $totalMgCount (depth $mgDepth)\`n
 "@
@@ -1467,9 +1473,9 @@ Total Resource Types: $totalResourceTypesCount
 "@
 
     }
-    if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $true) {
+    if ($HierarchyMapOnly) {
         $mgsDetails = ($optimizedTableForPathQueryMg | Select-Object Level, MgId -Unique)
-        $mgDepth = ($mgsDetails.Level | Measure-Object -maximum).Maximum
+        $mgDepth = ($mgsDetails.Level | Measure-Object -Maximum).Maximum
         $totalMgCount = ($mgsDetails).count
         $totalSubCount = ($optimizedTableForPathQuerySub).count
 
@@ -1491,7 +1497,7 @@ $markdownTable
 
     $markdown | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).md" -Encoding utf8 -Force
     $endBuildMD = Get-Date
-    Write-Host "Building Markdown total duration: $((NEW-TIMESPAN -Start $startBuildMD -End $endBuildMD).TotalMinutes) minutes ($((NEW-TIMESPAN -Start $startBuildMD -End $endBuildMD).TotalSeconds) seconds)"
+    Write-Host "Building Markdown total duration: $((New-TimeSpan -Start $startBuildMD -End $endBuildMD).TotalMinutes) minutes ($((New-TimeSpan -Start $startBuildMD -End $endBuildMD).TotalSeconds) seconds)"
 }
 function buildPolicyAllJSON {
     Write-Host 'Creating PolicyAll JSON'
@@ -1547,10 +1553,10 @@ function buildPolicyAllJSON {
     Write-Host "Creating PolicyAll JSON duration: $((NEW-TIMESPAN -Start $startPolicyAllJSON -End $endPolicyAllJSON).TotalSeconds) seconds"
 }
 function buildTree($mgId, $prnt) {
-    $getMg = $arrayEntitiesFromAPI.where( { $_.type -eq 'Microsoft.Management/managementGroups' -and $_.name -eq $mgId })
-    $childrenManagementGroups = $arrayEntitiesFromAPI.where( { $_.type -eq 'Microsoft.Management/managementGroups' -and $_.properties.parent.id -eq "/providers/Microsoft.Management/managementGroups/$($getMg.Name)" })
-    $mgNameValid = removeInvalidFileNameChars $getMg.Name
-    $mgDisplayNameValid = removeInvalidFileNameChars $getMg.properties.displayName
+    $getMg = $htEntities.values.where( { $_.type -eq 'Microsoft.Management/managementGroups' -and $_.id -eq $mgId })
+    $childrenManagementGroups = $htEntities.values.where( { $_.type -eq 'Microsoft.Management/managementGroups' -and $_.parentId -eq "/providers/Microsoft.Management/managementGroups/$($getMg.Id)" })
+    $mgNameValid = removeInvalidFileNameChars $getMg.Id
+    $mgDisplayNameValid = removeInvalidFileNameChars $getMg.displayName
     $prntx = "$($prnt)$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)")) {
         $null = New-Item -Name $prntx -ItemType directory -Path $outputPath
@@ -1559,13 +1565,13 @@ function buildTree($mgId, $prnt) {
     if (-not $json.'ManagementGroups') {
         $json.'ManagementGroups' = [ordered]@{}
     }
-    $json = $json.'ManagementGroups'.($getMg.Name) = [ordered]@{}
-    foreach ($mgCap in $htJSON.ManagementGroups.($getMg.Name).keys) {
-        $json.$mgCap = $htJSON.ManagementGroups.($getMg.Name).$mgCap
+    $json = $json.'ManagementGroups'.($getMg.Id) = [ordered]@{}
+    foreach ($mgCap in $htJSON.ManagementGroups.($getMg.Id).keys) {
+        $json.$mgCap = $htJSON.ManagementGroups.($getMg.Id).$mgCap
         if ($mgCap -eq 'PolicyDefinitionsCustom') {
             $mgCapShort = 'pd'
-            foreach ($pdc in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys) {
-                $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pdc)
+            foreach ($pdc in $htJSON.ManagementGroups.($getMg.Id).($mgCap).Keys) {
+                $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($pdc)
                 if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                     $displayName = 'noDisplayNameGiven'
                 }
@@ -1583,8 +1589,8 @@ function buildTree($mgId, $prnt) {
         }
         if ($mgCap -eq 'PolicySetDefinitionsCustom') {
             $mgCapShort = 'psd'
-            foreach ($psdc in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys) {
-                $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($psdc)
+            foreach ($psdc in $htJSON.ManagementGroups.($getMg.Id).($mgCap).Keys) {
+                $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($psdc)
                 if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                     $displayName = 'noDisplayNameGiven'
                 }
@@ -1602,8 +1608,8 @@ function buildTree($mgId, $prnt) {
         }
         if ($mgCap -eq 'PolicyAssignments') {
             $mgCapShort = 'pa'
-            foreach ($pa in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys) {
-                $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($pa)
+            foreach ($pa in $htJSON.ManagementGroups.($getMg.Id).($mgCap).Keys) {
+                $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($pa)
                 if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                     $displayName = 'noDisplayNameGiven'
                 }
@@ -1623,8 +1629,8 @@ function buildTree($mgId, $prnt) {
         #marker
         if ($mgCap -eq 'RoleAssignments') {
             $mgCapShort = 'ra'
-            foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys) {
-                $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($ra)
+            foreach ($ra in $htJSON.ManagementGroups.($getMg.Id).($mgCap).Keys) {
+                $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($ra)
                 if ($hlp.PIM -eq 'true') {
                     $pim = 'PIM_'
                 }
@@ -1642,15 +1648,15 @@ function buildTree($mgId, $prnt) {
         }
 
         if ($mgCap -eq 'Subscriptions') {
-            foreach ($sub in $htJSON.ManagementGroups.($getMg.Name).($mgCap).Keys) {
-                $subNameValid = removeInvalidFileNameChars $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).SubscriptionName
+            foreach ($sub in $htJSON.ManagementGroups.($getMg.Id).($mgCap).Keys) {
+                $subNameValid = removeInvalidFileNameChars $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).SubscriptionName
                 $subFolderName = "$($prntx)$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
                 $null = New-Item -Name $subFolderName -ItemType directory -Path $outputPath
-                foreach ($subCap in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).Keys) {
+                foreach ($subCap in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).Keys) {
                     if ($subCap -eq 'PolicyDefinitionsCustom') {
                         $subCapShort = 'pd'
-                        foreach ($pdc in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
-                            $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pdc)
+                        foreach ($pdc in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys) {
+                            $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($pdc)
                             if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                                 $displayName = 'noDisplayNameGiven'
                             }
@@ -1668,8 +1674,8 @@ function buildTree($mgId, $prnt) {
                     }
                     if ($subCap -eq 'PolicySetDefinitionsCustom') {
                         $subCapShort = 'psd'
-                        foreach ($psdc in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
-                            $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($psdc)
+                        foreach ($psdc in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys) {
+                            $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($psdc)
                             if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                                 $displayName = 'noDisplayNameGiven'
                             }
@@ -1687,8 +1693,8 @@ function buildTree($mgId, $prnt) {
                     }
                     if ($subCap -eq 'PolicyAssignments') {
                         $subCapShort = 'pa'
-                        foreach ($pa in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
-                            $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($pa)
+                        foreach ($pa in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys) {
+                            $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($pa)
                             if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                                 $displayName = 'noDisplayNameGiven'
                             }
@@ -1707,8 +1713,8 @@ function buildTree($mgId, $prnt) {
                     #marker
                     if ($subCap -eq 'RoleAssignments') {
                         $subCapShort = 'ra'
-                        foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys) {
-                            $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($ra)
+                        foreach ($ra in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys) {
+                            $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($ra)
                             if ($hlp.PIM -eq 'true') {
                                 $pim = 'PIM_'
                             }
@@ -1729,12 +1735,12 @@ function buildTree($mgId, $prnt) {
                     if (-not $azAPICallConf['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
                         if (-not $JsonExportExcludeResourceGroups) {
                             if ($subCap -eq 'ResourceGroups') {
-                                foreach ($rg in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys | Sort-Object) {
+                                foreach ($rg in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys | Sort-Object) {
                                     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)")) {
                                         $null = New-Item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)" -ItemType directory -Path "$($outputPath)"
                                     }
-                                    foreach ($pa in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).PolicyAssignments.keys) {
-                                        $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).PolicyAssignments.($pa)
+                                    foreach ($pa in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).PolicyAssignments.keys) {
+                                        $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).PolicyAssignments.($pa)
                                         if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                                             $displayName = 'noDisplayNameGiven'
                                         }
@@ -1759,12 +1765,12 @@ function buildTree($mgId, $prnt) {
                     if (-not $azAPICallConf['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
                         if (-not $JsonExportExcludeResourceGroups) {
                             if ($subCap -eq 'ResourceGroups') {
-                                foreach ($rg in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).Keys | Sort-Object) {
+                                foreach ($rg in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys | Sort-Object) {
                                     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)")) {
                                         $null = New-Item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)" -ItemType directory -Path "$($outputPath)"
                                     }
-                                    foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).RoleAssignments.keys) {
-                                        $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).RoleAssignments.($ra)
+                                    foreach ($ra in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).RoleAssignments.keys) {
+                                        $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).RoleAssignments.($ra)
                                         if ($hlp.PIM -eq 'true') {
                                             $pim = 'PIM_'
                                         }
@@ -1782,12 +1788,12 @@ function buildTree($mgId, $prnt) {
                                     #res
                                     if (-not $JsonExportExcludeResources) {
 
-                                        foreach ($res in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).Resources.keys) {
+                                        foreach ($res in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).Resources.keys) {
                                             if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)")) {
                                                 $null = New-Item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)" -ItemType directory -Path "$($outputPath)"
                                             }
-                                            foreach ($ra in $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.keys) {
-                                                $hlp = $htJSON.ManagementGroups.($getMg.Name).($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.($ra)
+                                            foreach ($ra in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.keys) {
+                                                $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.($ra)
                                                 if ($hlp.PIM -eq 'true') {
                                                     $pim = 'PIM_'
                                                 }
@@ -1817,8 +1823,8 @@ function buildTree($mgId, $prnt) {
         $json.'ManagementGroups' = @{}
     }
     else {
-        foreach ($childMg in $childrenManagementGroups) {
-            buildTree -mgId $childMg.Name -json $json -prnt $prntx
+        foreach ($childMg in $childrenManagementGroups | Sort-Object -Property Id) {
+            buildTree -mgId $childMg.Id -json $json -prnt $prntx
         }
     }
 }
@@ -2992,6 +2998,8 @@ function getEntities {
 
     foreach ($entity in $arrayEntitiesFromAPI) {
         if ($entity.Type -eq '/subscriptions') {
+            $parent = $entity.properties.parent.Id -replace '.*/'
+            $parentId = $entity.properties.parent.Id
             $script:htSubscriptionsMgPath.($entity.name) = @{}
             $script:htSubscriptionsMgPath.($entity.name).ParentNameChain = $entity.properties.parentNameChain
             $script:htSubscriptionsMgPath.($entity.name).ParentNameChainDelimited = $entity.properties.parentNameChain -join '/'
@@ -3007,9 +3015,11 @@ function getEntities {
         if ($entity.Type -eq 'Microsoft.Management/managementGroups') {
             if ([string]::IsNullOrEmpty($entity.properties.parent.Id)) {
                 $parent = '__TenantRoot__'
+                $parentId = '__TenantRoot__'
             }
             else {
                 $parent = $entity.properties.parent.Id -replace '.*/'
+                $parentId = $entity.properties.parent.Id
             }
             $script:htManagementGroupsMgPath.($entity.name) = @{}
             $script:htManagementGroupsMgPath.($entity.name).ParentNameChain = $entity.properties.parentNameChain
@@ -3030,6 +3040,7 @@ function getEntities {
         $script:htEntities.($entity.name) = @{}
         $script:htEntities.($entity.name).ParentNameChain = $entity.properties.parentNameChain
         $script:htEntities.($entity.name).Parent = $parent
+        $script:htEntities.($entity.name).ParentId = $parentId
         if ($parent -eq '__TenantRoot__') {
             $parentDisplayName = '__TenantRoot__'
         }
@@ -3039,6 +3050,7 @@ function getEntities {
         $script:htEntities.($entity.name).ParentDisplayName = $parentDisplayName
         $script:htEntities.($entity.name).DisplayName = $entity.properties.displayName
         $script:htEntities.($entity.name).Id = $entity.Name
+        $script:htEntities.($entity.name).Type = $entity.Type
     }
 
     Write-Host "  $(($htManagementGroupsMgPath.Keys).Count) relevant Management Groups"
@@ -3055,7 +3067,7 @@ function getEntities {
 }
 function getFileNaming {
     if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions -eq $true) {
-        if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $true) {
+        if ($HierarchyMapOnly) {
             $script:fileName = "AzGovViz_HierarchyMapOnly_$($ManagementGroupId)"
         }
         elseif ($azAPICallConf['htParameters'].ManagementGroupsOnly -eq $true) {
@@ -3066,7 +3078,7 @@ function getFileNaming {
         }
     }
     else {
-        if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $true) {
+        if ($HierarchyMapOnly) {
             $script:fileName = "AzGovViz_HierarchyMapOnly_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupId)"
         }
         elseif ($azAPICallConf['htParameters'].ManagementGroupsOnly -eq $true) {
@@ -7210,28 +7222,94 @@ $mgInLevel(`"$mgNameId`") --> SubsoosOf$mgInLevel(`"$(($subsoosUnderMg | Measure
     }
 }
 function processHierarchyMapOnly {
-    foreach ($entity in $arrayEntitiesFromAPI) {
-        if ($entity.properties.parentNameChain -contains $ManagementGroupID -or $entity.Name -eq $ManagementGroupId) {
+    foreach ($entity in $htEntities.values) {
+        if ($entity.parentNameChain -contains $ManagementGroupID -or $entity.Id -eq $ManagementGroupId) {
+
             if ($entity.type -eq '/subscriptions') {
+                $hlpEntityParent = $htEntities.(($entity.parent))
                 addRowToTable `
-                    -level (($htEntities.($entity.name).ParentNameChain).Count - 1) `
-                    -mgName $htEntities.(($entity.properties.parent.Id) -replace '.*/').displayName `
-                    -mgId (($entity.properties.parent.Id) -replace '.*/') `
-                    -mgParentId $htEntities.(($entity.properties.parent.Id) -replace '.*/').Parent `
-                    -mgParentName $htEntities.(($entity.properties.parent.Id) -replace '.*/').ParentDisplayName `
-                    -Subscription $htEntities.($entity.name).DisplayName `
-                    -SubscriptionId $htEntities.($entity.name).Id
+                    -level (($entity.ParentNameChain).Count - 1) `
+                    -mgName $hlpEntityParent.displayName `
+                    -mgId ($entity.parent) `
+                    -mgParentId $hlpEntityParent.Parent `
+                    -mgParentName $hlpEntityParent.ParentDisplayName `
+                    -Subscription $entity.DisplayName `
+                    -SubscriptionId $entity.Id
             }
             if ($entity.type -eq 'Microsoft.Management/managementGroups') {
                 addRowToTable `
-                    -level ($htEntities.($entity.name).ParentNameChain).Count `
-                    -mgName $entity.properties.displayname `
-                    -mgId $entity.Name `
-                    -mgParentId $htEntities.($entity.name).Parent `
-                    -mgParentName $htEntities.($entity.name).ParentDisplayName
+                    -level ($entity.ParentNameChain).Count `
+                    -mgName $entity.displayname `
+                    -mgId $entity.id `
+                    -mgParentId $entity.Parent `
+                    -mgParentName $entity.ParentDisplayName
             }
         }
     }
+}
+function processHierarchyMapOnlyCustomData {
+    Write-Host 'HierarchyMapOnly with custom data' -ForegroundColor Yellow
+    Write-Host ' Parameter HierarchyMapOnly:' $HierarchyMapOnly
+    Write-Host ' Check if HierarchyMapOnlyCustomDataJSON is valid JSON'
+    try {
+        $HierarchyMapOnlyCustomDataConvertedAsHashTable = $HierarchyMapOnlyCustomDataJSON | ConvertFrom-Json -AsHashtable
+        $hierarchyMapOnlyCustomData = @{}
+        foreach ($key in $HierarchyMapOnlyCustomDataConvertedAsHashTable.Keys) {
+            $hierarchyMapOnlyCustomData.$key = $HierarchyMapOnlyCustomDataConvertedAsHashTable.$key | ConvertTo-Json | ConvertFrom-Json
+        }
+        Write-Host '  HierarchyMapOnlyCustomDataJSON is valid JSON' -ForegroundColor Green
+    }
+    catch {
+        throw 'HierarchyMapOnlyCustomDataJSON is not valid JSON'
+    }
+
+    Write-Host ' Parameter hierarchyMapOnlyCustomData count:' $hierarchyMapOnlyCustomData.Keys.Count
+
+    #validate
+    Write-Host ' ManagementGroupId validation'
+    if (-not $ManagementGroupId) {
+        Write-Host '  ManagementGroupId validation failed - please provide ManagementGroupId (parameter -ManagementGroupId)'
+        throw 'ManagementGroupId validation failed - please provide ManagementGroupId (parameter -ManagementGroupId)'
+    }
+    else {
+        Write-Host "  ManagementGroupId validation passed '$ManagementGroupId'" -ForegroundColor Green
+    }
+    Write-Host ' CustomData validation'
+    if ($hierarchyMapOnlyCustomData.Keys.Count -gt 0) {
+        Write-Host '  Checking Keys (sanity check on first item)'
+        $requiredKeys = @('Id', 'ParentId', 'ParentNameChain', 'ParentDisplayName', 'DisplayName', 'type')
+        $firstItem = $hierarchyMapOnlyCustomData.($($hierarchyMapOnlyCustomData.Keys)[0])
+        foreach ($requiredKey in $requiredKeys) {
+            if (($firstitem | Get-Member -Name $requiredKey)) {
+                Write-Host "   Key:$($requiredKey) exists" -ForegroundColor Green
+            }
+            else {
+                Write-Host "  CustomData validation failed - required key:$($requiredKey) missing" -ForegroundColor DarkRed
+                Write-Host "  The following keys are expected: $($requiredKeys -join ', ')"
+                throw "CustomData validation failed - required key:$($requiredKey) missing"
+            }
+        }
+
+        Write-Host '  Checking for existence of Management Groups'
+        $HierarchyMapOnlyCustomDataHroupedByType = $hierarchyMapOnlyCustomData.values | Group-Object -Property type
+        if ($HierarchyMapOnlyCustomDataHroupedByType.Name -notcontains 'Microsoft.Management/managementGroups') {
+            Write-Host '   CustomData validation failed - Custom data does not contain Manangement Groups'
+            throw 'CustomData validation failed - Custom data does not contain Manangement Groups'
+        }
+        else {
+            Write-Host '   Checking for existence of Management Groups passed' -ForegroundColor Green
+        }
+        foreach ($type in $HierarchyMapOnlyCustomDataHroupedByType) {
+            Write-Host "    Custom Data contains $($type.Count) x type: '$($type.name)'"
+        }
+
+        Write-Host ' CustomData validation passed' -ForegroundColor Green
+    }
+    else {
+        Write-Host " CustomData validation failed - no data (`$hierarchyMapOnlyCustomData.Keys.Count: $($hierarchyMapOnlyCustomData.Keys.Count))"
+        throw "CustomData validation failed - no data (`$hierarchyMapOnlyCustomData.Keys.Count: $($hierarchyMapOnlyCustomData.Keys.Count))"
+    }
+    $script:htEntities = $hierarchyMapOnlyCustomData
 }
 function processManagedIdentities {
     Write-Host 'Processing Service Principals - Managed Identities'
@@ -7329,7 +7407,12 @@ function processNetwork {
                         foreach ($remoteId in $remoteTenantId) {
                             $objectGuid = [System.Guid]::empty
                             if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
-                                $arrayRemoteMGPath += $remoteId
+                                if ($remoteId -in $MSTenantIds) {
+                                    $arrayRemoteMGPath += "$remoteId (MS)"
+                                }
+                                else {
+                                    $arrayRemoteMGPath += $remoteId
+                                }
                                 if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
                                     $peeringXTenant = 'false'
                                 }
@@ -7339,7 +7422,7 @@ function processNetwork {
                             }
                             $script:htUnknownTenantsForSubscription.($remotesubscriptionId) = @{}
                             $script:htUnknownTenantsForSubscription.($remotesubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
-                            $remoteMGPath = $arrayRemoteMGPath -join ' or '
+                            $remoteMGPath = $arrayRemoteMGPath -join ', '
                         }
                     }
                 }
@@ -7741,7 +7824,12 @@ function processPrivateEndpoints {
                     foreach ($remoteId in $remoteTenantId) {
                         $objectGuid = [System.Guid]::empty
                         if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
-                            $arrayRemoteMGPath += $remoteId
+                            if ($remoteId -in $MSTenantIds) {
+                                $arrayRemoteMGPath += "$remoteId (MS)"
+                            }
+                            else {
+                                $arrayRemoteMGPath += $remoteId
+                            }
                             if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
                                 $peXTenant = $false
                             }
@@ -7751,7 +7839,7 @@ function processPrivateEndpoints {
                         }
                         $script:htUnknownTenantsForSubscription.($peSubscriptionId) = @{}
                         $script:htUnknownTenantsForSubscription.($peSubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
-                        $peMGPath = $arrayRemoteMGPath -join ' or '
+                        $peMGPath = $arrayRemoteMGPath -join ', '
                     }
                 }
 
@@ -7895,7 +7983,12 @@ function processPrivateEndpoints {
                         foreach ($remoteId in $remoteTenantId) {
                             $objectGuid = [System.Guid]::empty
                             if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
-                                $arrayRemoteMGPath += $remoteId
+                                if ($remoteId -in $MSTenantIds) {
+                                    $arrayRemoteMGPath += "$remoteId (MS)"
+                                }
+                                else {
+                                    $arrayRemoteMGPath += $remoteId
+                                }
                                 if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
                                     $resourceXTenant = $false
                                 }
@@ -7905,7 +7998,7 @@ function processPrivateEndpoints {
                             }
                             $script:htUnknownTenantsForSubscription.($resourceSubscriptionId) = @{}
                             $script:htUnknownTenantsForSubscription.($resourceSubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
-                            $resourceMGPath = $arrayRemoteMGPath -join ' or '
+                            $resourceMGPath = $arrayRemoteMGPath -join ', '
                         }
                     }
                 }
@@ -12109,6 +12202,12 @@ function processStorageAccountAnalysis {
                 $allowCrossTenantReplication = $storageAccount.properties.allowCrossTenantReplication
             }
 
+            if ($storageAccount.properties.dnsEndpointType) {
+                $dnsEndpointType = $storageAccount.properties.dnsEndpointType
+            }
+            else {
+                $dnsEndpointType = 'standard'
+            }
 
             $temp = [System.Collections.ArrayList]@()
             $null = $temp.Add([PSCustomObject]@{
@@ -12148,6 +12247,7 @@ function processStorageAccountAnalysis {
                     requireInfrastructureEncryption   = $requireInfrastructureEncryption
                     allowedCopyScope                  = $allowedCopyScope
                     allowCrossTenantReplication       = $allowCrossTenantReplication
+                    dnsEndpointType                   = $dnsEndpointType
                 })
 
             if ($StorageAccountAccessAnalysisSubscriptionTags[0] -ne 'undefined' -and $StorageAccountAccessAnalysisSubscriptionTags.Count -gt 0) {
@@ -16159,7 +16259,7 @@ extensions: [{ name: 'sort' }]
             <div class="content TenantSummary padlxx">
                 <i class="fa fa-exclamation-triangle orange" aria-hidden="true"></i><span style="color:#ff0000"> Output of $tfCount lines would exceed the html rows limit of $HtmlTableRowsLimit (html file potentially would become unresponsive). Work with the CSV file <i>$($csvFilename).csv</i> | Note: the CSV file will only exist if you did NOT use parameter <i>-NoCsvExport</i></span><br>
                 <span style="color:#ff0000">You can adjust the html row limit by using parameter <i>-HtmlTableRowsLimit</i></span><br>
-                <span style="color:#ff0000">You can reduce the number of lines by using parameter <i>-LargeTenant</i> and/or <i>-DoNotIncludeResourceGroupsAnsResourcesOnRBAC</i></span><br>
+                <span style="color:#ff0000">You can reduce the number of lines by using parameter <i>-LargeTenant</i> and/or <i>-DoNotIncludeResourceGroupsAndResourcesOnRBAC</i></span><br>
                 <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">AzGovViz docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
             </div>
 "@)
@@ -17114,7 +17214,7 @@ extensions: [{ name: 'sort' }]
             <div class="content TenantSummary padlxx">
                 <i class="fa fa-exclamation-triangle orange" aria-hidden="true"></i><span style="color:#ff0000"> Output of $tfCount lines would exceed the html rows limit of $HtmlTableRowsLimit (html file potentially would become unresponsive). Work with the CSV file <i>$($csvFilename).csv</i> | Note: the CSV file will only exist if you did NOT use parameter <i>-NoCsvExport</i></span><br>
                 <span style="color:#ff0000">You can adjust the html row limit by using parameter <i>-HtmlTableRowsLimit</i></span><br>
-                <span style="color:#ff0000">You can reduce the number of lines by using parameter <i>-LargeTenant</i> and/or <i>-DoNotIncludeResourceGroupsAnsResourcesOnRBAC</i></span><br>
+                <span style="color:#ff0000">You can reduce the number of lines by using parameter <i>-LargeTenant</i> and/or <i>-DoNotIncludeResourceGroupsAndResourcesOnRBAC</i></span><br>
                 <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">AzGovViz docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
             </div>
 "@)
@@ -21047,6 +21147,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>Require Infrastructure Encryption</th>
 <th>Allowed Copy Scope</th>
 <th>Allow Cross Tenant Replication</th>
+<th>DNS Endpoint Type</th>
 </tr>
 </thead>
 <tbody>
@@ -21085,6 +21186,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.requireInfrastructureEncryption)</td>
                         <td>$($result.allowedCopyScope)</td>
                         <td>$($result.allowCrossTenantReplication)</td>
+                        <td>$($result.dnsEndpointType)</td>
                         </tr>
 "@)
 
@@ -21143,6 +21245,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_26: 'select',
             col_27: 'select',
             col_28: 'select',
+            col_29: 'select',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -21164,6 +21267,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'number',
                 'number',
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -27046,7 +27150,7 @@ function ResolveObjectIds {
 function runInfo {
     #region RunInfo
     Write-Host 'Run Info:'
-    if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $true) {
+    if ($HierarchyMapOnly) {
         Write-Host ' Creating HierarchyMap only' -ForegroundColor Green
     }
     else {
@@ -27778,7 +27882,7 @@ function stats {
                 "statsParametersDoNotIncludeResourceGroupsAndResourcesOnRBAC": "$($azAPICallConf['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC)",
                 "statsParametersDoNotIncludeResourceGroupsOnPolicy": "$($azAPICallConf['htParameters'].DoNotIncludeResourceGroupsOnPolicy)",
                 "statsParametersDoNotShowRoleAssignmentsUserData": "$($azAPICallConf['htParameters'].DoNotShowRoleAssignmentsUserData)",
-                "statsParametersHierarchyMapOnly": "$($azAPICallConf['htParameters'].HierarchyMapOnly)",
+                "statsParametersHierarchyMapOnly": "$HierarchyMapOnly",
                 "statsParametersManagementGroupsOnly": "$($azAPICallConf['htParameters'].ManagementGroupsOnly)",
                 "statsParametersLargeTenant": "$($azAPICallConf['htParameters'].LargeTenant)",
                 "statsParametersNoASCSecureScore": "$($azAPICallConf['htParameters'].NoMDfCSecureScore)",
@@ -27864,7 +27968,7 @@ function testGuid {
 }
 function testPowerShellVersion {
 
-    Write-Host ' Checking PowerShell edition and version'
+    Write-Host 'Checking PowerShell edition and version'
     $requiredPSVersion = '7.0.3'
     $splitRequiredPSVersion = $requiredPSVersion.split('.')
     $splitRequiredPSVersionMajor = $splitRequiredPSVersion[0]
@@ -32694,7 +32798,14 @@ $funcResolveObjectIds = $function:ResolveObjectIds.ToString()
 $funcNamingValidation = $function:NamingValidation.ToString()
 $funcTestGuid = $function:testGuid.ToString()
 
-testPowerShellVersion
+if ($HierarchyMapOnly -and $HierarchyMapOnlyCustomDataJSON) {
+    processHierarchyMapOnlyCustomData
+    Write-Host 'Skipping PowerShell version check /Using custom data (`$HierarchyMapOnlyCustomDataJSON)'
+}
+else {
+    testPowerShellVersion
+}
+
 showMemoryUsage
 
 $outputPathGiven = $OutputPath
@@ -32740,7 +32851,6 @@ if ($DoPSRule) {
             ModulePathPipeline = 'PSRuleModule'
         })
 }
-
 verifyModules3rd -modules $modules
 #endregion verifyModules3rd
 
@@ -32769,7 +32879,9 @@ if ($azGovVizNewerVersionAvailable) {
 }
 #endregion promptNewAzGovVizVersionAvailable
 
-handleCloudEnvironment
+if (-not $HierarchyMapOnly) {
+    handleCloudEnvironment
+}
 
 if (-not $HierarchyMapOnly) {
     <# PSRule paused
@@ -32806,8 +32918,6 @@ if (-not $HierarchyMapOnly) {
     #endregion hintPIMEligibility
 }
 
-addHtParameters
-
 #region delimiterOpposite
 if ($CsvDelimiter -eq ';') {
     $CsvDelimiterOpposite = ','
@@ -32820,8 +32930,15 @@ if ($CsvDelimiter -eq ',') {
 #region runDataCollection
 
 #run
+if ($HierarchyMapOnly -and $HierarchyMapOnlyCustomDataJSON) {
+    Write-Host 'Skipping Access validation /Using custom data (`$HierarchyMapOnlyCustomDataJSON)'
+    Write-Host 'Skipping addHtParameters /Using custom data (`$HierarchyMapOnlyCustomDataJSON)'
+}
+else {
+    addHtParameters
+    validateAccess
+}
 
-validateAccess
 getFileNaming
 
 Write-Host "Running AzGovViz for ManagementGroupId: '$ManagementGroupId'" -ForegroundColor Yellow
@@ -32830,7 +32947,7 @@ $newTable = [System.Collections.ArrayList]::Synchronized((New-Object System.Coll
 $htMgDetails = @{}
 $htSubDetails = @{}
 
-if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+if (-not $HierarchyMapOnly) {
     #helper ht / collect results /save some time
     $htCacheDefinitionsPolicy = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htCacheDefinitionsPolicySet = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
@@ -32974,20 +33091,33 @@ if (-not $HierarchyMapOnly) {
     }
 }
 
-getSubscriptions
-getEntities
-showMemoryUsage
-setBaseVariablesMG
-
-if ($azAPICallConf['htParameters'].accountType -eq 'User') {
-    getTenantDetails
+if ($HierarchyMapOnly -and $HierarchyMapOnlyCustomDataJSON) {
+    $script:hierarchyLevel = -1
+    $script:mgSubPathTopMg = "$ManagementGroupId"
+    $script:getMgParentId = "'$ManagementGroupId'"
+    $script:getMgParentName = 'Tenant Root'
+    $script:mermaidprnts = "'$getMgParentId',$getMgParentId"
+}
+else {
+    getSubscriptions
+    getEntities
+    showMemoryUsage
+    setBaseVariablesMG
 }
 
-getDefaultManagementGroup
+if ($HierarchyMapOnly -and $HierarchyMapOnlyCustomDataJSON) {
+}
+else {
+    if ($azAPICallConf['htParameters'].accountType -eq 'User') {
+        getTenantDetails
+    }
+
+    getDefaultManagementGroup
+}
 
 runInfo
 
-if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+if (-not $HierarchyMapOnly) {
 
     #getSubscriptions
     detailSubscriptions
@@ -33104,7 +33234,7 @@ else {
 prepareData
 showMemoryUsage
 
-if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+if (-not $HierarchyMapOnly) {
 
     $rbacBaseQuery = $newTable.where({ -not [String]::IsNullOrEmpty($_.RoleDefinitionName) } ) | Sort-Object -Property RoleIsCustom, RoleDefinitionName | Select-Object -Property Level, Role*, mg*, Subscription*
     $roleAssignmentsUniqueById = $rbacBaseQuery | Sort-Object -Property RoleAssignmentId -Unique
@@ -33143,16 +33273,13 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 #region createoutputs
 
 #region BuildHTML
-#testhelper
-#$fileTimestamp = (Get-Date -Format $FileTimeStampFormat)
-
 $startBuildHTML = Get-Date
 Write-Host 'Building HTML'
 $html = $null
 
 #getFileNaming
 
-if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+if (-not $HierarchyMapOnly) {
     #region preQueries
     Write-Host ' Building preQueries'
     $startPreQueries = Get-Date
@@ -33267,8 +33394,8 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
 
     #region PreQueriesRBACRelated
     $startPreQueriesRBACRelated = Get-Date
-    $rbacBaseQueryArrayListNotGroupOwner = $rbacBaseQuery.where({ $_.RoleAssignmentIdentityObjectType -ne 'Group' -and $_.RoleDefinitionName -eq 'Owner' }) | Select-Object -Property mgid, SubscriptionId, RoleAssignmentId, RoleDefinitionName, RoleDefinitionId, RoleAssignmentIdentityObjectType, RoleAssignmentIdentityDisplayname, RoleAssignmentIdentitySignInName, RoleAssignmentIdentityObjectId
-    $rbacBaseQueryArrayListNotGroupUserAccessAdministrator = $rbacBaseQuery.where({ $_.RoleAssignmentIdentityObjectType -ne 'Group' -and $_.RoleDefinitionName -eq 'User Access Administrator' }) | Select-Object -Property mgid, SubscriptionId, RoleAssignmentId, RoleDefinitionName, RoleDefinitionId, RoleAssignmentIdentityObjectType, RoleAssignmentIdentityDisplayname, RoleAssignmentIdentitySignInName, RoleAssignmentIdentityObjectId
+    $rbacBaseQueryArrayListNotGroupOwner = $rbacBaseQuery.where({ $_.RoleAssignmentIdentityObjectType -ne 'Group' -and $_.RoleDefinitionName -eq 'Owner' }) | Select-Object -Property mgid, SubscriptionId, RoleAssignmentId, RoleDefinitionName, RoleDefinitionId, RoleAssignmentIdentityObjectType, RoleAssignmentIdentityDisplayname, RoleAssignmentIdentitySignInName, RoleAssignmentIdentityObjectId, RoleAssignmentScopeType
+    $rbacBaseQueryArrayListNotGroupUserAccessAdministrator = $rbacBaseQuery.where({ $_.RoleAssignmentIdentityObjectType -ne 'Group' -and $_.RoleDefinitionName -eq 'User Access Administrator' }) | Select-Object -Property mgid, SubscriptionId, RoleAssignmentId, RoleDefinitionName, RoleDefinitionId, RoleAssignmentIdentityObjectType, RoleAssignmentIdentityDisplayname, RoleAssignmentIdentitySignInName, RoleAssignmentIdentityObjectId, RoleAssignmentScopeType
     $roleAssignmentsForServicePrincipals = (($roleAssignmentsUniqueById.where({ $_.RoleAssignmentIdentityObjectType -eq 'ServicePrincipal' })))
     $htRoleAssignmentsForServicePrincipals = @{}
     foreach ($spWithRoleAssignment in $roleAssignmentsForServicePrincipals | Group-Object -Property RoleAssignmentIdentityObjectId) {
@@ -33321,9 +33448,7 @@ if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
     Write-Host "  PreQueriesRBACRelated duration: $((New-TimeSpan -Start $startPreQueriesRBACRelated -End $endPreQueriesRBACRelated).TotalSeconds) seconds"
     #endregion PreQueriesRBACRelated
 
-    #$blueprintBaseQuery = ($newTable | Select-Object mgid, SubscriptionId, Blueprint*).where({ -not [String]::IsNullOrEmpty($_.BlueprintName) } )
     $blueprintBaseQuery = ($newTable.where({ -not [String]::IsNullOrEmpty($_.BlueprintName) } )) | Select-Object mgid, SubscriptionId, Blueprint*
-    #$mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | Select-Object MgId, SubscriptionId -Unique)
     $mgsAndSubs = (($optimizedTableForPathQuery.where({ $_.mgId -ne '' -and $_.Level -ne '0' } )) | Sort-Object -Property MgId, SubscriptionId -Unique | Select-Object MgId, SubscriptionId)
 
 
@@ -33735,7 +33860,7 @@ $html = @"
 </head>
 "@
 
-if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+if (-not $HierarchyMapOnly) {
 
     if (-not $NoDefinitionInsightsDedicatedHTML) {
         $htmlDefinitionInsightsDedicatedStart = $html
@@ -33922,7 +34047,12 @@ if ($tenantDisplayName) {
     $tenantDetailsDisplay = "$tenantDisplayName<br>$tenantDefaultDomain<br>$($azAPICallConf['checkContext'].Tenant.Id)"
 }
 else {
-    $tenantDetailsDisplay = "$($azAPICallConf['checkContext'].Tenant.Id)"
+    if ($HierarchyMapOnly -and $HierarchyMapOnlyCustomDataJSON) {
+        $tenantDetailsDisplay = $ManagementGroupId
+    }
+    else {
+        $tenantDetailsDisplay = "$($azAPICallConf['checkContext'].Tenant.Id)"
+    }
 }
 
 $tenantRoleAssignmentCount = 0
@@ -34113,7 +34243,7 @@ else {
 '@
 }
 
-if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+if (-not $HierarchyMapOnly) {
 
     $html += @'
     <div class="summprnt" id="summprnt">
@@ -34217,8 +34347,7 @@ $html += @'
     <div class="VersionDiv VersionThis"></div>
     <div class="VersionAlert"></div>
 '@
-
-if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $false) {
+if (-not $HierarchyMapOnly) {
     $endAzGovVizHTML = Get-Date
     $AzGovVizHTMLDuration = (New-TimeSpan -Start $startAzGovViz -End $endAzGovVizHTML).TotalMinutes
     $paramsUsed += "Creation duration: $AzGovVizHTMLDuration minutes &#13;"

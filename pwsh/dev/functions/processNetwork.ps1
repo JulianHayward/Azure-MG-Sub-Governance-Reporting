@@ -68,7 +68,12 @@ function processNetwork {
                         foreach ($remoteId in $remoteTenantId) {
                             $objectGuid = [System.Guid]::empty
                             if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
-                                $arrayRemoteMGPath += $remoteId
+                                if ($remoteId -in $MSTenantIds) {
+                                    $arrayRemoteMGPath += "$remoteId (MS)"
+                                }
+                                else {
+                                    $arrayRemoteMGPath += $remoteId
+                                }
                                 if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
                                     $peeringXTenant = 'false'
                                 }
@@ -78,7 +83,7 @@ function processNetwork {
                             }
                             $script:htUnknownTenantsForSubscription.($remotesubscriptionId) = @{}
                             $script:htUnknownTenantsForSubscription.($remotesubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
-                            $remoteMGPath = $arrayRemoteMGPath -join ' or '
+                            $remoteMGPath = $arrayRemoteMGPath -join ', '
                         }
                     }
                 }

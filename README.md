@@ -59,15 +59,13 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2023-Jan-06 / Major)
+__Changes__ (2023-Jan-19 / Major)
 
-* Fix issue PIM eligibility (do not process out-of-scope subscriptions) [issue #161](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/161)
-* Collect Advisor Scores foreach subscription
-* Update DailySummary
-  * Add count of subscriptions per quotaId
-  * Add 'Microsoft Defender for Cloud' Secure Score for Management Groups
-* Updated [API reference](#api-reference)
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.65
+* Cover Preview [Azure Storage Account with Azure DNS zone endpoints](https://learn.microsoft.com/en-us/azure/storage/common/storage-account-overview#azure-dns-zone-endpoints-preview) ([Issue #164](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/164))
+* Add feature to simulate Management Group Hierarchy Map
+ * New parameter `-HierarchyMapOnlyCustomData` (documentation update pending)
+* Private Endpoint feature - add Microsoft tenants (cross tenant PE) (`-MSTenantIds`)
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.67
 
 Passed tests: Powershell Core 7.3.0 on Windows  
 Passed tests: Powershell Core 7.2.7 Azure DevOps hosted agent ubuntu-22.04  
@@ -423,7 +421,7 @@ This permission is <b>mandatory</b> in each and every scenario!
 </table>
 
 Screenshot Azure Portal    
-![alt text](img/aadpermissionsportal.jpg "Permissions in Azure Active Directory")
+![alt text](img/aadpermissionsportal_4.jpg "Permissions in Azure Active Directory")
 
 ### PowerShell
 

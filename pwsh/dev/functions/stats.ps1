@@ -101,7 +101,7 @@ function stats {
                 "statsParametersDoNotIncludeResourceGroupsAndResourcesOnRBAC": "$($azAPICallConf['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC)",
                 "statsParametersDoNotIncludeResourceGroupsOnPolicy": "$($azAPICallConf['htParameters'].DoNotIncludeResourceGroupsOnPolicy)",
                 "statsParametersDoNotShowRoleAssignmentsUserData": "$($azAPICallConf['htParameters'].DoNotShowRoleAssignmentsUserData)",
-                "statsParametersHierarchyMapOnly": "$($azAPICallConf['htParameters'].HierarchyMapOnly)",
+                "statsParametersHierarchyMapOnly": "$HierarchyMapOnly",
                 "statsParametersManagementGroupsOnly": "$($azAPICallConf['htParameters'].ManagementGroupsOnly)",
                 "statsParametersLargeTenant": "$($azAPICallConf['htParameters'].LargeTenant)",
                 "statsParametersNoASCSecureScore": "$($azAPICallConf['htParameters'].NoMDfCSecureScore)",

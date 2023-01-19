@@ -1,7 +1,7 @@
 function runInfo {
     #region RunInfo
     Write-Host 'Run Info:'
-    if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $true) {
+    if ($HierarchyMapOnly) {
         Write-Host ' Creating HierarchyMap only' -ForegroundColor Green
     }
     else {

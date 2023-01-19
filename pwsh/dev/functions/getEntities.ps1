@@ -54,6 +54,8 @@ function getEntities {
 
     foreach ($entity in $arrayEntitiesFromAPI) {
         if ($entity.Type -eq '/subscriptions') {
+            $parent = $entity.properties.parent.Id -replace '.*/'
+            $parentId = $entity.properties.parent.Id
             $script:htSubscriptionsMgPath.($entity.name) = @{}
             $script:htSubscriptionsMgPath.($entity.name).ParentNameChain = $entity.properties.parentNameChain
             $script:htSubscriptionsMgPath.($entity.name).ParentNameChainDelimited = $entity.properties.parentNameChain -join '/'
@@ -69,9 +71,11 @@ function getEntities {
         if ($entity.Type -eq 'Microsoft.Management/managementGroups') {
             if ([string]::IsNullOrEmpty($entity.properties.parent.Id)) {
                 $parent = '__TenantRoot__'
+                $parentId = '__TenantRoot__'
             }
             else {
                 $parent = $entity.properties.parent.Id -replace '.*/'
+                $parentId = $entity.properties.parent.Id
             }
             $script:htManagementGroupsMgPath.($entity.name) = @{}
             $script:htManagementGroupsMgPath.($entity.name).ParentNameChain = $entity.properties.parentNameChain
@@ -92,6 +96,7 @@ function getEntities {
         $script:htEntities.($entity.name) = @{}
         $script:htEntities.($entity.name).ParentNameChain = $entity.properties.parentNameChain
         $script:htEntities.($entity.name).Parent = $parent
+        $script:htEntities.($entity.name).ParentId = $parentId
         if ($parent -eq '__TenantRoot__') {
             $parentDisplayName = '__TenantRoot__'
         }
@@ -101,6 +106,7 @@ function getEntities {
         $script:htEntities.($entity.name).ParentDisplayName = $parentDisplayName
         $script:htEntities.($entity.name).DisplayName = $entity.properties.displayName
         $script:htEntities.($entity.name).Id = $entity.Name
+        $script:htEntities.($entity.name).Type = $entity.Type
     }
 
     Write-Host "  $(($htManagementGroupsMgPath.Keys).Count) relevant Management Groups"

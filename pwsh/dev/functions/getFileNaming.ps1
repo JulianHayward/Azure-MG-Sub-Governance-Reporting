@@ -1,6 +1,6 @@
 function getFileNaming {
     if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions -eq $true) {
-        if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $true) {
+        if ($HierarchyMapOnly) {
             $script:fileName = "AzGovViz_HierarchyMapOnly_$($ManagementGroupId)"
         }
         elseif ($azAPICallConf['htParameters'].ManagementGroupsOnly -eq $true) {
@@ -11,7 +11,7 @@ function getFileNaming {
         }
     }
     else {
-        if ($azAPICallConf['htParameters'].HierarchyMapOnly -eq $true) {
+        if ($HierarchyMapOnly) {
             $script:fileName = "AzGovViz_HierarchyMapOnly_$($ProductVersion)_$($fileTimestamp)_$($ManagementGroupId)"
         }
         elseif ($azAPICallConf['htParameters'].ManagementGroupsOnly -eq $true) {
