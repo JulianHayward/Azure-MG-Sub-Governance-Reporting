@@ -156,6 +156,7 @@ Proceed with step [__Run AzGovViz from Console__](#run-azgovviz-from-console)
         * [Installing PowerShell on Linux](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-linux)
     * Requires PowerShell Az Modules
         * Az.Accounts
+        * AzAPICall
         * [Install the Azure Az PowerShell module](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps)
 
 ### Connecting to Azure as User (Member or Guest)
