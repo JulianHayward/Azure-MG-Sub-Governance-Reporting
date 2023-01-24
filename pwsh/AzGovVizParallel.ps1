@@ -359,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.67',
+    $AzAPICallVersion = '1.1.68',
 
     [string]
-    $ProductVersion = 'v6_major_20230119_1',
+    $ProductVersion = 'v6_major_20230124_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -2318,7 +2318,9 @@ function exportBaseCSV {
     $startBuildCSV = Get-Date
 
     $outprops = $newtable[0].PSObject.Properties.Name
-    $outprops.Set($outprops.IndexOf('PolicyAssignmentNotScopes'), @{L = 'PolicyAssignmentNotScopes'; E = { ($_.PolicyAssignmentNotScopes -join "$CsvDelimiterOpposite ") } })
+    if (-not $HierarchyMapOnly -and -not $HierarchyMapOnlyCustomDataJSON) {
+        $outprops.Set($outprops.IndexOf('PolicyAssignmentNotScopes'), @{L = 'PolicyAssignmentNotScopes'; E = { ($_.PolicyAssignmentNotScopes -join "$CsvDelimiterOpposite ") } })
+    }
     if ($CsvExportUseQuotesAsNeeded) {
         $newTable | Sort-Object -Property level, mgId, SubscriptionId, PolicyAssignmentId, RoleAssignmentId, BlueprintId, BlueprintAssignmentId | Select-Object -Property $outprops -ExcludeProperty PolicyAssignmentParameters | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
     }
@@ -7268,12 +7270,18 @@ function processHierarchyMapOnlyCustomData {
     #validate
     Write-Host ' ManagementGroupId validation'
     if (-not $ManagementGroupId) {
-        Write-Host '  ManagementGroupId validation failed - please provide ManagementGroupId (parameter -ManagementGroupId)'
         throw 'ManagementGroupId validation failed - please provide ManagementGroupId (parameter -ManagementGroupId)'
     }
     else {
+        if ($hierarchyMapOnlyCustomData.$ManagementGroupId) {
+            Write-Host "  ManagementGroupId '$ManagementGroupId' is available in 'hierarchyMapOnlyCustomData'"
+        }
+        else {
+            throw "ManagementGroupId validation failed - Given ManagementGroupId '$ManagementGroupId' is NOT available in 'hierarchyMapOnlyCustomData'"
+        }
         Write-Host "  ManagementGroupId validation passed '$ManagementGroupId'" -ForegroundColor Green
     }
+
     Write-Host ' CustomData validation'
     if ($hierarchyMapOnlyCustomData.Keys.Count -gt 0) {
         Write-Host '  Checking Keys (sanity check on first item)'
@@ -27874,6 +27882,7 @@ function stats {
                 "identifier": "$($statsIdentifier)",
                 "platform": "$($azAPICallConf['htParameters'].CodeRunPlatform)",
                 "productVersion": "$($ProductVersion)",
+                "AzAPICallVersion": "$($AzAPICallVersion)",
                 "psAzAccountsVersion": "$($azAPICallConf['htParameters'].AzAccountsVersion)",
                 "psVersion": "$($PSVersionTable.PSVersion)",
                 "scopeUsage": "$($scopeUsage)",

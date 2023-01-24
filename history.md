@@ -4,6 +4,11 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2023-Jan-24 / Major)
+
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.68
+  * fix issue for Private DNS Zone resource diagnostics capability check
+
 __Changes__ (2023-Jan-19 / Major)
 
 * Cover Preview [Azure Storage Account with Azure DNS zone endpoints](https://learn.microsoft.com/en-us/azure/storage/common/storage-account-overview#azure-dns-zone-endpoints-preview) ([Issue #164](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/164))

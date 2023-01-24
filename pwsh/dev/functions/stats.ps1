@@ -93,6 +93,7 @@ function stats {
                 "identifier": "$($statsIdentifier)",
                 "platform": "$($azAPICallConf['htParameters'].CodeRunPlatform)",
                 "productVersion": "$($ProductVersion)",
+                "AzAPICallVersion": "$($AzAPICallVersion)",
                 "psAzAccountsVersion": "$($azAPICallConf['htParameters'].AzAccountsVersion)",
                 "psVersion": "$($PSVersionTable.PSVersion)",
                 "scopeUsage": "$($scopeUsage)",

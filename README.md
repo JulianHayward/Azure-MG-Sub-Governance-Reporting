@@ -59,13 +59,10 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2023-Jan-19 / Major)
+__Changes__ (2023-Jan-24 / Major)
 
-* Cover Preview [Azure Storage Account with Azure DNS zone endpoints](https://learn.microsoft.com/en-us/azure/storage/common/storage-account-overview#azure-dns-zone-endpoints-preview) ([Issue #164](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/164))
-* Add feature to simulate Management Group Hierarchy Map
- * New parameter `-HierarchyMapOnlyCustomData` (documentation update pending)
-* Private Endpoint feature - add Microsoft tenants (cross tenant PE) (`-MSTenantIds`)
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.67
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.68
+  * fix issue for Private DNS Zone resource diagnostics capability check
 
 Passed tests: Powershell Core 7.3.0 on Windows  
 Passed tests: Powershell Core 7.2.7 Azure DevOps hosted agent ubuntu-22.04  

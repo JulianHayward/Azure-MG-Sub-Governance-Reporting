@@ -19,12 +19,18 @@ function processHierarchyMapOnlyCustomData {
     #validate
     Write-Host ' ManagementGroupId validation'
     if (-not $ManagementGroupId) {
-        Write-Host '  ManagementGroupId validation failed - please provide ManagementGroupId (parameter -ManagementGroupId)'
         throw 'ManagementGroupId validation failed - please provide ManagementGroupId (parameter -ManagementGroupId)'
     }
     else {
+        if ($hierarchyMapOnlyCustomData.$ManagementGroupId) {
+            Write-Host "  ManagementGroupId '$ManagementGroupId' is available in 'hierarchyMapOnlyCustomData'"
+        }
+        else {
+            throw "ManagementGroupId validation failed - Given ManagementGroupId '$ManagementGroupId' is NOT available in 'hierarchyMapOnlyCustomData'"
+        }
         Write-Host "  ManagementGroupId validation passed '$ManagementGroupId'" -ForegroundColor Green
     }
+
     Write-Host ' CustomData validation'
     if ($hierarchyMapOnlyCustomData.Keys.Count -gt 0) {
         Write-Host '  Checking Keys (sanity check on first item)'
