@@ -7498,7 +7498,7 @@ extensions: [{ name: 'sort' }]
             $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)" = ($orphanedResourceType.count)
 
             if ($orphanedIncludingCost) {
-                if ($orphanedResourceType.Group.Intent[0] -eq 'cost savings') {
+                if (($orphanedResourceType.Group.Intent | Get-Unique) -eq 'cost savings') {
                     $orphCost = ($orphanedResourceType.Group.Cost | Measure-Object -Sum).Sum
                     $orphCurrency = $orphanedResourceType.Group.Currency[0]
                     $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)_Costs" = $orphCost
@@ -7511,7 +7511,7 @@ extensions: [{ name: 'sort' }]
 
             }
             else {
-                if ($orphanedResourceType.Group.Intent[0] -eq 'cost savings') {
+                if (($orphanedResourceType.Group.Intent | Get-Unique) -eq 'cost savings') {
                     $orphCost = "<span class=`"info`">use parameter <b>-DoAzureConsumption</b> to show potential savings</span>"
                     $orphCurrency = ''
                 }

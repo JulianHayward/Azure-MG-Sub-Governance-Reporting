@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.68',
 
     [string]
-    $ProductVersion = 'v6_major_20230124_1',
+    $ProductVersion = 'v6_major_20230201_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -3326,7 +3326,7 @@ function getOrphanedResources {
     $intent = 'cost savings'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.compute/disks'
-            query     = "Resources | where type =~ 'microsoft.compute/disks' | extend diskState = tostring(properties.diskState) | where managedBy == '' | where not(name endswith '-ASRReplica' or name startswith 'ms-asr-') | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = "Resources | where type =~ 'microsoft.compute/disks' | extend diskState = tostring(properties.diskState) | where managedBy == '' | where not(name endswith '-ASRReplica' or name startswith 'ms-asr-' or name startswith 'asrseeddisk-') | project type, subscriptionId, Resource=id, Intent='$intent'"
             intent    = $intent
         })
 
@@ -3351,7 +3351,7 @@ function getOrphanedResources {
             intent    = $intent
         })
 
-    $intent = 'clean up'
+    $intent = 'cost savings'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.web/serverfarms'
             query     = "Resources | where type =~ 'microsoft.web/serverfarms' | where properties.numberOfSites == 0 | project type, subscriptionId, Resource=id, Intent='$intent'"
@@ -9849,7 +9849,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 $htmlScopeInsightsOrphanedResources = foreach ($resourceType in $orphanedResourcesThisSubscriptionGroupedByType | Sort-Object -Property Name) {
 
                     if ($orphanedIncludingCost) {
-                        if ($resourceType.Group.Intent[0] -eq 'cost savings') {
+                        if (($resourceType.Group.Intent | Get-Unique) -eq 'cost savings') {
                             $orphCost = ($resourceType.Group.Cost | Measure-Object -Sum).Sum
                             $orphCurrency = $resourceType.Group.Currency[0]
                         }
@@ -9859,7 +9859,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         }
                     }
                     else {
-                        if ($resourceType.Group.Intent[0] -eq 'cost savings') {
+                        if (($resourceType.Group.Intent | Get-Unique) -eq 'cost savings') {
                             $orphCost = "<span class=`"info`">use parameter <b>-DoAzureConsumption</b> to show potential savings</span>"
                             $orphCurrency = ''
                         }
@@ -19797,7 +19797,7 @@ extensions: [{ name: 'sort' }]
             $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)" = ($orphanedResourceType.count)
 
             if ($orphanedIncludingCost) {
-                if ($orphanedResourceType.Group.Intent[0] -eq 'cost savings') {
+                if (($orphanedResourceType.Group.Intent | Get-Unique) -eq 'cost savings') {
                     $orphCost = ($orphanedResourceType.Group.Cost | Measure-Object -Sum).Sum
                     $orphCurrency = $orphanedResourceType.Group.Currency[0]
                     $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)_Costs" = $orphCost
@@ -19810,7 +19810,7 @@ extensions: [{ name: 'sort' }]
 
             }
             else {
-                if ($orphanedResourceType.Group.Intent[0] -eq 'cost savings') {
+                if (($orphanedResourceType.Group.Intent | Get-Unique) -eq 'cost savings') {
                     $orphCost = "<span class=`"info`">use parameter <b>-DoAzureConsumption</b> to show potential savings</span>"
                     $orphCurrency = ''
                 }
@@ -33203,7 +33203,7 @@ if (-not $HierarchyMapOnly) {
             Write-Host " Created ht for $($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types'"
         }
         else {
-            $throwmsg = "$($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types' - Please use another Subscription for the AzContext -> use parameter: -SubscriptionId4AzContext '<subscriptionId>'"
+            $throwmsg = "$($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types' - Please use another Subscription for the AzContext (current subscriptionId: '$($azAPICallConf['checkcontext'].Subscription.Id)') -> use parameter: -SubscriptionId4AzContext '<subscriptionId>'"
             Write-Host $throwmsg -ForegroundColor DarkRed
             Throw $throwmsg
         }

@@ -59,12 +59,13 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2023-Jan-24 / Major)
+__Changes__ (2023-Feb-02 / Major)
 
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.68
-  * fix issue for Private DNS Zone resource diagnostics capability check
+* Update 'Orphaned Resources' feature
+  * change intent for `microsoft.web/serverfarms` from 'clean up' to 'cost savings'
+  * update orphaned disks query according to [github.com/dolevshor/azure-orphan-resources PR#5](https://github.com/dolevshor/azure-orphan-resources/pull/5/files) - thanks @eklime
 
-Passed tests: Powershell Core 7.3.0 on Windows  
+Passed tests: Powershell Core 7.3.1 on Windows  
 Passed tests: Powershell Core 7.2.7 Azure DevOps hosted agent ubuntu-22.04  
 Passed tests: Powershell Core 7.2.7 Github Actions hosted agent ubuntu-latest  
 Passed tests: Powershell Core 7.2.6 GitHub Codespaces mcr.microsoft.com/powershell:latest  

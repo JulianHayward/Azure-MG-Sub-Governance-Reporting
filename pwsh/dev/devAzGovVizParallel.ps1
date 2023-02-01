@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.68',
 
     [string]
-    $ProductVersion = 'v6_major_20230124_1',
+    $ProductVersion = 'v6_major_20230201_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -1087,7 +1087,7 @@ if (-not $HierarchyMapOnly) {
             Write-Host " Created ht for $($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types'"
         }
         else {
-            $throwmsg = "$($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types' - Please use another Subscription for the AzContext -> use parameter: -SubscriptionId4AzContext '<subscriptionId>'"
+            $throwmsg = "$($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types' - Please use another Subscription for the AzContext (current subscriptionId: '$($azAPICallConf['checkcontext'].Subscription.Id)') -> use parameter: -SubscriptionId4AzContext '<subscriptionId>'"
             Write-Host $throwmsg -ForegroundColor DarkRed
             Throw $throwmsg
         }
