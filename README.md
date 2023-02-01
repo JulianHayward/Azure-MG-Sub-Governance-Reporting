@@ -59,7 +59,7 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2023-Feb-02 / Major)
+__Changes__ (2023-Feb-01 / Major)
 
 * Update 'Orphaned Resources' feature
   * change intent for `microsoft.web/serverfarms` from 'clean up' to 'cost savings'
