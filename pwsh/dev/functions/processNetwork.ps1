@@ -171,8 +171,8 @@ function processNetwork {
                         VNetId                                          = $vnet.id
                         VNetResourceGroup                               = $vnetResourceGroup
                         Location                                        = $vnet.location
-                        AddressSpaceAddressPrefixes                     = $vnet.properties.addressSpace.addressPrefixes
-                        DhcpoptionsDnsservers                           = $vnet.properties.dhcpoptions.dnsservers
+                        AddressSpaceAddressPrefixes                     = ($vnet.properties.addressSpace.addressPrefixes -join "$CsvDelimiterOpposite ")
+                        DhcpoptionsDnsservers                           = ($vnet.properties.dhcpoptions.dnsservers -join "$CsvDelimiterOpposite ")
                         SubnetsCount                                    = $vnet.properties.subnets.id.Count
                         SubnetsWithNSGCount                             = $vnet.properties.subnets.properties.networkSecurityGroup.id.Count
                         SubnetsWithRouteTableCount                      = $vnet.properties.subnets.properties.routeTable.id.Count
@@ -216,10 +216,10 @@ function processNetwork {
                         RemoteVNetState                                 = $remotevnetState
                         RemoteVNetResourceGroup                         = $remotevnetResourceGroup
                         RemoteVNetLocation                              = $remoteLocation
-                        RemoteAddressSpaceAddressPrefixes               = $peering.properties.remoteAddressSpace.addressPrefixes
-                        RemoteVirtualNetworkAddressSpaceAddressPrefixes = $peering.properties.remoteVirtualNetworkAddressSpace.addressPrefixes
+                        RemoteAddressSpaceAddressPrefixes               = ($peering.properties.remoteAddressSpace.addressPrefixes -join "$CsvDelimiterOpposite ")
+                        RemoteVirtualNetworkAddressSpaceAddressPrefixes = ($peering.properties.remoteVirtualNetworkAddressSpace.addressPrefixes -join "$CsvDelimiterOpposite ")
 
-                        RemoteDhcpoptionsDnsservers                     = $remoteDhcpoptionsDnsservers
+                        RemoteDhcpoptionsDnsservers                     = ($remoteDhcpoptionsDnsservers -join "$CsvDelimiterOpposite ")
                         RemoteSubnetsCount                              = $remoteSubnetsCount
                         RemoteSubnetsWithNSGCount                       = $remoteSubnetsWithNSGCount
                         RemoteSubnetsWithRouteTable                     = $remoteSubnetsWithRouteTable

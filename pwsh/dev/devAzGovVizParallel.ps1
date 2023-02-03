@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.68',
 
     [string]
-    $ProductVersion = 'v6_major_20230201_1',
+    $ProductVersion = 'v6_major_20230203_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -625,6 +625,7 @@ if ($ManagementGroupId -match ' ') {
 }
 
 #region Functions
+. ".\$($ScriptPath)\functions\exportResourceLocks.ps1"
 . ".\$($ScriptPath)\functions\processHierarchyMapOnlyCustomData.ps1"
 . ".\$($ScriptPath)\functions\processPrivateEndpoints.ps1"
 . ".\$($ScriptPath)\functions\processNetwork.ps1"
@@ -1101,6 +1102,10 @@ if (-not $HierarchyMapOnly) {
     $startDataCollection = Get-Date
 
     processDataCollection -mgId $ManagementGroupId
+
+    if (-not $ManagementGroupsOnly) {
+        exportResourceLocks
+    }
 
     if ($arrayAdvisorScores.Count -gt 0) {
         Write-Host "Exporting AdvisorScores CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_AdvisorScores.csv'"
@@ -2327,6 +2332,7 @@ if (-not $azAPICallConf['htParameters'].NoJsonExport) {
 if (-not $HierarchyMapOnly) {
     buildPolicyAllJSON
 }
+
 #endregion createoutputs
 
 apiCallTracking -stage 'Summary' -spacing ''

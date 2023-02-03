@@ -1742,19 +1742,23 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             $orphanedResourcesThisSubscription = $arrayOrphanedResourcesGroupedBySubscription.where({ $_.Name -eq $subscriptionId })
             if ($orphanedResourcesThisSubscription) {
                 $orphanedResourcesThisSubscriptionCount = $orphanedResourcesThisSubscription.Group.count
-                $orphanedResourcesThisSubscriptionGroupedByType = $orphanedResourcesThisSubscription.Group | Group-Object -Property type
-                $orphanedResourcesThisSubscriptionGroupedByTypeCount = ($orphanedResourcesThisSubscriptionGroupedByType | Measure-Object).Count
-                $tfCount = $orphanedResourcesThisSubscriptionGroupedByTypeCount
 
                 if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
                     $orphanedIncludingCost = $true
                     $hintTableTH = " ($($AzureConsumptionPeriod) days)"
+
+                    $orphanedResourcesThisSubscriptionGroupedByType = $orphanedResourcesThisSubscription.Group | Group-Object -Property type, currency
+                    $orphanedResourcesThisSubscriptionGroupedByTypeCount = ($orphanedResourcesThisSubscriptionGroupedByType | Measure-Object).Count
                 }
                 else {
                     $orphanedIncludingCost = $false
                     $hintTableTH = ''
+
+                    $orphanedResourcesThisSubscriptionGroupedByType = $orphanedResourcesThisSubscription.Group | Group-Object -Property type
+                    $orphanedResourcesThisSubscriptionGroupedByTypeCount = ($orphanedResourcesThisSubscriptionGroupedByType | Measure-Object).Count
                 }
 
+                $tfCount = $orphanedResourcesThisSubscriptionGroupedByTypeCount
                 $htmlTableId = "ScopeInsights_OrphanedResources_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
@@ -1779,9 +1783,12 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 $htmlScopeInsightsOrphanedResources = foreach ($resourceType in $orphanedResourcesThisSubscriptionGroupedByType | Sort-Object -Property Name) {
 
                     if ($orphanedIncludingCost) {
-                        if (($resourceType.Group.Intent | Get-Unique) -eq 'cost savings') {
+                        if (($resourceType.Group[0].Intent) -eq 'cost savings') {
                             $orphCost = ($resourceType.Group.Cost | Measure-Object -Sum).Sum
-                            $orphCurrency = $resourceType.Group.Currency[0]
+                            if ($orphCost -eq 0) {
+                                $orphCost = ''
+                            }
+                            $orphCurrency = $resourceType.Group[0].Currency
                         }
                         else {
                             $orphCost = ''
@@ -1801,7 +1808,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 
                     @"
 <tr>
-<td>$($resourceType.Name)</td>
+<td>$(($resourceType.Name -split ',')[0])</td>
 <td>$($resourceType.Group.Count)</td>
 <td>$($resourceType.Group[0].Intent)</td>
 <td>$($orphCost)</td>
@@ -1845,6 +1852,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                 }
                 [void]$htmlScopeInsights.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+                col_0: 'multiple',
                 col_2: 'select',
                 col_4: 'select',
                 col_types: [

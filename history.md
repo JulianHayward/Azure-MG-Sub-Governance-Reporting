@@ -4,6 +4,27 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2023-Feb-03 / Major)
+
+* Update 'Orphaned Resources' feature
+  * subscriptions in a tenant can have varying currency / output 'cost savings' per currency
+* Update 'Storage Account Analysis' feature
+  * add 'Used Capacity' metric
+* Fix 'Network - Virtual Network Peerings' feature CSV output
+  * join Address prefixes
+  * join DNS Servers
+* Fix 'PIM Eligibility' feature
+  * orphaned subscription scopes may be returned as PIM onboarded scopes, skip subscriptions that have not been returned from the initial list subscriptions call
+* Fix 'Azure Landing Zones Policy Version Checker' feature
+  * deprecated ALZ policy/set resolve to state 'deprecated'
+* Export Resource Locks details as CSV
+
+__Changes__ (2023-Feb-01 / Major)
+
+* Update 'Orphaned Resources' feature
+  * change intent for `microsoft.web/serverfarms` from 'clean up' to 'cost savings'
+  * update orphaned disks query according to [github.com/dolevshor/azure-orphan-resources PR#5](https://github.com/dolevshor/azure-orphan-resources/pull/5/files) - thanks @eklime
+
 __Changes__ (2023-Jan-24 / Major)
 
 * Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.68

@@ -467,7 +467,27 @@ function dataCollectionStorageAccounts {
     $storageAccountsSubscriptionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     foreach ($storageAccount in $storageAccountsSubscriptionResult) {
-        $null = $script:storageAccounts.Add($storageAccount)
+
+        $dtisostart = Get-Date (Get-Date).AddHours(-1).ToUniversalTime() -UFormat '+%Y-%m-%dT%H:%M:%S.000Z'
+        $dtisoend = Get-Date (Get-Date).ToUniversalTime() -UFormat '+%Y-%m-%dT%H:%M:%S.000Z'
+        $currentTask = "Getting Storage Account '$($storageAccount.name)' UsedCapacity ('$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId'])"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($storageAccount.id)/providers/microsoft.Insights/metrics?timespan=$($dtisostart)/$($dtisoend)&interval=FULL&metricnames=UsedCapacity&aggregation=average&metricNamespace=microsoft.storage%2Fstorageaccounts&validatedimensions=false&api-version=2019-07-01"
+        $method = 'GET'
+        $storageAccountUsedCapacity = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -unhandledErrorAction Continue
+
+        $usedCapacity = 'n/a'
+        if ($storageAccountUsedCapacity.Count -gt 0) {
+            if (-not [string]::IsNullOrWhiteSpace($storageAccountUsedCapacity)) {
+                $usedCapacity = $storageAccountUsedCapacity.timeseries.data.average
+            }
+        }
+
+        $obj = [System.Collections.ArrayList]@()
+        $null = $obj.Add([PSCustomObject]@{
+                SA             = $storageAccount
+                SAUsedCapacity = $usedCapacity / 1024 / 1024 / 1024
+            })
+        $null = $script:storageAccounts.Add($obj)
     }
 }
 $funcDataCollectionStorageAccounts = $function:dataCollectionStorageAccounts.ToString()
@@ -1499,20 +1519,18 @@ function dataCollectionResourceLocks {
         $htTemp.SubscriptionLocksReadOnlyCount = $locksReadOnlySubscriptionCount
 
         #resourceGroups
-        $resourceGroupsLocksCannotDeleteCount = ($arrayResourceGroupsCannotDeleteLock).Count
-        $htTemp.ResourceGroupsLocksCannotDeleteCount = $resourceGroupsLocksCannotDeleteCount
-
-        $resourceGroupsLocksReadOnlyCount = ($arrayResourceGroupsReadOnlyLock).Count
-        $htTemp.ResourceGroupsLocksReadOnlyCount = $resourceGroupsLocksReadOnlyCount
+        $htTemp.ResourceGroupsLocksCannotDeleteCount = $arrayResourceGroupsCannotDeleteLock.Count
         $htTemp.ResourceGroupsLocksCannotDelete = $arrayResourceGroupsCannotDeleteLock
 
-        #resources
-        $resourcesLocksCannotDeleteCount = ($arrayResourcesCannotDeleteLock).Count
-        $htTemp.ResourcesLocksCannotDeleteCount = $resourcesLocksCannotDeleteCount
+        $htTemp.ResourceGroupsLocksReadOnlyCount = $arrayResourceGroupsReadOnlyLock.Count
+        $htTemp.ResourceGroupsLocksReadOnly = $arrayResourceGroupsReadOnlyLock
 
-        $resourcesLocksReadOnlyCount = ($arrayResourcesReadOnlyLock).Count
-        $htTemp.ResourcesLocksReadOnlyCount = $resourcesLocksReadOnlyCount
+        #resources
+        $htTemp.ResourcesLocksCannotDeleteCount = $arrayResourcesCannotDeleteLock.Count
         $htTemp.ResourcesLocksCannotDelete = $arrayResourcesCannotDeleteLock
+
+        $htTemp.ResourcesLocksReadOnlyCount = $arrayResourcesReadOnlyLock.Count
+        $htTemp.ResourcesLocksReadOnly = $arrayResourcesReadOnlyLock
 
         $script:htResourceLocks.($scopeId) = $htTemp
     }
@@ -2038,7 +2056,12 @@ function dataCollectionPolicyDefinitions {
                                         $htTemp.ALZState = 'upToDate'
                                     }
                                     else {
-                                        $htTemp.ALZState = 'outDated'
+                                        if ($alzpolicies.($alzPolicyHashes.($stringHash).policyName).latestVersion -like '*-deprecated') {
+                                            $htTemp.ALZState = 'deprecated'
+                                        }
+                                        else {
+                                            $htTemp.ALZState = 'outDated'
+                                        }
                                     }
                                 }
                                 else {
@@ -2071,7 +2094,12 @@ function dataCollectionPolicyDefinitions {
                                         $htTemp.ALZState = 'upToDate'
                                     }
                                     else {
-                                        $htTemp.ALZState = 'outDated'
+                                        if ($alzPolicies.($scopePolicyDefinition.name).latestVersion -like '*-deprecated') {
+                                            $htTemp.ALZState = 'deprecated'
+                                        }
+                                        else {
+                                            $htTemp.ALZState = 'outDated'
+                                        }
                                     }
                                 }
                                 else {
@@ -2322,7 +2350,12 @@ function dataCollectionPolicySetDefinitions {
                                     $htTemp.ALZState = 'upToDate'
                                 }
                                 else {
-                                    $htTemp.ALZState = 'outDated'
+                                    if ($alzPolicySetHashes.($stringHash).latestVersion -like '*-deprecated') {
+                                        $htTemp.ALZState = 'deprecated'
+                                    }
+                                    else {
+                                        $htTemp.ALZState = 'outDated'
+                                    }
                                 }
                                 $htTemp.ALZLatestVer = $alzPolicySetHashes.($stringHash).latestVersion
                             }
@@ -2348,7 +2381,12 @@ function dataCollectionPolicySetDefinitions {
                                     $htTemp.ALZState = 'upToDate'
                                 }
                                 else {
-                                    $htTemp.ALZState = 'outDated'
+                                    if ($alzPolicySets.($scopePolicySetDefinition.name).latestVersion -like '*-deprecated') {
+                                        $htTemp.ALZState = 'deprecated'
+                                    }
+                                    else {
+                                        $htTemp.ALZState = 'outDated'
+                                    }
                                 }
                                 $htTemp.ALZLatestVer = $alzPolicySets.($scopePolicySetDefinition.name).latestVersion
                             }

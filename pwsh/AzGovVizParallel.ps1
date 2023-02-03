@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.68',
 
     [string]
-    $ProductVersion = 'v6_major_20230201_1',
+    $ProductVersion = 'v6_major_20230203_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -2331,6 +2331,97 @@ function exportBaseCSV {
     $endBuildCSV = Get-Date
     Write-Host "Exporting CSV total duration: $((New-TimeSpan -Start $startBuildCSV -End $endBuildCSV).TotalMinutes) minutes ($((New-TimeSpan -Start $startBuildCSV -End $endBuildCSV).TotalSeconds) seconds)"
 }
+function exportResourceLocks {
+    $arrayResourceLocks4CSV = [System.Collections.ArrayList]@()
+    foreach ($sub in $htResourceLocks.Keys) {
+        $hlper = $htSubscriptionsMgPath.($sub)
+        $subscriptionDisplayName = $hlper.DisplayName
+        $mgPath = $hlper.ParentNameChainDelimited
+        #sub
+        if ($htResourceLocks.($sub).SubscriptionLocksCannotDeleteCount -eq 1) {
+            $null = $arrayResourceLocks4CSV.Add([PSCustomObject]@{
+                    SubscriptionId   = $sub
+                    SubscriptionName = $subscriptionDisplayName
+                    MGPath           = $mgPath
+                    ScopeType        = 'Subscription'
+                    Lock             = 'CannotDelete'
+                    Id               = "/subscriptions/$sub"
+                    ResourceType     = 'Microsoft.Resources/subscriptions'
+                })
+        }
+        if ($htResourceLocks.($sub).SubscriptionLocksReadOnlyCount -eq 1) {
+            $null = $arrayResourceLocks4CSV.Add([PSCustomObject]@{
+                    SubscriptionId   = $sub
+                    SubscriptionName = $subscriptionDisplayName
+                    MGPath           = $mgPath
+                    ScopeType        = 'Subscription'
+                    Lock             = 'ReadOnly'
+                    Id               = "/subscriptions/$sub"
+                    ResourceType     = 'Microsoft.Resources/subscriptions'
+                })
+        }
+        #rg
+        if ($htResourceLocks.($sub).ResourceGroupsLocksCannotDeleteCount -gt 0) {
+            foreach ($res in $htResourceLocks.($sub).ResourceGroupsLocksCannotDelete) {
+                $null = $arrayResourceLocks4CSV.Add([PSCustomObject]@{
+                        SubscriptionId   = $sub
+                        SubscriptionName = $subscriptionDisplayName
+                        MGPath           = $mgPath
+                        ScopeType        = 'ResourceGroup'
+                        Lock             = 'CannotDelete'
+                        Id               = $res.rg
+                        ResourceType     = 'Microsoft.Resources/subscriptions/resourceGroups'
+                    })
+            }
+        }
+        if ($htResourceLocks.($sub).ResourceGroupsLocksReadOnlyCount -gt 0) {
+            foreach ($res in $htResourceLocks.($sub).ResourceGroupsLocksReadOnly) {
+                $null = $arrayResourceLocks4CSV.Add([PSCustomObject]@{
+                        SubscriptionId   = $sub
+                        SubscriptionName = $subscriptionDisplayName
+                        MGPath           = $mgPath
+                        ScopeType        = 'ResourceGroup'
+                        Lock             = 'ReadOnly'
+                        Id               = $res.rg
+                        ResourceType     = 'Microsoft.Resources/subscriptions/resourceGroups'
+                    })
+            }
+        }
+        #res
+        if ($htResourceLocks.($sub).ResourcesLocksCannotDeleteCount -gt 0) {
+            foreach ($res in $htResourceLocks.($sub).ResourcesLocksCannotDelete) {
+                $resSplit = ($res.res -split '/')
+                $null = $arrayResourceLocks4CSV.Add([PSCustomObject]@{
+                        SubscriptionId   = $sub
+                        SubscriptionName = $subscriptionDisplayName
+                        MGPath           = $mgPath
+                        ScopeType        = 'Resource'
+                        Lock             = 'CannotDelete'
+                        Id               = $res.res
+                        ResourceType     = "$($resSplit[6])/$($resSplit[7])"
+                    })
+            }
+        }
+        if ($htResourceLocks.($sub).ResourcesLocksReadOnlyCount -gt 0) {
+            foreach ($res in $htResourceLocks.($sub).ResourcesLocksReadOnly) {
+                $resSplit = ($res.res -split '/')
+                $null = $arrayResourceLocks4CSV.Add([PSCustomObject]@{
+                        SubscriptionId   = $sub
+                        SubscriptionName = $subscriptionDisplayName
+                        MGPath           = $mgPath
+                        ScopeType        = 'Resource'
+                        Lock             = 'ReadOnly'
+                        Id               = $res.res
+                        ResourceType     = "$($resSplit[6])/$($resSplit[7])"
+                    })
+            }
+        }
+    }
+    if ($arrayResourceLocks4CSV.count -gt 0) {
+        Write-Host "Exporting ResourceLocks CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceLocks.csv'"
+        $arrayResourceLocks4CSV | Sort-Object -Property ScopeType, Lock, SubscriptionId, Id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceLocks.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+    }
+}
 function getConsumption {
 
     function addToAllConsumptionData {
@@ -3527,6 +3618,7 @@ function getPIMEligible {
         }
 
         $htPIMEligibleDirect = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+        $relevantSubscriptionIds = $subsToProcessInCustomDataCollection.subscriptionId
         $scopesToIterate | ForEach-Object -Parallel {
             $scope = $_
             $azAPICallConf = $using:azAPICallConf
@@ -3537,121 +3629,132 @@ function getPIMEligible {
             $htPrincipals = $using:htPrincipals
             $htUserTypesGuest = $using:htUserTypesGuest
             $htServicePrincipals = $using:htServicePrincipals
+            $relevantSubscriptionIds = $using:relevantSubscriptionIds
             $function:resolveObjectIds = $using:funcResolveObjectIds
             $function:testGuid = $using:funcTestGuid
-            #Write-Host "$($scope.type) $($scope.externalId -replace '.*/') - $($scope.id)"
 
-            $currentTask = "Get Eligible assignments for Scope $($scope.type): $($scope.externalId -replace '.*/')"
-            $extUri = "?`$expand=linkedEligibleRoleAssignment,subject,roleDefinition(`$expand=resource)&`$count=true&`$filter=(roleDefinition/resource/id eq '$($scope.id)')+and+(assignmentState eq 'Eligible')&`$top=100"
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/privilegedAccess/azureResources/roleAssignments" + $extUri
-            $resx = AzAPICall -AzAPICallConfiguration $azapicallConf -currentTask $currentTask -uri $uri
-
-            if ($resx.Count -gt 0) {
-
-                $users = $resx.where({ $_.subject.type -eq 'user' })
-                if ($users.Count -gt 0) {
-                    ResolveObjectIds -objectIds $users.subject.id -showActivity
+            $processThisScope = $true
+            if ($scope.type -eq 'subscription') {
+                if (($scope.externalId -replace '.*/') -notin $relevantSubscriptionIds) {
+                    Write-Host "  Non relevant subscriptionId '$(($scope.externalId -replace '.*/'))' /skipping this subscription as it is not contained in the 'Relevant Subscriptions' collection (needs investigation)" -ForegroundColor DarkRed
+                    $processThisScope = $false
                 }
+            }
 
-                foreach ($entry in $resx) {
-                    $scopeId = $scope.externalId -replace '.*/'
-                    if ($scope.type -eq 'managementgroup') {
-                        $ScopeType = 'MG'
-                        $ManagementGroupId = $scopeId
-                        $SubscriptionId = ''
-                        $SubscriptionDisplayName = ''
-                        if ($htManagementGroupsMgPath.($scopeId)) {
-                            $MgDetails = $htManagementGroupsMgPath.($scopeId)
-                            $ManagementGroupDisplayName = $MgDetails.DisplayName
-                            $ScopeDisplayName = $MgDetails.DisplayName
-                            $MgPath = $MgDetails.path
-                            $MgLevel = $MgDetails.level
-                        }
-                        else {
-                            $ManagementGroupDisplayName = 'notAccessible'
-                            $ScopeDisplayName = 'notAccessible'
-                            $MgPath = 'notAccessible'
-                            $MgLevel = 'notAccessible'
-                        }
+            if ($processThisScope -eq $true) {
+                $currentTask = "Get Eligible assignments for Scope $($scope.type): $($scope.externalId -replace '.*/')"
+                $extUri = "?`$expand=linkedEligibleRoleAssignment,subject,roleDefinition(`$expand=resource)&`$count=true&`$filter=(roleDefinition/resource/id eq '$($scope.id)')+and+(assignmentState eq 'Eligible')&`$top=100"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/privilegedAccess/azureResources/roleAssignments" + $extUri
+                $resx = AzAPICall -AzAPICallConfiguration $azapicallConf -currentTask $currentTask -uri $uri
 
-                        if ($entry.memberType -eq 'direct') {
-                            $script:htPIMEligibleDirect.($entry.id) = @{}
-                            $script:htPIMEligibleDirect.($entry.id).clear = $scopeId
-                            if ($scopeId -eq $ManagementGroupDisplayName) {
-                                $script:htPIMEligibleDirect.($entry.id).enriched = "$($scopeId) [Level $($MgLevel)]"
+                if ($resx.Count -gt 0) {
+
+                    $users = $resx.where({ $_.subject.type -eq 'user' })
+                    if ($users.Count -gt 0) {
+                        ResolveObjectIds -objectIds $users.subject.id -showActivity
+                    }
+
+                    foreach ($entry in $resx) {
+                        $scopeId = $scope.externalId -replace '.*/'
+                        if ($scope.type -eq 'managementgroup') {
+                            $ScopeType = 'MG'
+                            $ManagementGroupId = $scopeId
+                            $SubscriptionId = ''
+                            $SubscriptionDisplayName = ''
+                            if ($htManagementGroupsMgPath.($scopeId)) {
+                                $MgDetails = $htManagementGroupsMgPath.($scopeId)
+                                $ManagementGroupDisplayName = $MgDetails.DisplayName
+                                $ScopeDisplayName = $MgDetails.DisplayName
+                                $MgPath = $MgDetails.path
+                                $MgLevel = $MgDetails.level
                             }
                             else {
-                                $script:htPIMEligibleDirect.($entry.id).enriched = "$($ManagementGroupDisplayName) ($($scopeId)) [Level $($MgLevel)]"
+                                $ManagementGroupDisplayName = 'notAccessible'
+                                $ScopeDisplayName = 'notAccessible'
+                                $MgPath = 'notAccessible'
+                                $MgLevel = 'notAccessible'
+                            }
+
+                            if ($entry.memberType -eq 'direct') {
+                                $script:htPIMEligibleDirect.($entry.id) = @{}
+                                $script:htPIMEligibleDirect.($entry.id).clear = $scopeId
+                                if ($scopeId -eq $ManagementGroupDisplayName) {
+                                    $script:htPIMEligibleDirect.($entry.id).enriched = "$($scopeId) [Level $($MgLevel)]"
+                                }
+                                else {
+                                    $script:htPIMEligibleDirect.($entry.id).enriched = "$($ManagementGroupDisplayName) ($($scopeId)) [Level $($MgLevel)]"
+                                }
                             }
                         }
-                    }
-                    if ($scope.type -eq 'subscription') {
-                        $ScopeType = 'Sub'
-                        #$ManagementGroupId = ''
-                        $SubscriptionId = $scopeId
-                        if ($htSubscriptionsMgPath.($scopeId)) {
-                            $MgDetails = $htSubscriptionsMgPath.($scopeId)
-                            $SubscriptionDisplayName = $MgDetails.DisplayName
-                            $ScopeDisplayName = $MgDetails.DisplayName
-                            $MgPath = $MgDetails.path
-                            $MgLevel = $MgDetails.level
-                            $ManagementGroupId = $MgDetails.Parent
-                            $ManagementGroupDisplayName = $MgDetails.ParentName
-                        }
-                        else {
-                            $SubscriptionDisplayName = 'notAccessible'
-                            $ScopeDisplayName = 'notAccessible'
-                            $MgPath = 'notAccessible'
-                            $MgLevel = 'notAccessible'
-                        }
-                        #$ManagementGroupDisplayName = ''
+                        if ($scope.type -eq 'subscription') {
+                            $ScopeType = 'Sub'
+                            #$ManagementGroupId = ''
+                            $SubscriptionId = $scopeId
+                            if ($htSubscriptionsMgPath.($scopeId)) {
+                                $MgDetails = $htSubscriptionsMgPath.($scopeId)
+                                $SubscriptionDisplayName = $MgDetails.DisplayName
+                                $ScopeDisplayName = $MgDetails.DisplayName
+                                $MgPath = $MgDetails.path
+                                $MgLevel = $MgDetails.level
+                                $ManagementGroupId = $MgDetails.Parent
+                                $ManagementGroupDisplayName = $MgDetails.ParentName
+                            }
+                            else {
+                                $SubscriptionDisplayName = 'notAccessible'
+                                $ScopeDisplayName = 'notAccessible'
+                                $MgPath = 'notAccessible'
+                                $MgLevel = 'notAccessible'
+                            }
+                            #$ManagementGroupDisplayName = ''
 
-                    }
+                        }
 
-                    if ($entry.subject.type -eq 'user') {
-                        if ($htPrincipals.($entry.subject.id)) {
-                            $userDetail = $htPrincipals.($entry.subject.id)
-                            $principalType = "$($userDetail.type) $($userDetail.userType)"
+                        if ($entry.subject.type -eq 'user') {
+                            if ($htPrincipals.($entry.subject.id)) {
+                                $userDetail = $htPrincipals.($entry.subject.id)
+                                $principalType = "$($userDetail.type) $($userDetail.userType)"
+                            }
+                            else {
+                                $principalType = $entry.subject.type
+                            }
                         }
                         else {
                             $principalType = $entry.subject.type
                         }
-                    }
-                    else {
-                        $principalType = $entry.subject.type
-                    }
 
-                    $roleType = 'undefined'
-                    if ($entry.roleDefinition.type -eq 'BuiltInRole') { $roleType = 'Builtin' }
-                    if ($entry.roleDefinition.type -eq 'CustomRole') { $roleType = 'Custom' }
+                        $roleType = 'undefined'
+                        if ($entry.roleDefinition.type -eq 'BuiltInRole') { $roleType = 'Builtin' }
+                        if ($entry.roleDefinition.type -eq 'CustomRole') { $roleType = 'Custom' }
 
-                    $null = $script:arrayPIMEligible.Add([PSCustomObject]@{
-                            ScopeType                  = $ScopeType
-                            ScopeId                    = $scopeId
-                            ScopeDisplayName           = $ScopeDisplayName
-                            ManagementGroupId          = $ManagementGroupId
-                            ManagementGroupDisplayName = $ManagementGroupDisplayName
-                            SubscriptionId             = $SubscriptionId
-                            SubscriptionDisplayName    = $SubscriptionDisplayName
-                            MgPath                     = $MgPath
-                            MgLevel                    = $MgLevel
-                            RoleId                     = $entry.roleDefinition.externalId
-                            RoleIdGuid                 = $entry.roleDefinition.externalId -replace '.*/'
-                            RoleType                   = $roleType
-                            RoleName                   = $entry.roleDefinition.displayName
-                            IdentityObjectId           = $entry.subject.id
-                            IdentityType               = $principalType
-                            IdentityDisplayName        = $entry.subject.displayName
-                            IdentityPrincipalName      = $entry.subject.principalName
-                            PIMId                      = $entry.id
-                            PIMInheritance             = $entry.memberType
-                            PIMInheritedFromClear      = ''
-                            PIMInheritedFrom           = ''
-                            PIMStartDateTime           = $entry.startDateTime
-                            PIMEndDateTime             = $entry.endDateTime
-                        })
+                        $null = $script:arrayPIMEligible.Add([PSCustomObject]@{
+                                ScopeType                  = $ScopeType
+                                ScopeId                    = $scopeId
+                                ScopeDisplayName           = $ScopeDisplayName
+                                ManagementGroupId          = $ManagementGroupId
+                                ManagementGroupDisplayName = $ManagementGroupDisplayName
+                                SubscriptionId             = $SubscriptionId
+                                SubscriptionDisplayName    = $SubscriptionDisplayName
+                                MgPath                     = $MgPath
+                                MgLevel                    = $MgLevel
+                                RoleId                     = $entry.roleDefinition.externalId
+                                RoleIdGuid                 = $entry.roleDefinition.externalId -replace '.*/'
+                                RoleType                   = $roleType
+                                RoleName                   = $entry.roleDefinition.displayName
+                                IdentityObjectId           = $entry.subject.id
+                                IdentityType               = $principalType
+                                IdentityDisplayName        = $entry.subject.displayName
+                                IdentityPrincipalName      = $entry.subject.principalName
+                                PIMId                      = $entry.id
+                                PIMInheritance             = $entry.memberType
+                                PIMInheritedFromClear      = ''
+                                PIMInheritedFrom           = ''
+                                PIMStartDateTime           = $entry.startDateTime
+                                PIMEndDateTime             = $entry.endDateTime
+                            })
+                    }
                 }
             }
+
         } -ThrottleLimit $ThrottleLimit
 
         foreach ($entry in $arrayPIMEligible) {
@@ -7518,8 +7621,8 @@ function processNetwork {
                         VNetId                                          = $vnet.id
                         VNetResourceGroup                               = $vnetResourceGroup
                         Location                                        = $vnet.location
-                        AddressSpaceAddressPrefixes                     = $vnet.properties.addressSpace.addressPrefixes
-                        DhcpoptionsDnsservers                           = $vnet.properties.dhcpoptions.dnsservers
+                        AddressSpaceAddressPrefixes                     = ($vnet.properties.addressSpace.addressPrefixes -join "$CsvDelimiterOpposite ")
+                        DhcpoptionsDnsservers                           = ($vnet.properties.dhcpoptions.dnsservers -join "$CsvDelimiterOpposite ")
                         SubnetsCount                                    = $vnet.properties.subnets.id.Count
                         SubnetsWithNSGCount                             = $vnet.properties.subnets.properties.networkSecurityGroup.id.Count
                         SubnetsWithRouteTableCount                      = $vnet.properties.subnets.properties.routeTable.id.Count
@@ -7563,10 +7666,10 @@ function processNetwork {
                         RemoteVNetState                                 = $remotevnetState
                         RemoteVNetResourceGroup                         = $remotevnetResourceGroup
                         RemoteVNetLocation                              = $remoteLocation
-                        RemoteAddressSpaceAddressPrefixes               = $peering.properties.remoteAddressSpace.addressPrefixes
-                        RemoteVirtualNetworkAddressSpaceAddressPrefixes = $peering.properties.remoteVirtualNetworkAddressSpace.addressPrefixes
+                        RemoteAddressSpaceAddressPrefixes               = ($peering.properties.remoteAddressSpace.addressPrefixes -join "$CsvDelimiterOpposite ")
+                        RemoteVirtualNetworkAddressSpaceAddressPrefixes = ($peering.properties.remoteVirtualNetworkAddressSpace.addressPrefixes -join "$CsvDelimiterOpposite ")
 
-                        RemoteDhcpoptionsDnsservers                     = $remoteDhcpoptionsDnsservers
+                        RemoteDhcpoptionsDnsservers                     = ($remoteDhcpoptionsDnsservers -join "$CsvDelimiterOpposite ")
                         RemoteSubnetsCount                              = $remoteSubnetsCount
                         RemoteSubnetsWithNSGCount                       = $remoteSubnetsWithNSGCount
                         RemoteSubnetsWithRouteTable                     = $remoteSubnetsWithRouteTable
@@ -9812,19 +9915,23 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             $orphanedResourcesThisSubscription = $arrayOrphanedResourcesGroupedBySubscription.where({ $_.Name -eq $subscriptionId })
             if ($orphanedResourcesThisSubscription) {
                 $orphanedResourcesThisSubscriptionCount = $orphanedResourcesThisSubscription.Group.count
-                $orphanedResourcesThisSubscriptionGroupedByType = $orphanedResourcesThisSubscription.Group | Group-Object -Property type
-                $orphanedResourcesThisSubscriptionGroupedByTypeCount = ($orphanedResourcesThisSubscriptionGroupedByType | Measure-Object).Count
-                $tfCount = $orphanedResourcesThisSubscriptionGroupedByTypeCount
 
                 if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
                     $orphanedIncludingCost = $true
                     $hintTableTH = " ($($AzureConsumptionPeriod) days)"
+
+                    $orphanedResourcesThisSubscriptionGroupedByType = $orphanedResourcesThisSubscription.Group | Group-Object -Property type, currency
+                    $orphanedResourcesThisSubscriptionGroupedByTypeCount = ($orphanedResourcesThisSubscriptionGroupedByType | Measure-Object).Count
                 }
                 else {
                     $orphanedIncludingCost = $false
                     $hintTableTH = ''
+
+                    $orphanedResourcesThisSubscriptionGroupedByType = $orphanedResourcesThisSubscription.Group | Group-Object -Property type
+                    $orphanedResourcesThisSubscriptionGroupedByTypeCount = ($orphanedResourcesThisSubscriptionGroupedByType | Measure-Object).Count
                 }
 
+                $tfCount = $orphanedResourcesThisSubscriptionGroupedByTypeCount
                 $htmlTableId = "ScopeInsights_OrphanedResources_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
@@ -9849,9 +9956,12 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 $htmlScopeInsightsOrphanedResources = foreach ($resourceType in $orphanedResourcesThisSubscriptionGroupedByType | Sort-Object -Property Name) {
 
                     if ($orphanedIncludingCost) {
-                        if (($resourceType.Group.Intent | Get-Unique) -eq 'cost savings') {
+                        if (($resourceType.Group[0].Intent) -eq 'cost savings') {
                             $orphCost = ($resourceType.Group.Cost | Measure-Object -Sum).Sum
-                            $orphCurrency = $resourceType.Group.Currency[0]
+                            if ($orphCost -eq 0) {
+                                $orphCost = ''
+                            }
+                            $orphCurrency = $resourceType.Group[0].Currency
                         }
                         else {
                             $orphCost = ''
@@ -9871,7 +9981,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 
                     @"
 <tr>
-<td>$($resourceType.Name)</td>
+<td>$(($resourceType.Name -split ',')[0])</td>
 <td>$($resourceType.Group.Count)</td>
 <td>$($resourceType.Group[0].Intent)</td>
 <td>$($orphCost)</td>
@@ -9915,6 +10025,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                 }
                 [void]$htmlScopeInsights.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+                col_0: 'multiple',
                 col_2: 'select',
                 col_4: 'select',
                 col_types: [
@@ -12024,16 +12135,16 @@ function processStorageAccountAnalysis {
             $staticWebsitesState = 'n/a'
             $webSiteResponds = 'n/a'
 
-            $subscriptionId = ($storageAccount.id -split '/')[2]
-            $resourceGroupName = ($storageAccount.id -split '/')[4]
+            $subscriptionId = ($storageAccount.SA.id -split '/')[2]
+            $resourceGroupName = ($storageAccount.SA.id -split '/')[4]
             $subDetails = $htAllSubscriptionsFromAPI.($subscriptionId).subDetails
 
-            Write-Host "Processing Storage Account '$($storageAccount.name)' - Subscription: '$($subDetails.displayName)' ($subscriptionId) [$($subDetails.subscriptionPolicies.quotaId)]"
+            Write-Host "Processing Storage Account '$($storageAccount.SA.name)' - Subscription: '$($subDetails.displayName)' ($subscriptionId) [$($subDetails.subscriptionPolicies.quotaId)]"
 
-            if ($storageAccount.Properties.primaryEndpoints.blob) {
+            if ($storageAccount.SA.Properties.primaryEndpoints.blob) {
 
-                $urlServiceProps = "$($storageAccount.Properties.primaryEndpoints.blob)?restype=service&comp=properties"
-                $saProperties = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlServiceProps -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get restype=service&comp=properties" -saResourceGroupName $resourceGroupName -unhandledErrorAction Continue
+                $urlServiceProps = "$($storageAccount.SA.Properties.primaryEndpoints.blob)?restype=service&comp=properties"
+                $saProperties = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlServiceProps -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.SA.name) get restype=service&comp=properties" -saResourceGroupName $resourceGroupName -unhandledErrorAction Continue
                 if ($saProperties) {
                     if ($saProperties -eq 'AuthorizationFailure' -or $saProperties -eq 'AuthorizationPermissionDenied' -or $saProperties -eq 'ResourceUnavailable' -or $saProperties -eq 'AuthorizationPermissionMismatch' ) {
                         if ($saProperties -eq 'ResourceUnavailable') {
@@ -12053,14 +12164,14 @@ function processStorageAccountAnalysis {
                             }
                         }
                         catch {
-                            Write-Host "XMLSAPropertiesFailed: Subscription: $($subDetails.displayName) ($subscriptionId) - Storage Account: $($storageAccount.name)"
+                            Write-Host "XMLSAPropertiesFailed: Subscription: $($subDetails.displayName) ($subscriptionId) - Storage Account: $($storageAccount.SA.name)"
                             Write-Host $($saProperties.ForEach({ [char]$_ }) -join '') -ForegroundColor Cyan
                         }
                     }
                 }
 
-                $urlCompList = "$($storageAccount.Properties.primaryEndpoints.blob)?comp=list"
-                $listContainers = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlCompList -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.name) get comp=list" -unhandledErrorAction Continue
+                $urlCompList = "$($storageAccount.SA.Properties.primaryEndpoints.blob)?comp=list"
+                $listContainers = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $urlCompList -method 'GET' -listenOn 'Content' -currentTask "$($storageAccount.SA.name) get comp=list" -unhandledErrorAction Continue
                 if ($listContainers) {
                     if ($listContainers -eq 'AuthorizationFailure' -or $listContainers -eq 'AuthorizationPermissionDenied' -or $listContainers -eq 'ResourceUnavailable' -or $listContainers -eq 'AuthorizationPermissionMismatch') {
                         if ($listContainers -eq 'ResourceUnavailable') {
@@ -12081,9 +12192,9 @@ function processStorageAccountAnalysis {
                         foreach ($container in $xmlListContainers.EnumerationResults.Containers.Container) {
                             $arrayContainers += $container.Name
                             if ($container.Name -eq '$web' -and $staticWebsitesState) {
-                                if ($storageAccount.properties.primaryEndpoints.web) {
+                                if ($storageAccount.SA.properties.primaryEndpoints.web) {
                                     try {
-                                        $testStaticWebsiteResponse = Invoke-WebRequest -Uri $storageAccount.properties.primaryEndpoints.web -Method 'HEAD'
+                                        $testStaticWebsiteResponse = Invoke-WebRequest -Uri $storageAccount.SA.properties.primaryEndpoints.web -Method 'HEAD'
                                         $webSiteResponds = $true
                                     }
                                     catch {
@@ -12105,19 +12216,19 @@ function processStorageAccountAnalysis {
                 }
             }
 
-            $allowSharedKeyAccess = $storageAccount.properties.allowSharedKeyAccess
-            if ([string]::IsNullOrWhiteSpace($storageAccount.properties.allowSharedKeyAccess)) {
+            $allowSharedKeyAccess = $storageAccount.SA.properties.allowSharedKeyAccess
+            if ([string]::IsNullOrWhiteSpace($storageAccount.SA.properties.allowSharedKeyAccess)) {
                 $allowSharedKeyAccess = 'likely True'
             }
-            $requireInfrastructureEncryption = $storageAccount.properties.encryption.requireInfrastructureEncryption
-            if ([string]::IsNullOrWhiteSpace($storageAccount.properties.encryption.requireInfrastructureEncryption)) {
+            $requireInfrastructureEncryption = $storageAccount.SA.properties.encryption.requireInfrastructureEncryption
+            if ([string]::IsNullOrWhiteSpace($storageAccount.SA.properties.encryption.requireInfrastructureEncryption)) {
                 $requireInfrastructureEncryption = 'likely False'
             }
 
             $arrayResourceAccessRules = [System.Collections.ArrayList]@()
-            if ($storageAccount.properties.networkAcls.resourceAccessRules) {
-                if ($storageAccount.properties.networkAcls.resourceAccessRules.count -gt 0) {
-                    foreach ($resourceAccessRule in $storageAccount.properties.networkAcls.resourceAccessRules) {
+            if ($storageAccount.SA.properties.networkAcls.resourceAccessRules) {
+                if ($storageAccount.SA.properties.networkAcls.resourceAccessRules.count -gt 0) {
+                    foreach ($resourceAccessRule in $storageAccount.SA.properties.networkAcls.resourceAccessRules) {
 
                         $resourceAccessRuleResourceIdSplitted = $resourceAccessRule.resourceId -split '/'
                         $resourceType = "$($resourceAccessRuleResourceIdSplitted[6])/$($resourceAccessRuleResourceIdSplitted[7])"
@@ -12184,21 +12295,21 @@ function processStorageAccountAnalysis {
                 $resourceAccessRules = $ht | ConvertTo-Json
             }
 
-            if ([string]::IsNullOrWhiteSpace($storageAccount.properties.publicNetworkAccess)) {
+            if ([string]::IsNullOrWhiteSpace($storageAccount.SA.properties.publicNetworkAccess)) {
                 $publicNetworkAccess = 'likely Enabled'
             }
             else {
-                $publicNetworkAccess = $storageAccount.properties.publicNetworkAccess
+                $publicNetworkAccess = $storageAccount.SA.properties.publicNetworkAccess
             }
 
-            if ([string]::IsNullOrWhiteSpace($storageAccount.properties.allowedCopyScope)) {
+            if ([string]::IsNullOrWhiteSpace($storageAccount.SA.properties.allowedCopyScope)) {
                 $allowedCopyScope = 'From any Storage Account'
             }
             else {
-                $allowedCopyScope = $storageAccount.properties.allowedCopyScope
+                $allowedCopyScope = $storageAccount.SA.properties.allowedCopyScope
             }
 
-            if ([string]::IsNullOrWhiteSpace($storageAccount.properties.allowCrossTenantReplication)) {
+            if ([string]::IsNullOrWhiteSpace($storageAccount.SA.properties.allowCrossTenantReplication)) {
                 if ($allowedCopyScope -ne 'From any Storage Account') {
                     $allowCrossTenantReplication = "likely False (allowedCopyScope=$allowedCopyScope)"
                 }
@@ -12207,11 +12318,11 @@ function processStorageAccountAnalysis {
                 }
             }
             else {
-                $allowCrossTenantReplication = $storageAccount.properties.allowCrossTenantReplication
+                $allowCrossTenantReplication = $storageAccount.SA.properties.allowCrossTenantReplication
             }
 
-            if ($storageAccount.properties.dnsEndpointType) {
-                $dnsEndpointType = $storageAccount.properties.dnsEndpointType
+            if ($storageAccount.SA.properties.dnsEndpointType) {
+                $dnsEndpointType = $storageAccount.SA.properties.dnsEndpointType
             }
             else {
                 $dnsEndpointType = 'standard'
@@ -12219,20 +12330,20 @@ function processStorageAccountAnalysis {
 
             $temp = [System.Collections.ArrayList]@()
             $null = $temp.Add([PSCustomObject]@{
-                    storageAccount                    = $storageAccount.name
-                    kind                              = $storageAccount.kind
-                    skuName                           = $storageAccount.sku.name
-                    skuTier                           = $storageAccount.sku.tier
-                    location                          = $storageAccount.location
-                    creationTime                      = $storageAccount.properties.creationTime
-                    allowBlobPublicAccess             = $storageAccount.properties.allowBlobPublicAccess
+                    storageAccount                    = $storageAccount.SA.name
+                    kind                              = $storageAccount.SA.kind
+                    skuName                           = $storageAccount.SA.sku.name
+                    skuTier                           = $storageAccount.SA.sku.tier
+                    location                          = $storageAccount.SA.location
+                    creationTime                      = $storageAccount.SA.properties.creationTime
+                    allowBlobPublicAccess             = $storageAccount.SA.properties.allowBlobPublicAccess
                     publicNetworkAccess               = $publicNetworkAccess
                     SubscriptionId                    = $subscriptionId
                     SubscriptionName                  = $subDetails.displayName
                     subscriptionQuotaId               = $subDetails.subscriptionPolicies.quotaId
                     subscriptionMGPath                = $htSubscriptionsMgPath.($subscriptionId).path -join '/'
                     resourceGroup                     = $resourceGroupName
-                    networkAclsdefaultAction          = $storageAccount.properties.networkAcls.defaultAction
+                    networkAclsdefaultAction          = $storageAccount.SA.properties.networkAcls.defaultAction
                     staticWebsitesState               = $staticWebsitesState
                     staticWebsitesResponse            = $webSiteResponds
                     containersCanBeListed             = $listContainersSuccess
@@ -12242,20 +12353,21 @@ function processStorageAccountAnalysis {
                     containersAnonymousContainer      = $arrayContainersAnonymousContainer -join "$CSVDelimiterOpposite "
                     containersAnonymousBlobCount      = $arrayContainersAnonymousBlob.Count
                     containersAnonymousBlob           = $arrayContainersAnonymousBlob -join "$CSVDelimiterOpposite "
-                    ipRulesCount                      = $storageAccount.properties.networkAcls.ipRules.Count
-                    ipRulesIPAddressList              = ($storageAccount.properties.networkAcls.ipRules.value | Sort-Object) -join "$CSVDelimiterOpposite "
-                    virtualNetworkRulesCount          = $storageAccount.properties.networkAcls.virtualNetworkRules.Count
-                    virtualNetworkRulesList           = ($storageAccount.properties.networkAcls.virtualNetworkRules.Id | Sort-Object) -join "$CSVDelimiterOpposite "
+                    ipRulesCount                      = $storageAccount.SA.properties.networkAcls.ipRules.Count
+                    ipRulesIPAddressList              = ($storageAccount.SA.properties.networkAcls.ipRules.value | Sort-Object) -join "$CSVDelimiterOpposite "
+                    virtualNetworkRulesCount          = $storageAccount.SA.properties.networkAcls.virtualNetworkRules.Count
+                    virtualNetworkRulesList           = ($storageAccount.SA.properties.networkAcls.virtualNetworkRules.Id | Sort-Object) -join "$CSVDelimiterOpposite "
                     resourceAccessRulesCount          = $resourceAccessRulesCount
                     resourceAccessRules               = $resourceAccessRules
-                    bypass                            = ($storageAccount.properties.networkAcls.bypass | Sort-Object) -join "$CSVDelimiterOpposite "
-                    supportsHttpsTrafficOnly          = $storageAccount.properties.supportsHttpsTrafficOnly
-                    minimumTlsVersion                 = $storageAccount.properties.minimumTlsVersion
+                    bypass                            = ($storageAccount.SA.properties.networkAcls.bypass | Sort-Object) -join "$CSVDelimiterOpposite "
+                    supportsHttpsTrafficOnly          = $storageAccount.SA.properties.supportsHttpsTrafficOnly
+                    minimumTlsVersion                 = $storageAccount.SA.properties.minimumTlsVersion
                     allowSharedKeyAccess              = $allowSharedKeyAccess
                     requireInfrastructureEncryption   = $requireInfrastructureEncryption
                     allowedCopyScope                  = $allowedCopyScope
                     allowCrossTenantReplication       = $allowCrossTenantReplication
                     dnsEndpointType                   = $dnsEndpointType
+                    usedCapacity                      = $storageAccount.SAUsedCapacity
                 })
 
             if ($StorageAccountAccessAnalysisSubscriptionTags[0] -ne 'undefined' -and $StorageAccountAccessAnalysisSubscriptionTags.Count -gt 0) {
@@ -12270,10 +12382,10 @@ function processStorageAccountAnalysis {
             }
 
             if ($StorageAccountAccessAnalysisStorageAccountTags[0] -ne 'undefined' -and $StorageAccountAccessAnalysisStorageAccountTags.Count -gt 0) {
-                if ($storageAccount.tags) {
+                if ($storageAccount.SA.tags) {
                     $htAllSATags = @{}
-                    foreach ($saTagName in ($storageAccount.tags | Get-Member).where({ $_.MemberType -eq 'NoteProperty' }).Name) {
-                        $htAllSATags.$saTagName = $storageAccount.tags.$saTagName
+                    foreach ($saTagName in ($storageAccount.SA.tags | Get-Member).where({ $_.MemberType -eq 'NoteProperty' }).Name) {
+                        $htAllSATags.$saTagName = $storageAccount.SA.tags.$saTagName
                     }
                 }
                 foreach ($saTag4StorageAccountAccessAnalysis in $StorageAccountAccessAnalysisStorageAccountTags) {
@@ -19757,16 +19869,21 @@ extensions: [{ name: 'sort' }]
     Write-Host '  processing TenantSummary Orphaned Resources'
     if ($arrayOrphanedResources.count -gt 0) {
         $script:arrayOrphanedResourcesSlim = $arrayOrphanedResources | Sort-Object -Property type
-        $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type
-        $orphanedResourceTypesCount = ($arrayOrphanedResourcesGroupedByType | Measure-Object).Count
+
 
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
             $orphanedIncludingCost = $true
             $hintTableTH = " ($($AzureConsumptionPeriod) days)"
+
+            $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type, currency
+            $orphanedResourceTypesCount = ($arrayOrphanedResourcesGroupedByType | Measure-Object).Count
         }
         else {
             $orphanedIncludingCost = $false
             $hintTableTH = ''
+
+            $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type
+            $orphanedResourceTypesCount = ($arrayOrphanedResourcesGroupedByType | Measure-Object).Count
         }
 
         $tfCount = $orphanedResourceTypesCount
@@ -19795,11 +19912,13 @@ extensions: [{ name: 'sort' }]
         $htmlSUMMARYOrphanedResources = $null
         $htmlSUMMARYOrphanedResources = foreach ($orphanedResourceType in $arrayOrphanedResourcesGroupedByType | Sort-Object -Property Name) {
             $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)" = ($orphanedResourceType.count)
-
             if ($orphanedIncludingCost) {
-                if (($orphanedResourceType.Group.Intent | Get-Unique) -eq 'cost savings') {
+                if (($orphanedResourceType.Group[0].Intent) -eq 'cost savings') {
                     $orphCost = ($orphanedResourceType.Group.Cost | Measure-Object -Sum).Sum
-                    $orphCurrency = $orphanedResourceType.Group.Currency[0]
+                    if ($orphCost -eq 0) {
+                        $orphCost = ''
+                    }
+                    $orphCurrency = $orphanedResourceType.Group[0].Currency
                     $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)_Costs" = $orphCost
                     $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)_Costs_ConsumptionPeriodInDays" = $AzureConsumptionPeriod
                 }
@@ -19822,7 +19941,7 @@ extensions: [{ name: 'sort' }]
 
             @"
 <tr>
-<td>$($orphanedResourceType.Name)</td>
+<td>$(($orphanedResourceType.Name -split ',')[0])</td>
 <td>$($orphanedResourceType.count)</td>
 <td>$(($orphanedResourceType.Group.SubscriptionId | Sort-Object -Unique).Count)</td>
 <td>$($orphanedResourceType.Group[0].Intent)</td>
@@ -19869,6 +19988,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         }
         [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+        col_0: 'multiple',
         col_3: 'select',
         col_5: 'select',
         col_types: [
@@ -21156,6 +21276,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>Allowed Copy Scope</th>
 <th>Allow Cross Tenant Replication</th>
 <th>DNS Endpoint Type</th>
+<th>Used Capacity (GB)</th>
 </tr>
 </thead>
 <tbody>
@@ -21195,6 +21316,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.allowedCopyScope)</td>
                         <td>$($result.allowCrossTenantReplication)</td>
                         <td>$($result.dnsEndpointType)</td>
+                        <td>$($result.usedCapacity)</td>
                         </tr>
 "@)
 
@@ -21284,7 +21406,8 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
-                'caseinsensitivestring'
+                'caseinsensitivestring',
+                'number'
             ],
             extensions: [{ name: 'sort' }]
         };
@@ -28752,7 +28875,27 @@ function dataCollectionStorageAccounts {
     $storageAccountsSubscriptionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
     foreach ($storageAccount in $storageAccountsSubscriptionResult) {
-        $null = $script:storageAccounts.Add($storageAccount)
+
+        $dtisostart = Get-Date (Get-Date).AddHours(-1).ToUniversalTime() -UFormat '+%Y-%m-%dT%H:%M:%S.000Z'
+        $dtisoend = Get-Date (Get-Date).ToUniversalTime() -UFormat '+%Y-%m-%dT%H:%M:%S.000Z'
+        $currentTask = "Getting Storage Account '$($storageAccount.name)' UsedCapacity ('$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId'])"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($storageAccount.id)/providers/microsoft.Insights/metrics?timespan=$($dtisostart)/$($dtisoend)&interval=FULL&metricnames=UsedCapacity&aggregation=average&metricNamespace=microsoft.storage%2Fstorageaccounts&validatedimensions=false&api-version=2019-07-01"
+        $method = 'GET'
+        $storageAccountUsedCapacity = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -unhandledErrorAction Continue
+
+        $usedCapacity = 'n/a'
+        if ($storageAccountUsedCapacity.Count -gt 0) {
+            if (-not [string]::IsNullOrWhiteSpace($storageAccountUsedCapacity)) {
+                $usedCapacity = $storageAccountUsedCapacity.timeseries.data.average
+            }
+        }
+
+        $obj = [System.Collections.ArrayList]@()
+        $null = $obj.Add([PSCustomObject]@{
+                SA             = $storageAccount
+                SAUsedCapacity = $usedCapacity / 1024 / 1024 / 1024
+            })
+        $null = $script:storageAccounts.Add($obj)
     }
 }
 $funcDataCollectionStorageAccounts = $function:dataCollectionStorageAccounts.ToString()
@@ -29784,20 +29927,18 @@ function dataCollectionResourceLocks {
         $htTemp.SubscriptionLocksReadOnlyCount = $locksReadOnlySubscriptionCount
 
         #resourceGroups
-        $resourceGroupsLocksCannotDeleteCount = ($arrayResourceGroupsCannotDeleteLock).Count
-        $htTemp.ResourceGroupsLocksCannotDeleteCount = $resourceGroupsLocksCannotDeleteCount
-
-        $resourceGroupsLocksReadOnlyCount = ($arrayResourceGroupsReadOnlyLock).Count
-        $htTemp.ResourceGroupsLocksReadOnlyCount = $resourceGroupsLocksReadOnlyCount
+        $htTemp.ResourceGroupsLocksCannotDeleteCount = $arrayResourceGroupsCannotDeleteLock.Count
         $htTemp.ResourceGroupsLocksCannotDelete = $arrayResourceGroupsCannotDeleteLock
 
-        #resources
-        $resourcesLocksCannotDeleteCount = ($arrayResourcesCannotDeleteLock).Count
-        $htTemp.ResourcesLocksCannotDeleteCount = $resourcesLocksCannotDeleteCount
+        $htTemp.ResourceGroupsLocksReadOnlyCount = $arrayResourceGroupsReadOnlyLock.Count
+        $htTemp.ResourceGroupsLocksReadOnly = $arrayResourceGroupsReadOnlyLock
 
-        $resourcesLocksReadOnlyCount = ($arrayResourcesReadOnlyLock).Count
-        $htTemp.ResourcesLocksReadOnlyCount = $resourcesLocksReadOnlyCount
+        #resources
+        $htTemp.ResourcesLocksCannotDeleteCount = $arrayResourcesCannotDeleteLock.Count
         $htTemp.ResourcesLocksCannotDelete = $arrayResourcesCannotDeleteLock
+
+        $htTemp.ResourcesLocksReadOnlyCount = $arrayResourcesReadOnlyLock.Count
+        $htTemp.ResourcesLocksReadOnly = $arrayResourcesReadOnlyLock
 
         $script:htResourceLocks.($scopeId) = $htTemp
     }
@@ -30323,7 +30464,12 @@ function dataCollectionPolicyDefinitions {
                                         $htTemp.ALZState = 'upToDate'
                                     }
                                     else {
-                                        $htTemp.ALZState = 'outDated'
+                                        if ($alzpolicies.($alzPolicyHashes.($stringHash).policyName).latestVersion -like '*-deprecated') {
+                                            $htTemp.ALZState = 'deprecated'
+                                        }
+                                        else {
+                                            $htTemp.ALZState = 'outDated'
+                                        }
                                     }
                                 }
                                 else {
@@ -30356,7 +30502,12 @@ function dataCollectionPolicyDefinitions {
                                         $htTemp.ALZState = 'upToDate'
                                     }
                                     else {
-                                        $htTemp.ALZState = 'outDated'
+                                        if ($alzPolicies.($scopePolicyDefinition.name).latestVersion -like '*-deprecated') {
+                                            $htTemp.ALZState = 'deprecated'
+                                        }
+                                        else {
+                                            $htTemp.ALZState = 'outDated'
+                                        }
                                     }
                                 }
                                 else {
@@ -30607,7 +30758,12 @@ function dataCollectionPolicySetDefinitions {
                                     $htTemp.ALZState = 'upToDate'
                                 }
                                 else {
-                                    $htTemp.ALZState = 'outDated'
+                                    if ($alzPolicySetHashes.($stringHash).latestVersion -like '*-deprecated') {
+                                        $htTemp.ALZState = 'deprecated'
+                                    }
+                                    else {
+                                        $htTemp.ALZState = 'outDated'
+                                    }
                                 }
                                 $htTemp.ALZLatestVer = $alzPolicySetHashes.($stringHash).latestVersion
                             }
@@ -30633,7 +30789,12 @@ function dataCollectionPolicySetDefinitions {
                                     $htTemp.ALZState = 'upToDate'
                                 }
                                 else {
-                                    $htTemp.ALZState = 'outDated'
+                                    if ($alzPolicySets.($scopePolicySetDefinition.name).latestVersion -like '*-deprecated') {
+                                        $htTemp.ALZState = 'deprecated'
+                                    }
+                                    else {
+                                        $htTemp.ALZState = 'outDated'
+                                    }
                                 }
                                 $htTemp.ALZLatestVer = $alzPolicySets.($scopePolicySetDefinition.name).latestVersion
                             }
@@ -33218,6 +33379,10 @@ if (-not $HierarchyMapOnly) {
 
     processDataCollection -mgId $ManagementGroupId
 
+    if (-not $ManagementGroupsOnly) {
+        exportResourceLocks
+    }
+
     if ($arrayAdvisorScores.Count -gt 0) {
         Write-Host "Exporting AdvisorScores CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_AdvisorScores.csv'"
         $arrayAdvisorScores | Sort-Object -Property subscriptionName, subscriptionId, category | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_AdvisorScores.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
@@ -34443,6 +34608,7 @@ if (-not $azAPICallConf['htParameters'].NoJsonExport) {
 if (-not $HierarchyMapOnly) {
     buildPolicyAllJSON
 }
+
 #endregion createoutputs
 
 apiCallTracking -stage 'Summary' -spacing ''

@@ -7458,16 +7458,21 @@ extensions: [{ name: 'sort' }]
     Write-Host '  processing TenantSummary Orphaned Resources'
     if ($arrayOrphanedResources.count -gt 0) {
         $script:arrayOrphanedResourcesSlim = $arrayOrphanedResources | Sort-Object -Property type
-        $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type
-        $orphanedResourceTypesCount = ($arrayOrphanedResourcesGroupedByType | Measure-Object).Count
+
 
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
             $orphanedIncludingCost = $true
             $hintTableTH = " ($($AzureConsumptionPeriod) days)"
+
+            $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type, currency
+            $orphanedResourceTypesCount = ($arrayOrphanedResourcesGroupedByType | Measure-Object).Count
         }
         else {
             $orphanedIncludingCost = $false
             $hintTableTH = ''
+
+            $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type
+            $orphanedResourceTypesCount = ($arrayOrphanedResourcesGroupedByType | Measure-Object).Count
         }
 
         $tfCount = $orphanedResourceTypesCount
@@ -7496,11 +7501,13 @@ extensions: [{ name: 'sort' }]
         $htmlSUMMARYOrphanedResources = $null
         $htmlSUMMARYOrphanedResources = foreach ($orphanedResourceType in $arrayOrphanedResourcesGroupedByType | Sort-Object -Property Name) {
             $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)" = ($orphanedResourceType.count)
-
             if ($orphanedIncludingCost) {
-                if (($orphanedResourceType.Group.Intent | Get-Unique) -eq 'cost savings') {
+                if (($orphanedResourceType.Group[0].Intent) -eq 'cost savings') {
                     $orphCost = ($orphanedResourceType.Group.Cost | Measure-Object -Sum).Sum
-                    $orphCurrency = $orphanedResourceType.Group.Currency[0]
+                    if ($orphCost -eq 0) {
+                        $orphCost = ''
+                    }
+                    $orphCurrency = $orphanedResourceType.Group[0].Currency
                     $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)_Costs" = $orphCost
                     $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)_Costs_ConsumptionPeriodInDays" = $AzureConsumptionPeriod
                 }
@@ -7523,7 +7530,7 @@ extensions: [{ name: 'sort' }]
 
             @"
 <tr>
-<td>$($orphanedResourceType.Name)</td>
+<td>$(($orphanedResourceType.Name -split ',')[0])</td>
 <td>$($orphanedResourceType.count)</td>
 <td>$(($orphanedResourceType.Group.SubscriptionId | Sort-Object -Unique).Count)</td>
 <td>$($orphanedResourceType.Group[0].Intent)</td>
@@ -7570,6 +7577,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         }
         [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+        col_0: 'multiple',
         col_3: 'select',
         col_5: 'select',
         col_types: [
@@ -8857,6 +8865,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>Allowed Copy Scope</th>
 <th>Allow Cross Tenant Replication</th>
 <th>DNS Endpoint Type</th>
+<th>Used Capacity (GB)</th>
 </tr>
 </thead>
 <tbody>
@@ -8896,6 +8905,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.allowedCopyScope)</td>
                         <td>$($result.allowCrossTenantReplication)</td>
                         <td>$($result.dnsEndpointType)</td>
+                        <td>$($result.usedCapacity)</td>
                         </tr>
 "@)
 
@@ -8985,7 +8995,8 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
-                'caseinsensitivestring'
+                'caseinsensitivestring',
+                'number'
             ],
             extensions: [{ name: 'sort' }]
         };
