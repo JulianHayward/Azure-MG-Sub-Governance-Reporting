@@ -7466,6 +7466,7 @@ extensions: [{ name: 'sort' }]
 
             $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type, currency
             $orphanedResourceTypesCount = ($arrayOrphanedResourcesGroupedByType | Measure-Object).Count
+            $orphanedResourceTypesCountUnique = ($arrayOrphanedResourcesSlim.type | Sort-Object -Unique).Count
         }
         else {
             $orphanedIncludingCost = $false
@@ -7473,12 +7474,13 @@ extensions: [{ name: 'sort' }]
 
             $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type
             $orphanedResourceTypesCount = ($arrayOrphanedResourcesGroupedByType | Measure-Object).Count
+            $orphanedResourceTypesCountUnique = ($arrayOrphanedResourcesSlim.type | Sort-Object -Unique).Count
         }
 
         $tfCount = $orphanedResourceTypesCount
         $htmlTableId = 'TenantSummary_orphanedResources'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_orphanedResources"><i class="padlx fa fa-trash-o" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$($arrayOrphanedResources.count) Orphaned Resources ($orphanedResourceTypesCount ResourceTypes)</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_orphanedResources"><i class="padlx fa fa-trash-o" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$($arrayOrphanedResources.count) Orphaned Resources ($orphanedResourceTypesCountUnique ResourceTypes)</span>
 </button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> 'Azure Orphan Resources' ARG queries and workbooks</span> <a class="externallink" href="https://github.com/dolevshor/azure-orphan-resources" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
