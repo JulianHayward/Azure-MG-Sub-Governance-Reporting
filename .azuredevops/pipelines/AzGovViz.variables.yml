@@ -1,7 +1,7 @@
 # AzGovViz v6_major_20221213_1
 # First things first:
-# 1. Replace <YourServiceConnection> with the name of your service connection
-# 2. Replace <YourManagementGroupId> with the your ManagementGroupId
+# 1. Replace <YourServiceConnection> with the name of your service connection - butch edite
+# 2. Replace <YourManagementGroupId> with the your ManagementGroupId - butch edit
 # 3. Ensure that Service Connection Permissions are set: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#required-permissions-in-azure
 #
 # Documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
