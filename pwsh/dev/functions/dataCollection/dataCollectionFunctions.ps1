@@ -478,14 +478,14 @@ function dataCollectionStorageAccounts {
         $usedCapacity = 'n/a'
         if ($storageAccountUsedCapacity.Count -gt 0) {
             if (-not [string]::IsNullOrWhiteSpace($storageAccountUsedCapacity)) {
-                $usedCapacity = $storageAccountUsedCapacity.timeseries.data.average
+                $usedCapacity = $storageAccountUsedCapacity.timeseries.data.average / 1024 / 1024 / 1024
             }
         }
 
         $obj = [System.Collections.ArrayList]@()
         $null = $obj.Add([PSCustomObject]@{
                 SA             = $storageAccount
-                SAUsedCapacity = $usedCapacity / 1024 / 1024 / 1024
+                SAUsedCapacity = $usedCapacity
             })
         $null = $script:storageAccounts.Add($obj)
     }

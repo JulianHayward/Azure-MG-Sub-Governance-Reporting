@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.68',
 
     [string]
-    $ProductVersion = 'v6_major_20230203_2',
+    $ProductVersion = 'v6_major_20230210_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -28889,14 +28889,14 @@ function dataCollectionStorageAccounts {
         $usedCapacity = 'n/a'
         if ($storageAccountUsedCapacity.Count -gt 0) {
             if (-not [string]::IsNullOrWhiteSpace($storageAccountUsedCapacity)) {
-                $usedCapacity = $storageAccountUsedCapacity.timeseries.data.average
+                $usedCapacity = $storageAccountUsedCapacity.timeseries.data.average / 1024 / 1024 / 1024
             }
         }
 
         $obj = [System.Collections.ArrayList]@()
         $null = $obj.Add([PSCustomObject]@{
                 SA             = $storageAccount
-                SAUsedCapacity = $usedCapacity / 1024 / 1024 / 1024
+                SAUsedCapacity = $usedCapacity
             })
         $null = $script:storageAccounts.Add($obj)
     }

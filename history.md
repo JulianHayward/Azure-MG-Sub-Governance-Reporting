@@ -4,6 +4,11 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2023-Feb-10 / Major)
+
+* Fix 'Storage Account Analysis' feature
+  * handle non returned 'Used Capacity' metric
+
 __Changes__ (2023-Feb-03 / Major)
 
 * Update 'Orphaned Resources' feature
