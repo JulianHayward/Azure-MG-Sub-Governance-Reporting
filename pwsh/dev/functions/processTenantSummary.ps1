@@ -5229,7 +5229,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <tbody>
 "@)
             $htmlSUMMARYPIMEligibility = $null
-            $PIMEligibleEnrichedSorted = $PIMEligibleEnriched | Sort-Object -Property Scope, MgLevel, ScopeDisplayName, IdentityDisplayName, PIMEligibilityId
+            $PIMEligibleEnrichedSorted = $PIMEligibleEnriched | Sort-Object -Property Scope, MgLevel, ScopeName, IdentityDisplayName, PIMEligibilityId
             $tfCountCnt = $PIMEligibleEnrichedSorted.Count
             $htmlSUMMARYPIMEligibility = foreach ($PIMEligible in $PIMEligibleEnrichedSorted) {
                 @"
@@ -8829,6 +8829,14 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 
             $htmlTableId = 'TenantSummary_StorageAccountAccessAnalysis'
             $tfCount = $arrayStorageAccountAnalysisResultsCount
+
+            if ($DoAzureConsumption -eq $true) {
+                $costDays = " ($($AzureConsumptionPeriod)d)"
+            }
+            else {
+                $costDays = " (<i>-DoAzureConsumption</i> = <span style=`"color:orange`">$DoAzureConsumption</span>)"
+            }
+
             [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_StorageAccountAccessAnalysis"><i class="padlx fa fa-user-secret" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$tfCount Storage Accounts Access Analysis results - Anonymous Access Container/Blob: $saAnonymousAccessCount, Static Website enabled: $saStaticWebsitesEnabledCount</span></button>
 <div class="content TenantSummary">
@@ -8869,6 +8877,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>Allow Cross Tenant Replication</th>
 <th>DNS Endpoint Type</th>
 <th>Used Capacity (GB)</th>
+<th>Cost$costDays</th>
+<th>Currency</th>
+<th>Cost categories</th>
 </tr>
 </thead>
 <tbody>
@@ -8909,6 +8920,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.allowCrossTenantReplication)</td>
                         <td>$($result.dnsEndpointType)</td>
                         <td>$($result.usedCapacity)</td>
+                        <td>$($result.cost)</td>
+                        <td>$($result.curreny)</td>
+                        <td>$($result.metercategory)</td>
                         </tr>
 "@)
 
@@ -8968,6 +8982,8 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_27: 'select',
             col_28: 'select',
             col_29: 'select',
+            col_32: 'select',
+            col_33: 'select',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -8999,7 +9015,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
-                'number'
+                'number',
+                'number',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
             ],
             extensions: [{ name: 'sort' }]
         };
@@ -9039,7 +9058,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     if ($azAPICallConf['htParameters'].NoNetwork -eq $false) {
         $startVNets = Get-Date
         Write-Host '  processing TenantSummary VNets'
-        $Vnets = $arrayVirtualNetworks | Sort-Object -Property SubscriptionName, VNet, VNetId -Unique
+        $Vnets = $arrayVirtualNetworks | Sort-Object -Property SubscriptionName, VNet, VNetId -Unique | Select-Object SubscriptionName, Subscription, MGPath, VNet, VNetResourceGroup, Location, AddressSpaceAddressPrefixes, DhcpoptionsDnsservers, SubnetsCount, SubnetsWithNSGCount, SubnetsWithRouteTableCount, SubnetsWithDelegationsCount, PrivateEndpointsCount, SubnetsWithPrivateEndPointsCount, ConnectedDevices, SubnetsWithConnectedDevicesCount, DdosProtection, PeeringsCount
         $VNetsCount = $Vnets.Count
 
         if (-not $NoCsvExport) {

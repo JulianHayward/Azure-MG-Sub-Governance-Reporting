@@ -6,6 +6,22 @@ function processStorageAccountAnalysis {
         Write-Host " Executing Storage Account Analysis for $storageAccountsCount Storage Accounts"
         createBearerToken -AzAPICallConfiguration $azapicallconf -targetEndPoint 'Storage'
 
+        $htSACost = @{}
+        if ($DoAzureConsumption -eq $true) {
+            $saConsumptionByResourceId = $allConsumptionData.where({ $_.resourceType -eq 'microsoft.storage/storageaccounts' }) | Group-Object -Property resourceid
+
+            foreach ($sa in $saConsumptionByResourceId) {
+                $htSACost.($sa.Name) = @{}
+                $htSACost.($sa.Name).meterCategoryAll = ($sa.Group.MeterCategory | Sort-Object) -join ', '
+                $htSACost.($sa.Name).costAll = [decimal]($sa.Group.PreTaxCost | Measure-Object -Sum).Sum
+                $htSACost.($sa.Name).currencyAll = ($sa.Group.Currency | Sort-Object -Unique) -join ', '
+                foreach ($costentry in $sa.Group) {
+                    $htSACost.($sa.Name)."cost_$($costentry.MeterCategory)" = $costentry.PreTaxCost
+                    $htSACost.($sa.Name)."currency_$($costentry.MeterCategory)" = $costentry.Currency
+                }
+            }
+        }
+
         $storageAccounts | ForEach-Object -Parallel {
             $storageAccount = $_
             $azAPICallConf = $using:azAPICallConf
@@ -14,6 +30,7 @@ function processStorageAccountAnalysis {
             $htSubscriptionsMgPath = $using:htSubscriptionsMgPath
             $htSubscriptionTags = $using:htSubscriptionTags
             $CSVDelimiterOpposite = $using:CSVDelimiterOpposite
+            $htSACost = $using:htSACost
             $StorageAccountAccessAnalysisSubscriptionTags = $using:StorageAccountAccessAnalysisSubscriptionTags
             $StorageAccountAccessAnalysisStorageAccountTags = $using:StorageAccountAccessAnalysisStorageAccountTags
             $listContainersSuccess = 'n/a'
@@ -217,6 +234,25 @@ function processStorageAccountAnalysis {
                 $dnsEndpointType = 'standard'
             }
 
+            if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
+                if ($htSACost.($storageAccount.SA.id)) {
+                    $hlpCost = $htSACost.($storageAccount.SA.id)
+                    $saCost = $hlpCost.costAll
+                    $saCostCurrency = $hlpCost.currencyAll
+                    $saCostMeterCategories = $hlpCost.meterCategoryAll
+                }
+                else {
+                    $saCost = 'n/a'
+                    $saCostCurrency = 'n/a'
+                    $saCostMeterCategories = 'n/a'
+                }
+            }
+            else {
+                $saCost = ''
+                $saCostCurrency = ''
+                $saCostMeterCategories = ''
+            }
+
             $temp = [System.Collections.ArrayList]@()
             $null = $temp.Add([PSCustomObject]@{
                     storageAccount                    = $storageAccount.SA.name
@@ -257,6 +293,9 @@ function processStorageAccountAnalysis {
                     allowCrossTenantReplication       = $allowCrossTenantReplication
                     dnsEndpointType                   = $dnsEndpointType
                     usedCapacity                      = $storageAccount.SAUsedCapacity
+                    cost                              = $saCost
+                    metercategory                     = $saCostMeterCategories
+                    curreny                           = $saCostCurrency
                 })
 
             if ($StorageAccountAccessAnalysisSubscriptionTags[0] -ne 'undefined' -and $StorageAccountAccessAnalysisSubscriptionTags.Count -gt 0) {

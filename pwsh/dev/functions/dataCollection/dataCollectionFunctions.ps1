@@ -471,14 +471,15 @@ function dataCollectionStorageAccounts {
         $dtisostart = Get-Date (Get-Date).AddHours(-1).ToUniversalTime() -UFormat '+%Y-%m-%dT%H:%M:%S.000Z'
         $dtisoend = Get-Date (Get-Date).ToUniversalTime() -UFormat '+%Y-%m-%dT%H:%M:%S.000Z'
         $currentTask = "Getting Storage Account '$($storageAccount.name)' UsedCapacity ('$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId'])"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($storageAccount.id)/providers/microsoft.Insights/metrics?timespan=$($dtisostart)/$($dtisoend)&interval=FULL&metricnames=UsedCapacity&aggregation=average&metricNamespace=microsoft.storage%2Fstorageaccounts&validatedimensions=false&api-version=2019-07-01"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($storageAccount.id)/providers/Microsoft.Insights/metrics?timespan=$($dtisostart)/$($dtisoend)&metricnames=UsedCapacity&aggregation=Average&api-version=2021-05-01"
         $method = 'GET'
+        $storageAccountUsedCapacity = $null
         $storageAccountUsedCapacity = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -unhandledErrorAction Continue
 
         $usedCapacity = 'n/a'
         if ($storageAccountUsedCapacity.Count -gt 0) {
-            if (-not [string]::IsNullOrWhiteSpace($storageAccountUsedCapacity)) {
-                $usedCapacity = $storageAccountUsedCapacity.timeseries.data.average / 1024 / 1024 / 1024
+            if (-not [string]::IsNullOrWhiteSpace($storageAccountUsedCapacity.timeseries.data.average)) {
+                $usedCapacity = [decimal]$storageAccountUsedCapacity.timeseries.data.average / 1024 / 1024 / 1024
             }
         }
 

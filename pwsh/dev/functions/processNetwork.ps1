@@ -243,8 +243,8 @@ function processNetwork {
                     VNetResourceGroup                               = $vnetResourceGroup
                     Location                                        = $vnet.location
 
-                    AddressSpaceAddressPrefixes                     = $vnet.properties.addressSpace.addressPrefixes
-                    DhcpoptionsDnsservers                           = $vnet.properties.dhcpoptions.dnsservers
+                    AddressSpaceAddressPrefixes                     = ($vnet.properties.addressSpace.addressPrefixes -join "$CsvDelimiterOpposite ")
+                    DhcpoptionsDnsservers                           = ($vnet.properties.dhcpoptions.dnsservers -join "$CsvDelimiterOpposite ")
                     SubnetsCount                                    = $vnet.properties.subnets.id.Count
                     SubnetsWithNSGCount                             = $vnet.properties.subnets.properties.networkSecurityGroup.id.Count
                     SubnetsWithRouteTableCount                      = $vnet.properties.subnets.properties.routeTable.id.Count

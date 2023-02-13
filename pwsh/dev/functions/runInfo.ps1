@@ -438,7 +438,7 @@ function runInfo {
             Write-Host " NoNetwork = $($NoNetwork)" -ForegroundColor Yellow
             #$script:paramsUsed += "NoNetwork: $($NoNetwork) &#13;"
 
-            if ($NetworkSubnetIPAddressUsageCriticalPercentage -ne 90) {
+            if ($NetworkSubnetIPAddressUsageCriticalPercentage -ne 80) {
                 Write-Host " NetworkSubnetIPAddressUsageCriticalPercentage = $($NetworkSubnetIPAddressUsageCriticalPercentage)" -ForegroundColor Green
                 #$script:paramsUsed += "NetworkSubnetIPAddressUsageCriticalPercentage: $($NetworkSubnetIPAddressUsageCriticalPercentage) &#13;"
             }

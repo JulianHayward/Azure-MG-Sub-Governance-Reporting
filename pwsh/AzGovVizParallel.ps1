@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.68',
 
     [string]
-    $ProductVersion = 'v6_major_20230210_1',
+    $ProductVersion = 'v6_major_20230213_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -7693,8 +7693,8 @@ function processNetwork {
                     VNetResourceGroup                               = $vnetResourceGroup
                     Location                                        = $vnet.location
 
-                    AddressSpaceAddressPrefixes                     = $vnet.properties.addressSpace.addressPrefixes
-                    DhcpoptionsDnsservers                           = $vnet.properties.dhcpoptions.dnsservers
+                    AddressSpaceAddressPrefixes                     = ($vnet.properties.addressSpace.addressPrefixes -join "$CsvDelimiterOpposite ")
+                    DhcpoptionsDnsservers                           = ($vnet.properties.dhcpoptions.dnsservers -join "$CsvDelimiterOpposite ")
                     SubnetsCount                                    = $vnet.properties.subnets.id.Count
                     SubnetsWithNSGCount                             = $vnet.properties.subnets.properties.networkSecurityGroup.id.Count
                     SubnetsWithRouteTableCount                      = $vnet.properties.subnets.properties.routeTable.id.Count
@@ -12117,6 +12117,22 @@ function processStorageAccountAnalysis {
         Write-Host " Executing Storage Account Analysis for $storageAccountsCount Storage Accounts"
         createBearerToken -AzAPICallConfiguration $azapicallconf -targetEndPoint 'Storage'
 
+        $htSACost = @{}
+        if ($DoAzureConsumption -eq $true) {
+            $saConsumptionByResourceId = $allConsumptionData.where({ $_.resourceType -eq 'microsoft.storage/storageaccounts' }) | Group-Object -Property resourceid
+
+            foreach ($sa in $saConsumptionByResourceId) {
+                $htSACost.($sa.Name) = @{}
+                $htSACost.($sa.Name).meterCategoryAll = ($sa.Group.MeterCategory | Sort-Object) -join ', '
+                $htSACost.($sa.Name).costAll = [decimal]($sa.Group.PreTaxCost | Measure-Object -Sum).Sum
+                $htSACost.($sa.Name).currencyAll = ($sa.Group.Currency | Sort-Object -Unique) -join ', '
+                foreach ($costentry in $sa.Group) {
+                    $htSACost.($sa.Name)."cost_$($costentry.MeterCategory)" = $costentry.PreTaxCost
+                    $htSACost.($sa.Name)."currency_$($costentry.MeterCategory)" = $costentry.Currency
+                }
+            }
+        }
+
         $storageAccounts | ForEach-Object -Parallel {
             $storageAccount = $_
             $azAPICallConf = $using:azAPICallConf
@@ -12125,6 +12141,7 @@ function processStorageAccountAnalysis {
             $htSubscriptionsMgPath = $using:htSubscriptionsMgPath
             $htSubscriptionTags = $using:htSubscriptionTags
             $CSVDelimiterOpposite = $using:CSVDelimiterOpposite
+            $htSACost = $using:htSACost
             $StorageAccountAccessAnalysisSubscriptionTags = $using:StorageAccountAccessAnalysisSubscriptionTags
             $StorageAccountAccessAnalysisStorageAccountTags = $using:StorageAccountAccessAnalysisStorageAccountTags
             $listContainersSuccess = 'n/a'
@@ -12328,6 +12345,25 @@ function processStorageAccountAnalysis {
                 $dnsEndpointType = 'standard'
             }
 
+            if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
+                if ($htSACost.($storageAccount.SA.id)) {
+                    $hlpCost = $htSACost.($storageAccount.SA.id)
+                    $saCost = $hlpCost.costAll
+                    $saCostCurrency = $hlpCost.currencyAll
+                    $saCostMeterCategories = $hlpCost.meterCategoryAll
+                }
+                else {
+                    $saCost = 'n/a'
+                    $saCostCurrency = 'n/a'
+                    $saCostMeterCategories = 'n/a'
+                }
+            }
+            else {
+                $saCost = ''
+                $saCostCurrency = ''
+                $saCostMeterCategories = ''
+            }
+
             $temp = [System.Collections.ArrayList]@()
             $null = $temp.Add([PSCustomObject]@{
                     storageAccount                    = $storageAccount.SA.name
@@ -12368,6 +12404,9 @@ function processStorageAccountAnalysis {
                     allowCrossTenantReplication       = $allowCrossTenantReplication
                     dnsEndpointType                   = $dnsEndpointType
                     usedCapacity                      = $storageAccount.SAUsedCapacity
+                    cost                              = $saCost
+                    metercategory                     = $saCostMeterCategories
+                    curreny                           = $saCostCurrency
                 })
 
             if ($StorageAccountAccessAnalysisSubscriptionTags[0] -ne 'undefined' -and $StorageAccountAccessAnalysisSubscriptionTags.Count -gt 0) {
@@ -17640,7 +17679,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <tbody>
 "@)
             $htmlSUMMARYPIMEligibility = $null
-            $PIMEligibleEnrichedSorted = $PIMEligibleEnriched | Sort-Object -Property Scope, MgLevel, ScopeDisplayName, IdentityDisplayName, PIMEligibilityId
+            $PIMEligibleEnrichedSorted = $PIMEligibleEnriched | Sort-Object -Property Scope, MgLevel, ScopeName, IdentityDisplayName, PIMEligibilityId
             $tfCountCnt = $PIMEligibleEnrichedSorted.Count
             $htmlSUMMARYPIMEligibility = foreach ($PIMEligible in $PIMEligibleEnrichedSorted) {
                 @"
@@ -21240,6 +21279,14 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 
             $htmlTableId = 'TenantSummary_StorageAccountAccessAnalysis'
             $tfCount = $arrayStorageAccountAnalysisResultsCount
+
+            if ($DoAzureConsumption -eq $true) {
+                $costDays = " ($($AzureConsumptionPeriod)d)"
+            }
+            else {
+                $costDays = " (<i>-DoAzureConsumption</i> = <span style=`"color:orange`">$DoAzureConsumption</span>)"
+            }
+
             [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_StorageAccountAccessAnalysis"><i class="padlx fa fa-user-secret" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$tfCount Storage Accounts Access Analysis results - Anonymous Access Container/Blob: $saAnonymousAccessCount, Static Website enabled: $saStaticWebsitesEnabledCount</span></button>
 <div class="content TenantSummary">
@@ -21280,6 +21327,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 <th>Allow Cross Tenant Replication</th>
 <th>DNS Endpoint Type</th>
 <th>Used Capacity (GB)</th>
+<th>Cost$costDays</th>
+<th>Currency</th>
+<th>Cost categories</th>
 </tr>
 </thead>
 <tbody>
@@ -21320,6 +21370,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         <td>$($result.allowCrossTenantReplication)</td>
                         <td>$($result.dnsEndpointType)</td>
                         <td>$($result.usedCapacity)</td>
+                        <td>$($result.cost)</td>
+                        <td>$($result.curreny)</td>
+                        <td>$($result.metercategory)</td>
                         </tr>
 "@)
 
@@ -21379,6 +21432,8 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_27: 'select',
             col_28: 'select',
             col_29: 'select',
+            col_32: 'select',
+            col_33: 'select',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -21410,7 +21465,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
-                'number'
+                'number',
+                'number',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
             ],
             extensions: [{ name: 'sort' }]
         };
@@ -21450,7 +21508,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     if ($azAPICallConf['htParameters'].NoNetwork -eq $false) {
         $startVNets = Get-Date
         Write-Host '  processing TenantSummary VNets'
-        $Vnets = $arrayVirtualNetworks | Sort-Object -Property SubscriptionName, VNet, VNetId -Unique
+        $Vnets = $arrayVirtualNetworks | Sort-Object -Property SubscriptionName, VNet, VNetId -Unique | Select-Object SubscriptionName, Subscription, MGPath, VNet, VNetResourceGroup, Location, AddressSpaceAddressPrefixes, DhcpoptionsDnsservers, SubnetsCount, SubnetsWithNSGCount, SubnetsWithRouteTableCount, SubnetsWithDelegationsCount, PrivateEndpointsCount, SubnetsWithPrivateEndPointsCount, ConnectedDevices, SubnetsWithConnectedDevicesCount, DdosProtection, PeeringsCount
         $VNetsCount = $Vnets.Count
 
         if (-not $NoCsvExport) {
@@ -27721,7 +27779,7 @@ function runInfo {
             Write-Host " NoNetwork = $($NoNetwork)" -ForegroundColor Yellow
             #$script:paramsUsed += "NoNetwork: $($NoNetwork) &#13;"
 
-            if ($NetworkSubnetIPAddressUsageCriticalPercentage -ne 90) {
+            if ($NetworkSubnetIPAddressUsageCriticalPercentage -ne 80) {
                 Write-Host " NetworkSubnetIPAddressUsageCriticalPercentage = $($NetworkSubnetIPAddressUsageCriticalPercentage)" -ForegroundColor Green
                 #$script:paramsUsed += "NetworkSubnetIPAddressUsageCriticalPercentage: $($NetworkSubnetIPAddressUsageCriticalPercentage) &#13;"
             }
@@ -28882,14 +28940,15 @@ function dataCollectionStorageAccounts {
         $dtisostart = Get-Date (Get-Date).AddHours(-1).ToUniversalTime() -UFormat '+%Y-%m-%dT%H:%M:%S.000Z'
         $dtisoend = Get-Date (Get-Date).ToUniversalTime() -UFormat '+%Y-%m-%dT%H:%M:%S.000Z'
         $currentTask = "Getting Storage Account '$($storageAccount.name)' UsedCapacity ('$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId'])"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($storageAccount.id)/providers/microsoft.Insights/metrics?timespan=$($dtisostart)/$($dtisoend)&interval=FULL&metricnames=UsedCapacity&aggregation=average&metricNamespace=microsoft.storage%2Fstorageaccounts&validatedimensions=false&api-version=2019-07-01"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($storageAccount.id)/providers/Microsoft.Insights/metrics?timespan=$($dtisostart)/$($dtisoend)&metricnames=UsedCapacity&aggregation=Average&api-version=2021-05-01"
         $method = 'GET'
+        $storageAccountUsedCapacity = $null
         $storageAccountUsedCapacity = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -unhandledErrorAction Continue
 
         $usedCapacity = 'n/a'
         if ($storageAccountUsedCapacity.Count -gt 0) {
-            if (-not [string]::IsNullOrWhiteSpace($storageAccountUsedCapacity)) {
-                $usedCapacity = $storageAccountUsedCapacity.timeseries.data.average / 1024 / 1024 / 1024
+            if (-not [string]::IsNullOrWhiteSpace($storageAccountUsedCapacity.timeseries.data.average)) {
+                $usedCapacity = [decimal]$storageAccountUsedCapacity.timeseries.data.average / 1024 / 1024 / 1024
             }
         }
 

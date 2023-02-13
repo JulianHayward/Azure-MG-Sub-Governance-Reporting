@@ -30,12 +30,16 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/architecture/framework/security/monitor-tools) in the Microsoft Well Architected Framework
 
+### ChatGPT
+![ChatGPT](img/chatGPT.png)
+
 ## Content
 - [AzGovViz - Azure Governance Visualizer](#azgovviz---azure-governance-visualizer)
   - [Mission](#mission)
   - [AzGovViz @ Microsoft CAF \& WAF](#azgovviz--microsoft-caf--waf)
     - [Microsoft Cloud Adoption Framework (CAF)](#microsoft-cloud-adoption-framework-caf)
     - [Microsoft Well Architected Framework (WAF)](#microsoft-well-architected-framework-waf)
+    - [ChatGPT](#chatgpt)
   - [Content](#content)
   - [Release history](#release-history)
   - [Demo](#demo)
@@ -66,10 +70,14 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2023-Feb-10 / Major)
+__Changes__ (2023-Feb-13 / Major)
 
-* Fix 'Storage Account Analysis' feature
-  * handle non returned 'Used Capacity' metric
+* Optimize 'Storage Account Analysis' feature
+  * update API call
+  * add cost
+* Optimize CSV output for PIM Eligibility / better Git change tracking
+* Optimize CSV output for Virtual Networks / better Git change tracking
+* Updated [API reference](#api-reference)
 
 Passed tests: Powershell Core 7.3.1 on Windows  
 Passed tests: Powershell Core 7.2.7 Azure DevOps hosted agent ubuntu-22.04  
@@ -545,6 +553,7 @@ AzGovViz polls the following APIs
 | ARM      | 2020-02-01         | /providers/Microsoft.Management/managementGroups/`tenantId`/settings                                                                   |
 | ARM      | 2020-05-01         | /providers/Microsoft.Management/managementGroups                                                                                       |
 | ARM      | 2021-03-01         | /providers/Microsoft.ResourceGraph/resources                                                                                           |
+| ARM      | 2021-05-01         | /`resourceId`/providers/Microsoft.Insights/metrics                                                                                     |
 | ARM      | 2020-01-01         | /subscriptions/`subscriptionId`/locations                                                                                              |
 | ARM      | 2020-07-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Advisor/advisorScore                                                               |
 | ARM      | 2016-09-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/locks                                                                |

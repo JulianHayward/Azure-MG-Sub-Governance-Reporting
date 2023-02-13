@@ -4,6 +4,15 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2023-Feb-13 / Major)
+
+* Optimize 'Storage Account Analysis' feature
+  * update API call
+  * add cost
+* Optimize CSV output for PIM Eligibility / better Git change tracking
+* Optimize CSV output for Virtual Networks / better Git change tracking
+* Updated [API reference](#api-reference)
+
 __Changes__ (2023-Feb-10 / Major)
 
 * Fix 'Storage Account Analysis' feature
