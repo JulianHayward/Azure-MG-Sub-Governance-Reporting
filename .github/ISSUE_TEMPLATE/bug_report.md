@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-**AzGovviz version**
+**AzGovViz version**
 please only report bug if you are running the latest version of AzGovViz
 
 **CodeRunPlatform**
