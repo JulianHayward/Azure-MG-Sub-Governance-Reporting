@@ -213,7 +213,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
     * Orphaned Resources (ARG)
       * If you run AzGovViz with parameter -DoAzureConsumption then the orphaned resources output will show you potential cost savings for orphaned resources with intent 'cost savings'
       * The orphaned resources feature is based on [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources) ARG queries and workbooks by Dolev Shor
-      * The virtual machines that are stopped but not deallocated are still generating compute costs. You should check if there are virtual machines running within your environment that are only stopped. Intend = "cost savings - stopped but not deallocated VM"
+      * The virtual machines that are stopped but not deallocated are still generating compute costs. You should check if there are virtual machines running within your environment that are only stopped. The output will show these virtual machines with intent 'cost savings - stopped but not deallocated VM'.
     * Cloud Adoption Framework (CAF) [Recommended abbreviations for Azure resource types](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations) compliance
   * Microsoft Defender for Cloud
     * Summary of Microsoft Defender for Cloud coverage by plan (count of Subscription per plan/tier)
