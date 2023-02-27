@@ -70,14 +70,9 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2023-Feb-13 / Major)
+__Changes__ (2023-Feb-27 / Major)
 
-* Optimize 'Storage Account Analysis' feature
-  * update API call
-  * add cost
-* Optimize CSV output for PIM Eligibility / better Git change tracking
-* Optimize CSV output for Virtual Networks / better Git change tracking
-* Updated [API reference](#api-reference)
+* Extended the Orphaned Resource with the capability to see "Stopped" virtual machines. These stopped virtual machines are still generated costs. You better should set these virtual machines to "Stopped (deallocated)" to save costs.
 
 Passed tests: Powershell Core 7.3.1 on Windows  
 Passed tests: Powershell Core 7.2.7 Azure DevOps hosted agent ubuntu-22.04  
@@ -218,6 +213,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
     * Orphaned Resources (ARG)
       * If you run AzGovViz with parameter -DoAzureConsumption then the orphaned resources output will show you potential cost savings for orphaned resources with intent 'cost savings'
       * The orphaned resources feature is based on [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources) ARG queries and workbooks by Dolev Shor
+      * The virtual machines that are stopped but not deallocated are still generating compute costs. You should check if there are virtual machines running within your environment that are only stopped. Intend = "cost savings - stopped but not deallocated VM"
     * Cloud Adoption Framework (CAF) [Recommended abbreviations for Azure resource types](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations) compliance
   * Microsoft Defender for Cloud
     * Summary of Microsoft Defender for Cloud coverage by plan (count of Subscription per plan/tier)
