@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.68',
 
     [string]
-    $ProductVersion = 'v6_major_20230227_1',
+    $ProductVersion = 'v6_major_20230301_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -3497,7 +3497,7 @@ function getOrphanedResources {
 
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
             $allConsumptionDataGroupedByTypeAndCurrency = $allConsumptionData | Group-Object -Property ResourceType, Currency
-            $orphanedResourcesResourceTypesCostRelevant = ($queries.where({ $_.intent -eq 'cost savings' })).queryName
+            $orphanedResourcesResourceTypesCostRelevant = ($queries.where({ $_.intent -like 'cost savings*' })).queryName
 
             $htC = @{}
             foreach ($consumptionResourceTypeAndCurrency in $allConsumptionDataGroupedByTypeAndCurrency) {
@@ -3516,8 +3516,8 @@ function getOrphanedResources {
                 }
             }
 
-            $costrelevantOrphanedResourcesGroupedByType = ($arrayOrphanedResources | Group-Object -Property intent).where({ $_.name -eq 'cost savings' }).group | Group-Object -Property type
-            $nonCostrelevantOrphanedResourcesGroupedByType = ($arrayOrphanedResources | Group-Object -Property intent).where({ $_.name -ne 'cost savings' }).group | Group-Object -Property type
+            $costrelevantOrphanedResourcesGroupedByType = ($arrayOrphanedResources | Group-Object -Property intent).where({ $_.name -like 'cost savings*' }).group | Group-Object -Property type
+            $nonCostrelevantOrphanedResourcesGroupedByType = ($arrayOrphanedResources | Group-Object -Property intent).where({ $_.name -notlike 'cost savings*' }).group | Group-Object -Property type
             $script:arrayOrphanedResources = [System.Collections.ArrayList]@()
 
             foreach ($costrelevantOrphanedResourceType in $costrelevantOrphanedResourcesGroupedByType) {
@@ -9963,7 +9963,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 $htmlScopeInsightsOrphanedResources = foreach ($resourceType in $orphanedResourcesThisSubscriptionGroupedByType | Sort-Object -Property Name) {
 
                     if ($orphanedIncludingCost) {
-                        if (($resourceType.Group[0].Intent) -eq 'cost savings') {
+                        if (($resourceType.Group[0].Intent) -like 'cost savings*') {
                             $orphCost = ($resourceType.Group.Cost | Measure-Object -Sum).Sum
                             if ($orphCost -eq 0) {
                                 $orphCost = ''
@@ -9976,7 +9976,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         }
                     }
                     else {
-                        if (($resourceType.Group.Intent | Get-Unique) -eq 'cost savings') {
+                        if (($resourceType.Group.Intent | Get-Unique) -like 'cost savings*') {
                             $orphCost = "<span class=`"info`">use parameter <b>-DoAzureConsumption</b> to show potential savings</span>"
                             $orphCurrency = ''
                         }
@@ -19961,7 +19961,7 @@ extensions: [{ name: 'sort' }]
         $htmlSUMMARYOrphanedResources = foreach ($orphanedResourceType in $arrayOrphanedResourcesGroupedByType | Sort-Object -Property Name) {
             $script:htDailySummary."OrpanedResourceType_$($orphanedResourceType.Name)" = ($orphanedResourceType.count)
             if ($orphanedIncludingCost) {
-                if (($orphanedResourceType.Group[0].Intent) -eq 'cost savings') {
+                if (($orphanedResourceType.Group[0].Intent) -like 'cost savings*') {
                     $orphCost = ($orphanedResourceType.Group.Cost | Measure-Object -Sum).Sum
                     if ($orphCost -eq 0) {
                         $orphCost = ''
@@ -19977,7 +19977,7 @@ extensions: [{ name: 'sort' }]
 
             }
             else {
-                if (($orphanedResourceType.Group.Intent | Get-Unique) -eq 'cost savings') {
+                if (($orphanedResourceType.Group.Intent | Get-Unique) -like 'cost savings*') {
                     $orphCost = "<span class=`"info`">use parameter <b>-DoAzureConsumption</b> to show potential savings</span>"
                     $orphCurrency = ''
                 }

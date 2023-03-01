@@ -114,7 +114,7 @@ function getOrphanedResources {
 
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
             $allConsumptionDataGroupedByTypeAndCurrency = $allConsumptionData | Group-Object -Property ResourceType, Currency
-            $orphanedResourcesResourceTypesCostRelevant = ($queries.where({ $_.intent -eq 'cost savings' })).queryName
+            $orphanedResourcesResourceTypesCostRelevant = ($queries.where({ $_.intent -like 'cost savings*' })).queryName
 
             $htC = @{}
             foreach ($consumptionResourceTypeAndCurrency in $allConsumptionDataGroupedByTypeAndCurrency) {
@@ -133,8 +133,8 @@ function getOrphanedResources {
                 }
             }
 
-            $costrelevantOrphanedResourcesGroupedByType = ($arrayOrphanedResources | Group-Object -Property intent).where({ $_.name -eq 'cost savings' }).group | Group-Object -Property type
-            $nonCostrelevantOrphanedResourcesGroupedByType = ($arrayOrphanedResources | Group-Object -Property intent).where({ $_.name -ne 'cost savings' }).group | Group-Object -Property type
+            $costrelevantOrphanedResourcesGroupedByType = ($arrayOrphanedResources | Group-Object -Property intent).where({ $_.name -like 'cost savings*' }).group | Group-Object -Property type
+            $nonCostrelevantOrphanedResourcesGroupedByType = ($arrayOrphanedResources | Group-Object -Property intent).where({ $_.name -notlike 'cost savings*' }).group | Group-Object -Property type
             $script:arrayOrphanedResources = [System.Collections.ArrayList]@()
 
             foreach ($costrelevantOrphanedResourceType in $costrelevantOrphanedResourcesGroupedByType) {

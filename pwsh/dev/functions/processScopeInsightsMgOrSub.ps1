@@ -1783,7 +1783,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 $htmlScopeInsightsOrphanedResources = foreach ($resourceType in $orphanedResourcesThisSubscriptionGroupedByType | Sort-Object -Property Name) {
 
                     if ($orphanedIncludingCost) {
-                        if (($resourceType.Group[0].Intent) -eq 'cost savings') {
+                        if (($resourceType.Group[0].Intent) -like 'cost savings*') {
                             $orphCost = ($resourceType.Group.Cost | Measure-Object -Sum).Sum
                             if ($orphCost -eq 0) {
                                 $orphCost = ''
@@ -1796,7 +1796,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                         }
                     }
                     else {
-                        if (($resourceType.Group.Intent | Get-Unique) -eq 'cost savings') {
+                        if (($resourceType.Group.Intent | Get-Unique) -like 'cost savings*') {
                             $orphCost = "<span class=`"info`">use parameter <b>-DoAzureConsumption</b> to show potential savings</span>"
                             $orphCurrency = ''
                         }
