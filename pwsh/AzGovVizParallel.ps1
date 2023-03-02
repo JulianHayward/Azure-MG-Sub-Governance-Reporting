@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.68',
 
     [string]
-    $ProductVersion = 'v6_major_20230301_1',
+    $ProductVersion = 'v6_major_20230302_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -3388,7 +3388,7 @@ function getOrphanedResources {
     $queries = [System.Collections.ArrayList]@()
     $intent = 'cost savings - stopped but not deallocated VM'
     $null = $queries.Add([PSCustomObject]@{
-            queryName = 'microsoft.compute/virtualmachines/instanceview/stopped'
+            queryName = 'microsoft.compute/virtualmachines'
             query     = "Resources | where type =~ 'microsoft.compute/virtualmachines' and properties.extended.instanceView.powerState.code =~ 'PowerState/stopped' | project type, subscriptionId, Resource=id, Intent='$intent'"
             intent    = $intent
         })

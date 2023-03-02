@@ -4,7 +4,7 @@
 
 ### AzGovViz version 6
 
-__Changes__ (2023-Feb-27 / Major)
+__Changes__ (2023-Mar-02 / Major)
 
 * Extended the Orphaned Resource with the capability to see "Stopped" virtual machines. These stopped virtual machines are still generated costs. You better should set these virtual machines to "Stopped (deallocated)" to save costs.
 

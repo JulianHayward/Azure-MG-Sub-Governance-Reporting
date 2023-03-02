@@ -5,7 +5,7 @@ function getOrphanedResources {
     $queries = [System.Collections.ArrayList]@()
     $intent = 'cost savings - stopped but not deallocated VM'
     $null = $queries.Add([PSCustomObject]@{
-            queryName = 'microsoft.compute/virtualmachines/instanceview/stopped'
+            queryName = 'microsoft.compute/virtualmachines'
             query     = "Resources | where type =~ 'microsoft.compute/virtualmachines' and properties.extended.instanceView.powerState.code =~ 'PowerState/stopped' | project type, subscriptionId, Resource=id, Intent='$intent'"
             intent    = $intent
         })
