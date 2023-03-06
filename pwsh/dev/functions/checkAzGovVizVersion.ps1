@@ -7,7 +7,7 @@ function checkAzGovVizVersion {
         $script:azGovVizNewerVersionAvailable = $false
         if ([int]$azGovVizVersionOnRepository -gt [int]$azGovVizVersionThis) {
             $script:azGovVizNewerVersionAvailable = $true
-            $script:azGovVizNewerVersionAvailableHTML = '<span style="color:#FF5733; font-weight:bold">Get the latest AzGovViz version (' + $azGovVizVersionOnRepositoryFull + ')!</span> <a href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md" target="_blank"><i class="fa fa-external-link" aria-hidden="true"></i></a>'
+            $script:azGovVizNewerVersionAvailableHTML = '<span style="color:#FF5733; font-weight:bold">Get the latest Azure Governance Visualizer version (' + $azGovVizVersionOnRepositoryFull + ')!</span> <a href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md" target="_blank"><i class="fa fa-external-link" aria-hidden="true"></i></a>'
         }
     }
     catch {

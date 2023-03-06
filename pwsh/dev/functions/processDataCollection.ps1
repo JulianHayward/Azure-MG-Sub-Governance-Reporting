@@ -86,6 +86,7 @@ function processDataCollection {
             $alzPolicyHashes = $using:alzPolicyHashes
             $alzPolicySetHashes = $using:alzPolicySetHashes
             $htDoARMRoleAssignmentScheduleInstances = $using:htDoARMRoleAssignmentScheduleInstances
+            $ValidPolicyEffects = $using:ValidPolicyEffects
             #other
             $function:addRowToTable = $using:funcAddRowToTable
             $function:namingValidation = $using:funcNamingValidation
@@ -102,6 +103,7 @@ function processDataCollection {
             $function:dataCollectionPolicyAssignmentsMG = $using:funcDataCollectionPolicyAssignmentsMG
             $function:dataCollectionRoleDefinitions = $using:funcDataCollectionRoleDefinitions
             $function:dataCollectionRoleAssignmentsMG = $using:funcDataCollectionRoleAssignmentsMG
+            $function:detectPolicyEffect = $using:funcDetectPolicyEffect
 
             #endregion usingVARS
             $builtInPolicyDefinitionsCount = $using:builtInPolicyDefinitionsCount
@@ -254,14 +256,6 @@ function processDataCollection {
 
     #region SUBSCRIPTION
     Write-Host ' CustomDataCollection Subscriptions'
-    # $subsExcludedStateCount = ($outOfScopeSubscriptions.where( { $_.outOfScopeReason -like 'State*' } )).Count
-    # $subsExcludedWhitelistCount = ($outOfScopeSubscriptions.where( { $_.outOfScopeReason -like 'QuotaId*' } )).Count
-    # if ($subsExcludedStateCount -gt 0) {
-    #     Write-Host "  CustomDataCollection $($subsExcludedStateCount) Subscriptions excluded (State != enabled)"
-    # }
-    # if ($subsExcludedWhitelistCount -gt 0) {
-    #     Write-Host "  CustomDataCollection $($subsExcludedWhitelistCount) Subscriptions excluded (not in quotaId whitelist: '$($SubscriptionQuotaIdWhitelist -join ', ')' OR is AAD_ quotaId)"
-    # }
 
     if ($outOfScopeSubscriptions.Count -gt 0) {
         Write-Host "  CustomDataCollection $($outOfScopeSubscriptions.Count) Subscriptions excluded" -ForegroundColor yellow
@@ -369,6 +363,7 @@ function processDataCollection {
                 $htResourcePropertiesConvertfromJSONFailed = $using:htResourcePropertiesConvertfromJSONFailed
                 $htAvailablePrivateEndpointTypes = $using:htAvailablePrivateEndpointTypes
                 $arrayAdvisorScores = $using:arrayAdvisorScores
+                $ValidPolicyEffects = $using:ValidPolicyEffects
                 #$htResourcesWithProperties = $using:htResourcesWithProperties
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
@@ -400,6 +395,7 @@ function processDataCollection {
                 $function:dataCollectionVNets = $using:funcDataCollectionVNets
                 $function:dataCollectionPrivateEndpoints = $using:funcDataCollectionPrivateEndpoints
                 $function:dataCollectionAdvisorScores = $using:funcDataCollectionAdvisorScores
+                $function:detectPolicyEffect = $using:funcDetectPolicyEffect
                 #endregion UsingVARs
 
                 $addRowToTableDone = $false

@@ -1,10 +1,10 @@
-# AzGovViz v6_major_20220930_1
+# Azure Governance Visualizer v6_major_20230306_1
 # First things first:
 # 1. Mandatory: define <Management Group Id> in line 11
 # 2. Optional: enable the schedule (line 22,23)
 # Documentation: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting
 
-name: AzGovViz_OIDC
+name: AzureGovernanceVisualizer_OIDC
 
 env:
   OutputPath: wiki
@@ -31,7 +31,7 @@ permissions:
   contents: write
 
 jobs:
-  AzGovViz:
+  AzureGovernanceVisualizer:
     runs-on: ubuntu-latest
 
     steps:
@@ -53,16 +53,16 @@ jobs:
             . .\$($env:ScriptDir)\$($env:ScriptPrereqFile) -OutputPath ${env:OutputPath}
           azPSVersion: "latest"
 
-      - name: Run AzGovViz
+      - name: Run Azure Governance Visualizer
         uses: azure/powershell@v1
         with:
           inlineScript: |
             . .\$($env:ScriptDir)\$($env:ScriptFile) -ManagementGroupId ${env:ManagementGroupId} -SubscriptionId4AzContext ${{secrets.SUBSCRIPTION_ID}} -ScriptPath ${env:ScriptDir} -OutputPath ${env:OutputPath} -GitHubActionsOIDC
           azPSVersion: "latest"
 
-      - name: Push AzGovViz output to repository
+      - name: Push Azure Governance Visualizer output to repository
         run: |
-          git config --global user.email "AzGovVizGHActions@ghActions.com"
+          git config --global user.email "AzureGovernanceVisualizerGHActions@ghActions.com"
           git config --global user.name "azgvz"
           git config pull.rebase false
           git add --all

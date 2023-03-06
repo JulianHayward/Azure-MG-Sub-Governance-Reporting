@@ -1,6 +1,6 @@
 function getOrphanedResources {
     $start = Get-Date
-    Write-Host 'Getting orphaned resources (ARG)'
+    Write-Host 'Getting orphaned/unused resources (ARG)'
 
     $queries = [System.Collections.ArrayList]@()
     $intent = 'cost savings - stopped but not deallocated VM'
@@ -177,14 +177,14 @@ function getOrphanedResources {
             }
         }
 
-        Write-Host " Found $($arrayOrphanedResources.Count) orphaned Resources"
-        Write-Host " Exporting OrphanedResources CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesOrphaned.csv'"
-        $arrayOrphanedResources | Sort-Object -Property Resource | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesOrphaned.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        Write-Host " Found $($arrayOrphanedResources.Count) orphaned/unused Resources"
+        Write-Host " Exporting OrphanedResources CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesCostOptimizationAndCleanup.csv'"
+        $arrayOrphanedResources | Sort-Object -Property Resource | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesCostOptimizationAndCleanup.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
     }
     else {
-        Write-Host ' No orphaned Resources found'
+        Write-Host ' No orphaned/unused Resources found'
     }
 
     $end = Get-Date
-    Write-Host "Getting orphaned resources (ARG) processing duration: $((New-TimeSpan -Start $start -End $end).TotalMinutes) minutes ($((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds)"
+    Write-Host "Getting orphaned/unused resources (ARG) processing duration: $((New-TimeSpan -Start $start -End $end).TotalMinutes) minutes ($((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds)"
 }

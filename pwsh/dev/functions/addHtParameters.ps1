@@ -1,5 +1,5 @@
 function addHtParameters {
-    Write-Host 'Add AzGovViz htParameters'
+    Write-Host 'Add Azure Governance Visualizer htParameters'
     if ($LargeTenant -eq $true) {
         $script:NoScopeInsights = $true
         $NoResourceProvidersAtAll = $true
@@ -42,5 +42,5 @@ function addHtParameters {
     }
     Write-Host 'htParameters:'
     $azAPICallConf['htParameters'] | Format-Table -AutoSize | Out-String
-    Write-Host 'Add AzGovViz htParameters succeeded' -ForegroundColor Green
+    Write-Host 'Add Azure Governance Visualizer htParameters succeeded' -ForegroundColor Green
 }

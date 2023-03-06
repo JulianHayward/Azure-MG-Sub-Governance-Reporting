@@ -347,9 +347,9 @@ function processTenantSummary() {
                                 AssignmentType                       = 'indirect'
                                 AssignmentInheritFrom                = "$($rbac.RoleAssignmentIdentityDisplayname) ($($rbac.RoleAssignmentIdentityObjectId))"
                                 GroupMembersCount                    = "$($grpHlpr.MembersAllCount) (Usr: $($grpHlpr.MembersUsersCount)$($CsvDelimiterOpposite) Grp: $($grpHlpr.MembersGroupsCount)$($CsvDelimiterOpposite) SP: $($grpHlpr.MembersServicePrincipalsCount))"
-                                ObjectDisplayName                    = "AzGovViz:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
-                                ObjectSignInName                     = "AzGovViz:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
-                                ObjectId                             = "AzGovViz:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
+                                ObjectDisplayName                    = "Azure Governance Visualizer:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
+                                ObjectSignInName                     = "Azure Governance Visualizer:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
+                                ObjectId                             = "Azure Governance Visualizer:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
                                 ObjectType                           = 'unresolved'
                                 RbacRelatedPolicyAssignment          = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignment
                                 RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
@@ -811,7 +811,7 @@ function processTenantSummary() {
                                 }
 
                                 if ($resolvedIdentity.'@odata.type' -ne '#microsoft.graph.user' -and $resolvedIdentity.'@odata.type' -ne '#microsoft.graph.servicePrincipal') {
-                                    Write-Host "!!! * * * IdentityType '$($resolvedIdentity.'@odata.type')' was not considered by AzGovViz - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
+                                    Write-Host "!!! * * * IdentityType '$($resolvedIdentity.'@odata.type')' was not considered by Azure Governance Visualizer - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
                                 }
                             }
                         }
@@ -907,8 +907,11 @@ function processTenantSummary() {
         if ($tenantPolicy.effectDefaultValue -ne 'n/a') {
             $effect = "Default: $($tenantPolicy.effectDefaultValue); Allowed: $($tenantPolicy.effectAllowedValue)"
         }
-        else {
+        elseif ($tenantPolicy.effectFixedValue -ne 'n/a') {
             $effect = "Fixed: $($tenantPolicy.effectFixedValue)"
+        }
+        else {
+            $effect = 'n/a'
         }
 
         if (($tenantPolicy.RoleDefinitionIds) -ne 'n/a') {
@@ -2365,6 +2368,110 @@ extensions: [{ name: 'sort' }]
     }
     #endregion SUMMARYCustompolicySetOrphandedTenantRoot
 
+    #region SUMMARYPolicyParityCustomBuiltIn
+    Write-Host '  processing TenantSummary Policy parity custom built-in'
+
+    if ($arrayCustomBuiltInPolicyParity.Count -gt 0) {
+        $tfCount = $arrayCustomBuiltInPolicyParity.Count
+        $htmlTableId = 'TenantSummary_PolicyCustomBuiltInParity'
+        [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_PolicyCustomBuiltInParity"><i class="padlx fa fa-files-o" aria-hidden="true" style="color:#0078df"></i> <span class="valignMiddle">$($arrayCustomBuiltInPolicyParity.Count) custom Policy definition(s) built-in Policy rule parity</span>
+</button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id= "$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Policy Name</th>
+<th>Policy DisplayName</th>
+<th>Policy Category</th>
+<th>Policy Id</th>
+<th># match built-in</th>
+<th>Built-In Policy</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+        $htmlSUMMARYPolicyCustomBuiltInParity = $null
+        $htmlSUMMARYPolicyCustomBuiltInParity = foreach ($entry in $arrayCustomBuiltInPolicyParity | Sort-Object -Property CustomPolicyId) {
+            $arrayBuiltinsRef = @()
+            foreach ($builtInPolicyId in $entry.BuiltInPolicyId) {
+                $arrayBuiltinsRef += "<a class=`"externallink`" rel=`"noopener`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$($builtInPolicyId -replace '.*/').html`" target=`"_blank`">$($htCacheDefinitionsPolicy.($builtInPolicyId).DisplayName) <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a> ($($builtInPolicyId -replace '.*/'))"
+            }
+            $builtInPolicyAzA = $arrayBuiltinsRef -join ', '
+            @"
+<tr>
+<td>$($entry.CustomPolicyName)</td>
+<td>$($entry.CustomPolicyDisplayName)</td>
+<td>$($entry.CustomPolicyCategory)</td>
+<td>$($entry.CustomPolicyId)</td>
+<td>$($entry.MatchBuiltinPolicyCount)</td>
+<td>$($builtInPolicyAzA)</td>
+</tr>
+"@
+        }
+
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYPolicyCustomBuiltInParity)
+        [void]$htmlTenantSummary.AppendLine(@"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_2: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+"@)
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@'
+                <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No custom Policy definition(s) built-in Policy rule parity</p>
+'@)
+    }
+    #endregion SUMMARYPolicyParityCustomBuiltIn
+
     #region SUMMARYALZPolicies
     Write-Host '  processing TenantSummary ALZPolicies'
 
@@ -2627,7 +2734,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($policySetsDeprecated).count
         $htmlTableId = 'TenantSummary_policySetsDeprecated'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_policySetsDeprecated"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($policySetsDeprecated).count) Custom PolicySet definitions / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_policySetsDeprecated"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($policySetsDeprecated).count) Custom PolicySet definitions / deprecated built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -2715,7 +2822,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> $(($policySetsDeprecated).count) PolicySets / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></p>
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> $(($policySetsDeprecated).count) PolicySets / deprecated built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></p>
 "@)
     }
     #endregion SUMMARYPolicySetsDeprecatedPolicy
@@ -2776,7 +2883,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($policyAssignmentsDeprecated).count
         $htmlTableId = 'TenantSummary_policyAssignmentsDeprecated'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_policyAssignmentsDeprecated"><i class="padlx fa fa-exclamation-triangle orange" aria-hidden="true"></i> <span class="valignMiddle">$(($policyAssignmentsDeprecated).count) Policy assignments / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_policyAssignmentsDeprecated"><i class="padlx fa fa-exclamation-triangle orange" aria-hidden="true"></i> <span class="valignMiddle">$(($policyAssignmentsDeprecated).count) Policy assignments / deprecated built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -2867,7 +2974,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> $(($policyAssignmentsDeprecated).count) Policy assignments / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></p>
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> $(($policyAssignmentsDeprecated).count) Policy assignments / deprecated built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></p>
 "@)
     }
     #endregion SUMMARYPolicyAssignmentsDeprecatedPolicy
@@ -3903,7 +4010,7 @@ extensions: [{ name: 'sort' }]
                                 }
 
                                 if ($resolvedIdentity.'@odata.type' -ne '#microsoft.graph.user' -and $resolvedIdentity.'@odata.type' -ne '#microsoft.graph.servicePrincipal') {
-                                    Write-Host "!!! * * * IdentityType '$($resolvedIdentity.'@odata.type')' was not considered by AzGovViz - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
+                                    Write-Host "!!! * * * IdentityType '$($resolvedIdentity.'@odata.type')' was not considered by Azure Governance Visualizer - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
                                 }
                             }
                         }
@@ -3969,7 +4076,7 @@ extensions: [{ name: 'sort' }]
                 <i class="fa fa-exclamation-triangle orange" aria-hidden="true"></i><span style="color:#ff0000"> Output of $tfCount lines would exceed the html rows limit of $HtmlTableRowsLimit (html file potentially would become unresponsive). Work with the CSV file <i>$($csvFilename).csv</i> | Note: the CSV file will only exist if you did NOT use parameter <i>-NoCsvExport</i></span><br>
                 <span style="color:#ff0000">You can adjust the html row limit by using parameter <i>-HtmlTableRowsLimit</i></span><br>
                 <span style="color:#ff0000">You can reduce the number of lines by using parameter <i>-LargeTenant</i> and/or <i>-DoNotIncludeResourceGroupsAndResourcesOnRBAC</i></span><br>
-                <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">AzGovViz docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
+                <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">Azure Governance Visualizer docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
             </div>
 "@)
         }
@@ -4924,7 +5031,7 @@ extensions: [{ name: 'sort' }]
                 <i class="fa fa-exclamation-triangle orange" aria-hidden="true"></i><span style="color:#ff0000"> Output of $tfCount lines would exceed the html rows limit of $HtmlTableRowsLimit (html file potentially would become unresponsive). Work with the CSV file <i>$($csvFilename).csv</i> | Note: the CSV file will only exist if you did NOT use parameter <i>-NoCsvExport</i></span><br>
                 <span style="color:#ff0000">You can adjust the html row limit by using parameter <i>-HtmlTableRowsLimit</i></span><br>
                 <span style="color:#ff0000">You can reduce the number of lines by using parameter <i>-LargeTenant</i> and/or <i>-DoNotIncludeResourceGroupsAndResourcesOnRBAC</i></span><br>
-                <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">AzGovViz docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
+                <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">Azure Governance Visualizer docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
             </div>
 "@)
         }
@@ -5351,7 +5458,7 @@ extensions: [{ name: 'sort' }]
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@'
-                <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No PIM Eligibility - </span><span class="info valignMiddle">run AzGovViz with a Service Principal to get PIM Eligibility insights</p>
+                <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No PIM Eligibility - </span><span class="info valignMiddle">run Azure Governance Visualizer with a Service Principal to get PIM Eligibility insights</p>
 '@)
         }
     }
@@ -7455,7 +7562,7 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYOrphanedResources
     $startSUMMARYOrphanedResources = Get-Date
-    Write-Host '  processing TenantSummary Orphaned Resources'
+    Write-Host '  processing TenantSummary Orphaned/unused Resources'
     if ($arrayOrphanedResources.count -gt 0) {
         $script:arrayOrphanedResourcesSlim = $arrayOrphanedResources | Sort-Object -Property type
 
@@ -7480,11 +7587,11 @@ extensions: [{ name: 'sort' }]
         $tfCount = $orphanedResourceTypesCount
         $htmlTableId = 'TenantSummary_orphanedResources'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_orphanedResources"><i class="padlx fa fa-trash-o" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$($arrayOrphanedResources.count) Orphaned Resources ($orphanedResourceTypesCountUnique ResourceTypes)</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_orphanedResources"><i class="padlx fa fa-trash-o" aria-hidden="true" style="color: #0078df"></i>=<i class="fa fa-usd" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">Cost optimization & cleanup - $($arrayOrphanedResources.count) Resources, $orphanedResourceTypesCountUnique Resource Types</span>
 </button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> 'Azure Orphan Resources' ARG queries and workbooks</span> <a class="externallink" href="https://github.com/dolevshor/azure-orphan-resources" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
-<span class="padlxx"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Resource details can be found in the CSV output *_ResourcesOrphaned.csv</span><br>
+<span class="padlxx"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Resource details can be found in the CSV output *_ResourcesCostOptimizationAndCleanup.csv</span><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
 <thead>
@@ -7599,11 +7706,11 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@'
-            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No Orphaned Resources</p>
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No cost optimization & cleanup</p>
 '@)
     }
     $endSUMMARYOrphanedResources = Get-Date
-    Write-Host "   SUMMARY Orphaned Resources processing duration: $((New-TimeSpan -Start $startSUMMARYOrphanedResources -End $endSUMMARYOrphanedResources).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYOrphanedResources -End $endSUMMARYOrphanedResources).TotalSeconds) seconds)"
+    Write-Host "   SUMMARY Orphaned/unused Resources processing duration: $((New-TimeSpan -Start $startSUMMARYOrphanedResources -End $endSUMMARYOrphanedResources).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYOrphanedResources -End $endSUMMARYOrphanedResources).TotalSeconds) seconds)"
     #endregion SUMMARYOrphanedResources
 
     #region SUMMARYSubResourceProviders
@@ -7902,7 +8009,7 @@ extensions: [{ name: 'sort' }]
                 <div class="content TenantSummary padlxx">
                     <i class="fa fa-exclamation-triangle orange" aria-hidden="true"></i><span style="color:#ff0000"> Output of $tfCount lines would exceed the html rows limit of $HtmlTableRowsLimit (html file potentially would become unresponsive). Work with the CSV file <i>$($csvFilename).csv</i> | Note: the CSV file will only exist if you did NOT use parameter <i>-NoCsvExport</i></span><br>
                     <span style="color:#ff0000">You can adjust the html row limit by using parameter <i>-HtmlTableRowsLimit</i></span><br>
-                    <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">AzGovViz docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
+                    <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">Azure Governance Visualizer docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
                 </div>
 "@)
                 }
@@ -10685,7 +10792,7 @@ extensions: [{ name: 'sort' }]
                                         }
                                     }
                                     else {
-                                        $status = 'AzGovViz did not detect the resourceType'
+                                        $status = 'Azure Governance Visualizer did not detect the resourceType'
                                         $diagnosticsLogCategoriesSupported = 'n/a'
                                         $diagnosticsLogCategoriesNotCoveredByPolicy = 'n/a'
                                         $recommendation = 'no recommendation as this resourceType seems not existing'

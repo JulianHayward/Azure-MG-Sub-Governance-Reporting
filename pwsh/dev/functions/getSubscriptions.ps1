@@ -12,16 +12,8 @@ function getSubscriptions {
     Write-Host " $($requestAllSubscriptionsAPI.Count) Subscriptions returned"
     foreach ($subscription in $requestAllSubscriptionsAPI) {
 
-        # #test
-        # if ($subscription.subscriptionId -eq 'GUID') {
-        #     Write-Host "  Finding: $($subscription.displayName) ($($subscription.subscriptionId)) belongs to foreign tenant '$($subscription.tenantId)' - AzGovViz: excluding this Subscripion" -ForegroundColor DarkRed
-        #     $script:htSubscriptionsFromOtherTenants.($subscription.subscriptionId) = @{}
-        #     $script:htSubscriptionsFromOtherTenants.($subscription.subscriptionId).subDetails = $subscription
-        #     continue
-        # }
-
         if ($subscription.tenantId -ne $azAPICallConf['checkcontext'].tenant.id) {
-            Write-Host "  Finding: $($subscription.displayName) ($($subscription.subscriptionId)) belongs to foreign tenant '$($subscription.tenantId)' - AzGovViz: excluding this Subscripion" -ForegroundColor DarkRed
+            Write-Host "  Finding: $($subscription.displayName) ($($subscription.subscriptionId)) belongs to foreign tenant '$($subscription.tenantId)' - Azure Governance Visualizer: excluding this Subscripion" -ForegroundColor DarkRed
             $script:htSubscriptionsFromOtherTenants.($subscription.subscriptionId) = @{}
             $script:htSubscriptionsFromOtherTenants.($subscription.subscriptionId).subDetails = $subscription
         }

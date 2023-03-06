@@ -13,7 +13,7 @@ function processStorageAccountAnalysis {
             foreach ($sa in $saConsumptionByResourceId) {
                 $htSACost.($sa.Name) = @{}
                 $htSACost.($sa.Name).meterCategoryAll = ($sa.Group.MeterCategory | Sort-Object) -join ', '
-                $htSACost.($sa.Name).costAll = [decimal]($sa.Group.PreTaxCost | Measure-Object -Sum).Sum
+                $htSACost.($sa.Name).costAll = ($sa.Group.PreTaxCost | Measure-Object -Sum).Sum #[decimal]($sa.Group.PreTaxCost | Measure-Object -Sum).Sum
                 $htSACost.($sa.Name).currencyAll = ($sa.Group.Currency | Sort-Object -Unique) -join ', '
                 foreach ($costentry in $sa.Group) {
                     $htSACost.($sa.Name)."cost_$($costentry.MeterCategory)" = $costentry.PreTaxCost

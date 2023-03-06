@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20221212_1
+# Azure Governance Visualizer v6_major_20230306_1
 # First things first:
 # 1. Mandatory: In the AzGovViz.variables.yml file set needed variables 'ServiceConnection' and 'ManagementGroupId
 # 2. Mandatory: Check line 20
@@ -19,7 +19,7 @@ schedules:
     include:
     - master #CHECK branch 'master' is applicable? - delete me :)
 
-#Running AzOps? Run AzGovViz after 'AzOps - Push' ..
+#Running AzOps? Run Azure Governance Visualizer after 'AzOps - Push' ..
 #AzOps Accellerator https://github.com/Azure/AzOps-Accelerator
 #resources:
 #  pipelines:
@@ -31,7 +31,7 @@ schedules:
 #            - master #CHECK branch 'master' is applicable? - delete me :)
 
 jobs:
-- job: AzGovViz
+- job: AzureGovernanceVisualizer
   timeoutInMinutes: 0
 
   pool:
@@ -113,22 +113,22 @@ jobs:
       scriptPath: '$(System.DefaultWorkingDirectory)/$(ScriptDir)/$(Script)'
       scriptArguments: $(ScriptArguments) -ScriptPath $(ScriptDir)
       azurePowerShellVersion: latestVersion
-    displayName: 'Run AzGovViz'
+    displayName: 'Run Azure Governance Visualizer'
 
   - pwsh: |
       write-host "#################################"
-      write-host "Push AzGovViz output to repository"
+      write-host "Push Azure Governance Visualizer output to repository"
       write-host "#################################"
       $executionDateTimeInternationalReadable = get-date -format "dd-MMM-yyyy HH:mm:ss"
       $currentTimeZone = (Get-TimeZone).Id
-      git config --global user.email "AzGovVizPipeline@azdo.com"
+      git config --global user.email "AzureGovernanceVisualizerPipeline@azdo.com"
       $PipelineInfo = "Pipeline: '$(Build.DefinitionName)' 'rev $(Build.BuildNumber)' (Project: $([uri]::EscapeDataString("$(System.TeamProject)")); Repository: $(Build.Repository.Name); Branch: $(Build.SourceBranchName) Commit: $(Build.SourceVersion))"
       git config --global user.name "$PipelineInfo"
       git config pull.rebase false
       git add --all
       git commit -m "wiki $executionDateTimeInternationalReadable ($currentTimeZone)"
       git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" push origin HEAD:$(Build.SourceBranchName)
-    displayName: 'Push AzGovViz output to repository'
+    displayName: 'Push Azure Governance Visualizer output to repository'
 
   - task: AzurePowerShell@5
     condition: and(succeeded(), eq(variables['WebAppPublish'], 'true'))

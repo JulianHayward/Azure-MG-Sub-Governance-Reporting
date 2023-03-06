@@ -10,7 +10,7 @@
         Management Groups, Subscriptions
 
 .DESCRIPTION
-    Do you want to get granular insights on your technical Azure Governance implementation? - document it in csv, html and markdown? AzGovViz is a PowerShell based script that iterates your Azure Tenants Management Group hierarchy down to Subscription level. It captures most relevant Azure governance capabilities such as Azure Policy, RBAC and Blueprints and a lot more. From the collected data AzGovViz provides visibility on your Hierarchy Map, creates a Tenant Summary and builds granular Scope Insights on Management Groups and Subscriptions. The technical requirements as well as the required permissions are minimal.
+    Do you want to get granular insights on your technical Azure Governance implementation? - document it in csv, html and markdown? Azure Governance Visualizer is a PowerShell based script that iterates your Azure Tenants Management Group hierarchy down to Subscription level. It captures most relevant Azure governance capabilities such as Azure Policy, RBAC and Blueprints and a lot more. From the collected data Azure Governance Visualizer provides visibility on your Hierarchy Map, creates a Tenant Summary and builds granular Scope Insights on Management Groups and Subscriptions. The technical requirements as well as the required permissions are minimal.
 
 .PARAMETER ManagementGroupId
     Define the Management Group Id for which the outputs/files should be generated
@@ -34,7 +34,7 @@
     default is 80%, this parameter defines the warning level for approaching Limits (e.g. 80% of Role Assignment limit reached) change as per your preference
 
 .PARAMETER SubscriptionQuotaIdWhitelist
-    default is 'undefined', this parameter defines the QuotaIds the subscriptions must match so that AzGovViz processes them. The script checks if the QuotaId startswith the string that you have put in. Separate multiple strings with comma e.g. MSDN_,EnterpriseAgreement_
+    default is 'undefined', this parameter defines the QuotaIds the subscriptions must match so that Azure Governance Visualizer processes them. The script checks if the QuotaId startswith the string that you have put in. Separate multiple strings with comma e.g. MSDN_,EnterpriseAgreement_
 
 .PARAMETER NoPolicyComplianceStates
     use this parameter if policy compliance states should not be queried
@@ -157,7 +157,7 @@
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibilityIntegrationRoleAssignmentsAll
 
 .PARAMETER NoALZPolicyVersionChecker
-    'Azure Landing Zones (ALZ) Policy Version Checker' for Policy and Set definitions. AzGovViz will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The 'Azure Landing Zones (ALZ) Policy Version Checker' results will be displayed in the TenantSummary and a CSV export `*_ALZPolicyVersionChecker.csv` will be provided.
+    'Azure Landing Zones (ALZ) Policy Version Checker' for Policy and Set definitions. Azure Governance Visualizer will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The 'Azure Landing Zones (ALZ) Policy Version Checker' results will be displayed in the TenantSummary and a CSV export `*_ALZPolicyVersionChecker.csv` will be provided.
     If you do not want to execute the 'Azure Landing Zones (ALZ) Policy Version Checker' feature then use this parameter
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 
@@ -349,7 +349,7 @@
 .LINK
     https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting (aka.ms/AzGovViz)
     https://github.com/microsoft/CloudAdoptionFramework/tree/master/govern/AzureGovernanceVisualizer
-    Please note that while being developed by a Microsoft employee, AzGovViz is not a Microsoft service or product. AzGovViz is a personal/community driven project, there are none implicit or explicit obligations related to this project, it is provided 'as is' with no warranties and confer no rights.
+    Please note that while being developed by a Microsoft employee, Azure Governance Visualizer is not a Microsoft service or product. Azure Governance Visualizer is a personal/community driven project, there are none implicit or explicit obligations related to this project, it is provided 'as is' with no warranties and confer no rights.
 #>
 
 [CmdletBinding()]
@@ -359,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.68',
+    $AzAPICallVersion = '1.1.70',
 
     [string]
-    $ProductVersion = 'v6_major_20230302_1',
+    $ProductVersion = 'v6_major_20230306_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -604,7 +604,10 @@ Param
     $LimitTagsSubscription = 50,
 
     [array]
-    $MSTenantIds = @('2f4a9838-26b7-47ee-be60-ccc1fdec5953', '33e01921-4d64-4f8c-a055-5bdaffd5e33d')
+    $MSTenantIds = @('2f4a9838-26b7-47ee-be60-ccc1fdec5953', '33e01921-4d64-4f8c-a055-5bdaffd5e33d'),
+
+    [array]
+    $ValidPolicyEffects = @('append', 'audit', 'auditIfNotExists', 'deny', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting')
 )
 
 $Error.clear()
@@ -616,7 +619,7 @@ Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings 'true'
 #start
 $startAzGovViz = Get-Date
 $startTime = Get-Date -Format 'dd-MMM-yyyy HH:mm:ss'
-Write-Host "Start AzGovViz $($startTime) (#$($ProductVersion))"
+Write-Host "Start Azure Governance Visualizer $($startTime) (#$($ProductVersion))"
 
 if ($ManagementGroupId -match ' ') {
     Write-Host "Provided Management Group ID: '$($ManagementGroupId)'" -ForegroundColor Yellow
@@ -625,6 +628,8 @@ if ($ManagementGroupId -match ' ') {
 }
 
 #region Functions
+. ".\$($ScriptPath)\functions\getPolicyHash.ps1"
+. ".\$($ScriptPath)\functions\detectPolicyEffect.ps1"
 . ".\$($ScriptPath)\functions\exportResourceLocks.ps1"
 . ".\$($ScriptPath)\functions\processHierarchyMapOnlyCustomData.ps1"
 . ".\$($ScriptPath)\functions\processPrivateEndpoints.ps1"
@@ -691,6 +696,8 @@ $funcGetGroupmembers = $function:GetGroupmembers.ToString()
 $funcResolveObjectIds = $function:ResolveObjectIds.ToString()
 $funcNamingValidation = $function:NamingValidation.ToString()
 $funcTestGuid = $function:testGuid.ToString()
+$funcDetectPolicyEffect = $function:detectPolicyEffect.ToString()
+$funcGetPolicyHash = $function:getPolicyHash.ToString()
 
 if ($HierarchyMapOnly -and $HierarchyMapOnlyCustomDataJSON) {
     processHierarchyMapOnlyCustomData
@@ -713,7 +720,7 @@ if ($DoPSRule) {
     Write-Host ''
     Write-Host ' * * * CHANGE: PSRule for Azure * * *' -ForegroundColor Magenta
     Write-Host 'PSRule integration has been paused'
-    Write-Host 'AzGovViz leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.'
+    Write-Host 'Azure Governance Visualizer leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.'
     $DoPSRule = $false
     Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor Magenta
     Write-Host ''
@@ -765,8 +772,8 @@ checkAzGovVizVersion
 if ($azGovVizNewerVersionAvailable) {
     if (-not $azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
         Write-Host ''
-        Write-Host " * * * This AzGovViz version ($ProductVersion) is not up to date. Get the latest AzGovViz version ($azGovVizVersionOnRepositoryFull)! * * *" -ForegroundColor Green
-        Write-Host 'Check the AzGovViz history: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md'
+        Write-Host " * * * This Azure Governance Visualizer version ($ProductVersion) is not up to date. Get the latest Azure Governance Visualizer version ($azGovVizVersionOnRepositoryFull)! * * *" -ForegroundColor Green
+        Write-Host 'Check the Azure Governance Visualizer history: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md'
         Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor Green
         Pause
     }
@@ -786,7 +793,7 @@ if (-not $HierarchyMapOnly) {
             Write-Host ' * * * RECOMMENDATION: PSRule for Azure * * *' -ForegroundColor Magenta
             Write-Host "Parameter -DoPSRule == '$DoPSRule'"
             Write-Host "'PSRule for Azure' based ouputs provide aggregated Microsoft Azure Well-Architected Framework (WAF) aligned resource analysis results including guidance for remediation."
-            Write-Host 'Consider running AzGovViz with the parameter -DoPSRule (example: .\pwsh\AzGovVizParallel.ps1 -DoPSRule)'
+            Write-Host 'Consider running Azure Governance Visualizer with the parameter -DoPSRule (example: .\pwsh\AzGovVizParallel.ps1 -DoPSRule)'
             Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor Magenta
             Pause
         }
@@ -835,7 +842,7 @@ else {
 
 getFileNaming
 
-Write-Host "Running AzGovViz for ManagementGroupId: '$ManagementGroupId'" -ForegroundColor Yellow
+Write-Host "Running Azure Governance Visualizer for ManagementGroupId: '$ManagementGroupId'" -ForegroundColor Yellow
 
 $newTable = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 $htMgDetails = @{}
@@ -956,6 +963,8 @@ if (-not $HierarchyMapOnly) {
     $htResourceProvidersRef = @{}
     $htAvailablePrivateEndpointTypes = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $arrayAdvisorScores = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $htHashesBuiltInPolicy = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $arrayCustomBuiltInPolicyParity = [System.Collections.ArrayList]@()
 }
 
 if (-not $HierarchyMapOnly) {
@@ -1277,6 +1286,35 @@ if (-not $HierarchyMapOnly) {
     $tenantBuiltInPoliciesCount = ($tenantBuiltInPolicies).count
     $tenantCustomPolicies = (($htCacheDefinitionsPolicy).Values).where({ $_.Type -eq 'Custom' } )
     $tenantCustomPoliciesCount = ($tenantCustomPolicies).count
+
+    #hashes for parity builtin/custom
+    Write-Host 'Processing Policy custom/built-In parity check'
+    $startPolicyCustomBuiltInParity = Get-Date
+    foreach ($customPolicy in $tenantCustomPolicies) {
+        $policyRuleHash = getPolicyHash -json ($customPolicy.Json.properties.policyRule | ConvertTo-Json -Depth 99)
+        if ($htHashesBuiltInPolicy.($policyRuleHash)) {
+            $null = $arrayCustomBuiltInPolicyParity.Add([PSCustomObject]@{
+                    CustomPolicyName        = $customPolicy.Name
+                    CustomPolicyDisplayName = $customPolicy.DisplayName
+                    CustomPolicyCategory    = $customPolicy.Category
+                    CustomPolicyId          = $customPolicy.Id
+                    MatchBuiltinPolicyCount = $htHashesBuiltInPolicy.($policyRuleHash).Policies.Count
+                    BuiltInPolicyId         = ($htHashesBuiltInPolicy.($policyRuleHash).Policies | Sort-Object) -join "$CsvDelimiterOpposite "
+                })
+        }
+    }
+    if ($arrayCustomBuiltInPolicyParity.Count -gt 0) {
+        Write-Host " $($arrayCustomBuiltInPolicyParity.Count) custom Policy definition(s) found that have parity with built-In Policy definition Policy rule"
+        if (-not $NoCsvExport) {
+            Write-Host " Exporting PolicyCustomBuiltInParity CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyCustomBuiltInParity.csv'"
+            $arrayCustomBuiltInPolicyParity | Sort-Object -Property CustomPolicyId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyCustomBuiltInParity.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        }
+    }
+    else {
+        Write-Host ' No custom Policy definition found that have parity with built-In Policy definition Policy rule'
+    }
+    $endPolicyCustomBuiltInParity = Get-Date
+    Write-Host " Policy custom/built-In parity check duration: $((New-TimeSpan -Start $startPolicyCustomBuiltInParity -End $endPolicyCustomBuiltInParity).TotalMinutes) minutes ($((New-TimeSpan -Start $startPolicyCustomBuiltInParity -End $endPolicyCustomBuiltInParity).TotalSeconds) seconds)"
     #endregion create array Policy definitions
 
     #region create array PolicySet definitions
@@ -1629,7 +1667,7 @@ $html = @"
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>AzGovViz</title>
+    <title>Azure Governance Visualizer aka AzGovViz</title>
     <script type="text/javascript">
         var link = document.createElement( "link" );
         rand = Math.floor(Math.random() * 99999);
@@ -1785,7 +1823,7 @@ if (-not $HierarchyMapOnly) {
         <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
         <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
         <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
-        <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_002.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_004.js"></script>
         <script src="https://www.azadvertizer.net/azgovvizv4/js/autocorrectOff_v004_001.js"></script>
         <script>
             fitty('#fitme', {
@@ -1862,7 +1900,7 @@ if (-not $HierarchyMapOnly) {
         <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
         <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
         <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
-        <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_002.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_004.js"></script>
         <script src="https://www.azadvertizer.net/azgovvizv4/js/autocorrectOff_v004_001.js"></script>
         <script>
             fitty('#fitme', {
@@ -2268,7 +2306,7 @@ $html += @"
     <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_002.js"></script>
+    <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_004.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/autocorrectOff_v004_001.js"></script>
     <script>
         fitty('#fitme', {
@@ -2339,15 +2377,15 @@ apiCallTracking -stage 'Summary' -spacing ''
 
 $endAzGovViz = Get-Date
 $durationProduct = (New-TimeSpan -Start $startAzGovViz -End $endAzGovViz)
-Write-Host "AzGovViz duration: $($durationProduct.TotalMinutes) minutes"
+Write-Host "Azure Governance Visualizer duration: $($durationProduct.TotalMinutes) minutes"
 
 #end
 $endTime = Get-Date -Format 'dd-MMM-yyyy HH:mm:ss'
-Write-Host "End AzGovViz $endTime"
+Write-Host "End Azure Governance Visualizer $endTime"
 
 Write-Host 'Checking for errors'
 if ($Error.Count -gt 0) {
-    Write-Host "Dumping $($Error.Count) Errors (handled by AzGovViz):"
+    Write-Host "Dumping $($Error.Count) Errors (handled by Azure Governance Visualizer):"
     $Error | Out-Host
 }
 else {
@@ -2362,7 +2400,7 @@ if ($DoTranscript) {
 
 Write-Host ''
 Write-Host '--------------------'
-Write-Host 'AzGovViz completed successful' -ForegroundColor Green
+Write-Host 'Azure Governance Visualizer completed successful' -ForegroundColor Green
 
 if ($Error.Count -gt 0) {
     Write-Host "Don't bother about dumped errors"
@@ -2389,8 +2427,8 @@ if ($DoPSRule) {
 if ($azGovVizNewerVersionAvailable) {
     if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
         Write-Host ''
-        Write-Host "This AzGovViz version ($ProductVersion) is not up to date. Get the latest AzGovViz version ($azGovVizVersionOnRepositoryFull)!"
-        Write-Host 'Check the AzGovViz history: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md'
+        Write-Host "This Azure Governance Visualizer version ($ProductVersion) is not up to date. Get the latest Azure Governance Visualizer version ($azGovVizVersionOnRepositoryFull)!"
+        Write-Host 'Check the Azure Governance Visualizer history: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md'
     }
 }
 #endregion infoNewAzGovVizVersionAvailable
@@ -2399,7 +2437,7 @@ if ($azGovVizNewerVersionAvailable) {
 if ($htResourcePropertiesConvertfromJSONFailed.Keys.Count -gt 0) {
     Write-Host ''
     Write-Host ' * * * Please help * * *' -ForegroundColor DarkGreen
-    Write-Host 'For the following resource(s) an error occurred converting from JSON (different casing). Please inspect the resource(s) for keys with different casing. Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide the JSON dump for the resource(s) (scrub subscription Id and company identifyable names) - Thank you!'
+    Write-Host 'For the following resource(s) an error occurred converting from JSON (different casing). Please inspect the resource(s) for keys with different casing. Please file an issue at the Azure Governance Visualizer GitHub repository (aka.ms/AzGovViz) and provide the JSON dump for the resource(s) (scrub subscription Id and company identifyable names) - Thank you!'
     foreach ($resourceId in $htResourcePropertiesConvertfromJSONFailed.Keys) {
         Write-Host " resId: '$resourceId'"
     }
@@ -2409,6 +2447,6 @@ if ($htResourcePropertiesConvertfromJSONFailed.Keys.Count -gt 0) {
 
 #region runIdentifier
 if ($ShowRunIdentifier) {
-    Write-Host "AzGovViz run identifier: '$($statsIdentifier)'"
+    Write-Host "Azure Governance Visualizer run identifier: '$($statsIdentifier)'"
 }
 #endregion runIdentifier

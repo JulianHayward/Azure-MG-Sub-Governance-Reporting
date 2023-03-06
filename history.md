@@ -1,8 +1,24 @@
-# AzGovViz - Azure Governance Visualizer
+# Azure Governance Visualizer aka AzGovViz 
 
-## AzGovViz version history
+## Azure Governance Visualizer version history
 
-### AzGovViz version 6
+### Azure Governance Visualizer version 6
+
+__Changes__ (2023-Mar-06 / Major)
+
+* New feature: Custom Policy definitions that have 'Policy rule' parity with built-in Policy definition(s) (HTML __TenantSummary__/Policy and CSV output)
+* Enhanced *_PolicyAll.json output to include Policy assignments
+* Optimize method to detect Policy definition effect
+* Optimize consumption / convert to decimal
+* Renamed the 'Orphaned Resources' feature to 'Cost optimization & cleanup'
+  * Renamed CSV output '\_\*ResourcesOrphaned.csv' to '\_\*ResourcesCostOptimizationAndCleanup.csv'
+* &#128640; Highlight contribution by @TimWanierke: Extended the 'Cost optimization & cleanup' feature (HTML __TenantSummary__/Subscriptions, Resources & Defender) with 'stopped but not deallocated' Virtual Machines including the related cost
+![stoppedVMs](img/orphaned_stoppedVMs.png)
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.70
+  * minor fixes; not Azure Governance Visualizer specific
+* Added new section [Trust?!](#trust)
+* Typ0s and minor fixes
+* Transitioning product name 'AzGovViz' to 'Azure Governance Visualizer aka AzGovViz' as folks tend to interpretate the 'Gov' as government and not as governance
 
 __Changes__ (2023-Mar-02 / Major)
 

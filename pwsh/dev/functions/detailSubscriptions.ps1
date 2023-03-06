@@ -77,7 +77,7 @@ function detailSubscriptions {
                         })
                 }
                 else {
-                    #Write-Host " preCustomDataCollection: $($childrenSubscription.properties.displayName) ($($childrenSubscription.name)) Subscription Quota Id: $($sub.subDetails.subscriptionPolicies.quotaId) is out of scope for AzGovViz (not in Whitelist)"
+                    #Write-Host " preCustomDataCollection: $($childrenSubscription.properties.displayName) ($($childrenSubscription.name)) Subscription Quota Id: $($sub.subDetails.subscriptionPolicies.quotaId) is out of scope for Azure Governance Visualizer (not in Whitelist)"
                     $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{
                             subscriptionId      = $childrenSubscription.name
                             subscriptionName    = $childrenSubscription.properties.displayName

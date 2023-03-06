@@ -10,7 +10,7 @@
         Management Groups, Subscriptions
 
 .DESCRIPTION
-    Do you want to get granular insights on your technical Azure Governance implementation? - document it in csv, html and markdown? AzGovViz is a PowerShell based script that iterates your Azure Tenants Management Group hierarchy down to Subscription level. It captures most relevant Azure governance capabilities such as Azure Policy, RBAC and Blueprints and a lot more. From the collected data AzGovViz provides visibility on your Hierarchy Map, creates a Tenant Summary and builds granular Scope Insights on Management Groups and Subscriptions. The technical requirements as well as the required permissions are minimal.
+    Do you want to get granular insights on your technical Azure Governance implementation? - document it in csv, html and markdown? Azure Governance Visualizer is a PowerShell based script that iterates your Azure Tenants Management Group hierarchy down to Subscription level. It captures most relevant Azure governance capabilities such as Azure Policy, RBAC and Blueprints and a lot more. From the collected data Azure Governance Visualizer provides visibility on your Hierarchy Map, creates a Tenant Summary and builds granular Scope Insights on Management Groups and Subscriptions. The technical requirements as well as the required permissions are minimal.
 
 .PARAMETER ManagementGroupId
     Define the Management Group Id for which the outputs/files should be generated
@@ -34,7 +34,7 @@
     default is 80%, this parameter defines the warning level for approaching Limits (e.g. 80% of Role Assignment limit reached) change as per your preference
 
 .PARAMETER SubscriptionQuotaIdWhitelist
-    default is 'undefined', this parameter defines the QuotaIds the subscriptions must match so that AzGovViz processes them. The script checks if the QuotaId startswith the string that you have put in. Separate multiple strings with comma e.g. MSDN_,EnterpriseAgreement_
+    default is 'undefined', this parameter defines the QuotaIds the subscriptions must match so that Azure Governance Visualizer processes them. The script checks if the QuotaId startswith the string that you have put in. Separate multiple strings with comma e.g. MSDN_,EnterpriseAgreement_
 
 .PARAMETER NoPolicyComplianceStates
     use this parameter if policy compliance states should not be queried
@@ -157,7 +157,7 @@
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibilityIntegrationRoleAssignmentsAll
 
 .PARAMETER NoALZPolicyVersionChecker
-    'Azure Landing Zones (ALZ) Policy Version Checker' for Policy and Set definitions. AzGovViz will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The 'Azure Landing Zones (ALZ) Policy Version Checker' results will be displayed in the TenantSummary and a CSV export `*_ALZPolicyVersionChecker.csv` will be provided.
+    'Azure Landing Zones (ALZ) Policy Version Checker' for Policy and Set definitions. Azure Governance Visualizer will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The 'Azure Landing Zones (ALZ) Policy Version Checker' results will be displayed in the TenantSummary and a CSV export `*_ALZPolicyVersionChecker.csv` will be provided.
     If you do not want to execute the 'Azure Landing Zones (ALZ) Policy Version Checker' feature then use this parameter
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 
@@ -349,7 +349,7 @@
 .LINK
     https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting (aka.ms/AzGovViz)
     https://github.com/microsoft/CloudAdoptionFramework/tree/master/govern/AzureGovernanceVisualizer
-    Please note that while being developed by a Microsoft employee, AzGovViz is not a Microsoft service or product. AzGovViz is a personal/community driven project, there are none implicit or explicit obligations related to this project, it is provided 'as is' with no warranties and confer no rights.
+    Please note that while being developed by a Microsoft employee, Azure Governance Visualizer is not a Microsoft service or product. Azure Governance Visualizer is a personal/community driven project, there are none implicit or explicit obligations related to this project, it is provided 'as is' with no warranties and confer no rights.
 #>
 
 [CmdletBinding()]
@@ -359,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.68',
+    $AzAPICallVersion = '1.1.70',
 
     [string]
-    $ProductVersion = 'v6_major_20230302_1',
+    $ProductVersion = 'v6_major_20230306_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -604,7 +604,10 @@ Param
     $LimitTagsSubscription = 50,
 
     [array]
-    $MSTenantIds = @('2f4a9838-26b7-47ee-be60-ccc1fdec5953', '33e01921-4d64-4f8c-a055-5bdaffd5e33d')
+    $MSTenantIds = @('2f4a9838-26b7-47ee-be60-ccc1fdec5953', '33e01921-4d64-4f8c-a055-5bdaffd5e33d'),
+
+    [array]
+    $ValidPolicyEffects = @('append', 'audit', 'auditIfNotExists', 'deny', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting')
 )
 
 $Error.clear()
@@ -616,7 +619,7 @@ Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings 'true'
 #start
 $startAzGovViz = Get-Date
 $startTime = Get-Date -Format 'dd-MMM-yyyy HH:mm:ss'
-Write-Host "Start AzGovViz $($startTime) (#$($ProductVersion))"
+Write-Host "Start Azure Governance Visualizer $($startTime) (#$($ProductVersion))"
 
 if ($ManagementGroupId -match ' ') {
     Write-Host "Provided Management Group ID: '$($ManagementGroupId)'" -ForegroundColor Yellow
@@ -626,7 +629,7 @@ if ($ManagementGroupId -match ' ') {
 
 #region Functions
 function addHtParameters {
-    Write-Host 'Add AzGovViz htParameters'
+    Write-Host 'Add Azure Governance Visualizer htParameters'
     if ($LargeTenant -eq $true) {
         $script:NoScopeInsights = $true
         $NoResourceProvidersAtAll = $true
@@ -669,7 +672,7 @@ function addHtParameters {
     }
     Write-Host 'htParameters:'
     $azAPICallConf['htParameters'] | Format-Table -AutoSize | Out-String
-    Write-Host 'Add AzGovViz htParameters succeeded' -ForegroundColor Green
+    Write-Host 'Add Azure Governance Visualizer htParameters succeeded' -ForegroundColor Green
 }
 function addIndexNumberToArray (
     [Parameter(Mandatory = $True)]
@@ -1346,7 +1349,7 @@ function buildMD {
     if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions -eq $true) {
         if ($azAPICallConf['htParameters'].onAzureDevOps -eq $true) {
             $markdown += @"
-# AzGovViz - Management Group Hierarchy
+# Azure Governance Visualizer - Management Group Hierarchy
 
 ## HierarchyMap (Mermaid)
 
@@ -1357,7 +1360,7 @@ function buildMD {
         if ($azAPICallConf['htParameters'].onGitHubActions -eq $true) {
             $marks = '```'
             $markdown += @"
-# AzGovViz - Management Group Hierarchy
+# Azure Governance Visualizer - Management Group Hierarchy
 
 ## HierarchyMap (Mermaid)
 
@@ -1369,7 +1372,7 @@ $($marks)mermaid
     }
     else {
         $markdown += @"
-# AzGovViz - Management Group Hierarchy
+# Azure Governance Visualizer - Management Group Hierarchy
 
 $executionDateTimeInternationalReadable ($currentTimeZone)
 
@@ -1505,52 +1508,58 @@ function buildPolicyAllJSON {
     $htPolicyAndPolicySet = [ordered]@{}
     $htPolicyAndPolicySet.Policy = [ordered]@{}
     $htPolicyAndPolicySet.PolicySet = [ordered]@{}
+    $htPolicyAndPolicySet.PolicyAssignment = [ordered]@{}
     foreach ($policy in ($tenantPoliciesDetailed | Sort-Object -Property Type, ScopeMGLevel, PolicyDefinitionId)) {
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()) = [ordered]@{}
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).PolicyType = $policy.Type
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).ScopeMGLevel = $policy.ScopeMGLevel
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).Scope = $policy.Scope
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).ScopeId = $policy.scopeId
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).PolicyDisplayName = $policy.PolicyDisplayName
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).PolicyDefinitionName = $policy.PolicyDefinitionName
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).PolicyDefinitionId = $policy.PolicyDefinitionId
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).PolicyEffect = $policy.PolicyEffect
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).PolicyCategory = $policy.PolicyCategory
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).UniqueAssignmentsCount = $policy.UniqueAssignmentsCount
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).UniqueAssignments = $policy.UniqueAssignments
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).UsedInPolicySetsCount = $policy.UsedInPolicySetsCount
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).UsedInPolicySets = $policy.UsedInPolicySet4JSON
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).CreatedOn = $policy.CreatedOn
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).CreatedBy = $policy.CreatedByJson
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).UpdatedOn = $policy.UpdatedOn
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).UpdatedBy = $policy.UpdatedByJson
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()).JSON = $policy.Json
+        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()) = [ordered]@{
+            PolicyType             = $policy.Type
+            ScopeMGLevel           = $policy.ScopeMGLevel
+            Scope                  = $policy.Scope
+            ScopeId                = $policy.scopeId
+            PolicyDisplayName      = $policy.PolicyDisplayName
+            PolicyDefinitionName   = $policy.PolicyDefinitionName
+            PolicyDefinitionId     = $policy.PolicyDefinitionId
+            PolicyEffect           = $policy.PolicyEffect
+            PolicyCategory         = $policy.PolicyCategory
+            UniqueAssignmentsCount = $policy.UniqueAssignmentsCount
+            UniqueAssignments      = $policy.UniqueAssignments
+            UsedInPolicySetsCount  = $policy.UsedInPolicySetsCount
+            UsedInPolicySets       = $policy.UsedInPolicySet4JSON
+            CreatedOn              = $policy.CreatedOn
+            CreatedBy              = $policy.CreatedByJson
+            UpdatedOn              = $policy.UpdatedOn
+            UpdatedBy              = $policy.UpdatedByJson
+            JSON                   = $policy.Json
+        }
     }
     foreach ($policySet in ($tenantPolicySetsDetailed | Sort-Object -Property Type, ScopeMGLevel, PolicySetDefinitionId)) {
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()) = [ordered]@{}
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).PolicySetType = $policy.Type
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).ScopeMGLevel = $policySet.ScopeMGLevel
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).Scope = $policySet.Scope
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).ScopeId = $policySet.scopeId
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).PolicySetDisplayName = $policySet.PolicySetDisplayName
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).PolicySetDefinitionName = $policySet.PolicySetDefinitionName
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).PolicySetDefinitionId = $policySet.PolicySetDefinitionId
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).PolicySetCategory = $policySet.PolicySetCategory
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).UniqueAssignmentsCount = $policySet.UniqueAssignmentsCount
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).UniqueAssignments = $policySet.UniqueAssignments
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).PoliciesUsedCount = $policySet.PoliciesUsedCount
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).PoliciesUsed = $policySet.PoliciesUsed4JSON
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).CreatedOn = $policySet.CreatedOn
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).CreatedBy = $policySet.CreatedByJson
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).UpdatedOn = $policySet.UpdatedOn
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).UpdatedBy = $policySet.UpdatedByJson
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()).JSON = $policySet.Json
+        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()) = [ordered]@{
+            PolicySetType           = $policySet.Type
+            ScopeMGLevel            = $policySet.ScopeMGLevel
+            Scope                   = $policySet.Scope
+            ScopeId                 = $policySet.scopeId
+            PolicySetDisplayName    = $policySet.PolicySetDisplayName
+            PolicySetDefinitionName = $policySet.PolicySetDefinitionName
+            PolicySetDefinitionId   = $policySet.PolicySetDefinitionId
+            PolicySetCategory       = $policySet.PolicySetCategory
+            UniqueAssignmentsCount  = $policySet.UniqueAssignmentsCount
+            UniqueAssignments       = $policySet.UniqueAssignments
+            PoliciesUsedCount       = $policySet.PoliciesUsedCount
+            PoliciesUsed            = $policySet.PoliciesUsed4JSON
+            CreatedOn               = $policySet.CreatedOn
+            CreatedBy               = $policySet.CreatedByJson
+            UpdatedOn               = $policySet.UpdatedOn
+            UpdatedBy               = $policySet.UpdatedByJson
+            JSON                    = $policySet.Json
+        }
+    }
+    foreach ($key in $htCacheAssignmentsPolicy.keys | Sort-Object) {
+        $htPolicyAndPolicySet.PolicyAssignment.($key.ToLower()) = $htCacheAssignmentsPolicy.($key).Assignment
     }
     Write-Host " Exporting PolicyAll JSON '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyAll.json'"
-    $htPolicyAndPolicySet | ConvertTo-JSON -Depth 99 | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyAll.json" -Encoding utf8 -Force
+    $htPolicyAndPolicySet | ConvertTo-Json -Depth 99 | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyAll.json" -Encoding utf8 -Force
 
     $endPolicyAllJSON = Get-Date
-    Write-Host "Creating PolicyAll JSON duration: $((NEW-TIMESPAN -Start $startPolicyAllJSON -End $endPolicyAllJSON).TotalSeconds) seconds"
+    Write-Host "Creating PolicyAll JSON duration: $((New-TimeSpan -Start $startPolicyAllJSON -End $endPolicyAllJSON).TotalSeconds) seconds"
 }
 function buildTree($mgId, $prnt) {
     $getMg = $htEntities.values.where( { $_.type -eq 'Microsoft.Management/managementGroups' -and $_.id -eq $mgId })
@@ -1845,6 +1854,11 @@ function cacheBuiltIn {
         $htCacheDefinitionsPolicySet = $using:htCacheDefinitionsPolicySet
         $htCacheDefinitionsRole = $using:htCacheDefinitionsRole
         $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
+        $ValidPolicyEffects = $using:ValidPolicyEffects
+        $htHashesBuiltInPolicy = $using:htHashesBuiltInPolicy
+        #functions
+        $function:detectPolicyEffect = $using:funcDetectPolicyEffect
+        $function:getPolicyHash = $using:funcGetPolicyHash
 
         if ($builtInCapability -eq 'PolicyDefinitions') {
             $currentTask = 'Caching built-in Policy definitions'
@@ -1888,34 +1902,12 @@ function cacheBuiltIn {
                 else {
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Preview = $false
                 }
-                #effects
-                if ($builtinPolicyDefinition.properties.parameters.effect.defaultvalue) {
-                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = $builtinPolicyDefinition.properties.parameters.effect.defaultvalue
-                    if ($builtinPolicyDefinition.properties.parameters.effect.allowedValues) {
-                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = $builtinPolicyDefinition.properties.parameters.effect.allowedValues -join ','
-                    }
-                    else {
-                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
-                    }
-                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
-                }
-                else {
-                    if ($builtinPolicyDefinition.properties.parameters.policyEffect.defaultValue) {
-                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = $builtinPolicyDefinition.properties.parameters.policyEffect.defaultvalue
-                        if ($builtinPolicyDefinition.properties.parameters.policyEffect.allowedValues) {
-                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = $builtinPolicyDefinition.properties.parameters.policyEffect.allowedValues -join ','
-                        }
-                        else {
-                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
-                        }
-                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
-                    }
-                    else {
-                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = $builtinPolicyDefinition.Properties.policyRule.then.effect
-                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = 'n/a'
-                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
-                    }
-                }
+                #region effect
+                $htEffectDetected = detectPolicyEffect -policyDefinition $builtinPolicyDefinition
+                $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = $htEffectDetected.defaultValue
+                $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = $htEffectDetected.allowedValues
+                $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = $htEffectDetected.fixedValue
+                #endregion effect
                 $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Json = $builtinPolicyDefinition
 
                 if (-not [string]::IsNullOrEmpty($builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
@@ -1935,7 +1927,25 @@ function cacheBuiltIn {
                 else {
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = 'n/a'
                 }
+
+                #hashes for parity builtin/custom
+                # $script:htHashesBuiltInPolicy.(($builtinPolicyDefinition.Id).ToLower()) = @{
+                #     policyRuleHash = getPolicyHash -object ($builtinPolicyDefinition.properties.policyRule | ConvertTo-Json -Depth 99)
+                # }
+                $policyRuleHash = (getPolicyHash -json ($builtinPolicyDefinition.properties.policyRule | ConvertTo-Json -Depth 99))
+                if (-not $htHashesBuiltInPolicy.($policyRuleHash)) {
+                    $script:htHashesBuiltInPolicy.($policyRuleHash) = @{
+                        Policies = [System.Collections.ArrayList]@()
+                    }
+                    $null = $script:htHashesBuiltInPolicy.($policyRuleHash).Policies.Add(($builtinPolicyDefinition.Id).ToLower())
+                }
+                else {
+                    #Write-Host "$($builtinPolicyDefinition.name) $($policyRuleHash) already exists"
+                    $null = $script:htHashesBuiltInPolicy.($policyRuleHash).Policies.Add(($builtinPolicyDefinition.Id).ToLower())
+                    #$htHashesBuiltInPolicy.($policyRuleHash).Policies.Count
+                }
             }
+            Write-Host " $($htHashesBuiltInPolicy.Keys.Count) unique Policy rule hashes for built-in Policy definitions"
         }
 
         if ($builtInCapability -eq 'PolicyDefinitionsStatic') {
@@ -1981,34 +1991,12 @@ function cacheBuiltIn {
                 else {
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Preview = $false
                 }
-                #effects
-                if ($staticPolicyDefinition.properties.parameters.effect.defaultvalue) {
-                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectDefaultValue = $staticPolicyDefinition.properties.parameters.effect.defaultvalue
-                    if ($staticPolicyDefinition.properties.parameters.effect.allowedValues) {
-                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectAllowedValue = $staticPolicyDefinition.properties.parameters.effect.allowedValues -join ','
-                    }
-                    else {
-                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
-                    }
-                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
-                }
-                else {
-                    if ($staticPolicyDefinition.properties.parameters.policyEffect.defaultValue) {
-                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectDefaultValue = $staticPolicyDefinition.properties.parameters.policyEffect.defaultvalue
-                        if ($staticPolicyDefinition.properties.parameters.policyEffect.allowedValues) {
-                            $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectAllowedValue = $staticPolicyDefinition.properties.parameters.policyEffect.allowedValues -join ','
-                        }
-                        else {
-                            $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
-                        }
-                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
-                    }
-                    else {
-                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectFixedValue = $staticPolicyDefinition.Properties.policyRule.then.effect
-                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectDefaultValue = 'n/a'
-                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
-                    }
-                }
+                #region effect
+                $htEffectDetected = detectPolicyEffect -policyDefinition $staticPolicyDefinition
+                $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectDefaultValue = $htEffectDetected.defaultValue
+                $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectAllowedValue = $htEffectDetected.allowedValues
+                $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectFixedValue = $htEffectDetected.fixedValue
+                #endregion effect
                 $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Json = $staticPolicyDefinition
 
                 if (-not [string]::IsNullOrEmpty($staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
@@ -2147,7 +2135,7 @@ function checkAzGovVizVersion {
         $script:azGovVizNewerVersionAvailable = $false
         if ([int]$azGovVizVersionOnRepository -gt [int]$azGovVizVersionThis) {
             $script:azGovVizNewerVersionAvailable = $true
-            $script:azGovVizNewerVersionAvailableHTML = '<span style="color:#FF5733; font-weight:bold">Get the latest AzGovViz version (' + $azGovVizVersionOnRepositoryFull + ')!</span> <a href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md" target="_blank"><i class="fa fa-external-link" aria-hidden="true"></i></a>'
+            $script:azGovVizNewerVersionAvailableHTML = '<span style="color:#FF5733; font-weight:bold">Get the latest Azure Governance Visualizer version (' + $azGovVizVersionOnRepositoryFull + ')!</span> <a href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md" target="_blank"><i class="fa fa-external-link" aria-hidden="true"></i></a>'
         }
     }
     catch {
@@ -2258,7 +2246,7 @@ function detailSubscriptions {
                         })
                 }
                 else {
-                    #Write-Host " preCustomDataCollection: $($childrenSubscription.properties.displayName) ($($childrenSubscription.name)) Subscription Quota Id: $($sub.subDetails.subscriptionPolicies.quotaId) is out of scope for AzGovViz (not in Whitelist)"
+                    #Write-Host " preCustomDataCollection: $($childrenSubscription.properties.displayName) ($($childrenSubscription.name)) Subscription Quota Id: $($sub.subDetails.subscriptionPolicies.quotaId) is out of scope for Azure Governance Visualizer (not in Whitelist)"
                     $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{
                             subscriptionId      = $childrenSubscription.name
                             subscriptionName    = $childrenSubscription.properties.displayName
@@ -2312,6 +2300,90 @@ function detailSubscriptions {
 
     $end = Get-Date
     Write-Host "Subscription picking duration: $((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds"
+}
+function detectPolicyEffect {
+    [CmdletBinding()]
+    Param
+    (
+        [object]
+        $policyDefinition
+    )
+
+    $htEffect = @{
+        defaultValue  = 'n/a'
+        allowedValues = 'n/a'
+        fixedValue    = 'n/a'
+    }
+    if (-not [string]::IsNullOrWhiteSpace($policyDefinition.properties.policyRule.then.effect)) {
+        if ($policyDefinition.properties.policyRule.then.effect -in $ValidPolicyEffects) {
+            # $arrayeffect += "fixed: $($policyDefinition.properties.policyRule.then.effect)"
+            # return $arrayeffect
+            $htEffect.fixedValue = $policyDefinition.properties.policyRule.then.effect
+            return $htEffect
+        }
+        else {
+            $Regex = [Regex]::new("(?<=\[parameters\(')(.*)(?='\)\])")
+            $Match = $Regex.Match($policyDefinition.properties.policyRule.then.effect)
+            if ($Match.Success) {
+                if (-not [string]::IsNullOrWhiteSpace($policyDefinition.properties.parameters.($Match.Value))) {
+
+                    #defaultValue
+                    if (($policyDefinition.properties.parameters.($Match.Value) | Get-Member).name -contains 'defaultvalue') {
+                        if (-not [string]::IsNullOrWhiteSpace($policyDefinition.properties.parameters.($Match.Value).defaultValue)) {
+                            if ($policyDefinition.properties.parameters.($Match.Value).defaultValue -in $ValidPolicyEffects) {
+                                #$arrayeffect += "default: $($policyDefinition.properties.parameters.($Match.Value).defaultValue)"
+                                $htEffect.defaultValue = $policyDefinition.properties.parameters.($Match.Value).defaultValue
+                            }
+                            else {
+                                Write-Host "invalid defaultValue effect $($policyDefinition.properties.parameters.($Match.Value).defaultValue) - $($policyDefinition.name) ($($policyDefinition.properties.policyType))"
+                            }
+                        }
+                        else {
+                            Write-Host "defaultValue empty - $($policyDefinition.name) ($($policyDefinition.properties.policyType))"
+                        }
+                    }
+                    else {
+                        Write-Host "no defaultvalue - $($policyDefinition.name) ($($policyDefinition.properties.policyType))"
+                    }
+                    #allowedValues
+                    if (($policyDefinition.properties.parameters.($Match.Value) | Get-Member).name -contains 'allowedValues') {
+                        if (-not [string]::IsNullOrWhiteSpace($policyDefinition.properties.parameters.($Match.Value).allowedValues)) {
+                            if ($policyDefinition.properties.parameters.($Match.Value).allowedValues.Count -gt 0) {
+                                #Write-Host "allowedValues count $($policyDefinition.properties.parameters.($Match.Value).allowedValues) - $($policyDefinition.name) ($($policyDefinition.properties.policyType))"
+                                $arrayAllowed = @()
+                                foreach ($allowedValue in $policyDefinition.properties.parameters.($Match.Value).allowedValues) {
+                                    if ($allowedValue -in $ValidPolicyEffects) {
+                                        $arrayAllowed += $allowedValue
+                                    }
+                                    else {
+                                        Write-Host "invalid allowedValue effect $($allowedValue) - $($policyDefinition.name) ($($policyDefinition.properties.policyType))"
+                                    }
+                                }
+                                #$arrayeffect += "allowed: $(($arrayAllowed | Sort-Object) -join ', ')"
+                                $htEffect.allowedValues = ($arrayAllowed | Sort-Object) -join ','
+                            }
+                        }
+                        else {
+                            Write-Host "allowedValues empty - $($policyDefinition.name) ($($policyDefinition.properties.policyType))"
+                        }
+                    }
+                    else {
+                        Write-Host "no allowedValues- $($policyDefinition.name) ($($policyDefinition.properties.policyType))"
+                    }
+
+                }
+                else {
+                    Write-Host "unexpected - $($policyDefinition.name) ($($policyDefinition.properties.policyType))"
+                }
+
+                return $htEffect
+            }
+        }
+    }
+    else {
+        Write-Host "no then effect - $($policyDefinition.name) ($($policyDefinition.properties.policyType))"
+    }
+    return $htEffect
 }
 function exportBaseCSV {
     Write-Host "Exporting CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName).csv'"
@@ -2433,8 +2505,9 @@ function getConsumption {
 
         foreach ($consumptionline in $consumptiondataFromAPI.properties.rows) {
             $hlper = $htSubscriptionsMgPath.($consumptionline[1])
+
             $null = $script:allConsumptionData.Add([PSCustomObject]@{
-                    "$($consumptiondataFromAPI.properties.columns.name[0])" = $consumptionline[0]
+                    "$($consumptiondataFromAPI.properties.columns.name[0])" = [decimal]$consumptionline[0]
                     "$($consumptiondataFromAPI.properties.columns.name[1])" = $consumptionline[1]
                     SubscriptionName                                        = $hlper.DisplayName
                     SubscriptionMgPath                                      = $hlper.ParentNameChainDelimited
@@ -3383,7 +3456,7 @@ function getMDfCSecureScoreMG {
 }
 function getOrphanedResources {
     $start = Get-Date
-    Write-Host 'Getting orphaned resources (ARG)'
+    Write-Host 'Getting orphaned/unused resources (ARG)'
 
     $queries = [System.Collections.ArrayList]@()
     $intent = 'cost savings - stopped but not deallocated VM'
@@ -3560,16 +3633,16 @@ function getOrphanedResources {
             }
         }
 
-        Write-Host " Found $($arrayOrphanedResources.Count) orphaned Resources"
-        Write-Host " Exporting OrphanedResources CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesOrphaned.csv'"
-        $arrayOrphanedResources | Sort-Object -Property Resource | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesOrphaned.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        Write-Host " Found $($arrayOrphanedResources.Count) orphaned/unused Resources"
+        Write-Host " Exporting OrphanedResources CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesCostOptimizationAndCleanup.csv'"
+        $arrayOrphanedResources | Sort-Object -Property Resource | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesCostOptimizationAndCleanup.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
     }
     else {
-        Write-Host ' No orphaned Resources found'
+        Write-Host ' No orphaned/unused Resources found'
     }
 
     $end = Get-Date
-    Write-Host "Getting orphaned resources (ARG) processing duration: $((New-TimeSpan -Start $start -End $end).TotalMinutes) minutes ($((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds)"
+    Write-Host "Getting orphaned/unused resources (ARG) processing duration: $((New-TimeSpan -Start $start -End $end).TotalMinutes) minutes ($((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds)"
 }
 function getPIMEligible {
     $start = Get-Date
@@ -3780,6 +3853,15 @@ function getPIMEligible {
     $end = Get-Date
     Write-Host "Getting PIM Eligible assignments processing duration: $((New-TimeSpan -Start $start -End $end).TotalMinutes) minutes ($((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds)"
 }
+function getPolicyHash {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory)]
+        [string]
+        $json
+    )
+    return [System.BitConverter]::ToString([System.Security.Cryptography.HashAlgorithm]::Create('sha256').ComputeHash([System.Text.Encoding]::UTF8.GetBytes($json)))
+}
 function getResourceDiagnosticsCapability {
     Write-Host 'Checking Resource Types Diagnostics capability (1st party only)'
     $startResourceDiagnosticsCheck = Get-Date
@@ -3922,16 +4004,8 @@ function getSubscriptions {
     Write-Host " $($requestAllSubscriptionsAPI.Count) Subscriptions returned"
     foreach ($subscription in $requestAllSubscriptionsAPI) {
 
-        # #test
-        # if ($subscription.subscriptionId -eq 'GUID') {
-        #     Write-Host "  Finding: $($subscription.displayName) ($($subscription.subscriptionId)) belongs to foreign tenant '$($subscription.tenantId)' - AzGovViz: excluding this Subscripion" -ForegroundColor DarkRed
-        #     $script:htSubscriptionsFromOtherTenants.($subscription.subscriptionId) = @{}
-        #     $script:htSubscriptionsFromOtherTenants.($subscription.subscriptionId).subDetails = $subscription
-        #     continue
-        # }
-
         if ($subscription.tenantId -ne $azAPICallConf['checkcontext'].tenant.id) {
-            Write-Host "  Finding: $($subscription.displayName) ($($subscription.subscriptionId)) belongs to foreign tenant '$($subscription.tenantId)' - AzGovViz: excluding this Subscripion" -ForegroundColor DarkRed
+            Write-Host "  Finding: $($subscription.displayName) ($($subscription.subscriptionId)) belongs to foreign tenant '$($subscription.tenantId)' - Azure Governance Visualizer: excluding this Subscripion" -ForegroundColor DarkRed
             $script:htSubscriptionsFromOtherTenants.($subscription.subscriptionId) = @{}
             $script:htSubscriptionsFromOtherTenants.($subscription.subscriptionId).subDetails = $subscription
         }
@@ -4936,6 +5010,7 @@ function processDataCollection {
             $alzPolicyHashes = $using:alzPolicyHashes
             $alzPolicySetHashes = $using:alzPolicySetHashes
             $htDoARMRoleAssignmentScheduleInstances = $using:htDoARMRoleAssignmentScheduleInstances
+            $ValidPolicyEffects = $using:ValidPolicyEffects
             #other
             $function:addRowToTable = $using:funcAddRowToTable
             $function:namingValidation = $using:funcNamingValidation
@@ -4952,6 +5027,7 @@ function processDataCollection {
             $function:dataCollectionPolicyAssignmentsMG = $using:funcDataCollectionPolicyAssignmentsMG
             $function:dataCollectionRoleDefinitions = $using:funcDataCollectionRoleDefinitions
             $function:dataCollectionRoleAssignmentsMG = $using:funcDataCollectionRoleAssignmentsMG
+            $function:detectPolicyEffect = $using:funcDetectPolicyEffect
 
             #endregion usingVARS
             $builtInPolicyDefinitionsCount = $using:builtInPolicyDefinitionsCount
@@ -5104,14 +5180,6 @@ function processDataCollection {
 
     #region SUBSCRIPTION
     Write-Host ' CustomDataCollection Subscriptions'
-    # $subsExcludedStateCount = ($outOfScopeSubscriptions.where( { $_.outOfScopeReason -like 'State*' } )).Count
-    # $subsExcludedWhitelistCount = ($outOfScopeSubscriptions.where( { $_.outOfScopeReason -like 'QuotaId*' } )).Count
-    # if ($subsExcludedStateCount -gt 0) {
-    #     Write-Host "  CustomDataCollection $($subsExcludedStateCount) Subscriptions excluded (State != enabled)"
-    # }
-    # if ($subsExcludedWhitelistCount -gt 0) {
-    #     Write-Host "  CustomDataCollection $($subsExcludedWhitelistCount) Subscriptions excluded (not in quotaId whitelist: '$($SubscriptionQuotaIdWhitelist -join ', ')' OR is AAD_ quotaId)"
-    # }
 
     if ($outOfScopeSubscriptions.Count -gt 0) {
         Write-Host "  CustomDataCollection $($outOfScopeSubscriptions.Count) Subscriptions excluded" -ForegroundColor yellow
@@ -5219,6 +5287,7 @@ function processDataCollection {
                 $htResourcePropertiesConvertfromJSONFailed = $using:htResourcePropertiesConvertfromJSONFailed
                 $htAvailablePrivateEndpointTypes = $using:htAvailablePrivateEndpointTypes
                 $arrayAdvisorScores = $using:arrayAdvisorScores
+                $ValidPolicyEffects = $using:ValidPolicyEffects
                 #$htResourcesWithProperties = $using:htResourcesWithProperties
                 #other
                 $function:addRowToTable = $using:funcAddRowToTable
@@ -5250,6 +5319,7 @@ function processDataCollection {
                 $function:dataCollectionVNets = $using:funcDataCollectionVNets
                 $function:dataCollectionPrivateEndpoints = $using:funcDataCollectionPrivateEndpoints
                 $function:dataCollectionAdvisorScores = $using:funcDataCollectionAdvisorScores
+                $function:detectPolicyEffect = $using:funcDetectPolicyEffect
                 #endregion UsingVARs
 
                 $addRowToTableDone = $false
@@ -9942,10 +10012,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 $htmlTableId = "ScopeInsights_OrphanedResources_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-trash-o" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$orphanedResourcesThisSubscriptionCount Orphaned Resources ($orphanedResourcesThisSubscriptionGroupedByTypeCount ResourceTypes)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-trash-o" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$orphanedResourcesThisSubscriptionCount Cost optimization & cleanup ($orphanedResourcesThisSubscriptionGroupedByTypeCount ResourceTypes)</span></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">'Azure Orphan Resources' ARG queries and workbooks</span> <a class="externallink" href="https://github.com/dolevshor/azure-orphan-resources" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
-&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> Resource details can be found in the CSV output *_ResourcesOrphaned.csv<br>
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> Resource details can be found in the CSV output *_ResourcesCostOptimizationAndCleanup.csv<br>
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
 <thead>
@@ -10052,13 +10122,13 @@ extensions: [{ name: 'sort' }]
             }
             else {
                 [void]$htmlScopeInsights.AppendLine(@'
-                <i class="fa fa-ban" aria-hidden="true"></i> 0 Orphaned Resources
+                <i class="fa fa-ban" aria-hidden="true"></i> No cost optimization & cleanup
 '@)
             }
         }
         else {
             [void]$htmlScopeInsights.AppendLine(@'
-            <i class="fa fa-ban" aria-hidden="true"></i> 0 Orphaned Resources
+            <i class="fa fa-ban" aria-hidden="true"></i> No cost optimization & cleanup
 '@)
         }
         [void]$htmlScopeInsights.AppendLine(@'
@@ -12131,7 +12201,7 @@ function processStorageAccountAnalysis {
             foreach ($sa in $saConsumptionByResourceId) {
                 $htSACost.($sa.Name) = @{}
                 $htSACost.($sa.Name).meterCategoryAll = ($sa.Group.MeterCategory | Sort-Object) -join ', '
-                $htSACost.($sa.Name).costAll = [decimal]($sa.Group.PreTaxCost | Measure-Object -Sum).Sum
+                $htSACost.($sa.Name).costAll = ($sa.Group.PreTaxCost | Measure-Object -Sum).Sum #[decimal]($sa.Group.PreTaxCost | Measure-Object -Sum).Sum
                 $htSACost.($sa.Name).currencyAll = ($sa.Group.Currency | Sort-Object -Unique) -join ', '
                 foreach ($costentry in $sa.Group) {
                     $htSACost.($sa.Name)."cost_$($costentry.MeterCategory)" = $costentry.PreTaxCost
@@ -12804,9 +12874,9 @@ function processTenantSummary() {
                                 AssignmentType                       = 'indirect'
                                 AssignmentInheritFrom                = "$($rbac.RoleAssignmentIdentityDisplayname) ($($rbac.RoleAssignmentIdentityObjectId))"
                                 GroupMembersCount                    = "$($grpHlpr.MembersAllCount) (Usr: $($grpHlpr.MembersUsersCount)$($CsvDelimiterOpposite) Grp: $($grpHlpr.MembersGroupsCount)$($CsvDelimiterOpposite) SP: $($grpHlpr.MembersServicePrincipalsCount))"
-                                ObjectDisplayName                    = "AzGovViz:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
-                                ObjectSignInName                     = "AzGovViz:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
-                                ObjectId                             = "AzGovViz:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
+                                ObjectDisplayName                    = "Azure Governance Visualizer:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
+                                ObjectSignInName                     = "Azure Governance Visualizer:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
+                                ObjectId                             = "Azure Governance Visualizer:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
                                 ObjectType                           = 'unresolved'
                                 RbacRelatedPolicyAssignment          = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignment
                                 RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
@@ -13268,7 +13338,7 @@ function processTenantSummary() {
                                 }
 
                                 if ($resolvedIdentity.'@odata.type' -ne '#microsoft.graph.user' -and $resolvedIdentity.'@odata.type' -ne '#microsoft.graph.servicePrincipal') {
-                                    Write-Host "!!! * * * IdentityType '$($resolvedIdentity.'@odata.type')' was not considered by AzGovViz - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
+                                    Write-Host "!!! * * * IdentityType '$($resolvedIdentity.'@odata.type')' was not considered by Azure Governance Visualizer - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
                                 }
                             }
                         }
@@ -13364,8 +13434,11 @@ function processTenantSummary() {
         if ($tenantPolicy.effectDefaultValue -ne 'n/a') {
             $effect = "Default: $($tenantPolicy.effectDefaultValue); Allowed: $($tenantPolicy.effectAllowedValue)"
         }
-        else {
+        elseif ($tenantPolicy.effectFixedValue -ne 'n/a') {
             $effect = "Fixed: $($tenantPolicy.effectFixedValue)"
+        }
+        else {
+            $effect = 'n/a'
         }
 
         if (($tenantPolicy.RoleDefinitionIds) -ne 'n/a') {
@@ -14822,6 +14895,110 @@ extensions: [{ name: 'sort' }]
     }
     #endregion SUMMARYCustompolicySetOrphandedTenantRoot
 
+    #region SUMMARYPolicyParityCustomBuiltIn
+    Write-Host '  processing TenantSummary Policy parity custom built-in'
+
+    if ($arrayCustomBuiltInPolicyParity.Count -gt 0) {
+        $tfCount = $arrayCustomBuiltInPolicyParity.Count
+        $htmlTableId = 'TenantSummary_PolicyCustomBuiltInParity'
+        [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_PolicyCustomBuiltInParity"><i class="padlx fa fa-files-o" aria-hidden="true" style="color:#0078df"></i> <span class="valignMiddle">$($arrayCustomBuiltInPolicyParity.Count) custom Policy definition(s) built-in Policy rule parity</span>
+</button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id= "$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Policy Name</th>
+<th>Policy DisplayName</th>
+<th>Policy Category</th>
+<th>Policy Id</th>
+<th># match built-in</th>
+<th>Built-In Policy</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+        $htmlSUMMARYPolicyCustomBuiltInParity = $null
+        $htmlSUMMARYPolicyCustomBuiltInParity = foreach ($entry in $arrayCustomBuiltInPolicyParity | Sort-Object -Property CustomPolicyId) {
+            $arrayBuiltinsRef = @()
+            foreach ($builtInPolicyId in $entry.BuiltInPolicyId) {
+                $arrayBuiltinsRef += "<a class=`"externallink`" rel=`"noopener`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$($builtInPolicyId -replace '.*/').html`" target=`"_blank`">$($htCacheDefinitionsPolicy.($builtInPolicyId).DisplayName) <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a> ($($builtInPolicyId -replace '.*/'))"
+            }
+            $builtInPolicyAzA = $arrayBuiltinsRef -join ', '
+            @"
+<tr>
+<td>$($entry.CustomPolicyName)</td>
+<td>$($entry.CustomPolicyDisplayName)</td>
+<td>$($entry.CustomPolicyCategory)</td>
+<td>$($entry.CustomPolicyId)</td>
+<td>$($entry.MatchBuiltinPolicyCount)</td>
+<td>$($builtInPolicyAzA)</td>
+</tr>
+"@
+        }
+
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYPolicyCustomBuiltInParity)
+        [void]$htmlTenantSummary.AppendLine(@"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_2: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+"@)
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@'
+                <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No custom Policy definition(s) built-in Policy rule parity</p>
+'@)
+    }
+    #endregion SUMMARYPolicyParityCustomBuiltIn
+
     #region SUMMARYALZPolicies
     Write-Host '  processing TenantSummary ALZPolicies'
 
@@ -15084,7 +15261,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($policySetsDeprecated).count
         $htmlTableId = 'TenantSummary_policySetsDeprecated'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_policySetsDeprecated"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($policySetsDeprecated).count) Custom PolicySet definitions / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_policySetsDeprecated"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$(($policySetsDeprecated).count) Custom PolicySet definitions / deprecated built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -15172,7 +15349,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> $(($policySetsDeprecated).count) PolicySets / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></p>
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> $(($policySetsDeprecated).count) PolicySets / deprecated built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></p>
 "@)
     }
     #endregion SUMMARYPolicySetsDeprecatedPolicy
@@ -15233,7 +15410,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = ($policyAssignmentsDeprecated).count
         $htmlTableId = 'TenantSummary_policyAssignmentsDeprecated'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_policyAssignmentsDeprecated"><i class="padlx fa fa-exclamation-triangle orange" aria-hidden="true"></i> <span class="valignMiddle">$(($policyAssignmentsDeprecated).count) Policy assignments / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_policyAssignmentsDeprecated"><i class="padlx fa fa-exclamation-triangle orange" aria-hidden="true"></i> <span class="valignMiddle">$(($policyAssignmentsDeprecated).count) Policy assignments / deprecated built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></span>
 </button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
@@ -15324,7 +15501,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
-            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> $(($policyAssignmentsDeprecated).count) Policy assignments / deprecated Built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></p>
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> $(($policyAssignmentsDeprecated).count) Policy assignments / deprecated built-in Policy <abbr title="PolicyDisplayName startswith [Deprecated] &#13;OR &#13;Metadata property Deprecated=true"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></p>
 "@)
     }
     #endregion SUMMARYPolicyAssignmentsDeprecatedPolicy
@@ -16360,7 +16537,7 @@ extensions: [{ name: 'sort' }]
                                 }
 
                                 if ($resolvedIdentity.'@odata.type' -ne '#microsoft.graph.user' -and $resolvedIdentity.'@odata.type' -ne '#microsoft.graph.servicePrincipal') {
-                                    Write-Host "!!! * * * IdentityType '$($resolvedIdentity.'@odata.type')' was not considered by AzGovViz - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
+                                    Write-Host "!!! * * * IdentityType '$($resolvedIdentity.'@odata.type')' was not considered by Azure Governance Visualizer - if you see this line, please file an issue on GitHub - thank you." -ForegroundColor Yellow
                                 }
                             }
                         }
@@ -16426,7 +16603,7 @@ extensions: [{ name: 'sort' }]
                 <i class="fa fa-exclamation-triangle orange" aria-hidden="true"></i><span style="color:#ff0000"> Output of $tfCount lines would exceed the html rows limit of $HtmlTableRowsLimit (html file potentially would become unresponsive). Work with the CSV file <i>$($csvFilename).csv</i> | Note: the CSV file will only exist if you did NOT use parameter <i>-NoCsvExport</i></span><br>
                 <span style="color:#ff0000">You can adjust the html row limit by using parameter <i>-HtmlTableRowsLimit</i></span><br>
                 <span style="color:#ff0000">You can reduce the number of lines by using parameter <i>-LargeTenant</i> and/or <i>-DoNotIncludeResourceGroupsAndResourcesOnRBAC</i></span><br>
-                <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">AzGovViz docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
+                <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">Azure Governance Visualizer docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
             </div>
 "@)
         }
@@ -17381,7 +17558,7 @@ extensions: [{ name: 'sort' }]
                 <i class="fa fa-exclamation-triangle orange" aria-hidden="true"></i><span style="color:#ff0000"> Output of $tfCount lines would exceed the html rows limit of $HtmlTableRowsLimit (html file potentially would become unresponsive). Work with the CSV file <i>$($csvFilename).csv</i> | Note: the CSV file will only exist if you did NOT use parameter <i>-NoCsvExport</i></span><br>
                 <span style="color:#ff0000">You can adjust the html row limit by using parameter <i>-HtmlTableRowsLimit</i></span><br>
                 <span style="color:#ff0000">You can reduce the number of lines by using parameter <i>-LargeTenant</i> and/or <i>-DoNotIncludeResourceGroupsAndResourcesOnRBAC</i></span><br>
-                <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">AzGovViz docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
+                <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">Azure Governance Visualizer docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
             </div>
 "@)
         }
@@ -17808,7 +17985,7 @@ extensions: [{ name: 'sort' }]
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@'
-                <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No PIM Eligibility - </span><span class="info valignMiddle">run AzGovViz with a Service Principal to get PIM Eligibility insights</p>
+                <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No PIM Eligibility - </span><span class="info valignMiddle">run Azure Governance Visualizer with a Service Principal to get PIM Eligibility insights</p>
 '@)
         }
     }
@@ -19912,7 +20089,7 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYOrphanedResources
     $startSUMMARYOrphanedResources = Get-Date
-    Write-Host '  processing TenantSummary Orphaned Resources'
+    Write-Host '  processing TenantSummary Orphaned/unused Resources'
     if ($arrayOrphanedResources.count -gt 0) {
         $script:arrayOrphanedResourcesSlim = $arrayOrphanedResources | Sort-Object -Property type
 
@@ -19937,11 +20114,11 @@ extensions: [{ name: 'sort' }]
         $tfCount = $orphanedResourceTypesCount
         $htmlTableId = 'TenantSummary_orphanedResources'
         [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_orphanedResources"><i class="padlx fa fa-trash-o" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$($arrayOrphanedResources.count) Orphaned Resources ($orphanedResourceTypesCountUnique ResourceTypes)</span>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_orphanedResources"><i class="padlx fa fa-trash-o" aria-hidden="true" style="color: #0078df"></i>=<i class="fa fa-usd" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">Cost optimization & cleanup - $($arrayOrphanedResources.count) Resources, $orphanedResourceTypesCountUnique Resource Types</span>
 </button>
 <div class="content TenantSummary">
 <span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> 'Azure Orphan Resources' ARG queries and workbooks</span> <a class="externallink" href="https://github.com/dolevshor/azure-orphan-resources" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
-<span class="padlxx"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Resource details can be found in the CSV output *_ResourcesOrphaned.csv</span><br>
+<span class="padlxx"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Resource details can be found in the CSV output *_ResourcesCostOptimizationAndCleanup.csv</span><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
 <thead>
@@ -20056,11 +20233,11 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@'
-            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No Orphaned Resources</p>
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No cost optimization & cleanup</p>
 '@)
     }
     $endSUMMARYOrphanedResources = Get-Date
-    Write-Host "   SUMMARY Orphaned Resources processing duration: $((New-TimeSpan -Start $startSUMMARYOrphanedResources -End $endSUMMARYOrphanedResources).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYOrphanedResources -End $endSUMMARYOrphanedResources).TotalSeconds) seconds)"
+    Write-Host "   SUMMARY Orphaned/unused Resources processing duration: $((New-TimeSpan -Start $startSUMMARYOrphanedResources -End $endSUMMARYOrphanedResources).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYOrphanedResources -End $endSUMMARYOrphanedResources).TotalSeconds) seconds)"
     #endregion SUMMARYOrphanedResources
 
     #region SUMMARYSubResourceProviders
@@ -20359,7 +20536,7 @@ extensions: [{ name: 'sort' }]
                 <div class="content TenantSummary padlxx">
                     <i class="fa fa-exclamation-triangle orange" aria-hidden="true"></i><span style="color:#ff0000"> Output of $tfCount lines would exceed the html rows limit of $HtmlTableRowsLimit (html file potentially would become unresponsive). Work with the CSV file <i>$($csvFilename).csv</i> | Note: the CSV file will only exist if you did NOT use parameter <i>-NoCsvExport</i></span><br>
                     <span style="color:#ff0000">You can adjust the html row limit by using parameter <i>-HtmlTableRowsLimit</i></span><br>
-                    <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">AzGovViz docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
+                    <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">Azure Governance Visualizer docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
                 </div>
 "@)
                 }
@@ -23142,7 +23319,7 @@ extensions: [{ name: 'sort' }]
                                         }
                                     }
                                     else {
-                                        $status = 'AzGovViz did not detect the resourceType'
+                                        $status = 'Azure Governance Visualizer did not detect the resourceType'
                                         $diagnosticsLogCategoriesSupported = 'n/a'
                                         $diagnosticsLogCategoriesNotCoveredByPolicy = 'n/a'
                                         $recommendation = 'no recommendation as this resourceType seems not existing'
@@ -27385,14 +27562,14 @@ function runInfo {
             $script:paramsUsed += 'SubscriptionQuotaIdWhitelist: false &#13;'
         }
         else {
-            Write-Host ' Subscription Whitelist enabled. AzGovViz will only process Subscriptions where QuotaId startswith one of the following strings:' -ForegroundColor Green
+            Write-Host ' Subscription Whitelist enabled. Azure Governance Visualizer will only process Subscriptions where QuotaId startswith one of the following strings:' -ForegroundColor Green
             foreach ($quotaIdFromSubscriptionQuotaIdWhitelist in $SubscriptionQuotaIdWhitelist) {
                 Write-Host "  - $($quotaIdFromSubscriptionQuotaIdWhitelist)" -ForegroundColor Green
             }
             foreach ($whiteListEntry in $SubscriptionQuotaIdWhitelist) {
                 if ($whiteListEntry -eq 'undefined') {
                     Write-Host "When defining the 'SubscriptionQuotaIdWhitelist' make sure to remove the 'undefined' entry from the array :)" -ForegroundColor Red
-                    Throw 'Error - AzGovViz: check the last console output for details'
+                    Throw 'Error - Azure Governance Visualizer: check the last console output for details'
                 }
             }
             $script:paramsUsed += "SubscriptionQuotaIdWhitelist: $($SubscriptionQuotaIdWhitelist -join ', ') &#13;"
@@ -27466,11 +27643,11 @@ function runInfo {
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
             if (-not $AzureConsumptionPeriod -is [int]) {
                 Write-Host 'parameter -AzureConsumptionPeriod must be an integer'
-                Throw 'Error - AzGovViz: check the last console output for details'
+                Throw 'Error - Azure Governance Visualizer: check the last console output for details'
             }
             elseif ($AzureConsumptionPeriod -eq 0) {
                 Write-Host 'parameter -AzureConsumptionPeriod must be gt 0'
-                Throw 'Error - AzGovViz: check the last console output for details'
+                Throw 'Error - Azure Governance Visualizer: check the last console output for details'
             }
             else {
                 #$azureConsumptionStartDate = ((Get-Date).AddDays( - ($($AzureConsumptionPeriod)))).ToString("yyyy-MM-dd")
@@ -28306,12 +28483,12 @@ function validateAccess {
         }
         if ($permissionsCheckFailed -eq $true) {
             Write-Host "Please consult the documentation: https://$($GithubRepository)#required-permissions-in-azure"
-            Throw 'Error - AzGovViz: check the last console output for details'
+            Throw 'Error - Azure Governance Visualizer: check the last console output for details'
         }
 
         if ($getAzManagementGroups.Count -eq 0) {
             Write-Host 'Management Groups count returned null'
-            Throw 'Error - AzGovViz: check the last console output for details'
+            Throw 'Error - Azure Governance Visualizer: check the last console output for details'
         }
         else {
             Write-Host "Detected $($getAzManagementGroups.Count) Management Groups"
@@ -28320,7 +28497,7 @@ function validateAccess {
         [array]$MgtGroupArray = addIndexNumberToArray -array ($getAzManagementGroups)
         if (-not $MgtGroupArray) {
             Write-Host 'Seems you do not have access to any Management Group. Please make sure you have the required RBAC role [Reader] assigned on at least one Management Group' -ForegroundColor Red
-            Throw 'Error - AzGovViz: check the last console output for details'
+            Throw 'Error - Azure Governance Visualizer: check the last console output for details'
         }
 
         selectMg
@@ -28365,7 +28542,7 @@ function validateAccess {
 
         if ($permissionsCheckFailed -eq $true) {
             Write-Host "Please consult the documentation for permission requirements: https://$($GithubRepository)#technical-documentation"
-            Throw 'Error - AzGovViz: check the last console output for details'
+            Throw 'Error - Azure Governance Visualizer: check the last console output for details'
         }
 
     }
@@ -29048,7 +29225,7 @@ function dataCollectionResources {
                     }
                 }
                 else {
-                    Write-Host "[AzGovViz] Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide this information (scrub subscription Id and company identifyable names): No API-version matches! ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)' - Thank you!" -ForegroundColor DarkRed
+                    Write-Host "[Azure Governance Visualizer] Please file an issue at the Azure Governance Visualizer GitHub repository (aka.ms/AzGovViz) and provide this information (scrub subscription Id and company identifyable names): No API-version matches! ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)' - Thank you!" -ForegroundColor DarkRed
                 }
             }
             else {
@@ -30638,34 +30815,13 @@ function dataCollectionPolicyDefinitions {
                 else {
                     $htTemp.Preview = $false
                 }
-                #effects
-                if ($scopePolicyDefinition.properties.parameters.effect.defaultvalue) {
-                    $htTemp.effectDefaultValue = $scopePolicyDefinition.properties.parameters.effect.defaultvalue
-                    if ($scopePolicyDefinition.properties.parameters.effect.allowedValues) {
-                        $htTemp.effectAllowedValue = $scopePolicyDefinition.properties.parameters.effect.allowedValues -join ','
-                    }
-                    else {
-                        $htTemp.effectAllowedValue = 'n/a'
-                    }
-                    $htTemp.effectFixedValue = 'n/a'
-                }
-                else {
-                    if ($scopePolicyDefinition.properties.parameters.policyEffect.defaultValue) {
-                        $htTemp.effectDefaultValue = $scopePolicyDefinition.properties.parameters.policyEffect.defaultvalue
-                        if ($scopePolicyDefinition.properties.parameters.policyEffect.allowedValues) {
-                            $htTemp.effectAllowedValue = $scopePolicyDefinition.properties.parameters.policyEffect.allowedValues -join ','
-                        }
-                        else {
-                            $htTemp.effectAllowedValue = 'n/a'
-                        }
-                        $htTemp.effectFixedValue = 'n/a'
-                    }
-                    else {
-                        $htTemp.effectFixedValue = $scopePolicyDefinition.Properties.policyRule.then.effect
-                        $htTemp.effectDefaultValue = 'n/a'
-                        $htTemp.effectAllowedValue = 'n/a'
-                    }
-                }
+
+                #region effect
+                $htEffectDetected = detectPolicyEffect -policyDefinition $scopePolicyDefinition
+                $htTemp.effectDefaultValue = $htEffectDetected.defaultValue
+                $htTemp.effectAllowedValue = $htEffectDetected.allowedValues
+                $htTemp.effectFixedValue = $htEffectDetected.fixedValue
+                #endregion effect
 
                 $htTemp.Json = $scopePolicyDefinition
                 $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId) = $htTemp
@@ -31094,7 +31250,7 @@ function dataCollectionPolicyAssignmentsMG {
                         foreach ($tmpPolicyDefinitionId in ($($htCacheDefinitionsPolicy).Keys | Sort-Object)) {
                             Write-Host $tmpPolicyDefinitionId
                         }
-                        Throw 'Error - AzGovViz: check the last console output for details'
+                        Throw 'Error - Azure Governance Visualizer: check the last console output for details'
                     }
                 }
                 #policyDefinition Scope does not exist
@@ -33036,6 +33192,8 @@ $funcGetGroupmembers = $function:GetGroupmembers.ToString()
 $funcResolveObjectIds = $function:ResolveObjectIds.ToString()
 $funcNamingValidation = $function:NamingValidation.ToString()
 $funcTestGuid = $function:testGuid.ToString()
+$funcDetectPolicyEffect = $function:detectPolicyEffect.ToString()
+$funcGetPolicyHash = $function:getPolicyHash.ToString()
 
 if ($HierarchyMapOnly -and $HierarchyMapOnlyCustomDataJSON) {
     processHierarchyMapOnlyCustomData
@@ -33058,7 +33216,7 @@ if ($DoPSRule) {
     Write-Host ''
     Write-Host ' * * * CHANGE: PSRule for Azure * * *' -ForegroundColor Magenta
     Write-Host 'PSRule integration has been paused'
-    Write-Host 'AzGovViz leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.'
+    Write-Host 'Azure Governance Visualizer leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.'
     $DoPSRule = $false
     Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor Magenta
     Write-Host ''
@@ -33110,8 +33268,8 @@ checkAzGovVizVersion
 if ($azGovVizNewerVersionAvailable) {
     if (-not $azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
         Write-Host ''
-        Write-Host " * * * This AzGovViz version ($ProductVersion) is not up to date. Get the latest AzGovViz version ($azGovVizVersionOnRepositoryFull)! * * *" -ForegroundColor Green
-        Write-Host 'Check the AzGovViz history: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md'
+        Write-Host " * * * This Azure Governance Visualizer version ($ProductVersion) is not up to date. Get the latest Azure Governance Visualizer version ($azGovVizVersionOnRepositoryFull)! * * *" -ForegroundColor Green
+        Write-Host 'Check the Azure Governance Visualizer history: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md'
         Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor Green
         Pause
     }
@@ -33131,7 +33289,7 @@ if (-not $HierarchyMapOnly) {
             Write-Host ' * * * RECOMMENDATION: PSRule for Azure * * *' -ForegroundColor Magenta
             Write-Host "Parameter -DoPSRule == '$DoPSRule'"
             Write-Host "'PSRule for Azure' based ouputs provide aggregated Microsoft Azure Well-Architected Framework (WAF) aligned resource analysis results including guidance for remediation."
-            Write-Host 'Consider running AzGovViz with the parameter -DoPSRule (example: .\pwsh\AzGovVizParallel.ps1 -DoPSRule)'
+            Write-Host 'Consider running Azure Governance Visualizer with the parameter -DoPSRule (example: .\pwsh\AzGovVizParallel.ps1 -DoPSRule)'
             Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor Magenta
             Pause
         }
@@ -33180,7 +33338,7 @@ else {
 
 getFileNaming
 
-Write-Host "Running AzGovViz for ManagementGroupId: '$ManagementGroupId'" -ForegroundColor Yellow
+Write-Host "Running Azure Governance Visualizer for ManagementGroupId: '$ManagementGroupId'" -ForegroundColor Yellow
 
 $newTable = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 $htMgDetails = @{}
@@ -33301,6 +33459,8 @@ if (-not $HierarchyMapOnly) {
     $htResourceProvidersRef = @{}
     $htAvailablePrivateEndpointTypes = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $arrayAdvisorScores = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $htHashesBuiltInPolicy = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+    $arrayCustomBuiltInPolicyParity = [System.Collections.ArrayList]@()
 }
 
 if (-not $HierarchyMapOnly) {
@@ -33622,6 +33782,35 @@ if (-not $HierarchyMapOnly) {
     $tenantBuiltInPoliciesCount = ($tenantBuiltInPolicies).count
     $tenantCustomPolicies = (($htCacheDefinitionsPolicy).Values).where({ $_.Type -eq 'Custom' } )
     $tenantCustomPoliciesCount = ($tenantCustomPolicies).count
+
+    #hashes for parity builtin/custom
+    Write-Host 'Processing Policy custom/built-In parity check'
+    $startPolicyCustomBuiltInParity = Get-Date
+    foreach ($customPolicy in $tenantCustomPolicies) {
+        $policyRuleHash = getPolicyHash -json ($customPolicy.Json.properties.policyRule | ConvertTo-Json -Depth 99)
+        if ($htHashesBuiltInPolicy.($policyRuleHash)) {
+            $null = $arrayCustomBuiltInPolicyParity.Add([PSCustomObject]@{
+                    CustomPolicyName        = $customPolicy.Name
+                    CustomPolicyDisplayName = $customPolicy.DisplayName
+                    CustomPolicyCategory    = $customPolicy.Category
+                    CustomPolicyId          = $customPolicy.Id
+                    MatchBuiltinPolicyCount = $htHashesBuiltInPolicy.($policyRuleHash).Policies.Count
+                    BuiltInPolicyId         = ($htHashesBuiltInPolicy.($policyRuleHash).Policies | Sort-Object) -join "$CsvDelimiterOpposite "
+                })
+        }
+    }
+    if ($arrayCustomBuiltInPolicyParity.Count -gt 0) {
+        Write-Host " $($arrayCustomBuiltInPolicyParity.Count) custom Policy definition(s) found that have parity with built-In Policy definition Policy rule"
+        if (-not $NoCsvExport) {
+            Write-Host " Exporting PolicyCustomBuiltInParity CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyCustomBuiltInParity.csv'"
+            $arrayCustomBuiltInPolicyParity | Sort-Object -Property CustomPolicyId | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyCustomBuiltInParity.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        }
+    }
+    else {
+        Write-Host ' No custom Policy definition found that have parity with built-In Policy definition Policy rule'
+    }
+    $endPolicyCustomBuiltInParity = Get-Date
+    Write-Host " Policy custom/built-In parity check duration: $((New-TimeSpan -Start $startPolicyCustomBuiltInParity -End $endPolicyCustomBuiltInParity).TotalMinutes) minutes ($((New-TimeSpan -Start $startPolicyCustomBuiltInParity -End $endPolicyCustomBuiltInParity).TotalSeconds) seconds)"
     #endregion create array Policy definitions
 
     #region create array PolicySet definitions
@@ -33974,7 +34163,7 @@ $html = @"
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>AzGovViz</title>
+    <title>Azure Governance Visualizer aka AzGovViz</title>
     <script type="text/javascript">
         var link = document.createElement( "link" );
         rand = Math.floor(Math.random() * 99999);
@@ -34130,7 +34319,7 @@ if (-not $HierarchyMapOnly) {
         <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
         <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
         <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
-        <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_002.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_004.js"></script>
         <script src="https://www.azadvertizer.net/azgovvizv4/js/autocorrectOff_v004_001.js"></script>
         <script>
             fitty('#fitme', {
@@ -34207,7 +34396,7 @@ if (-not $HierarchyMapOnly) {
         <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
         <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
         <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
-        <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_002.js"></script>
+        <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_004.js"></script>
         <script src="https://www.azadvertizer.net/azgovvizv4/js/autocorrectOff_v004_001.js"></script>
         <script>
             fitty('#fitme', {
@@ -34613,7 +34802,7 @@ $html += @"
     <script src="https://www.azadvertizer.net/azgovvizv4/js/toggle_v004_004.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/collapsetable_v004_001.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/fitty_v004_001.min.js"></script>
-    <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_002.js"></script>
+    <script src="https://www.azadvertizer.net/azgovvizv4/js/version_v004_004.js"></script>
     <script src="https://www.azadvertizer.net/azgovvizv4/js/autocorrectOff_v004_001.js"></script>
     <script>
         fitty('#fitme', {
@@ -34684,15 +34873,15 @@ apiCallTracking -stage 'Summary' -spacing ''
 
 $endAzGovViz = Get-Date
 $durationProduct = (New-TimeSpan -Start $startAzGovViz -End $endAzGovViz)
-Write-Host "AzGovViz duration: $($durationProduct.TotalMinutes) minutes"
+Write-Host "Azure Governance Visualizer duration: $($durationProduct.TotalMinutes) minutes"
 
 #end
 $endTime = Get-Date -Format 'dd-MMM-yyyy HH:mm:ss'
-Write-Host "End AzGovViz $endTime"
+Write-Host "End Azure Governance Visualizer $endTime"
 
 Write-Host 'Checking for errors'
 if ($Error.Count -gt 0) {
-    Write-Host "Dumping $($Error.Count) Errors (handled by AzGovViz):"
+    Write-Host "Dumping $($Error.Count) Errors (handled by Azure Governance Visualizer):"
     $Error | Out-Host
 }
 else {
@@ -34707,7 +34896,7 @@ if ($DoTranscript) {
 
 Write-Host ''
 Write-Host '--------------------'
-Write-Host 'AzGovViz completed successful' -ForegroundColor Green
+Write-Host 'Azure Governance Visualizer completed successful' -ForegroundColor Green
 
 if ($Error.Count -gt 0) {
     Write-Host "Don't bother about dumped errors"
@@ -34734,8 +34923,8 @@ if ($DoPSRule) {
 if ($azGovVizNewerVersionAvailable) {
     if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
         Write-Host ''
-        Write-Host "This AzGovViz version ($ProductVersion) is not up to date. Get the latest AzGovViz version ($azGovVizVersionOnRepositoryFull)!"
-        Write-Host 'Check the AzGovViz history: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md'
+        Write-Host "This Azure Governance Visualizer version ($ProductVersion) is not up to date. Get the latest Azure Governance Visualizer version ($azGovVizVersionOnRepositoryFull)!"
+        Write-Host 'Check the Azure Governance Visualizer history: https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md'
     }
 }
 #endregion infoNewAzGovVizVersionAvailable
@@ -34744,7 +34933,7 @@ if ($azGovVizNewerVersionAvailable) {
 if ($htResourcePropertiesConvertfromJSONFailed.Keys.Count -gt 0) {
     Write-Host ''
     Write-Host ' * * * Please help * * *' -ForegroundColor DarkGreen
-    Write-Host 'For the following resource(s) an error occurred converting from JSON (different casing). Please inspect the resource(s) for keys with different casing. Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide the JSON dump for the resource(s) (scrub subscription Id and company identifyable names) - Thank you!'
+    Write-Host 'For the following resource(s) an error occurred converting from JSON (different casing). Please inspect the resource(s) for keys with different casing. Please file an issue at the Azure Governance Visualizer GitHub repository (aka.ms/AzGovViz) and provide the JSON dump for the resource(s) (scrub subscription Id and company identifyable names) - Thank you!'
     foreach ($resourceId in $htResourcePropertiesConvertfromJSONFailed.Keys) {
         Write-Host " resId: '$resourceId'"
     }
@@ -34754,7 +34943,6 @@ if ($htResourcePropertiesConvertfromJSONFailed.Keys.Count -gt 0) {
 
 #region runIdentifier
 if ($ShowRunIdentifier) {
-    Write-Host "AzGovViz run identifier: '$($statsIdentifier)'"
+    Write-Host "Azure Governance Visualizer run identifier: '$($statsIdentifier)'"
 }
 #endregion runIdentifier
-

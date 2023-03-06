@@ -572,7 +572,7 @@ function dataCollectionResources {
                     }
                 }
                 else {
-                    Write-Host "[AzGovViz] Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide this information (scrub subscription Id and company identifyable names): No API-version matches! ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)' - Thank you!" -ForegroundColor DarkRed
+                    Write-Host "[Azure Governance Visualizer] Please file an issue at the Azure Governance Visualizer GitHub repository (aka.ms/AzGovViz) and provide this information (scrub subscription Id and company identifyable names): No API-version matches! ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)' - Thank you!" -ForegroundColor DarkRed
                 }
             }
             else {
@@ -2162,34 +2162,13 @@ function dataCollectionPolicyDefinitions {
                 else {
                     $htTemp.Preview = $false
                 }
-                #effects
-                if ($scopePolicyDefinition.properties.parameters.effect.defaultvalue) {
-                    $htTemp.effectDefaultValue = $scopePolicyDefinition.properties.parameters.effect.defaultvalue
-                    if ($scopePolicyDefinition.properties.parameters.effect.allowedValues) {
-                        $htTemp.effectAllowedValue = $scopePolicyDefinition.properties.parameters.effect.allowedValues -join ','
-                    }
-                    else {
-                        $htTemp.effectAllowedValue = 'n/a'
-                    }
-                    $htTemp.effectFixedValue = 'n/a'
-                }
-                else {
-                    if ($scopePolicyDefinition.properties.parameters.policyEffect.defaultValue) {
-                        $htTemp.effectDefaultValue = $scopePolicyDefinition.properties.parameters.policyEffect.defaultvalue
-                        if ($scopePolicyDefinition.properties.parameters.policyEffect.allowedValues) {
-                            $htTemp.effectAllowedValue = $scopePolicyDefinition.properties.parameters.policyEffect.allowedValues -join ','
-                        }
-                        else {
-                            $htTemp.effectAllowedValue = 'n/a'
-                        }
-                        $htTemp.effectFixedValue = 'n/a'
-                    }
-                    else {
-                        $htTemp.effectFixedValue = $scopePolicyDefinition.Properties.policyRule.then.effect
-                        $htTemp.effectDefaultValue = 'n/a'
-                        $htTemp.effectAllowedValue = 'n/a'
-                    }
-                }
+
+                #region effect
+                $htEffectDetected = detectPolicyEffect -policyDefinition $scopePolicyDefinition
+                $htTemp.effectDefaultValue = $htEffectDetected.defaultValue
+                $htTemp.effectAllowedValue = $htEffectDetected.allowedValues
+                $htTemp.effectFixedValue = $htEffectDetected.fixedValue
+                #endregion effect
 
                 $htTemp.Json = $scopePolicyDefinition
                 $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId) = $htTemp
@@ -2618,7 +2597,7 @@ function dataCollectionPolicyAssignmentsMG {
                         foreach ($tmpPolicyDefinitionId in ($($htCacheDefinitionsPolicy).Keys | Sort-Object)) {
                             Write-Host $tmpPolicyDefinitionId
                         }
-                        Throw 'Error - AzGovViz: check the last console output for details'
+                        Throw 'Error - Azure Governance Visualizer: check the last console output for details'
                     }
                 }
                 #policyDefinition Scope does not exist

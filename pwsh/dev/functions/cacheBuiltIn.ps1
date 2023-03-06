@@ -15,6 +15,11 @@ function cacheBuiltIn {
         $htCacheDefinitionsPolicySet = $using:htCacheDefinitionsPolicySet
         $htCacheDefinitionsRole = $using:htCacheDefinitionsRole
         $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
+        $ValidPolicyEffects = $using:ValidPolicyEffects
+        $htHashesBuiltInPolicy = $using:htHashesBuiltInPolicy
+        #functions
+        $function:detectPolicyEffect = $using:funcDetectPolicyEffect
+        $function:getPolicyHash = $using:funcGetPolicyHash
 
         if ($builtInCapability -eq 'PolicyDefinitions') {
             $currentTask = 'Caching built-in Policy definitions'
@@ -58,34 +63,12 @@ function cacheBuiltIn {
                 else {
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Preview = $false
                 }
-                #effects
-                if ($builtinPolicyDefinition.properties.parameters.effect.defaultvalue) {
-                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = $builtinPolicyDefinition.properties.parameters.effect.defaultvalue
-                    if ($builtinPolicyDefinition.properties.parameters.effect.allowedValues) {
-                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = $builtinPolicyDefinition.properties.parameters.effect.allowedValues -join ','
-                    }
-                    else {
-                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
-                    }
-                    $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
-                }
-                else {
-                    if ($builtinPolicyDefinition.properties.parameters.policyEffect.defaultValue) {
-                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = $builtinPolicyDefinition.properties.parameters.policyEffect.defaultvalue
-                        if ($builtinPolicyDefinition.properties.parameters.policyEffect.allowedValues) {
-                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = $builtinPolicyDefinition.properties.parameters.policyEffect.allowedValues -join ','
-                        }
-                        else {
-                            $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
-                        }
-                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
-                    }
-                    else {
-                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = $builtinPolicyDefinition.Properties.policyRule.then.effect
-                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = 'n/a'
-                        $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
-                    }
-                }
+                #region effect
+                $htEffectDetected = detectPolicyEffect -policyDefinition $builtinPolicyDefinition
+                $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectDefaultValue = $htEffectDetected.defaultValue
+                $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectAllowedValue = $htEffectDetected.allowedValues
+                $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).effectFixedValue = $htEffectDetected.fixedValue
+                #endregion effect
                 $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Json = $builtinPolicyDefinition
 
                 if (-not [string]::IsNullOrEmpty($builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
@@ -105,7 +88,25 @@ function cacheBuiltIn {
                 else {
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = 'n/a'
                 }
+
+                #hashes for parity builtin/custom
+                # $script:htHashesBuiltInPolicy.(($builtinPolicyDefinition.Id).ToLower()) = @{
+                #     policyRuleHash = getPolicyHash -object ($builtinPolicyDefinition.properties.policyRule | ConvertTo-Json -Depth 99)
+                # }
+                $policyRuleHash = (getPolicyHash -json ($builtinPolicyDefinition.properties.policyRule | ConvertTo-Json -Depth 99))
+                if (-not $htHashesBuiltInPolicy.($policyRuleHash)) {
+                    $script:htHashesBuiltInPolicy.($policyRuleHash) = @{
+                        Policies = [System.Collections.ArrayList]@()
+                    }
+                    $null = $script:htHashesBuiltInPolicy.($policyRuleHash).Policies.Add(($builtinPolicyDefinition.Id).ToLower())
+                }
+                else {
+                    #Write-Host "$($builtinPolicyDefinition.name) $($policyRuleHash) already exists"
+                    $null = $script:htHashesBuiltInPolicy.($policyRuleHash).Policies.Add(($builtinPolicyDefinition.Id).ToLower())
+                    #$htHashesBuiltInPolicy.($policyRuleHash).Policies.Count
+                }
             }
+            Write-Host " $($htHashesBuiltInPolicy.Keys.Count) unique Policy rule hashes for built-in Policy definitions"
         }
 
         if ($builtInCapability -eq 'PolicyDefinitionsStatic') {
@@ -151,34 +152,12 @@ function cacheBuiltIn {
                 else {
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Preview = $false
                 }
-                #effects
-                if ($staticPolicyDefinition.properties.parameters.effect.defaultvalue) {
-                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectDefaultValue = $staticPolicyDefinition.properties.parameters.effect.defaultvalue
-                    if ($staticPolicyDefinition.properties.parameters.effect.allowedValues) {
-                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectAllowedValue = $staticPolicyDefinition.properties.parameters.effect.allowedValues -join ','
-                    }
-                    else {
-                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
-                    }
-                    $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
-                }
-                else {
-                    if ($staticPolicyDefinition.properties.parameters.policyEffect.defaultValue) {
-                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectDefaultValue = $staticPolicyDefinition.properties.parameters.policyEffect.defaultvalue
-                        if ($staticPolicyDefinition.properties.parameters.policyEffect.allowedValues) {
-                            $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectAllowedValue = $staticPolicyDefinition.properties.parameters.policyEffect.allowedValues -join ','
-                        }
-                        else {
-                            $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
-                        }
-                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectFixedValue = 'n/a'
-                    }
-                    else {
-                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectFixedValue = $staticPolicyDefinition.Properties.policyRule.then.effect
-                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectDefaultValue = 'n/a'
-                        $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectAllowedValue = 'n/a'
-                    }
-                }
+                #region effect
+                $htEffectDetected = detectPolicyEffect -policyDefinition $staticPolicyDefinition
+                $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectDefaultValue = $htEffectDetected.defaultValue
+                $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectAllowedValue = $htEffectDetected.allowedValues
+                $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).effectFixedValue = $htEffectDetected.fixedValue
+                #endregion effect
                 $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Json = $staticPolicyDefinition
 
                 if (-not [string]::IsNullOrEmpty($staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {

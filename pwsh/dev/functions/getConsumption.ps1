@@ -9,8 +9,9 @@ function getConsumption {
 
         foreach ($consumptionline in $consumptiondataFromAPI.properties.rows) {
             $hlper = $htSubscriptionsMgPath.($consumptionline[1])
+
             $null = $script:allConsumptionData.Add([PSCustomObject]@{
-                    "$($consumptiondataFromAPI.properties.columns.name[0])" = $consumptionline[0]
+                    "$($consumptiondataFromAPI.properties.columns.name[0])" = [decimal]$consumptionline[0]
                     "$($consumptiondataFromAPI.properties.columns.name[1])" = $consumptionline[1]
                     SubscriptionName                                        = $hlper.DisplayName
                     SubscriptionMgPath                                      = $hlper.ParentNameChainDelimited

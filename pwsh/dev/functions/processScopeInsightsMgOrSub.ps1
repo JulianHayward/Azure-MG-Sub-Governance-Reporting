@@ -1762,10 +1762,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 $htmlTableId = "ScopeInsights_OrphanedResources_$($subscriptionId -replace '-','_')"
                 $randomFunctionName = "func_$htmlTableId"
                 [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-trash-o" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$orphanedResourcesThisSubscriptionCount Orphaned Resources ($orphanedResourcesThisSubscriptionGroupedByTypeCount ResourceTypes)</span></button>
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-trash-o" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$orphanedResourcesThisSubscriptionCount Cost optimization & cleanup ($orphanedResourcesThisSubscriptionGroupedByTypeCount ResourceTypes)</span></button>
 <div class="content contentSISub">
 &nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">'Azure Orphan Resources' ARG queries and workbooks</span> <a class="externallink" href="https://github.com/dolevshor/azure-orphan-resources" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
-&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> Resource details can be found in the CSV output *_ResourcesOrphaned.csv<br>
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> Resource details can be found in the CSV output *_ResourcesCostOptimizationAndCleanup.csv<br>
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
 <thead>
@@ -1872,13 +1872,13 @@ extensions: [{ name: 'sort' }]
             }
             else {
                 [void]$htmlScopeInsights.AppendLine(@'
-                <i class="fa fa-ban" aria-hidden="true"></i> 0 Orphaned Resources
+                <i class="fa fa-ban" aria-hidden="true"></i> No cost optimization & cleanup
 '@)
             }
         }
         else {
             [void]$htmlScopeInsights.AppendLine(@'
-            <i class="fa fa-ban" aria-hidden="true"></i> 0 Orphaned Resources
+            <i class="fa fa-ban" aria-hidden="true"></i> No cost optimization & cleanup
 '@)
         }
         [void]$htmlScopeInsights.AppendLine(@'

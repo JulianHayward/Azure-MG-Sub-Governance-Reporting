@@ -89,12 +89,12 @@ function validateAccess {
         }
         if ($permissionsCheckFailed -eq $true) {
             Write-Host "Please consult the documentation: https://$($GithubRepository)#required-permissions-in-azure"
-            Throw 'Error - AzGovViz: check the last console output for details'
+            Throw 'Error - Azure Governance Visualizer: check the last console output for details'
         }
 
         if ($getAzManagementGroups.Count -eq 0) {
             Write-Host 'Management Groups count returned null'
-            Throw 'Error - AzGovViz: check the last console output for details'
+            Throw 'Error - Azure Governance Visualizer: check the last console output for details'
         }
         else {
             Write-Host "Detected $($getAzManagementGroups.Count) Management Groups"
@@ -103,7 +103,7 @@ function validateAccess {
         [array]$MgtGroupArray = addIndexNumberToArray -array ($getAzManagementGroups)
         if (-not $MgtGroupArray) {
             Write-Host 'Seems you do not have access to any Management Group. Please make sure you have the required RBAC role [Reader] assigned on at least one Management Group' -ForegroundColor Red
-            Throw 'Error - AzGovViz: check the last console output for details'
+            Throw 'Error - Azure Governance Visualizer: check the last console output for details'
         }
 
         selectMg
@@ -148,7 +148,7 @@ function validateAccess {
 
         if ($permissionsCheckFailed -eq $true) {
             Write-Host "Please consult the documentation for permission requirements: https://$($GithubRepository)#technical-documentation"
-            Throw 'Error - AzGovViz: check the last console output for details'
+            Throw 'Error - Azure Governance Visualizer: check the last console output for details'
         }
 
     }

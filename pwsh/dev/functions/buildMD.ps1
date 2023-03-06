@@ -12,7 +12,7 @@ function buildMD {
     if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions -eq $true) {
         if ($azAPICallConf['htParameters'].onAzureDevOps -eq $true) {
             $markdown += @"
-# AzGovViz - Management Group Hierarchy
+# Azure Governance Visualizer - Management Group Hierarchy
 
 ## HierarchyMap (Mermaid)
 
@@ -23,7 +23,7 @@ function buildMD {
         if ($azAPICallConf['htParameters'].onGitHubActions -eq $true) {
             $marks = '```'
             $markdown += @"
-# AzGovViz - Management Group Hierarchy
+# Azure Governance Visualizer - Management Group Hierarchy
 
 ## HierarchyMap (Mermaid)
 
@@ -35,7 +35,7 @@ $($marks)mermaid
     }
     else {
         $markdown += @"
-# AzGovViz - Management Group Hierarchy
+# Azure Governance Visualizer - Management Group Hierarchy
 
 $executionDateTimeInternationalReadable ($currentTimeZone)
 

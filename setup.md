@@ -1,65 +1,78 @@
-# AzGovViz - Azure Governance Visualizer - Setup
+# Azure Governance Visualizer aka AzGovViz - Setup
 
 This guide will help you to setup and run AzGovViz
 
 * Abbreviations:
     * Azure Active Directory - AAD
     * Azure DevOps - AzDO
+# Table of content
+- [Azure Governance Visualizer aka AzGovViz - Setup](#azure-governance-visualizer-aka-azgovviz---setup)
+- [Table of content](#table-of-content)
+- [Azure Governance Visualizer from Console](#azure-governance-visualizer-from-console)
+  - [Grant permissions in Azure](#grant-permissions-in-azure)
+  - [Execution options](#execution-options)
+    - [Option 1 - Execute as a Tenant Member User](#option-1---execute-as-a-tenant-member-user)
+    - [Option 2 - Execute as a Tenant Guest User](#option-2---execute-as-a-tenant-guest-user)
+      - [Assign AAD Role - Directory readers](#assign-aad-role---directory-readers)
+    - [Option 3 - Execute as Service Principal](#option-3---execute-as-service-principal)
+      - [Grant API permissions](#grant-api-permissions)
+  - [Clone the Azure Governance Visualizer repository](#clone-the-azure-governance-visualizer-repository)
+  - [Run Azure Governance Visualizer from Console](#run-azure-governance-visualizer-from-console)
+    - [PowerShell \& Azure PowerShell modules](#powershell--azure-powershell-modules)
+    - [Connecting to Azure as User (Member or Guest)](#connecting-to-azure-as-user-member-or-guest)
+    - [Connecting to Azure using Service Principal](#connecting-to-azure-using-service-principal)
+    - [Run Azure Governance Visualizer](#run-azure-governance-visualizer)
+- [Azure Governance Visualizer in Azure DevOps](#azure-governance-visualizer-in-azure-devops)
+  - [Create AzDO Project](#create-azdo-project)
+  - [Import Azure Governance Visualizer GitHub repository](#import-azure-governance-visualizer-github-repository)
+  - [Create AzDO Service Connection](#create-azdo-service-connection)
+    - [Create AzDO Service Connection - Option 1 - Create Service Connection´s Service Principal in the Azure Portal](#create-azdo-service-connection---option-1---create-service-connections-service-principal-in-the-azure-portal)
+      - [Azure Portal](#azure-portal)
+      - [Azure DevOps](#azure-devops)
+    - [Create AzDO Service Connection - Option 2 - Create Service Connection in AzDO](#create-azdo-service-connection---option-2---create-service-connection-in-azdo)
+  - [Grant permissions in Azure](#grant-permissions-in-azure-1)
+  - [Grant permissions in AAD](#grant-permissions-in-aad)
+    - [API permissions](#api-permissions)
+  - [Grant permissions on Azure Governance Visualizer AzDO repository](#grant-permissions-on-azure-governance-visualizer-azdo-repository)
+  - [OPTION 1 (legacy) - Edit AzDO YAML file (.pipelines folder)](#option-1-legacy---edit-azdo-yaml-file-pipelines-folder)
+  - [OPTION 1 (legacy) - Create AzDO Pipeline (.pipelines folder)](#option-1-legacy---create-azdo-pipeline-pipelines-folder)
+  - [OPTION 2 (new) - Edit AzDO Variables YAML file (.azuredevops folder)](#option-2-new---edit-azdo-variables-yaml-file-azuredevops-folder)
+    - [OPTION 2 (new) Create AzDO Pipeline (.azuredevops folder)](#option-2-new-create-azdo-pipeline-azuredevops-folder)
+  - [Run the AzDO Pipeline](#run-the-azdo-pipeline)
+  - [Create AzDO Wiki (WikiAsCode)](#create-azdo-wiki-wikiascode)
+- [Azure Governance Visualizer in GitHub Actions](#azure-governance-visualizer-in-github-actions)
+  - [Create GitHub repository](#create-github-repository)
+  - [Import Code](#import-code)
+  - [Azure Governance Visualizer YAML](#azure-governance-visualizer-yaml)
+    - [Store the credentials in GitHub (Azure Governance Visualizer YAML)](#store-the-credentials-in-github-azure-governance-visualizer-yaml)
+    - [Workflow permissions](#workflow-permissions)
+    - [Edit the workflow YAML file (Azure Governance Visualizer YAML)](#edit-the-workflow-yaml-file-azure-governance-visualizer-yaml)
+    - [Run Azure Governance Visualizer in GitHub Actions (Azure Governance Visualizer YAML)](#run-azure-governance-visualizer-in-github-actions-azure-governance-visualizer-yaml)
+  - [Azure Governance Visualizer OIDC YAML](#azure-governance-visualizer-oidc-yaml)
+    - [Store the credentials in GitHub (Azure Governance Visualizer OIDC YAML)](#store-the-credentials-in-github-azure-governance-visualizer-oidc-yaml)
+    - [Workflow permissions](#workflow-permissions-1)
+    - [Edit the workflow YAML file (Azure Governance Visualizer OIDC YAML)](#edit-the-workflow-yaml-file-azure-governance-visualizer-oidc-yaml)
+    - [Run Azure Governance Visualizer in GitHub Actions (Azure Governance Visualizer OIDC YAML)](#run-azure-governance-visualizer-in-github-actions-azure-governance-visualizer-oidc-yaml)
+- [Azure Governance Visualizer GitHub Codespaces](#azure-governance-visualizer-github-codespaces)
+- [Optional Publishing the Azure Governance Visualizer HTML to a Azure Web App](#optional-publishing-the-azure-governance-visualizer-html-to-a-azure-web-app)
+  - [Prerequisites](#prerequisites)
+  - [Azure DevOps](#azure-devops-1)
+  - [GitHub Actions](#github-actions)
 
-## Table of contents
 
-* [__AzGovViz from Console__](#azgovviz-from-console)
-    * Grant permissions in Azure
-    * Execution options
-      * Option 1 - Execute as a Tenant Member User
-      * Option 2 - Execute as a Tenant Guest User
-      * Option 3 - Execute as Service Principal
-    * Clone the AzGovViz repository
-    * Run AzGovViz
-
-* [__AzGovViz in Azure DevOps (AzDO)__](#azgovviz-in-azure-devops)
-    * Create AzDO Project
-    * Import AzGovViz GitHub repository
-    * Create AzDO Service Connection
-      * Option 1 - Create Service Connection in AzDO
-      * Option 2 - Create Service Connection´s Service Principal in the Azure Portal
-    * Grant permissions in Azure
-    * Grant permissions in AAD
-    * Grant permissions on AzGovViz AzDO repository
-    * Edit AzDO YAML file
-    * Create AzDO Pipeline
-    * Run the AzDO Pipeline
-    * Create AzDO Wiki - WikiAsCode
-
-* [__AzGovViz in GitHub Actions__](#azgovviz-in-github-actions)
-    * Create GitHub repository
-    * Import Code
-    * AzGovViz YAML
-        * Store the credentials in GitHub
-        * Edit the workflow YAML file
-        * Run AzGovViz in GitHub Actions
-    * AzGovViz OIDC YAML
-        * Store the credentials in GitHub
-        * Edit the workflow YAML file
-        * Run AzGovViz in GitHub Actions
-
-* [__AzGovViz in GitHub Codespaces__](#azgovviz-github-codespaces)
-
-* [__Optional Publishing the AzGovViz HTML to a Azure Web App__](#optional-publishing-the-azgovviz-html-to-a-azure-web-app)
-
-# AzGovViz from Console
+# Azure Governance Visualizer from Console
 
 ## Grant permissions in Azure
 
 * Requirements
     * To assign roles, you must have '__Microsoft.Authorization/roleAssignments/write__' permissions on the target Management Group scope (such as the built-in RBAC Role '__User Access Administrator__' or '__Owner__')
 
-Create a '__Reader__' RBAC Role assignment on the target Management Group scope for the identity that shall run AzGovViz
+Create a '__Reader__' RBAC Role assignment on the target Management Group scope for the identity that shall run Azure Governance Visualizer
 
 * PowerShell
 
 ```powershell
-$objectId = "<objectId of the identity that shall run AzGovViz>"
+$objectId = "<objectId of the identity that shall run Azure Governance Visualizer>"
 $role = "Reader"
 $managementGroupId = "<managementGroupId>"
 
@@ -76,7 +89,7 @@ New-AzRoleAssignment `
 
 ### Option 1 - Execute as a Tenant Member User
 
-Proceed with step [__Clone the AzGovViz repository__](#clone-the-azgovviz-repository)
+Proceed with step [__Clone the Azure Governance Visualizer repository__](#clone-the-azure-governance-visualizer-repository)
 
 ### Option 2 - Execute as a Tenant Guest User
 
@@ -91,12 +104,12 @@ If the tenant is hardened (AAD External Identities / Guest user access = most re
 * Requirements
     * To assign roles, you must have '__Privileged Role Administrator__' or '__Global Administrator__' role assigned [Assign Azure AD roles to users](https://docs.microsoft.com/en-us/azure/active-directory/roles/manage-roles-portal)
 
-Assign the AAD Role '__Directory Reader__' for the Guest User that shall run AzGovViz (work with the Guest User´s display name)
+Assign the AAD Role '__Directory Reader__' for the Guest User that shall run Azure Governance Visualizer (work with the Guest User´s display name)
 
 * Azure Portal
     * [Assign a role](https://docs.microsoft.com/en-us/azure/active-directory/roles/manage-roles-portal#assign-a-role)
 
-Proceed with step [__Clone the AzGovViz repository__](#clone-the-azgovviz-repository)
+Proceed with step [__Clone the Azure Governance Visualizer repository__](#clone-the-azure-governance-visualizer-repository)
 
 ### Option 3 - Execute as Service Principal
 
@@ -128,12 +141,12 @@ Grant API permissions for the Service Principal´s Application
 Permissions in Azure Active Directory for App registration:
 ![alt text](img/aadpermissionsportal_4.jpg "Permissions in Azure Active Directory")
 
-Proceed with step [__Clone the AzGovViz repository__](#clone-the-azgovviz-repository)
+Proceed with step [__Clone the Azure Governance Visualizer repository__](#clone-the-azure-governance-visualizer-repository)
 
-## Clone the AzGovViz repository
+## Clone the Azure Governance Visualizer repository
 
 * Requirements
-  * To clone the AzGovViz GitHub repository you need to have GIT installed
+  * To clone the Azure Governance Visualizer GitHub repository you need to have GIT installed
   * Install Git: [https://git-scm.com/download/win](https://git-scm.com/download/win)
 
 * PowerShell
@@ -143,9 +156,9 @@ Set-Location "c:\Git"
 git clone "https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting.git"
 ```
 
-Proceed with step [__Run AzGovViz from Console__](#run-azgovviz-from-console)
+Proceed with step [__Run Azure Governance Visualizer from Console__](#run-azure-governance-visualizer-from-console)
 
-## Run AzGovViz from Console
+## Run Azure Governance Visualizer from Console
 
 ### PowerShell & Azure PowerShell modules
 
@@ -181,9 +194,9 @@ Connect-AzAccount -ServicePrincipal -TenantId <TenantId> -Credential $pscredenti
 User: Enter '__Application (client) ID__' of the App registration OR '__Application ID__' of the Service Principal (Enterprise Application)
 Password for user \<Id\>: Enter App registration´s secret
 
-### Run AzGovViz
+### Run Azure Governance Visualizer
 
-Familiarize yourself with the available [parameters](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#usage) for AzGovViz
+Familiarize yourself with the available [parameters](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#usage) for Azure Governance Visualizer
 
 * PowerShell
 
@@ -199,19 +212,19 @@ Note if not using the `-OutputPath` parameter, all outputs will be created in th
 c:\Git\Azure-MG-Sub-Governance-Reporting\pwsh\AzGovVizParallel.ps1 -ManagementGroupId <target Management Group Id> -OutputPath "c:\AzGovViz-Output"
 ```
 
-# AzGovViz in Azure DevOps
+# Azure Governance Visualizer in Azure DevOps
 
 ## Create AzDO Project
 
 [Create a project](https://docs.microsoft.com/en-us/azure/devops/organizations/projects/create-project?view=azure-devops&tabs=preview-page#create-a-project)
 
-## Import AzGovViz GitHub repository
+## Import Azure Governance Visualizer GitHub repository
 
-AzGovViz Clone URL: `https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting.git`
+Azure Governance Visualizer Clone URL: `https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting.git`
 
 [Import into a new repo](https://docs.microsoft.com/en-us/azure/devops/repos/git/import-git-repository?view=azure-devops#import-into-a-new-repo)
 
-Note: the AzGovViz GitHub repository is public - no authorization required
+Note: the Azure Governance Visualizer GitHub repository is public - no authorization required
 
 ## Create AzDO Service Connection
 
@@ -228,7 +241,7 @@ There are two options to create the Service Connection:
 * Navigate to 'Azure Active Directory'
 * Click on '__App registrations__'
 * Click on '__New registration__'
-* Name your application (e.g. 'AzGovViz_SC')
+* Name your application (e.g. 'AzureGovernanceVisualizer_SC')
 * Click '__Register__'
 * Your App registration has been created, in the '__Overview__' copy the '__Application (client) ID__' as we will need it later to setup the Service Connection in AzDO
 * Under '__Manage__' click on '__Certificates & Secrets__'
@@ -237,9 +250,9 @@ There are two options to create the Service Connection:
 * A new client secret has been created, copy the secret´s value as we will need it later to setup the Service Connection in AzDO
 
 __Note:__ if you do not assign the RBAC 'Reader' role to the Management group at this stage then the '__Verify__' step in [Azure DevOps](#azure-devops) will fail.
-* In the portal proceed to '__Management Groups__', select the scope at which AzGovViz will run, usually __Tenant Root Group__
+* In the portal proceed to '__Management Groups__', select the scope at which Azure Governance Visualizer will run, usually __Tenant Root Group__
 * Go to '__Access Control (IAM)__', '__Grant Access__' and '__Add Role Assignment__', select '__Reader__', click '__Next__'
-* Now '__Select Member__', this will be the name of the Application you created above (e.g. 'AzGovViz_SC').
+* Now '__Select Member__', this will be the name of the Application you created above (e.g. 'AzureGovernanceVisualizer_SC').
 * Select '__Next__', '__Review + Assign__'  
 
 #### Azure DevOps
@@ -323,20 +336,20 @@ Grant API permissions for the Service Principal´s Application that we created e
 Permissions in Azure Active Directory for App registration:
 ![alt text](img/aadpermissionsportal_4.jpg "Permissions in Azure Active Directory")
 
-## Grant permissions on AzGovViz AzDO repository
+## Grant permissions on Azure Governance Visualizer AzDO repository
 
-When the AzDO pipeline executes the AzGovViz script the outputs should be pushed back to the AzGovViz AzDO repository, in order to do this we need to grant the AzDO Project´s Build Service account with 'Contribute' permissions on the repository
+When the AzDO pipeline executes the Azure Governance Visualizer script the outputs should be pushed back to the Azure Governance Visualizer AzDO repository, in order to do this we need to grant the AzDO Project´s Build Service account with 'Contribute' permissions on the repository
 
-* Grant permissions on the AzGovViz AzDO repository
+* Grant permissions on the Azure Governance Visualizer AzDO repository
     * In AzDO click on '__Project settings__' (located on the bottom left), under '__Repos__' open the '__Repositories__' page
-    * Click on the AzGovViz AzDO Repository and select the tab '__Security__'
+    * Click on the Azure Governance Visualizer AzDO Repository and select the tab '__Security__'
     * On the right side search for the Build Service account
      __%Project name% Build Service (%Organization name%)__ and grant it with '__Contribute__' permissions by selecting '__Allow__' (no save button available)
 
 ## OPTION 1 (legacy) - Edit AzDO YAML file (.pipelines folder)
 
 * Click on '__Repos__'
-* Navigate to the AzGovViz Repository
+* Navigate to the Azure Governance Visualizer Repository
 * In the folder '__pipeline__' click on '__AzGovViz.yml__' and click '__Edit__'
 * Under the variables section
     * Enter the Service Connection name that you copied earlier (ServiceConnection)
@@ -348,7 +361,7 @@ When the AzDO pipeline executes the AzGovViz script the outputs should be pushed
 * Click on '__Pipelines__'
 * Click on '__New pipeline__'
 * Select '__Azure Repos Git__'
-* Select the AzGovViz repository
+* Select the Azure Governance Visualizer repository
 * Click on '__Existing Azure Pipelines YAML file__'
 * Under '__Path__' select '__/.pipelines/AzGovViz.yml__' (the YAML file we edited earlier)
 * Click ' __Save__'
@@ -358,7 +371,7 @@ When the AzDO pipeline executes the AzGovViz script the outputs should be pushed
 >For the '__parameters__' and '__variables__' sections, details about each parameter or variable is documented inline.
 
 * Click on '__Repos__'
-* Navigate to the AzGovViz repository
+* Navigate to the Azure Governance Visualizer repository
 * In the folder '__/.azuredevops/pipelines__' click on '__AzGovViz.variables.yml__' and click '__Edit__'
 * If needed, modify the '__parameters__' section:
   * For more information about [parameters](https://docs.microsoft.com/en-us/azure/devops/pipelines/process/runtime-parameters)
@@ -375,7 +388,7 @@ When the AzDO pipeline executes the AzGovViz script the outputs should be pushed
 * Click on '__Pipelines__'
 * Click on '__New pipeline__'
 * Select '__Azure Repos Git__'
-* Select the AzGovViz repository
+* Select the Azure Governance Visualizer repository
 * Click on '__Existing Azure Pipelines YAML file__'
 * Under '__Path__' select '__/.azuredevops/pipelines/AzGovViz.pipeline.yml__'
 * Click ' __Save__'
@@ -383,7 +396,7 @@ When the AzDO pipeline executes the AzGovViz script the outputs should be pushed
 ## Run the AzDO Pipeline
 
 * Click on '__Pipelines__'
-* Select the AzGovViz pipeline
+* Select the Azure Governance Visualizer pipeline
 * Click '__Run pipeline__'
 
 ## Create AzDO Wiki (WikiAsCode)
@@ -393,12 +406,12 @@ Once the pipeline has executed successfully we can setup our Wiki (WikiAsCode)
 * Click on '__Overview__'
 * Click on '__Wiki__'
 * Click on '__Publish code as wiki__'
-* Select the AzGovViz repository
+* Select the Azure Governance Visualizer repository
 * Select the folder '__wiki__' and click '__OK__'
 * Enter a name for the Wiki
 * Click '__Publish__'
 
-# AzGovViz in GitHub Actions
+# Azure Governance Visualizer in GitHub Actions
 
 ## Create GitHub repository
 
@@ -420,14 +433,14 @@ Use this workflow if you want to store your Application (App registration) secre
 2. [AzGovViz_OIDC.yml](#azgovviz-oidc-yaml)
 Use this workflow if you want leverage the [OIDC (Open ID Connect) feature](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-azure) - no secret stored in GitHub
 
-## AzGovViz YAML
+## Azure Governance Visualizer YAML
 
 For the GitHub Actiom to authenticate and connect to Azure we need to create Service Principal (Application)
 
 In the Azure Portal navigate to 'Azure Active Directory'
 * Click on '__App registrations__'
 * Click on '__New registration__'
-* Name your application (e.g. 'AzGovViz_SC')
+* Name your application (e.g. 'AzureGovernanceVisualizer_SC')
 * Click '__Register__'
 * Your App registration has been created, in the '__Overview__' copy the '__Application (client) ID__' as we will need it later to setup the secrets in GitHub
 * Under '__Manage__' click on '__Certificates & Secrets__'
@@ -435,7 +448,7 @@ In the Azure Portal navigate to 'Azure Active Directory'
 * Provide a good description and choose the expiry time based on your need and click '__Add__'
 * A new client secret has been created, copy the secret´s value as we will need it later to setup the secrets in GitHub
 
-### Store the credentials in GitHub (AzGovViz YAML)
+### Store the credentials in GitHub (Azure Governance Visualizer YAML)
 
 In GitHub navigate to 'Settings'
 * Click on 'Secrets'
@@ -460,27 +473,27 @@ In GitHub navigate to 'Settings'
 * Under 'Workflow permissions' select '__Read and write permissions__'  
 * Click 'Save'
 
-### Edit the workflow YAML file (AzGovViz YAML)
+### Edit the workflow YAML file (Azure Governance Visualizer YAML)
 
 * In the folder `./github/workflows` edit the YAML file `AzGovViz.yml`
 * In the `env` section enter you Management Group ID
-* If you want to continuously run AzGovViz then enable the `schedule` in the `on` section
+* If you want to continuously run Azure Governance Visualizer then enable the `schedule` in the `on` section
 
-### Run AzGovViz in GitHub Actions (AzGovViz YAML)
+### Run Azure Governance Visualizer in GitHub Actions (Azure Governance Visualizer YAML)
 
 In GitHub navigate to 'Actions'
 * Click 'Enable GitHub Actions on this repository'
-* Select the AzGovViz workflow
+* Select the Azure Governance Visualizer workflow
 * Click 'Run workflow'
 
-## AzGovViz OIDC YAML
+## Azure Governance Visualizer OIDC YAML
 
 For the GitHub Actiom to authenticate and connect to Azure we need to create Service Principal (Application). Using OIDC we will however not have the requirement to create a secret, nore store it in GitHub - awesome :)
 
 * Navigate to 'Azure Active Directory'
 * Click on '__App registrations__'
 * Click on '__New registration__'
-* Name your application (e.g. 'AzGovViz_SC')
+* Name your application (e.g. 'AzureGovernanceVisualizer_SC')
 * Click '__Register__'
 * Your App registration has been created, in the '__Overview__' copy the '__Application (client) ID__' as we will need it later to setup the secrets in GitHub
 * Under '__Manage__' click on '__Certificates & Secrets__'
@@ -490,11 +503,11 @@ For the GitHub Actiom to authenticate and connect to Azure we need to create Ser
 * Fill the field 'Organization' with your GitHub Organization name
 * Fill the field 'Repository' with your GitHub repository name
 * For the entity type select 'Branch'
-* Fill the field 'GitHub branch name' with your branch name (default is 'master' if you imported the AzGovViz repository)
-* Fill the field 'Name' with a name (e.g. AzGovViz_GitHub_Actions)
+* Fill the field 'GitHub branch name' with your branch name (default is 'master' if you imported the Azure Governance Visualizer repository)
+* Fill the field 'Name' with a name (e.g. AzureGovernanceVisualizer_GitHub_Actions)
 * Click 'Add'
 
-### Store the credentials in GitHub (AzGovViz OIDC YAML)
+### Store the credentials in GitHub (Azure Governance Visualizer OIDC YAML)
 
 In GitHub navigate to 'Settings'
 * Click on 'Secrets'  
@@ -516,34 +529,34 @@ In GitHub navigate to 'Settings'
 * Under 'Workflow permissions' select '__Read and write permissions__'  
 * Click 'Save'
 
-### Edit the workflow YAML file (AzGovViz OIDC YAML)
+### Edit the workflow YAML file (Azure Governance Visualizer OIDC YAML)
 
 * In the folder `./github/workflows` edit the YAML file `AzGovViz_OIDC.yml`
 * In the `env` section enter you Management Group ID
-* If you want to continuously run AzGovViz then enable the `schedule` in the `on` section
+* If you want to continuously run Azure Governance Visualizer then enable the `schedule` in the `on` section
 
-### Run AzGovViz in GitHub Actions (AzGovViz OIDC YAML)
+### Run Azure Governance Visualizer in GitHub Actions (Azure Governance Visualizer OIDC YAML)
 
 In GitHub navigate to 'Actions'
 * Click 'Enable GitHub Actions on this repository'
 * Select the AzGovViz_OIDC workflow
 * Click 'Run workflow'
 
-# AzGovViz GitHub Codespaces
+# Azure Governance Visualizer GitHub Codespaces
 
 Note: Codespaces is available for organizations using GitHub Team or GitHub Enterprise Cloud. [Quickstart for Codespaces](https://docs.github.com/en/codespaces/getting-started/quickstart)
 
-![alt text](img/codespaces0.png "AzGovViz GitHub Codespaces")
+![alt text](img/codespaces0.png "Azure Governance Visualizer GitHub Codespaces")
 
-![alt text](img/codespaces1.png "AzGovViz GitHub Codespaces")
+![alt text](img/codespaces1.png "Azure Governance Visualizer GitHub Codespaces")
 
-![alt text](img/codespaces2.png "AzGovViz GitHub Codespaces")
+![alt text](img/codespaces2.png "Azure Governance Visualizer GitHub Codespaces")
 
-![alt text](img/codespaces3.png "AzGovViz GitHub Codespaces")
+![alt text](img/codespaces3.png "Azure Governance Visualizer GitHub Codespaces")
 
-![alt text](img/codespaces4.png "AzGovViz GitHub Codespaces")
+![alt text](img/codespaces4.png "Azure Governance Visualizer GitHub Codespaces")
 
-# Optional Publishing the AzGovViz HTML to a Azure Web App
+# Optional Publishing the Azure Governance Visualizer HTML to a Azure Web App
 
 There are instances where you may want to publish the HTML output to a webapp so that anybody in the business can see up to date status of the Azure governance.
 

@@ -1,5 +1,5 @@
 {
-    "name": "AzGovViz",
+    "name": "AzureGovernanceVisualizer",
     "dockerFile": "Dockerfile",
     "settings": {
         "terminal.integrated.defaultProfile.linux": "pwsh"

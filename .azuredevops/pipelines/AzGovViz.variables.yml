@@ -1,4 +1,4 @@
-# AzGovViz v6_major_20221213_1
+# Azure Governance Visualizer v6_major_20230306_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -64,7 +64,7 @@ variables:
 
 ### Default Variables - Modify as Needed
 
-  # If you integrate AzGovViz into an existing repository you may need to adjust the script directory
+  # If you integrate Azure Governance Visualizer into an existing repository you may need to adjust the script directory
   - name: ScriptDir
     #example: YourFolder/pwsh
     value: pwsh
@@ -85,7 +85,7 @@ variables:
     # String | default = ';' | example: value: ';'
     value: ';'
 
-  # Specifies the path to output the results from AzGovViz
+  # Specifies the path to output the results from Azure Governance Visualizer
   - name: OutputPath
     # String | example: value: 'wiki'
     value: 'wiki'

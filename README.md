@@ -1,7 +1,7 @@
-# AzGovViz - Azure Governance Visualizer
+# Azure Governance Visualizer aka AzGovViz
 
 Do you want to get granular insights on your technical Azure Governance implementation? - document it in CSV, HTML, Markdown and JSON?  
-AzGovViz is a PowerShell based script that iterates your Azure Tenant´s Management Group hierarchy down to Subscription level. It captures most relevant Azure governance capabilities such as Azure Policy, RBAC and Blueprints and a lot more. From the collected data AzGovViz provides visibility on your __HierarchyMap__, creates a __TenantSummary__, creates __DefinitionInsights__ and builds granular __ScopeInsights__ on Management Groups and Subscriptions. The technical requirements as well as the required permissions are minimal.
+Azure Governance Visualizer is a PowerShell based script that iterates your Azure Tenant´s Management Group hierarchy down to Subscription level. It captures most relevant Azure governance capabilities such as Azure Policy, RBAC and Blueprints and a lot more. From the collected data Azure Governance Visualizer provides visibility on your __HierarchyMap__, creates a __TenantSummary__, creates __DefinitionInsights__ and builds granular __ScopeInsights__ on Management Groups and Subscriptions. The technical requirements as well as the required permissions are minimal.
 
 You can run the script either for your Tenant Root Group or any other Management Group.
 
@@ -14,11 +14,11 @@ Challenges:
  * Holistic overview on governance implementation  
  * Connecting the dots
 
-AzGovViz is intended to help you to get a holistic overview on your technical Azure Governance implementation by __connecting the dots__
+Azure Governance Visualizer is intended to help you to get a holistic overview on your technical Azure Governance implementation by __connecting the dots__
 
 ![ConnectingDot](img/AzGovVizConnectingDots_v4.2.png)
 
-## AzGovViz @ Microsoft CAF & WAF
+## Azure Governance Visualizer @ Microsoft CAF & WAF
 
 ### Microsoft Cloud Adoption Framework (CAF)
 
@@ -34,9 +34,9 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 ![ChatGPT](img/chatGPT.png)
 
 ## Content
-- [AzGovViz - Azure Governance Visualizer](#azgovviz---azure-governance-visualizer)
+- [Azure Governance Visualizer aka AzGovViz](#azure-governance-visualizer-aka-azgovviz)
   - [Mission](#mission)
-  - [AzGovViz @ Microsoft CAF \& WAF](#azgovviz--microsoft-caf--waf)
+  - [Azure Governance Visualizer @ Microsoft CAF \& WAF](#azure-governance-visualizer--microsoft-caf--waf)
     - [Microsoft Cloud Adoption Framework (CAF)](#microsoft-cloud-adoption-framework-caf)
     - [Microsoft Well Architected Framework (WAF)](#microsoft-well-architected-framework-waf)
     - [ChatGPT](#chatgpt)
@@ -48,7 +48,8 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
   - [Features](#features)
   - [Screenshots](#screenshots)
   - [Outputs](#outputs)
-  - [AzGovViz Setup Guide](#azgovviz-setup-guide)
+  - [Trust](#trust)
+  - [Azure Governance Visualizer Setup Guide](#azure-governance-visualizer-setup-guide)
   - [Technical documentation](#technical-documentation)
     - [Permissions overview](#permissions-overview)
     - [Required permissions in Azure](#required-permissions-in-azure)
@@ -70,14 +71,26 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2023-Mar-02 / Major)
+__Changes__ (2023-Mar-06 / Major)
 
-* Extended the Orphaned Resource with the capability to see "Stopped" virtual machines. These stopped virtual machines are still generated costs. You better should set these virtual machines to "Stopped (deallocated)" to save costs.
+* New feature: Custom Policy definitions that have 'Policy rule' parity with built-in Policy definition(s) (HTML __TenantSummary__/Policy and CSV output)
+* Enhanced *_PolicyAll.json output to include Policy assignments
+* Optimize method to detect Policy definition effect
+* Optimize consumption / convert to decimal
+* Renamed the 'Orphaned Resources' feature to 'Cost optimization & cleanup'
+  * Renamed CSV output '\_\*ResourcesOrphaned.csv' to '\_\*ResourcesCostOptimizationAndCleanup.csv'
+* &#128640; Highlight contribution by @TimWanierke: Extended the 'Cost optimization & cleanup' feature (HTML __TenantSummary__/Subscriptions, Resources & Defender) with 'stopped but not deallocated' Virtual Machines including the related cost
+![stoppedVMs](img/orphaned_stoppedVMs.png)
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.70
+  * minor fixes; not Azure Governance Visualizer specific
+* Added new section [Trust?!](#trust)
+* Typ0s and minor fixes
+* Transitioning product name 'AzGovViz' to 'Azure Governance Visualizer aka AzGovViz' as folks tend to interpretate the 'Gov' as government and not as governance
 
-Passed tests: Powershell Core 7.3.1 on Windows  
-Passed tests: Powershell Core 7.2.7 Azure DevOps hosted agent ubuntu-22.04  
-Passed tests: Powershell Core 7.2.7 Github Actions hosted agent ubuntu-latest  
-Passed tests: Powershell Core 7.2.6 GitHub Codespaces mcr.microsoft.com/powershell:latest  
+Passed tests: Powershell Core 7.3.3 on Windows  
+Passed tests: Powershell Core 7.2.10 Azure DevOps hosted agent ubuntu-22.04  
+Passed tests: Powershell Core 7.2.10 Github Actions hosted agent ubuntu-latest  
+Passed tests: Powershell Core 7.2.10 GitHub Codespaces mcr.microsoft.com/powershell:latest  
 Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
 
 [Full release history](history.md)
@@ -93,12 +106,12 @@ More [demo output](https://github.com/JulianHayward/AzGovViz)
 ### Media
 
 * Microsoft Tech Talks - Bevan Sinclair (Cloud Solution Architect Microsoft) [Automated Governance Reporting in Azure (MTT0AEDT)](https://mtt.eventbuilder.com/event/66431) (register to view)
-* Microsoft Dev Radio (YouTube) [Get visibility into your environment with AzGovViz](https://www.youtube.com/watch?v=hZXvF5oypLE)  
-* Jack Tracey (Cloud Solution Architect Microsoft) [AzGovViz With Azure DevOps](https://jacktracey.co.uk/azgovviz-with-azure-devops/)
+* Microsoft Dev Radio (YouTube) [Get visibility into your environment with Azure Governance Visualizer](https://www.youtube.com/watch?v=hZXvF5oypLE)  
+* Jack Tracey (Cloud Solution Architect Microsoft) [Azure Governance Visualizer With Azure DevOps](https://jacktracey.co.uk/azgovviz-with-azure-devops/)
 
 ### Slideset
 
-Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
+Short presentation on Azure Governance Visualizer [[download](slides/AzGovViz_intro.pdf)]
 
 ## Features
 
@@ -142,7 +155,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
       * Resolved Managed Identity (if Policy effect is DeployIfNotExists (DINE) or Modify)
       * System metadata 'createdOn, createdBy, updatedOn, updatedBy' ('createdBy', 'updatedBy' identity is fully resolved)
       * Parameters used
-  * ALZ EverGreen - Azure Landing Zones EverGreen for Policy and Set definitions. AzGovViz will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ EverGreen results will be displayed in the __TenantSummary__ and a CSV export `*_ALZEverGreen.csv` will be provided.
+  * ALZ EverGreen - Azure Landing Zones EverGreen for Policy and Set definitions. Azure Governance Visualizer will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ EverGreen results will be displayed in the __TenantSummary__ and a CSV export `*_ALZEverGreen.csv` will be provided.
 * __Role-Based Access Control (RBAC)__
   * Custom Role definitions
     * List assignable scopes
@@ -159,7 +172,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
     * Core information on Role assignments
     * Advanced information on Role assignments
       * Role assignment scope (at scope / inheritance)
-      * For Role Assignments on Groups the AAD Group members are fully resolved. With this capability AzGovViz can ultimately provide holistic insights on permissions granted
+      * For Role Assignments on Groups the AAD Group members are fully resolved. With this capability Azure Governance Visualizer can ultimately provide holistic insights on permissions granted
       * For Role Assignments on Groups the AAD Group members count (transitive) will be reported
       * For identity-type == 'ServicePrincipal' the type (Application (internal/external) / ManagedIdentity (System assigned/User assigned)) will be revealed
       * For identity-type == 'User' the userType (Member/Guest) will be revealed
@@ -207,12 +220,12 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
       * Resource Locks
         * Aggregated insights for Lock and respective Lock-type usage on Subscriptions, ResourceGroups and Resources
         * CSV output detailed / each scope that has a lock applied (at scope)
-    * Resource fluctuation - added/removed resources since previous AzGovViz execution
+    * Resource fluctuation - added/removed resources since previous Azure Governance Visualizer execution
       * Aggregated insights on resource fluctuation add/remove (HTML)
       * Detailed insights on resource fluctuation add/remove (CSV)
-    * Orphaned Resources (ARG)
-      * If you run AzGovViz with parameter -DoAzureConsumption then the orphaned resources output will show you potential cost savings for orphaned resources with intent 'cost savings'
-      * The orphaned resources feature is based on [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources) ARG queries and workbooks by Dolev Shor
+    * Cost optimization & cleanup (ARG)
+      * If you run Azure Governance Visualizer with parameter -DoAzureConsumption then the orphaned/unused resources output will show you potential cost savings for orphaned/unused resources with intent 'cost savings'
+      * The Cost optimization & cleanup feature is based on [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources) ARG queries and workbooks by Dolev Shor
       * The virtual machines that are stopped but not deallocated are still generating compute costs. You should check if there are virtual machines running within your environment that are only stopped. The output will show these virtual machines with intent 'cost savings - stopped but not deallocated VM'.
     * Cloud Adoption Framework (CAF) [Recommended abbreviations for Azure resource types](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations) compliance
   * Microsoft Defender for Cloud
@@ -223,7 +236,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
     * Summary of all UserAssigned Managed Identities assigned to Resources
     * Summary of Resources that have an UserAssigned Managed Identity assigned
   * [Integrate PSRule for Azure](#integrate-psrule-for-azure)
-    * __Pausing 'PSRule for Azure' integration__. AzGovViz leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation. 
+    * __Pausing 'PSRule for Azure' integration__. Azure Governance Visualizer leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation. 
     * Well-Architected Framework aligned best practice analysis for resources, including guidance for remediation
   * Storage Account Access Analysis
     * Provides insights on Storage Accounts with focus on anonymous access (containers/blobs and 'Static website' feature)
@@ -318,7 +331,24 @@ markdown in Azure DevOps Wiki as Code
   * Tenant tree including all Policy and Role assignments AND all Custom Policy/Set and Role definitions   
   ![alt text](img/jsonfolderfull450.jpg "JSONFolder")
 
-## AzGovViz Setup Guide
+## Trust
+
+_How can we trust a 20k lines PowerShell script?_ Besides assuring that Azure Governance Visualizer will not harm at any intent, you may want to secure yourself. Let´s leverage Azure built-in capabilities such as VM Insights to monitor the Azure Governance Visualizer activity.
+
+Setup a Virtual Machine in Azure, deploy the dependency agent extension and [execute](setup.md#azure-governance-visualizer-from-console) Azure Governance Visualizer. 
+
+In the Azure Portal navigate to the Virtual Machine, Click on __Insights__ in the __Monitoring__ section and click on Map. All connections that have been established will be shown. Now let´s focus on the process __pwsh__ and review the established connections.
+
+![alt text](img/insights_map_pwsh.png "JSONFolder")
+
+Query for Log Analytics:
+```
+VMConnection
+| where AgentId =~ '<GUID>'
+| where ProcessName =~ 'pwsh'
+| summarize by DestinationIp, DestinationPort, RemoteIp, Protocol, Direction, RemoteDnsQuestions, BytesSent, BytesReceived
+```
+## Azure Governance Visualizer Setup Guide
 
 &#x1F4A1; Although 30 minutes of troubleshooting can save you 5 minutes reading the documentation :) ..  
 Check the detailed __[Setup Guide](setup.md)__
@@ -494,11 +524,11 @@ AzAPICall resources:
   * `-StatsOptOut` - Opt out sending [stats](#stats)
   * `-NoSingleSubscriptionOutput` - Single __Scope Insights__ output per Subscription should not be created
   * `-ManagementGroupsOnly` - Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
-  * `-ShowMemoryUsage` - Shows memory usage at memory intense sections of the scripts, this shall help you determine if the the worker is well sized for AzGovViz
+  * `-ShowMemoryUsage` - Shows memory usage at memory intense sections of the scripts, this shall help you determine if the the worker is well sized for Azure Governance Visualizer
   * `-CriticalMemoryUsage` - Define at what percentage of memory usage the garbage collection should kick in (default=90)
   * `-ExcludedResourceTypesDiagnosticsCapable` - Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
   * PSRule for Azure
-    * __Pausing 'PSRule for Azure' integration__. AzGovViz leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.
+    * __Pausing 'PSRule for Azure' integration__. Azure Governance Visualizer leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.
     * `-DoPSRule` - Execute [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure). Aggregated results are integrated in the HTML output, detailed results (per resource) are exported to CSV
     * `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
     * `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise). (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule -PSRuleFailedOnly`)
@@ -516,7 +546,7 @@ AzAPICall resources:
 
 ### API reference
 
-AzGovViz polls the following APIs
+Azure Governance Visualizer polls the following APIs
 
 | Endpoint | API version        | API name                                                                                                                               |
 | -------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
@@ -582,7 +612,7 @@ AzGovViz polls the following APIs
 ## Integrate with AzOps
 
 Did you know you can run AzOps from Azure DevOps? Check [AzOps Accellerator](https://github.com/Azure/AzOps-Accelerator).  
-You can integrate AzGovViz (same project as AzOps).
+You can integrate Azure Governance Visualizer (same project as AzOps).
 
 ```yaml
   pipelines:
@@ -596,7 +626,7 @@ You can integrate AzGovViz (same project as AzOps).
 
 ## Integrate PSRule for Azure
 
-__Pausing 'PSRule for Azure' integration__. AzGovViz leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.
+__Pausing 'PSRule for Azure' integration__. Azure Governance Visualizer leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.
 
 Let´s use [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure) and leverage over 260 pre-built rules to validate Azure resources based on the Microsoft Well-Architected Framework (WAF) principles.  
 PSRule for Azure is listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/architecture/framework/security/monitor-tools) in the Microsoft Well-Architected Framework.
@@ -615,11 +645,11 @@ Outputs:
 * CSV (detailed, per resource)
 
 TenantSummary HTML output example:  
-![alt text](img/PSRuleForAzure_preview.png "PSRule for Azure / AzGovViz TenantSummary")
+![alt text](img/PSRuleForAzure_preview.png "PSRule for Azure / Azure Governance Visualizer TenantSummary")
 
 ## Stats
 
-In order to better understand the AzGovViz usage and to optimize the product accordingly some stats will be ingested to Azure Application Insights. Results of stats analysis may be shared at a later stage. 
+In order to better understand the Azure Governance Visualizer usage and to optimize the product accordingly some stats will be ingested to Azure Application Insights. Results of stats analysis may be shared at a later stage. 
 
 ### How/What?
 
@@ -649,7 +679,7 @@ The following data will be ingested to Azure Application Insights:
     "azCloud": "Azure environment e.g. AzureCloud, ChinaCloud, etc.",
     "identifier": "8c62a7..53d08c0 (string of 128 characters)",
     "platform": "Console / AzureDevOps",
-    "productVersion": "used AzGovViz version",
+    "productVersion": "used Azure Governance Visualizer version",
     "psAzAccountsVersion": "used Az.Accounts PS module version",
     "psVersion": "used PowerShell version",
     "scopeUsage": "childManagementGroup / rootManagementGroup",
@@ -675,7 +705,7 @@ Azure Application Insights data:
 
 ![alt text](img/stats.jpg "Stats")
 
-If you do not want to contribute to stats for AzGovViz then you can use the parameter:  
+If you do not want to contribute to stats for Azure Governance Visualizer then you can use the parameter:  
 `-StatsOptOut` 
 
 If you have any concerns or see a risk sending stats please file an issue.
@@ -684,9 +714,9 @@ Thank you for your support!
 
 ## Security
 
-AzGovViz creates very detailed information about your Azure Governance setup. In your organization's best interest the __outputs should be protected from not authorized access!__
+Azure Governance Visualizer creates very detailed information about your Azure Governance setup. In your organization's best interest the __outputs should be protected from not authorized access!__
 
-Azure Defender for Cloud may alert AzGovViz resource queries as suspicious activity:  
+Azure Defender for Cloud may alert Azure Governance Visualizer resource queries as suspicious activity:  
 ![alt text](img/azgvz_MDfC_securityAlert.png "Microsoft defender for Cloud security alert") 
 
 ## Known issues
@@ -716,11 +746,11 @@ You are welcome to contribute to the project. __[Contribution Guide](contributio
 
 Thanks to so many supporters - testing, giving feedback, making suggestions, presenting use-case, posting/blogging articles, refactoring code - THANK YOU!
 
-Thanks Stefan Stranger (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale. Make sure you read Stefan´s Blog Article: [Enterprise-Scale - Policy Driven Governance](https://stefanstranger.github.io/2020/08/28/EnterpriseScalePolicyDrivenGovernance)
+Thanks Stefan Stranger (Microsoft) for providing me with his Azure Governance Visualizer outputs executed on his implementation of EnterpriseScale. Make sure you read Stefan´s Blog Article: [Enterprise-Scale - Policy Driven Governance](https://stefanstranger.github.io/2020/08/28/EnterpriseScalePolicyDrivenGovernance)
 
-Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale. 
+Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his Azure Governance Visualizer outputs executed on his implementation of EnterpriseScale. 
 
-Carlos Mendible (Microsoft) gracias por tu contribución on the project - run AzGovViz with GitHub Codespaces.
+Carlos Mendible (Microsoft) gracias por tu contribución on the project - run Azure Governance Visualizer with GitHub Codespaces.
 
 Special thanks to Tim Wanierke, Brooks Vaughn and Friedrich Weinmann (Microsoft).
 
@@ -750,4 +780,4 @@ Also check <https://aka.ms/AzADServicePrincipalInsights> - What about your Azure
 
 ## Closing Note
 
-Please note that while being developed by a Microsoft employee, AzGovViz is not a Microsoft service or product. AzGovViz is a personal/community driven project, there are none implicit or explicit obligations related to this project, it is provided 'as is' with no warranties and confer no rights.
+Please note that while being developed by a Microsoft employee, Azure Governance Visualizer is not a Microsoft service or product. Azure Governance Visualizer is a personal/community driven project, there are none implicit or explicit obligations related to this project, it is provided 'as is' with no warranties and confer no rights.

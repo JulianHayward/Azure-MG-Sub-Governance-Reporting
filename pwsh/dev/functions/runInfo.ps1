@@ -37,14 +37,14 @@ function runInfo {
             $script:paramsUsed += 'SubscriptionQuotaIdWhitelist: false &#13;'
         }
         else {
-            Write-Host ' Subscription Whitelist enabled. AzGovViz will only process Subscriptions where QuotaId startswith one of the following strings:' -ForegroundColor Green
+            Write-Host ' Subscription Whitelist enabled. Azure Governance Visualizer will only process Subscriptions where QuotaId startswith one of the following strings:' -ForegroundColor Green
             foreach ($quotaIdFromSubscriptionQuotaIdWhitelist in $SubscriptionQuotaIdWhitelist) {
                 Write-Host "  - $($quotaIdFromSubscriptionQuotaIdWhitelist)" -ForegroundColor Green
             }
             foreach ($whiteListEntry in $SubscriptionQuotaIdWhitelist) {
                 if ($whiteListEntry -eq 'undefined') {
                     Write-Host "When defining the 'SubscriptionQuotaIdWhitelist' make sure to remove the 'undefined' entry from the array :)" -ForegroundColor Red
-                    Throw 'Error - AzGovViz: check the last console output for details'
+                    Throw 'Error - Azure Governance Visualizer: check the last console output for details'
                 }
             }
             $script:paramsUsed += "SubscriptionQuotaIdWhitelist: $($SubscriptionQuotaIdWhitelist -join ', ') &#13;"
@@ -118,11 +118,11 @@ function runInfo {
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
             if (-not $AzureConsumptionPeriod -is [int]) {
                 Write-Host 'parameter -AzureConsumptionPeriod must be an integer'
-                Throw 'Error - AzGovViz: check the last console output for details'
+                Throw 'Error - Azure Governance Visualizer: check the last console output for details'
             }
             elseif ($AzureConsumptionPeriod -eq 0) {
                 Write-Host 'parameter -AzureConsumptionPeriod must be gt 0'
-                Throw 'Error - AzGovViz: check the last console output for details'
+                Throw 'Error - Azure Governance Visualizer: check the last console output for details'
             }
             else {
                 #$azureConsumptionStartDate = ((Get-Date).AddDays( - ($($AzureConsumptionPeriod)))).ToString("yyyy-MM-dd")
