@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.70',
 
     [string]
-    $ProductVersion = 'v6_major_20230308_1',
+    $ProductVersion = 'v6_major_20230308_2',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -2343,7 +2343,7 @@ function detectPolicyEffect {
                         }
                     }
                     else {
-                        Write-Host "no defaultvalue - $($policyDefinition.name) ($($policyDefinition.properties.policyType))"
+                        Write-Host "finding: Policy has no defaultvalue for effect: $($policyDefinition.id) ($($policyDefinition.properties.policyType))"
                     }
                     #allowedValues
                     if (($policyDefinition.properties.parameters.($Match.Value) | Get-Member).name -contains 'allowedValues') {
@@ -3522,7 +3522,7 @@ function getOrphanedResources {
             intent    = $intent
         })
 
-    $intent = 'misconfiguration'
+    $intent = 'cost savings'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/applicationGateways'
             query     = "resources | where type =~ 'Microsoft.Network/applicationGateways' | extend backendPoolsCount = array_length(properties.backendAddressPools),SKUName= tostring(properties.sku.name), SKUTier= tostring(properties.sku.tier),SKUCapacity=properties.sku.capacity,backendPools=properties.backendAddressPools | project  type, subscriptionId, Resource=id, Intent='$intent' | join (resources | where type =~ 'Microsoft.Network/applicationGateways' | mvexpand backendPools = properties.backendAddressPools | extend backendIPCount = array_length(backendPools.properties.backendIPConfigurations) | extend backendAddressesCount = array_length(backendPools.properties.backendAddresses) | extend backendPoolName  = backendPools.properties.backendAddressPools.name | extend Resource = id | summarize backendIPCount = sum(backendIPCount) ,backendAddressesCount=sum(backendAddressesCount) by Resource) on Resource | project-away Resource1 | where  (backendIPCount == 0 or isempty(backendIPCount)) and (backendAddressesCount==0 or isempty(backendAddressesCount)) | order by Resource asc"
@@ -3557,7 +3557,7 @@ function getOrphanedResources {
     "query": "$($queryDetail.query)",
     "subscriptions": [$($subscriptions)],
     "options": {
-        "`$top": 100
+        "`$top": 1000
     }
 }
 "@
@@ -3868,6 +3868,113 @@ function getPolicyHash {
         $json
     )
     return [System.BitConverter]::ToString([System.Security.Cryptography.HashAlgorithm]::Create('sha256').ComputeHash([System.Text.Encoding]::UTF8.GetBytes($json)))
+}
+function getPolicyRemediation {
+    $currentTask = 'Getting NonCompliant (dine/modify)'
+    Write-Host $currentTask
+    #ref: https://learn.microsoft.com/en-us/rest/api/azureresourcegraph/resourcegraph(2021-03-01)/resources/resources
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01"
+    $method = 'POST'
+
+    if ($ManagementGroupsOnly) {
+        $queryNonCompliant = @'
+        policyresources
+        | where type == 'microsoft.policyinsights/policystates' and properties.policyAssignmentScope startswith '/providers/Microsoft.Management/managementGroups/' and (properties.policyDefinitionAction =~ 'deployifnotexists' or properties.policyDefinitionAction =~ 'modify') and properties.complianceState =~ 'NonCompliant'
+        | summarize count() by assignmentScope = tostring(properties.policyAssignmentScope), assignmentName = tostring(properties.policyAssignmentName), assignmentId = tostring(properties.policyAssignmentId), definitionName = tostring(properties.policyDefinitionName), definitionId = tostring(properties.policyDefinitionId), policyDefinitionReferenceId = tostring(properties.policyDefinitionReferenceId), effect = tostring(properties.policyDefinitionAction)
+        | order by ['count_'] desc
+'@
+    }
+    else {
+        $queryNonCompliant = @'
+        policyresources
+        | where (properties.policyDefinitionAction =~ 'deployifnotexists' or properties.policyDefinitionAction =~ 'modify') and properties.complianceState =~ 'NonCompliant'
+        | summarize count() by assignmentScope = tostring(properties.policyAssignmentScope), assignmentName = tostring(properties.policyAssignmentName), assignmentId = tostring(properties.policyAssignmentId), definitionName = tostring(properties.policyDefinitionName), definitionId = tostring(properties.policyDefinitionId), policyDefinitionReferenceId = tostring(properties.policyDefinitionReferenceId), effect = tostring(properties.policyDefinitionAction)
+        | order by ['count_'] desc
+'@
+    }
+
+
+    $body = @"
+    {
+        "query": "$($queryNonCompliant)",
+        "managementGroups":[
+            "$($ManagementGroupId)"
+        ],
+        "options": {
+            "`$top": 1000
+        }
+    }
+"@
+
+    $getNonCompliant = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -body $body -listenOn 'Content'
+    if ($getNonCompliant.Count -eq 0) {
+        throw "getNonCompliant.Count: $($getNonCompliant.Count)"
+    }
+    else {
+        Write-Host "Found $($getNonCompliant.Count) remediatable assignments (nonCompliant resources; grouped by subscription)"
+        Write-Host 'Enriching remediatable assignments with displayNames'
+        $arrayRemediatable = [System.Collections.ArrayList]@()
+        foreach ($nonCompliant in $getNonCompliant) {
+
+            if ($htCacheAssignmentsPolicy.($nonCompliant.assignmentId)) {
+                if ($htCacheAssignmentsPolicy.($nonCompliant.assignmentId).assignment.properties.policyDefinitionId -like '*/providers/Microsoft.Authorization/policySetDefinitions/*') {
+                    $policyAssignmentPolicyOrPolicySet = 'policySetDefinition'
+                    $policySetDefinitionId = $htCacheAssignmentsPolicy.($nonCompliant.assignmentId).assignment.properties.policyDefinitionId
+                    $policySetDefinitionDisplayName = $htCacheDefinitionsPolicySet.($policySetDefinitionId.ToLower()).DisplayName
+                    $policySetDefinitionName = $policySetDefinitionId -replace '.*/'
+                    $policySetDefinitionType = $htCacheDefinitionsPolicySet.($policySetDefinitionId.ToLower()).Type
+                }
+                elseif ($htCacheAssignmentsPolicy.($nonCompliant.assignmentId).assignment.properties.policyDefinitionId -like '*/providers/Microsoft.Authorization/policyDefinitions/*') {
+                    $policyAssignmentPolicyOrPolicySet = 'policyDefinition'
+                    $policySetDefinitionId = 'n/a'
+                    $policySetDefinitionDisplayName = 'n/a'
+                    $policySetDefinitionName = 'n/a'
+                    $policySetDefinitionType = 'n/a'
+                }
+                else {
+                    throw "unexpected .policyDefinitionId: $($htCacheAssignmentsPolicy.($nonCompliant.assignmentId).assignment.properties)"
+                }
+            }
+            else {
+                throw "`$htCacheAssignmentsPolicy.($($nonCompliant.assignmentId)) not existing"
+            }
+
+            switch ($nonCompliant.assignmentId) {
+                { $_ -like '/subscriptions/*' } {
+                    $policyAssignmentScopeType = 'Sub'
+                }
+                { $_ -like '/subscriptions/*/resourcegroups/*' } {
+                    $policyAssignmentScopeType = 'RG'
+                }
+                { $_ -like '/providers/Microsoft.Management/managementGroups/*' } {
+                    $policyAssignmentScopeType = 'MG'
+                }
+                default {
+                    $policyAssignmentScopeType = 'notDetected'
+                }
+            }
+
+            $null = $script:arrayRemediatable.Add([PSCustomObject]@{
+                    policyAssignmentScopeType            = $policyAssignmentScopeType
+                    policyAssignmentScope                = $nonCompliant.assignmentScope
+                    policyAssignmentId                   = $nonCompliant.assignmentId
+                    policyAssignmentName                 = $nonCompliant.assignmentName
+                    policyAssignmentDisplayName          = $htCacheAssignmentsPolicy.($nonCompliant.assignmentId).assignment.properties.displayName
+                    policyAssignmentPolicyOrPolicySet    = $policyAssignmentPolicyOrPolicySet
+                    effect                               = $nonCompliant.effect
+                    policyDefinitionId                   = $nonCompliant.definitionId
+                    policyDefinitionName                 = $nonCompliant.definitionName
+                    policyDefinitionDisplayName          = $htCacheDefinitionsPolicy.($nonCompliant.definitionId).Json.properties.displayName
+                    policyDefinitionType                 = $htCacheDefinitionsPolicy.($nonCompliant.definitionId).Type
+                    policySetPolicyDefinitionReferenceId = $nonCompliant.policyDefinitionReferenceId
+                    policySetDefinitionId                = $policySetDefinitionId
+                    policySetDefinitionName              = $policySetDefinitionName
+                    policySetDefinitionDisplayName       = $policySetDefinitionDisplayName
+                    policySetDefinitionType              = $policySetDefinitionType
+                    nonCompliantResourcesCount           = $nonCompliant.count_
+                })
+        }
+    }
 }
 function getResourceDiagnosticsCapability {
     Write-Host 'Checking Resource Types Diagnostics capability (1st party only)'
@@ -16900,6 +17007,160 @@ extensions: [{ name: 'sort' }]
     $endSummaryPolicyAssignmentsAll = Get-Date
     Write-Host "   SummaryPolicyAssignmentsAll duration: $((New-TimeSpan -Start $startSummaryPolicyAssignmentsAll -End $endSummaryPolicyAssignmentsAll).TotalMinutes) minutes ($((New-TimeSpan -Start $startSummaryPolicyAssignmentsAll -End $endSummaryPolicyAssignmentsAll).TotalSeconds) seconds)"
     #endregion SUMMARYPolicyAssignmentsAll
+
+    #region SUMMARYPolicyRemediation
+    Write-Host '  processing TenantSummary Policy Remediation'
+
+    if ($arrayRemediatable.Count -gt 0) {
+        $tfCount = $arrayRemediatable.Count
+        $nonCompliantResourcesTotal = ($arrayRemediatable.nonCompliantResourcesCount | Measure-Object -Sum).Sum
+        $htmlTableId = 'TenantSummary_PolicyRemediation'
+        [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_PolicyRemediation"><i class="padlx fa fa-wrench" aria-hidden="true" style="color:#0078df"></i> <span class="valignMiddle">$($arrayRemediatable.Count) Policies to remediate ($($nonCompliantResourcesTotal) nonCompliant resources)</span>
+</button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id= "$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>Assignment Scope Type</th>
+<th>Assignment Scope</th>
+<th>Assignment Id</th>
+<th>Assignment DisplayName</th>
+<th>Assignment Policy/Set</th>
+<th>Effect</th>
+<th>Policy definition id</th>
+<th>Policy definition displayName</th>
+<th>Policy definition type</th>
+<th>Policy definition refId</th>
+<th>PolicySet definition id</th>
+<th>PolicySet definition displayName</th>
+<th>PolicySet definition type</th>
+<th>NonCompliant resources</th>
+</tr>
+</thead>
+<tbody>
+"@)
+
+        $htmlSUMMARYPolicyRemediation = $null
+        $arrayRemediatableSorted = $arrayRemediatable | Sort-Object -Property policyDefinitionId, policyAssignmentId
+        if (-not $NoCsvExport) {
+            $csvFilename = "$($filename)_PolicyRemediation"
+            Write-Host "   Exporting PolicyRemediation CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
+            $arrayRemediatableSorted | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
+        }
+        $htmlSUMMARYPolicyRemediation = foreach ($entry in $arrayRemediatableSorted) {
+
+            if ($entry.policyDefinitionType -eq 'builtin') {
+                $pd = "<a class=`"externallink`" rel=`"noopener`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$($entry.policyDefinitionName).html`" target=`"_blank`">$($entry.policyDefinitionDisplayName) <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a> ($($entry.policyDefinitionName))"
+            }
+            else {
+                $pd = "$($entry.policyDefinitionDisplayName) ($($entry.policyDefinitionName))"
+            }
+
+            if ($entry.policySetDefinitionType -ne 'n/a') {
+                if ($entry.policySetDefinitionType -eq 'builtIn') {
+                    $psd = "<a class=`"externallink`" rel=`"noopener`" href=`"https://www.azadvertizer.net/azpolicyinitiativesadvertizer/$($entry.policySetDefinitionName).html`" target=`"_blank`">$($entry.policySetDefinitionDisplayName) <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a> ($($entry.policySetDefinitionName))"
+                }
+                else {
+                    $psd = "$($entry.policySetDefinitionDisplayName) ($($entry.policySetDefinitionName))"
+                }
+            }
+            else {
+                $psd = $entry.policySetDefinitionType
+            }
+
+            @"
+<tr>
+<td>$($entry.policyAssignmentScopeType)</td>
+<td>$($entry.policyAssignmentScope)</td>
+<td class="breakwordall">$($entry.policyAssignmentId)</td>
+<td>$($entry.policyAssignmentDisplayName)</td>
+<td>$($entry.policyAssignmentPolicyOrPolicySet)</td>
+<td>$($entry.effect)</td>
+<td class="breakwordall">$($entry.policyDefinitionId)</td>
+<td>$($pd)</td>
+<td>$($entry.policyDefinitionType)</td>
+<td>$($entry.policySetPolicyDefinitionReferenceId)</td>
+<td class="breakwordall">$($entry.policySetDefinitionId)</td>
+<td>$($psd)</td>
+<td>$($entry.policySetDefinitionType)</td>
+<td>$($entry.nonCompliantResourcesCount)</td>
+</tr>
+"@
+        }
+
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYPolicyRemediation)
+        [void]$htmlTenantSummary.AppendLine(@"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_0: 'select',
+            col_4: 'select',
+            col_5: 'select',
+            col_8: 'select',
+            col_12: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'number'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+"@)
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@'
+                <p><i class="padlx fa fa-ban" aria-hidden="true"></i> No Policies to remediate</p>
+'@)
+    }
+    #endregion SUMMARYPolicyRemediation
 
     [void]$htmlTenantSummary.AppendLine(@'
     </div>
@@ -33468,6 +33729,7 @@ if (-not $HierarchyMapOnly) {
     $arrayAdvisorScores = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htHashesBuiltInPolicy = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $arrayCustomBuiltInPolicyParity = [System.Collections.ArrayList]@()
+    $arrayRemediatable = [System.Collections.ArrayList]@()
 }
 
 if (-not $HierarchyMapOnly) {
@@ -33618,6 +33880,8 @@ if (-not $HierarchyMapOnly) {
     if (-not $ManagementGroupsOnly) {
         exportResourceLocks
     }
+
+    getPolicyRemediation
 
     if ($arrayAdvisorScores.Count -gt 0) {
         Write-Host "Exporting AdvisorScores CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_AdvisorScores.csv'"

@@ -73,7 +73,9 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 __Changes__ (2023-Mar-08 / Major)
 
-* Extended the 'Cost optimization & cleanup' feature (HTML __TenantSummary__/Subscriptions, Resources & Defender) with application gateways with empty backend pools'
+* Extended the 'Cost optimization & cleanup' feature (HTML __TenantSummary__/Subscriptions, Resources & Defender) with application gateways with empty backend pools' - thanks @sebassem
+* New feature Policy Remediation (HTML __TenantSummary__/Policy, CSV export)
+* Minor optimizations
 
 Passed tests: Powershell Core 7.3.3 on Windows  
 Passed tests: Powershell Core 7.2.10 Azure DevOps hosted agent ubuntu-22.04  
@@ -143,7 +145,8 @@ Short presentation on Azure Governance Visualizer [[download](slides/AzGovViz_in
       * Resolved Managed Identity (if Policy effect is DeployIfNotExists (DINE) or Modify)
       * System metadata 'createdOn, createdBy, updatedOn, updatedBy' ('createdBy', 'updatedBy' identity is fully resolved)
       * Parameters used
-  * ALZ EverGreen - Azure Landing Zones EverGreen for Policy and Set definitions. Azure Governance Visualizer will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ EverGreen results will be displayed in the __TenantSummary__ and a CSV export `*_ALZEverGreen.csv` will be provided.
+  * ALZ Policy Version Checker - Azure Landing Zones Policy Version Checker for Policy and Set definitions. Azure Governance Visualizer will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ Policy Version Checker results will be displayed in the __TenantSummary__ and a CSV export `*_ALZPolicyVersionChecker.csv` will be provided.
+  * Policy Remediaton - list all remediatable policies including relevant information such as assignment and definition data
 * __Role-Based Access Control (RBAC)__
   * Custom Role definitions
     * List assignable scopes

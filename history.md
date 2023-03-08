@@ -6,7 +6,9 @@
 
 __Changes__ (2023-Mar-08 / Major)
 
-* Extended the 'Cost optimization & cleanup' feature (HTML __TenantSummary__/Subscriptions, Resources & Defender) with application gateways with empty backend pools'
+* Extended the 'Cost optimization & cleanup' feature (HTML __TenantSummary__/Subscriptions, Resources & Defender) with application gateways with empty backend pools' - thanks @sebassem
+* New feature Policy Remediation (HTML __TenantSummary__/Policy, CSV export)
+* Minor optimizations
 
 __Changes__ (2023-Mar-06 / Major)
 

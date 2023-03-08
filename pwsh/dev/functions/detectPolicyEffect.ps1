@@ -40,7 +40,7 @@ function detectPolicyEffect {
                         }
                     }
                     else {
-                        Write-Host "no defaultvalue - $($policyDefinition.name) ($($policyDefinition.properties.policyType))"
+                        Write-Host "finding: Policy has no defaultvalue for effect: $($policyDefinition.id) ($($policyDefinition.properties.policyType))"
                     }
                     #allowedValues
                     if (($policyDefinition.properties.parameters.($Match.Value) | Get-Member).name -contains 'allowedValues') {

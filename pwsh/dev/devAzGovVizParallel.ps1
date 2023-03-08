@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.70',
 
     [string]
-    $ProductVersion = 'v6_major_20230308_1',
+    $ProductVersion = 'v6_major_20230308_2',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -628,6 +628,7 @@ if ($ManagementGroupId -match ' ') {
 }
 
 #region Functions
+. ".\$($ScriptPath)\functions\getPolicyRemediation.ps1"
 . ".\$($ScriptPath)\functions\getPolicyHash.ps1"
 . ".\$($ScriptPath)\functions\detectPolicyEffect.ps1"
 . ".\$($ScriptPath)\functions\exportResourceLocks.ps1"
@@ -965,6 +966,7 @@ if (-not $HierarchyMapOnly) {
     $arrayAdvisorScores = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htHashesBuiltInPolicy = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $arrayCustomBuiltInPolicyParity = [System.Collections.ArrayList]@()
+    $arrayRemediatable = [System.Collections.ArrayList]@()
 }
 
 if (-not $HierarchyMapOnly) {
@@ -1115,6 +1117,8 @@ if (-not $HierarchyMapOnly) {
     if (-not $ManagementGroupsOnly) {
         exportResourceLocks
     }
+
+    getPolicyRemediation
 
     if ($arrayAdvisorScores.Count -gt 0) {
         Write-Host "Exporting AdvisorScores CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_AdvisorScores.csv'"
