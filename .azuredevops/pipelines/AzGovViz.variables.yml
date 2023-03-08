@@ -60,7 +60,7 @@ variables:
   # The Management Group ID for the script to process
   - name: ManagementGroupId
     # String | example: value: 'MyManagementGroupId'
-    value: '<YourManagementGroupId>' #ATTENTION! Provide the Management Group Id, not the displayName
+    value: '<YourManagementGroupId>' #ATTENTION! Provide the Management Group Id, not the displayName AND Make sure the casing is correct
 
 ### Default Variables - Modify as Needed
 
