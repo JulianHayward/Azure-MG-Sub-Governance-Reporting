@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.70',
 
     [string]
-    $ProductVersion = 'v6_major_20230308_2',
+    $ProductVersion = 'v6_major_20230308_3',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -3907,13 +3907,10 @@ function getPolicyRemediation {
 "@
 
     $getNonCompliant = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -body $body -listenOn 'Content'
-    if ($getNonCompliant.Count -eq 0) {
-        throw "getNonCompliant.Count: $($getNonCompliant.Count)"
-    }
-    else {
-        Write-Host "Found $($getNonCompliant.Count) remediatable assignments (nonCompliant resources; grouped by subscription)"
-        Write-Host 'Enriching remediatable assignments with displayNames'
-        $arrayRemediatable = [System.Collections.ArrayList]@()
+    $script:arrayRemediatable = [System.Collections.ArrayList]@()
+    Write-Host " Found $($getNonCompliant.Count) remediatable Policy definitions"
+    if ($getNonCompliant.Count -gt 0) {
+        Write-Host ' Enriching remediatable assignments with displayNames'
         foreach ($nonCompliant in $getNonCompliant) {
 
             if ($htCacheAssignmentsPolicy.($nonCompliant.assignmentId)) {

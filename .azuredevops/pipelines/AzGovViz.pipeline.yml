@@ -1,4 +1,4 @@
-# Azure Governance Visualizer v6_major_20230306_1
+# Azure Governance Visualizer v6_major_20230308_3
 # First things first:
 # 1. Mandatory: In the AzGovViz.variables.yml file set needed variables 'ServiceConnection' and 'ManagementGroupId
 # 2. Mandatory: Check line 20
@@ -149,10 +149,20 @@ jobs:
             try {
                 Write-Host "NoDefinitionInsightsDedicatedHTML = $($env:NODEFINITIONINSIGHTSDEDICATEDHTML)"
                 if ($($env:NODEFINITIONINSIGHTSDEDICATEDHTML)) {
-                    Compress-Archive -Path "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID).html" -DestinationPath "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID).zip"
+                  try{
+                    Compress-Archive -Path "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID).html" -DestinationPath "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID).zip" -ErrorAction Stop
+                  }
+                  catch {
+                    throw 'Make sure that the ManagementGroupId variable in the AzGovViz.variables.yml has correct casing (Linux!=linuX)'
+                  }
                 }
                 else {
-                    Compress-Archive -Path "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID).html", "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID)_DefinitionInsights.html" -DestinationPath "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID).zip"
+                  try {
+                    Compress-Archive -Path "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID).html", "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID)_DefinitionInsights.html" -DestinationPath "$($env:SYSTEM_DEFAULTWORKINGDIRECTORY)/$($env:OUTPUTPATH)/AzGovViz_$($env:MANAGEMENTGROUPID).zip" -ErrorAction Stop
+                  }
+                  catch {
+                    throw 'Make sure that the ManagementGroupId variable in the AzGovViz.variables.yml has correct casing (Linux!=linuX)'
+                  }
                 }
 
                 $null = Select-AzSubscription -SubscriptionId $($env:WEBAPPSUBSCRIPTIONID)
