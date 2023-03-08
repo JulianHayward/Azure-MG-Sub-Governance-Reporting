@@ -4,6 +4,10 @@
 
 ### Azure Governance Visualizer version 6
 
+__Changes__ (2023-Mar-08 / Major)
+
+* Extended the 'Cost optimization & cleanup' feature (HTML __TenantSummary__/Subscriptions, Resources & Defender) with application gateways with empty backend pools'
+
 __Changes__ (2023-Mar-06 / Major)
 
 * New feature: Custom Policy definitions that have 'Policy rule' parity with built-in Policy definition(s) (HTML __TenantSummary__/Policy and CSV output)
