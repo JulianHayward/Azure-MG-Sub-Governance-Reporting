@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.70',
 
     [string]
-    $ProductVersion = 'v6_major_20230306_1',
+    $ProductVersion = 'v6_major_20230308_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -3519,6 +3519,13 @@ function getOrphanedResources {
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/loadBalancers'
             query     = "Resources | where type =~ 'microsoft.network/loadBalancers' | where properties.backendAddressPools == '[]' | project type, subscriptionId, Resource=id, Intent='$intent'"
+            intent    = $intent
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/applicationGateways'
+            query     = "resources | where type =~ 'Microsoft.Network/applicationGateways' | extend backendPoolsCount = array_length(properties.backendAddressPools),SKUName= tostring(properties.sku.name), SKUTier= tostring(properties.sku.tier),SKUCapacity=properties.sku.capacity,backendPools=properties.backendAddressPools | project  type, subscriptionId, Resource=id, Intent='$intent' | join (resources | where type =~ 'Microsoft.Network/applicationGateways' | mvexpand backendPools = properties.backendAddressPools | extend backendIPCount = array_length(backendPools.properties.backendIPConfigurations) | extend backendAddressesCount = array_length(backendPools.properties.backendAddresses) | extend backendPoolName  = backendPools.properties.backendAddressPools.name | extend Resource = id | summarize backendIPCount = sum(backendIPCount) ,backendAddressesCount=sum(backendAddressesCount) by Resource) on Resource | project-away Resource1 | where  (backendIPCount == 0 or isempty(backendIPCount)) and (backendAddressesCount==0 or isempty(backendAddressesCount)) | order by Resource asc"
             intent    = $intent
         })
 

@@ -66,6 +66,13 @@ function getOrphanedResources {
             intent    = $intent
         })
 
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/applicationGateways'
+            query     = "resources | where type =~ 'Microsoft.Network/applicationGateways' | extend backendPoolsCount = array_length(properties.backendAddressPools),SKUName= tostring(properties.sku.name), SKUTier= tostring(properties.sku.tier),SKUCapacity=properties.sku.capacity,backendPools=properties.backendAddressPools | project  type, subscriptionId, Resource=id, Intent='$intent' | join (resources | where type =~ 'Microsoft.Network/applicationGateways' | mvexpand backendPools = properties.backendAddressPools | extend backendIPCount = array_length(backendPools.properties.backendIPConfigurations) | extend backendAddressesCount = array_length(backendPools.properties.backendAddresses) | extend backendPoolName  = backendPools.properties.backendAddressPools.name | extend Resource = id | summarize backendIPCount = sum(backendIPCount) ,backendAddressesCount=sum(backendAddressesCount) by Resource) on Resource | project-away Resource1 | where  (backendIPCount == 0 or isempty(backendIPCount)) and (backendAddressesCount==0 or isempty(backendAddressesCount)) | order by Resource asc"
+            intent    = $intent
+        })
+
     $intent = 'cost savings'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.web/serverfarms'

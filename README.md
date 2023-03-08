@@ -71,21 +71,9 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2023-Mar-06 / Major)
+__Changes__ (2023-Mar-08 / Major)
 
-* New feature: Custom Policy definitions that have 'Policy rule' parity with built-in Policy definition(s) (HTML __TenantSummary__/Policy and CSV output)
-* Enhanced *_PolicyAll.json output to include Policy assignments
-* Optimize method to detect Policy definition effect
-* Optimize consumption / convert to decimal
-* Renamed the 'Orphaned Resources' feature to 'Cost optimization & cleanup'
-  * Renamed CSV output '\_\*ResourcesOrphaned.csv' to '\_\*ResourcesCostOptimizationAndCleanup.csv'
-* &#128640; Highlight contribution by @TimWanierke: Extended the 'Cost optimization & cleanup' feature (HTML __TenantSummary__/Subscriptions, Resources & Defender) with 'stopped but not deallocated' Virtual Machines including the related cost
-![stoppedVMs](img/orphaned_stoppedVMs.png)
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.70
-  * minor fixes; not Azure Governance Visualizer specific
-* Added new section [Trust?!](#trust)
-* Typ0s and minor fixes
-* Transitioning product name 'AzGovViz' to 'Azure Governance Visualizer aka AzGovViz' as folks tend to interpretate the 'Gov' as government and not as governance
+* Extended the 'Cost optimization & cleanup' feature (HTML __TenantSummary__/Subscriptions, Resources & Defender) with application gateways with empty backend pools'
 
 Passed tests: Powershell Core 7.3.3 on Windows  
 Passed tests: Powershell Core 7.2.10 Azure DevOps hosted agent ubuntu-22.04  
