@@ -1,4 +1,4 @@
-# Azure Governance Visualizer v6_major_20230306_1
+# Azure Governance Visualizer v6_major_20230308_3
 # First things first:
 # 1. Mandatory: define <Management Group Id> in line 11
 # 2. Optional: enable the schedule (line 22,23)
@@ -84,7 +84,7 @@ jobs:
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            $azAPICallConf = initAzAPICall -DebugAZAPICall $true
+            $azAPICallConf = initAzAPICall -DebugAzAPICall $true
             $currentTask = "AzAPICall - Check if WebApp ($($env:WebAppName)) has Authentication enabled"
             $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($env:WebAppSubscriptionId)/resourceGroups/$($env:WebAppResourceGroup)/providers/Microsoft.Web/sites/$($env:WebAppName)/config/authsettings/list?api-version=2021-02-01"
             $method = 'POST'
@@ -93,29 +93,39 @@ jobs:
             $authStatus = $request.properties.enabled
             Write-Host "WebApp ($($env:WebAppName)) has Authentication enabled: $authStatus"
             if ($authStatus) {
-                try {
-                    if (test-path -path "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId)_DefinitionInsights.html") {
-                      Compress-Archive -Path "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).html", "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId)_DefinitionInsights.html" -DestinationPath "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).zip"
-                    }
-                    else{
-                      Compress-Archive -Path "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).html" -DestinationPath "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).zip"
-                    }
+              try {
+                if (Test-Path -Path "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId)_DefinitionInsights.html") {
+                  try {
+                    Compress-Archive -Path "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).html", "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId)_DefinitionInsights.html" -DestinationPath "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).zip" -ErrorAction Stop
+                  }
+                  catch {
+                    throw 'Make sure that the ManagementGroupId variable in the AzGovViz*.yml has correct casing (Linux!=linuX)'
+                  }
+                }
+                else {
+                  try {
+                    Compress-Archive -Path "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).html" -DestinationPath "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).zip" -ErrorAction Stop
+                  }
+                  catch {
+                    throw 'Make sure that the ManagementGroupId variable in the AzGovViz*.yml has correct casing (Linux!=linuX)'
+                  }
+                }
 
-                    $null = Select-AzSubscription -SubscriptionId $($env:WebAppSubscriptionId)
-                    if (Publish-AzWebApp -ResourceGroupName $($env:WebAppResourceGroup) -Name $($env:WebAppName) -ArchivePath "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).zip" -Force) {
-                        Write-Host "HTML published"
-                    }
+                $null = Select-AzSubscription -SubscriptionId $($env:WebAppSubscriptionId)
+                if (Publish-AzWebApp -ResourceGroupName $($env:WebAppResourceGroup) -Name $($env:WebAppName) -ArchivePath "$($env:OutputPath)/AzGovViz_$($env:ManagementGroupId).zip" -Force) {
+                  Write-Host 'HTML published'
                 }
-                catch {
-                    $_
-                    Write-Host "HTML NOT published"
-                    Write-Host "RBAC Role 'Website Contributor' is required"
-                    exit 1
-                }
+              }
+              catch {
+                $_
+                Write-Host 'HTML NOT published'
+                Write-Host "RBAC Role 'Website Contributor' is required"
+                exit 1
+              }
             }
             else {
-                Write-Host "Assuming and insisting that you do not want to publish your tenant insights to the public"
-                Write-Host "HTML NOT published. Please configure authentication on the webApp ($($env:WebAppName))"
-                exit 1
+              Write-Host 'Assuming and insisting that you do not want to publish your tenant insights to the public'
+              Write-Host "HTML NOT published. Please configure authentication on the webApp ($($env:WebAppName))"
+              exit 1
             }
           azPSVersion: "latest"
