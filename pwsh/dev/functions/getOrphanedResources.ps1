@@ -185,8 +185,10 @@ function getOrphanedResources {
         }
 
         Write-Host " Found $($arrayOrphanedResources.Count) orphaned/unused Resources"
-        Write-Host " Exporting OrphanedResources CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesCostOptimizationAndCleanup.csv'"
-        $arrayOrphanedResources | Sort-Object -Property Resource | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesCostOptimizationAndCleanup.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        if (-not $NoCsvExport) {
+            Write-Host " Exporting OrphanedResources CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesCostOptimizationAndCleanup.csv'"
+            $arrayOrphanedResources | Sort-Object -Property Resource | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesCostOptimizationAndCleanup.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        }
     }
     else {
         Write-Host ' No orphaned/unused Resources found'

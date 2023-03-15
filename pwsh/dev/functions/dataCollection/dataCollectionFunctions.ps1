@@ -63,6 +63,7 @@ function dataCollectionAdvisorScores {
     [CmdletBinding()]Param(
         [string]$scopeId,
         [string]$scopeDisplayName,
+        $ChildMgMgPath,
         $SubscriptionQuotaId
     )
 
@@ -90,6 +91,7 @@ function dataCollectionAdvisorScores {
                                     subscriptionId      = $scopeId
                                     subscriptionName    = $scopeDisplayName
                                     subscriptionQuotaId = $SubscriptionQuotaId
+                                    subscriptionMgPath  = $childMgMgPath
                                     category            = $entry.Name
                                     score               = $entry.properties.lastRefreshedScore.score
                                 })
@@ -1684,7 +1686,8 @@ function dataCollectionASCSecureScoreSub {
 
         if ($subASCSecureScoreResult -ne 'DisallowedProvider') {
             if (($subASCSecureScoreResult).count -gt 0) {
-                $subscriptionASCSecureScore = "$($subASCSecureScoreResult.properties.score.current) of $($subASCSecureScoreResult.properties.score.max) points"
+                $secureScorePercentageRounded = [math]::Round(($subASCSecureScoreResult.properties.score.current / $subASCSecureScoreResult.properties.score.max * 100),2)
+                $subscriptionASCSecureScore = "$($secureScorePercentageRounded)% ($($subASCSecureScoreResult.properties.score.current) of $($subASCSecureScoreResult.properties.score.max) points)"
             }
             else {
                 $subscriptionASCSecureScore = 'n/a'

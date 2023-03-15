@@ -575,17 +575,19 @@ function getConsumption {
         }
 
         #region BuildConsumptionCSV
-        if (-not $NoAzureConsumptionReportExportToCSV) {
-            Write-Host " Exporting Consumption CSV $($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv"
-            $startBuildConsumptionCSV = Get-Date
-            if ($CsvExportUseQuotesAsNeeded) {
-                $allConsumptionData | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
+        if (-not $NoCsvExport) {
+            if (-not $NoAzureConsumptionReportExportToCSV) {
+                Write-Host " Exporting Consumption CSV $($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv"
+                $startBuildConsumptionCSV = Get-Date
+                if ($CsvExportUseQuotesAsNeeded) {
+                    $allConsumptionData | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
+                }
+                else {
+                    $allConsumptionData | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                }
+                $endBuildConsumptionCSV = Get-Date
+                Write-Host " Exporting Consumption CSV total duration: $((New-TimeSpan -Start $startBuildConsumptionCSV -End $endBuildConsumptionCSV).TotalMinutes) minutes ($((New-TimeSpan -Start $startBuildConsumptionCSV -End $endBuildConsumptionCSV).TotalSeconds) seconds)"
             }
-            else {
-                $allConsumptionData | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
-            }
-            $endBuildConsumptionCSV = Get-Date
-            Write-Host " Exporting Consumption CSV total duration: $((New-TimeSpan -Start $startBuildConsumptionCSV -End $endBuildConsumptionCSV).TotalMinutes) minutes ($((New-TimeSpan -Start $startBuildConsumptionCSV -End $endBuildConsumptionCSV).TotalSeconds) seconds)"
         }
         #endregion BuildConsumptionCSV
     }

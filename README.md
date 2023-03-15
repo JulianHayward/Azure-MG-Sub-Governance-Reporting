@@ -71,13 +71,12 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2023-Mar-08 / Major)
+__Changes__ (2023-Mar-15 / Major)
 
-* Extended the 'Cost optimization & cleanup' feature (HTML __TenantSummary__/Subscriptions, Resources & Defender) with application gateways with empty backend pools' - thanks @sebassem
-* New feature Policy Remediation (HTML __TenantSummary__/Policy, CSV export)
-  * Fix: it is indeed possible that no Policy definitions require remediation
-* Update `/.azuredevops/pipelines/AzGovViz.pipeline.yml` and `/.azuredevops/pipelines/AzGovViz.variables.yml`. Added guidance (issue [#173](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/173)): if using the publish to webApp feature the ManagementGroupId variable must have correct casing (Linux!=linuX)
-* Minor optimizations
+* Enhance __TenantSummary__/Subscriptions information with Advisor scores + CSV export *_SubscriptionDetails.csv
+* Fix feature Policy Remediation
+  * Exclude policy/assignments from out-of-scope scopes from processing (e.g. disabled subscription)
+* Fix `-NoCsvExport` parameter reliablity
 
 Passed tests: Powershell Core 7.3.3 on Windows  
 Passed tests: Powershell Core 7.2.10 Azure DevOps hosted agent ubuntu-22.04  

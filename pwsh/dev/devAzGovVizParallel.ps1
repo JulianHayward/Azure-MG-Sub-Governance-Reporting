@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.70',
 
     [string]
-    $ProductVersion = 'v6_major_20230308_3',
+    $ProductVersion = 'v6_major_20230315_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -1121,8 +1121,10 @@ if (-not $HierarchyMapOnly) {
     getPolicyRemediation
 
     if ($arrayAdvisorScores.Count -gt 0) {
-        Write-Host "Exporting AdvisorScores CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_AdvisorScores.csv'"
-        $arrayAdvisorScores | Sort-Object -Property subscriptionName, subscriptionId, category | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_AdvisorScores.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        if (-not $NoCsvExport) {
+            Write-Host "Exporting AdvisorScores CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_AdvisorScores.csv'"
+            $arrayAdvisorScores | Sort-Object -Property subscriptionName, subscriptionId, category | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_AdvisorScores.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        }
     }
 
     showMemoryUsage
@@ -2206,15 +2208,18 @@ if (-not $HierarchyMapOnly) {
     showMemoryUsage
 
     #region BuildDailySummaryCSV
-    $dailySummary4ExportToCSV = [System.Collections.ArrayList]@()
-    foreach ($entry in $htDailySummary.keys | Sort-Object) {
-        $null = $dailySummary4ExportToCSV.Add([PSCustomObject]@{
-                capability = $entry
-                count      = $htDailySummary.($entry)
-            })
+    if (-not $NoCsvExport) {
+        $dailySummary4ExportToCSV = [System.Collections.ArrayList]@()
+        foreach ($entry in $htDailySummary.keys | Sort-Object) {
+            $null = $dailySummary4ExportToCSV.Add([PSCustomObject]@{
+                    capability = $entry
+                    count      = $htDailySummary.($entry)
+                })
+        }
+        Write-Host " Exporting DailySummary CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_DailySummary.csv'"
+        $dailySummary4ExportToCSV | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_DailySummary.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
     }
-    Write-Host " Exporting DailySummary CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_DailySummary.csv'"
-    $dailySummary4ExportToCSV | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_DailySummary.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+
     #endregion BuildDailySummaryCSV
 
     $endSummary = Get-Date

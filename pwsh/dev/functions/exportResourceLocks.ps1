@@ -85,7 +85,9 @@ function exportResourceLocks {
         }
     }
     if ($arrayResourceLocks4CSV.count -gt 0) {
-        Write-Host "Exporting ResourceLocks CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceLocks.csv'"
-        $arrayResourceLocks4CSV | Sort-Object -Property ScopeType, Lock, SubscriptionId, Id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceLocks.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        if (-not $NoCsvExport) {
+            Write-Host "Exporting ResourceLocks CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceLocks.csv'"
+            $arrayResourceLocks4CSV | Sort-Object -Property ScopeType, Lock, SubscriptionId, Id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceLocks.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        }
     }
 }

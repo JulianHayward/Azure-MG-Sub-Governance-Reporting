@@ -42,15 +42,15 @@ function getPolicyRemediation {
         Write-Host ' Enriching remediatable assignments with displayNames'
         foreach ($nonCompliant in $getNonCompliant) {
 
-            if ($htCacheAssignmentsPolicy.($nonCompliant.assignmentId)) {
-                if ($htCacheAssignmentsPolicy.($nonCompliant.assignmentId).assignment.properties.policyDefinitionId -like '*/providers/Microsoft.Authorization/policySetDefinitions/*') {
+            if ($htCacheAssignmentsPolicy.($nonCompliant.assignmentId.toLower())) {
+                if ($htCacheAssignmentsPolicy.($nonCompliant.assignmentId.toLower()).assignment.properties.policyDefinitionId -like '*/providers/Microsoft.Authorization/policySetDefinitions/*') {
                     $policyAssignmentPolicyOrPolicySet = 'policySetDefinition'
-                    $policySetDefinitionId = $htCacheAssignmentsPolicy.($nonCompliant.assignmentId).assignment.properties.policyDefinitionId
+                    $policySetDefinitionId = $htCacheAssignmentsPolicy.($nonCompliant.assignmentId.toLower()).assignment.properties.policyDefinitionId
                     $policySetDefinitionDisplayName = $htCacheDefinitionsPolicySet.($policySetDefinitionId.ToLower()).DisplayName
                     $policySetDefinitionName = $policySetDefinitionId -replace '.*/'
                     $policySetDefinitionType = $htCacheDefinitionsPolicySet.($policySetDefinitionId.ToLower()).Type
                 }
-                elseif ($htCacheAssignmentsPolicy.($nonCompliant.assignmentId).assignment.properties.policyDefinitionId -like '*/providers/Microsoft.Authorization/policyDefinitions/*') {
+                elseif ($htCacheAssignmentsPolicy.($nonCompliant.assignmentId.toLower()).assignment.properties.policyDefinitionId -like '*/providers/Microsoft.Authorization/policyDefinitions/*') {
                     $policyAssignmentPolicyOrPolicySet = 'policyDefinition'
                     $policySetDefinitionId = 'n/a'
                     $policySetDefinitionDisplayName = 'n/a'
@@ -58,47 +58,47 @@ function getPolicyRemediation {
                     $policySetDefinitionType = 'n/a'
                 }
                 else {
-                    throw "unexpected .policyDefinitionId: $($htCacheAssignmentsPolicy.($nonCompliant.assignmentId).assignment.properties)"
+                    throw "unexpected .policyDefinitionId: $($htCacheAssignmentsPolicy.($nonCompliant.assignmentId.toLower()).assignment.properties)"
                 }
+
+                switch ($nonCompliant.assignmentId) {
+                    { $_ -like '/subscriptions/*' } {
+                        $policyAssignmentScopeType = 'Sub'
+                    }
+                    { $_ -like '/subscriptions/*/resourcegroups/*' } {
+                        $policyAssignmentScopeType = 'RG'
+                    }
+                    { $_ -like '/providers/Microsoft.Management/managementGroups/*' } {
+                        $policyAssignmentScopeType = 'MG'
+                    }
+                    default {
+                        $policyAssignmentScopeType = 'notDetected'
+                    }
+                }
+
+                $null = $script:arrayRemediatable.Add([PSCustomObject]@{
+                        policyAssignmentScopeType            = $policyAssignmentScopeType
+                        policyAssignmentScope                = $nonCompliant.assignmentScope
+                        policyAssignmentId                   = $nonCompliant.assignmentId
+                        policyAssignmentName                 = $nonCompliant.assignmentName
+                        policyAssignmentDisplayName          = $htCacheAssignmentsPolicy.($nonCompliant.assignmentId.toLower()).assignment.properties.displayName
+                        policyAssignmentPolicyOrPolicySet    = $policyAssignmentPolicyOrPolicySet
+                        effect                               = $nonCompliant.effect
+                        policyDefinitionId                   = $nonCompliant.definitionId
+                        policyDefinitionName                 = $nonCompliant.definitionName
+                        policyDefinitionDisplayName          = $htCacheDefinitionsPolicy.($nonCompliant.definitionId.toLower()).Json.properties.displayName
+                        policyDefinitionType                 = $htCacheDefinitionsPolicy.($nonCompliant.definitionId.toLower()).Type
+                        policySetPolicyDefinitionReferenceId = $nonCompliant.policyDefinitionReferenceId
+                        policySetDefinitionId                = $policySetDefinitionId
+                        policySetDefinitionName              = $policySetDefinitionName
+                        policySetDefinitionDisplayName       = $policySetDefinitionDisplayName
+                        policySetDefinitionType              = $policySetDefinitionType
+                        nonCompliantResourcesCount           = $nonCompliant.count_
+                    })
             }
             else {
-                throw "`$htCacheAssignmentsPolicy.($($nonCompliant.assignmentId)) not existing"
+                Write-Host "  skipping `$htCacheAssignmentsPolicy.($($nonCompliant.assignmentId)) potentially an assignment on an out-of-scope subscription"
             }
-
-            switch ($nonCompliant.assignmentId) {
-                { $_ -like '/subscriptions/*' } {
-                    $policyAssignmentScopeType = 'Sub'
-                }
-                { $_ -like '/subscriptions/*/resourcegroups/*' } {
-                    $policyAssignmentScopeType = 'RG'
-                }
-                { $_ -like '/providers/Microsoft.Management/managementGroups/*' } {
-                    $policyAssignmentScopeType = 'MG'
-                }
-                default {
-                    $policyAssignmentScopeType = 'notDetected'
-                }
-            }
-
-            $null = $script:arrayRemediatable.Add([PSCustomObject]@{
-                    policyAssignmentScopeType            = $policyAssignmentScopeType
-                    policyAssignmentScope                = $nonCompliant.assignmentScope
-                    policyAssignmentId                   = $nonCompliant.assignmentId
-                    policyAssignmentName                 = $nonCompliant.assignmentName
-                    policyAssignmentDisplayName          = $htCacheAssignmentsPolicy.($nonCompliant.assignmentId).assignment.properties.displayName
-                    policyAssignmentPolicyOrPolicySet    = $policyAssignmentPolicyOrPolicySet
-                    effect                               = $nonCompliant.effect
-                    policyDefinitionId                   = $nonCompliant.definitionId
-                    policyDefinitionName                 = $nonCompliant.definitionName
-                    policyDefinitionDisplayName          = $htCacheDefinitionsPolicy.($nonCompliant.definitionId).Json.properties.displayName
-                    policyDefinitionType                 = $htCacheDefinitionsPolicy.($nonCompliant.definitionId).Type
-                    policySetPolicyDefinitionReferenceId = $nonCompliant.policyDefinitionReferenceId
-                    policySetDefinitionId                = $policySetDefinitionId
-                    policySetDefinitionName              = $policySetDefinitionName
-                    policySetDefinitionDisplayName       = $policySetDefinitionDisplayName
-                    policySetDefinitionType              = $policySetDefinitionType
-                    nonCompliantResourcesCount           = $nonCompliant.count_
-                })
         }
     }
 }

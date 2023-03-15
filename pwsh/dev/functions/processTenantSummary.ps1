@@ -6851,6 +6851,7 @@ extensions: [{ name: 'sort' }]
 '@)
 
     #region SUMMARYSubs
+    $startSUMMARYSubs = Get-Date
     Write-Host '  processing TenantSummary Subscriptions'
     $summarySubscriptions = $optimizedTableForPathQueryMgAndSub | Sort-Object -Property Subscription
     $summarySubscriptionsCount = ($summarySubscriptions).Count
@@ -6858,6 +6859,21 @@ extensions: [{ name: 'sort' }]
     $arrayPIMEligibleGroupedBySubscription = $arrayPIMEligible.where({ $_.ScopeType -eq 'Sub' }) | Group-Object -Property ScopeId
 
     if ($summarySubscriptionsCount -gt 0) {
+
+        $advisorScoreCategories = $arrayAdvisorScores.category | Sort-Object -Unique
+        $htAdvisorScoresSubscriptions = @{}
+        if ($advisorScoreCategories.Count -gt 0) {
+            $arrayAdvisorScoresGroupedBySubscriptionId = $arrayAdvisorScores | Group-Object -Property subscriptionId
+            foreach ($subEntry in $arrayAdvisorScoresGroupedBySubscriptionId) {
+                $htAdvisorScoresSubscriptions.($subEntry.Name) = @{}
+                foreach ($possibleCategory in $advisorScoreCategories) {
+                    if ($subEntry.Group.category -eq $possibleCategory) {
+                        $htAdvisorScoresSubscriptions.($subEntry.Name).($possibleCategory) = $subEntry.Group.where({ $_.category -eq $possibleCategory }).score
+                    }
+                }
+            }
+        }
+
         $tfCount = $summarySubscriptionsCount
         $htmlTableId = 'TenantSummary_subs'
         $abbr = " <abbr title=`"indirect: members of an AAD group where RBAC was assigned`"><i class=`"fa fa-question-circle`" aria-hidden=`"true`"></i></abbr>"
@@ -6882,11 +6898,25 @@ extensions: [{ name: 'sort' }]
 <th>User Access Administrator (at Scope) indirect$($abbr)</th>
 <th>User Access Administrator (PIM eligible at scope)</th>
 <th>MDfC Score</th>
-<th>MDfC 'Email notifications' state
-<th>MDfC 'Email notifications' severity
-<th>MDfC 'Email notifications' roles
-<th>MDfC 'Email notifications' emails
+<th>MDfC 'Email notifications' state</th>
+<th>MDfC 'Email notifications' severity</th>
+<th>MDfC 'Email notifications' roles</th>
+<th>MDfC 'Email notifications' emails</th>
 "@)
+
+        foreach ($possibleCategory in $advisorScoreCategories) {
+            if ($possibleCategory -eq 'Advisor') {
+                [void]$htmlTenantSummary.AppendLine(@"
+                <th>$possibleCategory score</th>
+"@)
+            }
+            else {
+                [void]$htmlTenantSummary.AppendLine(@"
+        <th>Advisor $possibleCategory score</th>
+"@)
+            }
+        }
+
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
             [void]$htmlTenantSummary.AppendLine(@"
 <th>Cost ($($AzureConsumptionPeriod)d)</th>
@@ -6901,10 +6931,13 @@ extensions: [{ name: 'sort' }]
 '@)
 
         if (-not $ManagementGroupsOnly) {
-            Write-Host " Exporting MDfC Email Notifications CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv'"
-            $htDefenderEmailContacts.values | Sort-Object -Property subscriptionName | Select-Object -Property subscriptionId, subscriptionName, alertNotificationsState, alertNotificationsminimalSeverity, roles, emails | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+            if (-not $NoCsvExport) {
+                Write-Host " Exporting MDfC Email Notifications CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv'"
+                $htDefenderEmailContacts.values | Sort-Object -Property subscriptionName | Select-Object -Property subscriptionId, subscriptionName, alertNotificationsState, alertNotificationsminimalSeverity, roles, emails | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+            }
         }
 
+        $subscriptionDetails4CSVExport = [System.Collections.ArrayList]@()
         $htmlSUMMARYSubs = $null
         $htmlSUMMARYSubs = foreach ($summarySubscription in $summarySubscriptions) {
             $subPath = $htSubscriptionsMgPath.($summarySubscription.subscriptionId).ParentNameChainDelimited
@@ -6966,6 +6999,8 @@ extensions: [{ name: 'sort' }]
                 $pimEligibleOwnersAtScopeForThisSubscriptionCount = ($pimEligibleAtScopeForThisSubscription.where( { $_.RoleIdGuid -eq '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' } )).Count
                 $pimEligibleUAAsAtScopeForThisSubscriptionCount = ($pimEligibleAtScopeForThisSubscription.where( { $_.RoleIdGuid -eq '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9' } )).Count
             }
+
+            $htColl = [ordered]@{}
             @"
 <tr>
 <td>$($summarySubscription.subscription -replace '<', '&lt;' -replace '>', '&gt;')</td>
@@ -6985,17 +7020,69 @@ extensions: [{ name: 'sort' }]
 <td>$($MDfCEmailNotificationsRoles)</td>
 <td>$($MDfCEmailNotificationsEmails)</td>
 "@
+
+            $htColl.Subscription = $summarySubscription.subscription
+            $htColl.SubscriptionId = $summarySubscription.subscriptionId
+            $htColl.QuotaId = $summarySubscription.SubscriptionQuotaId
+            $htColl.ManagementGroupPath = $subPath
+            $htColl.RoleAssignmentLimit = $htSubscriptionsRoleAssignmentLimit.($summarySubscription.subscriptionId)
+            $htColl.Tags = ($subscriptionTagsArray | Sort-Object) -join "$CsvDelimiterOpposite "
+            $htColl.'Owner(atScope)Direct' = $rbacOwnersAtScopeForThisSubscriptionDirectCount
+            $htColl.'Owner(atScope)Indirect' = $rbacOwnersAtScopeForThisSubscriptionInDirectCount
+            $htColl.'Owner(PIMEligibleAtScope)' = $pimEligibleOwnersAtScopeForThisSubscriptionCount
+            $htColl.'UserAccessAdministrator(atScope)Direct' = $rbacUAAsAtScopeForThisSubscriptionDirectCount
+            $htColl.'UserAccessAdministrator(atScope)Indirect' = $rbacUAAsAtScopeForThisSubscriptionInDirectCount
+            $htColl.'UserAccessAdministrator(PIMEligibleAtScope)' = $pimEligibleUAAsAtScopeForThisSubscriptionCount
+            $htColl.MDfCScore = $summarySubscription.SubscriptionASCSecureScore
+            $htColl.MDfCEmailNotificationsState = $MDfCEmailNotificationsState
+            $htColl.MDfCEmailNotificationsSeverity = $MDfCEmailNotificationsSeverity
+            $htColl.MDfCEmailNotificationsRoles = $MDfCEmailNotificationsRoles
+            $htColl.MDfCEmailNotificationsEmails = $MDfCEmailNotificationsEmails
+
+            foreach ($possibleCategory in $advisorScoreCategories) {
+                if ($htAdvisorScoresSubscriptions.($summarySubscription.subscriptionId).($possibleCategory)) {
+                    @"
+        <td>$([math]::Round(($htAdvisorScoresSubscriptions.($summarySubscription.subscriptionId).($possibleCategory)), 2))</td>
+"@
+                    if ($possibleCategory -eq 'Advisor') {
+                        $htColl.("$($possibleCategory)Score") = $htAdvisorScoresSubscriptions.($summarySubscription.subscriptionId).($possibleCategory)
+                    }
+                    else {
+                        $htColl.("Advisor$($possibleCategory)Score") = $htAdvisorScoresSubscriptions.($summarySubscription.subscriptionId).($possibleCategory)
+                    }
+                }
+                else {
+                    @'
+        <td>n/a</td>
+'@
+                    $htColl.($possibleCategory) = 'n/a'
+                }
+            }
+
             if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
                 @"
 <td>$totalCost</td>
 <td>$currency</td>
 "@
+                $htColl."Cost($($AzureConsumptionPeriod)d)" = $totalCost
+                $htColl.Currency = $currency
             }
             @"
 <td><a href="#hierarchySub_$($summarySubscription.MgId)"><i class="fa fa-eye" aria-hidden="true"></i></a> $subPath</td>
 </tr>
 "@
+            if (-not $NoCsvExport) {
+                $null = $subscriptionDetails4CSVExport.Add($htColl)
+            }
         }
+
+        if (-not $ManagementGroupsOnly) {
+            if (-not $NoCsvExport) {
+                Write-Host " Exporting SubscriptionDetails CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_SubscriptionDetails.csv'"
+                $subscriptionDetails4CSVExport | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_SubscriptionDetails.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+            }
+        }
+
         [void]$htmlTenantSummary.AppendLine($htmlSUMMARYSubs)
         [void]$htmlTenantSummary.AppendLine(@"
             </tbody>
@@ -7040,9 +7127,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_14: 'select',
 '@)
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
-            [void]$htmlTenantSummary.AppendLine(@'
-            col_17: 'multiple',
-'@)
+            [void]$htmlTenantSummary.AppendLine(@"
+            col_$(17 + $advisorScoreCategories.Count): 'multiple',
+"@)
         }
         [void]$htmlTenantSummary.AppendLine(@'
             col_types: [
@@ -7063,6 +7150,12 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
 '@)
+        foreach ($possibleCategory in $advisorScoreCategories) {
+            [void]$htmlTenantSummary.AppendLine(@'
+    'number',
+'@)
+        }
+
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
             [void]$htmlTenantSummary.AppendLine(@'
                 'number',
@@ -7086,6 +7179,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     <p><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle">$($summarySubscriptionsCount) Subscriptions</span></p>
 "@)
     }
+
+    $endSUMMARYSubs = Get-Date
+    Write-Host "   SUMMARYSubs duration: $((New-TimeSpan -Start $startSUMMARYSubs -End $endSUMMARYSubs).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYSubs -End $endSUMMARYSubs).TotalSeconds) seconds)"
     #endregion SUMMARYSubs
 
     #region SUMMARYOutOfScopeSubscriptions

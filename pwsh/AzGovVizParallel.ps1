@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.70',
 
     [string]
-    $ProductVersion = 'v6_major_20230308_3',
+    $ProductVersion = 'v6_major_20230315_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -2386,22 +2386,24 @@ function detectPolicyEffect {
     return $htEffect
 }
 function exportBaseCSV {
-    Write-Host "Exporting CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName).csv'"
-    $startBuildCSV = Get-Date
+    if (-not $NoCsvExport) {
+        Write-Host "Exporting CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName).csv'"
+        $startBuildCSV = Get-Date
 
-    $outprops = $newtable[0].PSObject.Properties.Name
-    if (-not $HierarchyMapOnly -and -not $HierarchyMapOnlyCustomDataJSON) {
-        $outprops.Set($outprops.IndexOf('PolicyAssignmentNotScopes'), @{L = 'PolicyAssignmentNotScopes'; E = { ($_.PolicyAssignmentNotScopes -join "$CsvDelimiterOpposite ") } })
-    }
-    if ($CsvExportUseQuotesAsNeeded) {
-        $newTable | Sort-Object -Property level, mgId, SubscriptionId, PolicyAssignmentId, RoleAssignmentId, BlueprintId, BlueprintAssignmentId | Select-Object -Property $outprops -ExcludeProperty PolicyAssignmentParameters | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
-    }
-    else {
-        $newTable | Sort-Object -Property level, mgId, SubscriptionId, PolicyAssignmentId, RoleAssignmentId, BlueprintId, BlueprintAssignmentId | Select-Object -Property $outprops -ExcludeProperty PolicyAssignmentParameters | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
-    }
+        $outprops = $newtable[0].PSObject.Properties.Name
+        if (-not $HierarchyMapOnly -and -not $HierarchyMapOnlyCustomDataJSON) {
+            $outprops.Set($outprops.IndexOf('PolicyAssignmentNotScopes'), @{L = 'PolicyAssignmentNotScopes'; E = { ($_.PolicyAssignmentNotScopes -join "$CsvDelimiterOpposite ") } })
+        }
+        if ($CsvExportUseQuotesAsNeeded) {
+            $newTable | Sort-Object -Property level, mgId, SubscriptionId, PolicyAssignmentId, RoleAssignmentId, BlueprintId, BlueprintAssignmentId | Select-Object -Property $outprops -ExcludeProperty PolicyAssignmentParameters | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
+        }
+        else {
+            $newTable | Sort-Object -Property level, mgId, SubscriptionId, PolicyAssignmentId, RoleAssignmentId, BlueprintId, BlueprintAssignmentId | Select-Object -Property $outprops -ExcludeProperty PolicyAssignmentParameters | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        }
 
-    $endBuildCSV = Get-Date
-    Write-Host "Exporting CSV total duration: $((New-TimeSpan -Start $startBuildCSV -End $endBuildCSV).TotalMinutes) minutes ($((New-TimeSpan -Start $startBuildCSV -End $endBuildCSV).TotalSeconds) seconds)"
+        $endBuildCSV = Get-Date
+        Write-Host "Exporting CSV total duration: $((New-TimeSpan -Start $startBuildCSV -End $endBuildCSV).TotalMinutes) minutes ($((New-TimeSpan -Start $startBuildCSV -End $endBuildCSV).TotalSeconds) seconds)"
+    }
 }
 function exportResourceLocks {
     $arrayResourceLocks4CSV = [System.Collections.ArrayList]@()
@@ -2490,8 +2492,10 @@ function exportResourceLocks {
         }
     }
     if ($arrayResourceLocks4CSV.count -gt 0) {
-        Write-Host "Exporting ResourceLocks CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceLocks.csv'"
-        $arrayResourceLocks4CSV | Sort-Object -Property ScopeType, Lock, SubscriptionId, Id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceLocks.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        if (-not $NoCsvExport) {
+            Write-Host "Exporting ResourceLocks CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceLocks.csv'"
+            $arrayResourceLocks4CSV | Sort-Object -Property ScopeType, Lock, SubscriptionId, Id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceLocks.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        }
     }
 }
 function getConsumption {
@@ -3071,17 +3075,19 @@ function getConsumption {
         }
 
         #region BuildConsumptionCSV
-        if (-not $NoAzureConsumptionReportExportToCSV) {
-            Write-Host " Exporting Consumption CSV $($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv"
-            $startBuildConsumptionCSV = Get-Date
-            if ($CsvExportUseQuotesAsNeeded) {
-                $allConsumptionData | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
+        if (-not $NoCsvExport) {
+            if (-not $NoAzureConsumptionReportExportToCSV) {
+                Write-Host " Exporting Consumption CSV $($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv"
+                $startBuildConsumptionCSV = Get-Date
+                if ($CsvExportUseQuotesAsNeeded) {
+                    $allConsumptionData | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
+                }
+                else {
+                    $allConsumptionData | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                }
+                $endBuildConsumptionCSV = Get-Date
+                Write-Host " Exporting Consumption CSV total duration: $((New-TimeSpan -Start $startBuildConsumptionCSV -End $endBuildConsumptionCSV).TotalMinutes) minutes ($((New-TimeSpan -Start $startBuildConsumptionCSV -End $endBuildConsumptionCSV).TotalSeconds) seconds)"
             }
-            else {
-                $allConsumptionData | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_Consumption.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
-            }
-            $endBuildConsumptionCSV = Get-Date
-            Write-Host " Exporting Consumption CSV total duration: $((New-TimeSpan -Start $startBuildConsumptionCSV -End $endBuildConsumptionCSV).TotalMinutes) minutes ($((New-TimeSpan -Start $startBuildConsumptionCSV -End $endBuildConsumptionCSV).TotalSeconds) seconds)"
         }
         #endregion BuildConsumptionCSV
     }
@@ -3641,8 +3647,10 @@ function getOrphanedResources {
         }
 
         Write-Host " Found $($arrayOrphanedResources.Count) orphaned/unused Resources"
-        Write-Host " Exporting OrphanedResources CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesCostOptimizationAndCleanup.csv'"
-        $arrayOrphanedResources | Sort-Object -Property Resource | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesCostOptimizationAndCleanup.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        if (-not $NoCsvExport) {
+            Write-Host " Exporting OrphanedResources CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesCostOptimizationAndCleanup.csv'"
+            $arrayOrphanedResources | Sort-Object -Property Resource | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesCostOptimizationAndCleanup.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        }
     }
     else {
         Write-Host ' No orphaned/unused Resources found'
@@ -3913,15 +3921,15 @@ function getPolicyRemediation {
         Write-Host ' Enriching remediatable assignments with displayNames'
         foreach ($nonCompliant in $getNonCompliant) {
 
-            if ($htCacheAssignmentsPolicy.($nonCompliant.assignmentId)) {
-                if ($htCacheAssignmentsPolicy.($nonCompliant.assignmentId).assignment.properties.policyDefinitionId -like '*/providers/Microsoft.Authorization/policySetDefinitions/*') {
+            if ($htCacheAssignmentsPolicy.($nonCompliant.assignmentId.toLower())) {
+                if ($htCacheAssignmentsPolicy.($nonCompliant.assignmentId.toLower()).assignment.properties.policyDefinitionId -like '*/providers/Microsoft.Authorization/policySetDefinitions/*') {
                     $policyAssignmentPolicyOrPolicySet = 'policySetDefinition'
-                    $policySetDefinitionId = $htCacheAssignmentsPolicy.($nonCompliant.assignmentId).assignment.properties.policyDefinitionId
+                    $policySetDefinitionId = $htCacheAssignmentsPolicy.($nonCompliant.assignmentId.toLower()).assignment.properties.policyDefinitionId
                     $policySetDefinitionDisplayName = $htCacheDefinitionsPolicySet.($policySetDefinitionId.ToLower()).DisplayName
                     $policySetDefinitionName = $policySetDefinitionId -replace '.*/'
                     $policySetDefinitionType = $htCacheDefinitionsPolicySet.($policySetDefinitionId.ToLower()).Type
                 }
-                elseif ($htCacheAssignmentsPolicy.($nonCompliant.assignmentId).assignment.properties.policyDefinitionId -like '*/providers/Microsoft.Authorization/policyDefinitions/*') {
+                elseif ($htCacheAssignmentsPolicy.($nonCompliant.assignmentId.toLower()).assignment.properties.policyDefinitionId -like '*/providers/Microsoft.Authorization/policyDefinitions/*') {
                     $policyAssignmentPolicyOrPolicySet = 'policyDefinition'
                     $policySetDefinitionId = 'n/a'
                     $policySetDefinitionDisplayName = 'n/a'
@@ -3929,47 +3937,47 @@ function getPolicyRemediation {
                     $policySetDefinitionType = 'n/a'
                 }
                 else {
-                    throw "unexpected .policyDefinitionId: $($htCacheAssignmentsPolicy.($nonCompliant.assignmentId).assignment.properties)"
+                    throw "unexpected .policyDefinitionId: $($htCacheAssignmentsPolicy.($nonCompliant.assignmentId.toLower()).assignment.properties)"
                 }
+
+                switch ($nonCompliant.assignmentId) {
+                    { $_ -like '/subscriptions/*' } {
+                        $policyAssignmentScopeType = 'Sub'
+                    }
+                    { $_ -like '/subscriptions/*/resourcegroups/*' } {
+                        $policyAssignmentScopeType = 'RG'
+                    }
+                    { $_ -like '/providers/Microsoft.Management/managementGroups/*' } {
+                        $policyAssignmentScopeType = 'MG'
+                    }
+                    default {
+                        $policyAssignmentScopeType = 'notDetected'
+                    }
+                }
+
+                $null = $script:arrayRemediatable.Add([PSCustomObject]@{
+                        policyAssignmentScopeType            = $policyAssignmentScopeType
+                        policyAssignmentScope                = $nonCompliant.assignmentScope
+                        policyAssignmentId                   = $nonCompliant.assignmentId
+                        policyAssignmentName                 = $nonCompliant.assignmentName
+                        policyAssignmentDisplayName          = $htCacheAssignmentsPolicy.($nonCompliant.assignmentId.toLower()).assignment.properties.displayName
+                        policyAssignmentPolicyOrPolicySet    = $policyAssignmentPolicyOrPolicySet
+                        effect                               = $nonCompliant.effect
+                        policyDefinitionId                   = $nonCompliant.definitionId
+                        policyDefinitionName                 = $nonCompliant.definitionName
+                        policyDefinitionDisplayName          = $htCacheDefinitionsPolicy.($nonCompliant.definitionId.toLower()).Json.properties.displayName
+                        policyDefinitionType                 = $htCacheDefinitionsPolicy.($nonCompliant.definitionId.toLower()).Type
+                        policySetPolicyDefinitionReferenceId = $nonCompliant.policyDefinitionReferenceId
+                        policySetDefinitionId                = $policySetDefinitionId
+                        policySetDefinitionName              = $policySetDefinitionName
+                        policySetDefinitionDisplayName       = $policySetDefinitionDisplayName
+                        policySetDefinitionType              = $policySetDefinitionType
+                        nonCompliantResourcesCount           = $nonCompliant.count_
+                    })
             }
             else {
-                throw "`$htCacheAssignmentsPolicy.($($nonCompliant.assignmentId)) not existing"
+                Write-Host "  skipping `$htCacheAssignmentsPolicy.($($nonCompliant.assignmentId)) potentially an assignment on an out-of-scope subscription"
             }
-
-            switch ($nonCompliant.assignmentId) {
-                { $_ -like '/subscriptions/*' } {
-                    $policyAssignmentScopeType = 'Sub'
-                }
-                { $_ -like '/subscriptions/*/resourcegroups/*' } {
-                    $policyAssignmentScopeType = 'RG'
-                }
-                { $_ -like '/providers/Microsoft.Management/managementGroups/*' } {
-                    $policyAssignmentScopeType = 'MG'
-                }
-                default {
-                    $policyAssignmentScopeType = 'notDetected'
-                }
-            }
-
-            $null = $script:arrayRemediatable.Add([PSCustomObject]@{
-                    policyAssignmentScopeType            = $policyAssignmentScopeType
-                    policyAssignmentScope                = $nonCompliant.assignmentScope
-                    policyAssignmentId                   = $nonCompliant.assignmentId
-                    policyAssignmentName                 = $nonCompliant.assignmentName
-                    policyAssignmentDisplayName          = $htCacheAssignmentsPolicy.($nonCompliant.assignmentId).assignment.properties.displayName
-                    policyAssignmentPolicyOrPolicySet    = $policyAssignmentPolicyOrPolicySet
-                    effect                               = $nonCompliant.effect
-                    policyDefinitionId                   = $nonCompliant.definitionId
-                    policyDefinitionName                 = $nonCompliant.definitionName
-                    policyDefinitionDisplayName          = $htCacheDefinitionsPolicy.($nonCompliant.definitionId).Json.properties.displayName
-                    policyDefinitionType                 = $htCacheDefinitionsPolicy.($nonCompliant.definitionId).Type
-                    policySetPolicyDefinitionReferenceId = $nonCompliant.policyDefinitionReferenceId
-                    policySetDefinitionId                = $policySetDefinitionId
-                    policySetDefinitionName              = $policySetDefinitionName
-                    policySetDefinitionDisplayName       = $policySetDefinitionDisplayName
-                    policySetDefinitionType              = $policySetDefinitionType
-                    nonCompliantResourcesCount           = $nonCompliant.count_
-                })
         }
     }
 }
@@ -5485,7 +5493,10 @@ function processDataCollection {
                         DataCollectionDefenderEmailContacts @baseParameters
 
                         #advisorScores
-                        DataCollectionAdvisorScores @baseParameters
+                        $dataCollectionAdvisorScoresParameters = @{
+                            ChildMgMgPath = $childMgMgPath
+                        }
+                        DataCollectionAdvisorScores @baseParameters @dataCollectionAdvisorScoresParameters
 
                         if (-not $azAPICallConf['htParameters'].NoNetwork) {
                             #VNets
@@ -5902,19 +5913,23 @@ function processDataCollection {
                 }
 
                 if ($arrayResourceFluctuationFinal.Count -gt 0 -and $doResourceFluctuation) {
-                    #DataCollection Export of Resource fluctuation
-                    Write-Host " Exporting ResourceFluctuation CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuation.csv'"
-                    $arrayResourceFluctuationFinal | Sort-Object -Property ResourceType | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuation.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                    if (-not $NoCsvExport) {
+                        #DataCollection Export of Resource fluctuation
+                        Write-Host " Exporting ResourceFluctuation CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuation.csv'"
+                        $arrayResourceFluctuationFinal | Sort-Object -Property ResourceType | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuation.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
 
-                    Write-Host " Exporting ResourceFluctuation detailed CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuationDetailed.csv'"
-                    $arrayAddedAndRemoved | Sort-Object -Property Resource | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuationDetailed.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                        Write-Host " Exporting ResourceFluctuation detailed CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuationDetailed.csv'"
+                        $arrayAddedAndRemoved | Sort-Object -Property Resource | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourceFluctuationDetailed.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                    }
                 }
                 Write-Host "Process Resource fluctuation duration: $((New-TimeSpan -Start $start -End (Get-Date)).TotalSeconds) seconds"
 
                 #DataCollection Export of All Resources
                 if ($resourcesIdsAll.Count -gt 0) {
-                    Write-Host "Exporting ResourcesAll CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv'"
-                    $resourcesIdsAll | Sort-Object -Property id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                    if (-not $NoCsvExport) {
+                        Write-Host "Exporting ResourcesAll CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv'"
+                        $resourcesIdsAll | Sort-Object -Property id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                    }
                 }
                 else {
                     Write-Host "Not Exporting ResourcesAll CSV, as there are $($resourcesIdsAll.Count) resources"
@@ -19489,6 +19504,7 @@ extensions: [{ name: 'sort' }]
 '@)
 
     #region SUMMARYSubs
+    $startSUMMARYSubs = Get-Date
     Write-Host '  processing TenantSummary Subscriptions'
     $summarySubscriptions = $optimizedTableForPathQueryMgAndSub | Sort-Object -Property Subscription
     $summarySubscriptionsCount = ($summarySubscriptions).Count
@@ -19496,6 +19512,21 @@ extensions: [{ name: 'sort' }]
     $arrayPIMEligibleGroupedBySubscription = $arrayPIMEligible.where({ $_.ScopeType -eq 'Sub' }) | Group-Object -Property ScopeId
 
     if ($summarySubscriptionsCount -gt 0) {
+
+        $advisorScoreCategories = $arrayAdvisorScores.category | Sort-Object -Unique
+        $htAdvisorScoresSubscriptions = @{}
+        if ($advisorScoreCategories.Count -gt 0) {
+            $arrayAdvisorScoresGroupedBySubscriptionId = $arrayAdvisorScores | Group-Object -Property subscriptionId
+            foreach ($subEntry in $arrayAdvisorScoresGroupedBySubscriptionId) {
+                $htAdvisorScoresSubscriptions.($subEntry.Name) = @{}
+                foreach ($possibleCategory in $advisorScoreCategories) {
+                    if ($subEntry.Group.category -eq $possibleCategory) {
+                        $htAdvisorScoresSubscriptions.($subEntry.Name).($possibleCategory) = $subEntry.Group.where({ $_.category -eq $possibleCategory }).score
+                    }
+                }
+            }
+        }
+
         $tfCount = $summarySubscriptionsCount
         $htmlTableId = 'TenantSummary_subs'
         $abbr = " <abbr title=`"indirect: members of an AAD group where RBAC was assigned`"><i class=`"fa fa-question-circle`" aria-hidden=`"true`"></i></abbr>"
@@ -19520,11 +19551,25 @@ extensions: [{ name: 'sort' }]
 <th>User Access Administrator (at Scope) indirect$($abbr)</th>
 <th>User Access Administrator (PIM eligible at scope)</th>
 <th>MDfC Score</th>
-<th>MDfC 'Email notifications' state
-<th>MDfC 'Email notifications' severity
-<th>MDfC 'Email notifications' roles
-<th>MDfC 'Email notifications' emails
+<th>MDfC 'Email notifications' state</th>
+<th>MDfC 'Email notifications' severity</th>
+<th>MDfC 'Email notifications' roles</th>
+<th>MDfC 'Email notifications' emails</th>
 "@)
+
+        foreach ($possibleCategory in $advisorScoreCategories) {
+            if ($possibleCategory -eq 'Advisor') {
+                [void]$htmlTenantSummary.AppendLine(@"
+                <th>$possibleCategory score</th>
+"@)
+            }
+            else {
+                [void]$htmlTenantSummary.AppendLine(@"
+        <th>Advisor $possibleCategory score</th>
+"@)
+            }
+        }
+
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
             [void]$htmlTenantSummary.AppendLine(@"
 <th>Cost ($($AzureConsumptionPeriod)d)</th>
@@ -19539,10 +19584,13 @@ extensions: [{ name: 'sort' }]
 '@)
 
         if (-not $ManagementGroupsOnly) {
-            Write-Host " Exporting MDfC Email Notifications CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv'"
-            $htDefenderEmailContacts.values | Sort-Object -Property subscriptionName | Select-Object -Property subscriptionId, subscriptionName, alertNotificationsState, alertNotificationsminimalSeverity, roles, emails | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+            if (-not $NoCsvExport) {
+                Write-Host " Exporting MDfC Email Notifications CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv'"
+                $htDefenderEmailContacts.values | Sort-Object -Property subscriptionName | Select-Object -Property subscriptionId, subscriptionName, alertNotificationsState, alertNotificationsminimalSeverity, roles, emails | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCEmailNotifications.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+            }
         }
 
+        $subscriptionDetails4CSVExport = [System.Collections.ArrayList]@()
         $htmlSUMMARYSubs = $null
         $htmlSUMMARYSubs = foreach ($summarySubscription in $summarySubscriptions) {
             $subPath = $htSubscriptionsMgPath.($summarySubscription.subscriptionId).ParentNameChainDelimited
@@ -19604,6 +19652,8 @@ extensions: [{ name: 'sort' }]
                 $pimEligibleOwnersAtScopeForThisSubscriptionCount = ($pimEligibleAtScopeForThisSubscription.where( { $_.RoleIdGuid -eq '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' } )).Count
                 $pimEligibleUAAsAtScopeForThisSubscriptionCount = ($pimEligibleAtScopeForThisSubscription.where( { $_.RoleIdGuid -eq '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9' } )).Count
             }
+
+            $htColl = [ordered]@{}
             @"
 <tr>
 <td>$($summarySubscription.subscription -replace '<', '&lt;' -replace '>', '&gt;')</td>
@@ -19623,17 +19673,69 @@ extensions: [{ name: 'sort' }]
 <td>$($MDfCEmailNotificationsRoles)</td>
 <td>$($MDfCEmailNotificationsEmails)</td>
 "@
+
+            $htColl.Subscription = $summarySubscription.subscription
+            $htColl.SubscriptionId = $summarySubscription.subscriptionId
+            $htColl.QuotaId = $summarySubscription.SubscriptionQuotaId
+            $htColl.ManagementGroupPath = $subPath
+            $htColl.RoleAssignmentLimit = $htSubscriptionsRoleAssignmentLimit.($summarySubscription.subscriptionId)
+            $htColl.Tags = ($subscriptionTagsArray | Sort-Object) -join "$CsvDelimiterOpposite "
+            $htColl.'Owner(atScope)Direct' = $rbacOwnersAtScopeForThisSubscriptionDirectCount
+            $htColl.'Owner(atScope)Indirect' = $rbacOwnersAtScopeForThisSubscriptionInDirectCount
+            $htColl.'Owner(PIMEligibleAtScope)' = $pimEligibleOwnersAtScopeForThisSubscriptionCount
+            $htColl.'UserAccessAdministrator(atScope)Direct' = $rbacUAAsAtScopeForThisSubscriptionDirectCount
+            $htColl.'UserAccessAdministrator(atScope)Indirect' = $rbacUAAsAtScopeForThisSubscriptionInDirectCount
+            $htColl.'UserAccessAdministrator(PIMEligibleAtScope)' = $pimEligibleUAAsAtScopeForThisSubscriptionCount
+            $htColl.MDfCScore = $summarySubscription.SubscriptionASCSecureScore
+            $htColl.MDfCEmailNotificationsState = $MDfCEmailNotificationsState
+            $htColl.MDfCEmailNotificationsSeverity = $MDfCEmailNotificationsSeverity
+            $htColl.MDfCEmailNotificationsRoles = $MDfCEmailNotificationsRoles
+            $htColl.MDfCEmailNotificationsEmails = $MDfCEmailNotificationsEmails
+
+            foreach ($possibleCategory in $advisorScoreCategories) {
+                if ($htAdvisorScoresSubscriptions.($summarySubscription.subscriptionId).($possibleCategory)) {
+                    @"
+        <td>$([math]::Round(($htAdvisorScoresSubscriptions.($summarySubscription.subscriptionId).($possibleCategory)), 2))</td>
+"@
+                    if ($possibleCategory -eq 'Advisor') {
+                        $htColl.("$($possibleCategory)Score") = $htAdvisorScoresSubscriptions.($summarySubscription.subscriptionId).($possibleCategory)
+                    }
+                    else {
+                        $htColl.("Advisor$($possibleCategory)Score") = $htAdvisorScoresSubscriptions.($summarySubscription.subscriptionId).($possibleCategory)
+                    }
+                }
+                else {
+                    @'
+        <td>n/a</td>
+'@
+                    $htColl.($possibleCategory) = 'n/a'
+                }
+            }
+
             if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
                 @"
 <td>$totalCost</td>
 <td>$currency</td>
 "@
+                $htColl."Cost($($AzureConsumptionPeriod)d)" = $totalCost
+                $htColl.Currency = $currency
             }
             @"
 <td><a href="#hierarchySub_$($summarySubscription.MgId)"><i class="fa fa-eye" aria-hidden="true"></i></a> $subPath</td>
 </tr>
 "@
+            if (-not $NoCsvExport) {
+                $null = $subscriptionDetails4CSVExport.Add($htColl)
+            }
         }
+
+        if (-not $ManagementGroupsOnly) {
+            if (-not $NoCsvExport) {
+                Write-Host " Exporting SubscriptionDetails CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_SubscriptionDetails.csv'"
+                $subscriptionDetails4CSVExport | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_SubscriptionDetails.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+            }
+        }
+
         [void]$htmlTenantSummary.AppendLine($htmlSUMMARYSubs)
         [void]$htmlTenantSummary.AppendLine(@"
             </tbody>
@@ -19678,9 +19780,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             col_14: 'select',
 '@)
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
-            [void]$htmlTenantSummary.AppendLine(@'
-            col_17: 'multiple',
-'@)
+            [void]$htmlTenantSummary.AppendLine(@"
+            col_$(17 + $advisorScoreCategories.Count): 'multiple',
+"@)
         }
         [void]$htmlTenantSummary.AppendLine(@'
             col_types: [
@@ -19701,6 +19803,12 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
 '@)
+        foreach ($possibleCategory in $advisorScoreCategories) {
+            [void]$htmlTenantSummary.AppendLine(@'
+    'number',
+'@)
+        }
+
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
             [void]$htmlTenantSummary.AppendLine(@'
                 'number',
@@ -19724,6 +19832,9 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     <p><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle">$($summarySubscriptionsCount) Subscriptions</span></p>
 "@)
     }
+
+    $endSUMMARYSubs = Get-Date
+    Write-Host "   SUMMARYSubs duration: $((New-TimeSpan -Start $startSUMMARYSubs -End $endSUMMARYSubs).TotalMinutes) minutes ($((New-TimeSpan -Start $startSUMMARYSubs -End $endSUMMARYSubs).TotalSeconds) seconds)"
     #endregion SUMMARYSubs
 
     #region SUMMARYOutOfScopeSubscriptions
@@ -28981,6 +29092,7 @@ function dataCollectionAdvisorScores {
     [CmdletBinding()]Param(
         [string]$scopeId,
         [string]$scopeDisplayName,
+        $ChildMgMgPath,
         $SubscriptionQuotaId
     )
 
@@ -29008,6 +29120,7 @@ function dataCollectionAdvisorScores {
                                     subscriptionId      = $scopeId
                                     subscriptionName    = $scopeDisplayName
                                     subscriptionQuotaId = $SubscriptionQuotaId
+                                    subscriptionMgPath  = $childMgMgPath
                                     category            = $entry.Name
                                     score               = $entry.properties.lastRefreshedScore.score
                                 })
@@ -30602,7 +30715,8 @@ function dataCollectionASCSecureScoreSub {
 
         if ($subASCSecureScoreResult -ne 'DisallowedProvider') {
             if (($subASCSecureScoreResult).count -gt 0) {
-                $subscriptionASCSecureScore = "$($subASCSecureScoreResult.properties.score.current) of $($subASCSecureScoreResult.properties.score.max) points"
+                $secureScorePercentageRounded = [math]::Round(($subASCSecureScoreResult.properties.score.current / $subASCSecureScoreResult.properties.score.max * 100),2)
+                $subscriptionASCSecureScore = "$($secureScorePercentageRounded)% ($($subASCSecureScoreResult.properties.score.current) of $($subASCSecureScoreResult.properties.score.max) points)"
             }
             else {
                 $subscriptionASCSecureScore = 'n/a'
@@ -33881,8 +33995,10 @@ if (-not $HierarchyMapOnly) {
     getPolicyRemediation
 
     if ($arrayAdvisorScores.Count -gt 0) {
-        Write-Host "Exporting AdvisorScores CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_AdvisorScores.csv'"
-        $arrayAdvisorScores | Sort-Object -Property subscriptionName, subscriptionId, category | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_AdvisorScores.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        if (-not $NoCsvExport) {
+            Write-Host "Exporting AdvisorScores CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_AdvisorScores.csv'"
+            $arrayAdvisorScores | Sort-Object -Property subscriptionName, subscriptionId, category | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_AdvisorScores.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+        }
     }
 
     showMemoryUsage
@@ -34966,15 +35082,18 @@ if (-not $HierarchyMapOnly) {
     showMemoryUsage
 
     #region BuildDailySummaryCSV
-    $dailySummary4ExportToCSV = [System.Collections.ArrayList]@()
-    foreach ($entry in $htDailySummary.keys | Sort-Object) {
-        $null = $dailySummary4ExportToCSV.Add([PSCustomObject]@{
-                capability = $entry
-                count      = $htDailySummary.($entry)
-            })
+    if (-not $NoCsvExport) {
+        $dailySummary4ExportToCSV = [System.Collections.ArrayList]@()
+        foreach ($entry in $htDailySummary.keys | Sort-Object) {
+            $null = $dailySummary4ExportToCSV.Add([PSCustomObject]@{
+                    capability = $entry
+                    count      = $htDailySummary.($entry)
+                })
+        }
+        Write-Host " Exporting DailySummary CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_DailySummary.csv'"
+        $dailySummary4ExportToCSV | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_DailySummary.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
     }
-    Write-Host " Exporting DailySummary CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_DailySummary.csv'"
-    $dailySummary4ExportToCSV | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_DailySummary.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+
     #endregion BuildDailySummaryCSV
 
     $endSummary = Get-Date
