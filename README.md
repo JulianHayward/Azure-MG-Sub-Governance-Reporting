@@ -76,7 +76,7 @@ __Changes__ (2023-Mar-15 / Major)
 * Enhance __TenantSummary__/Subscriptions information with Advisor scores + CSV export *_SubscriptionDetails.csv
 * Fix feature Policy Remediation
   * Exclude policy/assignments from out-of-scope scopes from processing (e.g. disabled subscription)
-* Fix `-NoCsvExport` parameter reliablity
+* Fix `-NoCsvExport` parameter reliability
 
 Passed tests: Powershell Core 7.3.3 on Windows  
 Passed tests: Powershell Core 7.2.10 Azure DevOps hosted agent ubuntu-22.04  
