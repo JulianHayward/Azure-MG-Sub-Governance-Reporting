@@ -71,12 +71,9 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2023-Mar-15 / Major)
+__Changes__ (2023-Mar-17 / Major)
 
-* Enhance __TenantSummary__/Subscriptions information with Advisor scores + CSV export *_SubscriptionDetails.csv
-* Fix feature Policy Remediation
-  * Exclude policy/assignments from out-of-scope scopes from processing (e.g. disabled subscription)
-* Fix `-NoCsvExport` parameter reliability
+* Fix issue #[175](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/175) / occured with new policy definition [Configure diagnostics for container group to log analytics workspace (21c469fa-a887-4363-88a9-60bfd6911a15)](https://www.azadvertizer.net/azpolicyadvertizer/21c469fa-a887-4363-88a9-60bfd6911a15.html). Cache built-in Policy definitions failed.
 
 Passed tests: Powershell Core 7.3.3 on Windows  
 Passed tests: Powershell Core 7.2.10 Azure DevOps hosted agent ubuntu-22.04  

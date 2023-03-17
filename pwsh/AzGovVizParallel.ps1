@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.70',
 
     [string]
-    $ProductVersion = 'v6_major_20230315_1',
+    $ProductVersion = 'v6_major_20230317_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -1910,7 +1910,7 @@ function cacheBuiltIn {
                 #endregion effect
                 $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).Json = $builtinPolicyDefinition
 
-                if (-not [string]::IsNullOrEmpty($builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
+                if (-not [string]::IsNullOrWhiteSpace($builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
                     foreach ($roledefinitionId in $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
                         if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
@@ -1999,7 +1999,7 @@ function cacheBuiltIn {
                 #endregion effect
                 $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).Json = $staticPolicyDefinition
 
-                if (-not [string]::IsNullOrEmpty($staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
+                if (-not [string]::IsNullOrWhiteSpace($staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
                     foreach ($roledefinitionId in $staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
                         if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
