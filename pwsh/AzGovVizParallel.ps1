@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.70',
 
     [string]
-    $ProductVersion = 'v6_major_20230317_1',
+    $ProductVersion = 'v6_major_20230320_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -3889,7 +3889,7 @@ function getPolicyRemediation {
         policyresources
         | where type == 'microsoft.policyinsights/policystates' and properties.policyAssignmentScope startswith '/providers/Microsoft.Management/managementGroups/' and (properties.policyDefinitionAction =~ 'deployifnotexists' or properties.policyDefinitionAction =~ 'modify') and properties.complianceState =~ 'NonCompliant'
         | summarize count() by assignmentScope = tostring(properties.policyAssignmentScope), assignmentName = tostring(properties.policyAssignmentName), assignmentId = tostring(properties.policyAssignmentId), definitionName = tostring(properties.policyDefinitionName), definitionId = tostring(properties.policyDefinitionId), policyDefinitionReferenceId = tostring(properties.policyDefinitionReferenceId), effect = tostring(properties.policyDefinitionAction)
-        | order by ['count_'] desc
+        | sort by count_, assignmentId, definitionId, policyDefinitionReferenceId, effect
 '@
     }
     else {
@@ -3897,7 +3897,7 @@ function getPolicyRemediation {
         policyresources
         | where (properties.policyDefinitionAction =~ 'deployifnotexists' or properties.policyDefinitionAction =~ 'modify') and properties.complianceState =~ 'NonCompliant'
         | summarize count() by assignmentScope = tostring(properties.policyAssignmentScope), assignmentName = tostring(properties.policyAssignmentName), assignmentId = tostring(properties.policyAssignmentId), definitionName = tostring(properties.policyDefinitionName), definitionId = tostring(properties.policyDefinitionId), policyDefinitionReferenceId = tostring(properties.policyDefinitionReferenceId), effect = tostring(properties.policyDefinitionAction)
-        | order by ['count_'] desc
+        | sort by count_, assignmentId, definitionId, policyDefinitionReferenceId, effect
 '@
     }
 
@@ -17055,7 +17055,7 @@ extensions: [{ name: 'sort' }]
 "@)
 
         $htmlSUMMARYPolicyRemediation = $null
-        $arrayRemediatableSorted = $arrayRemediatable | Sort-Object -Property policyDefinitionId, policyAssignmentId
+        $arrayRemediatableSorted = $arrayRemediatable | Sort-Object -Property nonCompliantResourcesCount, policySetPolicyDefinitionReferenceId, policyDefinitionId, policyAssignmentId -Descending
         if (-not $NoCsvExport) {
             $csvFilename = "$($filename)_PolicyRemediation"
             Write-Host "   Exporting PolicyRemediation CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"

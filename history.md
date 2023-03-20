@@ -4,6 +4,59 @@
 
 ### Azure Governance Visualizer version 6
 
+__Changes__ (2023-Mar-20 / Major)
+
+* Fix/update feature Policy Remediation
+  * Optimze the Azure Resource Graph query by adding sort, due to duplicates/missing entries for results > 1k
+* __Analysis__ on issue #[175](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/175) (no real explanation, but fixed by using `IsNullOrWhiteSpace` instead of `IsNullOrEmpty`)
+
+``` powershell
+$htdetails0 = @"
+{
+    "then": {
+        "details": [
+            {
+                "field": "Microsoft.ContainerInstance/containerGroups/diagnostics.logAnalytics.workspaceId",
+                "value": "[parameters('workspaceId')]"
+            }
+        ]
+    }
+}
+"@
+$htdetails1 = @"
+{
+    "then": {
+        "details": [
+            {
+                "field": "Microsoft.ContainerInstance/containerGroups/diagnostics.logAnalytics.workspaceId",
+                "value": "[parameters('workspaceId')]"
+            },
+            {
+                "field": "Microsoft.ContainerInstance/containerGroups/diagnostics.logAnalytics.workspaceKey",
+                "value": "[parameters('workspaceKey')]"
+            }
+        ]
+    }
+}
+"@
+
+$obj0 = $htdetails0 | ConvertFrom-Json
+if (-not [string]::IsNullOrEmpty($obj0.then.details.roleDefinitionIds)) {
+    Write-Host 'obj0 roleDefinitionIds not empty'
+}
+else {
+    Write-Host 'obj0 roleDefinitionIds empty'
+}
+
+$obj1 = $htdetails1 | ConvertFrom-Json
+if (-not [string]::IsNullOrEmpty($obj1.then.details.roleDefinitionIds)) {
+    Write-Host 'obj1 roleDefinitionIds not empty'
+}
+else {
+    Write-Host 'obj1 roleDefinitionIds empty'
+}
+```
+
 __Changes__ (2023-Mar-17 / Major)
 
 * Fix issue #[175](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/175) / occured with new policy definition [Configure diagnostics for container group to log analytics workspace (21c469fa-a887-4363-88a9-60bfd6911a15)](https://www.azadvertizer.net/azpolicyadvertizer/21c469fa-a887-4363-88a9-60bfd6911a15.html). Cache built-in Policy definitions failed.

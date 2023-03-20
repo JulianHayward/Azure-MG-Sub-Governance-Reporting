@@ -4402,7 +4402,7 @@ extensions: [{ name: 'sort' }]
 "@)
 
         $htmlSUMMARYPolicyRemediation = $null
-        $arrayRemediatableSorted = $arrayRemediatable | Sort-Object -Property policyDefinitionId, policyAssignmentId
+        $arrayRemediatableSorted = $arrayRemediatable | Sort-Object -Property nonCompliantResourcesCount, policySetPolicyDefinitionReferenceId, policyDefinitionId, policyAssignmentId -Descending
         if (-not $NoCsvExport) {
             $csvFilename = "$($filename)_PolicyRemediation"
             Write-Host "   Exporting PolicyRemediation CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"

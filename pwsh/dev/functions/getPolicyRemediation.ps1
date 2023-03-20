@@ -10,7 +10,7 @@ function getPolicyRemediation {
         policyresources
         | where type == 'microsoft.policyinsights/policystates' and properties.policyAssignmentScope startswith '/providers/Microsoft.Management/managementGroups/' and (properties.policyDefinitionAction =~ 'deployifnotexists' or properties.policyDefinitionAction =~ 'modify') and properties.complianceState =~ 'NonCompliant'
         | summarize count() by assignmentScope = tostring(properties.policyAssignmentScope), assignmentName = tostring(properties.policyAssignmentName), assignmentId = tostring(properties.policyAssignmentId), definitionName = tostring(properties.policyDefinitionName), definitionId = tostring(properties.policyDefinitionId), policyDefinitionReferenceId = tostring(properties.policyDefinitionReferenceId), effect = tostring(properties.policyDefinitionAction)
-        | order by ['count_'] desc
+        | sort by count_, assignmentId, definitionId, policyDefinitionReferenceId, effect
 '@
     }
     else {
@@ -18,7 +18,7 @@ function getPolicyRemediation {
         policyresources
         | where (properties.policyDefinitionAction =~ 'deployifnotexists' or properties.policyDefinitionAction =~ 'modify') and properties.complianceState =~ 'NonCompliant'
         | summarize count() by assignmentScope = tostring(properties.policyAssignmentScope), assignmentName = tostring(properties.policyAssignmentName), assignmentId = tostring(properties.policyAssignmentId), definitionName = tostring(properties.policyDefinitionName), definitionId = tostring(properties.policyDefinitionId), policyDefinitionReferenceId = tostring(properties.policyDefinitionReferenceId), effect = tostring(properties.policyDefinitionAction)
-        | order by ['count_'] desc
+        | sort by count_, assignmentId, definitionId, policyDefinitionReferenceId, effect
 '@
     }
 
