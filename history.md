@@ -4,6 +4,11 @@
 
 ### Azure Governance Visualizer version 6
 
+__Changes__ (2023-Mar-23 / Major)
+
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.71
+  * handle `RequestTimeout`
+
 __Changes__ (2023-Mar-20 / Major)
 
 * Fix/update feature Policy Remediation
