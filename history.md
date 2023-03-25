@@ -4,6 +4,10 @@
 
 ### Azure Governance Visualizer version 6
 
+__Changes__ (2023-Mar-25 / Major)
+
+* Fix issue #[176](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/176) / occured when secureScores API returns multiple values
+
 __Changes__ (2023-Mar-23 / Major)
 
 * Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.71

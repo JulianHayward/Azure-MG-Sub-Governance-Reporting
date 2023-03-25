@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.71',
 
     [string]
-    $ProductVersion = 'v6_major_20230323_1',
+    $ProductVersion = 'v6_major_20230325_1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -30714,9 +30714,9 @@ function dataCollectionASCSecureScoreSub {
         $subASCSecureScoreResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
         if ($subASCSecureScoreResult -ne 'DisallowedProvider') {
-            if (($subASCSecureScoreResult).count -gt 0) {
-                $secureScorePercentageRounded = [math]::Round(($subASCSecureScoreResult.properties.score.current / $subASCSecureScoreResult.properties.score.max * 100),2)
-                $subscriptionASCSecureScore = "$($secureScorePercentageRounded)% ($($subASCSecureScoreResult.properties.score.current) of $($subASCSecureScoreResult.properties.score.max) points)"
+            if (($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' })).count -gt 0) {
+                $secureScorePercentageRounded = [math]::Round(($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }).properties.score.current / $subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }).properties.score.max * 100),2)
+                $subscriptionASCSecureScore = "$($secureScorePercentageRounded)% ($($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }).properties.score.current) of $($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }).properties.score.max) points)"
             }
             else {
                 $subscriptionASCSecureScore = 'n/a'

@@ -71,10 +71,9 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2023-Mar-23 / Major)
+__Changes__ (2023-Mar-25 / Major)
 
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.71
-  * handle `RequestTimeout`
+* Fix issue #[176](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/176) / occured when secureScores API returns multiple values
 
 Passed tests: Powershell Core 7.3.3 on Windows  
 Passed tests: Powershell Core 7.2.10 Azure DevOps hosted agent ubuntu-22.04  
