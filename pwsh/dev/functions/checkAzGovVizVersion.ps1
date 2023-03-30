@@ -34,7 +34,7 @@ function checkAzGovVizVersion {
             $script:azGovVizNewerVersionAvailableHTML = '<span style="color:#FF5733; font-weight:bold">Get the latest Azure Governance Visualizer version ' + $azGovVizVersionOnRepositoryFull + '!</span> <a href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md" target="_blank"><i class="fa fa-external-link" aria-hidden="true"></i></a>'
         }
         else {
-            Write-Host 'Azure Governance Visualizer version is up to date' -ForegroundColor Green
+            Write-Host "Azure Governance Visualizer version is up to date '$ProductVersion'" -ForegroundColor Green
         }
     }
     catch {
