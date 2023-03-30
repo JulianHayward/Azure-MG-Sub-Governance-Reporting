@@ -4,6 +4,17 @@
 
 ### Azure Governance Visualizer version 6
 
+__Changes__ (2023-Mar-30 / 6.1.0 Major)
+
+* Update to semantic versioning
+  * the version.txt becomes obsolete
+  * the new file for version check is version.json
+* Add updatedBy/updatedOn metadata for RBAC Role assignments
+* Add least privilege check for script execution in the context of a user for Azure Resource permissions (at this time it only checks permissions on the target Management Group Id) - best practice is to execute as a Service Principal with least privilege
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.72
+  * add AzAPICall version information in AzAPICall outputs
+  * if context is user then get the users objectId (required for least privilege check)
+
 __Changes__ (2023-Mar-25 / Major)
 
 * Fix issue #[176](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/176) / occured when secureScores API returns multiple values

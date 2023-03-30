@@ -196,8 +196,8 @@ function processTenantSummary() {
                         RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
                         CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                         CreatedOn                            = $rbac.RoleAssignmentCreatedOn
-                        #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
-                        #UpdatedOn                        = $rbac.RoleAssignmentUpdatedOn
+                        UpdatedBy                            = $rbac.RoleAssignmentUpdatedBy
+                        UpdatedOn                            = $rbac.RoleAssignmentUpdatedOn
                         MgId                                 = $rbac.MgId
                         MgName                               = $rbac.MgName
                         MgParentId                           = $rbac.MgParentId
@@ -283,8 +283,8 @@ function processTenantSummary() {
                                     RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
                                     CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                                     CreatedOn                            = $rbac.RoleAssignmentCreatedOn
-                                    #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
-                                    #UpdatedOn                        = $rbac.RoleAssignmentUpdatedOn
+                                    UpdatedBy                            = $rbac.RoleAssignmentUpdatedBy
+                                    UpdatedOn                            = $rbac.RoleAssignmentUpdatedOn
                                     MgId                                 = $rbac.MgId
                                     MgName                               = $rbac.MgName
                                     MgParentId                           = $rbac.MgParentId
@@ -326,8 +326,8 @@ function processTenantSummary() {
                                 RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
                                 CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                                 CreatedOn                            = $rbac.RoleAssignmentCreatedOn
-                                #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
-                                #UpdatedOn                        = $rbac.RoleAssignmentUpdatedOn
+                                UpdatedBy                            = $rbac.RoleAssignmentUpdatedBy
+                                UpdatedOn                            = $rbac.RoleAssignmentUpdatedOn
                                 MgId                                 = $rbac.MgId
                                 MgName                               = $rbac.MgName
                                 MgParentId                           = $rbac.MgParentId
@@ -385,8 +385,8 @@ function processTenantSummary() {
                         RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
                         CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                         CreatedOn                            = $rbac.RoleAssignmentCreatedOn
-                        #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
-                        #UpdatedOn                        = $rbac.RoleAssignmentUpdatedOn
+                        UpdatedBy                            = $rbac.RoleAssignmentUpdatedBy
+                        UpdatedOn                            = $rbac.RoleAssignmentUpdatedOn
                         MgId                                 = $rbac.MgId
                         MgName                               = $rbac.MgName
                         MgParentId                           = $rbac.MgParentId
@@ -446,8 +446,8 @@ function processTenantSummary() {
                     RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
                     CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                     CreatedOn                            = $rbac.RoleAssignmentCreatedOn
-                    #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
-                    #UpdatedOn                        = $rbac.RoleAssignmentUpdatedOn
+                    UpdatedBy                            = $rbac.RoleAssignmentUpdatedBy
+                    UpdatedOn                            = $rbac.RoleAssignmentUpdatedOn
                     MgId                                 = $rbac.MgId
                     MgName                               = $rbac.MgName
                     MgParentId                           = $rbac.MgParentId
@@ -600,8 +600,8 @@ function processTenantSummary() {
                         RoleAssignmentPIMAssignmentSlotEnd   = $PIMEligibleRoleAssignment.PIMEligibilityEndDateTime
                         CreatedBy                            = ''
                         CreatedOn                            = ''
-                        #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
-                        #UpdatedOn                        = $rbac.RoleAssignmentUpdatedOn
+                        UpdatedBy                            = $rbac.RoleAssignmentUpdatedBy
+                        UpdatedOn                            = $rbac.RoleAssignmentUpdatedOn
                         MgId                                 = $PIMEligibleRoleAssignment.ManagementGroupId
                         MgName                               = $PIMEligibleRoleAssignment.ManagementGroupDisplayName
                         MgParentId                           = '' #check
@@ -681,6 +681,19 @@ function processTenantSummary() {
             else {
                 if (-not $htNonResolvedIdentities.($rbac.createdBy)) {
                     $htNonResolvedIdentities.($rbac.createdBy) = @{}
+                }
+            }
+        }
+
+        $updatedBy = $rbac.updatedBy
+        if (-not [string]::IsNullOrEmpty($updatedBy)) {
+            if ($htIdentitiesWithRoleAssignmentsUnique.($updatedBy)) {
+                $updatedBy = $htIdentitiesWithRoleAssignmentsUnique.($updatedBy).details
+                $rbac.UpdatedBy = $updatedBy
+            }
+            else {
+                if (-not $htNonResolvedIdentities.($rbac.updatedBy)) {
+                    $htNonResolvedIdentities.($rbac.updatedBy) = @{}
                 }
             }
         }
@@ -820,20 +833,40 @@ function processTenantSummary() {
                 resolveIdentitiesRBAC -currentTask '    resolveObjectbyId RoleAssignment'
             }
 
-            foreach ($rbac in $rbacAll.where( { $_.CreatedBy -notlike 'ObjectType*' })) {
-                if ($htResolvedIdentities.($rbac.CreatedBy)) {
-                    $rbac.CreatedBy = $htResolvedIdentities.($rbac.CreatedBy).custObjectType
-                }
-                else {
-                    if ($rbac.RoleAssignmentPIMAssignmentType -eq 'Eligible') {
-                        $rbac.CreatedBy = ''
+            foreach ($rbac in $rbacAll.where( { $_.CreatedBy -notlike 'ObjectType*' -or $_.UpdatedBy -notlike 'ObjectType*' })) {
+                if ($rbac.CreatedBy -notlike 'ObjectType*') {
+                    if ($htResolvedIdentities.($rbac.CreatedBy)) {
+                        $rbac.CreatedBy = $htResolvedIdentities.($rbac.CreatedBy).custObjectType
                     }
                     else {
-                        if ([string]::IsNullOrEmpty($rbac.CreatedBy)) {
-                            $rbac.CreatedBy = 'IsNullOrEmpty'
+                        if ($rbac.RoleAssignmentPIMAssignmentType -eq 'Eligible') {
+                            $rbac.CreatedBy = ''
                         }
                         else {
-                            $rbac.CreatedBy = "$($rbac.CreatedBy)"
+                            if ([string]::IsNullOrEmpty($rbac.CreatedBy)) {
+                                $rbac.CreatedBy = 'IsNullOrEmpty'
+                            }
+                            else {
+                                $rbac.CreatedBy = "$($rbac.CreatedBy)"
+                            }
+                        }
+                    }
+                }
+                if ($rbac.UpdatedBy -notlike 'ObjectType*') {
+                    if ($htResolvedIdentities.($rbac.UpdatedBy)) {
+                        $rbac.UpdatedBy = $htResolvedIdentities.($rbac.UpdatedBy).custObjectType
+                    }
+                    else {
+                        if ($rbac.RoleAssignmentPIMAssignmentType -eq 'Eligible') {
+                            $rbac.UpdatedBy = ''
+                        }
+                        else {
+                            if ([string]::IsNullOrEmpty($rbac.UpdatedBy)) {
+                                $rbac.UpdatedBy = 'IsNullOrEmpty'
+                            }
+                            else {
+                                $rbac.UpdatedBy = "$($rbac.UpdatedBy)"
+                            }
                         }
                     }
                 }

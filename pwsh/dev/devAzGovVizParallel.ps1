@@ -359,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.71',
+    $AzAPICallVersion = '1.1.72',
 
     [string]
-    $ProductVersion = 'v6_major_20230325_1',
+    $ProductVersion = '6.1.0',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -628,6 +628,7 @@ if ($ManagementGroupId -match ' ') {
 }
 
 #region Functions
+. ".\$($ScriptPath)\functions\validateLeastPrivilegeForUser.ps1"
 . ".\$($ScriptPath)\functions\getPolicyRemediation.ps1"
 . ".\$($ScriptPath)\functions\getPolicyHash.ps1"
 . ".\$($ScriptPath)\functions\detectPolicyEffect.ps1"
@@ -766,6 +767,16 @@ $parameters4AzAPICallModule = @{
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 Write-Host " Initialize 'AzAPICall' succeeded" -ForegroundColor Green
 #EndRegion initAZAPICall
+
+#region required AzAPICall version
+if (-not ([System.Version]"$($azapicallConf['htParameters'].azAPICallModuleVersion)" -ge [System.Version]'1.1.72')) {
+    Write-Host 'AzAPICall version check failed -> https://aka.ms/AzAPICall; https://www.powershellgallery.com/packages/AzAPICall'
+    throw 'This version of Azure Governance Visualizer requires AzAPICall module version 1.1.72 or greater'
+}
+else {
+    Write-Host "AzAPICall module version requirement check succeeded: 1.1.72 or greater - current: $($azapicallConf['htParameters'].azAPICallModuleVersion) " -ForegroundColor Green
+}
+#endregion required AzAPICall version
 
 checkAzGovVizVersion
 

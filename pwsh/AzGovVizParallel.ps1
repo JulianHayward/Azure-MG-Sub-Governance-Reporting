@@ -359,10 +359,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.71',
+    $AzAPICallVersion = '1.1.72',
 
     [string]
-    $ProductVersion = 'v6_major_20230325_1',
+    $ProductVersion = '6.1.0',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -2128,18 +2128,46 @@ function cacheBuiltIn {
 }
 function checkAzGovVizVersion {
     try {
-        $getRepoVersion = Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/master/version.txt'
-        $azGovVizVersionThis = ($ProductVersion -split '_')[2]
-        $script:azGovVizVersionOnRepositoryFull = $getRepoVersion.Content -replace "`n"
-        $azGovVizVersionOnRepository = ($azGovVizVersionOnRepositoryFull -split '_')[2]
+        $getRepoVersion = Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/master/version.json'
+        $repoVersion = ($getRepoVersion.Content | ConvertFrom-Json).ProductVersion
+
         $script:azGovVizNewerVersionAvailable = $false
-        if ([int]$azGovVizVersionOnRepository -gt [int]$azGovVizVersionThis) {
+        if ($repoVersion -ne $ProductVersion) {
+            $repoVersionSplit = $repoVersion -split '\.'
+            $repoVersionMajor = $repoVersionSplit[0]
+            $repoVersionMinor = $repoVersionSplit[1]
+            $repoVersionPatch = $repoVersionSplit[2]
+
+            $ProductVersionSplit = $ProductVersion -split '\.'
+            $ProductVersionMajor = $ProductVersionSplit[0]
+            $ProductVersionMinor = $ProductVersionSplit[1]
+            $ProductVersionPatch = $ProductVersionSplit[2]
+
+            if ($repoVersionMajor -ne $ProductVersionMajor) {
+                $versionDrift = 'major'
+            }
+            elseif ($repoVersionMinor -ne $ProductVersionMinor) {
+                $versionDrift = 'minor'
+            }
+            elseif ($repoVersionPatch -ne $ProductVersionPatch) {
+                $versionDrift = 'patch'
+            }
+            else {
+                $versionDrift = 'unknown'
+            }
+
+            $versionDriftSummary = "$repoVersion ($versionDrift)"
+            $script:azGovVizVersionOnRepositoryFull = $versionDriftSummary
             $script:azGovVizNewerVersionAvailable = $true
-            $script:azGovVizNewerVersionAvailableHTML = '<span style="color:#FF5733; font-weight:bold">Get the latest Azure Governance Visualizer version (' + $azGovVizVersionOnRepositoryFull + ')!</span> <a href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md" target="_blank"><i class="fa fa-external-link" aria-hidden="true"></i></a>'
+            $script:azGovVizNewerVersionAvailableHTML = '<span style="color:#FF5733; font-weight:bold">Get the latest Azure Governance Visualizer version ' + $azGovVizVersionOnRepositoryFull + '!</span> <a href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/history.md" target="_blank"><i class="fa fa-external-link" aria-hidden="true"></i></a>'
+        }
+        else {
+            Write-Host 'Azure Governance Visualizer version is up to date' -ForegroundColor Green
         }
     }
     catch {
         #skip
+        Write-Host 'Azure Governance Visualizer version check skipped' -ForegroundColor Magenta
     }
 }
 function createTagList {
@@ -12849,8 +12877,8 @@ function processTenantSummary() {
                         RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
                         CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                         CreatedOn                            = $rbac.RoleAssignmentCreatedOn
-                        #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
-                        #UpdatedOn                        = $rbac.RoleAssignmentUpdatedOn
+                        UpdatedBy                            = $rbac.RoleAssignmentUpdatedBy
+                        UpdatedOn                            = $rbac.RoleAssignmentUpdatedOn
                         MgId                                 = $rbac.MgId
                         MgName                               = $rbac.MgName
                         MgParentId                           = $rbac.MgParentId
@@ -12936,8 +12964,8 @@ function processTenantSummary() {
                                     RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
                                     CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                                     CreatedOn                            = $rbac.RoleAssignmentCreatedOn
-                                    #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
-                                    #UpdatedOn                        = $rbac.RoleAssignmentUpdatedOn
+                                    UpdatedBy                            = $rbac.RoleAssignmentUpdatedBy
+                                    UpdatedOn                            = $rbac.RoleAssignmentUpdatedOn
                                     MgId                                 = $rbac.MgId
                                     MgName                               = $rbac.MgName
                                     MgParentId                           = $rbac.MgParentId
@@ -12979,8 +13007,8 @@ function processTenantSummary() {
                                 RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
                                 CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                                 CreatedOn                            = $rbac.RoleAssignmentCreatedOn
-                                #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
-                                #UpdatedOn                        = $rbac.RoleAssignmentUpdatedOn
+                                UpdatedBy                            = $rbac.RoleAssignmentUpdatedBy
+                                UpdatedOn                            = $rbac.RoleAssignmentUpdatedOn
                                 MgId                                 = $rbac.MgId
                                 MgName                               = $rbac.MgName
                                 MgParentId                           = $rbac.MgParentId
@@ -13038,8 +13066,8 @@ function processTenantSummary() {
                         RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
                         CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                         CreatedOn                            = $rbac.RoleAssignmentCreatedOn
-                        #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
-                        #UpdatedOn                        = $rbac.RoleAssignmentUpdatedOn
+                        UpdatedBy                            = $rbac.RoleAssignmentUpdatedBy
+                        UpdatedOn                            = $rbac.RoleAssignmentUpdatedOn
                         MgId                                 = $rbac.MgId
                         MgName                               = $rbac.MgName
                         MgParentId                           = $rbac.MgParentId
@@ -13099,8 +13127,8 @@ function processTenantSummary() {
                     RoleAssignmentPIMAssignmentSlotEnd   = $pimSlotEnd
                     CreatedBy                            = $rbac.RoleAssignmentCreatedBy
                     CreatedOn                            = $rbac.RoleAssignmentCreatedOn
-                    #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
-                    #UpdatedOn                        = $rbac.RoleAssignmentUpdatedOn
+                    UpdatedBy                            = $rbac.RoleAssignmentUpdatedBy
+                    UpdatedOn                            = $rbac.RoleAssignmentUpdatedOn
                     MgId                                 = $rbac.MgId
                     MgName                               = $rbac.MgName
                     MgParentId                           = $rbac.MgParentId
@@ -13253,8 +13281,8 @@ function processTenantSummary() {
                         RoleAssignmentPIMAssignmentSlotEnd   = $PIMEligibleRoleAssignment.PIMEligibilityEndDateTime
                         CreatedBy                            = ''
                         CreatedOn                            = ''
-                        #UpdatedBy                        = $rbac.RoleAssignmentUpdatedBy
-                        #UpdatedOn                        = $rbac.RoleAssignmentUpdatedOn
+                        UpdatedBy                            = $rbac.RoleAssignmentUpdatedBy
+                        UpdatedOn                            = $rbac.RoleAssignmentUpdatedOn
                         MgId                                 = $PIMEligibleRoleAssignment.ManagementGroupId
                         MgName                               = $PIMEligibleRoleAssignment.ManagementGroupDisplayName
                         MgParentId                           = '' #check
@@ -13334,6 +13362,19 @@ function processTenantSummary() {
             else {
                 if (-not $htNonResolvedIdentities.($rbac.createdBy)) {
                     $htNonResolvedIdentities.($rbac.createdBy) = @{}
+                }
+            }
+        }
+
+        $updatedBy = $rbac.updatedBy
+        if (-not [string]::IsNullOrEmpty($updatedBy)) {
+            if ($htIdentitiesWithRoleAssignmentsUnique.($updatedBy)) {
+                $updatedBy = $htIdentitiesWithRoleAssignmentsUnique.($updatedBy).details
+                $rbac.UpdatedBy = $updatedBy
+            }
+            else {
+                if (-not $htNonResolvedIdentities.($rbac.updatedBy)) {
+                    $htNonResolvedIdentities.($rbac.updatedBy) = @{}
                 }
             }
         }
@@ -13473,20 +13514,40 @@ function processTenantSummary() {
                 resolveIdentitiesRBAC -currentTask '    resolveObjectbyId RoleAssignment'
             }
 
-            foreach ($rbac in $rbacAll.where( { $_.CreatedBy -notlike 'ObjectType*' })) {
-                if ($htResolvedIdentities.($rbac.CreatedBy)) {
-                    $rbac.CreatedBy = $htResolvedIdentities.($rbac.CreatedBy).custObjectType
-                }
-                else {
-                    if ($rbac.RoleAssignmentPIMAssignmentType -eq 'Eligible') {
-                        $rbac.CreatedBy = ''
+            foreach ($rbac in $rbacAll.where( { $_.CreatedBy -notlike 'ObjectType*' -or $_.UpdatedBy -notlike 'ObjectType*' })) {
+                if ($rbac.CreatedBy -notlike 'ObjectType*') {
+                    if ($htResolvedIdentities.($rbac.CreatedBy)) {
+                        $rbac.CreatedBy = $htResolvedIdentities.($rbac.CreatedBy).custObjectType
                     }
                     else {
-                        if ([string]::IsNullOrEmpty($rbac.CreatedBy)) {
-                            $rbac.CreatedBy = 'IsNullOrEmpty'
+                        if ($rbac.RoleAssignmentPIMAssignmentType -eq 'Eligible') {
+                            $rbac.CreatedBy = ''
                         }
                         else {
-                            $rbac.CreatedBy = "$($rbac.CreatedBy)"
+                            if ([string]::IsNullOrEmpty($rbac.CreatedBy)) {
+                                $rbac.CreatedBy = 'IsNullOrEmpty'
+                            }
+                            else {
+                                $rbac.CreatedBy = "$($rbac.CreatedBy)"
+                            }
+                        }
+                    }
+                }
+                if ($rbac.UpdatedBy -notlike 'ObjectType*') {
+                    if ($htResolvedIdentities.($rbac.UpdatedBy)) {
+                        $rbac.UpdatedBy = $htResolvedIdentities.($rbac.UpdatedBy).custObjectType
+                    }
+                    else {
+                        if ($rbac.RoleAssignmentPIMAssignmentType -eq 'Eligible') {
+                            $rbac.UpdatedBy = ''
+                        }
+                        else {
+                            if ([string]::IsNullOrEmpty($rbac.UpdatedBy)) {
+                                $rbac.UpdatedBy = 'IsNullOrEmpty'
+                            }
+                            else {
+                                $rbac.UpdatedBy = "$($rbac.UpdatedBy)"
+                            }
                         }
                     }
                 }
@@ -28920,9 +28981,44 @@ function validateAccess {
             Write-Host "Please consult the documentation for permission requirements: https://$($GithubRepository)#technical-documentation"
             Throw 'Error - Azure Governance Visualizer: check the last console output for details'
         }
-
     }
     #endregion managementGroupHelper
+
+    if ($azAPICallConf['htParameters'].accountType -eq 'User') {
+        validateLeastPrivilegeForUser
+    }
+}
+function validateLeastPrivilegeForUser {
+    $currentTask = "Validate least priviledge (Azure Resource side) for executing user $($azapicallConf['htParameters'].userObjectId)"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.Authorization/roleAssignments?api-version=2022-04-01&`$filter=principalId eq '$($azapicallConf['htParameters'].userObjectId)'"
+    $method = 'GET'
+    $getRoleAssignmentsForExecutingUserAtManagementGroupId = AzAPICall -AzAPICallConfiguration $azapicallConf -uri $uri
+    $nonReaderRolesAssigned = ($getRoleAssignmentsForExecutingUserAtManagementGroupId.properties.RoleDefinitionId | Sort-object -Unique).where({$_ -notlike '*acdd72a7-3385-48ef-bd42-f606fba81ae7'})
+    if ($nonReaderRolesAssigned.Count -gt 0) {
+        Write-Host "* * * LEAST PRIVILEGE ADVICE" -ForegroundColor DarkRed
+        Write-Host "The Azure Governance Visualizer script is executed with more permissions than required."
+        Write-Host "The executing identity '$($azapicallConf['checkContext'].Account.Id)' ($($azapicallConf['checkContext'].Account.Type)) Id: '$($azapicallConf['htparameters'].userObjectId)' has the following RBAC Role(s) assigned at Management Group scope '$ManagementGroupId':"
+        foreach ($nonReaderRoleAssigned in $nonReaderRolesAssigned) {
+            $currentTask = "Get RBAC Role definition '$nonReaderRoleAssigned'"
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($nonReaderRoleAssigned)?api-version=2022-04-01"
+            $method = 'GET'
+            $getRole = AzAPICall -AzAPICallConfiguration $azapicallConf -uri $uri -listenOn Content
+
+            if ($getRole.properties.roleName -eq 'owner' -or $getRole.properties.roleName -eq 'contributor') {
+                Write-Host " - $($getRole.properties.roleName) ($($getRole.properties.type)) !!!"
+            }
+            else{
+                Write-Host " - $($getRole.properties.roleName) ($($getRole.properties.type))"
+            }
+        }
+        Write-Host "The required Azure RBAC role at Management Group scope '$ManagementGroupId' is 'Reader' (acdd72a7-3385-48ef-bd42-f606fba81ae7)."
+        Write-Host "Recommendation: consider executing the script in context of a Service Principal with least privilege. Review the Azure Governance Visualizer Setup Guide at 'https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/setup.md'"
+        Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor DarkRed
+        pause
+    }
+    else {
+        Write-Host "Azure Governance Visualizer Least Privilege check (Azure Resource side) for executing identity '$($azapicallConf['checkContext'].Account.Id)' ($($azapicallConf['checkContext'].Account.Type)) Id: '$($azapicallConf['htparameters'].userObjectId)' succeeded" -ForegroundColor Green
+    }
 }
 function verifyModules3rd {
     [CmdletBinding()]Param(
@@ -30714,9 +30810,10 @@ function dataCollectionASCSecureScoreSub {
         $subASCSecureScoreResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
         if ($subASCSecureScoreResult -ne 'DisallowedProvider') {
-            if (($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' })).count -gt 0) {
-                $secureScorePercentageRounded = [math]::Round(($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }).properties.score.current / $subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }).properties.score.max * 100),2)
-                $subscriptionASCSecureScore = "$($secureScorePercentageRounded)% ($($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }).properties.score.current) of $($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }).properties.score.max) points)"
+            $subASCSecureScoreResultASCScore = ($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }))
+            if ($subASCSecureScoreResultASCScore.count -gt 0) {
+                $secureScorePercentageRounded = [math]::Round(($subASCSecureScoreResultASCScore.properties.score.current / $subASCSecureScoreResultASCScore.properties.score.max * 100),2)
+                $subscriptionASCSecureScore = "$($secureScorePercentageRounded)% ($($subASCSecureScoreResultASCScore.properties.score.current) of $($subASCSecureScoreResultASCScore.properties.score.max) points)"
             }
             else {
                 $subscriptionASCSecureScore = 'n/a'
@@ -33640,6 +33737,16 @@ $parameters4AzAPICallModule = @{
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 Write-Host " Initialize 'AzAPICall' succeeded" -ForegroundColor Green
 #EndRegion initAZAPICall
+
+#region required AzAPICall version
+if (-not ([System.Version]"$($azapicallConf['htParameters'].azAPICallModuleVersion)" -ge [System.Version]'1.1.72')) {
+    Write-Host 'AzAPICall version check failed -> https://aka.ms/AzAPICall; https://www.powershellgallery.com/packages/AzAPICall'
+    throw 'This version of Azure Governance Visualizer requires AzAPICall module version 1.1.72 or greater'
+}
+else {
+    Write-Host "AzAPICall module version requirement check succeeded: 1.1.72 or greater - current: $($azapicallConf['htParameters'].azAPICallModuleVersion) " -ForegroundColor Green
+}
+#endregion required AzAPICall version
 
 checkAzGovVizVersion
 

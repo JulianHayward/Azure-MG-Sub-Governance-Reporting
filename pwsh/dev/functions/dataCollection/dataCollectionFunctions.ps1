@@ -1685,9 +1685,10 @@ function dataCollectionASCSecureScoreSub {
         $subASCSecureScoreResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
         if ($subASCSecureScoreResult -ne 'DisallowedProvider') {
-            if (($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' })).count -gt 0) {
-                $secureScorePercentageRounded = [math]::Round(($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }).properties.score.current / $subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }).properties.score.max * 100),2)
-                $subscriptionASCSecureScore = "$($secureScorePercentageRounded)% ($($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }).properties.score.current) of $($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }).properties.score.max) points)"
+            $subASCSecureScoreResultASCScore = ($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }))
+            if ($subASCSecureScoreResultASCScore.count -gt 0) {
+                $secureScorePercentageRounded = [math]::Round(($subASCSecureScoreResultASCScore.properties.score.current / $subASCSecureScoreResultASCScore.properties.score.max * 100),2)
+                $subscriptionASCSecureScore = "$($secureScorePercentageRounded)% ($($subASCSecureScoreResultASCScore.properties.score.current) of $($subASCSecureScoreResultASCScore.properties.score.max) points)"
             }
             else {
                 $subscriptionASCSecureScore = 'n/a'

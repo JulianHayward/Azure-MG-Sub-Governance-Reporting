@@ -71,9 +71,16 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
 
 ## Release history
 
-__Changes__ (2023-Mar-25 / Major)
+__Changes__ (2023-Mar-30 / 6.1.0 Major)
 
-* Fix issue #[176](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/176) / occured when secureScores API returns multiple values
+* Update to semantic versioning
+  * the version.txt becomes obsolete
+  * the new file for version check is version.json
+* Add updatedBy/updatedOn metadata for RBAC Role assignments
+* Add least privilege check for script execution in the context of a user for Azure Resource permissions (at this time it only checks permissions on the target Management Group Id) - best practice is to execute as a Service Principal with least privilege
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.72
+  * add AzAPICall version information in AzAPICall outputs
+  * if context is user then get the users objectId (required for least privilege check)
 
 Passed tests: Powershell Core 7.3.3 on Windows  
 Passed tests: Powershell Core 7.2.10 Azure DevOps hosted agent ubuntu-22.04  

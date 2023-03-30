@@ -150,7 +150,10 @@ function validateAccess {
             Write-Host "Please consult the documentation for permission requirements: https://$($GithubRepository)#technical-documentation"
             Throw 'Error - Azure Governance Visualizer: check the last console output for details'
         }
-
     }
     #endregion managementGroupHelper
+
+    if ($azAPICallConf['htParameters'].accountType -eq 'User') {
+        validateLeastPrivilegeForUser
+    }
 }
