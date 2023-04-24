@@ -4,6 +4,10 @@
 
 ### Azure Governance Visualizer version 6
 
+__Changes__ (2023-Apr-24 / 6.2.0 Minor)
+
+* fix handling of `DisallowedProvider` responses; issue #184
+
 __Changes__ (2023-Mar-30 / 6.1.0 Major)
 
 * Update to semantic versioning
