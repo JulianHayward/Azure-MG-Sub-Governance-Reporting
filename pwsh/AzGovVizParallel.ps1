@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.72',
 
     [string]
-    $ProductVersion = '6.1.0',
+    $ProductVersion = '6.2.0',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -29343,8 +29343,10 @@ function dataCollectionVNets {
     }
     else {
         if ($networkResult.Count -gt 0) {
-            foreach ($vnet in $networkResult) {
-                $null = $script:arrayVNets.Add($vnet)
+            if ($networkResult -ne 'DisallowedProvider') {
+                foreach ($vnet in $networkResult) {
+                    $null = $script:arrayVNets.Add($vnet)
+                }
             }
         }
     }
@@ -29364,15 +29366,13 @@ function dataCollectionPrivateEndpoints {
     $method = 'GET'
     $privateEndpointsResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -unhandledErrorAction Continue
 
-    # if ($privateEndpointsResult -eq 'someError') {
-    # }
-    # else {
     if ($privateEndpointsResult.Count -gt 0) {
-        foreach ($pe in $privateEndpointsResult) {
-            $null = $script:arrayPrivateEndPoints.Add($pe)
+        if ($privateEndpointsResult -ne 'DisallowedProvider') {
+            foreach ($pe in $privateEndpointsResult) {
+                $null = $script:arrayPrivateEndPoints.Add($pe)
+            }
         }
     }
-    #}
 }
 $funcDataCollectionPrivateEndpoints = $function:dataCollectionPrivateEndpoints.ToString()
 
@@ -29593,30 +29593,33 @@ function dataCollectionStorageAccounts {
     $method = 'GET'
     $storageAccountsSubscriptionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-    foreach ($storageAccount in $storageAccountsSubscriptionResult) {
+    if ($storageAccountsSubscriptionResult -ne 'DisallowedProvider') {
+        foreach ($storageAccount in $storageAccountsSubscriptionResult) {
 
-        $dtisostart = Get-Date (Get-Date).AddHours(-1).ToUniversalTime() -UFormat '+%Y-%m-%dT%H:%M:%S.000Z'
-        $dtisoend = Get-Date (Get-Date).ToUniversalTime() -UFormat '+%Y-%m-%dT%H:%M:%S.000Z'
-        $currentTask = "Getting Storage Account '$($storageAccount.name)' UsedCapacity ('$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId'])"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($storageAccount.id)/providers/Microsoft.Insights/metrics?timespan=$($dtisostart)/$($dtisoend)&metricnames=UsedCapacity&aggregation=Average&api-version=2021-05-01"
-        $method = 'GET'
-        $storageAccountUsedCapacity = $null
-        $storageAccountUsedCapacity = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -unhandledErrorAction Continue
+            $dtisostart = Get-Date (Get-Date).AddHours(-1).ToUniversalTime() -UFormat '+%Y-%m-%dT%H:%M:%S.000Z'
+            $dtisoend = Get-Date (Get-Date).ToUniversalTime() -UFormat '+%Y-%m-%dT%H:%M:%S.000Z'
+            $currentTask = "Getting Storage Account '$($storageAccount.name)' UsedCapacity ('$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId'])"
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($storageAccount.id)/providers/Microsoft.Insights/metrics?timespan=$($dtisostart)/$($dtisoend)&metricnames=UsedCapacity&aggregation=Average&api-version=2021-05-01"
+            $method = 'GET'
+            $storageAccountUsedCapacity = $null
+            $storageAccountUsedCapacity = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -unhandledErrorAction Continue
 
-        $usedCapacity = 'n/a'
-        if ($storageAccountUsedCapacity.Count -gt 0) {
-            if (-not [string]::IsNullOrWhiteSpace($storageAccountUsedCapacity.timeseries.data.average)) {
-                $usedCapacity = [decimal]$storageAccountUsedCapacity.timeseries.data.average / 1024 / 1024 / 1024
+            $usedCapacity = 'n/a'
+            if ($storageAccountUsedCapacity.Count -gt 0) {
+                if (-not [string]::IsNullOrWhiteSpace($storageAccountUsedCapacity.timeseries.data.average)) {
+                    $usedCapacity = [decimal]$storageAccountUsedCapacity.timeseries.data.average / 1024 / 1024 / 1024
+                }
             }
-        }
 
-        $obj = [System.Collections.ArrayList]@()
-        $null = $obj.Add([PSCustomObject]@{
-                SA             = $storageAccount
-                SAUsedCapacity = $usedCapacity
-            })
-        $null = $script:storageAccounts.Add($obj)
+            $obj = [System.Collections.ArrayList]@()
+            $null = $obj.Add([PSCustomObject]@{
+                    SA             = $storageAccount
+                    SAUsedCapacity = $usedCapacity
+                })
+            $null = $script:storageAccounts.Add($obj)
+        }
     }
+
 }
 $funcDataCollectionStorageAccounts = $function:dataCollectionStorageAccounts.ToString()
 
@@ -30812,7 +30815,7 @@ function dataCollectionASCSecureScoreSub {
         if ($subASCSecureScoreResult -ne 'DisallowedProvider') {
             $subASCSecureScoreResultASCScore = ($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }))
             if ($subASCSecureScoreResultASCScore.count -gt 0) {
-                $secureScorePercentageRounded = [math]::Round(($subASCSecureScoreResultASCScore.properties.score.current / $subASCSecureScoreResultASCScore.properties.score.max * 100),2)
+                $secureScorePercentageRounded = [math]::Round(($subASCSecureScoreResultASCScore.properties.score.current / $subASCSecureScoreResultASCScore.properties.score.max * 100), 2)
                 $subscriptionASCSecureScore = "$($secureScorePercentageRounded)% ($($subASCSecureScoreResultASCScore.properties.score.current) of $($subASCSecureScoreResultASCScore.properties.score.max) points)"
             }
             else {
