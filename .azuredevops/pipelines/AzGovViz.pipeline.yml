@@ -64,12 +64,14 @@ jobs:
                 exit 1
               }
             }
-            if ($scriptParameter.StaticType.Name -eq 'SwitchParameter' -and $argument.Value -eq 'True') {
-              if ($scriptParameterName -eq 'WebAppPublish') {
-                #skipping
-              }
-              else {
-                $argumentsString += "-$( $scriptParameterName ) "
+            if ($scriptParameter.StaticType.Name -eq 'SwitchParameter') {
+              if ($argument.Value -eq 'True') {
+                if ($scriptParameterName -eq 'WebAppPublish') {
+                  #skipping
+                }
+                else {
+                  $argumentsString += "-$( $scriptParameterName ) "
+                }
               }
             } else {
               if ($scriptParameterName -eq 'CsvDelimiter') {
@@ -98,6 +100,7 @@ jobs:
 
   - task: PowerShell@2
     inputs:
+      pwsh: true
       targetType: 'filePath'
       filePath: $(System.DefaultWorkingDirectory)/$(ScriptDir)/$(ScriptPrerequisites)
       arguments: '-OutputPath $(OutputPath)'
