@@ -1,8 +1,12 @@
-# Azure Governance Visualizer aka AzGovViz 
+# Azure Governance Visualizer aka AzGovViz
 
 ## Azure Governance Visualizer version history
 
 ### Azure Governance Visualizer version 6
+
+__Changes__ (2023-Jun-16 / 6.2.1 Minor)
+
+* fix feature diagnostic capable resource name containing "+"
 
 __Changes__ (2023-Apr-24 / 6.2.0 Minor)
 
@@ -164,7 +168,7 @@ __Changes__ (2023-Jan-19 / Major)
 
 * Cover Preview [Azure Storage Account with Azure DNS zone endpoints](https://learn.microsoft.com/en-us/azure/storage/common/storage-account-overview#azure-dns-zone-endpoints-preview) ([Issue #164](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/164))
 * Add feature to simulate Management Group Hierarchy Map
- * New parameter `-HierarchyMapOnlyCustomData` (documentation update pending)
+* New parameter `-HierarchyMapOnlyCustomData` (documentation update pending)
 * Private Endpoint feature - add Microsoft tenants (cross tenant PE) (`-MSTenantIds`)
 * Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.67
 
@@ -205,7 +209,7 @@ __Changes__ (2022-Dec-22 / Major)
 * Fix for migrated Subscriptions. In rare cases a subscription that was migrated to another tenant may still be returned from the [Entities ARM API](https://learn.microsoft.com/en-us/rest/api/managementgroups/entities/list), but not from the [Subscriptions ARM API](https://learn.microsoft.com/en-us/rest/api/resources/subscriptions/list) - if that is the case then these subscriptions will be added to the out-of-scope subscriptions collection
 * Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.62
   * Fix issue [155](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/155) AzureChinaCloud
-* Minor optimizations 
+* Minor optimizations
   * Using parameter `-ManagementGroupsOnly`
   * Using parameter `-HierarchyMapOnly`
   * Overall script optimizations
@@ -218,7 +222,7 @@ __Changes__ (2022-Dec-13 / Major)
 
 __Changes__ (2022-Dec-12 / Major)
 
-* Pausing 'PSRule for Azure' integration. AzGovViz leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation. 
+* Pausing 'PSRule for Azure' integration. AzGovViz leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.
 * Enhance Private Endpoints feature / cross tenant PE
 * Fix for migrated Subscriptions. In rare cases a subscription that was migrated to another tenant may still be returned from the [ARM API](https://learn.microsoft.com/en-us/rest/api/resources/subscriptions/list), if that is the case then these subscriptions will be added to the out-of-scope subscriptions collection
 * Update Azure Devops Pipeline YAML
@@ -232,7 +236,7 @@ __Changes__ (2022-Dec-07 / Major)
 __Changes__ (2022-Dec-04 / Major)
 
 * PSRule for Azure fix | Get resources using ARM API inside Foreach-Object -parallel loop
-* Private Endpoints 
+* Private Endpoints
   * fix resource identification
   * add cross tenant detection
 * Storage Account Access Analysis - add insights on 'Allowed Copy Scope' and 'Allow Cross Tenant Replication'
@@ -260,23 +264,23 @@ __Changes__ (2022-Nov-21 / Major)
   * Private Endpoints
 * Enhance Network feature - Virtual Networks and Virtual Network Peerings
 * Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.54
-  * another retry mechanism fix 
+  * another retry mechanism fix
 * Bugfix PIM eligible / Guest User - thanks @nanigan
 * Updated [API reference](#api-reference)
 
 __Changes__ (2022-Nov-18 / Major)
 
 * Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.53
-  * retry mechanism fix 
+  * retry mechanism fix
 
 __Changes__ (2022-Nov-17 / Major)
 
-* Update Azure DevOps pipeline YAML 
-  * checkout `fetchDepth: 1`  
+* Update Azure DevOps pipeline YAML
+  * checkout `fetchDepth: 1`
 [Azure DevOps pipelines shallow fetch =1 is now default](https://dev.to/kkazala/azure-devops-pipelines-shallow-fetch-1-is-now-default-4656)
   * pool `vmImage: 'ubuntu-22.04'`
 * Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.52
-  * retry mechanism fix 
+  * retry mechanism fix
 
 __Changes__ (2022-Nov-13 / Major)
 
@@ -328,12 +332,12 @@ __Changes__ (2022-Oct-04 / Major)
 
 __Changes__ (2022-Sep-30 / Major)
 
-* Fix issue #135 
+* Fix issue #135
   * Embedded GitHub Actions OIDC (Open ID Connect) specific functionality to reconnect and get new token ([AzAPICall](https://aka.ms/AzAPICall))
   * New parameter `-GitHubActionsOIDC` which is only to be used for GitHub Actions `/.github/workflows/AzGovViz_OIDC.yml`
   * Updated `/.github/workflows/AzGovViz_OIDC.yml` to use the new parameter `-GitHubActionsOIDC`
 * Fix issue #136
-  * Handle return for Storage Accounts located in managed Resource Groups  
+  * Handle return for Storage Accounts located in managed Resource Groups
   &#127800; Call for contribution: Please review the list of known [managed Resource Groups](https://github.com/JulianHayward/AzSchnitzels/blob/main/info/managedResourceGroups.txt) and contribute if you can, thanks!
 * Added missing variable `NoStorageAccountAccessAnalysis` in `.azuredevops/pipelines/AzGovViz.variables.yml`
 * Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.30
@@ -358,9 +362,9 @@ __Changes__ (2022-Sep-17 / Major)
 
 __Changes__ (2022-Sep-12 / Major)
 
-* New feature 'ALZ EverGreen' - Azure Landing Zones EverGreen for Policy and Set definitions. AzGovViz will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ EverGreen results will be displayed in the __TenantSummary__ and a CSV export `*_ALZEverGreen.csv` will be provided. Thanks! ALZ Team 
+* New feature 'ALZ EverGreen' - Azure Landing Zones EverGreen for Policy and Set definitions. AzGovViz will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ EverGreen results will be displayed in the __TenantSummary__ and a CSV export `*_ALZEverGreen.csv` will be provided. Thanks! ALZ Team
   * New parameter `-NoALZEverGreen` - Do not execute the ALZ EverGreen feature
-* Update: Per default __DefinitionInsights__ will be written to a separate HTML file. This will improve the html file handling (browser memory usage /response time / user experience). 
+* Update: Per default __DefinitionInsights__ will be written to a separate HTML file. This will improve the html file handling (browser memory usage /response time / user experience).
   * Note: Please update your Azure DevOps and GitHub YAML files with the latest versions if you are using the webApp publishing feature
   * New parameter `-NoDefinitionInsightsDedicatedHTML` (__DefinitionInsights__ will NOT be written to a separate HTML file `*_DefinitionInsights.html`)
 * Add Resource fluctuation detailed (`*_ResourceFluctuationDetailed.csv`) CSV output (add/remove, scope details, resource details)
@@ -385,28 +389,28 @@ __Changes__ (2022-Aug-03 / Major)
 __Changes__ (2022-Jul-31 / Major)
 
 * Update on feature 'PIM (Privileged Identity Management) eligible Role assignments'
-    * Integrate with RoleAssignmentsAll (HTML, CSV)  
-    ![alt text](img/pimeligibilityIntegrateRoleassignmentsall.png "PIMEligibleIntegrationRoleAssignmentsAll")  
-    * New parameter `-NoPIMEligibilityIntegrationRoleAssignmentsAll` - Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
+  * Integrate with RoleAssignmentsAll (HTML, CSV)
+    ![alt text](img/pimeligibilityIntegrateRoleassignmentsall.png "PIMEligibleIntegrationRoleAssignmentsAll")
+  * New parameter `-NoPIMEligibilityIntegrationRoleAssignmentsAll` - Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
 * Fix: PIM 'Assigned' and 'Activated' Role assignments now also reflect inheritance for lower scopes
 * Bugfixes & optimizations
 
 __Changes__ (2022-Jul-28 / Major)
 
 * Update on feature 'PIM (Privileged Identity Management) eligible Role assignments'
-    * new parameter `-PIMEligibilityIgnoreScope` - By default will only report for PIM Elibility for the scope (`ManagementGroupId`) that was provided. If you use the new switch parameter then PIM Eligibility for all onboarded scopes (Management Groups and Subscriptions) will be reported.
-    * Add CSV output
-    * Add inheritance information
+  * new parameter `-PIMEligibilityIgnoreScope` - By default will only report for PIM Elibility for the scope (`ManagementGroupId`) that was provided. If you use the new switch parameter then PIM Eligibility for all onboarded scopes (Management Groups and Subscriptions) will be reported.
+  * Add CSV output
+  * Add inheritance information
 * Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.21
 * Bugfixes
 
 __Changes__ (2022-Jul-26 / Major)
 
-* New feature 'PIM (Privileged Identity Management) eligible Role assignments' (TenantSummary)  
+* New feature 'PIM (Privileged Identity Management) eligible Role assignments' (TenantSummary)
 &#x26D4; ___Breaking Change!___ requires API permissions update!
-    * Get a full report of all PIM eligible Role assignments for Management Groups and Subscriptions, including resolved User members of AAD Groups that have assigned eligibility
-    * Spoiler: Next iteration will include ScopeInsights, showing entire eligible Role assignments on Subscriptions including from upper Management Group scopes
-    * &#x1F4A1; Note: this feature requires to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+  * Get a full report of all PIM eligible Role assignments for Management Groups and Subscriptions, including resolved User members of AAD Groups that have assigned eligibility
+  * Spoiler: Next iteration will include ScopeInsights, showing entire eligible Role assignments on Subscriptions including from upper Management Group scopes
+  * &#x1F4A1; Note: this feature requires to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
 * Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.19
 * Bugfixes
 
@@ -417,7 +421,7 @@ __Changes__ (2022-Jul-22 / Minor)
 __Changes__ (2022-Jul-17 / Major)
 
 * This change impacts __GitHub Actions only__: As the PSRule CSV output can become quite big and GitHub is actively blocking files larger than 100MB ([reference](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits)), the file size of the export will be validated and in case the 100MB limit is exceeded a new export excluding the column 'description' will be initiated. If that still is too large then also the column 'recommendation' will be exluded. If even then the export is exceeding the limit then the export will be deleted in order not to break the workflow at push to repo. Issue ref: #121
-* New parameter `-CriticalMemoryUsage` - Define at what percentage of memory usage the garbage collection should kick in (default=90). Example: `.\pwsh\AzGovVizParallel.ps1 -CriticalMemoryUsage 70`   
+* New parameter `-CriticalMemoryUsage` - Define at what percentage of memory usage the garbage collection should kick in (default=90). Example: `.\pwsh\AzGovVizParallel.ps1 -CriticalMemoryUsage 70`
 ![alt text](img/criticalMemoryUsage.png "CriticalMemoryUsage")
 * Minor optimizations
 
@@ -429,8 +433,8 @@ __Changes__ (2022-Jul-14 / Major)
 
 __Changes__ (2022-Jul-10 / Major)
 
-* Enhanced the 'Orphaned Resources' feature: if you run AzGovViz with parameter -DoAzureConsumption then the orphaned resources output will show you potential cost savings for orphaned resources with intent 'cost savings':  
-![alt text](img/orphanedResourcesCostSavings.png "orphanedResourcesCostSavings")  
+* Enhanced the 'Orphaned Resources' feature: if you run AzGovViz with parameter -DoAzureConsumption then the orphaned resources output will show you potential cost savings for orphaned resources with intent 'cost savings':
+![alt text](img/orphanedResourcesCostSavings.png "orphanedResourcesCostSavings")
 &#x1F4A1; use parameter `-AzureConsumptionPeriod 14` to get consumption data for the last 14 days (default = 1 day)
 * New feature HierarchyMap (HTML): save the HierarchyMap as image (.jpeg)
 * 2022-Jul-07 PR #117 - Updated GitHub Actions OIDC (Open ID Connect) workflow: establish new connection to Azure before the 'HTML to WebApp' publishing task - thanks Dimitri Zilber
@@ -491,7 +495,7 @@ __Changes__ (2022-May-21 / Major)
   * New parameter `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
 * Optional feature: publish HTML to Azure Web App (check the __[Setup Guide](setup.md)__) in Azure DevOps or GitHub Actions - thanks Wayne Meyer
 * New feature / report on [enabled Subscription Features](https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/preview-features) TenantSummary, ScopeInsights and CSV export
-* Decomissioned Azure DevOps `.pipelines` - use the new YAML files `.azuredevops/pipelines/*` 
+* Decomissioned Azure DevOps `.pipelines` - use the new YAML files `.azuredevops/pipelines/*`
 * Fix [#issue92](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/92) -> pipeline .azuredevops/pipelines/AzGovViz.pipeline.yml
 * Update Azure DevOps pipelines / use AzurePowershell@5
 * Update prerequisites.ps1
@@ -535,7 +539,7 @@ __Changes__ (2022-Jan-31 / Major)
 * Datacollection for Management Groups process in batches (batch per Management Group level)
 * Update Dockerfile
 * Update API version for Resources, ResourceGroups and Subscriptions
-* Further enrich _PolicyDefinitions and _PolicySetDefinitions CSV outputs
+* Further enrich _PolicyDefinitions and_PolicySetDefinitions CSV outputs
 * HTML file performance optimization
 * Include instructions for GitHub Actions in the __[Setup Guide](setup.md)__
 * New [demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html) uploaded
@@ -548,7 +552,7 @@ __Changes__ (2022-Jan-16 / Major)
 * New feature __TenantSummary | Policy | Policy assignments orphanded__ (Policy assignments's Policy definition does not exist / likely Management Group scoped Policy defintion - Management Group deleted)
 * Optimize __DefinitionInsights__ collapsible JSON definitions
 * Defender plans usage / highlight use of depcrecated plans such as Container Registry & Kubernetes
-* New 'Large Tenant' feature __TenantSummary | Policy | Policy assignments__ if the number of Policy assignments exceeds the `-HtmlTableRowsLimit` parameter's value (default = 20.000) then the html table will not be created / the CSV file will still be created 
+* New 'Large Tenant' feature __TenantSummary | Policy | Policy assignments__ if the number of Policy assignments exceeds the `-HtmlTableRowsLimit` parameter's value (default = 20.000) then the html table will not be created / the CSV file will still be created
 * New feature  __TenantSummary | Azure Active Directory | AAD ServicePrincipals type=ManagedIdentity__ orphaned Managed Identities (for Policy assignment related Managed Identities - Policy assignment does not exist anymore)
 * Fix PIM (Priviliged Identity Management) state for inherited Subscription Role assignments
 * __TenantSummary | Azure Active Directory__ add link to [AzADServicePrincipalInsights](#azadserviceprincipalinsights) (POC)
@@ -578,10 +582,10 @@ __Changes__ (2021-Nov-23 / Major)
 * Fix __ScopeInsights__ Tags usage
 * Fix dateTime formatting / use default format (createdOn/updatedOn)
 * Consumption feature has potential to fail. Changed Azure Consumption feature default = disabled; introducing new parameter `-DoAzureConsumption`
-* Changed `-HtmlTableRowsLimit` default from 40.000 to 20.000 
+* Changed `-HtmlTableRowsLimit` default from 40.000 to 20.000
 * CSV output related changes
   * Update *_RoleAssignments.csv output (add column for scope ResourceGroup name; add column for scope Resource name)
-  * Optimize *_PolicyDefinitions.csv and *_PolicySetDefinitions.csv file content / add BuiltIn definitions
+  * Optimize *_PolicyDefinitions.csv and*_PolicySetDefinitions.csv file content / add BuiltIn definitions
   * Add CSV export *_ResourceProviders.csv (all Resource Providers and their states for all Subscriptions)
   * Add CSV export *_RoleDefinitions.csv (BuiltIn and Custom including some enriched information)
 * AzAPICall update error handing for 'Resource diagnostic settings' and 'AAD groups transitive members count'
@@ -592,7 +596,7 @@ __Changes__ (2021-Nov-01 / Major)
 * New output - Feature request to create __Scope Insights__ output per Subscription has been implement. With this new feature you can share Subscription __Scope Insights__ with Subscription responsible staff. Use parameter `-NoSingleSubscriptionOutput` to disable the feature
 * Update [Required permissions in Azure Active Directory](#required-permissions-in-azure-active-directory) for the scenario of a Guest User executing the script
 * Add 'daily summary' output (CSV) to easily track your Tenant´s Governance evolution over time - Tim will hopefully create a PR for how he leverages AzGovViz historical data for Azure Log Analytics based dashboards
-* Improved permission related error handling 
+* Improved permission related error handling
 
 __Changes__ (2021-Oct-25 / Major)
 
@@ -680,7 +684,7 @@ __Changes__ (2021-Aug-06 / Major)
 __Changes__ (2021-July-28 / Major)
 
 * As demanded by the community reactivated parameters `-PolicyAtScopeOnly` and `-RBACAtScopeOnly`
-* New paramter `-AADGroupMembersLimit`. Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved 
+* New paramter `-AADGroupMembersLimit`. Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved
 * New parameter `-JsonExportExcludeResourceGroups` - JSON Export will not include ResourceGroups (Policy & Role assignments)
 * New parameter `-JsonExportExcludeResources`- JSON Export will not include Resources (Role assignments)
 * Bugfixes
@@ -688,8 +692,8 @@ __Changes__ (2021-July-28 / Major)
 
 __Changes__ (2021-July-22 / Major)
 
-* Full blown JSON definition output. Leveraging Git with this new capability you can easily track any changes that occurred in between the previous and last AzGovViz run.  
-![newBuiltInRoleDefinition](img/gitdiff600.jpg)  
+* Full blown JSON definition output. Leveraging Git with this new capability you can easily track any changes that occurred in between the previous and last AzGovViz run.
+![newBuiltInRoleDefinition](img/gitdiff600.jpg)
 _* a new BuiltIn RBAC Role definition was added_
 * Renamed parameter `-PolicyIncludeResourceGroups` to , `-DoNotIncludeResourceGroupsOnPolicy` (from now Policy assignments on ResourceGroups will be included by default)
 * Renamed parameter `-RBACIncludeResourceGroupsAndResources` to , `-DoNotIncludeResourceGroupsAndResourcesOnRBAC` (from now Role assignments on ResourceGroups and Resources will be included by default)
@@ -729,7 +733,7 @@ __Changes__ (2021-June-01 / Feature)
 
 __Changes__ (2021-May-19)
 
-* Removed Azure PowerShell module requirement Az.ResourceGraph 
+* Removed Azure PowerShell module requirement Az.ResourceGraph
 * __TenantSummary__ 'Change tracking' section. Tracks newly created and updated custom Policy, PolicySet and RBAC Role definitions, Policy/RBAC Role assignments and Resources that occured within the last 14 days (period can be adjusted using new parameter `-ChangeTrackingDays`)
 * New parameters `-PolicyIncludeResourceGroups` and `-RBACIncludeResourceGroupsAndResources` - include Policy assignments on ResourceGroups, include Role assignments on ResourceGroups and Resources
 * New parameters `-PolicyAtScopeOnly` and `-RBACAtScopeOnly` - removing 'inherited' lines in the HTML file; use this parameter if you run against a larger tenants
@@ -773,6 +777,7 @@ __Note:__ In order to run AzGovViz Version 5 in Azure DevOps you also must use t
 ### AzGovViz version 4
 
 Updates 2021-Jan-26
+
 * Role Assigments indicate if User is Member/Guest
 * Enrich information for Policy assignment related ServicePrincipal/Managed Identity (Policy assignment details on policy/set definition and Role assignments)
 * Preloading of <a href="https://www.tablefilter.com/" target="_blank">TableFilter</a> removed for __TenantSummary__ PolicyAssignmentsAll and RoleAssignmentsAll (on poor hardware loading the HTML file took quite long)
@@ -781,6 +786,7 @@ Updates 2021-Jan-26
 * Performance optimization
 
 Updates 2021-Jan-18
+
 * Feature: __Policy Exemptions__
 * Feature: __ResourceLocks__
 * Feature: __Tag Name Usage__
@@ -788,16 +794,18 @@ Updates 2021-Jan-18
 * Bugfixes
 
 Updates 2021-Jan-08
-* Feature: __Cost Management / Consumption Reporting__ - Changed AzureConsumptionPeriod default to 1 day  
+
+* Feature: __Cost Management / Consumption Reporting__ - Changed AzureConsumptionPeriod default to 1 day
 ![Consumption](img/consumption.png)
 * Bugfixes
 
 Updates 2021-Jan-06 - Happy New Year
-* Feature: Resolve __Azure Active Directory Group memberships__ for Role assignment with identity type 'Group' leveraging Microsoft Graph. With this capability AzGovViz can ultimately provide holistic insights on permissions granted for Management Groups and Subscriptions (honors parameter `-DoNotShowRoleAssignmentsUserData`). Use parameter `-NoAADGroupsResolveMembers` to disable the feature  
+
+* Feature: Resolve __Azure Active Directory Group memberships__ for Role assignment with identity type 'Group' leveraging Microsoft Graph. With this capability AzGovViz can ultimately provide holistic insights on permissions granted for Management Groups and Subscriptions (honors parameter `-DoNotShowRoleAssignmentsUserData`). Use parameter `-NoAADGroupsResolveMembers` to disable the feature
 ![AADGroupMembers](img/aad850.png)
 * Feature: New __TenantSummary__ section '__Azure Active Directory__' -> Check all Azure Active Directory Service Principals (type=Application that have a Role assignment) for Secret/Certificate expiry. Mark all Service Principals (type=ManagedIdentity) that are related to a Policy assignments. Use parameter `-NoServicePrincipalResolve` to disable this feature
-* Feature: __Cost Management / Consumption Reporting__ for Subscriptions including aggregation at Management Group level. Use parameter `-NoAzureConsumption` to disable this feature.  
-__Note__: Per default the consumption query will request consumption data for the last full 1 day (if you run it today, will capture the cost for yesterday), use the parameter `-AzureConsumptionPeriod` to define a favored time period  e.g. `-AzureConsumptionPeriod 7` (for 7 days) 
+* Feature: __Cost Management / Consumption Reporting__ for Subscriptions including aggregation at Management Group level. Use parameter `-NoAzureConsumption` to disable this feature.
+__Note__: Per default the consumption query will request consumption data for the last full 1 day (if you run it today, will capture the cost for yesterday), use the parameter `-AzureConsumptionPeriod` to define a favored time period  e.g. `-AzureConsumptionPeriod 7` (for 7 days)
 * Removed parameter `-Experimental`. 'Resource Diagnostics Policy Lifecycle' enabled by default. Use `-NoResourceDiagnosticsPolicyLifecycle` to disable the feature.
 * Renamed parameter `-DisablePolicyComplianceStates` to `-NoPolicyComplianceStates` for better consistency
 * Optimize 'Get Resource Types capability for Resource Diagnostics' query - thanks Brooks Vaughn
@@ -806,48 +814,57 @@ __Note__: Per default the consumption query will request consumption data for th
 * Performance optimization
 
 Updates 2020-Dec-17
+
 * Now supporting > 5000 entities (Subscriptions/Management Groups) :) thanks Brooks Vaughn
 
 Updates 2020-Dec-15
+
 * Pipeline `azurePowerShellVersion: latestVersion` / ensures compatibility with latest [Az.ResourceGraph 0.8.0 Release](https://github.com/Azure/azure-powershell/releases/tag/Az.ResourceGraph-v0.8.0)
 * Error handling optimization / API
 * Fix 'deprecated Policy assignments'
 * Fix 'orphaned Custom Role definitions'
 
 Updates 2020-Nov-30
+
 * New parameter ~~`-DisablePolicyComplianceStates`~~ `-NoPolicyComplianceStates` (see [__Parameters__](#powerShell))
 * Error handling optimization / API
 
 Updates 2020-Nov-25
+
 * Highlight default Management Group
 * Add AzAPICall debugging parameter `-DebugAzAPICall`
 * Fix for using parameter `-HierarchyMapOnly`
 
 Updates 2020-Nov-19
+
 * New parameter `-Experimental` (see [__Parameters__](#powerShell))
 * Performance optimization
 * Error handling optimization / API
 * Azure DevOps pipeline worker changed from 'ubuntu-latest' to 'ubuntu-18.04' (see [Azure Pipelines - Sprint 177 Update](https://docs.microsoft.com/en-us/azure/devops/release-notes/2020/pipelines/sprint-177-update#ubuntu-latest-pipelines-will-soon-use-ubuntu-2004), [Ubuntu-latest workflows will use Ubuntu-20.04 #1816](https://github.com/actions/virtual-environments/issues/1816))
 
 Updates 2020-Nov-08
+
 * Re-model Bearer token handling (Az PowerShell Module Az.Accounts > 1.9.5 no longer provides access to the tokenCache [GitHub issue](https://github.com/Azure/azure-powershell/issues/13337))
 * Adding Scope information for Custom Policy definitions and Custom PolicySet definitions sections in __TenantSummary__
 * Cosmetics and User Experience enhancement
 * New [__demo__](#demo)
 
 Updates 2020-Nov-01
+
 * Error handling optimization
 * Enhanced read-permission validation
 * Toggle capabilities in __TenantSummary__ (avoiding information overload)
 
 Updates 2020-Oct-12
-* Adding option to download HTML tables to csv  
+
+* Adding option to download HTML tables to csv
 ![Download CSV](img/downloadcsv450.png)
 * Preloading of <a href="https://www.tablefilter.com/" target="_blank">TableFilter</a> removed for __ScopeInsights__ (on poor hardware loading the HTML file took quite long)
 * Added column un-select option for some HTML tables
 * Performance optimization
 
 Release v4
+
 * Resource information for Management Groups (Resources in all child Subscriptions) in the __ScopeInsights__ section
 * Excluded Subscriptions information (whitelisted, disabled, AAD_ QuotaId)
 * Bugfixes, Bugfixes, Bugfixes

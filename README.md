@@ -1,6 +1,6 @@
 # Azure Governance Visualizer aka AzGovViz
 
-Do you want to get granular insights on your technical Azure Governance implementation? - document it in CSV, HTML, Markdown and JSON?  
+Do you want to get granular insights on your technical Azure Governance implementation? - document it in CSV, HTML, Markdown and JSON?
 Azure Governance Visualizer is a PowerShell based script that iterates your Azure Tenant´s Management Group hierarchy down to Subscription level. It captures most relevant Azure governance capabilities such as Azure Policy, RBAC and Blueprints and a lot more. From the collected data Azure Governance Visualizer provides visibility on your __HierarchyMap__, creates a __TenantSummary__, creates __DefinitionInsights__ and builds granular __ScopeInsights__ on Management Groups and Subscriptions. The technical requirements as well as the required permissions are minimal.
 
 You can run the script either for your Tenant Root Group or any other Management Group.
@@ -11,8 +11,8 @@ You can run the script either for your Tenant Root Group or any other Management
 
 Challenges:
 
- * Holistic overview on governance implementation  
- * Connecting the dots
+* Holistic overview on governance implementation
+* Connecting the dots
 
 Azure Governance Visualizer is intended to help you to get a holistic overview on your technical Azure Governance implementation by __connecting the dots__
 
@@ -22,7 +22,7 @@ Azure Governance Visualizer is intended to help you to get a holistic overview o
 
 ### Microsoft Cloud Adoption Framework (CAF)
 
-Listed as [tool](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-templates#govern) for the Govern discipline in the Microsoft Cloud Adoption Framework  
+Listed as [tool](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-templates#govern) for the Govern discipline in the Microsoft Cloud Adoption Framework
 
 Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template
 
@@ -31,54 +31,56 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/architecture/framework/security/monitor-tools) in the Microsoft Well Architected Framework
 
 ### ChatGPT
+
 ![ChatGPT](img/chatGPT.png)
 
 ## Content
+
 - [Azure Governance Visualizer aka AzGovViz](#azure-governance-visualizer-aka-azgovviz)
-  - [Mission](#mission)
-  - [Azure Governance Visualizer @ Microsoft CAF \& WAF](#azure-governance-visualizer--microsoft-caf--waf)
-    - [Microsoft Cloud Adoption Framework (CAF)](#microsoft-cloud-adoption-framework-caf)
-    - [Microsoft Well Architected Framework (WAF)](#microsoft-well-architected-framework-waf)
-    - [ChatGPT](#chatgpt)
-  - [Content](#content)
-  - [Release history](#release-history)
-  - [Demo](#demo)
-    - [Media](#media)
-    - [Slideset](#slideset)
-  - [Features](#features)
-  - [Screenshots](#screenshots)
-  - [Outputs](#outputs)
-  - [Trust](#trust)
-  - [Azure Governance Visualizer Setup Guide](#azure-governance-visualizer-setup-guide)
-  - [Technical documentation](#technical-documentation)
-    - [Permissions overview](#permissions-overview)
-    - [Required permissions in Azure](#required-permissions-in-azure)
-    - [Required permissions in Azure Active Directory](#required-permissions-in-azure-active-directory)
-    - [PowerShell](#powershell)
-    - [Parameters](#parameters)
-    - [API reference](#api-reference)
-  - [Integrate with AzOps](#integrate-with-azops)
-  - [Integrate PSRule for Azure](#integrate-psrule-for-azure)
-  - [Stats](#stats)
-    - [How/What?](#howwhat)
-  - [Security](#security)
-  - [Known issues](#known-issues)
-  - [Facts](#facts)
-  - [Contribution](#contribution)
-  - [AzAdvertizer](#azadvertizer)
-  - [AzADServicePrincipalInsights](#azadserviceprincipalinsights)
-  - [Closing Note](#closing-note)
+  * [Mission](#mission)
+  * [Azure Governance Visualizer @ Microsoft CAF \& WAF](#azure-governance-visualizer--microsoft-caf--waf)
+    * [Microsoft Cloud Adoption Framework (CAF)](#microsoft-cloud-adoption-framework-caf)
+    * [Microsoft Well Architected Framework (WAF)](#microsoft-well-architected-framework-waf)
+    * [ChatGPT](#chatgpt)
+  * [Content](#content)
+  * [Release history](#release-history)
+  * [Demo](#demo)
+    * [Media](#media)
+    * [Slideset](#slideset)
+  * [Features](#features)
+  * [Screenshots](#screenshots)
+  * [Outputs](#outputs)
+  * [Trust](#trust)
+  * [Azure Governance Visualizer Setup Guide](#azure-governance-visualizer-setup-guide)
+  * [Technical documentation](#technical-documentation)
+    * [Permissions overview](#permissions-overview)
+    * [Required permissions in Azure](#required-permissions-in-azure)
+    * [Required permissions in Azure Active Directory](#required-permissions-in-azure-active-directory)
+    * [PowerShell](#powershell)
+    * [Parameters](#parameters)
+    * [API reference](#api-reference)
+  * [Integrate with AzOps](#integrate-with-azops)
+  * [Integrate PSRule for Azure](#integrate-psrule-for-azure)
+  * [Stats](#stats)
+    * [How/What?](#howwhat)
+  * [Security](#security)
+  * [Known issues](#known-issues)
+  * [Facts](#facts)
+  * [Contribution](#contribution)
+  * [AzAdvertizer](#azadvertizer)
+  * [AzADServicePrincipalInsights](#azadserviceprincipalinsights)
+  * [Closing Note](#closing-note)
 
 ## Release history
 
-__Changes__ (2023-Apr-24 / 6.2.0 Minor)
+__Changes__ (2023-Jun-16 / 6.2.1 Minor)
 
-* fix handling of `DisallowedProvider` responses; issue #184
+* fix feature diagnostic capable resource name containing "+"
 
-Passed tests: Powershell Core 7.3.3 on Windows  
-Passed tests: Powershell Core 7.2.10 Azure DevOps hosted agent ubuntu-22.04  
-Passed tests: Powershell Core 7.2.10 Github Actions hosted agent ubuntu-latest  
-Passed tests: Powershell Core 7.2.10 GitHub Codespaces mcr.microsoft.com/powershell:latest  
+Passed tests: Powershell Core 7.3.3 on Windows
+Passed tests: Powershell Core 7.2.10 Azure DevOps hosted agent ubuntu-22.04
+Passed tests: Powershell Core 7.2.10 Github Actions hosted agent ubuntu-latest
+Passed tests: Powershell Core 7.2.10 GitHub Codespaces mcr.microsoft.com/powershell:latest
 Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
 
 [Full release history](history.md)
@@ -94,7 +96,7 @@ More [demo output](https://github.com/JulianHayward/AzGovViz)
 ### Media
 
 * Microsoft Tech Talks - Bevan Sinclair (Cloud Solution Architect Microsoft) [Automated Governance Reporting in Azure (MTT0AEDT)](https://mtt.eventbuilder.com/event/66431) (register to view)
-* Microsoft Dev Radio (YouTube) [Get visibility into your environment with Azure Governance Visualizer](https://www.youtube.com/watch?v=hZXvF5oypLE)  
+* Microsoft Dev Radio (YouTube) [Get visibility into your environment with Azure Governance Visualizer](https://www.youtube.com/watch?v=hZXvF5oypLE)
 * Jack Tracey (Cloud Solution Architect Microsoft) [Azure Governance Visualizer With Azure DevOps](https://jacktracey.co.uk/azgovviz-with-azure-devops/)
 
 ### Slideset
@@ -109,9 +111,9 @@ Short presentation on Azure Governance Visualizer [[download](slides/AzGovViz_in
   * Custom Policy definitions
     * Scope information
     * Policy effect
-    * If Policy effect is DeployIfNotExists (DINE) will show the specified RBAC Role 
+    * If Policy effect is DeployIfNotExists (DINE) will show the specified RBAC Role
     * List of assignments
-    * Usage in custom PolicySet definitions 
+    * Usage in custom PolicySet definitions
     * System metadata 'createdOn, createdBy, updatedOn, updatedBy' ('createdBy', 'updatedBy' identity is fully resolved)
   * Orphaned custom Policy definitions
     * List of custom Policy definitions that matches the following criteria:
@@ -136,8 +138,8 @@ Short presentation on Azure Governance Visualizer [[download](slides/AzGovViz_in
       * NonCompliance Message on Policy assignment for a PolicySet will only show the default non-compliance message
     * Advanced/enriched information on Policy assignments
       * Policy assignment scope (at scope/inheritance)
-      * Indicates if scope is excluded from Policy assignment 
-      * Indicates if Exemption applies for scope 
+      * Indicates if scope is excluded from Policy assignment
+      * Indicates if Exemption applies for scope
       * Policy/Resource Compliance (Policy: NonCompliant, Compliant; Resource: NonCompliant, Compliant, Conflicting)
       * Related RBAC Role assignments (if Policy effect is DeployIfNotExists (DINE) or Modify)
       * Resolved Managed Identity (if Policy effect is DeployIfNotExists (DINE) or Modify)
@@ -176,7 +178,7 @@ Short presentation on Azure Governance Visualizer [[download](slides/AzGovViz_in
   * Security & Best practice analysis
     * Existence of custom Role definition that reflect 'Owner' permissions
     * Report all Role definitions that are capable to write Role assignments, list all Role assignments for those Role definitions
-    * Role assignments for 'Owner' permissions on identity-type == 'ServicePrincipal' 
+    * Role assignments for 'Owner' permissions on identity-type == 'ServicePrincipal'
     * Role assignments for 'Owner' permissions on identity-type != 'Group'
     * Role assignments for 'User Access Administrator' permissions on identity-type != 'Group'
     * High priviledge Role assignments for 'Guest Users' (Owner & User Access Administrator)
@@ -225,7 +227,7 @@ Short presentation on Azure Governance Visualizer [[download](slides/AzGovViz_in
     * Summary of all UserAssigned Managed Identities assigned to Resources
     * Summary of Resources that have an UserAssigned Managed Identity assigned
   * [Integrate PSRule for Azure](#integrate-psrule-for-azure)
-    * __Pausing 'PSRule for Azure' integration__. Azure Governance Visualizer leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation. 
+    * __Pausing 'PSRule for Azure' integration__. Azure Governance Visualizer leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.
     * Well-Architected Framework aligned best practice analysis for resources, including guidance for remediation
   * Storage Account Access Analysis
     * Provides insights on Storage Accounts with focus on anonymous access (containers/blobs and 'Static website' feature)
@@ -287,21 +289,21 @@ Short presentation on Azure Governance Visualizer [[download](slides/AzGovViz_in
 
 HTML file
 
-__HierarchyMap__  
-![alt text](img/HierarchyMap.png "HierarchyMap")  
-__TenantSummary__  
-![alt text](img/TenantSummary_20221129.png "TenantSummary")  
-__DefinitionInsights__  
-![alt text](img/DefinitionInsights.png "DefinitionInsights") 
-__ScopeInsights__  
-![alt text](img/ScopeInsights.png "ScopeInsights")  
+__HierarchyMap__
+![alt text](img/HierarchyMap.png "HierarchyMap")
+__TenantSummary__
+![alt text](img/TenantSummary_20221129.png "TenantSummary")
+__DefinitionInsights__
+![alt text](img/DefinitionInsights.png "DefinitionInsights")
+__ScopeInsights__
+![alt text](img/ScopeInsights.png "ScopeInsights")
 *_IDs from screenshot are randomized_
 
 markdown in Azure DevOps Wiki as Code
 
-![alt text](img/AzDO_md_v4.png "Azure DevOps Wiki as Code") 
+![alt text](img/AzDO_md_v4.png "Azure DevOps Wiki as Code")
 *_IDs from screenshot are randomized_
-> Note: there is some fixing ongoing at the mermaid project to optimize the graphical experience:  
+> Note: there is some fixing ongoing at the mermaid project to optimize the graphical experience:
  <https://github.com/mermaid-js/mermaid/issues/1177>
 
 ## Outputs
@@ -312,34 +314,36 @@ markdown in Azure DevOps Wiki as Code
   * Browsers tested: Edge, new Edge and Chrome
 * MD (Markdown) file
   * for use with Azure DevOps Wiki leveraging the [Mermaid](https://docs.microsoft.com/en-us/azure/devops/release-notes/2019/sprint-158-update#mermaid-diagram-support-in-wiki) plugin
-* JSON folder ([demo-output](https://github.com/JulianHayward/AzGovViz)) containing 
+* JSON folder ([demo-output](https://github.com/JulianHayward/AzGovViz)) containing
   * all Policy and Role assignments (Scopes: Tenant, Management Groups and Subscriptions)
   * all BuiltIn and Custom Policy/Set definitions (Scopes: Management Groups and Subscriptions)
   * all BuiltIn and Custom Role definitions
-  * JSON file of ManagementGroup Hierarchy including all Custom Policy/Set and RBAC definitions, Policy and Role assignments and some more relevant information 
-  * Tenant tree including all Policy and Role assignments AND all Custom Policy/Set and Role definitions   
+  * JSON file of ManagementGroup Hierarchy including all Custom Policy/Set and RBAC definitions, Policy and Role assignments and some more relevant information
+  * Tenant tree including all Policy and Role assignments AND all Custom Policy/Set and Role definitions
   ![alt text](img/jsonfolderfull450.jpg "JSONFolder")
 
 ## Trust
 
 _How can we trust a 20k lines PowerShell script?_ Besides assuring that Azure Governance Visualizer will not harm at any intent, you may want to secure yourself. Let´s leverage Azure built-in capabilities such as VM Insights to monitor the Azure Governance Visualizer activity.
 
-Setup a Virtual Machine in Azure, deploy the dependency agent extension and [execute](setup.md#azure-governance-visualizer-from-console) Azure Governance Visualizer. 
+Setup a Virtual Machine in Azure, deploy the dependency agent extension and [execute](setup.md#azure-governance-visualizer-from-console) Azure Governance Visualizer.
 
 In the Azure Portal navigate to the Virtual Machine, Click on __Insights__ in the __Monitoring__ section and click on Map. All connections that have been established will be shown. Now let´s focus on the process __pwsh__ and review the established connections.
 
 ![alt text](img/insights_map_pwsh.png "JSONFolder")
 
 Query for Log Analytics:
+
 ```
 VMConnection
 | where AgentId =~ '<GUID>'
 | where ProcessName =~ 'pwsh'
 | summarize by DestinationIp, DestinationPort, RemoteIp, Protocol, Direction, RemoteDnsQuestions, BytesSent, BytesReceived
 ```
+
 ## Azure Governance Visualizer Setup Guide
 
-&#x1F4A1; Although 30 minutes of troubleshooting can save you 5 minutes reading the documentation :) ..  
+&#x1F4A1; Although 30 minutes of troubleshooting can save you 5 minutes reading the documentation :) ..
 Check the detailed __[Setup Guide](setup.md)__
 
 ## Technical documentation
@@ -448,7 +452,7 @@ This permission is <b>mandatory</b> in each and every scenario!
   </tbody>
 </table>
 
-Screenshot Azure Portal    
+Screenshot Azure Portal
 ![alt text](img/aadpermissionsportal_4.jpg "Permissions in Azure Active Directory")
 
 ### PowerShell
@@ -462,76 +466,77 @@ Screenshot Azure Portal
   * ~~Az.Resources~~
   * ~~Az.ResourceGraph~~
   * [Install the Azure Az PowerShell module](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps)
-* Requires PowerShell Module 'AzAPICall'.  
-Running in Azure DevOps or GitHub Actions the AzAPICall PowerShell module will be installed automatically.  
+* Requires PowerShell Module 'AzAPICall'.
+Running in Azure DevOps or GitHub Actions the AzAPICall PowerShell module will be installed automatically.
 AzAPICall resources:
-  * [![PowerShell Gallery Version (including pre-releases)](https://img.shields.io/powershellgallery/v/AzAPICall?include_prereleases&label=PowerShell%20Gallery)](https://www.powershellgallery.com/packages/AzAPICall)  
+  * [![PowerShell Gallery Version (including pre-releases)](https://img.shields.io/powershellgallery/v/AzAPICall?include_prereleases&label=PowerShell%20Gallery)](https://www.powershellgallery.com/packages/AzAPICall)
   * [GitHub Repository](https://aka.ms/AzAPICall)
 * Usage/command
   * `.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>`
 
 ### Parameters
-  * `-ManagementGroupId` Management Group Id (Root Management Group Id equals your Tenant Id)
-  * `-CsvDelimiter` - The world is split into two kinds of delimiters - comma and semicolon - choose yours (default is semicolon ';')
-  * `-OutputPath` 
-  * ~~`-AzureDevOpsWikiAsCode` - Use this parameter only when running AzGovViz in a Azure DevOps Pipeline~~ Based on environment variables the script will detect the code run platform
-  * `-DoNotShowRoleAssignmentsUserData` - Scrub personally identifiable information (PII)
-  * `-LimitCriticalPercentage` - Limit warning level, default is 80%
-  * ~~`-HierarchyTreeOnly`~~ `-HierarchyMapOnly` - Output only the __HierarchyMap__ for Management Groups including linked Subscriptions
-  * `-SubscriptionQuotaIdWhitelist` - Process only Subscriptions with defined QuotaId(s). Example: .\AzGovVizParallel.ps1 `-SubscriptionQuotaIdWhitelist MSDN_,Enterprise_`
-  * `-NoResourceProvidersDetailed` - Disables output for ResourceProvider states for all Subscriptions in the __TenantSummary__ section, in large Tenants this can become time consuming
-  * `-NoResourceProvidersAtAll` - Resource Providers will not be collected
-  * `-NoMDfCSecureScore` - Disables Microsoft Defender for Cloud Secure Score request for Subscriptions and Management Groups.
-  * ~~`-DisablePolicyComplianceStates`~~ `-NoPolicyComplianceStates` - Will not query policy compliance states. You may want to use this parameter to accellerate script execution or when receiving error 'ResponseTooLarge'. 
-  * `-NoResourceDiagnosticsPolicyLifecycle` - Disables Resource Diagnostics Policy Lifecycle recommendations
-  * `-NoAADGroupsResolveMembers` - Disables resolving Azure Active Directory Group memberships
-  * ~~`-NoAADGuestUsers` - Disables resolving Azure Active Directory User type (Guest or Member)~~
-  * ~~`-NoServicePrincipalResolve` `-NoAADServicePrincipalResolve` - Disables resolving ServicePrincipals~~
-  * ~~`-ServicePrincipalExpiryWarningDays`~~ `-AADServicePrincipalExpiryWarningDays` - Define warning period for Service Principal secret and certificate expiry; default is 14 days
-  * ~~`-NoAzureConsumption`~~ - Azure Consumption data should not be collected/reported
-  * `-DoAzureConsumption` - Azure Consumption data should be collected/reported
-  * `-AzureConsumptionPeriod` - Define for which time period Azure Consumption data should be gathered; default is 1 day
-  * `-NoAzureConsumptionReportExportToCSV` - Azure Consumption data should not be exported (CSV)
-  * `-NoScopeInsights` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size). Use `-LargeTenant` to further reduce the output.
-  * `-ThrottleLimit` - leveraging PowerShell´s parallel capability you can define the ThrottleLimit (default=5)
-  * `-DoTranscript` - Log the console output
-  * `-SubscriptionId4AzContext` - Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
-  * `-PolicyAtScopeOnly` - Removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants. Note using parameter `-LargeTenant` will set `-PolicyAtScopeOnly $true`
-  * `-RBACAtScopeOnly` - Removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants. Note using parameter `-LargeTenant` will set `-RBACAtScopeOnly $true`
-  * ~~`-CsvExport`~~ `-NoCsvExport` - Do not export enriched data for 'Role assignments', 'Policy assignments' data and 'all Resources' (subscriptionId,  managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
-  * ~~`-PolicyIncludeResourceGroups`~~ `-DoNotIncludeResourceGroupsOnPolicy` - Do not include Policy assignments on ResourceGroups
-  * ~~`-RBACIncludeResourceGroupsAndResources`~~ `-DoNotIncludeResourceGroupsAndResourcesOnRBAC` - Do not include Role assignments on ResourceGroups and Resources
-  * `-ChangeTrackingDays` - Define the period for Change tracking on newly created and updated custom Policy, PolicySet and RBAC Role definitions and Policy/RBAC Role assignments (default is '14') 
-  * `-FileTimeStampFormat`- Define the time format for the output files (default is `yyyyMMdd_HHmmss`)
-  * ~~`-JsonExport`~~ `-NoJsonExport` - Do not enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON 
-  * `-JsonExportExcludeResourceGroups` - JSON Export will not include ResourceGroups (Policy & Role assignments)
-  * `-JsonExportExcludeResources`- JSON Export will not include Resources (Role assignments)
-  * `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big. Using this parameter the following parameters will be set: `-PolicyAtScopeOnly`, `-RBACAtScopeOnly`, `-NoResourceProvidersAtAll`, `-NoScopeInsights`
-  * `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
-  * `-AADGroupMembersLimit` - Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved 
-  * `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability, resource type stats, UserAssigned Identities assigned to Resources is excluded (featured for large tenants)
-  * `-StatsOptOut` - Opt out sending [stats](#stats)
-  * `-NoSingleSubscriptionOutput` - Single __Scope Insights__ output per Subscription should not be created
-  * `-ManagementGroupsOnly` - Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
-  * `-ShowMemoryUsage` - Shows memory usage at memory intense sections of the scripts, this shall help you determine if the the worker is well sized for Azure Governance Visualizer
-  * `-CriticalMemoryUsage` - Define at what percentage of memory usage the garbage collection should kick in (default=90)
-  * `-ExcludedResourceTypesDiagnosticsCapable` - Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
-  * PSRule for Azure
-    * __Pausing 'PSRule for Azure' integration__. Azure Governance Visualizer leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.
-    * `-DoPSRule` - Execute [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure). Aggregated results are integrated in the HTML output, detailed results (per resource) are exported to CSV
-    * `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
-    * `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise). (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule -PSRuleFailedOnly`)
-  * PIM (Privileged Identity Management) Eligibility
-    * `-NoPIMEligibility` - Do not report on PIM eligible Role assignments
-    * `-PIMEligibilityIgnoreScope` - By default will only report for PIM Elibility for the scope (`ManagementGroupId`) that was provided. If you use the new switch parameter then PIM Eligibility for all onboarded scopes (Management Groups and Subscriptions) will be reported
-    * `-NoPIMEligibilityIntegrationRoleAssignmentsAll` - Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
-  * ~~`-DefinitionInsightsDedicatedHTML`~~ `-NoDefinitionInsightsDedicatedHTML` - __DefinitionInsights__ will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep __DefinitionInsights__ in the main html file then use this parameter
-  * ~~`-NoALZEvergreen`~~ `-NoALZPolicyVersionChecker` - Do not execute the ~~'ALZ EverGreen'~~ 'Azure Landing Zones (ALZ) Policy Version Checker' feature
-  * `-NoStorageAccountAccessAnalysis` - Do not execute Storage Account Access Analysis (focus on anonymous access)
-  * `-StorageAccountAccessAnalysisSubscriptionTags` - Define Subscription tag names that should be added to the CSV output per Storage Account
-  * `-StorageAccountAccessAnalysisStorageAccountTags` - Define Storage Account tag names that should be added to the CSV output per Storage Account
-  * `-NoNetwork` - Do not execute Network analysis / Virtual Network and Virtual Network Peerings
-    * `-NetworkSubnetIPAddressUsageCriticalPercentage` - Warning level when certain percentage of IP addresses is used (default = 90%)
+
+* `-ManagementGroupId` Management Group Id (Root Management Group Id equals your Tenant Id)
+* `-CsvDelimiter` - The world is split into two kinds of delimiters - comma and semicolon - choose yours (default is semicolon ';')
+* `-OutputPath`
+* ~~`-AzureDevOpsWikiAsCode` - Use this parameter only when running AzGovViz in a Azure DevOps Pipeline~~ Based on environment variables the script will detect the code run platform
+* `-DoNotShowRoleAssignmentsUserData` - Scrub personally identifiable information (PII)
+* `-LimitCriticalPercentage` - Limit warning level, default is 80%
+* ~~`-HierarchyTreeOnly`~~ `-HierarchyMapOnly` - Output only the __HierarchyMap__ for Management Groups including linked Subscriptions
+* `-SubscriptionQuotaIdWhitelist` - Process only Subscriptions with defined QuotaId(s). Example: .\AzGovVizParallel.ps1 `-SubscriptionQuotaIdWhitelist MSDN_,Enterprise_`
+* `-NoResourceProvidersDetailed` - Disables output for ResourceProvider states for all Subscriptions in the __TenantSummary__ section, in large Tenants this can become time consuming
+* `-NoResourceProvidersAtAll` - Resource Providers will not be collected
+* `-NoMDfCSecureScore` - Disables Microsoft Defender for Cloud Secure Score request for Subscriptions and Management Groups.
+* ~~`-DisablePolicyComplianceStates`~~ `-NoPolicyComplianceStates` - Will not query policy compliance states. You may want to use this parameter to accellerate script execution or when receiving error 'ResponseTooLarge'.
+* `-NoResourceDiagnosticsPolicyLifecycle` - Disables Resource Diagnostics Policy Lifecycle recommendations
+* `-NoAADGroupsResolveMembers` - Disables resolving Azure Active Directory Group memberships
+* ~~`-NoAADGuestUsers` - Disables resolving Azure Active Directory User type (Guest or Member)~~
+* ~~`-NoServicePrincipalResolve` `-NoAADServicePrincipalResolve` - Disables resolving ServicePrincipals~~
+* ~~`-ServicePrincipalExpiryWarningDays`~~ `-AADServicePrincipalExpiryWarningDays` - Define warning period for Service Principal secret and certificate expiry; default is 14 days
+* ~~`-NoAzureConsumption`~~ - Azure Consumption data should not be collected/reported
+* `-DoAzureConsumption` - Azure Consumption data should be collected/reported
+* `-AzureConsumptionPeriod` - Define for which time period Azure Consumption data should be gathered; default is 1 day
+* `-NoAzureConsumptionReportExportToCSV` - Azure Consumption data should not be exported (CSV)
+* `-NoScopeInsights` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size). Use `-LargeTenant` to further reduce the output.
+* `-ThrottleLimit` - leveraging PowerShell´s parallel capability you can define the ThrottleLimit (default=5)
+* `-DoTranscript` - Log the console output
+* `-SubscriptionId4AzContext` - Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
+* `-PolicyAtScopeOnly` - Removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants. Note using parameter `-LargeTenant` will set `-PolicyAtScopeOnly $true`
+* `-RBACAtScopeOnly` - Removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants. Note using parameter `-LargeTenant` will set `-RBACAtScopeOnly $true`
+* ~~`-CsvExport`~~ `-NoCsvExport` - Do not export enriched data for 'Role assignments', 'Policy assignments' data and 'all Resources' (subscriptionId,  managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
+* ~~`-PolicyIncludeResourceGroups`~~ `-DoNotIncludeResourceGroupsOnPolicy` - Do not include Policy assignments on ResourceGroups
+* ~~`-RBACIncludeResourceGroupsAndResources`~~ `-DoNotIncludeResourceGroupsAndResourcesOnRBAC` - Do not include Role assignments on ResourceGroups and Resources
+* `-ChangeTrackingDays` - Define the period for Change tracking on newly created and updated custom Policy, PolicySet and RBAC Role definitions and Policy/RBAC Role assignments (default is '14')
+* `-FileTimeStampFormat`- Define the time format for the output files (default is `yyyyMMdd_HHmmss`)
+* ~~`-JsonExport`~~ `-NoJsonExport` - Do not enable export of ManagementGroup Hierarchy including all MG/Sub Policy/RBAC definitions, Policy/RBAC assignments and some more relevant information to JSON
+* `-JsonExportExcludeResourceGroups` - JSON Export will not include ResourceGroups (Policy & Role assignments)
+* `-JsonExportExcludeResources`- JSON Export will not include Resources (Role assignments)
+* `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big. Using this parameter the following parameters will be set: `-PolicyAtScopeOnly`, `-RBACAtScopeOnly`, `-NoResourceProvidersAtAll`, `-NoScopeInsights`
+* `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
+* `-AADGroupMembersLimit` - Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved
+* `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability, resource type stats, UserAssigned Identities assigned to Resources is excluded (featured for large tenants)
+* `-StatsOptOut` - Opt out sending [stats](#stats)
+* `-NoSingleSubscriptionOutput` - Single __Scope Insights__ output per Subscription should not be created
+* `-ManagementGroupsOnly` - Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
+* `-ShowMemoryUsage` - Shows memory usage at memory intense sections of the scripts, this shall help you determine if the the worker is well sized for Azure Governance Visualizer
+* `-CriticalMemoryUsage` - Define at what percentage of memory usage the garbage collection should kick in (default=90)
+* `-ExcludedResourceTypesDiagnosticsCapable` - Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
+* PSRule for Azure
+  * __Pausing 'PSRule for Azure' integration__. Azure Governance Visualizer leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.
+  * `-DoPSRule` - Execute [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure). Aggregated results are integrated in the HTML output, detailed results (per resource) are exported to CSV
+  * `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
+  * `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise). (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule -PSRuleFailedOnly`)
+* PIM (Privileged Identity Management) Eligibility
+  * `-NoPIMEligibility` - Do not report on PIM eligible Role assignments
+  * `-PIMEligibilityIgnoreScope` - By default will only report for PIM Elibility for the scope (`ManagementGroupId`) that was provided. If you use the new switch parameter then PIM Eligibility for all onboarded scopes (Management Groups and Subscriptions) will be reported
+  * `-NoPIMEligibilityIntegrationRoleAssignmentsAll` - Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
+* ~~`-DefinitionInsightsDedicatedHTML`~~ `-NoDefinitionInsightsDedicatedHTML` - __DefinitionInsights__ will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep __DefinitionInsights__ in the main html file then use this parameter
+* ~~`-NoALZEvergreen`~~ `-NoALZPolicyVersionChecker` - Do not execute the ~~'ALZ EverGreen'~~ 'Azure Landing Zones (ALZ) Policy Version Checker' feature
+* `-NoStorageAccountAccessAnalysis` - Do not execute Storage Account Access Analysis (focus on anonymous access)
+* `-StorageAccountAccessAnalysisSubscriptionTags` - Define Subscription tag names that should be added to the CSV output per Storage Account
+* `-StorageAccountAccessAnalysisStorageAccountTags` - Define Storage Account tag names that should be added to the CSV output per Storage Account
+* `-NoNetwork` - Do not execute Network analysis / Virtual Network and Virtual Network Peerings
+  * `-NetworkSubnetIPAddressUsageCriticalPercentage` - Warning level when certain percentage of IP addresses is used (default = 90%)
 
 ### API reference
 
@@ -600,7 +605,7 @@ Azure Governance Visualizer polls the following APIs
 
 ## Integrate with AzOps
 
-Did you know you can run AzOps from Azure DevOps? Check [AzOps Accellerator](https://github.com/Azure/AzOps-Accelerator).  
+Did you know you can run AzOps from Azure DevOps? Check [AzOps Accellerator](https://github.com/Azure/AzOps-Accelerator).
 You can integrate Azure Governance Visualizer (same project as AzOps).
 
 ```yaml
@@ -617,15 +622,17 @@ You can integrate Azure Governance Visualizer (same project as AzOps).
 
 __Pausing 'PSRule for Azure' integration__. Azure Governance Visualizer leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.
 
-Let´s use [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure) and leverage over 260 pre-built rules to validate Azure resources based on the Microsoft Well-Architected Framework (WAF) principles.  
+Let´s use [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure) and leverage over 260 pre-built rules to validate Azure resources based on the Microsoft Well-Architected Framework (WAF) principles.
 PSRule for Azure is listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/architecture/framework/security/monitor-tools) in the Microsoft Well-Architected Framework.
 
-Parameter: `-DoPSRule` (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule`)  
-Optional parameters:  
-  * `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
-  * `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise). (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule -PSRuleFailedOnly`)
+Parameter: `-DoPSRule` (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule`)
+Optional parameters:
+
+* `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
+* `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise). (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule -PSRuleFailedOnly`)
 
 Outputs:
+
 * HTML (summarized)
   * TenantSummary
   * ScopeInsights
@@ -633,29 +640,31 @@ Outputs:
     * Subscription
 * CSV (detailed, per resource)
 
-TenantSummary HTML output example:  
+TenantSummary HTML output example:
 ![alt text](img/PSRuleForAzure_preview.png "PSRule for Azure / Azure Governance Visualizer TenantSummary")
 
 ## Stats
 
-In order to better understand the Azure Governance Visualizer usage and to optimize the product accordingly some stats will be ingested to Azure Application Insights. Results of stats analysis may be shared at a later stage. 
+In order to better understand the Azure Governance Visualizer usage and to optimize the product accordingly some stats will be ingested to Azure Application Insights. Results of stats analysis may be shared at a later stage.
 
 ### How/What?
 
-If the script is run in Azure DevOps then the Repository Id and executing principal´s object Id will be used to create an unique identifier.  
+If the script is run in Azure DevOps then the Repository Id and executing principal´s object Id will be used to create an unique identifier.
 If the script is not run in Azure DevOps then the Tenant Id and executing principal´s object Id will be used to create an unique identifier.
 
-SHA384/512 hashed combination of 
-* portion of the repositoryId/tenantId 
+SHA384/512 hashed combination of
+
+* portion of the repositoryId/tenantId
   * if repositoryId/tenantId startsWith a letter then use characters 3-8 (6 characters) of the first GUID´s block, combine them with the third GUID`s block of the principal´s objectId (4 characters), SHA512 hash them as identifier0
   * if repositoryId/tenantId startsWith a number then use characters 7-12 (6 characters) of the last GUID`s block, combine them with the second GUID´s block of the principal´s objectId (4 characters), SHA384 hash them as identifier0
-* portion of the executing principal´s objectId 
+* portion of the executing principal´s objectId
   * if objectId startsWith a letter then use characters 3-8 (6 characters) of the first GUID´ block, combine them with the third GUID´ block of the repositoryId/tenantId (4 characters), SHA512 hash them as identifier1
   * if objectId startsWith a number then use characters 7-12 (6 characters) of the last GUID´ block, combine them with the second GUID´ block of the repositoryId/tenantId (4 characters), SHA384 hash them as identifier1
 
 Combine identifier0 and identifier1
-  * if objectId startsWith a letter then combine identifiers -> 'identifier0 + identifier1', SHA512 hash them as final identifier and remove dashes (string of 128 characters)
-  * if objectId startsWith a number then combine identifiers -> 'identifier1 + identifier0', SHA512 hash them as final identifier and remove dashes (string of 128 characters)
+
+* if objectId startsWith a letter then combine identifiers -> 'identifier0 + identifier1', SHA512 hash them as final identifier and remove dashes (string of 128 characters)
+* if objectId startsWith a number then combine identifiers -> 'identifier1 + identifier0', SHA512 hash them as final identifier and remove dashes (string of 128 characters)
 
 To conclude the approach: taking 6 or 4 characters from tenantId/respositoryId and objectId of the executing principal to create a unique identifier, which may not be backward resolveable.
 
@@ -690,12 +699,12 @@ The following data will be ingested to Azure Application Insights:
     "statsTry": "count of try sending to Application Insights"
 ```
 
-Azure Application Insights data:  
+Azure Application Insights data:
 
 ![alt text](img/stats.jpg "Stats")
 
-If you do not want to contribute to stats for Azure Governance Visualizer then you can use the parameter:  
-`-StatsOptOut` 
+If you do not want to contribute to stats for Azure Governance Visualizer then you can use the parameter:
+`-StatsOptOut`
 
 If you have any concerns or see a risk sending stats please file an issue.
 
@@ -705,8 +714,8 @@ Thank you for your support!
 
 Azure Governance Visualizer creates very detailed information about your Azure Governance setup. In your organization's best interest the __outputs should be protected from not authorized access!__
 
-Azure Defender for Cloud may alert Azure Governance Visualizer resource queries as suspicious activity:  
-![alt text](img/azgvz_MDfC_securityAlert.png "Microsoft defender for Cloud security alert") 
+Azure Defender for Cloud may alert Azure Governance Visualizer resource queries as suspicious activity:
+![alt text](img/azgvz_MDfC_securityAlert.png "Microsoft defender for Cloud security alert")
 
 ## Known issues
 
@@ -716,7 +725,7 @@ Working with Git and Windows cloning from your AzDO repository you may experienc
 fatal: cannot create directory at 'output/JSON_...': Filename too long
 ```
 
-To work around that issue you may want to enable longpaths support.  
+To work around that issue you may want to enable longpaths support.
 __Note the [caveats](https://github.com/desktop/desktop/issues/8023)!__
 
 ```
@@ -725,7 +734,7 @@ git config --system core.longpaths true
 
 ## Facts
 
-Disabled Subscriptions and Subscriptions where Quota Id starts with with "AAD_" are being skipped, all others are queried. More information on Subscription Quota Id / Offer numbers: [Supported Microsoft Azure offers](https://docs.microsoft.com/en-us/azure/cost-management-billing/costs/understand-cost-mgt-data#supported-microsoft-azure-offers).  
+Disabled Subscriptions and Subscriptions where Quota Id starts with with "AAD_" are being skipped, all others are queried. More information on Subscription Quota Id / Offer numbers: [Supported Microsoft Azure offers](https://docs.microsoft.com/en-us/azure/cost-management-billing/costs/understand-cost-mgt-data#supported-microsoft-azure-offers).
 
 ARM Limits are not acquired programmatically, these are hardcoded. The links used to check related limits are commented in the param section of the script.
 
@@ -737,7 +746,7 @@ Thanks to so many supporters - testing, giving feedback, making suggestions, pre
 
 Thanks Stefan Stranger (Microsoft) for providing me with his Azure Governance Visualizer outputs executed on his implementation of EnterpriseScale. Make sure you read Stefan´s Blog Article: [Enterprise-Scale - Policy Driven Governance](https://stefanstranger.github.io/2020/08/28/EnterpriseScalePolicyDrivenGovernance)
 
-Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his Azure Governance Visualizer outputs executed on his implementation of EnterpriseScale. 
+Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his Azure Governance Visualizer outputs executed on his implementation of EnterpriseScale.
 
 Carlos Mendible (Microsoft) gracias por tu contribución on the project - run Azure Governance Visualizer with GitHub Codespaces.
 
