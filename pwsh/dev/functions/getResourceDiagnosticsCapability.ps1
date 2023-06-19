@@ -58,11 +58,17 @@ function getResourceDiagnosticsCapability {
                         }
 
                         $resourceAvailability = $resourceAvailability - 1
-                        $currentTask = "Checking if ResourceType '$resourceType' is capable for Resource Diagnostics using $counterTryForResourceType ResourceId: '$($resourceId)'"
-                        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/$($resourceId)/providers/microsoft.insights/diagnosticSettingsCategories?api-version=2021-05-01-preview"
-                        $method = 'GET'
+                        if ($resourceId -like '*+*') {
+                            Write-Host "resourceId '$resourceId' contains bad character '+'; skipping resourceId"
+                            $responseJSON = 'skipResource'
+                        }
+                        else {
+                            $currentTask = "Checking if ResourceType '$resourceType' is capable for Resource Diagnostics using $counterTryForResourceType ResourceId: '$($resourceId)'"
+                            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/$($resourceId)/providers/microsoft.insights/diagnosticSettingsCategories?api-version=2021-05-01-preview"
+                            $method = 'GET'
+                            $responseJSON = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri ([uri]::EscapeUriString($uri)) -method $method -currentTask $currentTask
+                        }
 
-                        $responseJSON = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
                         if ($responseJSON -ne 'skipResource') {
                             if ($responseJSON -eq 'ResourceTypeOrResourceProviderNotSupported') {
                                 Write-Host "  ResourceTypeOrResourceProviderNotSupported | The resource type '$($resourcetype)' does not support diagnostic settings."
