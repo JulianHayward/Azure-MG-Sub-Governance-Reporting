@@ -29613,7 +29613,6 @@ function dataCollectionStorageAccounts {
             $usedCapacity = 'n/a'
             if ($storageAccountUsedCapacity.Count -gt 0) {
                 if (-not [string]::IsNullOrWhiteSpace($storageAccountUsedCapacity.timeseries.data.average)) {
-                    Write-Host "`$storageAccountUsedCapacity:" $storageAccountUsedCapacity
                     $usedCapacity = [decimal]$storageAccountUsedCapacity.timeseries.data.average / 1024 / 1024 / 1024
                 }
             }
