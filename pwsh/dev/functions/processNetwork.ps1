@@ -66,24 +66,30 @@ function processNetwork {
                         $remoteTenantId = AzAPICall -AzAPICallConfiguration $azApiCallConf -uri $uri -listenOn 'content' -currentTask "getTenantId for subscriptionId '$($remotesubscriptionId)'"
                         $arrayRemoteMGPath = @()
                         foreach ($remoteId in $remoteTenantId) {
-                            $objectGuid = [System.Guid]::empty
-                            if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
-                                if ($remoteId -in $MSTenantIds) {
-                                    $arrayRemoteMGPath += "$remoteId (MS)"
-                                }
-                                else {
-                                    $arrayRemoteMGPath += $remoteId
-                                }
-                                if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
-                                    $peeringXTenant = 'false'
-                                }
-                                else {
-                                    $peeringXTenant = 'true'
-                                }
+                            if ($remoteId -eq 'SubscriptionNotFound Tenant unknown') {
+                                $remoteMGPath = 'n/a'
+                                $peeringXTenant = 'n/a'
                             }
-                            $script:htUnknownTenantsForSubscription.($remotesubscriptionId) = @{}
-                            $script:htUnknownTenantsForSubscription.($remotesubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
-                            $remoteMGPath = $arrayRemoteMGPath -join ', '
+                            else {
+                                $objectGuid = [System.Guid]::empty
+                                if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
+                                    if ($remoteId -in $MSTenantIds) {
+                                        $arrayRemoteMGPath += "$remoteId (MS)"
+                                    }
+                                    else {
+                                        $arrayRemoteMGPath += $remoteId
+                                    }
+                                    if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
+                                        $peeringXTenant = 'false'
+                                    }
+                                    else {
+                                        $peeringXTenant = 'true'
+                                    }
+                                }
+                                $script:htUnknownTenantsForSubscription.($remotesubscriptionId) = @{}
+                                $script:htUnknownTenantsForSubscription.($remotesubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
+                                $remoteMGPath = $arrayRemoteMGPath -join ', '
+                            }
                         }
                     }
                 }
