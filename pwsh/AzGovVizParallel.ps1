@@ -362,7 +362,7 @@ Param
     $AzAPICallVersion = '1.1.72',
 
     [string]
-    $ProductVersion = '6.2.1',
+    $ProductVersion = '6.2.3',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -7751,26 +7751,45 @@ function processNetwork {
                     else {
                         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($remotesubscriptionId)?api-version=2020-01-01"
                         $remoteTenantId = AzAPICall -AzAPICallConfiguration $azApiCallConf -uri $uri -listenOn 'content' -currentTask "getTenantId for subscriptionId '$($remotesubscriptionId)'"
-                        $arrayRemoteMGPath = @()
-                        foreach ($remoteId in $remoteTenantId) {
-                            $objectGuid = [System.Guid]::empty
-                            if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
-                                if ($remoteId -in $MSTenantIds) {
-                                    $arrayRemoteMGPath += "$remoteId (MS)"
+                        if ($remoteTenantId.id -like '/subscriptions/*') {
+                            #sub actually could be resolved but not available in htSubscriptionsMgPath
+                            Write-Host "SubscriptionId '$($remotesubscriptionId)' (tenantId: '$($remoteTenantId.tenantId)' (current context tenantId: '$($azapiCallConf['checkContext'].tenant.Id)')) was not captured by getSubscriptions/getEntities, however could be fully resolved with direct get call (ARM subscription API)" -ForegroundColor Magenta
+                            $remoteMGPath = $remoteTenantId.tenantId
+                            if ($azapiCallConf['checkContext'].tenant.Id -eq $remoteTenantId.tenantId) {
+                                $peeringXTenant = 'false'
+                            }
+                            else {
+                                $peeringXTenant = 'true'
+                            }
+                        }
+                        else {
+                            $arrayRemoteMGPath = @()
+                            foreach ($remoteId in $remoteTenantId) {
+                                if ($remoteId -eq 'SubscriptionNotFound Tenant unknown') {
+                                    $remoteMGPath = 'unknown'
+                                    $peeringXTenant = 'n/a'
                                 }
                                 else {
-                                    $arrayRemoteMGPath += $remoteId
-                                }
-                                if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
-                                    $peeringXTenant = 'false'
-                                }
-                                else {
-                                    $peeringXTenant = 'true'
+                                    $objectGuid = [System.Guid]::empty
+                                    if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
+                                        if ($remoteId -in $MSTenantIds) {
+                                            $arrayRemoteMGPath += "$remoteId (MS)"
+                                        }
+                                        else {
+                                            $arrayRemoteMGPath += $remoteId
+                                        }
+                                        if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
+                                            $peeringXTenant = 'false'
+                                        }
+                                        else {
+                                            $peeringXTenant = 'true'
+                                        }
+                                    }
+                                    $script:htUnknownTenantsForSubscription.($remotesubscriptionId) = @{}
+                                    $script:htUnknownTenantsForSubscription.($remotesubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
+                                    $remoteMGPath += $arrayRemoteMGPath -join ', '
                                 }
                             }
-                            $script:htUnknownTenantsForSubscription.($remotesubscriptionId) = @{}
-                            $script:htUnknownTenantsForSubscription.($remotesubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
-                            $remoteMGPath = $arrayRemoteMGPath -join ', '
                         }
                     }
                 }
@@ -7897,7 +7916,7 @@ function processNetwork {
 
                         RemoteSubscriptionName                          = $remotesubscriptionName
                         RemoteSubscription                              = $remotesubscriptionId
-                        RemoteMGPath                                    = $remoteMGPath
+                        RemoteMGPath                                    = $remoteMGPath -join ', '
                         RemoteVNet                                      = $remotevnetName
                         RemoteVNetId                                    = $peering.properties.remoteVirtualNetwork.id
                         RemoteVNetState                                 = $remotevnetState
@@ -28999,10 +29018,10 @@ function validateLeastPrivilegeForUser {
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.Authorization/roleAssignments?api-version=2022-04-01&`$filter=principalId eq '$($azapicallConf['htParameters'].userObjectId)'"
     $method = 'GET'
     $getRoleAssignmentsForExecutingUserAtManagementGroupId = AzAPICall -AzAPICallConfiguration $azapicallConf -uri $uri
-    $nonReaderRolesAssigned = ($getRoleAssignmentsForExecutingUserAtManagementGroupId.properties.RoleDefinitionId | Sort-Object -Unique).where({ $_ -notlike '*acdd72a7-3385-48ef-bd42-f606fba81ae7' })
+    $nonReaderRolesAssigned = ($getRoleAssignmentsForExecutingUserAtManagementGroupId.properties.RoleDefinitionId | Sort-object -Unique).where({$_ -notlike '*acdd72a7-3385-48ef-bd42-f606fba81ae7'})
     if ($nonReaderRolesAssigned.Count -gt 0) {
-        Write-Host '* * * LEAST PRIVILEGE ADVICE' -ForegroundColor DarkRed
-        Write-Host 'The Azure Governance Visualizer script is executed with more permissions than required.'
+        Write-Host "* * * LEAST PRIVILEGE ADVICE" -ForegroundColor DarkRed
+        Write-Host "The Azure Governance Visualizer script is executed with more permissions than required."
         Write-Host "The executing identity '$($azapicallConf['checkContext'].Account.Id)' ($($azapicallConf['checkContext'].Account.Type)) Id: '$($azapicallConf['htparameters'].userObjectId)' has the following RBAC Role(s) assigned at Management Group scope '$ManagementGroupId':"
         foreach ($nonReaderRoleAssigned in $nonReaderRolesAssigned) {
             $currentTask = "Get RBAC Role definition '$nonReaderRoleAssigned'"
@@ -29013,14 +29032,14 @@ function validateLeastPrivilegeForUser {
             if ($getRole.properties.roleName -eq 'owner' -or $getRole.properties.roleName -eq 'contributor') {
                 Write-Host " - $($getRole.properties.roleName) ($($getRole.properties.type)) !!!"
             }
-            else {
+            else{
                 Write-Host " - $($getRole.properties.roleName) ($($getRole.properties.type))"
             }
         }
         Write-Host "The required Azure RBAC role at Management Group scope '$ManagementGroupId' is 'Reader' (acdd72a7-3385-48ef-bd42-f606fba81ae7)."
         Write-Host "Recommendation: consider executing the script in context of a Service Principal with least privilege. Review the Azure Governance Visualizer Setup Guide at 'https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/setup.md'"
         Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor DarkRed
-        Pause
+        pause
     }
     else {
         Write-Host "Azure Governance Visualizer Least Privilege check (Azure Resource side) for executing identity '$($azapicallConf['checkContext'].Account.Id)' ($($azapicallConf['checkContext'].Account.Type)) Id: '$($azapicallConf['htparameters'].userObjectId)' succeeded" -ForegroundColor Green

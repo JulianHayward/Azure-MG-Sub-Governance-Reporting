@@ -64,26 +64,45 @@ function processNetwork {
                     else {
                         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($remotesubscriptionId)?api-version=2020-01-01"
                         $remoteTenantId = AzAPICall -AzAPICallConfiguration $azApiCallConf -uri $uri -listenOn 'content' -currentTask "getTenantId for subscriptionId '$($remotesubscriptionId)'"
-                        $arrayRemoteMGPath = @()
-                        foreach ($remoteId in $remoteTenantId) {
-                            $objectGuid = [System.Guid]::empty
-                            if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
-                                if ($remoteId -in $MSTenantIds) {
-                                    $arrayRemoteMGPath += "$remoteId (MS)"
+                        if ($remoteTenantId.id -like '/subscriptions/*') {
+                            #sub actually could be resolved but not available in htSubscriptionsMgPath
+                            Write-Host "SubscriptionId '$($remotesubscriptionId)' (tenantId: '$($remoteTenantId.tenantId)' (current context tenantId: '$($azapiCallConf['checkContext'].tenant.Id)')) was not captured by getSubscriptions/getEntities, however could be fully resolved with direct get call (ARM subscription API)" -ForegroundColor Magenta
+                            $remoteMGPath = $remoteTenantId.tenantId
+                            if ($azapiCallConf['checkContext'].tenant.Id -eq $remoteTenantId.tenantId) {
+                                $peeringXTenant = 'false'
+                            }
+                            else {
+                                $peeringXTenant = 'true'
+                            }
+                        }
+                        else {
+                            $arrayRemoteMGPath = @()
+                            foreach ($remoteId in $remoteTenantId) {
+                                if ($remoteId -eq 'SubscriptionNotFound Tenant unknown') {
+                                    $remoteMGPath = 'unknown'
+                                    $peeringXTenant = 'n/a'
                                 }
                                 else {
-                                    $arrayRemoteMGPath += $remoteId
-                                }
-                                if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
-                                    $peeringXTenant = 'false'
-                                }
-                                else {
-                                    $peeringXTenant = 'true'
+                                    $objectGuid = [System.Guid]::empty
+                                    if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
+                                        if ($remoteId -in $MSTenantIds) {
+                                            $arrayRemoteMGPath += "$remoteId (MS)"
+                                        }
+                                        else {
+                                            $arrayRemoteMGPath += $remoteId
+                                        }
+                                        if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
+                                            $peeringXTenant = 'false'
+                                        }
+                                        else {
+                                            $peeringXTenant = 'true'
+                                        }
+                                    }
+                                    $script:htUnknownTenantsForSubscription.($remotesubscriptionId) = @{}
+                                    $script:htUnknownTenantsForSubscription.($remotesubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
+                                    $remoteMGPath += $arrayRemoteMGPath -join ', '
                                 }
                             }
-                            $script:htUnknownTenantsForSubscription.($remotesubscriptionId) = @{}
-                            $script:htUnknownTenantsForSubscription.($remotesubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
-                            $remoteMGPath = $arrayRemoteMGPath -join ', '
                         }
                     }
                 }
@@ -210,7 +229,7 @@ function processNetwork {
 
                         RemoteSubscriptionName                          = $remotesubscriptionName
                         RemoteSubscription                              = $remotesubscriptionId
-                        RemoteMGPath                                    = $remoteMGPath
+                        RemoteMGPath                                    = $remoteMGPath -join ', '
                         RemoteVNet                                      = $remotevnetName
                         RemoteVNetId                                    = $peering.properties.remoteVirtualNetwork.id
                         RemoteVNetState                                 = $remotevnetState

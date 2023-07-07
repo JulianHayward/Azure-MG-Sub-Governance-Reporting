@@ -4,6 +4,10 @@
 
 ### Azure Governance Visualizer version 6
 
+__Changes__ (2023-Jun-23 / 6.2.3 Minor)
+
+* fix feature 'network' - optimize handling of unknown Subscription Ids 
+
 __Changes__ (2023-Jun-16 / 6.2.1 Minor)
 
 * fix feature diagnostic capable resource name containing "+"
