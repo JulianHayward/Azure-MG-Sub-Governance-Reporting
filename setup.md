@@ -8,6 +8,7 @@ This guide will help you to setup and run AzGovViz
 # Table of content
 - [Azure Governance Visualizer aka AzGovViz - Setup](#azure-governance-visualizer-aka-azgovviz---setup)
 - [Table of content](#table-of-content)
+- [Azure Governance Visualizer from Accelerator](#azure-governance-visualizer-from-accelerator)
 - [Azure Governance Visualizer from Console](#azure-governance-visualizer-from-console)
   - [Grant permissions in Azure](#grant-permissions-in-azure)
   - [Execution options](#execution-options)
@@ -59,6 +60,9 @@ This guide will help you to setup and run AzGovViz
   - [Azure DevOps](#azure-devops-1)
   - [GitHub Actions](#github-actions)
 
+# Azure Governance Visualizer from Accelerator
+
+* The [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) provides an easy and fast deployment process that automates the creation and publishing of AzGovViz to an Azure Web Application and provides automation to configuring the pre-requisites for AzGovViz.
 
 # Azure Governance Visualizer from Console
 
