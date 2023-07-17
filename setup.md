@@ -8,7 +8,7 @@ This guide will help you to setup and run AzGovViz
 # Table of content
 - [Azure Governance Visualizer aka AzGovViz - Setup](#azure-governance-visualizer-aka-azgovviz---setup)
 - [Table of content](#table-of-content)
-- [Azure Governance Visualizer from Accelerator](#azure-governance-visualizer-from-accelerator)
+- [Azure Governance Visualizer Accelerator](#azure-governance-visualizer-from-accelerator)
 - [Azure Governance Visualizer from Console](#azure-governance-visualizer-from-console)
   - [Grant permissions in Azure](#grant-permissions-in-azure)
   - [Execution options](#execution-options)
