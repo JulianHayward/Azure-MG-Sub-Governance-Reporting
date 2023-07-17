@@ -176,6 +176,7 @@ jobs:
                     else {
                         Write-Host "Published AzGovViz_$($env:MANAGEMENTGROUPID).html and AzGovViz_$($env:MANAGEMENTGROUPID)_DefinitionInsights.html"
                     }
+                    Write-Host "Available URL to access the HTML: https://$((Get-AzWebApp -ResourceGroupName $($env:WEBAPPRESOURCEGROUP) -Name $($env:WEBAPPNAME)).DefaultHostName)"
                 }
             }
             catch {

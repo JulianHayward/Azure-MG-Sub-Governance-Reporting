@@ -4,9 +4,14 @@
 
 ### Azure Governance Visualizer version 6
 
+__Changes__ (2023-Jul-17 / 6.2.4 Minor)
+
+* Update to Azure DevOps Pipeline
+  * Output of published WebApp URL
+
 __Changes__ (2023-Jun-23 / 6.2.3 Minor)
 
-* fix feature 'network' - optimize handling of unknown Subscription Ids 
+* fix feature 'network' - optimize handling of unknown Subscription Ids
 
 __Changes__ (2023-Jun-16 / 6.2.1 Minor)
 
