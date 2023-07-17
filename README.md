@@ -30,6 +30,10 @@ Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](
 
 Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/architecture/framework/security/monitor-tools) in the Microsoft Well Architected Framework
 
+### Azure Governance Visualizer Accelerator
+
+The [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) provides an easy and fast deployment process that automates the creation and publishing of AzGovViz to an Azure Web Application and provides automation to configuring the pre-requisites for AzGovViz.
+
 ### ChatGPT
 
 ![ChatGPT](img/chatGPT.png)
@@ -41,6 +45,7 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
   * [Azure Governance Visualizer @ Microsoft CAF \& WAF](#azure-governance-visualizer--microsoft-caf--waf)
     * [Microsoft Cloud Adoption Framework (CAF)](#microsoft-cloud-adoption-framework-caf)
     * [Microsoft Well Architected Framework (WAF)](#microsoft-well-architected-framework-waf)
+    * [Azure Governance Visualizer Accelerator](#azure-governance-visualizer-accelerator)
     * [ChatGPT](#chatgpt)
   * [Content](#content)
   * [Release history](#release-history)
@@ -349,6 +354,9 @@ VMConnection
 
 &#x1F4A1; Although 30 minutes of troubleshooting can save you 5 minutes reading the documentation :) ..
 Check the detailed __[Setup Guide](setup.md)__
+
+* You can leverage the [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) to automate the deployment process.
+
 
 ## Technical documentation
 
