@@ -40,7 +40,7 @@ The [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Gov
 
 ## Content
 
-- [Azure Governance Visualizer aka AzGovViz](#azure-governance-visualizer-aka-azgovviz)
+* [Azure Governance Visualizer aka AzGovViz](#azure-governance-visualizer-aka-azgovviz)
   * [Mission](#mission)
   * [Azure Governance Visualizer @ Microsoft CAF \& WAF](#azure-governance-visualizer--microsoft-caf--waf)
     * [Microsoft Cloud Adoption Framework (CAF)](#microsoft-cloud-adoption-framework-caf)
@@ -77,6 +77,11 @@ The [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Gov
   * [Closing Note](#closing-note)
 
 ## Release history
+
+__Changes__ (2023-Jul-17)
+
+* Update to Azure DevOps Pipeline v6_major_20230717_1 [AzGovViz.pipeline.yml](./.azuredevops/pipelines/AzGovViz.pipeline.yml)
+  * Output of published WebApp URL
 
 __Changes__ (2023-Jul-17)
 

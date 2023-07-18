@@ -19,5 +19,6 @@
     "powershell.codeFormatting.whitespaceAroundOperator": true,
     "powershell.codeFormatting.whitespaceBeforeOpenBrace": true,
     "powershell.codeFormatting.whitespaceBeforeOpenParen": true,
-    "powershell.codeFormatting.whitespaceBetweenParameters": true
+    "powershell.codeFormatting.whitespaceBetweenParameters": true,
+    "markdown.extension.toc.unorderedList.marker": "*"
 }

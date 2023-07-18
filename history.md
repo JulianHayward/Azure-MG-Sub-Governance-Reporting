@@ -6,11 +6,16 @@
 
 __Changes__ (2023-Jul-17)
 
+* Update to Azure DevOps Pipeline v6_major_20230717_1 [AzGovViz.pipeline.yml](./.azuredevops/pipelines/AzGovViz.pipeline.yml)
+  * Output of published WebApp URL
+
+__Changes__ (2023-Jul-17)
+
 * update README.md and setup.md - add reference to the [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator)
 
 __Changes__ (2023-Jun-23 / 6.2.3 Minor)
 
-* fix feature 'network' - optimize handling of unknown Subscription Ids 
+* fix feature 'network' - optimize handling of unknown Subscription Ids
 
 __Changes__ (2023-Jun-16 / 6.2.1 Minor)
 

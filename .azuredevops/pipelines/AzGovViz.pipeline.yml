@@ -1,4 +1,4 @@
-# Azure Governance Visualizer v6_major_20230308_3
+# Azure Governance Visualizer v6_major_20230717_1
 # First things first:
 # 1. Mandatory: In the AzGovViz.variables.yml file set needed variables 'ServiceConnection' and 'ManagementGroupId
 # 2. Mandatory: Check line 20
@@ -176,6 +176,7 @@ jobs:
                     else {
                         Write-Host "Published AzGovViz_$($env:MANAGEMENTGROUPID).html and AzGovViz_$($env:MANAGEMENTGROUPID)_DefinitionInsights.html"
                     }
+                    Write-Host "Available URL to access the HTML: https://$((Get-AzWebApp -ResourceGroupName $($env:WEBAPPRESOURCEGROUP) -Name $($env:WEBAPPNAME)).DefaultHostName)"
                 }
             }
             catch {
