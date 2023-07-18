@@ -1,4 +1,4 @@
-# Azure Governance Visualizer v6_major_20230308_3
+# Azure Governance Visualizer v6_major_20230717_1
 # First things first:
 # 1. Mandatory: In the AzGovViz.variables.yml file set needed variables 'ServiceConnection' and 'ManagementGroupId
 # 2. Mandatory: Check line 20
