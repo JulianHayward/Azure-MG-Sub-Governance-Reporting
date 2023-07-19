@@ -4,7 +4,7 @@
 
 ### Azure Governance Visualizer version 6
 
-__Changes__ (2023-Jul-19)
+__Changes__ (2023-Jul-19 / 6.3.0 Minor)
 
 * update feature __UserAssigned Managed Identities assigned to Resources / vice versa__
   * show if UAMI is used cross subscription (__TenantSummary__, __ScopeInsights__ & CSV output)
