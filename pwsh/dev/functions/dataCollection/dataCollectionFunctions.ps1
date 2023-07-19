@@ -1283,6 +1283,12 @@ function dataCollectionResources {
                     if ((-not [string]::IsNullOrEmpty($resource.Id)) -and (-not [string]::IsNullOrEmpty($_.Value.principalId))) {
                         $hlp = ($_.Name.split('/'))
                         $hlpMiSubId = $hlp[2]
+                        if ($scopeId -eq $hlpMiSubId) {
+                            $miCrossSubscription = $false
+                        }
+                        else {
+                            $miCrossSubscription = $true
+                        }
                         $null = $script:arrayUserAssignedIdentities4Resources.Add([PSCustomObject]@{
                                 resourceId                = $resource.Id
                                 resourceName              = $resource.name
@@ -1300,6 +1306,7 @@ function dataCollectionResources {
                                 miResourceGroupName       = $hlp[4]
                                 miResourceId              = $_.Name
                                 miResourceName            = $_.Name -replace '.*/'
+                                miCrossSubscription       = $miCrossSubscription
                             })
                     }
                 }

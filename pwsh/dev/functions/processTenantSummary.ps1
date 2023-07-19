@@ -8893,6 +8893,7 @@ extensions: [{ name: 'sort' }]
 <th>MI AAD SP objectId</th>
 <th>MI AAD SP applicationId</th>
 <th>MI count Res assignments</th>
+<th>MI used cross subscription</th>
 <th class="uamiresaltbgc">Res Name</th>
 <th class="uamiresaltbgc">Res Type</th>
 <th class="uamiresaltbgc">Res MgPath</th>
@@ -8922,6 +8923,7 @@ extensions: [{ name: 'sort' }]
                         <td>$($miResEntry.miPrincipalId)</td>
                         <td>$($miResEntry.miClientId)</td>
                         <td>$($htUserAssignedIdentitiesAssignedResources.($miResEntry.miPrincipalId).ResourcesCount)</td>
+                        <td>$($miResEntry.miCrossSubscription)</td>
                         <td>$($miResEntry.resourceName)</td>
                         <td class="breakwordall">$($miResEntry.resourceType)</td>
                         <td>$($miResEntry.resourceMgPath)</td>
@@ -8944,6 +8946,7 @@ extensions: [{ name: 'sort' }]
                             MIAADSPObjectId       = $miResEntry.miPrincipalId
                             MIAADSPApplicationId  = $miResEntry.miClientId
                             MICountResAssignments = $htUserAssignedIdentitiesAssignedResources.($miResEntry.miPrincipalId).ResourcesCount
+                            MICrossSubscription   = $miResEntry.miCrossSubscription
                             ResName               = $miResEntry.resourceName
                             ResType               = $miResEntry.resourceType
                             ResMgPath             = $miResEntry.resourceMgPath
@@ -8998,7 +9001,8 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             [void]$htmlTenantSummary.AppendLine(@"
 btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
             linked_filters: true,
-            col_10: 'select',
+            col_9: 'select',
+            col_11: 'select',
             col_types: [
                 'caseinsensitivestring',
                 'caseinsensitivestring',
@@ -9009,6 +9013,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'number',
+                'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
                 'caseinsensitivestring',
