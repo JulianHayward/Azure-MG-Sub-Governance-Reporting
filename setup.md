@@ -173,8 +173,12 @@ Proceed with step [__Run Azure Governance Visualizer from Console__](#run-azure-
         * [Installing PowerShell on Linux](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-linux)
     * Requires PowerShell Az Modules
         * Az.Accounts
+          * [Install the Azure Az PowerShell module](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps)
         * AzAPICall
-        * [Install the Azure Az PowerShell module](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps)
+          * Running from Console the script will prompt you to confirm installation of the required AzAPICall module version
+          * AzAPICall resources:
+            * [![PowerShell Gallery Version (including pre-releases)](https://img.shields.io/powershellgallery/v/AzAPICall?include_prereleases&label=PowerShell%20Gallery)](https://www.powershellgallery.com/packages/AzAPICall)
+            * [GitHub Repository](https://aka.ms/AzAPICall)
 
 ### Connecting to Azure as User (Member or Guest)
 
