@@ -18,6 +18,7 @@ env:
   WebAppResourceGroup: <ResourceGroupName> e.g. MyWebAppResourceGroup
   WebAppName: <Name> e.g. MyAzGovVizWebApp
   #handle the GitHub 100MB file size limit; files in the folder 'OutputPath' hitting the limit will be removed https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits
+  #set to true AND uncomment line 79
   HandleGitHub100MBFileSizeLimit: false
 
 on:

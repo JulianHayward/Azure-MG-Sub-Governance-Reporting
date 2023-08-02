@@ -78,6 +78,13 @@ The [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Gov
 
 ## Release history
 
+__Changes__ (2023-Aug-02 / 6.3.0 Minor)
+
+* workaround for [issue121](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/121); remove files hitting the GitHub file size limit [ref](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits) 
+  * update GitHub workflows:
+    * [AzGovViz_OIDC.yml](/.github/workflows/AzGovViz_OIDC.yml)
+    * [AzGovViz.yml](/.github/workflows/AzGovViz.yml)
+
 __Changes__ (2023-Jul-19 / 6.3.0 Minor)
 
 * update feature __UserAssigned Managed Identities assigned to Resources / vice versa__
