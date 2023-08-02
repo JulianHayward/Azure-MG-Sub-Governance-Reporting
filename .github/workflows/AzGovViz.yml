@@ -1,4 +1,4 @@
-# Azure Governance Visualizer v6_major_20230308_3
+# Azure Governance Visualizer v6_major_20230728_1
 # First things first:
 # 1. Mandatory: define <Management Group Id> in line 11
 # 2. Optional: enable the schedule (line 21,22)
@@ -16,6 +16,9 @@ env:
   WebAppSubscriptionId: <subscriptionId> e.g. 2674403a-4acd-40e6-a694-2ac7b968761e
   WebAppResourceGroup: <ResourceGroupName> e.g. MyWebAppResourceGroup
   WebAppName: <Name> e.g. MyAzGovVizWebApp
+  #handle the GitHub 100MB file size limit; files in the folder 'OutputPath' hitting the limit will be removed https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits
+  #set to true AND uncomment line 80
+  HandleGitHub100MBFileSizeLimit: false
 
 on:
   #schedule:
@@ -60,6 +63,22 @@ jobs:
           inlineScript: |
             . .\$($env:ScriptDir)\$($env:ScriptFile) -ManagementGroupId ${env:ManagementGroupId} -ScriptPath ${env:ScriptDir} -OutputPath ${env:OutputPath}
           azPSVersion: "latest"
+
+      - name: Handle GH 100MB file size limit
+        if: env.HandleGitHub100MBFileSizeLimit == 'true'
+        shell: pwsh
+        run: |
+            Write-Host "Checking files in $($env:OutputPath) for GitHub 100MB file size limit"
+            Write-Host "Ref: https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits"
+            $files = Get-ChildItem -Path $($env:OutputPath) -File -Recurse -ErrorAction Stop
+            Write-Host "Found total of $($files.Count) files"
+            $gitHubFileSizeLimit = 100
+            $largeFiles = $files.where({ $_.Length / 1MB -gt $gitHubFileSizeLimit })
+            Write-Host "Found $($largeFiles.Count) files hitting the GitHub file size limit"
+            foreach ($file in $largeFiles) {
+                Write-Host "File '$($file.Name)' size $($file.Length / 1MB)MB exceeds the GitHub 100MB file size limit - removing file $($file.FullName)"
+                #Remove-Item -Path $file.FullName -Force
+            }
 
       - name: Push Azure Governance Visualizer output to repository
         run: |
