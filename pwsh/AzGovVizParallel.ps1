@@ -73,6 +73,9 @@
 .PARAMETER SubscriptionId4AzContext
     Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
 
+.PARAMETER TenantId4AzContext
+    Define the Tenant Id to use for AzContext. Default is to use the Tenant Id of the current session
+
 .PARAMETER NoCsvExport
     Export enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, mgPath, resourceType, id, name, location, tags, createdTime, changedTime)
 
@@ -245,6 +248,9 @@
     Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionId4AzContext "<your-Subscription-Id>"
 
+    Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionId4AzContext "<your-Subscription-Id>" -TenantId4AzContext "<your-Tenant-Id>"
+
     Do not Export enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, mgPath, resourceType, id, name, location, tags, createdTime, changedTime)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoCsvExport
 
@@ -362,7 +368,7 @@ Param
     $AzAPICallVersion = '1.1.72',
 
     [string]
-    $ProductVersion = '6.3.0',
+    $ProductVersion = '6.3.1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -464,6 +470,9 @@ Param
 
     [string]
     $SubscriptionId4AzContext = 'undefined',
+
+    [string]
+    $TenantId4AzContext,
 
     [int]
     $ChangeTrackingDays = 14,
@@ -33777,6 +33786,9 @@ $parameters4AzAPICallModule = @{
     DebugAzAPICall           = $DebugAzAPICall
     SubscriptionId4AzContext = $SubscriptionId4AzContext
     GithubRepository         = $GithubRepository
+}
+if ($TenantId4AzContext) {
+    $parameters4AzAPICallModule.Add('TenantId4AzContext', $TenantId4AzContext)
 }
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 Write-Host " Initialize 'AzAPICall' succeeded" -ForegroundColor Green
