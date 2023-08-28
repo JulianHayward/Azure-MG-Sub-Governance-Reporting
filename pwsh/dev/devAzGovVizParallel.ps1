@@ -248,7 +248,7 @@
     Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionId4AzContext "<your-Subscription-Id>"
 
-    Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
+    Define the Tenant Id to use for AzContext (default is to use a random Subscription Id)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionId4AzContext "<your-Subscription-Id>" -TenantId4AzContext "<your-Tenant-Id>"
 
     Do not Export enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, mgPath, resourceType, id, name, location, tags, createdTime, changedTime)
