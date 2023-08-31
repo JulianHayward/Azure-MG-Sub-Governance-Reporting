@@ -4,6 +4,12 @@
 
 ### Azure Governance Visualizer version 6
 
+__Changes__ (2023-Aug-31 / 6.3.1 Minor)
+
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.77
+* add optional parameter, TenantId4AzContext
+  * makes it possible to set the Azure context to a different tenant. Fix for [AzAPICall issue43](https://github.com/JulianHayward/AzAPICall/issues/43)
+
 __Changes__ (2023-Aug-02 / 6.3.0 Minor)
 
 * workaround for [issue121](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/121); remove files hitting the GitHub file size limit [ref](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits) 
@@ -41,7 +47,7 @@ __Changes__ (2023-Mar-30 / 6.1.0 Major)
   * the new file for version check is version.json
 * Add updatedBy/updatedOn metadata for RBAC Role assignments
 * Add least privilege check for script execution in the context of a user for Azure Resource permissions (at this time it only checks permissions on the target Management Group Id) - best practice is to execute as a Service Principal with least privilege
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.77
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.72
   * add AzAPICall version information in AzAPICall outputs
   * if context is user then get the users objectId (required for least privilege check)
 
