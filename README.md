@@ -78,11 +78,11 @@ The [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Gov
 
 ## Release history
 
-__Changes__ (2023-Aug-31 / 6.3.1 Minor)
+__Changes__ (2023-Sep-04 / 6.3.1 Minor)
 
-* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.77
-* add optional parameter, TenantId4AzContext
-  * makes it possible to set the Azure context to a different tenant. Fix for [AzAPICall issue43](https://github.com/JulianHayward/AzAPICall/issues/43)
+* introduce new optional parameter `-TenantId4AzContext` which makes it possible to set the Azure context to a different tenant. Fix for [AzAPICall issue43](https://github.com/JulianHayward/AzAPICall/issues/43). Kudos to Asbjørn Nielsen (fellowmind dk) @AsbjornNielsen
+* update `/.azuredevops/pipelines/AzGovViz.variables.yml`
+* use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.78
 
 [Full release history](history.md)
 
@@ -542,6 +542,7 @@ Screenshot Azure Portal
 * `-StorageAccountAccessAnalysisStorageAccountTags` - Define Storage Account tag names that should be added to the CSV output per Storage Account
 * `-NoNetwork` - Do not execute Network analysis / Virtual Network and Virtual Network Peerings
   * `-NetworkSubnetIPAddressUsageCriticalPercentage` - Warning level when certain percentage of IP addresses is used (default = 90%)
+* `-TenantId4AzContext` - Define the Tenant Id to use for AzContext (default is to use the Tenant Id from the current context)
 
 ### API reference
 
@@ -718,6 +719,8 @@ Thank you for your support!
 ## Security
 
 Azure Governance Visualizer creates very detailed information about your Azure Governance setup. In your organization's best interest the __outputs should be protected from not authorized access!__
+
+__Be aware__: Any _member_ user of the tenant can execute/run the script against the Management Group (and below) if the _member_ user has the RBAC Role 'Reader' assigned at Management Group (this of course also applies for the root Management Group). More important: also _guest_ users can execute/run the script if your tenant is not hardened (and has the RBAC Role 'Reader' assigned at Management Group) __Entra Id (Azure Active Directory) | External Identities | External collaboration settings | Guest user access__ [ref](https://learn.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions)
 
 Azure Defender for Cloud may alert Azure Governance Visualizer resource queries as suspicious activity:
 ![alt text](img/azgvz_MDfC_securityAlert.png "Microsoft defender for Cloud security alert")
