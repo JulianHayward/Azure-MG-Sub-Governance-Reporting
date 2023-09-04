@@ -78,23 +78,11 @@ The [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Gov
 
 ## Release history
 
-__Changes__ (2023-Aug-02 / 6.3.0 Minor)
+__Changes__ (2023-Aug-31 / 6.3.1 Minor)
 
-* workaround for [issue121](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/121); remove files hitting the GitHub file size limit [ref](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits) 
-  * update GitHub workflows:
-    * [AzGovViz_OIDC.yml](/.github/workflows/AzGovViz_OIDC.yml)
-    * [AzGovViz.yml](/.github/workflows/AzGovViz.yml)
-
-__Changes__ (2023-Jul-19 / 6.3.0 Minor)
-
-* update feature __UserAssigned Managed Identities assigned to Resources / vice versa__
-  * show if UAMI is used cross subscription (__TenantSummary__, __ScopeInsights__ & CSV output)
-
-Passed tests: Powershell Core 7.3.3 on Windows
-Passed tests: Powershell Core 7.2.10 Azure DevOps hosted agent ubuntu-22.04
-Passed tests: Powershell Core 7.2.10 Github Actions hosted agent ubuntu-latest
-Passed tests: Powershell Core 7.2.10 GitHub Codespaces mcr.microsoft.com/powershell:latest
-Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.77
+* add optional parameter, TenantId4AzContext
+  * makes it possible to set the Azure context to a different tenant. Fix for [AzAPICall issue43](https://github.com/JulianHayward/AzAPICall/issues/43)
 
 [Full release history](history.md)
 
