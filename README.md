@@ -718,11 +718,11 @@ Thank you for your support!
 
 ## Security
 
-Azure Governance Visualizer creates very detailed information about your Azure Governance setup. In your organization's best interest the __outputs should be protected from not authorized access!__
+&#9995; __Take care__: Azure Governance Visualizer creates very detailed information about your Azure Governance setup. In your organization's best interest the __outputs should be protected from not authorized access!__
 
-__Be aware__: Any _member_ user of the tenant can execute/run the script against the Management Group (and below) if the _member_ user has the RBAC Role 'Reader' assigned at Management Group (this of course also applies for the root Management Group). More important: also _guest_ users can execute/run the script if your tenant is not hardened (and has the RBAC Role 'Reader' assigned at Management Group) __Entra Id (Azure Active Directory) | External Identities | External collaboration settings | Guest user access__ [ref](https://learn.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions)
+&#9757; __Be aware__: Any _member_ user of the tenant can execute/run the script against the Management Group (and below) if the _member_ user has the RBAC Role 'Reader' assigned at Management Group (this of course also applies for the root Management Group). More important: also _guest_ users can execute/run the script if your tenant is not hardened (and has the RBAC Role 'Reader' assigned at Management Group) __Entra Id (Azure Active Directory) | External Identities | External collaboration settings | Guest user access__ [ref](https://learn.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions)
 
-Azure Defender for Cloud may alert Azure Governance Visualizer resource queries as suspicious activity:
+🛡️ __Collaborate with the security team__: Azure Defender for Cloud may alert Azure Governance Visualizer resource queries as suspicious activity:
 ![alt text](img/azgvz_MDfC_securityAlert.png "Microsoft defender for Cloud security alert")
 
 ## Known issues
