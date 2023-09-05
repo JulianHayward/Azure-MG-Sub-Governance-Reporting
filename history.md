@@ -4,6 +4,12 @@
 
 ### Azure Governance Visualizer version 6
 
+__Changes__ (2023-Sep-04 / 6.3.1 Minor)
+
+* introduce new optional parameter `-TenantId4AzContext` which makes it possible to set the Azure context to a different tenant. Fix for [AzAPICall issue43](https://github.com/JulianHayward/AzAPICall/issues/43). Use-case scenario will be documented in the near future. Kudos to Asbjørn Nielsen (fellowmind dk) @AsbjornNielsen
+* update `/.azuredevops/pipelines/AzGovViz.variables.yml`
+* use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.78
+
 __Changes__ (2023-Aug-02 / 6.3.0 Minor)
 
 * workaround for [issue121](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/121); remove files hitting the GitHub file size limit [ref](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits) 

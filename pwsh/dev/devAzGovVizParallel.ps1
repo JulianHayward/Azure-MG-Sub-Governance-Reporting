@@ -73,6 +73,9 @@
 .PARAMETER SubscriptionId4AzContext
     Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
 
+.PARAMETER TenantId4AzContext
+    Define the Tenant Id to use for AzContext. Default is to use the Tenant Id from the current context
+
 .PARAMETER NoCsvExport
     Export enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, mgPath, resourceType, id, name, location, tags, createdTime, changedTime)
 
@@ -245,6 +248,9 @@
     Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionId4AzContext "<your-Subscription-Id>"
 
+    Define the Tenant Id to use for AzContext (default is to use the Tenant Id from the current context)
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -TenantId4AzContext "<your-Tenant-Id>"
+
     Do not Export enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, mgPath, resourceType, id, name, location, tags, createdTime, changedTime)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoCsvExport
 
@@ -359,10 +365,10 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.72',
+    $AzAPICallVersion = '1.1.78',
 
     [string]
-    $ProductVersion = '6.3.0',
+    $ProductVersion = '6.3.1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -464,6 +470,9 @@ Param
 
     [string]
     $SubscriptionId4AzContext = 'undefined',
+
+    [string]
+    $TenantId4AzContext = 'undefined',
 
     [int]
     $ChangeTrackingDays = 14,
@@ -762,6 +771,7 @@ Write-Host "Initialize 'AzAPICall'"
 $parameters4AzAPICallModule = @{
     DebugAzAPICall           = $DebugAzAPICall
     SubscriptionId4AzContext = $SubscriptionId4AzContext
+    TenantId4AzContext       = $TenantId4AzContext
     GithubRepository         = $GithubRepository
 }
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
@@ -769,12 +779,12 @@ Write-Host " Initialize 'AzAPICall' succeeded" -ForegroundColor Green
 #EndRegion initAZAPICall
 
 #region required AzAPICall version
-if (-not ([System.Version]"$($azapicallConf['htParameters'].azAPICallModuleVersion)" -ge [System.Version]'1.1.72')) {
+if (-not ([System.Version]"$($azapicallConf['htParameters'].azAPICallModuleVersion)" -ge [System.Version]'1.1.78')) {
     Write-Host 'AzAPICall version check failed -> https://aka.ms/AzAPICall; https://www.powershellgallery.com/packages/AzAPICall'
-    throw 'This version of Azure Governance Visualizer requires AzAPICall module version 1.1.72 or greater'
+    throw "This version of Azure Governance Visualizer ($ProductVersion) requires AzAPICall module version 1.1.78 or greater"
 }
 else {
-    Write-Host "AzAPICall module version requirement check succeeded: 1.1.72 or greater - current: $($azapicallConf['htParameters'].azAPICallModuleVersion) " -ForegroundColor Green
+    Write-Host "AzAPICall module version requirement check succeeded: 1.1.78 or greater - current: $($azapicallConf['htParameters'].azAPICallModuleVersion) " -ForegroundColor Green
 }
 #endregion required AzAPICall version
 
@@ -854,7 +864,7 @@ else {
 
 getFileNaming
 
-Write-Host "Running Azure Governance Visualizer for ManagementGroupId: '$ManagementGroupId'" -ForegroundColor Yellow
+Write-Host "Running Azure Governance Visualizer ($ProductVersion) for ManagementGroupId: '$ManagementGroupId'" -ForegroundColor Yellow
 
 $newTable = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
 $htMgDetails = @{}
@@ -2397,15 +2407,15 @@ apiCallTracking -stage 'Summary' -spacing ''
 
 $endAzGovViz = Get-Date
 $durationProduct = (New-TimeSpan -Start $startAzGovViz -End $endAzGovViz)
-Write-Host "Azure Governance Visualizer duration: $($durationProduct.TotalMinutes) minutes"
+Write-Host "Azure Governance Visualizer ($ProductVersion) duration: $($durationProduct.TotalMinutes) minutes"
 
 #end
 $endTime = Get-Date -Format 'dd-MMM-yyyy HH:mm:ss'
-Write-Host "End Azure Governance Visualizer $endTime"
+Write-Host "End Azure Governance Visualizer ($ProductVersion) $endTime"
 
 Write-Host 'Checking for errors'
 if ($Error.Count -gt 0) {
-    Write-Host "Dumping $($Error.Count) Errors (handled by Azure Governance Visualizer):"
+    Write-Host "Dumping $($Error.Count) Errors (handled by Azure Governance Visualizer ($ProductVersion)):"
     $Error | Out-Host
 }
 else {
@@ -2420,7 +2430,7 @@ if ($DoTranscript) {
 
 Write-Host ''
 Write-Host '--------------------'
-Write-Host 'Azure Governance Visualizer completed successful' -ForegroundColor Green
+Write-Host "Azure Governance Visualizer ($ProductVersion) completed successful" -ForegroundColor Green
 
 if ($Error.Count -gt 0) {
     Write-Host "Don't bother about dumped errors"
@@ -2467,6 +2477,6 @@ if ($htResourcePropertiesConvertfromJSONFailed.Keys.Count -gt 0) {
 
 #region runIdentifier
 if ($ShowRunIdentifier) {
-    Write-Host "Azure Governance Visualizer run identifier: '$($statsIdentifier)'"
+    Write-Host "Azure Governance Visualizer ($ProductVersion) run identifier: '$($statsIdentifier)'"
 }
 #endregion runIdentifier

@@ -78,23 +78,11 @@ The [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Gov
 
 ## Release history
 
-__Changes__ (2023-Aug-02 / 6.3.0 Minor)
+__Changes__ (2023-Sep-04 / 6.3.1 Minor)
 
-* workaround for [issue121](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/121); remove files hitting the GitHub file size limit [ref](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits) 
-  * update GitHub workflows:
-    * [AzGovViz_OIDC.yml](/.github/workflows/AzGovViz_OIDC.yml)
-    * [AzGovViz.yml](/.github/workflows/AzGovViz.yml)
-
-__Changes__ (2023-Jul-19 / 6.3.0 Minor)
-
-* update feature __UserAssigned Managed Identities assigned to Resources / vice versa__
-  * show if UAMI is used cross subscription (__TenantSummary__, __ScopeInsights__ & CSV output)
-
-Passed tests: Powershell Core 7.3.3 on Windows
-Passed tests: Powershell Core 7.2.10 Azure DevOps hosted agent ubuntu-22.04
-Passed tests: Powershell Core 7.2.10 Github Actions hosted agent ubuntu-latest
-Passed tests: Powershell Core 7.2.10 GitHub Codespaces mcr.microsoft.com/powershell:latest
-Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
+* introduce new optional parameter `-TenantId4AzContext` which makes it possible to set the Azure context to a different tenant. Fix for [AzAPICall issue43](https://github.com/JulianHayward/AzAPICall/issues/43). Use-case scenario will be documented in the near future. Kudos to Asbjørn Nielsen (fellowmind dk) @AsbjornNielsen
+* update `/.azuredevops/pipelines/AzGovViz.variables.yml`
+* use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.78
 
 [Full release history](history.md)
 
@@ -554,6 +542,7 @@ Screenshot Azure Portal
 * `-StorageAccountAccessAnalysisStorageAccountTags` - Define Storage Account tag names that should be added to the CSV output per Storage Account
 * `-NoNetwork` - Do not execute Network analysis / Virtual Network and Virtual Network Peerings
   * `-NetworkSubnetIPAddressUsageCriticalPercentage` - Warning level when certain percentage of IP addresses is used (default = 90%)
+* `-TenantId4AzContext` - Define the Tenant Id to use for AzContext (default is to use the Tenant Id from the current context)
 
 ### API reference
 
@@ -729,9 +718,11 @@ Thank you for your support!
 
 ## Security
 
-Azure Governance Visualizer creates very detailed information about your Azure Governance setup. In your organization's best interest the __outputs should be protected from not authorized access!__
+&#9995; __Take care__: Azure Governance Visualizer creates very detailed information about your Azure Governance setup. In your organization's best interest the __outputs should be protected from not authorized access!__
 
-Azure Defender for Cloud may alert Azure Governance Visualizer resource queries as suspicious activity:
+&#9757; __Be aware__: Any _member_ user of the tenant can execute/run the script against the Management Group (and below) if the _member_ user has the RBAC Role 'Reader' assigned at Management Group (this of course also applies for the root Management Group). More important: also _guest_ users can execute/run the script if your tenant is not hardened (and has the RBAC Role 'Reader' assigned at Management Group) __Entra Id (Azure Active Directory) | External Identities | External collaboration settings | Guest user access__ [ref](https://learn.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions)
+
+🛡️ __Collaborate with the security team__: Azure Defender for Cloud may alert Azure Governance Visualizer resource queries as suspicious activity:
 ![alt text](img/azgvz_MDfC_securityAlert.png "Microsoft defender for Cloud security alert")
 
 ## Known issues

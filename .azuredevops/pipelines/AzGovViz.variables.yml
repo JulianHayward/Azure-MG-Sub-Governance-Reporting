@@ -1,4 +1,4 @@
-# Azure Governance Visualizer v6_major_20230306_1
+# Azure Governance Visualizer v6_major_20230904_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -254,6 +254,11 @@ variables:
   # Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
   - name: SubscriptionId4AzContext
     # String | example: value: "<your-Subscription-Id>"
+    value:
+
+  # Define the Tenant Id to use for AzContext (default is to use the Tenant Id from the current context)
+  - name: TenantId4AzContext
+    # String | example: value: "<your-Tenant-Id>"
     value:
 
   # Define the number of script blocks running in parallel. Leveraging PowerShell Core´s parallel capability you can define the ThrottleLimit (default=5)
