@@ -6,7 +6,7 @@
 
 __Changes__ (2023-Sep-04 / 6.3.1 Minor)
 
-* introduce new optional parameter `-TenantId4AzContext` which makes it possible to set the Azure context to a different tenant. Fix for [AzAPICall issue43](https://github.com/JulianHayward/AzAPICall/issues/43). Kudos to Asbjørn Nielsen (fellowmind dk) @AsbjornNielsen
+* introduce new optional parameter `-TenantId4AzContext` which makes it possible to set the Azure context to a different tenant. Fix for [AzAPICall issue43](https://github.com/JulianHayward/AzAPICall/issues/43). Use-case scenario will be documented in the near future. Kudos to Asbjørn Nielsen (fellowmind dk) @AsbjornNielsen
 * update `/.azuredevops/pipelines/AzGovViz.variables.yml`
 * use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.78
 
