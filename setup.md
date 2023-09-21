@@ -204,7 +204,7 @@ Password for user \<Id\>: Enter App registration´s secret
 
 ### Run Azure Governance Visualizer
 
-Familiarize yourself with the available [parameters](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#usage) for Azure Governance Visualizer
+Familiarize yourself with the available [parameters](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters) for Azure Governance Visualizer
 
 * PowerShell
 
