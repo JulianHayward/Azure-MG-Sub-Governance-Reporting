@@ -12292,7 +12292,7 @@ extensions: [{ name: 'sort' }]
 
     #region tenantSummaryAAD
     [void]$htmlTenantSummary.AppendLine(@'
-<button type="button" class="collapsible" id="tenantSummaryAAD"><hr class="hr-textAAD" data-content="Azure Active Directory" /></button>
+<button type="button" class="collapsible" id="tenantSummaryAAD"><hr class="hr-textAAD" data-content="Microsoft Entra ID" /></button>
 <div class="content TenantSummaryContent">
 <i class="padlx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Check out <b>AzADServicePrincipalInsights</b></span> <a class="externallink" href="https://aka.ms/azadserviceprincipalinsights" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Demystifying Service Principals - Managed Identities</span> <a class="externallink" href="https://devblogs.microsoft.com/devops/demystifying-service-principals-managed-identities/" target="_blank" rel="noopener">devBlogs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>

@@ -4,6 +4,20 @@
 
 ### Azure Governance Visualizer version 6
 
+__Changes__ (2023-Oct-22 / 6.3.3 Minor)
+
+* introduce new optional parameter `-AzAPICallSkipAzContextSubscriptionValidation` [ref](https://aka.ms/AzAPICall)
+* update ARM API-version for RBAC Role definitions. Using `2022-05-01-preview` instead of `2018-11-01-preview`. This will show us 'conditions' [example](https://www.azadvertizer.net/azrolesadvertizer/8b54135c-b56d-4d72-a534-26097cfdc8d8.html)
+* update `/.azuredevops/pipelines/AzGovViz.variables.yml`
+  * add parameter `-AzAPICallSkipAzContextSubscriptionValidation` 
+  * structure AzAPICall related variables
+  * Azure Active Directory becomes Microsoft Entra ID
+* update README.md and setup.md
+  * OIDC for Azure DevOps
+  * update [API reference](#api-reference)
+  * Azure Active Directory becomes Microsoft Entra ID
+* use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.83
+
 __Changes__ (2023-Sep-12 / 6.3.2 Minor)
 
 * another fix for [AzAPICall issue43](https://github.com/JulianHayward/AzAPICall/issues/43). Use-case scenario will be documented in the near future. Kudos to Asbjørn Nielsen (fellowmind dk) @AsbjornNielsen

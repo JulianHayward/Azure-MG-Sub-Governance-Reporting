@@ -1,4 +1,4 @@
-# Azure Governance Visualizer v6_major_20230904_1
+# Azure Governance Visualizer v6_major_20231022_1
 # First things first:
 # 1. Replace <YourServiceConnection> with the name of your service connection
 # 2. Replace <YourManagementGroupId> with the your ManagementGroupId
@@ -75,10 +75,30 @@ variables:
   - name: ScriptPrerequisites
     value: prerequisites.ps1
 
+  ## <--- AzAPICall parameters
+  ## Consult the AzAPICall GitHub repository for details aka.ms/AzAPICall
+
   # Enable Debug output
   - name: DebugAzAPICall
     # Switch | example: value: true
     value:
+
+  # Skip the AzAPICall Subscription Validation (only use in case you do not have any valid (quotaId != AAD_* & state != disabled) subscriptions in your tenant)
+  - name: AzAPICallSkipAzContextSubscriptionValidation
+    # Switch | example: value: true
+    value:
+
+  # Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
+  - name: SubscriptionId4AzContext
+    # String | example: value: "<your-Subscription-Id>"
+    value:
+
+  # Define the Tenant Id to use for AzContext (default is to use the Tenant Id from the current context)
+  - name: TenantId4AzContext
+    # String | example: value: "<your-Tenant-Id>"
+    value:
+
+  ## AzAPICall parameters --->
 
   # The world is split into two kind of delimiters - comma and semicolon - choose yours
   - name: CsvDelimiter
@@ -182,7 +202,7 @@ variables:
     # Switch | example: value: true
     value:
 
-  # Will not resolve Azure Active Directory Group memberships for Role assignments where identity type is 'Group'
+  # Will not resolve Microsoft Entra ID (AAD) Group memberships for Role assignments where identity type is 'Group'
   - name: NoAADGroupsResolveMembers
     # Switch | example: value: true
     value:
@@ -249,16 +269,6 @@ variables:
   # Will opt-out sending stats
   - name: StatsOptOut
     # Switch | example: value: true
-    value:
-
-  # Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
-  - name: SubscriptionId4AzContext
-    # String | example: value: "<your-Subscription-Id>"
-    value:
-
-  # Define the Tenant Id to use for AzContext (default is to use the Tenant Id from the current context)
-  - name: TenantId4AzContext
-    # String | example: value: "<your-Tenant-Id>"
     value:
 
   # Define the number of script blocks running in parallel. Leveraging PowerShell Core´s parallel capability you can define the ThrottleLimit (default=5)

@@ -43,7 +43,7 @@
     use this parameter if Resource Diagnostics Policy Lifecycle recommendations should not be created
 
 .PARAMETER NoAADGroupsResolveMembers
-    use this parameter if Azure Active Directory Group memberships should not be resolved for Role assignments where identity type is 'Group'
+    use this parameter if Microsoft Entra ID Group memberships should not be resolved for Role assignments where identity type is 'Group'
 
 .PARAMETER AADServicePrincipalExpiryWarningDays
     define Service Principal Secret and Certificate grace period (lifetime below the defined will be marked for warning / default is 14 days)
@@ -71,10 +71,10 @@
     Define the direction the Mermaid based HierarchyMap should be built TD (default) = TopDown (Horizontal), LR = LeftRight (Vertical)
 
 .PARAMETER SubscriptionId4AzContext
-    Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
+    Define the Subscription Id to use for AzContext (default is to use a random Subscription Id) #consult the AzAPICall GitHub repository for details aka.ms/AzAPICall
 
 .PARAMETER TenantId4AzContext
-    Define the Tenant Id to use for AzContext. Default is to use the Tenant Id from the current context
+    Define the Tenant Id to use for AzContext. Default is to use the Tenant Id from the current context #consult the AzAPICall GitHub repository for details aka.ms/AzAPICall
 
 .PARAMETER NoCsvExport
     Export enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, mgPath, resourceType, id, name, location, tags, createdTime, changedTime)
@@ -221,7 +221,7 @@
     Define if Resource Diagnostics Policy Lifecycle recommendations should not be created
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoResourceDiagnosticsPolicyLifecycle
 
-    Define if Azure Active Directory Group memberships should not be resolved for Role assignments where identity type is 'Group'
+    Define if Microsoft Entra ID Group memberships should not be resolved for Role assignments where identity type is 'Group'
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoAADGroupsResolveMembers
 
     Define Service Principal Secret and Certificate grace period (lifetime below the defined will be marked for warning / default is 14 days)
@@ -245,10 +245,10 @@
     Define the direction the Mermaid based HierarchyMap should be built in Markdown TD = TopDown (Horizontal), LR = LeftRight (Vertical)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -MermaidDirection "LR"
 
-    Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
+    Define the Subscription Id to use for AzContext (default is to use a random Subscription Id) #consult the AzAPICall GitHub repository for details aka.ms/AzAPICall
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionId4AzContext "<your-Subscription-Id>"
 
-    Define the Tenant Id to use for AzContext (default is to use the Tenant Id from the current context)
+    Define the Tenant Id to use for AzContext (default is to use the Tenant Id from the current context) #consult the AzAPICall GitHub repository for details aka.ms/AzAPICall
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -TenantId4AzContext "<your-Tenant-Id>"
 
     Do not Export enriched 'Role assignments' data, enriched 'Policy assignments' data and 'all resources' (subscriptionId, mgPath, resourceType, id, name, location, tags, createdTime, changedTime)
@@ -365,13 +365,27 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $AzAPICallVersion = '1.1.79',
-
-    [string]
-    $ProductVersion = '6.3.2',
+    $ProductVersion = '6.3.3',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
+
+    # <--- AzAPICall related parameters #consult the AzAPICall GitHub repository for details aka.ms/AzAPICall
+    [string]
+    $AzAPICallVersion = '1.1.83',
+
+    [switch]
+    $DebugAzAPICall,
+
+    [switch]
+    $AzAPICallSkipAzContextSubscriptionValidation,
+
+    [string]
+    $SubscriptionId4AzContext = 'undefined',
+
+    [string]
+    $TenantId4AzContext = 'undefined',
+    # AzAPICall related parameters --->
 
     [string]
     $ScriptPath = 'pwsh', #e.g. 'myfolder\pwsh'
@@ -381,9 +395,6 @@ Param
 
     [switch]
     $AzureDevOpsWikiAsCode, #deprecated - Based on environment variables the script will detect the code run platform
-
-    [switch]
-    $DebugAzAPICall,
 
     [switch]
     $NoCsvExport,
@@ -467,12 +478,6 @@ Param
 
     [Alias('AzureDevOpsWikiHierarchyDirection')]
     [parameter(ValueFromPipeline)][ValidateSet('TD', 'LR')][string]$MermaidDirection = 'TD',
-
-    [string]
-    $SubscriptionId4AzContext = 'undefined',
-
-    [string]
-    $TenantId4AzContext = 'undefined',
 
     [int]
     $ChangeTrackingDays = 14,
@@ -616,7 +621,7 @@ Param
     $MSTenantIds = @('2f4a9838-26b7-47ee-be60-ccc1fdec5953', '33e01921-4d64-4f8c-a055-5bdaffd5e33d'),
 
     [array]
-    $ValidPolicyEffects = @('append', 'audit', 'auditIfNotExists', 'deny', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting')
+    $ValidPolicyEffects = @('append', 'audit', 'auditIfNotExists', 'deny', 'denyAction', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting')
 )
 
 $Error.clear()
@@ -769,22 +774,23 @@ verifyModules3rd -modules $modules
 #Region initAZAPICall
 Write-Host "Initialize 'AzAPICall'"
 $parameters4AzAPICallModule = @{
-    DebugAzAPICall           = $DebugAzAPICall
-    SubscriptionId4AzContext = $SubscriptionId4AzContext
-    TenantId4AzContext       = $TenantId4AzContext
-    GithubRepository         = $GithubRepository
+    DebugAzAPICall                      = $DebugAzAPICall
+    SubscriptionId4AzContext            = $SubscriptionId4AzContext
+    TenantId4AzContext                  = $TenantId4AzContext
+    GithubRepository                    = $GithubRepository
+    SkipAzContextSubscriptionValidation = $AzAPICallSkipAzContextSubscriptionValidation
 }
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 Write-Host " Initialize 'AzAPICall' succeeded" -ForegroundColor Green
 #EndRegion initAZAPICall
 
 #region required AzAPICall version
-if (-not ([System.Version]"$($azapicallConf['htParameters'].azAPICallModuleVersion)" -ge [System.Version]'1.1.79')) {
+if (-not ([System.Version]"$($azapicallConf['htParameters'].azAPICallModuleVersion)" -ge [System.Version]'1.1.83')) {
     Write-Host 'AzAPICall version check failed -> https://aka.ms/AzAPICall; https://www.powershellgallery.com/packages/AzAPICall'
-    throw "This version of Azure Governance Visualizer ($ProductVersion) requires AzAPICall module version 1.1.79 or greater"
+    throw "This version of Azure Governance Visualizer ($ProductVersion) requires AzAPICall module version 1.1.83 or greater"
 }
 else {
-    Write-Host "AzAPICall module version requirement check succeeded: 1.1.79 or greater - current: $($azapicallConf['htParameters'].azAPICallModuleVersion) " -ForegroundColor Green
+    Write-Host "AzAPICall module version requirement check succeeded: 1.1.83 or greater - current: $($azapicallConf['htParameters'].azAPICallModuleVersion) " -ForegroundColor Green
 }
 #endregion required AzAPICall version
 
@@ -1062,7 +1068,32 @@ if (-not $HierarchyMapOnly) {
     cacheBuiltIn
     showMemoryUsage
 
+    if ($subsToProcessInCustomDataCollection.count -eq 0) {
+        Write-Host '--- Info ---' -ForegroundColor Yellow
+        Write-Host '--- Seems this tenant has no subscriptions. Activating parameter -ManagementGroupsOnly' -ForegroundColor Yellow
+        $ManagementGroupsOnly = $true
+        $script:azAPICallConf['htParameters'].ManagementGroupsOnly = $true
+    }
     if (-not $ManagementGroupsOnly) {
+
+        #region sanity check / AzContext has subscription
+        if (-not $azAPICallConf['checkcontext'].Subscription.Id) {
+            Write-Host '--- Sanity check ---' -ForegroundColor Yellow
+            Write-Host 'Current AzContext has no subscription:' -ForegroundColor Yellow
+            Write-Host ($azAPICallConf['checkcontext'] | Select-Object -ExcludeProperty Environment, ExtendedProperties | ConvertTo-Json -Depth 99)
+            if ($AzAPICallSkipAzContextSubscriptionValidation) {
+                Write-Host 'You have enabled the parameter -AzAPICallSkipAzContextSubscriptionValidation' -ForegroundColor Yellow
+                Write-Host "Please use the parameter -SubscriptionId4AzContext '<subscriptionId>'" -ForegroundColor Yellow
+                throw
+            }
+            else {
+                Write-Host 'You have NOT enabled the parameter -AzAPICallSkipAzContextSubscriptionValidation, but somehow reached this point in the script.' -ForegroundColor Yellow
+                Write-Host "Please use the parameter -SubscriptionId4AzContext '<subscriptionId>'" -ForegroundColor Yellow
+                throw
+            }
+        }
+        #endregion sanity check / AzContext has subscription
+
         #region Getting Tenant Resource Providers
         $startGetRPs = Get-Date
         $currentTask = 'Getting Tenant Resource Providers'

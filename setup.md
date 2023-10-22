@@ -3,62 +3,62 @@
 This guide will help you to setup and run AzGovViz
 
 * Abbreviations:
-    * Azure Active Directory - AAD
     * Azure DevOps - AzDO
 # Table of content
-- [Azure Governance Visualizer aka AzGovViz - Setup](#azure-governance-visualizer-aka-azgovviz---setup)
-- [Table of content](#table-of-content)
-- [Azure Governance Visualizer Accelerator](#azure-governance-visualizer-from-accelerator)
-- [Azure Governance Visualizer from Console](#azure-governance-visualizer-from-console)
-  - [Grant permissions in Azure](#grant-permissions-in-azure)
-  - [Execution options](#execution-options)
-    - [Option 1 - Execute as a Tenant Member User](#option-1---execute-as-a-tenant-member-user)
-    - [Option 2 - Execute as a Tenant Guest User](#option-2---execute-as-a-tenant-guest-user)
-      - [Assign AAD Role - Directory readers](#assign-aad-role---directory-readers)
-    - [Option 3 - Execute as Service Principal](#option-3---execute-as-service-principal)
-      - [Grant API permissions](#grant-api-permissions)
-  - [Clone the Azure Governance Visualizer repository](#clone-the-azure-governance-visualizer-repository)
-  - [Run Azure Governance Visualizer from Console](#run-azure-governance-visualizer-from-console)
-    - [PowerShell \& Azure PowerShell modules](#powershell--azure-powershell-modules)
-    - [Connecting to Azure as User (Member or Guest)](#connecting-to-azure-as-user-member-or-guest)
-    - [Connecting to Azure using Service Principal](#connecting-to-azure-using-service-principal)
-    - [Run Azure Governance Visualizer](#run-azure-governance-visualizer)
-- [Azure Governance Visualizer in Azure DevOps](#azure-governance-visualizer-in-azure-devops)
-  - [Create AzDO Project](#create-azdo-project)
-  - [Import Azure Governance Visualizer GitHub repository](#import-azure-governance-visualizer-github-repository)
-  - [Create AzDO Service Connection](#create-azdo-service-connection)
-    - [Create AzDO Service Connection - Option 1 - Create Service Connection´s Service Principal in the Azure Portal](#create-azdo-service-connection---option-1---create-service-connections-service-principal-in-the-azure-portal)
-      - [Azure Portal](#azure-portal)
-      - [Azure DevOps](#azure-devops)
-    - [Create AzDO Service Connection - Option 2 - Create Service Connection in AzDO](#create-azdo-service-connection---option-2---create-service-connection-in-azdo)
-  - [Grant permissions in Azure](#grant-permissions-in-azure-1)
-  - [Grant permissions in AAD](#grant-permissions-in-aad)
-    - [API permissions](#api-permissions)
-  - [Grant permissions on Azure Governance Visualizer AzDO repository](#grant-permissions-on-azure-governance-visualizer-azdo-repository)
-  - [OPTION 1 (legacy) - Edit AzDO YAML file (.pipelines folder)](#option-1-legacy---edit-azdo-yaml-file-pipelines-folder)
-  - [OPTION 1 (legacy) - Create AzDO Pipeline (.pipelines folder)](#option-1-legacy---create-azdo-pipeline-pipelines-folder)
-  - [OPTION 2 (new) - Edit AzDO Variables YAML file (.azuredevops folder)](#option-2-new---edit-azdo-variables-yaml-file-azuredevops-folder)
-    - [OPTION 2 (new) Create AzDO Pipeline (.azuredevops folder)](#option-2-new-create-azdo-pipeline-azuredevops-folder)
-  - [Run the AzDO Pipeline](#run-the-azdo-pipeline)
-  - [Create AzDO Wiki (WikiAsCode)](#create-azdo-wiki-wikiascode)
-- [Azure Governance Visualizer in GitHub Actions](#azure-governance-visualizer-in-github-actions)
-  - [Create GitHub repository](#create-github-repository)
-  - [Import Code](#import-code)
-  - [Azure Governance Visualizer YAML](#azure-governance-visualizer-yaml)
-    - [Store the credentials in GitHub (Azure Governance Visualizer YAML)](#store-the-credentials-in-github-azure-governance-visualizer-yaml)
-    - [Workflow permissions](#workflow-permissions)
-    - [Edit the workflow YAML file (Azure Governance Visualizer YAML)](#edit-the-workflow-yaml-file-azure-governance-visualizer-yaml)
-    - [Run Azure Governance Visualizer in GitHub Actions (Azure Governance Visualizer YAML)](#run-azure-governance-visualizer-in-github-actions-azure-governance-visualizer-yaml)
-  - [Azure Governance Visualizer OIDC YAML](#azure-governance-visualizer-oidc-yaml)
-    - [Store the credentials in GitHub (Azure Governance Visualizer OIDC YAML)](#store-the-credentials-in-github-azure-governance-visualizer-oidc-yaml)
-    - [Workflow permissions](#workflow-permissions-1)
-    - [Edit the workflow YAML file (Azure Governance Visualizer OIDC YAML)](#edit-the-workflow-yaml-file-azure-governance-visualizer-oidc-yaml)
-    - [Run Azure Governance Visualizer in GitHub Actions (Azure Governance Visualizer OIDC YAML)](#run-azure-governance-visualizer-in-github-actions-azure-governance-visualizer-oidc-yaml)
-- [Azure Governance Visualizer GitHub Codespaces](#azure-governance-visualizer-github-codespaces)
-- [Optional Publishing the Azure Governance Visualizer HTML to a Azure Web App](#optional-publishing-the-azure-governance-visualizer-html-to-a-azure-web-app)
-  - [Prerequisites](#prerequisites)
-  - [Azure DevOps](#azure-devops-1)
-  - [GitHub Actions](#github-actions)
+* [Azure Governance Visualizer aka AzGovViz - Setup](#azure-governance-visualizer-aka-azgovviz---setup)
+* [Table of content](#table-of-content)
+* [Azure Governance Visualizer from Accelerator](#azure-governance-visualizer-from-accelerator)
+* [Azure Governance Visualizer from Console](#azure-governance-visualizer-from-console)
+  * [Grant permissions in Azure](#grant-permissions-in-azure)
+  * [Execution options](#execution-options)
+    * [Option 1 - Execute as a Tenant Member User](#option-1---execute-as-a-tenant-member-user)
+    * [Option 2 - Execute as a Tenant Guest User](#option-2---execute-as-a-tenant-guest-user)
+      * [Assign Microsoft Entra ID Role - Directory readers](#assign-microsoft-entra-id-role---directory-readers)
+    * [Option 3 - Execute as Service Principal](#option-3---execute-as-service-principal)
+      * [Grant API permissions](#grant-api-permissions)
+  * [Clone the Azure Governance Visualizer repository](#clone-the-azure-governance-visualizer-repository)
+  * [Run Azure Governance Visualizer from Console](#run-azure-governance-visualizer-from-console)
+    * [PowerShell \& Azure PowerShell modules](#powershell--azure-powershell-modules)
+    * [Connecting to Azure as User (Member or Guest)](#connecting-to-azure-as-user-member-or-guest)
+    * [Connecting to Azure using Service Principal](#connecting-to-azure-using-service-principal)
+    * [Run Azure Governance Visualizer](#run-azure-governance-visualizer)
+* [Azure Governance Visualizer in Azure DevOps](#azure-governance-visualizer-in-azure-devops)
+  * [Create AzDO Project](#create-azdo-project)
+  * [Import Azure Governance Visualizer GitHub repository](#import-azure-governance-visualizer-github-repository)
+  * [Create AzDO Service Connection](#create-azdo-service-connection)
+    * [Create AzDO Service Connection - Option 1 - Create Service Connections Service Principal in the Azure Portal](#create-azdo-service-connection---option-1---create-service-connections-service-principal-in-the-azure-portal)
+      * [AzDO supports Open ID Connect - OIDC](#azdo-supports-open-id-connect---oidc)
+      * [Azure Portal](#azure-portal)
+      * [Azure DevOps](#azure-devops)
+    * [Create AzDO Service Connection - Option 2 - Create Service Connection in AzDO](#create-azdo-service-connection---option-2---create-service-connection-in-azdo)
+  * [Grant permissions in Azure](#grant-permissions-in-azure-1)
+  * [Grant permissions in Microsoft Entra ID](#grant-permissions-in-microsoft-entra-id)
+    * [API permissions](#api-permissions)
+  * [Grant permissions on Azure Governance Visualizer AzDO repository](#grant-permissions-on-azure-governance-visualizer-azdo-repository)
+  * [OPTION 1 (legacy) - Edit AzDO YAML file (.pipelines folder)](#option-1-legacy---edit-azdo-yaml-file-pipelines-folder)
+  * [OPTION 1 (legacy) - Create AzDO Pipeline (.pipelines folder)](#option-1-legacy---create-azdo-pipeline-pipelines-folder)
+  * [OPTION 2 (new) - Edit AzDO Variables YAML file (.azuredevops folder)](#option-2-new---edit-azdo-variables-yaml-file-azuredevops-folder)
+    * [OPTION 2 (new) Create AzDO Pipeline (.azuredevops folder)](#option-2-new-create-azdo-pipeline-azuredevops-folder)
+  * [Run the AzDO Pipeline](#run-the-azdo-pipeline)
+  * [Create AzDO Wiki (WikiAsCode)](#create-azdo-wiki-wikiascode)
+* [Azure Governance Visualizer in GitHub Actions](#azure-governance-visualizer-in-github-actions)
+  * [Create GitHub repository](#create-github-repository)
+  * [Import Code](#import-code)
+  * [Azure Governance Visualizer YAML](#azure-governance-visualizer-yaml)
+    * [Store the credentials in GitHub (Azure Governance Visualizer YAML)](#store-the-credentials-in-github-azure-governance-visualizer-yaml)
+    * [Workflow permissions](#workflow-permissions)
+    * [Edit the workflow YAML file (Azure Governance Visualizer YAML)](#edit-the-workflow-yaml-file-azure-governance-visualizer-yaml)
+    * [Run Azure Governance Visualizer in GitHub Actions (Azure Governance Visualizer YAML)](#run-azure-governance-visualizer-in-github-actions-azure-governance-visualizer-yaml)
+  * [Azure Governance Visualizer OIDC YAML](#azure-governance-visualizer-oidc-yaml)
+    * [Store the credentials in GitHub (Azure Governance Visualizer OIDC YAML)](#store-the-credentials-in-github-azure-governance-visualizer-oidc-yaml)
+    * [Workflow permissions](#workflow-permissions-1)
+    * [Edit the workflow YAML file (Azure Governance Visualizer OIDC YAML)](#edit-the-workflow-yaml-file-azure-governance-visualizer-oidc-yaml)
+    * [Run Azure Governance Visualizer in GitHub Actions (Azure Governance Visualizer OIDC YAML)](#run-azure-governance-visualizer-in-github-actions-azure-governance-visualizer-oidc-yaml)
+* [Azure Governance Visualizer GitHub Codespaces](#azure-governance-visualizer-github-codespaces)
+* [Optional Publishing the Azure Governance Visualizer HTML to a Azure Web App](#optional-publishing-the-azure-governance-visualizer-html-to-a-azure-web-app)
+  * [Prerequisites](#prerequisites)
+  * [Azure DevOps](#azure-devops-1)
+  * [GitHub Actions](#github-actions)
 
 # Azure Governance Visualizer from Accelerator
 
@@ -97,18 +97,18 @@ Proceed with step [__Clone the Azure Governance Visualizer repository__](#clone-
 
 ### Option 2 - Execute as a Tenant Guest User
 
-If the tenant is hardened (AAD External Identities / Guest user access = most restrictive) then Guest User must be assigned the AAD Role '__Directory readers__'
+If the tenant is hardened (Microsoft Entra ID External Identities / Guest user access = most restrictive) then Guest User must be assigned the Microsoft Entra ID Role '__Directory readers__'
 
 &#x1F4A1; [Compare member and guest default permissions](https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/fundamentals/users-default-permissions.md#compare-member-and-guest-default-permissions)
 
 &#x1F4A1; [Restrict Guest permissions](https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions)
 
-#### Assign AAD Role - Directory readers
+#### Assign Microsoft Entra ID Role - Directory readers
 
 * Requirements
     * To assign roles, you must have '__Privileged Role Administrator__' or '__Global Administrator__' role assigned [Assign Azure AD roles to users](https://docs.microsoft.com/en-us/azure/active-directory/roles/manage-roles-portal)
 
-Assign the AAD Role '__Directory Reader__' for the Guest User that shall run Azure Governance Visualizer (work with the Guest User´s display name)
+Assign the Microsoft Entra ID Role '__Directory Reader__' for the Guest User that shall run Azure Governance Visualizer (work with the Guest User´s display name)
 
 * Azure Portal
     * [Assign a role](https://docs.microsoft.com/en-us/azure/active-directory/roles/manage-roles-portal#assign-a-role)
@@ -117,7 +117,7 @@ Proceed with step [__Clone the Azure Governance Visualizer repository__](#clone-
 
 ### Option 3 - Execute as Service Principal
 
-A Service Principal by default has no read permissions on Users, Groups and Service Principals, therefore we need to grant additional permissions in AAD
+A Service Principal by default has no read permissions on Users, Groups and Service Principals, therefore we need to grant additional permissions in Microsoft Entra ID
 
 #### Grant API permissions
 
@@ -126,7 +126,7 @@ A Service Principal by default has no read permissions on Users, Groups and Serv
 
 Grant API permissions for the Service Principal´s Application
 
-* Navigate to 'Azure Active Directory'
+* Navigate to 'Microsoft Entra ID (AAD)'
 * Click on '__App registrations__'
 * Search for the Application that we created earlier and click on it
 * Under '__Manage__' click on '__API permissions__'
@@ -142,8 +142,8 @@ Grant API permissions for the Service Principal´s Application
     * Back in the main '__API permissions__' menu you will find permissions with status 'Not granted for...'. Click on '__Grant admin consent for _TenantName___' and confirm by click on '__Yes__'
     * Now you will find the permissions with status '__Granted for _TenantName___'
 
-Permissions in Azure Active Directory for App registration:
-![alt text](img/aadpermissionsportal_4.jpg "Permissions in Azure Active Directory")
+Permissions in Microsoft Entra ID (AAD) for App registration:
+![alt text](img/aadpermissionsportal_4.jpg "Permissions in Microsoft Entra ID (AAD)")
 
 Proceed with step [__Clone the Azure Governance Visualizer repository__](#clone-the-azure-governance-visualizer-repository)
 
@@ -243,10 +243,50 @@ There are two options to create the Service Connection:
     * __Option 1__ Create Service Connection´s Service Principal in the Azure Portal
     * __Option 2__ Create Service Connection in AzDO
 
-### Create AzDO Service Connection - Option 1 - Create Service Connection´s Service Principal in the Azure Portal
+### Create AzDO Service Connection - Option 1 - Create Service Connections Service Principal in the Azure Portal
+
+#### AzDO supports Open ID Connect - OIDC
+
+Using OIDC we will not have the requirement to create a secret, nore store it in AzDO - awesome :)
+
+Quick guide for an app registration:
+
+__AzDO:__
+
+* Click on '__Project settings__' (located on the bottom left)
+* Under '__Pipelines__' click on '__Service Connections__'
+* Click on '__New service connection__' and select the connection/service type '__Azure Resource Manager__' and click '__Next__'
+* Select Authentication method __Workload Identity federation (manual)__
+
+![alt text](img/azdo_oidc_0.jpg "Microsoft Entra ID (AAD) Federated credentials")
+
+Copy away:
+* value of __Issuer__
+* value of __Subject identifier__
+
+![alt text](img/azdo_oidc_1.jpg "Microsoft Entra ID (AAD) Federated credentials; issuer, subject identifier")
+
+__Microsoft Entra ID (AAD):__
+
+* In the Azure Portal navigate to 'Microsoft Entra ID (AAD)'
+* Click on '__App registrations__'
+* Click on '__New registration__'
+* Name your application (e.g. 'AzureGovernanceVisualizer_SC')
+* Click '__Register__'
+* Your App registration has been created
+* Under '__Manage__' click on '__Certificates & Secrets__'
+* Click on '__Federated credentials__' and '__Add credential__'
+
+![alt text](img/azdo_aad_oidc_0.jpg "Microsoft Entra ID (AAD) Federated credentials")
+
+Paste the just copied off
+* value for __Issuer__
+* value for __Subject identifier__
+
+![alt text](img/azdo_aad_oidc_1.jpg "Microsoft Entra ID (AAD) Federated credentials; issuer, subject identifier")
 
 #### Azure Portal
-* Navigate to 'Azure Active Directory'
+* Navigate to 'Microsoft Entra ID (AAD)'
 * Click on '__App registrations__'
 * Click on '__New registration__'
 * Name your application (e.g. 'AzureGovernanceVisualizer_SC')
@@ -316,7 +356,7 @@ New-AzRoleAssignment `
 
 __Important!__ If you have created the AzDO Service Connection in AzDO (Option 2) then you SHOULD remove the automatically created '__Owner__' RBAC Role assignment for the AzDO Service Connection´s Service Principal from the target Management Group
 
-## Grant permissions in AAD
+## Grant permissions in Microsoft Entra ID
 
 ### API permissions
 
@@ -325,7 +365,7 @@ __Important!__ If you have created the AzDO Service Connection in AzDO (Option 2
 
 Grant API permissions for the Service Principal´s Application that we created earlier
 
-* Navigate to 'Azure Active Directory'
+* Navigate to 'Microsoft Entra ID (AAD)'
 * Click on '__App registrations__'
 * Search for the Application that we created earlier and click on it
 * Under '__Manage__' click on '__API permissions__'
@@ -341,8 +381,8 @@ Grant API permissions for the Service Principal´s Application that we created e
     * Back in the main '__API permissions__' menu you will find the permissions with status 'Not granted for...'. Click on '__Grant admin consent for _TenantName___' and confirm by click on '__Yes__'
     * Now you will find the permissions with status '__Granted for _TenantName___'
 
-Permissions in Azure Active Directory for App registration:
-![alt text](img/aadpermissionsportal_4.jpg "Permissions in Azure Active Directory")
+Permissions in Microsoft Entra ID (AAD) for App registration:
+![alt text](img/aadpermissionsportal_4.jpg "Permissions in Microsoft Entra ID (AAD)")
 
 ## Grant permissions on Azure Governance Visualizer AzDO repository
 
@@ -407,6 +447,8 @@ When the AzDO pipeline executes the Azure Governance Visualizer script the outpu
 * Select the Azure Governance Visualizer pipeline
 * Click '__Run pipeline__'
 
+Note: Before the pipeline kicks off it may require you to approve the run (only first time run)
+
 ## Create AzDO Wiki (WikiAsCode)
 
 Once the pipeline has executed successfully we can setup our Wiki (WikiAsCode)
@@ -445,7 +487,7 @@ Use this workflow if you want leverage the [OIDC (Open ID Connect) feature](http
 
 For the GitHub Actiom to authenticate and connect to Azure we need to create Service Principal (Application)
 
-In the Azure Portal navigate to 'Azure Active Directory'
+In the Azure Portal navigate to 'Microsoft Entra ID (AAD)'
 * Click on '__App registrations__'
 * Click on '__New registration__'
 * Name your application (e.g. 'AzureGovernanceVisualizer_SC')
@@ -496,9 +538,9 @@ In GitHub navigate to 'Actions'
 
 ## Azure Governance Visualizer OIDC YAML
 
-For the GitHub Actiom to authenticate and connect to Azure we need to create Service Principal (Application). Using OIDC we will however not have the requirement to create a secret, nore store it in GitHub - awesome :)
+For the GitHub Actiom to authenticate and connect to Azure we need to create Service Principal (Application). Using OIDC we will not have the requirement to create a secret, nore store it in GitHub - awesome :)
 
-* Navigate to 'Azure Active Directory'
+* Navigate to 'Microsoft Entra ID (AAD)'
 * Click on '__App registrations__'
 * Click on '__New registration__'
 * Name your application (e.g. 'AzureGovernanceVisualizer_SC')

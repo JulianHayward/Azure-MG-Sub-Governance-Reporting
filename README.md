@@ -60,7 +60,7 @@ The [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Gov
   * [Technical documentation](#technical-documentation)
     * [Permissions overview](#permissions-overview)
     * [Required permissions in Azure](#required-permissions-in-azure)
-    * [Required permissions in Azure Active Directory](#required-permissions-in-azure-active-directory)
+    * [Required permissions in Microsoft Entra ID](#required-permissions-in-microsoft-entra-id)
     * [PowerShell](#powershell)
     * [Parameters](#parameters)
     * [API reference](#api-reference)
@@ -78,16 +78,19 @@ The [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Gov
 
 ## Release history
 
-__Changes__ (2023-Sep-12 / 6.3.2 Minor)
+__Changes__ (2023-Oct-22 / 6.3.3 Minor)
 
-* another fix for [AzAPICall issue43](https://github.com/JulianHayward/AzAPICall/issues/43). Use-case scenario will be documented in the near future. Kudos to Asbjørn Nielsen (fellowmind dk) @AsbjornNielsen
-* use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.79
-
-__Changes__ (2023-Sep-04 / 6.3.1 Minor)
-
-* introduce new optional parameter `-TenantId4AzContext` which makes it possible to set the Azure context to a different tenant. Fix for [AzAPICall issue43](https://github.com/JulianHayward/AzAPICall/issues/43). Use-case scenario will be documented in the near future. Kudos to Asbjørn Nielsen (fellowmind dk) @AsbjornNielsen
+* introduce new optional parameter `-AzAPICallSkipAzContextSubscriptionValidation` [ref](https://aka.ms/AzAPICall)
+* update ARM API-version for RBAC Role definitions. Using `2022-05-01-preview` instead of `2018-11-01-preview`. This will show us 'conditions' [example](https://www.azadvertizer.net/azrolesadvertizer/8b54135c-b56d-4d72-a534-26097cfdc8d8.html)
 * update `/.azuredevops/pipelines/AzGovViz.variables.yml`
-* use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.78
+  * add parameter `-AzAPICallSkipAzContextSubscriptionValidation` 
+  * structure AzAPICall related variables
+  * Azure Active Directory becomes Microsoft Entra ID
+* update README.md and setup.md
+  * OIDC for Azure DevOps
+  * update [API reference](#api-reference)
+  * Azure Active Directory becomes Microsoft Entra ID
+* use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.83
 
 [Full release history](history.md)
 
@@ -169,8 +172,8 @@ Short presentation on Azure Governance Visualizer [[download](slides/AzGovViz_in
     * Core information on Role assignments
     * Advanced information on Role assignments
       * Role assignment scope (at scope / inheritance)
-      * For Role Assignments on Groups the AAD Group members are fully resolved. With this capability Azure Governance Visualizer can ultimately provide holistic insights on permissions granted
-      * For Role Assignments on Groups the AAD Group members count (transitive) will be reported
+      * For Role Assignments on Groups the Microsoft Entra ID (AAD) Group members are fully resolved. With this capability Azure Governance Visualizer can ultimately provide holistic insights on permissions granted
+      * For Role Assignments on Groups the Microsoft Entra ID (AAD) Group members count (transitive) will be reported
       * For identity-type == 'ServicePrincipal' the type (Application (internal/external) / ManagedIdentity (System assigned/User assigned)) will be revealed
       * For identity-type == 'User' the userType (Member/Guest) will be revealed
       * Related Policy assignments (Policy assignment that leverages the DeployIfNotExists (DINE) or Modify effect)
@@ -178,7 +181,7 @@ Short presentation on Azure Governance Visualizer [[download](slides/AzGovViz_in
       * Determine if the Role assignment is 'standing' or PIM (Privileged Identity Management) managed
       * Determine if the Role assignmet's Role definition is capable to write Role assignments
   * PIM (Privileged Identity Management) eligibility for Role assignments
-    * Get a full report of all PIM eligible Role assignments for Management Groups and Subscriptions, including resolved User members of AAD Groups that have assigned eligibility
+    * Get a full report of all PIM eligible Role assignments for Management Groups and Subscriptions, including resolved User members of Microsoft Entra ID (AAD) Groups that have assigned eligibility
     * &#x1F4A1; Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
   * Role assignments ClassicAdministrators
   * Security & Best practice analysis
@@ -269,7 +272,7 @@ Short presentation on Azure Governance Visualizer [[download](slides/AzGovViz_in
     * Policy assignment limit
     * Policy / PolicySet definition scope limit
     * Role assignment limit
-* __Azure Active Directory (AAD)__
+* __Microsoft Entra ID (AAD)__
   * Insights on those Service Principals where a Role assignment exists (scopes: Management Group, Subscription, ResourceGroup, Resource):
     * Type=ManagedIdentity
       * Core information on the Service Principal such as related Ids, use case information and Role assignments
@@ -378,7 +381,7 @@ This permission is <b>mandatory</b> in each and every scenario!
   </tbody>
 </table>
 
-### Required permissions in Azure Active Directory
+### Required permissions in Microsoft Entra ID
 
 <table>
   <tbody>
@@ -388,12 +391,12 @@ This permission is <b>mandatory</b> in each and every scenario!
     </tr>
     <tr>
       <td><b>A</b><br>Console | Member user account</td>
-      <td>No AAD permissions required
+      <td>No Microsoft Entra ID (AAD) permissions required
       </td>
     </tr>
     <tr>
       <td><b>B</b><br>Console | Guest user account</td>
-      <td>If the tenant is hardened (AAD External Identities / Guest user access = most restrictive) then Guest User must be assigned the AAD Role 'Directory readers'<br>
+      <td>If the tenant is hardened (Microsoft Entra ID (AAD) External Identities / Guest user access = most restrictive) then Guest User must be assigned the Microsoft Entra ID (AAD) Role 'Directory readers'<br>
       &#x1F4A1; <a href="https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/active-directory/fundamentals/users-default-permissions.md#compare-member-and-guest-default-permissions" target="_blank">Compare member and guest default permissions</a><br>
       &#x1F4A1; <a href="https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions" target="_blank">Restrict Guest permissions</a>
       </td>
@@ -408,15 +411,15 @@ This permission is <b>mandatory</b> in each and every scenario!
               <th>API Permissions</th>
             </tr>
             <tr>
-              <td>Get AAD<br>Users</td>
+              <td>Get Microsoft Entra ID (AAD)<br>Users</td>
               <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / User / User.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/user-get#permissions" target="_blank">Get user</a></td>
             </tr>
             <tr>
-              <td>Get AAD<br>Groups</td>
+              <td>Get Microsoft Entra ID (AAD)<br>Groups</td>
               <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Group / Group.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/group-get#permissions" target="_blank">Get group</a></td>
             </tr>
             <tr>
-              <td>Get AAD<br>SP/App</td>
+              <td>Get Microsoft Entra ID (AAD)<br>SP/App</td>
               <td>Service Principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a></td>
             </tr>
             <tr>
@@ -425,7 +428,7 @@ This permission is <b>mandatory</b> in each and every scenario!
             </tr>
           </tbody>
         </table>
-        Optional: AAD Role 'Directory readers' could be used instead of API permissions (more 'read' than required)
+        Optional: Microsoft Entra ID (AAD) Role 'Directory readers' could be used instead of API permissions (more 'read' than required)
       </td>
     </tr>
     <tr>
@@ -438,15 +441,15 @@ This permission is <b>mandatory</b> in each and every scenario!
               <th>API Permissions</th>
             </tr>
             <tr>
-              <td>Get AAD<br>Users</td>
+              <td>Get Microsoft Entra ID (AAD)<br>Users</td>
               <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / User / User.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/user-get#permissions" target="_blank">Get user</a></td>
             </tr>
             <tr>
-              <td>Get AAD<br>Groups</td>
+              <td>Get Microsoft Entra ID (AAD)<br>Groups</td>
               <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Group / Group.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/group-get#permissions" target="_blank">Get group</a></td>
             </tr>
             <tr>
-              <td>Get AAD<br>SP/App</td>
+              <td>Get Microsoft Entra ID (AAD)<br>SP/App</td>
               <td>Azure DevOps Service Connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>&#x1F4A1; <a href="https://docs.microsoft.com/en-us/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://docs.microsoft.com/en-us/graph/api/application-get#permissions" target="_blank">Get application</a></td>
             </tr>
             <tr>
@@ -455,14 +458,14 @@ This permission is <b>mandatory</b> in each and every scenario!
             </tr>
           </tbody>
         </table>
-        Optional: AAD Role 'Directory readers' could be used instead of API permissions (more 'read' than required)
+        Optional: Microsoft Entra ID (AAD) Role 'Directory readers' could be used instead of API permissions (more 'read' than required)
       </td>
     </tr>
   </tbody>
 </table>
 
 Screenshot Azure Portal
-![alt text](img/aadpermissionsportal_4.jpg "Permissions in Azure Active Directory")
+![alt text](img/aadpermissionsportal_4.jpg "Permissions in Microsoft Entra ID")
 
 ### PowerShell
 
@@ -499,8 +502,8 @@ Screenshot Azure Portal
 * `-NoMDfCSecureScore` - Disables Microsoft Defender for Cloud Secure Score request for Subscriptions and Management Groups.
 * ~~`-DisablePolicyComplianceStates`~~ `-NoPolicyComplianceStates` - Will not query policy compliance states. You may want to use this parameter to accellerate script execution or when receiving error 'ResponseTooLarge'.
 * `-NoResourceDiagnosticsPolicyLifecycle` - Disables Resource Diagnostics Policy Lifecycle recommendations
-* `-NoAADGroupsResolveMembers` - Disables resolving Azure Active Directory Group memberships
-* ~~`-NoAADGuestUsers` - Disables resolving Azure Active Directory User type (Guest or Member)~~
+* `-NoAADGroupsResolveMembers` - Disables resolving Microsoft Entra ID Group memberships
+* ~~`-NoAADGuestUsers` - Disables resolving Microsoft Entra ID User type (Guest or Member)~~
 * ~~`-NoServicePrincipalResolve` `-NoAADServicePrincipalResolve` - Disables resolving ServicePrincipals~~
 * ~~`-ServicePrincipalExpiryWarningDays`~~ `-AADServicePrincipalExpiryWarningDays` - Define warning period for Service Principal secret and certificate expiry; default is 14 days
 * ~~`-NoAzureConsumption`~~ - Azure Consumption data should not be collected/reported
@@ -523,7 +526,7 @@ Screenshot Azure Portal
 * `-JsonExportExcludeResources`- JSON Export will not include Resources (Role assignments)
 * `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big. Using this parameter the following parameters will be set: `-PolicyAtScopeOnly`, `-RBACAtScopeOnly`, `-NoResourceProvidersAtAll`, `-NoScopeInsights`
 * `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
-* `-AADGroupMembersLimit` - Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved
+* `-AADGroupMembersLimit` - Defines the limit (default=500) of Microsoft Entra ID (AAD) Group members; For Microsoft Entra ID (AAD) Groups that have more members than the defined limit Group members will not be resolved
 * `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability, resource type stats, UserAssigned Identities assigned to Resources is excluded (featured for large tenants)
 * `-StatsOptOut` - Opt out sending [stats](#stats)
 * `-NoSingleSubscriptionOutput` - Single __Scope Insights__ output per Subscription should not be created
@@ -595,8 +598,8 @@ Azure Governance Visualizer polls the following APIs
 | ARM      | 2015-07-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignments                                                      |
 | ARM      | 2020-10-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentScheduleInstances                                      |
 | ARM      | 2019-08-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics                                          |
-| ARM      | 2018-07-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleDefinitions                                                      |
-| ARM      | 2018-11-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprintAssignments                                                     |
+| ARM      | 2022-05-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleDefinitions                                                      |
+| ARM      | 2022-05-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprintAssignments                                                     |
 | ARM      | 2018-11-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprints                                                               |
 | ARM      | 2019-11-01         | /subscriptions/`subscriptionId`/providers/Microsoft.CostManagement/query                                                               |
 | ARM      | 2021-05-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Insights/diagnosticSettings                                                        |
@@ -725,7 +728,7 @@ Thank you for your support!
 
 &#9995; __Take care__: Azure Governance Visualizer creates very detailed information about your Azure Governance setup. In your organization's best interest the __outputs should be protected from not authorized access!__
 
-&#9757; __Be aware__: Any _member_ user of the tenant can execute/run the script against the Management Group (and below) if the _member_ user has the RBAC Role 'Reader' assigned at Management Group (this of course also applies for the root Management Group). More important: also _guest_ users can execute/run the script if your tenant is not hardened (and has the RBAC Role 'Reader' assigned at Management Group) __Entra Id (Azure Active Directory) | External Identities | External collaboration settings | Guest user access__ [ref](https://learn.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions)
+&#9757; __Be aware__: Any _member_ user of the tenant can execute/run the script against the Management Group (and below) if the _member_ user has the RBAC Role 'Reader' assigned at Management Group (this of course also applies for the root Management Group). More important: also _guest_ users can execute/run the script if your tenant is not hardened (and has the RBAC Role 'Reader' assigned at Management Group) __Microsoft Entra Id (AAD) | External Identities | External collaboration settings | Guest user access__ [ref](https://learn.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions)
 
 🛡️ __Collaborate with the security team__: Azure Defender for Cloud may alert Azure Governance Visualizer resource queries as suspicious activity:
 ![alt text](img/azgvz_MDfC_securityAlert.png "Microsoft defender for Cloud security alert")
@@ -785,9 +788,9 @@ Also check <https://www.azadvertizer.net> - AzAdvertizer helps you to keep up wi
 
 ## AzADServicePrincipalInsights
 
-Also check <https://aka.ms/AzADServicePrincipalInsights> - What about your Azure Active Directory Service Principals? Get deep insights and track your Service Principals with AzADServicePrincipalInsights. Create a HTML overview, export to CSV and JSON and use it for further processing...
+Also check <https://aka.ms/AzADServicePrincipalInsights> - What about your Microsoft Entra ID Service Principals? Get deep insights and track your Service Principals with AzADServicePrincipalInsights. Create a HTML overview, export to CSV and JSON and use it for further processing...
 
-![alt text](img/azadserviceprincipalinsights_preview.png "example output")
+![alt text](img/azadserviceprincipalinsights_preview_entra-id.png "example output")
 
 ## Closing Note
 
