@@ -17,13 +17,16 @@ function cacheBuiltIn {
         $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
         $ValidPolicyEffects = $using:ValidPolicyEffects
         $htHashesBuiltInPolicy = $using:htHashesBuiltInPolicy
+        #vars
+        $ARMLocation = $using:ARMLocation
+        $ignoreARMLocation = $using:ignoreARMLocation
         #functions
         $function:detectPolicyEffect = $using:funcDetectPolicyEffect
         $function:getPolicyHash = $using:funcGetPolicyHash
 
         if ($builtInCapability -eq 'PolicyDefinitions') {
             $currentTask = 'Caching built-in Policy definitions'
-            #Write-Host " $currentTask"
+            Write-Host " $currentTask"
             $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Authorization/policyDefinitions?api-version=2021-06-01&`$filter=policyType eq 'BuiltIn'"
             $method = 'GET'
             $requestPolicyDefinitionAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
@@ -111,7 +114,7 @@ function cacheBuiltIn {
 
         if ($builtInCapability -eq 'PolicyDefinitionsStatic') {
             $currentTask = 'Caching static Policy definitions'
-            #Write-Host " $currentTask"
+            Write-Host " $currentTask"
             $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Authorization/policyDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Static'"
             $method = 'GET'
             $requestPolicyDefinitionAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
@@ -183,7 +186,7 @@ function cacheBuiltIn {
         if ($builtInCapability -eq 'PolicySetDefinitions') {
 
             $currentTask = 'Caching built-in PolicySet definitions'
-            #Write-Host " $currentTask"
+            Write-Host " $currentTask"
             $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2021-06-01&`$filter=policyType eq 'BuiltIn'"
             $method = 'GET'
             $requestPolicySetDefinitionAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
@@ -235,10 +238,20 @@ function cacheBuiltIn {
         }
 
         if ($builtInCapability -eq 'RoleDefinitions') {
-            $currentTask = 'Caching built-in Role definitions'
-            #Write-Host " $currentTask"
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'BuiltInRole'"
-            #$uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'BuiltInRole'"
+            #Write-Host "`$ignoreARMLocation = '$ignoreARMLocation'" -ForegroundColor Yellow
+            if ($ignoreARMLocation) {
+                $currentTask = 'Caching built-in Role definitions'
+                Write-Host " $currentTask"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].'ARM')/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'BuiltInRole'"
+                #$uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'BuiltInRole'"
+            }
+            else {
+                $currentTask = "Caching built-in Role definitions (Location: '$($ARMLocation)')"
+                Write-Host " $currentTask"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls']."ARM$($ARMLocation)")/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'BuiltInRole'"
+                #$uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'BuiltInRole'"
+            }
+
             $method = 'GET'
             $requestRoleDefinitionAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
 

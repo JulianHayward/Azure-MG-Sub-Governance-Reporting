@@ -365,14 +365,14 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.3.3',
+    $ProductVersion = '6.3.4',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
 
     # <--- AzAPICall related parameters #consult the AzAPICall GitHub repository for details aka.ms/AzAPICall
     [string]
-    $AzAPICallVersion = '1.1.83',
+    $AzAPICallVersion = '1.1.84',
 
     [switch]
     $DebugAzAPICall,
@@ -386,6 +386,9 @@ Param
     [string]
     $TenantId4AzContext = 'undefined',
     # AzAPICall related parameters --->
+
+    [string]
+    $ARMLocation = 'westeurope',
 
     [string]
     $ScriptPath = 'pwsh', #e.g. 'myfolder\pwsh'
@@ -782,15 +785,40 @@ $parameters4AzAPICallModule = @{
 }
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 Write-Host " Initialize 'AzAPICall' succeeded" -ForegroundColor Green
+
+Write-Host " Setting `$ignoreARMLocation to `$false" -ForegroundColor Yellow
+$ignoreARMLocation = $false
+
+if ($azApiCallConf['htParameters'].ARMLocations.count -gt 0) {
+    Write-Host ''
+    Write-Host "Check if provided parameter value for -ARMLocation '$($ARMLocation)' is valid"
+    if ($azApiCallConf['htParameters'].ARMLocations -notcontains $ARMLocation) {
+        Write-Host " Parameter value for -ARMLocation '$($ARMLocation)' is not valid - please provide a valid ARMLocation" -ForegroundColor DarkRed
+        Write-Host " Valid ARMLocations: '$($azApiCallConf['htParameters'].ARMLocations -join ', ')'" -ForegroundColor Yellow
+        throw 'ARMLocation validation failed!'
+    }
+    else {
+        Write-Host " Parameter value for -ARMLocation '$($ARMLocation)' is valid" -ForegroundColor Green
+    }
+}
+else {
+    Write-Host ''
+    Write-Host "Skipping ARMLocation validation - no locations found in '`$azApiCallConf['htParameters'].ARMLocations'. (-SkipAzContextSubscriptionValidation = '$skipAzContextSubscriptionValidation')"
+    Write-Host " Setting `$ignoreARMLocation to `$true" -ForegroundColor Yellow
+    $ignoreARMLocation = $true
+}
+
 #EndRegion initAZAPICall
 
 #region required AzAPICall version
-if (-not ([System.Version]"$($azapicallConf['htParameters'].azAPICallModuleVersion)" -ge [System.Version]'1.1.83')) {
-    Write-Host 'AzAPICall version check failed -> https://aka.ms/AzAPICall; https://www.powershellgallery.com/packages/AzAPICall'
-    throw "This version of Azure Governance Visualizer ($ProductVersion) requires AzAPICall module version 1.1.83 or greater"
+if (-not ([System.Version]"$($azapicallConf['htParameters'].azAPICallModuleVersion)" -ge [System.Version]'1.1.84')) {
+    Write-Host ''
+    Write-Host 'Azure Governance Visualizer version '$ProductVersion' - AzAPICall PowerShell module version check failed -> https://aka.ms/AzAPICall; https://www.powershellgallery.com/packages/AzAPICall'
+    throw "This version of Azure Governance Visualizer '$ProductVersion' requires AzAPICall PowerShell module version '1.1.84' or greater"
 }
 else {
-    Write-Host "AzAPICall module version requirement check succeeded: 1.1.83 or greater - current: $($azapicallConf['htParameters'].azAPICallModuleVersion) " -ForegroundColor Green
+    Write-Host ''
+    Write-Host "Azure Governance Visualizer version '$ProductVersion' - AzAPICall PowerShell module version requirement check succeeded: '1.1.84' or greater - current: '$($azapicallConf['htParameters'].azAPICallModuleVersion)' " -ForegroundColor Green
 }
 #endregion required AzAPICall version
 

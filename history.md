@@ -4,6 +4,18 @@
 
 ### Azure Governance Visualizer version 6
 
+__Changes__ (2023-Nov-13 / 6.3.4 Minor)
+
+* introduce new parameter `-ARMLocation`. Define the Azure Resource Manager (ARM) location to use (default is to use westeurope; this is used to optimize the built-in Azure RBAC Role definitions tracking)
+* hardening the automated AzAPICall PowerShell module installation by adding retry mechanism in case of failure (Azure DevOps/GitHub)
+* tolerating more up to date AzAPICall version when executing outside of Azure DevOps/GitHub
+* update ARM API-version for Resources. Using `2023-07-01` instead of `2021-04-01`
+* update `/.azuredevops/pipelines/AzGovViz.variables.yml`
+  * add parameter `-ARMLocation` 
+* update README.md
+  * update [API reference](#api-reference)
+* use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.84
+
 __Changes__ (2023-Oct-22 / 6.3.3 Minor)
 
 * introduce new optional parameter `-AzAPICallSkipAzContextSubscriptionValidation` [ref](https://aka.ms/AzAPICall)

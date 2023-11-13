@@ -365,14 +365,14 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.3.3',
+    $ProductVersion = '6.3.4',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
 
     # <--- AzAPICall related parameters #consult the AzAPICall GitHub repository for details aka.ms/AzAPICall
     [string]
-    $AzAPICallVersion = '1.1.83',
+    $AzAPICallVersion = '1.1.84',
 
     [switch]
     $DebugAzAPICall,
@@ -386,6 +386,9 @@ Param
     [string]
     $TenantId4AzContext = 'undefined',
     # AzAPICall related parameters --->
+
+    [string]
+    $ARMLocation = 'westeurope',
 
     [string]
     $ScriptPath = 'pwsh', #e.g. 'myfolder\pwsh'
@@ -1870,13 +1873,16 @@ function cacheBuiltIn {
         $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
         $ValidPolicyEffects = $using:ValidPolicyEffects
         $htHashesBuiltInPolicy = $using:htHashesBuiltInPolicy
+        #vars
+        $ARMLocation = $using:ARMLocation
+        $ignoreARMLocation = $using:ignoreARMLocation
         #functions
         $function:detectPolicyEffect = $using:funcDetectPolicyEffect
         $function:getPolicyHash = $using:funcGetPolicyHash
 
         if ($builtInCapability -eq 'PolicyDefinitions') {
             $currentTask = 'Caching built-in Policy definitions'
-            #Write-Host " $currentTask"
+            Write-Host " $currentTask"
             $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Authorization/policyDefinitions?api-version=2021-06-01&`$filter=policyType eq 'BuiltIn'"
             $method = 'GET'
             $requestPolicyDefinitionAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
@@ -1964,7 +1970,7 @@ function cacheBuiltIn {
 
         if ($builtInCapability -eq 'PolicyDefinitionsStatic') {
             $currentTask = 'Caching static Policy definitions'
-            #Write-Host " $currentTask"
+            Write-Host " $currentTask"
             $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Authorization/policyDefinitions?api-version=2021-06-01&`$filter=policyType eq 'Static'"
             $method = 'GET'
             $requestPolicyDefinitionAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
@@ -2036,7 +2042,7 @@ function cacheBuiltIn {
         if ($builtInCapability -eq 'PolicySetDefinitions') {
 
             $currentTask = 'Caching built-in PolicySet definitions'
-            #Write-Host " $currentTask"
+            Write-Host " $currentTask"
             $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Authorization/policySetDefinitions?api-version=2021-06-01&`$filter=policyType eq 'BuiltIn'"
             $method = 'GET'
             $requestPolicySetDefinitionAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
@@ -2088,10 +2094,20 @@ function cacheBuiltIn {
         }
 
         if ($builtInCapability -eq 'RoleDefinitions') {
-            $currentTask = 'Caching built-in Role definitions'
-            #Write-Host " $currentTask"
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'BuiltInRole'"
-            #$uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'BuiltInRole'"
+            #Write-Host "`$ignoreARMLocation = '$ignoreARMLocation'" -ForegroundColor Yellow
+            if ($ignoreARMLocation) {
+                $currentTask = 'Caching built-in Role definitions'
+                Write-Host " $currentTask"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].'ARM')/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'BuiltInRole'"
+                #$uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'BuiltInRole'"
+            }
+            else {
+                $currentTask = "Caching built-in Role definitions (Location: '$($ARMLocation)')"
+                Write-Host " $currentTask"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls']."ARM$($ARMLocation)")/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'BuiltInRole'"
+                #$uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'BuiltInRole'"
+            }
+
             $method = 'GET'
             $requestRoleDefinitionAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
 
@@ -29078,10 +29094,10 @@ function verifyModules3rd {
         $moduleVersion = $module.ModuleVersion
 
         if ($moduleVersion) {
-            Write-Host " Verify '$($module.ModuleName)' ($moduleVersion)"
+            Write-Host "Verify '$($module.ModuleName)' version '$moduleVersion'"
         }
         else {
-            Write-Host " Verify '$($module.ModuleName)' (latest)"
+            Write-Host "Verify '$($module.ModuleName)' (latest)"
         }
 
         $maxRetry = 3
@@ -29099,23 +29115,36 @@ function verifyModules3rd {
                     Write-Host '  Check latest module version'
                     try {
                         $moduleVersion = (Find-Module -Name $($module.ModuleName)).Version
-                        Write-Host "  $($module.ModuleName) Latest module version: $moduleVersion"
+                        Write-Host " $($module.ModuleName) Latest module version: $moduleVersion"
                     }
                     catch {
-                        Write-Host "  $($module.ModuleName) - Check latest module version failed"
-                        throw "  $($module.ModuleName) - Check latest module version failed"
+                        Write-Host " $($module.ModuleName) - Check latest module version failed"
+                        throw " $($module.ModuleName) - Check latest module version failed"
                     }
                 }
 
                 if (-not $installModuleSuccess) {
                     try {
                         $moduleVersionLoaded = (Get-InstalledModule -Name $($module.ModuleName)).Version
-                        if ($moduleVersionLoaded -eq $moduleVersion) {
+                        if ([System.Version]$moduleVersionLoaded -eq [System.Version]$moduleVersion) {
                             $installModuleSuccess = $true
                         }
                         else {
-                            Write-Host "  $($module.ModuleName) - Deviating module version $moduleVersionLoaded"
-                            throw "  $($module.ModuleName) - Deviating module version $moduleVersionLoaded"
+                            Write-Host " $($module.ModuleName) - Deviating module version '$moduleVersionLoaded'"
+                            if ([System.Version]$moduleVersionLoaded -gt [System.Version]$moduleVersion) {
+                                if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
+                                    #AzDO or GH
+                                    throw " $($module.ModuleName) - Deviating module version $moduleVersionLoaded"
+                                }
+                                else {
+                                    Write-Host " Current module version '$moduleVersionLoaded' greater than the minimum required version '$moduleVersion' -> tolerated" -ForegroundColor Yellow
+                                    $installModuleSuccess = $true
+                                }
+                            }
+                            else {
+                                Write-Host " Current module version '$moduleVersionLoaded' lower than the minimum required version '$moduleVersion' -> failed"
+                                throw " $($module.ModuleName) - Deviating module version $moduleVersionLoaded"
+                            }
                         }
                     }
                     catch {
@@ -29124,45 +29153,59 @@ function verifyModules3rd {
                 }
             }
             catch {
-                Write-Host "  '$($module.ModuleName) $moduleVersion' not installed"
+                Write-Host " '$($module.ModuleName) $moduleVersion' not installed"
                 if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
-                    Write-Host "  Installing $($module.ModuleName) module ($($moduleVersion))"
-                    try {
-                        $params = @{
-                            Name            = "$($module.ModuleName)"
-                            Force           = $true
-                            RequiredVersion = $moduleVersion
+                    Write-Host " Installing $($module.ModuleName) module ($($moduleVersion))"
+                    $installAzAPICallModuleTryCounter = 0
+                    do {
+                        $installAzAPICallModuleTryCounter++
+                        try {
+                            $params = @{
+                                Name            = "$($module.ModuleName)"
+                                Force           = $true
+                                RequiredVersion = $moduleVersion
+                                ErrorAction     = 'Stop'
+                            }
+                            Install-Module @params
+                            $installAzAPICallModuleSuccess = $true
+                            Write-Host "  Try#$($installAzAPICallModuleTryCounter) Installing '$($module.ModuleName)' module ($($moduleVersion)) succeeded"
                         }
-                        Install-Module @params
+                        catch {
+                            Write-Host "  Try#$($installAzAPICallModuleTryCounter) Installing '$($module.ModuleName)' module ($($moduleVersion)) failed - sleep $($installAzAPICallModuleTryCounter) seconds"
+                            Start-Sleep -Seconds $installAzAPICallModuleTryCounter
+                            $installAzAPICallModuleSuccess = $false
+                        }
                     }
-                    catch {
-                        throw "  Installing '$($module.ModuleName)' module ($($moduleVersion)) failed"
+                    until($installAzAPICallModuleTryCounter -gt 10 -or $installAzAPICallModuleSuccess)
+                    if (-not $installAzAPICallModuleSuccess) {
+                        throw " Installing '$($module.ModuleName)' module ($($moduleVersion)) failed"
                     }
+
                 }
                 else {
                     do {
                         $installModuleUserChoice = $null
-                        $installModuleUserChoice = Read-Host "  Do you want to install $($module.ModuleName) module ($($moduleVersion)) from the PowerShell Gallery? (y/n)"
+                        $installModuleUserChoice = Read-Host " Do you want to install $($module.ModuleName) module ($($moduleVersion)) from the PowerShell Gallery? (y/n)"
                         if ($installModuleUserChoice -eq 'y') {
                             try {
-                                Install-Module -Name $module.ModuleName -RequiredVersion $moduleVersion -Force
+                                Install-Module -Name $module.ModuleName -RequiredVersion $moduleVersion -Force -ErrorAction Stop
                                 try {
-                                    Import-Module -Name $module.ModuleName -RequiredVersion $moduleVersion -Force
+                                    Import-Module -Name $module.ModuleName -RequiredVersion $moduleVersion -Force -ErrorAction Stop
                                 }
                                 catch {
-                                    throw "  'Import-Module -Name $($module.ModuleName) -RequiredVersion $moduleVersion -Force' failed"
+                                    throw " 'Import-Module -Name $($module.ModuleName) -RequiredVersion $moduleVersion -Force' failed"
                                 }
                             }
                             catch {
-                                throw "  'Install-Module -Name $($module.ModuleName) -RequiredVersion $moduleVersion' failed"
+                                throw " 'Install-Module -Name $($module.ModuleName) -RequiredVersion $moduleVersion' failed"
                             }
                         }
                         elseif ($installModuleUserChoice -eq 'n') {
-                            Write-Host "  $($module.ModuleName) module is required, please visit https://aka.ms/$($module.ModuleProductName) or https://www.powershellgallery.com/packages/$($module.ModuleProductName)"
-                            throw "  $($module.ModuleName) module is required"
+                            Write-Host " $($module.ModuleName) module is required, please visit https://aka.ms/$($module.ModuleProductName) or https://www.powershellgallery.com/packages/$($module.ModuleProductName)"
+                            throw " $($module.ModuleName) module is required"
                         }
                         else {
-                            Write-Host "  Accepted input 'y' or 'n'; start over.."
+                            Write-Host " Accepted input 'y' or 'n'; start over.."
                         }
                     }
                     until ($installModuleUserChoice -eq 'y')
@@ -29170,6 +29213,7 @@ function verifyModules3rd {
             }
         }
         until ($installModuleSuccess)
+        Write-Host " Verify '$($module.ModuleName)' version '$moduleVersion' succeeded" -ForegroundColor Green
     }
 }
 #region functions4DataCollection
@@ -29683,7 +29727,7 @@ function dataCollectionResources {
 
     #region resources LIST
     $currentTask = "Getting Resources for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime,properties&api-version=2021-04-01"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime,properties&api-version=2023-07-01"
     $method = 'GET'
     $resourcesSubscriptionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
     #Write-Host 'arm resList count:'$resourcesSubscriptionResult.Count
@@ -33797,15 +33841,40 @@ $parameters4AzAPICallModule = @{
 }
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 Write-Host " Initialize 'AzAPICall' succeeded" -ForegroundColor Green
+
+Write-Host " Setting `$ignoreARMLocation to `$false" -ForegroundColor Yellow
+$ignoreARMLocation = $false
+
+if ($azApiCallConf['htParameters'].ARMLocations.count -gt 0) {
+    Write-Host ''
+    Write-Host "Check if provided parameter value for -ARMLocation '$($ARMLocation)' is valid"
+    if ($azApiCallConf['htParameters'].ARMLocations -notcontains $ARMLocation) {
+        Write-Host " Parameter value for -ARMLocation '$($ARMLocation)' is not valid - please provide a valid ARMLocation" -ForegroundColor DarkRed
+        Write-Host " Valid ARMLocations: '$($azApiCallConf['htParameters'].ARMLocations -join ', ')'" -ForegroundColor Yellow
+        throw 'ARMLocation validation failed!'
+    }
+    else {
+        Write-Host " Parameter value for -ARMLocation '$($ARMLocation)' is valid" -ForegroundColor Green
+    }
+}
+else {
+    Write-Host ''
+    Write-Host "Skipping ARMLocation validation - no locations found in '`$azApiCallConf['htParameters'].ARMLocations'. (-SkipAzContextSubscriptionValidation = '$skipAzContextSubscriptionValidation')"
+    Write-Host " Setting `$ignoreARMLocation to `$true" -ForegroundColor Yellow
+    $ignoreARMLocation = $true
+}
+
 #EndRegion initAZAPICall
 
 #region required AzAPICall version
-if (-not ([System.Version]"$($azapicallConf['htParameters'].azAPICallModuleVersion)" -ge [System.Version]'1.1.83')) {
-    Write-Host 'AzAPICall version check failed -> https://aka.ms/AzAPICall; https://www.powershellgallery.com/packages/AzAPICall'
-    throw "This version of Azure Governance Visualizer ($ProductVersion) requires AzAPICall module version 1.1.83 or greater"
+if (-not ([System.Version]"$($azapicallConf['htParameters'].azAPICallModuleVersion)" -ge [System.Version]'1.1.84')) {
+    Write-Host ''
+    Write-Host 'Azure Governance Visualizer version '$ProductVersion' - AzAPICall PowerShell module version check failed -> https://aka.ms/AzAPICall; https://www.powershellgallery.com/packages/AzAPICall'
+    throw "This version of Azure Governance Visualizer '$ProductVersion' requires AzAPICall PowerShell module version '1.1.84' or greater"
 }
 else {
-    Write-Host "AzAPICall module version requirement check succeeded: 1.1.83 or greater - current: $($azapicallConf['htParameters'].azAPICallModuleVersion) " -ForegroundColor Green
+    Write-Host ''
+    Write-Host "Azure Governance Visualizer version '$ProductVersion' - AzAPICall PowerShell module version requirement check succeeded: '1.1.84' or greater - current: '$($azapicallConf['htParameters'].azAPICallModuleVersion)' " -ForegroundColor Green
 }
 #endregion required AzAPICall version
 

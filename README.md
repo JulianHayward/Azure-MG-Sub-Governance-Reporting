@@ -78,19 +78,17 @@ The [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Gov
 
 ## Release history
 
-__Changes__ (2023-Oct-22 / 6.3.3 Minor)
+__Changes__ (2023-Nov-13 / 6.3.4 Minor)
 
-* introduce new optional parameter `-AzAPICallSkipAzContextSubscriptionValidation` [ref](https://aka.ms/AzAPICall)
-* update ARM API-version for RBAC Role definitions. Using `2022-05-01-preview` instead of `2018-11-01-preview`. This will show us 'conditions' [example](https://www.azadvertizer.net/azrolesadvertizer/8b54135c-b56d-4d72-a534-26097cfdc8d8.html)
+* introduce new parameter `-ARMLocation`. Define the Azure Resource Manager (ARM) location to use (default is to use westeurope; this is used to optimize the built-in Azure RBAC Role definitions tracking)
+* hardening the automated AzAPICall PowerShell module installation by adding retry mechanism in case of failure (Azure DevOps/GitHub)
+* tolerating more up to date AzAPICall version when executing outside of Azure DevOps/GitHub
+* update ARM API-version for Resources. Using `2023-07-01` instead of `2021-04-01`
 * update `/.azuredevops/pipelines/AzGovViz.variables.yml`
-  * add parameter `-AzAPICallSkipAzContextSubscriptionValidation` 
-  * structure AzAPICall related variables
-  * Azure Active Directory becomes Microsoft Entra ID
-* update README.md and setup.md
-  * OIDC for Azure DevOps
+  * add parameter `-ARMLocation` 
+* update README.md
   * update [API reference](#api-reference)
-  * Azure Active Directory becomes Microsoft Entra ID
-* use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.83
+* use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.84
 
 [Full release history](history.md)
 
@@ -613,7 +611,7 @@ Azure Governance Visualizer polls the following APIs
 | ARM      | 2020-01-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securityContacts                                                          |
 | ARM      | 2019-10-01         | /subscriptions/`subscriptionId`/providers                                                                                              |
 | ARM      | 2021-04-01         | /subscriptions/`subscriptionId`/resourcegroups                                                                                         |
-| ARM      | 2021-04-01         | /subscriptions/`subscriptionId`/resources                                                                                              |
+| ARM      | 2023-07-01         | /subscriptions/`subscriptionId`/resources                                                                                              |
 | ARM      | 2020-01-01         | /subscriptions                                                                                                                         |
 | ARM      | 2020-01-01         | /tenants                                                                                                                               |
 
