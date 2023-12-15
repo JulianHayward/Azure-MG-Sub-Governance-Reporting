@@ -372,7 +372,7 @@ Param
 
     # <--- AzAPICall related parameters #consult the AzAPICall GitHub repository for details aka.ms/AzAPICall
     [string]
-    $AzAPICallVersion = '1.1.84',
+    $AzAPICallVersion = '1.1.85',
 
     [switch]
     $DebugAzAPICall,
