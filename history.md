@@ -4,6 +4,11 @@
 
 ### Azure Governance Visualizer version 6
 
+__Changes__ (2023-Dec-15 / 6.3.5 Minor)
+
+* Checking if the response of the storage account properties request is a byte array (type 'byte[]') and decode it to a string
+* Different handling of BOM (Byte order mark) for XML returns on storage account properties request (since Powershell version 7.4.0)
+
 __Changes__ (2023-Nov-13 / 6.3.4 Minor)
 
 * introduce new parameter `-ARMLocation`. Define the Azure Resource Manager (ARM) location to use (default is to use westeurope; this is used to optimize the built-in Azure RBAC Role definitions tracking)
