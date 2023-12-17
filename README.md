@@ -78,10 +78,17 @@ The [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Gov
 
 ## Release history
 
+__Changes__ (2023-Dec-16 / 6.3.6 Minor)
+
+* fix: processing of Service Principal names that contain special characters
+* fix: RBAC reporting correct RBAC Role assignment related Policy assignment Policy definition displayName
+* update ARM API-version for CostManagement. Using `2023-03-01` instead of `2019-11-01`
+
 __Changes__ (2023-Dec-15 / 6.3.5 Minor)
 
 * Checking if the response of the storage account properties request is a byte array (type 'byte[]') and decode it to a string
 * Different handling of BOM (Byte order mark) for XML returns on storage account properties request (since Powershell version 7.4.0)
+* use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.85
 
 [Full release history](history.md)
 
@@ -571,7 +578,7 @@ Azure Governance Visualizer polls the following APIs
 | ARM      | 2020-10-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignmentScheduleInstances |
 | ARM      | 2018-07-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleDefinitions                 |
 | ARM      | 2018-11-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Blueprint/blueprints                          |
-| ARM      | 2019-11-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.CostManagement/query                          |
+| ARM      | 2023-03-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.CostManagement/query                          |
 | ARM      | 2020-01-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/microsoft.insights/diagnosticSettings                   |
 | ARM      | 2019-10-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.PolicyInsights/policyStates/latest/summarize  |
 | ARM      | 2020-05-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`                                                                   |
@@ -592,7 +599,7 @@ Azure Governance Visualizer polls the following APIs
 | ARM      | 2022-05-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleDefinitions                                                      |
 | ARM      | 2022-05-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprintAssignments                                                     |
 | ARM      | 2018-11-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprints                                                               |
-| ARM      | 2019-11-01         | /subscriptions/`subscriptionId`/providers/Microsoft.CostManagement/query                                                               |
+| ARM      | 2023-03-01         | /subscriptions/`subscriptionId`/providers/Microsoft.CostManagement/query                                                               |
 | ARM      | 2021-05-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Insights/diagnosticSettings                                                        |
 | ARM      | 2019-10-01         | /subscriptions/`subscriptionId`/providers/Microsoft.PolicyInsights/policyStates/latest/summarize                                       |
 | ARM      | 2022-07-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Network/locations/`location`/availablePrivateEndpointTypes                         |

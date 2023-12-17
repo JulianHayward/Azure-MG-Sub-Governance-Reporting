@@ -52,10 +52,12 @@ function processTenantSummary() {
                     #policy
                     if ($policyDefinitionId -like '/providers/Microsoft.Authorization/policyDefinitions/*') {
                         $LinkOrNotLinkToAzAdvertizer = ($htCacheDefinitionsPolicy).($policyDefinitionId).LinkToAzAdvertizer
+                        $policyDisplayName = ($htCacheDefinitionsPolicy).($policyDefinitionId).DisplayName
                     }
                     #policySet
                     if ($policyDefinitionId -like '/providers/Microsoft.Authorization/policySetDefinitions/*') {
                         $LinkOrNotLinkToAzAdvertizer = ($htCacheDefinitionsPolicySet).($policyDefinitionId).LinkToAzAdvertizer
+                        $policyDisplayName = ($htCacheDefinitionsPolicySet).($policyDefinitionId).DisplayName
                     }
                 }
                 else {
@@ -67,7 +69,6 @@ function processTenantSummary() {
                     #policySet
                     if ($policyDefinitionId -like '*/providers/Microsoft.Authorization/policySetDefinitions/*') {
                         $policyDisplayName = ($htCacheDefinitionsPolicySet).($policyDefinitionId).DisplayName
-
                     }
 
                     $LinkOrNotLinkToAzAdvertizer = "<b>$($policyDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</b>"
@@ -12517,7 +12518,10 @@ tf.init();}}
                     }
                 }
                 else {
-                    $s1 = $altName -replace '.*/providers/'; $rm = $s1 -replace '.*/'; $resourceType = $s1 -replace "/$($rm)"
+                    #https://learn.microsoft.com/en-us/dotnet/api/system.text.regularexpressions.regex.escape
+                    $s1 = $altName -replace '.*/providers/'
+                    $rm = $s1 -replace '.*/'
+                    $resourceType = $s1 -replace "/$([System.Text.RegularExpressions.Regex]::Escape($rm))"
                     $miAlternativeName = $altname
                     $miResourceType = $resourceType
                 }
