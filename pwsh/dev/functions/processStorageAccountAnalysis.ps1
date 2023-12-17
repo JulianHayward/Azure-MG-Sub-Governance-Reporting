@@ -59,7 +59,15 @@ function processStorageAccountAnalysis {
                     }
                     else {
                         try {
-                            $xmlSaProperties = [xml]([string]$saProperties -replace $saProperties.Substring(0, 3))
+                            # ? https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/218#issuecomment-1854516882
+                            if ($saProperties.gettype().Name -eq 'Byte[]') {
+                                $byteArray = [byte[]]$saProperties
+                                $saProperties = [System.Text.Encoding]::UTF8.GetString($byteArray)
+                            }
+
+                            # $xmlSaProperties = [xml]([string]$saProperties -replace $saProperties.Substring(0, 3)) # Leading character: ï»¿ (PS version <= 7.3.9)
+                            # $xmlSaProperties = [xml]([string]$saProperties -replace $saProperties.Substring(0, 1)) # Leading character: ﻿ or U+feff (PS version >= 7.4.0)
+                            $xmlSaProperties = [xml]($saProperties -replace '^.*?<', '<') # Universal fix for all PS versions
                             if ($xmlSaProperties.StorageServiceProperties.StaticWebsite) {
                                 if ($xmlSaProperties.StorageServiceProperties.StaticWebsite.Enabled -eq $true) {
                                     $staticWebsitesState = $true
@@ -92,7 +100,15 @@ function processStorageAccountAnalysis {
                     }
 
                     if ($listContainersSuccess -eq $true) {
-                        $xmlListContainers = [xml]([string]$listContainers -replace $listContainers.Substring(0, 3))
+                        # ? https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/218#issuecomment-1854516882
+                        if ($listContainers.gettype().Name -eq 'Byte[]') {
+                            $byteArray = [byte[]]$listContainers
+                            $listContainers = [System.Text.Encoding]::UTF8.GetString($byteArray)
+                        }
+
+                        # $xmlListContainers = [xml]([string]$listContainers -replace $listContainers.Substring(0, 3)) # Leading character: ï»¿ (PS version <= 7.3.9)
+                        # $xmlListContainers = [xml]([string]$listContainers -replace $listContainers.Substring(0, 1)) # Leading character: ﻿ or U+feff (PS version >= 7.4.0)
+                        $xmlListContainers = [xml]($listContainers -replace '^.*?<', '<') # Universal fix for all PS versions
                         $containersCount = $xmlListContainers.EnumerationResults.Containers.Container.Count
 
                         foreach ($container in $xmlListContainers.EnumerationResults.Containers.Container) {
