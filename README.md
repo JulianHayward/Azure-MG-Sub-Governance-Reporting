@@ -78,7 +78,7 @@ The [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Gov
 
 ## Release history
 
-__Changes__ (2023-Dec-16 / 6.3.6 Minor)
+__Changes__ (2023-Dec-17 / 6.3.6 Minor)
 
 * fix: processing of Service Principal names that contain special characters
 * fix: RBAC reporting correct RBAC Role assignment related Policy assignment Policy definition displayName
