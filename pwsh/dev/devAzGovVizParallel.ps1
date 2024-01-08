@@ -365,7 +365,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.3.6',
+    $ProductVersion = '6.3.7',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -33879,6 +33879,11 @@ else {
     Write-Host ''
     Write-Host "Skipping ARMLocation validation - no locations found in '`$azApiCallConf['htParameters'].ARMLocations'. (-SkipAzContextSubscriptionValidation = '$skipAzContextSubscriptionValidation')"
     Write-Host " Setting `$ignoreARMLocation to `$true" -ForegroundColor Yellow
+    $ignoreARMLocation = $true
+}
+
+if ($azApiCallConf['htParameters'].azureCloudEnvironment -ne 'AzureCloud') {
+    Write-Host " Non Public Cloud ($($azApiCallConf['htParameters'].azureCloudEnvironment)) -> Setting `$ignoreARMLocation to `$true" -ForegroundColor Yellow
     $ignoreARMLocation = $true
 }
 
