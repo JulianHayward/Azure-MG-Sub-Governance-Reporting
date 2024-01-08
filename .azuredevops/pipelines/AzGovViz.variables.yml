@@ -117,12 +117,12 @@ variables:
     # String | example: value: "westus"
     value: 'westeurope'
 
-  # Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved
+  # Defines the limit (default=500) of Microsoft Entra group members; For Microsoft Entra groups that have more members than the defined limit, group members will not be resolved
   - name: AADGroupMembersLimit
     # Integer | default = 500 | example: value: 333
     value:
 
-  # Define warning period for Service Principal secret and certificate expiry
+  # Define warning period for the service principal secret and certificate expiry
   - name: AADServicePrincipalExpiryWarningDays
     # Integer | default = 14 | example: value: 21
     value:
@@ -276,7 +276,7 @@ variables:
     # Switch | example: value: true
     value:
 
-  # Define the number of script blocks running in parallel. Leveraging PowerShell Core´s parallel capability you can define the ThrottleLimit (default=5)
+  # Define the number of script blocks running in parallel. Using PowerShell's parallel capability you can define the ThrottleLimit (default=5).
   - name: ThrottleLimit
     # Integer | Default = 10 | example: value: 11
     value:

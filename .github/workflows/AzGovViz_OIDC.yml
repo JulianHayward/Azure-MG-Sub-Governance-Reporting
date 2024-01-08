@@ -144,7 +144,7 @@ jobs:
             }
             else {
               Write-Host 'Assuming and insisting that you do not want to publish your tenant insights to the public'
-              Write-Host "HTML NOT published. Please configure authentication on the webApp ($($env:WebAppName))"
+              Write-Host "HTML NOT published. Please configure authentication on the Azure Web App ($($env:WebAppName))."
               exit 1
             }
           azPSVersion: "latest"
