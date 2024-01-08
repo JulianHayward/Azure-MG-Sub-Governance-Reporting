@@ -5,31 +5,6 @@ When trying out Azure Governance Visualizer for the first time or simply as a on
 
 Some steps have both **portal based** ( :computer_mouse: ) and **PowerShell based** ( :keyboard: ) instructions. Use whichever you feel is appropriate for your situation, they both will produce the same results.
 
-The identity executing this script will need read access on the target management group and some basic Microsoft Entra ID permissions. Follow the instructions below based on the type of user you're executing this as.
-
-----
-
-- Requirements
-  
-Create a '**Reader**' RBAC Role assignment on the target Management Group scope for the identity that shall run Azure Governance Visualizer
-
-- PowerShell
-
-```powershell
-$objectId = "<objectId of the identity that shall run Azure Governance Visualizer>"
-$managementGroupId = "<managementGroupId>"
-
-New-AzRoleAssignment `
--ObjectId $objectId `
--RoleDefinitionName "Reader" `
--Scope /providers/Microsoft.Management/managementGroups/$managementGroupId
-```
-
-- Azure Portal
-[Assign Azure roles using the Azure portal](https://docs.microsoft.com/en-us/azure/role-based-access-control/role-assignments-portal)
-
----
-
 ## Prerequisites
 
 The following must be installed on the workstation that will be used to run the scripts:
@@ -39,13 +14,13 @@ The following must be installed on the workstation that will be used to run the 
 - [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-azure-powershell)
 - [AzAPICall](https://github.com/JulianHayward/AzAPICall#get--set-azapicall-powershell-module)
 
-## 1. Validate permissions on user
+## 1. Validate Microsoft Graph permissions for your user
 
-:arrow_forward: If your user is a tenant _member user_ and you use your user to complete these instructions, then no additional setup is necessary. This is the most common. And you can :arrow_down_small: continue with [**2. Clone the Azure Governance Visualizer repository**](#2-clone-the-azure-governance-visualizer-repository).
+:arrow_forward: If your user is a tenant _member user_ and you plan on running the script as yourself, then no additional setup is necessary. This is the most common. You can :arrow_down_small: continue with [**2. Validate Azure permissions for your user**](#2-validate-azure-permissions-for-your-user).
 
 _- or -_
 
-:arrow_forward: However, if your user is tenant _guest user_ and you use your user to complete these instructions, continue to [Set up to execute as a tenant _guest user_](#set-up-to-execute-as-a-tenant-guest-user) to ensure your user is configured properly.
+:arrow_forward: However, if your user is tenant _guest user_ and you plan on running the script as yourself, continue to [Set up to execute as a tenant _guest user_](#set-up-to-execute-as-a-tenant-guest-user) to ensure your user is configured properly. You will likely need support from the Microsoft Entra ID administrator of the tenant you are a guest in.
 
 _- or -_
 
@@ -53,28 +28,24 @@ _- or -_
 
 ### Set up to execute as a tenant _guest user_
 
-Your user is a guest user in the tenant or there are other hardened restrictions on the tenant, then your user must first be assigned the Microsoft Entra ID role '**Directory readers**'.
+Your user is a [guest user](https://learn.microsoft.com/entra/fundamentals/users-default-permissions#compare-member-and-guest-default-permissions) in the tenant or there are other [hardened restrictions](https://learn.microsoft.com/en-us/entra/identity/users/users-restrict-guest-permissions) on the tenant, then your user must first be assigned the Microsoft Entra ID role '**Directory readers**'. Work with the Microsoft Entra administrator for the tenant you are a guest in to have them assign the '**Directory readers**' [role to your guest account](https://learn.microsoft.com/entra/identity/role-based-access-control/manage-roles-portal).
 
-:bulb: [Compare member and guest default permissions](https://learn.microsoft.com/entra/fundamentals/users-default-permissions#compare-member-and-guest-default-permissions)
-
-:bulb: [Restrict guest access permissions in Microsoft Entra ID](https://docs.microsoft.com/azure/active-directory/enterprise-users/users-restrict-guest-permissions)
-
-Work with your Microsoft Entra '**Privileged Role Administrator**' or '**Global Administrator**' to assign the '**Directory readers**' [role to your guest account](https://learn.microsoft.com/entra/identity/role-based-access-control/manage-roles-portal).
-
-:arrow_down_small: Continue with [**2. Clone the Azure Governance Visualizer repository**](#2-clone-the-azure-governance-visualizer-repository).
+:arrow_down_small: Once that is configured, continue with [**2. Validate Azure permissions for your user**](#2-validate-azure-permissions-for-your-user).
 
 ### Set up to execute as a _service principal_
 
-You are planning on executing the script as a service principal instead of as your user. A service principal, by default, has no read permissions on users, groups, and other service principals, therefore you'll need to work with a Microsoft Entra ID administrator to grant additional permissions to the service principal. The following Microsoft Graph API permissions, with admin consent, need to be added:
+You are planning on executing the script as a service principal instead of as your user. A service principal, by default, has no read permissions on users, groups, and other service principals, therefore you'll need to work with a Microsoft Entra ID administrator to grant additional permissions to the service principal. The following Microsoft Graph API permissions, with admin consent, need to be granted:
 
-- **Application / Application.Read.All**
-- **Group / Group.Read.All**
-- **User / User.Read.All**
-- **PrivilegedAccess / PrivilegedAccess.Read.AzureResources**
+- '**Application / Application.Read.All**'
+- '**Group / Group.Read.All**'
+- '**User / User.Read.All**'
+- '**PrivilegedAccess / PrivilegedAccess.Read.AzureResources**'
+
+#### Assign Microsoft Graph permissions, if needed
 
 **:computer_mouse: Use the Microsoft Entra admin center to assign permissions to the service principal:**
 
-To grant API permissions and grant admin consent for the directory, the user performing the following steps must have '**Privileged Role Administrator**' or '**Global Administrator**' role assigned in Microsoft Entra ID.
+> To grant API permissions and admin consent for the directory, the user performing the following steps must have '**Privileged Role Administrator**' or '**Global Administrator**' role assigned in Microsoft Entra ID.
 
 1. Navigate to the [Microsoft Entra admin center](https://entra.microsoft.com/).
 1. Click on '**App registrations**'
@@ -96,14 +67,38 @@ Permissions and admin consent granted in Microsoft Entra ID for the service prin
 
 ![Permissions in Microsoft Entra ID](../img/aadpermissionsportal_4.jpg)
 
-## 2. Clone the Azure Governance Visualizer repository
+## 2. Validate Azure permissions for your user
+
+The identity executing the script (your user or the service principal) needs to have the '**Reader**' Azure RBAC role assignment on the **target management group**.
+
+### Assign Azure permissions, if needed
+
+If that permission is not yet assigned to your user or the service principal, a user with '**Microsoft.Authorization/roleAssignments/write**' permissions on the target management group scope (such as the built-in Azure RBAC role '**User Access Administrator**' or '**Owner**') is required to make the required permission changes.
+
+**:computer_mouse: Use the Azure portal to validate and assign the role:**
+
+Follow the instructions at [Assign Azure roles using the Azure portal](https://learn.microsoft.com/azure/role-based-access-control/role-assignments-portal) to grant Azure RBAC '**Reader**' role to the management group.
+
+**:keyboard: Use PowerShell to assign the role:**
+
+```powershell
+$objectId = "<objectId of the identity that will execute Azure Governance Visualizer>"
+$managementGroupId = "<managementGroupId>"
+
+New-AzRoleAssignment `
+-ObjectId $objectId `
+-RoleDefinitionName "Reader" `
+-Scope /providers/Microsoft.Management/managementGroups/$managementGroupId
+```
+
+## 3. Clone the Azure Governance Visualizer repository
 
 ```powershell
 Set-Location "c:\Git"
 git clone "https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting.git"
 ```
 
-## 2. Authenticate to Azure
+## 4. Authenticate to Azure
 
 **As your user:**
 
@@ -111,7 +106,9 @@ git clone "https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting.gi
 Connect-AzAccount -TenantId <TenantId> -UseDeviceAuthentication
 ```
 
-**As the configured service principal:**
+_- or -_
+
+**As the service principal:**
 
 Have the '**Application (client) ID**' of the app registration OR '**Application ID**' of the service principal (Enterprise application) and the secret of the app registration at hand.
 
@@ -124,7 +121,7 @@ User: Enter '**Application (client) ID**' of the App registration OR '**Applicat
 
 Password for user \<Id\>: Enter App registration's secret
 
-## 3. Run the Azure Governance Visualizer
+## 5. Run the Azure Governance Visualizer
 
 Familiarize yourself with the available [parameters](../README.md#parameters) for Azure Governance Visualizer.
 
@@ -137,3 +134,7 @@ If not using the `-OutputPath` parameter, all output will be created in the curr
 ```powershell
 c:\Git\Azure-MG-Sub-Governance-Reporting\pwsh\AzGovVizParallel.ps1 -ManagementGroupId <target Management Group Id> -OutputPath "c:\AzGovViz-Output"
 ```
+
+## 6. View the results
+
+TODO
