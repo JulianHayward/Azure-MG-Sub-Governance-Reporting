@@ -365,7 +365,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.3.6',
+    $ProductVersion = '6.3.7',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -12462,7 +12462,7 @@ function processStorageAccountAnalysis {
                     else {
                         try {
                             # ? https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/218#issuecomment-1854516882
-                            if($saProperties.gettype().Name -eq 'Byte[]') {
+                            if ($saProperties.gettype().Name -eq 'Byte[]') {
                                 $byteArray = [byte[]]$saProperties
                                 $saProperties = [System.Text.Encoding]::UTF8.GetString($byteArray)
                             }
@@ -12504,7 +12504,7 @@ function processStorageAccountAnalysis {
 
                     if ($listContainersSuccess -eq $true) {
                         # ? https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/218#issuecomment-1854516882
-                        if($listContainers.gettype().Name -eq 'Byte[]') {
+                        if ($listContainers.gettype().Name -eq 'Byte[]') {
                             $byteArray = [byte[]]$listContainers
                             $listContainers = [System.Text.Encoding]::UTF8.GetString($byteArray)
                         }
@@ -29076,10 +29076,10 @@ function validateLeastPrivilegeForUser {
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.Authorization/roleAssignments?api-version=2022-04-01&`$filter=principalId eq '$($azapicallConf['htParameters'].userObjectId)'"
     $method = 'GET'
     $getRoleAssignmentsForExecutingUserAtManagementGroupId = AzAPICall -AzAPICallConfiguration $azapicallConf -uri $uri
-    $nonReaderRolesAssigned = ($getRoleAssignmentsForExecutingUserAtManagementGroupId.properties.RoleDefinitionId | Sort-object -Unique).where({$_ -notlike '*acdd72a7-3385-48ef-bd42-f606fba81ae7'})
+    $nonReaderRolesAssigned = ($getRoleAssignmentsForExecutingUserAtManagementGroupId.properties.RoleDefinitionId | Sort-Object -Unique).where({ $_ -notlike '*acdd72a7-3385-48ef-bd42-f606fba81ae7' })
     if ($nonReaderRolesAssigned.Count -gt 0) {
-        Write-Host "* * * LEAST PRIVILEGE ADVICE" -ForegroundColor DarkRed
-        Write-Host "The Azure Governance Visualizer script is executed with more permissions than required."
+        Write-Host '* * * LEAST PRIVILEGE ADVICE' -ForegroundColor DarkRed
+        Write-Host 'The Azure Governance Visualizer script is executed with more permissions than required.'
         Write-Host "The executing identity '$($azapicallConf['checkContext'].Account.Id)' ($($azapicallConf['checkContext'].Account.Type)) Id: '$($azapicallConf['htparameters'].userObjectId)' has the following RBAC Role(s) assigned at Management Group scope '$ManagementGroupId':"
         foreach ($nonReaderRoleAssigned in $nonReaderRolesAssigned) {
             $currentTask = "Get RBAC Role definition '$nonReaderRoleAssigned'"
@@ -29090,14 +29090,14 @@ function validateLeastPrivilegeForUser {
             if ($getRole.properties.roleName -eq 'owner' -or $getRole.properties.roleName -eq 'contributor') {
                 Write-Host " - $($getRole.properties.roleName) ($($getRole.properties.type)) !!!"
             }
-            else{
+            else {
                 Write-Host " - $($getRole.properties.roleName) ($($getRole.properties.type))"
             }
         }
         Write-Host "The required Azure RBAC role at Management Group scope '$ManagementGroupId' is 'Reader' (acdd72a7-3385-48ef-bd42-f606fba81ae7)."
         Write-Host "Recommendation: consider executing the script in context of a Service Principal with least privilege. Review the Azure Governance Visualizer Setup Guide at 'https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/setup.md'"
         Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor DarkRed
-        pause
+        Pause
     }
     else {
         Write-Host "Azure Governance Visualizer Least Privilege check (Azure Resource side) for executing identity '$($azapicallConf['checkContext'].Account.Id)' ($($azapicallConf['checkContext'].Account.Type)) Id: '$($azapicallConf['htparameters'].userObjectId)' succeeded" -ForegroundColor Green
@@ -33863,25 +33863,31 @@ Write-Host " Initialize 'AzAPICall' succeeded" -ForegroundColor Green
 Write-Host " Setting `$ignoreARMLocation to `$false" -ForegroundColor Yellow
 $ignoreARMLocation = $false
 
-if ($azApiCallConf['htParameters'].ARMLocations.count -gt 0) {
-    Write-Host ''
-    Write-Host "Check if provided parameter value for -ARMLocation '$($ARMLocation)' is valid"
-    if ($azApiCallConf['htParameters'].ARMLocations -notcontains $ARMLocation) {
-        Write-Host " Parameter value for -ARMLocation '$($ARMLocation)' is not valid - please provide a valid ARMLocation" -ForegroundColor DarkRed
-        Write-Host " Valid ARMLocations: '$($azApiCallConf['htParameters'].ARMLocations -join ', ')'" -ForegroundColor Yellow
-        throw 'ARMLocation validation failed!'
-    }
-    else {
-        Write-Host " Parameter value for -ARMLocation '$($ARMLocation)' is valid" -ForegroundColor Green
-    }
-}
-else {
-    Write-Host ''
-    Write-Host "Skipping ARMLocation validation - no locations found in '`$azApiCallConf['htParameters'].ARMLocations'. (-SkipAzContextSubscriptionValidation = '$skipAzContextSubscriptionValidation')"
-    Write-Host " Setting `$ignoreARMLocation to `$true" -ForegroundColor Yellow
+if ($azApiCallConf['htParameters'].azureCloudEnvironment -ne 'AzureCloud') {
+    Write-Host " Non Public Cloud ($($azApiCallConf['htParameters'].azureCloudEnvironment)) -> Setting `$ignoreARMLocation to `$true" -ForegroundColor Yellow
     $ignoreARMLocation = $true
 }
 
+if (-not $ignoreARMLocation) {
+    if ($azApiCallConf['htParameters'].ARMLocations.count -gt 0) {
+        Write-Host ''
+        Write-Host "Check if provided parameter value for -ARMLocation '$($ARMLocation)' is valid"
+        if ($azApiCallConf['htParameters'].ARMLocations -notcontains $ARMLocation) {
+            Write-Host " Parameter value for -ARMLocation '$($ARMLocation)' is not valid - please provide a valid ARMLocation" -ForegroundColor DarkRed
+            Write-Host " Valid ARMLocations: '$($azApiCallConf['htParameters'].ARMLocations -join ', ')'" -ForegroundColor Yellow
+            throw 'ARMLocation validation failed!'
+        }
+        else {
+            Write-Host " Parameter value for -ARMLocation '$($ARMLocation)' is valid" -ForegroundColor Green
+        }
+    }
+    else {
+        Write-Host ''
+        Write-Host "Skipping ARMLocation validation - no locations found in '`$azApiCallConf['htParameters'].ARMLocations'. (-SkipAzContextSubscriptionValidation = '$skipAzContextSubscriptionValidation')"
+        Write-Host " Setting `$ignoreARMLocation to `$true" -ForegroundColor Yellow
+        $ignoreARMLocation = $true
+    }
+}
 #EndRegion initAZAPICall
 
 #region required AzAPICall version

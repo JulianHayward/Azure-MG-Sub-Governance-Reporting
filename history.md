@@ -4,6 +4,10 @@
 
 ### Azure Governance Visualizer version 6
 
+__Changes__ (2024-Jan-08 / 6.3.7 Minor)
+
+* fix: Ignore `ARMLocation` in case not Public Cloud (AzureCloud)
+
 __Changes__ (2023-Dec-17 / 6.3.6 Minor)
 
 * fix: processing of Service Principal names that contain special characters

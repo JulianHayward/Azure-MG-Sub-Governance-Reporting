@@ -78,17 +78,9 @@ The [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Gov
 
 ## Release history
 
-__Changes__ (2023-Dec-17 / 6.3.6 Minor)
+__Changes__ (2024-Jan-08 / 6.3.7 Minor)
 
-* fix: processing of Service Principal names that contain special characters
-* fix: RBAC reporting correct RBAC Role assignment related Policy assignment Policy definition displayName
-* update ARM API-version for CostManagement. Using `2023-03-01` instead of `2019-11-01`
-
-__Changes__ (2023-Dec-15 / 6.3.5 Minor)
-
-* Checking if the response of the storage account properties request is a byte array (type 'byte[]') and decode it to a string
-* Different handling of BOM (Byte order mark) for XML returns on storage account properties request (since Powershell version 7.4.0)
-* use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.85
+* fix: Ignore `ARMLocation` in case not Public Cloud (AzureCloud)
 
 [Full release history](history.md)
 
