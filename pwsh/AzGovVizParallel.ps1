@@ -33865,30 +33865,31 @@ Write-Host " Initialize 'AzAPICall' succeeded" -ForegroundColor Green
 Write-Host " Setting `$ignoreARMLocation to `$false" -ForegroundColor Yellow
 $ignoreARMLocation = $false
 
-if ($azApiCallConf['htParameters'].ARMLocations.count -gt 0) {
-    Write-Host ''
-    Write-Host "Check if provided parameter value for -ARMLocation '$($ARMLocation)' is valid"
-    if ($azApiCallConf['htParameters'].ARMLocations -notcontains $ARMLocation) {
-        Write-Host " Parameter value for -ARMLocation '$($ARMLocation)' is not valid - please provide a valid ARMLocation" -ForegroundColor DarkRed
-        Write-Host " Valid ARMLocations: '$($azApiCallConf['htParameters'].ARMLocations -join ', ')'" -ForegroundColor Yellow
-        throw 'ARMLocation validation failed!'
-    }
-    else {
-        Write-Host " Parameter value for -ARMLocation '$($ARMLocation)' is valid" -ForegroundColor Green
-    }
-}
-else {
-    Write-Host ''
-    Write-Host "Skipping ARMLocation validation - no locations found in '`$azApiCallConf['htParameters'].ARMLocations'. (-SkipAzContextSubscriptionValidation = '$skipAzContextSubscriptionValidation')"
-    Write-Host " Setting `$ignoreARMLocation to `$true" -ForegroundColor Yellow
-    $ignoreARMLocation = $true
-}
-
 if ($azApiCallConf['htParameters'].azureCloudEnvironment -ne 'AzureCloud') {
     Write-Host " Non Public Cloud ($($azApiCallConf['htParameters'].azureCloudEnvironment)) -> Setting `$ignoreARMLocation to `$true" -ForegroundColor Yellow
     $ignoreARMLocation = $true
 }
 
+if (-not $ignoreARMLocation) {
+    if ($azApiCallConf['htParameters'].ARMLocations.count -gt 0) {
+        Write-Host ''
+        Write-Host "Check if provided parameter value for -ARMLocation '$($ARMLocation)' is valid"
+        if ($azApiCallConf['htParameters'].ARMLocations -notcontains $ARMLocation) {
+            Write-Host " Parameter value for -ARMLocation '$($ARMLocation)' is not valid - please provide a valid ARMLocation" -ForegroundColor DarkRed
+            Write-Host " Valid ARMLocations: '$($azApiCallConf['htParameters'].ARMLocations -join ', ')'" -ForegroundColor Yellow
+            throw 'ARMLocation validation failed!'
+        }
+        else {
+            Write-Host " Parameter value for -ARMLocation '$($ARMLocation)' is valid" -ForegroundColor Green
+        }
+    }
+    else {
+        Write-Host ''
+        Write-Host "Skipping ARMLocation validation - no locations found in '`$azApiCallConf['htParameters'].ARMLocations'. (-SkipAzContextSubscriptionValidation = '$skipAzContextSubscriptionValidation')"
+        Write-Host " Setting `$ignoreARMLocation to `$true" -ForegroundColor Yellow
+        $ignoreARMLocation = $true
+    }
+}
 #EndRegion initAZAPICall
 
 #region required AzAPICall version
