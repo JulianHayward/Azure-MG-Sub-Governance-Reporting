@@ -93,9 +93,11 @@ New-AzRoleAssignment `
 
 ## 3. Clone the Azure Governance Visualizer repository
 
+You'll need a copy of this repository on your workstation.
+
 ```powershell
-Set-Location "c:\Git"
 git clone "https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting.git"
+Set-Location "Azure-MG-Sub-Governance-Reporting"
 ```
 
 ## 4. Authenticate to Azure
@@ -123,18 +125,24 @@ Password for user \<Id\>: Enter App registration's secret
 
 ## 5. Run the Azure Governance Visualizer
 
-Familiarize yourself with the available [parameters](../README.md#parameters) for Azure Governance Visualizer.
+Familiarize yourself with the available [parameters](../README.md#parameters) for Azure Governance Visualizer. The following example will create the output in directory **c:\AzGovViz-Output** (directory must exist)
 
 ```powershell
-c:\Git\Azure-MG-Sub-Governance-Reporting\pwsh\AzGovVizParallel.ps1 -ManagementGroupId <target Management Group Id>
-```
-
-If not using the `-OutputPath` parameter, all output will be created in the current directory. The following example will create the output in directory c:\AzGovViz-Output (directory must exist)
-
-```powershell
-c:\Git\Azure-MG-Sub-Governance-Reporting\pwsh\AzGovVizParallel.ps1 -ManagementGroupId <target Management Group Id> -OutputPath "c:\AzGovViz-Output"
+.\pwsh\AzGovVizParallel.ps1 -ManagementGroupId <target Management Group Id> -OutputPath "c:\AzGovViz-Output"
 ```
 
 ## 6. View the results
 
-TODO
+Open the generated HTML in your default browser.
+
+```powershell
+Set-Location -Path "c:\AzGovViz-Output"
+Get-ChildItem
+Invoke-Item ".\AzGovViz*.html"
+```
+
+There is also a markdown version available as well in the output directory.
+
+## Next steps
+
+Consider a solution that automates the execution of this process to have regular snapshots of this data available for review. This repo has instructions available to automate using [Azure DevOps](azure-devops.md) or [GitHub](github.md). For report hosting, consider using the [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) which will give you an example on how to host the output on Azure Web Apps in conjunction with the automation.
