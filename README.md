@@ -1,9 +1,10 @@
 # Azure Governance Visualizer aka AzGovViz
 
-Do you want to get granular insights on your technical Azure Governance implementation? - document it in CSV, HTML, Markdown and JSON?
-Azure Governance Visualizer is a PowerShell based script that iterates your Azure Tenant´s Management Group hierarchy down to Subscription level. It captures most relevant Azure governance capabilities such as Azure Policy, RBAC and Blueprints and a lot more. From the collected data Azure Governance Visualizer provides visibility on your __HierarchyMap__, creates a __TenantSummary__, creates __DefinitionInsights__ and builds granular __ScopeInsights__ on Management Groups and Subscriptions. The technical requirements as well as the required permissions are minimal.
+_Do you want to get granular insights on your technical Azure Governance implementation and document it in CSV, HTML, Markdown, and JSON?_
 
-You can run the script either for your Tenant Root Group or any other Management Group.
+Azure Governance Visualizer is a PowerShell based script that iterates your Azure tenant's management group hierarchy down to the subscription level. It captures most relevant Azure governance capabilities such as Azure Policy, RBAC, and a lot more. From the collected data Azure Governance Visualizer provides visibility on your __HierarchyMap__, creates a __TenantSummary__, creates __DefinitionInsights__ and builds granular __ScopeInsights__ on Azure management groups and subscriptions. The technical requirements as well as the required permissions are minimal.
+
+You can run the script either for your tenant root management group or any other management group.
 
 ## Mission
 
@@ -14,7 +15,7 @@ Challenges:
 * Holistic overview on governance implementation
 * Connecting the dots
 
-Azure Governance Visualizer is intended to help you to get a holistic overview on your technical Azure Governance implementation by __connecting the dots__
+Azure Governance Visualizer is intended to help you to get a holistic overview on your technical Azure Governance implementation by __connecting the dots__.
 
 ![ConnectingDot](img/AzGovVizConnectingDots_v4.2.png)
 
@@ -22,19 +23,18 @@ Azure Governance Visualizer is intended to help you to get a holistic overview o
 
 ### Microsoft Cloud Adoption Framework (CAF)
 
-Listed as [tool](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/reference/tools-templates#govern) for the Govern discipline in the Microsoft Cloud Adoption Framework
-
-Included in the Microsoft Cloud Adoption Framework´s [Strategy-Plan-Ready-Gov](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template
+* Listed as [tool](https://learn.microsoft.com/azure/cloud-adoption-framework/resources/tools-templates#govern) for the Govern discipline in the Microsoft Cloud Adoption Framework.
+* Included in the Cloud Adoption Framework's [Strategy-Plan-Ready-Governance](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template.
 
 ### Microsoft Well Architected Framework (WAF)
 
-Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/architecture/framework/security/monitor-tools) in the Microsoft Well Architected Framework
+* Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/architecture/framework/security/monitor-tools) in the Microsoft Well Architected Framework
 
-### Azure Governance Visualizer Accelerator
+### Azure Governance Visualizer accelerator
 
-The [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) provides an easy and fast deployment process that automates the creation and publishing of AzGovViz to an Azure Web Application and provides automation to configuring the pre-requisites for AzGovViz.
+The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) provides an easy and fast deployment process that automates the creation and publishing of AzGovViz to an Azure Web Application and provides automation to configuring the pre-requisites for AzGovViz.
 
-### ChatGPT
+## ChatGPT
 
 ![ChatGPT](img/chatGPT.png)
 
@@ -45,8 +45,8 @@ The [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Gov
   * [Azure Governance Visualizer @ Microsoft CAF \& WAF](#azure-governance-visualizer--microsoft-caf--waf)
     * [Microsoft Cloud Adoption Framework (CAF)](#microsoft-cloud-adoption-framework-caf)
     * [Microsoft Well Architected Framework (WAF)](#microsoft-well-architected-framework-waf)
-    * [Azure Governance Visualizer Accelerator](#azure-governance-visualizer-accelerator)
-    * [ChatGPT](#chatgpt)
+    * [Azure Governance Visualizer accelerator](#azure-governance-visualizer-accelerator)
+  * [ChatGPT](#chatgpt)
   * [Content](#content)
   * [Release history](#release-history)
   * [Demo](#demo)
@@ -86,7 +86,7 @@ __Changes__ (2024-Jan-08 / 6.3.7 Minor)
 
 ## Demo
 
-<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html" target="_blank">![Demo](img/demo4_66.png)</a>
+[![Demo](img/demo4_66.png)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)
 
 [Demo (v6_major_20220927_1)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)
 
@@ -100,95 +100,95 @@ More [demo output](https://github.com/JulianHayward/AzGovViz)
 
 ### Slideset
 
-Short presentation on Azure Governance Visualizer [[download](slides/AzGovViz_intro.pdf)]
+Short presentation on Azure Governance Visualizer: [download](slides/AzGovViz_intro.pdf)
 
 ## Features
 
-* __Hierarchy of Management Groups__
-  * Builds a visual hierarchy of your Management Group setup including counts on linked Subscriptions, Policy assignments, scoped Policy/Set definitions and Role assignments per Management Group
+* __Hierarchy of Azure management groups__
+  * Builds a visual hierarchy of your management group setup including counts on linked Azure subscriptions, Azure Policy assignments, scoped policy/set definitions and role assignments per management group
 * __Azure Policy__
-  * Custom Policy definitions
+  * Custom policy definitions
     * Scope information
     * Policy effect
-    * If Policy effect is DeployIfNotExists (DINE) will show the specified RBAC Role
+    * If policy effect is DeployIfNotExists (DINE) will show the specified Azure RBAC role
     * List of assignments
     * Usage in custom PolicySet definitions
     * System metadata 'createdOn, createdBy, updatedOn, updatedBy' ('createdBy', 'updatedBy' identity is fully resolved)
-  * Orphaned custom Policy definitions
-    * List of custom Policy definitions that matches the following criteria:
+  * Orphaned custom policy definitions
+    * List of custom policy definitions that matches the following criteria:
       * Policy definition is not used in any custom PolicySet definition
-      * No Policy assignment exists for the Policy definition
+      * No policy assignment exists for the policy definition
   * Custom PolicySet definitions
     * Scope information
     * List unique assignments
-    * List of Policy definitions used
+    * List of policy definitions used
   * Orphaned custom PolicySet definitions
-    * Criteria: no Policy assignment exists for the PolicySet definition
-  * Custom PolicySet definitions using deprecated built-in Policy definitions
-  * Policy assignments of deprecated built-in Policy definition
-  * Policy Exemptions
-    * Lists all Exemptions (scopes: Management Groups, Subscriptions, ResourceGroups, Resources)
-    * Enrich information on Exemption scope
-    * Summary on expired Exemptions
+    * Criteria: no policy assignment exists for the PolicySet definition
+  * Custom PolicySet definitions using deprecated built-in policy definitions
+  * Policy assignments of deprecated built-in policy definition
+  * Policy exemptions
+    * Lists all exemptions (scopes: management groups, subscriptions, resource groups, and resources)
+    * Enrich information on exemption scope
+    * Summary on expired exemptions
   * Policy assignments orphaned
-    * Policy assignments's Policy definition does not exist / likely Management Group scoped Policy defintion - Management Group deleted
-  * Policy assignments throughout the entirety of scopes (Management Groups, Subscriptions and Resource Groups)
-    * Core information on Policy assignments
-      * NonCompliance Message on Policy assignment for a PolicySet will only show the default non-compliance message
-    * Advanced/enriched information on Policy assignments
+    * Policy assignments's policy definition does not exist / likely management group scoped Policy definition - management group deleted
+  * Policy assignments throughout the entirety of scopes (management groups, subscriptions, and resource groups)
+    * Core information on policy assignments
+      * NonCompliance message on policy assignment for a PolicySet will only show the default non-compliance message
+    * Advanced/enriched information on policy assignments
       * Policy assignment scope (at scope/inheritance)
-      * Indicates if scope is excluded from Policy assignment
-      * Indicates if Exemption applies for scope
-      * Policy/Resource Compliance (Policy: NonCompliant, Compliant; Resource: NonCompliant, Compliant, Conflicting)
-      * Related RBAC Role assignments (if Policy effect is DeployIfNotExists (DINE) or Modify)
-      * Resolved Managed Identity (if Policy effect is DeployIfNotExists (DINE) or Modify)
+      * Indicates if scope is excluded from policy assignment
+      * Indicates if exemption applies for scope
+      * Policy/resource compliance (Policy: NonCompliant, Compliant; Resource: NonCompliant, Compliant, Conflicting)
+      * Related Azure RBAC role assignments (if policy effect is DeployIfNotExists (DINE) or Modify)
+      * Resolved managed identity (if policy effect is DeployIfNotExists (DINE) or Modify)
       * System metadata 'createdOn, createdBy, updatedOn, updatedBy' ('createdBy', 'updatedBy' identity is fully resolved)
       * Parameters used
-  * ALZ Policy Version Checker - Azure Landing Zones Policy Version Checker for Policy and Set definitions. Azure Governance Visualizer will clone the ALZ GitHub repository and collect the ALZ policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ Policy Version Checker results will be displayed in the __TenantSummary__ and a CSV export `*_ALZPolicyVersionChecker.csv` will be provided.
-  * Policy Remediaton - list all remediatable policies including relevant information such as assignment and definition data
-* __Role-Based Access Control (RBAC)__
-  * Custom Role definitions
+  * Azure landing zone (ALZ) policy version checker for policy and set definitions. Azure Governance Visualizer will clone the Azure landing zone GitHub repository and collect the Azure landing zone policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ policy version checker results will be displayed in the __TenantSummary__ and a CSV export `*_ALZPolicyVersionChecker.csv` will be provided.
+  * Policy Remediation - list all remediatable policies including relevant information such as assignment and definition data
+* __Azure role-based access control (RBAC)__
+  * Custom role definitions
     * List assignable scopes
     * System metadata 'createdOn, createdBy, updatedOn, updatedBy' ('createdBy', 'updatedBy' identity is fully resolved)
-  * Orphaned custom Role definitions
-    * List of custom Role definitions that matches the following criteria:
-      * Role definition is not used in any Role assignment
-      * Role is not used in a Policy definition´s rule (roleDefinitionIds)
-  * Orphaned Role assignments
-    * List of Role assignments that matches the following criteria:
+  * Orphaned custom role definitions
+    * List of custom role definitions that matches the following criteria:
+      * Role definition is not used in any role assignment
+      * Role is not used in a policy definition's rule (roleDefinitionIds)
+  * Orphaned role assignments
+    * List of role assignments that matches the following criteria:
       * Role definition was deleted although and assignment existed
-      * Role assignmet's target identity (User, Group, ServicePrincipal) was deleted
-  * Role assignments throughout the entirety of scopes (Management Groups, Subscriptions, Resource Groups and Resources)
-    * Core information on Role assignments
-    * Advanced information on Role assignments
+      * Role assignment's target identity (User, Group, ServicePrincipal) was deleted
+  * Role assignments throughout the entirety of scopes (management groups, subscriptions, resource groups, and resources)
+    * Core information on role assignments
+    * Advanced information on role assignments
       * Role assignment scope (at scope / inheritance)
-      * For Role Assignments on Groups the Microsoft Entra ID (AAD) Group members are fully resolved. With this capability Azure Governance Visualizer can ultimately provide holistic insights on permissions granted
-      * For Role Assignments on Groups the Microsoft Entra ID (AAD) Group members count (transitive) will be reported
+      * For role assignments on groups the Microsoft Entra group members are fully resolved. With this capability, Azure Governance Visualizer can ultimately provide holistic insights on permissions granted.
+      * For role assignments on groups the Microsoft Entra group members count (transitive) will be reported
       * For identity-type == 'ServicePrincipal' the type (Application (internal/external) / ManagedIdentity (System assigned/User assigned)) will be revealed
       * For identity-type == 'User' the userType (Member/Guest) will be revealed
-      * Related Policy assignments (Policy assignment that leverages the DeployIfNotExists (DINE) or Modify effect)
+      * Related policy assignments (Policy assignment that use the DeployIfNotExists (DINE) or Modify effect)
       * System metadata 'createdOn, createdBy' ('createdBy' identity is fully resolved)
-      * Determine if the Role assignment is 'standing' or PIM (Privileged Identity Management) managed
-      * Determine if the Role assignmet's Role definition is capable to write Role assignments
-  * PIM (Privileged Identity Management) eligibility for Role assignments
-    * Get a full report of all PIM eligible Role assignments for Management Groups and Subscriptions, including resolved User members of Microsoft Entra ID (AAD) Groups that have assigned eligibility
-    * &#x1F4A1; Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+      * Determine if the role assignment is 'standing' or PIM (Privileged Identity Management) managed
+      * Determine if the role assignment's role definition is capable to write role assignments
+  * PIM (Privileged Identity Management) eligibility for role assignments
+    * Get a full report of all PIM eligible role assignments for management groups and subscriptions, including resolved user members of Microsoft Entra ID groups that have assigned eligibility
+    * &#x1F4A1; Note: this feature requires you to execute as service principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
   * Role assignments ClassicAdministrators
-  * Security & Best practice analysis
-    * Existence of custom Role definition that reflect 'Owner' permissions
-    * Report all Role definitions that are capable to write Role assignments, list all Role assignments for those Role definitions
+  * Security & best practice analysis
+    * Existence of custom role definition that reflect 'Owner' permissions
+    * Report all role definitions that are capable to write role assignments, list all role assignments for those role definitions
     * Role assignments for 'Owner' permissions on identity-type == 'ServicePrincipal'
     * Role assignments for 'Owner' permissions on identity-type != 'Group'
     * Role assignments for 'User Access Administrator' permissions on identity-type != 'Group'
-    * High priviledge Role assignments for 'Guest Users' (Owner & User Access Administrator)
+    * High privilege role assignments for 'Guest Users' (Owner & User Access Administrator)
 * __Blueprints__
   * Blueprint scopes and assignments
   * Orphaned Blueprints
-* __Management Groups__
-  * Management Group count, level/depth, MG children, Sub children
-  * Hierarchy Settings | Default Management Group Id
-  * Hierarchy Settings | Require authorization for Management Group creation
-* __Subscriptions, Resources & Defender__
+* __Management groups__
+  * Management group count, level/depth, management group children, and sub children
+  * Hierarchy Settings | Default management group ID
+  * Hierarchy Settings | Require authorization for management group creation
+* __Subscriptions, resources & Microsoft Defender__
   * Subscription insights
     * State
     * QuotaId
@@ -346,7 +346,6 @@ VMConnection
 Check the detailed __[Setup Guide](setup.md)__
 
 * You can leverage the [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) to automate the deployment process.
-
 
 ## Technical documentation
 
