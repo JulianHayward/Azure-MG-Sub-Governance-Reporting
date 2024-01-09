@@ -1,181 +1,126 @@
 
 # Configure and run Azure Governance Visualizer from GitHub
 
-Also, most steps have both **portal based** ( :computer_mouse: ) and **PowerShell based** ( :keyboard: ) instructions. Use whichever you feel is appropriate for your situation, they both will produce the same results.
+GitHub can be used to orchestrate regular execution of Azure Governance Visualizer against your target management group. This allows headless, automated execution along with the ability to set least privileges on the executing account. It uses GitHub actions as the workflow orchestrator. These instructions will get you up and running from GitHub.
 
-## Create GitHub repository
+## Prerequisites
 
-Create a 'private' repository
+- A GitHub organization in which you have enough permissions to create a repository.
 
-## Import Code
+## 1. Create GitHub repository
 
-Click on 'Import code'
+1. Go to <https://github.com/new/import?visibility=private> to start the repository creation process.
+1. Use '**https:\//github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting.git**' as the clone URL.
+1. Select your existing GitHub organization.
+1. Select 'Private'
+1. Click on 'Begin import'
+1. Navigate to your newly created repository
 
-Use '<https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting.git>' as clone URL
+If you'd instead like to perform this from the GitHub CLI, see [gh repo create](https://cli.github.com/manual/gh_repo_create) for instructions.
 
-Click on 'Begin import'
+## 2. Create and configure a service principal
 
-Navigate to your newly created repository
-In the folder `./github/workflows` two worklows are available:
+For GitHub actions to authenticate and connect to Azure you need to create a service principal. This will allow the Azure Governance Visualizer scripts to connect to Azure resources and Microsoft Graph with a properly permissioned identity.
 
-1. [AzGovViz.yml](#azgovviz-yaml)
-Use this workflow if you want to store your Application (App registration) secret in GitHub
+There are a few options to create the service principal, both will result in least privilege access:
 
-2. [AzGovViz_OIDC.yml](#azgovviz-oidc-yaml)
-Use this workflow if you want leverage the [OIDC (Open ID Connect) feature](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-azure) - no secret stored in GitHub
+- **Option 1** - [Use workload identity federation](#option-1---use-workload-identity-federation-recommended) _(This is the recommended option.)_
+- **Option 2** - [Create and manage a service principal](#option-2---create-and-manage-a-service-principal)
 
-## Azure Governance Visualizer YAML
+### Option 1 - Use workload identity federation (recommended)
 
-For the GitHub Actiom to authenticate and connect to Azure we need to create Service Principal (Application)
+This option uses Microsoft Entra workload identity federation to manage a service principal you create but without also the need for you to manage secrets or secret expiration. This process uses the [OIDC (OpenID Connect) feature](https://docs.github.com/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-azure) of GitHub workflows. This process uses the **[.github/workflows/AzGovViz_OIDC.yml](../.github/workflows/AzGovViz_OIDC.yml)** workflow file and is the recommended method.
 
-In the Azure Portal navigate to 'Microsoft Entra ID (AAD)'
+1. Navigate to the [Microsoft Entra admin center](https://entra.microsoft.com/)
+1. Click on '**App registrations**'
+1. Click on '**New registration**'
+1. Name your application (e.g. 'AzureGovernanceVisualizer_SC')
+1. Click '**Register**'
+1. Your App registration has been created, in the '**Overview**' copy the '**Application (client) ID**' as we will need it later to setup the connection
+1. Under '**Manage**' click on '**Certificates & Secrets**'
+1. Click on '**Federated credentials**'
+1. Click 'Add credential'
+1. Select Federation credential scenario 'GitHub Actions deploying Azure Resources'
+1. Fill the field 'Organization' with your GitHub Organization name
+1. Fill the field 'Repository' with your GitHub repository name
+1. For the entity type select 'Branch'
+1. Fill the field 'GitHub branch name' with your branch name (default is 'master' if you imported the Azure Governance Visualizer repository)
+1. Fill the field 'Name' with a name (e.g. AzureGovernanceVisualizer_GitHub_Actions)
+1. Click 'Add'
 
-* Click on '**App registrations**'
-* Click on '**New registration**'
-* Name your application (e.g. 'AzureGovernanceVisualizer_SC')
-* Click '**Register**'
-* Your App registration has been created, in the '**Overview**' copy the '**Application (client) ID**' as we will need it later to setup the secrets in GitHub
-* Under '**Manage**' click on '**Certificates & Secrets**'
-* Click on '**New client secret**'
-* Provide a good description and choose the expiry time based on your need and click '**Add**'
-* A new client secret has been created, copy the secret´s value as we will need it later to setup the secrets in GitHub
+#### Store the service principal configuration in GitHub
 
-### Store the credentials in GitHub (Azure Governance Visualizer YAML)
+1. In the GitHub repository, navigate to 'Settings'
+1. Click on 'Secrets'
+1. Click on 'Actions'
+1. Click 'New repository secret'
+1. Create the following three secrets:
+   - Name: **CLIENT_ID**
+     Value: `Application (client) ID (GUID)`
+   - Name: **TENANT_ID**
+     Value: `Tenant ID (GUID)`
+   - Name: **SUBSCRIPTION_ID**
+     Value: `Subscription ID (GUID)`
 
-In GitHub navigate to 'Settings'
+### Option 2 - Create and manage a service principal
 
-* Click on 'Secrets'
-* Click on 'Actions'
-* Click 'New repository secret'
-  * Name: CREDS
-  * Value:  
+This other option has you creating a service principal and requires you to manage secrets and secret expiration for that service principal. This process uses the **[.github/workflows/AzGovViz.yml](../.github/workflows/AzGovViz.yml)** workflow file.
 
-```
-{
-   "tenantId": "<GUID>",
-   "subscriptionId": "<GUID>",
-   "clientId": "<GUID>",
-   "clientSecret": "<GUID>"
-}
-```
+1. Navigate to the [Microsoft Entra admin center](https://entra.microsoft.com/)
+1. Click on '**App registrations**'
+1. Name your application (e.g. 'AzureGovernanceVisualizer_SC')
+1. Click '**Register**'
+1. Your App registration has been created, in the '**Overview**' copy the '**Application (client) ID**' as we will need it later to setup the secrets in GitHub
+1. Under '**Manage**' click on '**Certificates & Secrets**'
+1. Click on '**New client secret**'
+1. Provide a good description and choose the expiry time based on your need and click '**Add**'
+1. A new client secret has been created, copy the secret's value as we will need it later to setup the secrets in GitHub
 
-### Workflow permissions
+#### Store the newly created credentials in GitHub
 
-In GitHub navigate to 'Settings'  
+1. In the GitHub repository, navigate to 'Settings'
+1. Click on 'Secrets'
+1. Click on 'Actions'
+1. Click 'New repository secret'
+   - Name: **CREDS**
+   - Value:
 
-* Click on 'Actions'  
-* Click on 'General'  
-* Under 'Workflow permissions' select '**Read and write permissions**'  
-* Click 'Save'
+     ```json
+     {
+        "tenantId": "<GUID>",
+        "subscriptionId": "<GUID>",
+        "clientId": "<GUID>",
+        "clientSecret": "<GUID>"
+     }
+     ```
 
-### Edit the workflow YAML file (Azure Governance Visualizer YAML)
+## 3. Set GitHub workflow permissions
 
-* In the folder `./github/workflows` edit the YAML file `AzGovViz.yml`
-* In the `env` section enter you Management Group ID
-* If you want to continuously run Azure Governance Visualizer then enable the `schedule` in the `on` section
+1. In the GitHub repository, navigate to 'Settings'
+1. Click on 'Actions'
+1. Click on 'General'
+1. Under 'Workflow permissions' select '**Read and write permissions**'
+1. Click 'Save'
 
-### Run Azure Governance Visualizer in GitHub Actions (Azure Governance Visualizer YAML)
+## 4. Configure the workflow YAML file
 
-In GitHub navigate to 'Actions'
+1. In the folder `./github/workflows` edit the appropriate YAML file based on your choice in Step 2
+   - **[AzGovViz_OIDC.yml](../.github/workflows/AzGovViz_OIDC.yml)** for Option 1 (workload identity federation)
+   - **[AzGovViz.yml](../.github/workflows/AzGovViz.yml)** for Option 2 (Normal service principal)
+1. In the `env` section enter your target Azure management group ID
+1. If you want to continuously run Azure Governance Visualizer then enable the `schedule` in the `on` section
 
-* Click 'Enable GitHub Actions on this repository'
-* Select the Azure Governance Visualizer workflow
-* Click 'Run workflow'
+## 5. Run Azure Governance Visualizer in GitHub actions
 
-## Azure Governance Visualizer OIDC YAML
+1. In the GitHub repository, navigate to 'Actions'
+1. Click 'Enable GitHub Actions on this repository'
+1. Select the configured Azure Governance Visualizer workflow file
+1. Click 'Run workflow'
 
-For the GitHub Actiom to authenticate and connect to Azure we need to create Service Principal (Application). Using OIDC we will not have the requirement to create a secret, nore store it in GitHub - awesome :)
+## 6. Publish the Azure Governance Visualizer HTML to a Azure Web App _(Optional)_
 
-* Navigate to 'Microsoft Entra ID (AAD)'
-* Click on '**App registrations**'
-* Click on '**New registration**'
-* Name your application (e.g. 'AzureGovernanceVisualizer_SC')
-* Click '**Register**'
-* Your App registration has been created, in the '**Overview**' copy the '**Application (client) ID**' as we will need it later to setup the secrets in GitHub
-* Under '**Manage**' click on '**Certificates & Secrets**'
-* Click on '**Federated credentials**'
-* Click 'Add credential'
-* Select Federation credential scenario 'GitHub Actions deploying Azure Resources'
-* Fill the field 'Organization' with your GitHub Organization name
-* Fill the field 'Repository' with your GitHub repository name
-* For the entity type select 'Branch'
-* Fill the field 'GitHub branch name' with your branch name (default is 'master' if you imported the Azure Governance Visualizer repository)
-* Fill the field 'Name' with a name (e.g. AzureGovernanceVisualizer_GitHub_Actions)
-* Click 'Add'
+There are instances where you may want to publish the HTML output to a webapp so that anybody in the business can see up to date status of the Azure governance. The instructions for this can be found in the [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator?tab=readme-ov-file#5-create-a-microsoft-entra-application-for-user-authentication-to-the-azure-web-app-that-will-host-azgovviz) repo.
 
-### Store the credentials in GitHub (Azure Governance Visualizer OIDC YAML)
+## Next steps
 
-In GitHub navigate to 'Settings'
-
-* Click on 'Secrets'  
-* Click on 'Actions'  
-* Click 'New repository secret'  
-* Create the following three secrets:  
-  * Name: CLIENT_ID  
-      Value: `Application (client) ID`  
-  * Name: TENANT_ID  
-      Value: `Tenant ID`  
-  * Name: SUBSCRIPTION_ID  
-      Value: `Subscription ID`  
-
-### Workflow permissions
-
-In GitHub navigate to 'Settings'  
-
-* Click on 'Actions'  
-* Click on 'General'  
-* Under 'Workflow permissions' select '**Read and write permissions**'  
-* Click 'Save'
-
-### Edit the workflow YAML file (Azure Governance Visualizer OIDC YAML)
-
-* In the folder `./github/workflows` edit the YAML file `AzGovViz_OIDC.yml`
-* In the `env` section enter you Management Group ID
-* If you want to continuously run Azure Governance Visualizer then enable the `schedule` in the `on` section
-
-### Run Azure Governance Visualizer in GitHub Actions (Azure Governance Visualizer OIDC YAML)
-
-In GitHub navigate to 'Actions'
-
-* Click 'Enable GitHub Actions on this repository'
-* Select the AzGovViz_OIDC workflow
-* Click 'Run workflow'
-
-# Azure Governance Visualizer GitHub Codespaces
-
-Note: Codespaces is available for organizations using GitHub Team or GitHub Enterprise Cloud. [Quickstart for Codespaces](https://docs.github.com/en/codespaces/getting-started/quickstart)
-
-![alt text](img/codespaces0.png "Azure Governance Visualizer GitHub Codespaces")
-
-![alt text](img/codespaces1.png "Azure Governance Visualizer GitHub Codespaces")
-
-![alt text](img/codespaces2.png "Azure Governance Visualizer GitHub Codespaces")
-
-![alt text](img/codespaces3.png "Azure Governance Visualizer GitHub Codespaces")
-
-![alt text](img/codespaces4.png "Azure Governance Visualizer GitHub Codespaces")
-
-## Optional Publishing the Azure Governance Visualizer HTML to a Azure Web App
-
-There are instances where you may want to publish the HTML output to a webapp so that anybody in the business can see up to date status of the Azure governance.
-
-There are a few models to do this, the option below is one way to get you started.
-
-### Prerequisites
-
-* Deploy a simple webapp on Azure. This can be the smallest SKU or a FREE SKU. It doesn't matter whether you choose Windows or Linux as the platform  
-![alt text](img/webapp_create.png "Web App Create")
-* Step through the configuration. I typically use the Code for the publish and then select the Runtime stack that you standardize on
-![alt text](img/webapp_configure.png "Web App Configure")
-* No need to configure anything, unless your organization policies require you to do so  
-NOTE: it is a good practice to tag your resource for operational and finance reasons
-* In the webapp _Configuration_ add the name of the HTML output file to the _Default Documents_  
-![alt text](img/webapp_defaultdocs.png "Web App Default documents")
-* Make sure to configure Authentication!  
-![alt text](img/webapp_authentication.png "Web App Authentication")
-
-### Configure
-
-* Assign the Service Principal used in GitHub with RBAC Role **Website Contributor** on the Azure Web App
-* Edit the `.github/workflows/AzGovViz_OIDC.yml` or `.github/workflows/AzGovViz.yml` file  
-![alt text](img/webapp_GitHub_yml.png "GitHub YAML variables")
+For report hosting, consider using the [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) which will give you an example on how to host the output on Azure Web Apps in conjunction with this GitHub automation.

@@ -5,8 +5,6 @@ Azure DevOps can be used to orchestrate regular execution of Azure Governance Vi
 ## Prerequisites
 
 - An Azure DevOps account in which you have enough permissions to create a new project.
-- Your user must have '**Microsoft.Authorization/roleAssignments/write**' permissions on the target management group scope (such as the built-in Azure RBAC role '**User Access Administrator**' or '**Owner**'). This is required to make the required permission changes. If you cannot do this yourself, follow these instructions along with someone who can.
-- To grant Microsoft Graph API permissions and grant admin consent for the Microsoft Entra directory, you must yourself or work with someone that has '**Privileged Role Administrator**' or '**Global Administrator**' role assigned in Microsoft Entra ID. (See [Assign Microsoft Entra roles to users](https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/manage-roles-portal).)
 
 ## 1. Create an Azure DevOps project
 
@@ -31,7 +29,7 @@ There are a few options to create the service connection, both will result in le
 
 ### Option 1 - Use workload identity federation (recommended)
 
-This option uses Microsoft Entra workload identity federation to manage a service principal but without also managing secrets or secret expiration. This is the recommended method.
+This option uses Microsoft Entra workload identity federation to manage a service principal but without the need for you to manage secrets or secret expiration. This is the recommended method.
 
 #### Start the process in Azure DevOps
 
@@ -210,6 +208,6 @@ Once the pipeline has executed successfully you can setup your Wiki
 1. Enter a name for the Wiki
 1. Click '**Publish**'
 
-## 10. Publish the Azure Governance Visualizer HTML to a Azure Web App _(Optional)_
+## Next steps
 
-There are instances where you may want to publish the HTML output to a webapp so that anybody in the business can see up to date status of the Azure governance. The instructions for this can be found in the [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator?tab=readme-ov-file#5-create-a-microsoft-entra-application-for-user-authentication-to-the-azure-web-app-that-will-host-azgovviz) repo.
+For report hosting, consider using the [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) which will give you an example on how to host the output on Azure Web Apps in conjunction with this Azure DevOps automation.

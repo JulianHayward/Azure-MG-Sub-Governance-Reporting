@@ -11,8 +11,10 @@ The following must be installed on the workstation that will be used to run the 
 
 - [Git](https://git-scm.com/downloads)
 - [PowerShell 7](https://github.com/PowerShell/PowerShell#get-powershell) (minimum supported version 7.0.3)
-- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-azure-powershell)
+- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-azure-powershell), specifically `Az.Accounts`.
 - [AzAPICall](https://github.com/JulianHayward/AzAPICall#get--set-azapicall-powershell-module)
+
+> There is a [dev container provided in this repo](#using-github-codespaces-as-your-console) if you'd wish to use GitHub Codespaces.
 
 ## 1. Validate Microsoft Graph permissions for your user
 
@@ -142,6 +144,22 @@ Invoke-Item ".\AzGovViz*.html"
 ```
 
 There is also a markdown version available as well in the output directory.
+
+## Using GitHub Codespaces as your console
+
+This repo ships with a GitHub [Codespace](https://docs.github.com/codespaces/getting-started/quickstart) dev container configuration that has all of the [Prerequisites](#prerequisites) installed.
+
+### Visual screenshot tour of that experience
+
+![Azure Governance Visualizer GitHub Codespaces](../img/codespaces0.png)
+
+![Azure Governance Visualizer GitHub Codespaces](../img/codespaces1.png)
+
+![Azure Governance Visualizer GitHub Codespaces](../img/codespaces2.png)
+
+![Azure Governance Visualizer GitHub Codespaces](../img/codespaces3.png)
+
+![Azure Governance Visualizer GitHub Codespaces](../img/codespaces4.png)
 
 ## Next steps
 
