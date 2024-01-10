@@ -11,7 +11,7 @@ No matter which of the three you choose, they all evaluate the same governance c
 ## Prerequisites
 
 - Your user must have '**Microsoft.Authorization/roleAssignments/write**' permissions on the target management group scope (such as the built-in Azure RBAC role '**User Access Administrator**' or '**Owner**'). This is required to make the required permission changes. If you cannot do this yourself, follow these instructions along with someone who can.
-- To grant Microsoft Graph API permissions and grant admin consent for the Microsoft Entra directory, you must yourself have or work with someone that has the '**Privileged Role Administrator**' or '**Global Administrator**' role assigned in Microsoft Entra ID. (See [Assign Microsoft Entra roles to users](https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/manage-roles-portal).)
+- To grant Microsoft Graph API permissions and grant admin consent for the Microsoft Entra directory, you must yourself have or work with someone that has the '**Privileged Role Administrator**' or '**Global Administrator**' role assigned in Microsoft Entra ID. (See [Assign Microsoft Entra roles to users](https://learn.microsoft.com/entra/identity/role-based-access-control/manage-roles-portal).)
 
 ## Set up and run Azure Governance Visualizer from the console
 

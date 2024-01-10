@@ -66,7 +66,7 @@ Azure Governance Visualizer is intended to help you to get a holistic overview o
 
 ### Microsoft Well Architected Framework (WAF)
 
-* Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/architecture/framework/security/monitor-tools) in the Microsoft Well Architected Framework
+* Listed as [security monitoring tool](https://learn.microsoft.com/azure/architecture/framework/security/monitor-tools) in the Microsoft Well Architected Framework
 
 ### Azure Governance Visualizer accelerator
 
@@ -498,7 +498,7 @@ Screenshot of Microsoft Graph permissions in the Microsoft Entra admin center
 * `-AzureConsumptionPeriod` - Define for which time period Azure Consumption data should be gathered; default is 1 day
 * `-NoAzureConsumptionReportExportToCSV` - Azure Consumption data should not be exported (CSV)
 * `-NoScopeInsights` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size). Use `-LargeTenant` to further reduce the output.
-* `-ThrottleLimit` - leveraging PowerShell´s parallel capability you can define the ThrottleLimit (default=5)
+* `-ThrottleLimit` - leveraging PowerShell's parallel capability you can define the ThrottleLimit (default=5)
 * `-DoTranscript` - Log the console output
 * `-SubscriptionId4AzContext` - Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
 * `-PolicyAtScopeOnly` - Removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants. Note using parameter `-LargeTenant` will set `-PolicyAtScopeOnly $true`
@@ -624,7 +624,7 @@ pipelines:
 __Pausing 'PSRule for Azure' integration__. Azure Governance Visualizer used the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.
 
 Let's use [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure) and use over 260 pre-built rules to validate Azure resources based on the Microsoft Well-Architected Framework (WAF) principles.
-PSRule for Azure is listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/architecture/framework/security/monitor-tools) in the Microsoft Well-Architected Framework.
+PSRule for Azure is listed as [security monitoring tool](https://learn.microsoft.com/azure/architecture/framework/security/monitor-tools) in the Microsoft Well-Architected Framework.
 
 Parameter: `-DoPSRule` (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule`)
 Optional parameters:
@@ -657,9 +657,9 @@ If the script is not run in Azure DevOps then the tenant ID and executing princi
 SHA384/512 hashed combination of:
 
 * portion of the repositoryId/tenantId
-  * if repositoryId/tenantId starts with a letter then use characters 3-8 (6 characters) of the first GUID's block, combine them with the third GUID's block of the principal´s objectId (4 characters), SHA512 hash them as identifier0
-  * if repositoryId/tenantId starts with a number then use characters 7-12 (6 characters) of the last GUID's block, combine them with the second GUID´s block of the principal´s objectId (4 characters), SHA384 hash them as identifier0
-* portion of the executing principal´s objectId
+  * if repositoryId/tenantId starts with a letter then use characters 3-8 (6 characters) of the first GUID's block, combine them with the third GUID's block of the principal's objectId (4 characters), SHA512 hash them as identifier0
+  * if repositoryId/tenantId starts with a number then use characters 7-12 (6 characters) of the last GUID's block, combine them with the second GUID's block of the principal's objectId (4 characters), SHA384 hash them as identifier0
+* portion of the executing principal's objectId
   * if objectId starts with a letter then use characters 3-8 (6 characters) of the first GUID's block, combine them with the third GUID's block of the repositoryId/tenantId (4 characters), SHA512 hash them as identifier1
   * if objectId starts with a number then use characters 7-12 (6 characters) of the last GUID's block, combine them with the second GUID's block of the repositoryId/tenantId (4 characters), SHA384 hash them as identifier1
 
@@ -749,7 +749,7 @@ You are welcome to contribute to the project. __[Contribution Guide](contributio
 
 Thanks to so many supporters - testing, giving feedback, making suggestions, presenting use-case, posting/blogging articles, refactoring code - THANK YOU!
 
-Thanks Stefan Stranger (Microsoft) for providing me with his Azure Governance Visualizer outputs executed on his implementation of EnterpriseScale. Make sure you read Stefan´s Blog Article: [Enterprise-Scale - Policy Driven Governance](https://stefanstranger.github.io/2020/08/28/EnterpriseScalePolicyDrivenGovernance)
+Thanks Stefan Stranger (Microsoft) for providing me with his Azure Governance Visualizer outputs executed on his implementation of EnterpriseScale. Make sure you read Stefan's blog article: [Enterprise-Scale - Policy Driven Governance](https://stefanstranger.github.io/2020/08/28/EnterpriseScalePolicyDrivenGovernance)
 
 Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his Azure Governance Visualizer outputs executed on his implementation of EnterpriseScale.
 

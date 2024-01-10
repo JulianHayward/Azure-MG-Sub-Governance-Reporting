@@ -27,7 +27,7 @@ __Changes__ (2023-Nov-13 / 6.3.4 Minor)
 * tolerating more up to date AzAPICall version when executing outside of Azure DevOps/GitHub
 * update ARM API-version for Resources. Using `2023-07-01` instead of `2021-04-01`
 * update `/.azuredevops/pipelines/AzGovViz.variables.yml`
-  * add parameter `-ARMLocation` 
+  * add parameter `-ARMLocation`
 * update README.md
   * update [API reference](#api-reference)
 * use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.84
@@ -37,7 +37,7 @@ __Changes__ (2023-Oct-22 / 6.3.3 Minor)
 * introduce new optional parameter `-AzAPICallSkipAzContextSubscriptionValidation` [ref](https://aka.ms/AzAPICall)
 * update ARM API-version for RBAC Role definitions. Using `2022-05-01-preview` instead of `2018-11-01-preview`. This will show us 'conditions' [example](https://www.azadvertizer.net/azrolesadvertizer/8b54135c-b56d-4d72-a534-26097cfdc8d8.html)
 * update `/.azuredevops/pipelines/AzGovViz.variables.yml`
-  * add parameter `-AzAPICallSkipAzContextSubscriptionValidation` 
+  * add parameter `-AzAPICallSkipAzContextSubscriptionValidation`
   * structure AzAPICall related variables
   * Azure Active Directory becomes Microsoft Entra ID
 * update README.md and setup.md
@@ -59,7 +59,7 @@ __Changes__ (2023-Sep-04 / 6.3.1 Minor)
 
 __Changes__ (2023-Aug-02 / 6.3.0 Minor)
 
-* workaround for [issue121](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/121); remove files hitting the GitHub file size limit [ref](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits) 
+* workaround for [issue121](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/121); remove files hitting the GitHub file size limit [ref](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits)
   * update GitHub workflows:
     * [AzGovViz_OIDC.yml](/.github/workflows/AzGovViz_OIDC.yml)
     * [AzGovViz.yml](/.github/workflows/AzGovViz.yml)
@@ -241,7 +241,7 @@ __Changes__ (2023-Jan-24 / Major)
 
 __Changes__ (2023-Jan-19 / Major)
 
-* Cover Preview [Azure Storage Account with Azure DNS zone endpoints](https://learn.microsoft.com/en-us/azure/storage/common/storage-account-overview#azure-dns-zone-endpoints-preview) ([Issue #164](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/164))
+* Cover Preview [Azure Storage Account with Azure DNS zone endpoints](https://learn.microsoft.com/azure/storage/common/storage-account-overview#azure-dns-zone-endpoints-preview) ([Issue #164](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/164))
 * Add feature to simulate Management Group Hierarchy Map
 * New parameter `-HierarchyMapOnlyCustomData` (documentation update pending)
 * Private Endpoint feature - add Microsoft tenants (cross tenant PE) (`-MSTenantIds`)
@@ -281,7 +281,7 @@ __Changes__ (2022-Dec-22 / Major)
 
 * Fix issue for Private Endpoints feature
 * Add reference for Microsoft Defender for Cloud security alerts on AzGovViz activity - [Security](#security)
-* Fix for migrated Subscriptions. In rare cases a subscription that was migrated to another tenant may still be returned from the [Entities ARM API](https://learn.microsoft.com/en-us/rest/api/managementgroups/entities/list), but not from the [Subscriptions ARM API](https://learn.microsoft.com/en-us/rest/api/resources/subscriptions/list) - if that is the case then these subscriptions will be added to the out-of-scope subscriptions collection
+* Fix for migrated Subscriptions. In rare cases a subscription that was migrated to another tenant may still be returned from the [Entities ARM API](https://learn.microsoft.com/rest/api/managementgroups/entities/list), but not from the [Subscriptions ARM API](https://learn.microsoft.com/rest/api/resources/subscriptions/list) - if that is the case then these subscriptions will be added to the out-of-scope subscriptions collection
 * Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.62
   * Fix issue [155](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/155) AzureChinaCloud
 * Minor optimizations
@@ -299,7 +299,7 @@ __Changes__ (2022-Dec-12 / Major)
 
 * Pausing 'PSRule for Azure' integration. AzGovViz leveraged the Invoke-PSRule cmdlet, but there are certain [resource types](https://github.com/Azure/PSRule.Rules.Azure/blob/ab0910359c1b9826d8134041d5ca997f6195fc58/src/PSRule.Rules.Azure/PSRule.Rules.Azure.psm1#L1582) where also child resources need to be queried to achieve full rule evaluation.
 * Enhance Private Endpoints feature / cross tenant PE
-* Fix for migrated Subscriptions. In rare cases a subscription that was migrated to another tenant may still be returned from the [ARM API](https://learn.microsoft.com/en-us/rest/api/resources/subscriptions/list), if that is the case then these subscriptions will be added to the out-of-scope subscriptions collection
+* Fix for migrated Subscriptions. In rare cases a subscription that was migrated to another tenant may still be returned from the [ARM API](https://learn.microsoft.com/rest/api/resources/subscriptions/list), if that is the case then these subscriptions will be added to the out-of-scope subscriptions collection
 * Update Azure Devops Pipeline YAML
   * Enhance error handling if Management Group Id containing spaces is provided - thanks @cbezenco
 * Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.59
@@ -502,7 +502,7 @@ __Changes__ (2022-Jul-17 / Major)
 
 __Changes__ (2022-Jul-14 / Major)
 
-* New feature - Cloud Adoption Framework (CAF) [Recommended abbreviations for Azure resource types](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations) compliance (HTML TenantSummary, ScopeInsights and CSV output)
+* New feature - Cloud Adoption Framework (CAF) [Abbreviation examples for Azure resources](https://learn.microsoft.com/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations) compliance (HTML TenantSummary, ScopeInsights and CSV output)
 * Optimize PSRule data handling
 * Minor optimizations
 
@@ -565,11 +565,11 @@ __Changes__ (2022-May-21 / Major)
 > Note: Azure DevOps and GitHub users must update the YAML file(s) and PowerShell files (`AzGovVizParallel.ps1` and `prerequisites.ps1`)
 
 * Integration of [PSRule for Azure](#integrate-psrule-for-azure). This feature is optional, use new parameter `-DoPSRule`
-  * Provides a [Azure Well-Architected Framework](https://docs.microsoft.com/en-gb/azure/architecture/framework/) aligned suite of rules for validating Azure resources
+  * Provides a [Azure Well-Architected Framework](https://learn.microsoft.com/azure/well-architected/) aligned suite of rules for validating Azure resources
   * Provides meaningful information to allow remediation
   * New parameter `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
 * Optional feature: publish HTML to Azure Web App (check the __[Setup Guide](setup.md)__) in Azure DevOps or GitHub Actions - thanks Wayne Meyer
-* New feature / report on [enabled Subscription Features](https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/preview-features) TenantSummary, ScopeInsights and CSV export
+* New feature / report on [enabled Subscription Features](https://learn.microsoft.com/azure/azure-resource-manager/management/preview-features) TenantSummary, ScopeInsights and CSV export
 * Decomissioned Azure DevOps `.pipelines` - use the new YAML files `.azuredevops/pipelines/*`
 * Fix [#issue92](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/92) -> pipeline .azuredevops/pipelines/AzGovViz.pipeline.yml
 * Update Azure DevOps pipelines / use AzurePowershell@5
@@ -609,7 +609,7 @@ __Changes__ (2022-Apr-25 / Major)
 __Changes__ (2022-Jan-31 / Major)
 
 * New __TenantSummary | RBAC__ feature - insights on all Role definitions that are capable to write Role assignments
-* __TenantSummary | Subscriptions, Resources & Defender | Subscriptions__ report (new) [Role assignment limits](https://docs.microsoft.com/en-us/azure/role-based-access-control/troubleshooting#azure-role-assignments-limit)
+* __TenantSummary | Subscriptions, Resources & Defender | Subscriptions__ report (new) [Role assignment limits](https://learn.microsoft.com/azure/role-based-access-control/troubleshooting#azure-role-assignments-limit)
 * Handling orphaned Policy assignments (scope Management Group)
 * Datacollection for Management Groups process in batches (batch per Management Group level)
 * Update Dockerfile
@@ -670,7 +670,7 @@ __Changes__ (2021-Nov-01 / Major)
 
 * New output - Feature request to create __Scope Insights__ output per Subscription has been implement. With this new feature you can share Subscription __Scope Insights__ with Subscription responsible staff. Use parameter `-NoSingleSubscriptionOutput` to disable the feature
 * Update [Required permissions in Azure Active Directory](#required-permissions-in-azure-active-directory) for the scenario of a Guest User executing the script
-* Add 'daily summary' output (CSV) to easily track your Tenant´s Governance evolution over time - Tim will hopefully create a PR for how he leverages AzGovViz historical data for Azure Log Analytics based dashboards
+* Add 'daily summary' output (CSV) to easily track your Tenant's Governance evolution over time - Tim will hopefully create a PR for how he leverages AzGovViz historical data for Azure Log Analytics based dashboards
 * Improved permission related error handling
 
 __Changes__ (2021-Oct-25 / Major)
@@ -683,7 +683,7 @@ __Changes__ (2021-Oct-21 / Major)
 
 __Release v6 Changes__
 
-* Removed usage of Azure PowerShell cmdlet 'Get-AzRoleAssignment' / preparing for upcoming deprecation of 'Azure Active Directory Graph' API ([announcement](https://azure.microsoft.com/en-us/updates/update-your-apps-to-use-microsoft-graph-before-30-june-2022/))
+* Removed usage of Azure PowerShell cmdlet 'Get-AzRoleAssignment' / preparing for upcoming deprecation of 'Azure Active Directory Graph' API ([announcement](https://azure.microsoft.com/updates/update-your-apps-to-use-microsoft-graph-before-30-june-2022/))
 * Management Group diagnostic setting - reflect inheritance of diagnostic settings from upper Management Group scopes
 * __TenantSummary__ Policy assignments - resolve Managed Identity (if Policy assignment effect is DeployIfNotExists (DINE) or Modify)
 * Removed __TenantSummary__ RBAC Classic Role assignments
@@ -738,7 +738,7 @@ __Changes__ (2021-Aug-25 / Major)
 
 __Changes__ (2021-Aug-22 / Major)
 
-* Bugfix - indirect Role assignments (applied through AAD group membership); switched to Graph beta endpoint as v1.0 only resolves users and groups, whilst we´re also interested in Service Principals - [List group transitive members](https://docs.microsoft.com/en-us/graph/api/group-list-transitivemembers)
+* Bugfix - indirect Role assignments (applied through AAD group membership); switched to Graph beta endpoint as v1.0 only resolves users and groups, whilst we're also interested in Service Principals - [List group transitive members](https://learn.microsoft.com/graph/api/group-list-transitivemembers)
 
 __Changes__ (2021-Aug-18 / Major)
 
@@ -835,12 +835,12 @@ __Breaking Changes__ (2021-Feb-28)
 
 * When granting __Azure Active Directory Graph__ API permissions in the background an AAD Role assignment for AAD Group __Directory readers__ was triggered automatically - since January/February 2021 this is no longer the case. Review the updated [__AzGovViz technical documentation__](#azgovviz-technical-documentation) section for detailed permission requirements.
 
-__Let´s accellerate by going parallel!__  (2021-Feb-14)
+__Let's accelerate by going parallel!__  (2021-Feb-14)
 
 * Support for PowerShell Core ONLY! No support for PowerShell version < 7.0.3
 * New section __DefinitionInsights__ - Insights on all built-in and custom Policy, PolicySet and RBAC Role definitions
 * New parameter `-NoScopeInsights` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
-* New parameter `-ThrottleLimit` - Leveraging PowerShell Core´s parallel capability you can define the ThrottleLimit (default=5)
+* New parameter `-ThrottleLimit` - Leveraging PowerShell Core's parallel capability you can define the ThrottleLimit (default=5)
 * New parameter `DoTranscript` - Log the console output
 * Parameter `SubscriptionQuotaIdWhitelist` now expects an array
 * Renamed parameter `-NoServicePrincipalResolve` to `-NoAADServicePrincipalResolve`
@@ -915,7 +915,7 @@ Updates 2020-Nov-19
 * New parameter `-Experimental` (see [__Parameters__](#powerShell))
 * Performance optimization
 * Error handling optimization / API
-* Azure DevOps pipeline worker changed from 'ubuntu-latest' to 'ubuntu-18.04' (see [Azure Pipelines - Sprint 177 Update](https://docs.microsoft.com/en-us/azure/devops/release-notes/2020/pipelines/sprint-177-update#ubuntu-latest-pipelines-will-soon-use-ubuntu-2004), [Ubuntu-latest workflows will use Ubuntu-20.04 #1816](https://github.com/actions/virtual-environments/issues/1816))
+* Azure DevOps pipeline worker changed from 'ubuntu-latest' to 'ubuntu-18.04' (see [Azure Pipelines - Sprint 177 Update](https://learn.microsoft.com/azure/devops/release-notes/2020/pipelines/sprint-177-update#ubuntu-latest-pipelines-will-soon-use-ubuntu-2004), [Ubuntu-latest workflows will use Ubuntu-20.04 #1816](https://github.com/actions/virtual-environments/issues/1816))
 
 Updates 2020-Nov-08
 

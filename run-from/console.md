@@ -30,7 +30,7 @@ _- or -_
 
 ### Set up to execute as a tenant _guest user_
 
-Your user is a [guest user](https://learn.microsoft.com/entra/fundamentals/users-default-permissions#compare-member-and-guest-default-permissions) in the tenant or there are other [hardened restrictions](https://learn.microsoft.com/en-us/entra/identity/users/users-restrict-guest-permissions) on the tenant, then your user must first be assigned the Microsoft Entra ID role '**Directory readers**'. Work with the Microsoft Entra administrator for the tenant you are a guest in to have them assign the '**Directory readers**' [role to your guest account](https://learn.microsoft.com/entra/identity/role-based-access-control/manage-roles-portal).
+Your user is a [guest user](https://learn.microsoft.com/entra/fundamentals/users-default-permissions#compare-member-and-guest-default-permissions) in the tenant or there are other [hardened restrictions](https://learn.microsoft.com/entra/identity/users/users-restrict-guest-permissions) on the tenant, then your user must first be assigned the Microsoft Entra ID role '**Directory readers**'. Work with the Microsoft Entra administrator for the tenant you are a guest in to have them assign the '**Directory readers**' [role to your guest account](https://learn.microsoft.com/entra/identity/role-based-access-control/manage-roles-portal).
 
 :arrow_down_small: Once that is configured, continue with [**2. Validate Azure permissions for your user**](#2-validate-azure-permissions-for-your-user).
 

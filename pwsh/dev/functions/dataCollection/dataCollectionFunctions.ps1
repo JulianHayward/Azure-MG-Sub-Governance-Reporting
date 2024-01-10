@@ -27,7 +27,7 @@ function dataCollectionDefenderPlans {
     )
 
     $currentTask = "Getting Microsoft Defender for Cloud plans for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
-    #https://docs.microsoft.com/en-us/rest/api/securitycenter/pricings
+    #https://learn.microsoft.com/rest/api/defenderforcloud/pricings
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/pricings?api-version=2018-06-01"
     $method = 'GET'
     $defenderPlansResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
@@ -112,7 +112,7 @@ function dataCollectionDefenderEmailContacts {
     )
 
     $currentTask = "Getting Microsoft Defender for Cloud Email contacts for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
-    #https://docs.microsoft.com/en-us/rest/api/securitycenter/pricings
+    #https://learn.microsoft.com/rest/api/defenderforcloud/security-contacts
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/securityContacts?api-version=2020-01-01-preview"
     $method = 'GET'
     $defenderSecurityContactsResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -listenOn 'Content' -currentTask $currentTask -caller 'CustomDataCollection'
@@ -209,7 +209,6 @@ function dataCollectionVNets {
     )
 
     $currentTask = "Getting Virtual Networks for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
-    #https://docs.microsoft.com/en-us/rest/api/securitycenter/pricings
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Network/virtualNetworks?api-version=2022-05-01"
     $method = 'GET'
     $networkResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
@@ -236,7 +235,6 @@ function dataCollectionPrivateEndpoints {
     )
 
     $currentTask = "Getting Private Endpoints for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
-    #https://docs.microsoft.com/en-us/rest/api/securitycenter/pricings
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Network/privateEndpoints?api-version=2022-05-01"
     $method = 'GET'
     $privateEndpointsResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -unhandledErrorAction Continue
