@@ -127,7 +127,7 @@
     Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size)
 
 .PARAMETER AADGroupMembersLimit
-    Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved
+    Defines the limit (default=500) of Microsoft Entra group members; For groups that have more members than the defined limit group members will not be resolveds
 
 .PARAMETER NoResources
     Will speed up the processing time but information like Resource diagnostics capability, resource type stats, UserAssigned Identities assigned to Resources is excluded (featured for large tenants)
@@ -302,7 +302,7 @@
     Note if you use parameter -LargeTenant then parameter -NoScopeInsights will be set to true
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoScopeInsights
 
-    Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved
+    Defines the limit (default=500) of Microsoft Entra group members; For groups that have more members than the defined limit group members will not be resolved
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -AADGroupMembersLimit 750
 
     Will speed up the processing time but information like Resource diagnostics capability, resource type stats, UserAssigned Identities assigned to Resources is excluded (featured for large tenants)
@@ -4287,13 +4287,13 @@ function prepareData {
 }
 function processAADGroups {
     if ($NoPIMEligibility) {
-        Write-Host 'Resolving AAD Groups (for which a RBAC Role assignment exists)'
+        Write-Host 'Resolving Microsoft Entra groups (for which a RBAC role assignment exists)'
     }
     else {
-        Write-Host 'Resolving AAD Groups (for which a RBAC Role assignment or PIM Eligibility exists)'
+        Write-Host 'Resolving Microsoft Entra groups (for which a RBAC role assignment or PIM eligibility exists)'
     }
 
-    Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (before Resolving AAD Groups)"
+    Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (before resolving Microsoft Entra groups)"
     $startAADGroupsResolveMembers = Get-Date
 
     $roleAssignmentsforGroups = ($roleAssignmentsUniqueById.where( { $_.RoleAssignmentIdentityObjectType -eq 'Group' } ) | Select-Object -Property RoleAssignmentIdentityObjectId, RoleAssignmentIdentityDisplayname) | Sort-Object -Property RoleAssignmentIdentityObjectId -Unique
@@ -4305,7 +4305,7 @@ function processAADGroups {
     }
 
     $aadGroupsCount = ($optimizedTableForAADGroupsQuery).Count
-    Write-Host " $aadGroupsCount Groups from RoleAssignments"
+    Write-Host " $aadGroupsCount groups from role assignments"
 
     if (-not $NoPIMEligibility) {
         $PIMEligibleGroups = $arrayPIMEligible.where({ $_.IdentityType -eq 'Group' }) | Select-Object IdentityObjectId, IdentityDisplayName | Sort-Object -Property IdentityObjectId -Unique
@@ -4321,9 +4321,9 @@ function processAADGroups {
                     })
             }
         }
-        Write-Host " $cntPIMEligibleGroupsTotal Groups from PIM Eligibility; $cntPIMEligibleGroupsNotCoveredFromRoleAssignments Groups added ($($cntPIMEligibleGroupsTotal - $cntPIMEligibleGroupsNotCoveredFromRoleAssignments) already covered in RoleAssignments)"
+        Write-Host " $cntPIMEligibleGroupsTotal groups from PIM eligibility; $cntPIMEligibleGroupsNotCoveredFromRoleAssignments groups added ($($cntPIMEligibleGroupsTotal - $cntPIMEligibleGroupsNotCoveredFromRoleAssignments) already covered in role assignments)"
         $aadGroupsCount = ($optimizedTableForAADGroupsQuery).Count
-        Write-Host " $aadGroupsCount Groups from RoleAssignments and PIM Eligibility"
+        Write-Host " $aadGroupsCount Groups from role assignments and PIM eligibility"
     }
 
     if ($aadGroupsCount -gt 0) {
@@ -4339,7 +4339,7 @@ function processAADGroups {
             { $_ -gt 10000 } { $indicator = 250 }
         }
 
-        Write-Host " processing $($aadGroupsCount) AAD Groups (indicating progress in steps of $indicator)"
+        Write-Host " processing $($aadGroupsCount) Microsoft Entra groups (indicating progress in steps of $indicator)"
 
         $optimizedTableForAADGroupsQuery | ForEach-Object -Parallel {
             $aadGroupIdWithRoleAssignment = $_
@@ -4392,24 +4392,24 @@ function processAADGroups {
             $processedAADGroupsCount = ($arrayProgressedAADGroups).Count
             if ($processedAADGroupsCount) {
                 if ($processedAADGroupsCount % $indicator -eq 0) {
-                    Write-Host " $processedAADGroupsCount AAD Groups processed"
+                    Write-Host " $processedAADGroupsCount Microsoft Entra groups processed"
                 }
             }
         } -ThrottleLimit ($ThrottleLimit * 2)
     }
     else {
-        Write-Host " processing $($aadGroupsCount) AAD Groups"
+        Write-Host " processing $($aadGroupsCount) Microsoft Entra groups"
     }
 
     $arrayGroupRequestResourceNotFoundCount = ($arrayGroupRequestResourceNotFound).Count
     if ($arrayGroupRequestResourceNotFoundCount -gt 0) {
-        Write-Host "$arrayGroupRequestResourceNotFoundCount Groups could not be checked for Memberships"
+        Write-Host "$arrayGroupRequestResourceNotFoundCount groups could not be checked for memberships"
     }
 
-    Write-Host " processed $($arrayProgressedAADGroups.Count) AAD Groups"
+    Write-Host " processed $($arrayProgressedAADGroups.Count) Microsoft Entra groups"
     $endAADGroupsResolveMembers = Get-Date
-    Write-Host "Resolving AAD Groups duration: $((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
-    Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (after Resolving AAD Groups)"
+    Write-Host "Resolving Microsoft Entra groups duration: $((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
+    Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (after Resolving Microsoft Entra groups)"
 }
 function processALZPolicyVersionChecker {
     $start = Get-Date
@@ -10621,7 +10621,7 @@ extensions: [{ name: 'sort' }]
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
 <i class="fa fa-user-circle-o" aria-hidden="true"></i> <span class="valignMiddle">UserAssigned Managed Identities assigned to Resources / vice versa</span></button>
 <div class="content contentSISub">
-&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Managed identity 'user-assigned' vs 'system-assigned'</span> <a class="externallink" href="https://learn.microsoft.com/azure/active-directory/managed-identities-azure-resources/overview#managed-identity-types" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+&nbsp;&nbsp;<i class="fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Managed identity 'user-assigned' vs 'system-assigned'</span> <a class="externallink" href="https://learn.microsoft.com/entra/identity/managed-identities-azure-resources/overview#managed-identity-types" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 &nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="$cssClass">
 <thead>
@@ -18990,7 +18990,7 @@ extensions: [{ name: 'sort' }]
         $htmlSUMMARYSecurityGuestUserHighPriviledgesAssignments = $null
         $htmlSUMMARYSecurityGuestUserHighPriviledgesAssignments = foreach ($highPrivilegedGuestUserRoleAssignment in ($highPrivilegedGuestUserRoleAssignments)) {
             if ($highPrivilededGuestUserRoleAssignment.AssignmentType -eq 'indirect') {
-                $assignmentInfo = "indirect / AAD Group Membership '$($highPrivilededGuestUserRoleAssignment.AssignmentInheritFrom)'"
+                $assignmentInfo = "indirect / Microsoft Entra group Membership '$($highPrivilededGuestUserRoleAssignment.AssignmentInheritFrom)'"
             }
             else {
                 $assignmentInfo = 'direct'
@@ -19667,7 +19667,7 @@ extensions: [{ name: 'sort' }]
 
         $tfCount = $summarySubscriptionsCount
         $htmlTableId = 'TenantSummary_subs'
-        $abbr = " <abbr title=`"indirect: members of an AAD group where RBAC was assigned`"><i class=`"fa fa-question-circle`" aria-hidden=`"true`"></i></abbr>"
+        $abbr = " <abbr title=`"indirect: members of a Microsoft Entra group where RBAC was assigned`"><i class=`"fa fa-question-circle`" aria-hidden=`"true`"></i></abbr>"
         [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_Subs"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle">$($summarySubscriptionsCount) Subscriptions (state: enabled)</span></button>
 <div class="content TenantSummary">
@@ -21637,7 +21637,7 @@ extensions: [{ name: 'sort' }]
             [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_UserAssignedIdentities4Resources"><i class="padlx fa fa-user-circle-o" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">UserAssigned Managed Identities assigned to Resources / vice versa</span></button>
 <div class="content TenantSummary">
-<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Managed identity 'user-assigned' vs 'system-assigned'</span> <a class="externallink" href="https://learn.microsoft.com/azure/active-directory/managed-identities-azure-resources/overview#managed-identity-types" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Managed identity 'user-assigned' vs 'system-assigned'</span> <a class="externallink" href="https://learn.microsoft.com/entra/identity/managed-identities-azure-resources/overview#managed-identity-types" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
 <thead>
@@ -28143,7 +28143,7 @@ function runInfo {
         }
 
         if (-not $NoAADGroupsResolveMembers) {
-            Write-Host " AAD Groups resolve members enabled (honors parameter -DoNotShowRoleAssignmentsUserData) - use parameter: '-NoAADGroupsResolveMembers' to disable resolving AAD Group memberships" -ForegroundColor Yellow
+            Write-Host " Microsoft Entra groups resolve members enabled (honors parameter -DoNotShowRoleAssignmentsUserData) - use parameter: '-NoAADGroupsResolveMembers' to disable resolving group memberships" -ForegroundColor Yellow
             $script:paramsUsed += 'NoAADGroupsResolveMembers: false &#13;'
             if ($AADGroupMembersLimit -eq 500) {
                 Write-Host " AADGroupMembersLimit = $AADGroupMembersLimit" -ForegroundColor Yellow
@@ -28155,7 +28155,7 @@ function runInfo {
             }
         }
         else {
-            Write-Host " AAD Groups resolve members disabled (-NoAADGroupsResolveMembers = $($NoAADGroupsResolveMembers))" -ForegroundColor Green
+            Write-Host " Microsoft Entra groups resolve members disabled (-NoAADGroupsResolveMembers = $($NoAADGroupsResolveMembers))" -ForegroundColor Green
             $script:paramsUsed += 'NoAADGroupsResolveMembers: true &#13;'
         }
 

@@ -6233,7 +6233,7 @@ extensions: [{ name: 'sort' }]
         $htmlSUMMARYSecurityGuestUserHighPriviledgesAssignments = $null
         $htmlSUMMARYSecurityGuestUserHighPriviledgesAssignments = foreach ($highPrivilegedGuestUserRoleAssignment in ($highPrivilegedGuestUserRoleAssignments)) {
             if ($highPrivilededGuestUserRoleAssignment.AssignmentType -eq 'indirect') {
-                $assignmentInfo = "indirect / AAD Group Membership '$($highPrivilededGuestUserRoleAssignment.AssignmentInheritFrom)'"
+                $assignmentInfo = "indirect / Microsoft Entra group membership '$($highPrivilededGuestUserRoleAssignment.AssignmentInheritFrom)'"
             }
             else {
                 $assignmentInfo = 'direct'
@@ -6910,7 +6910,7 @@ extensions: [{ name: 'sort' }]
 
         $tfCount = $summarySubscriptionsCount
         $htmlTableId = 'TenantSummary_subs'
-        $abbr = " <abbr title=`"indirect: members of an AAD group where RBAC was assigned`"><i class=`"fa fa-question-circle`" aria-hidden=`"true`"></i></abbr>"
+        $abbr = " <abbr title=`"indirect: members of a Microsoft Entra group where RBAC was assigned`"><i class=`"fa fa-question-circle`" aria-hidden=`"true`"></i></abbr>"
         [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_Subs"><img class="padlx imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> <span class="valignMiddle">$($summarySubscriptionsCount) Subscriptions (state: enabled)</span></button>
 <div class="content TenantSummary">
@@ -8880,7 +8880,7 @@ extensions: [{ name: 'sort' }]
             [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_UserAssignedIdentities4Resources"><i class="padlx fa fa-user-circle-o" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">UserAssigned Managed Identities assigned to Resources / vice versa</span></button>
 <div class="content TenantSummary">
-<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Managed identity 'user-assigned' vs 'system-assigned'</span> <a class="externallink" href="https://learn.microsoft.com/azure/active-directory/managed-identities-azure-resources/overview#managed-identity-types" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<span class="padlxx info"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> Managed identity 'user-assigned' vs 'system-assigned'</span> <a class="externallink" href="https://learn.microsoft.com/entra/identity/managed-identities-azure-resources/overview#managed-identity-types" target="_blank" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
 <table id="$htmlTableId" class="summaryTable">
 <thead>

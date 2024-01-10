@@ -207,7 +207,7 @@ variables:
     # Switch | example: value: true
     value:
 
-  # Will not resolve Microsoft Entra ID (AAD) Group memberships for Role assignments where identity type is 'Group'
+  # Will not resolve Microsoft Entra group memberships for role assignments where identity type is 'Group'
   - name: NoAADGroupsResolveMembers
     # Switch | example: value: true
     value:

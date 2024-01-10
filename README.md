@@ -384,7 +384,7 @@ These permissions are __mandatory__ in each and every scenario!
     </tr>
     <tr>
       <td><b>B</b><br>Console | Guest user account</td>
-      <td>If the tenant is hardened (Microsoft Entra ID (AAD) External Identities / Guest user access = most restrictive) then Guest User must be assigned the Microsoft Entra ID (AAD) Role 'Directory readers'<br>
+      <td>If the tenant is hardened (Microsoft Entra ID External Identities / Guest user access = most restrictive) then Guest User must be assigned the Microsoft Entra role 'Directory readers'<br>
       &#x1F4A1; <a href="https://learn.microsoft.comentra/fundamentals/users-default-permissions#compare-member-and-guest-default-permissions" target="_blank">Compare member and guest default permissions</a><br>
       &#x1F4A1; <a href="https://learn.microsoft.com/entra/identity/users/users-restrict-guest-permissions" target="_blank">Restrict guest access permissions in Microsoft Entra ID</a>
       </td>
@@ -513,7 +513,7 @@ Screenshot of Microsoft Graph permissions in the Microsoft Entra admin center
 * `-JsonExportExcludeResources`- JSON Export will not include Resources (Role assignments)
 * `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big. Using this parameter the following parameters will be set: `-PolicyAtScopeOnly`, `-RBACAtScopeOnly`, `-NoResourceProvidersAtAll`, `-NoScopeInsights`
 * `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
-* `-AADGroupMembersLimit` - Defines the limit (default=500) of Microsoft Entra ID (AAD) Group members; For Microsoft Entra ID (AAD) Groups that have more members than the defined limit Group members will not be resolved
+* `-AADGroupMembersLimit` - Defines the limit (default=500) of Microsoft Entra group members; For Microsoft Entra ID groups that have more members than the defined limit group members will not be resolved
 * `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability, resource type stats, UserAssigned Identities assigned to Resources is excluded (featured for large tenants)
 * `-StatsOptOut` - Opt out sending [stats](#stats)
 * `-NoSingleSubscriptionOutput` - Single __Scope Insights__ output per Subscription should not be created
@@ -545,7 +545,7 @@ Azure Governance Visualizer polls the following APIs
 
 | Endpoint | API version        | API name                                                                                                                               |
 | -------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| MS Graph | beta               | /groups/`aadGroupId`/transitiveMembers                                                                                                 |
+| MS Graph | beta               | /groups/`entraGroupId`/transitiveMembers                                                                                                 |
 | MS Graph | beta               | /privilegedAccess/azureResources/resources                                                                                             |
 | MS Graph | beta               | /privilegedAccess/azureResources/roleAssignments                                                                                       |
 | MS Graph | v1.0               | /applications                                                                                                                          |

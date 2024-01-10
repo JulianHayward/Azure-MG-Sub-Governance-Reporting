@@ -1,12 +1,12 @@
 function processAADGroups {
     if ($NoPIMEligibility) {
-        Write-Host 'Resolving AAD Groups (for which a RBAC Role assignment exists)'
+        Write-Host 'Resolving Microsoft Entra groups (for which a RBAC role assignment exists)'
     }
     else {
-        Write-Host 'Resolving AAD Groups (for which a RBAC Role assignment or PIM Eligibility exists)'
+        Write-Host 'Resolving Microsoft Entra groups (for which a RBAC role assignment or PIM eligibility exists)'
     }
 
-    Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (before Resolving AAD Groups)"
+    Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (before resolving Microsoft Entra groups)"
     $startAADGroupsResolveMembers = Get-Date
 
     $roleAssignmentsforGroups = ($roleAssignmentsUniqueById.where( { $_.RoleAssignmentIdentityObjectType -eq 'Group' } ) | Select-Object -Property RoleAssignmentIdentityObjectId, RoleAssignmentIdentityDisplayname) | Sort-Object -Property RoleAssignmentIdentityObjectId -Unique
@@ -34,9 +34,9 @@ function processAADGroups {
                     })
             }
         }
-        Write-Host " $cntPIMEligibleGroupsTotal Groups from PIM Eligibility; $cntPIMEligibleGroupsNotCoveredFromRoleAssignments Groups added ($($cntPIMEligibleGroupsTotal - $cntPIMEligibleGroupsNotCoveredFromRoleAssignments) already covered in RoleAssignments)"
+        Write-Host " $cntPIMEligibleGroupsTotal groups from PIM eligibility; $cntPIMEligibleGroupsNotCoveredFromRoleAssignments groups added ($($cntPIMEligibleGroupsTotal - $cntPIMEligibleGroupsNotCoveredFromRoleAssignments) already covered in role assignments)"
         $aadGroupsCount = ($optimizedTableForAADGroupsQuery).Count
-        Write-Host " $aadGroupsCount Groups from RoleAssignments and PIM Eligibility"
+        Write-Host " $aadGroupsCount groups from role assignments and PIM eligibility"
     }
 
     if ($aadGroupsCount -gt 0) {
@@ -52,7 +52,7 @@ function processAADGroups {
             { $_ -gt 10000 } { $indicator = 250 }
         }
 
-        Write-Host " processing $($aadGroupsCount) AAD Groups (indicating progress in steps of $indicator)"
+        Write-Host " processing $($aadGroupsCount) Microsoft Entra groups (indicating progress in steps of $indicator)"
 
         $optimizedTableForAADGroupsQuery | ForEach-Object -Parallel {
             $aadGroupIdWithRoleAssignment = $_
@@ -105,13 +105,13 @@ function processAADGroups {
             $processedAADGroupsCount = ($arrayProgressedAADGroups).Count
             if ($processedAADGroupsCount) {
                 if ($processedAADGroupsCount % $indicator -eq 0) {
-                    Write-Host " $processedAADGroupsCount AAD Groups processed"
+                    Write-Host " $processedAADGroupsCount Microsoft Entra groups processed"
                 }
             }
         } -ThrottleLimit ($ThrottleLimit * 2)
     }
     else {
-        Write-Host " processing $($aadGroupsCount) AAD Groups"
+        Write-Host " processing $($aadGroupsCount) Microsoft Entra groups"
     }
 
     $arrayGroupRequestResourceNotFoundCount = ($arrayGroupRequestResourceNotFound).Count
@@ -119,8 +119,8 @@ function processAADGroups {
         Write-Host "$arrayGroupRequestResourceNotFoundCount Groups could not be checked for Memberships"
     }
 
-    Write-Host " processed $($arrayProgressedAADGroups.Count) AAD Groups"
+    Write-Host " processed $($arrayProgressedAADGroups.Count) Microsoft Entra groups"
     $endAADGroupsResolveMembers = Get-Date
-    Write-Host "Resolving AAD Groups duration: $((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
-    Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (after Resolving AAD Groups)"
+    Write-Host "Resolving Microsoft Entra groups duration: $((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
+    Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (after resolving Microsoft Entra groups)"
 }
