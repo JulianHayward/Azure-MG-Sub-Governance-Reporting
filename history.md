@@ -73,7 +73,7 @@ __Changes__ (2023-Jul-17)
 
 * update to Azure DevOps Pipeline v6_major_20230717_1 [AzGovViz.pipeline.yml](./.azuredevops/pipelines/AzGovViz.pipeline.yml)
   * Output of published WebApp URL
-* update README.md and setup.md - add reference to the [Azure Governance Visualizer Accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator)
+* update README.md and setup.md - add reference to the [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator)
 
 __Changes__ (2023-Jun-23 / 6.2.3 Minor)
 
@@ -729,7 +729,7 @@ __Changes__ (2021-Aug-30 / Major)
 
 * Adding feature for RBAC Role assignments: determine 'standing' from PIM (Privileged Identity Mangement) managed Role assignments
 * New parameter `-NoResources` - this will speed up the processing time but information like Resource diagnostics capability and resource type stats will not be made available (featured for large tenants)
-* Integrate AzGovViz with AzOps (after 'AzOps - Push' run AzGovViz) - (line 77 AzGovViz.yml). Checkout [AzOps Accellerator](https://github.com/Azure/AzOps-Accelerator)
+* Integrate AzGovViz with AzOps (after 'AzOps - Push' run AzGovViz) - (line 77 AzGovViz.yml). Checkout [AzOps accelerator](https://github.com/Azure/AzOps-Accelerator)
 * Performance optimization
 
 __Changes__ (2021-Aug-25 / Major)

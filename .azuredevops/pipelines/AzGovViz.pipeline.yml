@@ -20,7 +20,7 @@ schedules:
     - master #CHECK branch 'master' is applicable? - delete me :)
 
 #Running AzOps? Run Azure Governance Visualizer after 'AzOps - Push' ..
-#AzOps Accelerator https://github.com/Azure/AzOps-Accelerator
+#AzOps accelerator https://github.com/Azure/AzOps-Accelerator
 #resources:
 #  pipelines:
 #    - pipeline: 'Push'

@@ -606,7 +606,7 @@ Azure Governance Visualizer polls the following APIs
 
 ## Integrate with AzOps
 
-Did you know you can run AzOps from Azure DevOps? Check [AzOps Accelerator](https://github.com/Azure/AzOps-Accelerator).
+Did you know you can run AzOps from Azure DevOps? Check [AzOps accelerator](https://github.com/Azure/AzOps-Accelerator).
 You can integrate Azure Governance Visualizer (same project as AzOps).
 
 ```yaml
