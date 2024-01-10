@@ -3,8 +3,6 @@
 
 When trying out Azure Governance Visualizer for the first time or simply as a one-time evaluation of an Azure tenant, the quickest way to get results is to run it directly from the console. These instructions will get you up and running from a terminal.
 
-Some steps have both **portal based** ( :computer_mouse: ) and **PowerShell based** ( :keyboard: ) instructions. Use whichever you feel is appropriate for your situation, they both will produce the same results.
-
 ## Prerequisites
 
 The following must be installed on the workstation that will be used to run the scripts:
@@ -81,7 +79,7 @@ If that permission is not yet assigned to your user or the service principal, a 
 
 Follow the instructions at [Assign Azure roles using the Azure portal](https://learn.microsoft.com/azure/role-based-access-control/role-assignments-portal) to grant Azure RBAC '**Reader**' role to the management group.
 
-**:keyboard: Use PowerShell to assign the role:**
+**:keyboard: Or use PowerShell to assign the role:**
 
 ```powershell
 $objectId = "<objectId of the identity that will execute Azure Governance Visualizer>"
