@@ -5,6 +5,7 @@ Follow these steps to deploy the Azure Governance Visualizer. There are three se
 - Running it ad-hoc from a workstation console or dev container
 - Running it from Azure DevOps
 - Running it from GitHub
+- Optional Publishing the Azure Governance Visualizer HTML to a Azure Web App
 
 No matter which of the three you choose, they all evaluate the same governance concerns and produce the same reporting results, just the execution and reporting environment is distinct. Use whichever environment is best suited for your situation.
 
@@ -17,16 +18,22 @@ No matter which of the three you choose, they all evaluate the same governance c
 
 To set up local execution of the Azure Governance Visualizer without involving automation from Azure pipelines or GitHub actions. This solution is good for proof of value exploration, local development, etc. It's encouraged that you use Azure DevOps pipelines or GitHub actions for a formal deployment.
 
-:arrow_right: Follow the instructions to [Configure and run from the console](./run-from/console.md).
+:arrow_right: Follow the instructions to [Configure and run from the console](./setup/console.md).
 
 ## Set up and run Azure Governance Visualizer in Azure DevOps
 
 The Azure Governance Visualizer lifecycle can be hosted out of Azure DevOps. This includes automated pipelines, service connections, and even automated wiki generations. This path also optionally  supports publishing the generated HTML report to Azure Web Apps.
 
-:arrow_right: Follow the instructions to [Configure and run from Azure DevOps](./run-from/azure-devops.md).
+:arrow_right: Follow the instructions to [Configure and run from Azure DevOps](./setup/azure-devops.md).
 
 ## Set up and run Azure Governance Visualizer in GitHub
 
 To set up the Azure Governance Visualizer lifecycle, including automated actions, service connections, and GitHub Codespaces.  This path also optionally supports publishing the generated HTML report to Azure Web Apps.
 
-:arrow_right: Follow the instructions to [Configure and run from GitHub](./run-from/github.md).
+:arrow_right: Follow the instructions to [Configure and run from GitHub](./setup/github.md).
+
+## Optional Publishing the Azure Governance Visualizer HTML to a Azure Web App
+
+Set up the Azure Web App, so that with each execution of the Azure Governance Visualizer the latest HTML file gets published to the azure Web App. Supported setups are Azure DevOps and GitHub Actions.
+
+:arrow_right: Follow the instructions to [Optional Publishing the Azure Governance Visualizer HTML to a Azure Web App](./run-from/azure-web-app.md).

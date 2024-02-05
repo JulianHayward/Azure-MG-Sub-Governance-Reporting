@@ -5,6 +5,7 @@
 1. In the folder `.\pwsh\dev` find the function you intend to work on and apply your changes.
 1. Edit the file `.\pwsh\dev\devAzGovVizParallel.ps1`.
    - In the param block update the parameter variable `$ProductVersion` accordingly.
+   - Note: Do not change anything else in this file if you did not introduce new functions!
 1. Execute `.\pwsh\dev\buildAzGovVizParallel.ps1` - This step will rebuilt the main `.\pwsh\AzGovVizParallel.ps1` file, incorporating all changes you did in the `.\pwsh\dev` directory.
 1. Edit the file `.\README.md`.
    - Update the region `Release history`, replace the changes from the previous release with your changes.

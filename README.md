@@ -2,7 +2,15 @@
 
 _Do you want to get granular insights on your technical Azure Governance implementation and document it in CSV, HTML, Markdown, and JSON?_
 
-Azure Governance Visualizer is a PowerShell based script that iterates your Azure tenant's management group hierarchy down to the subscription level. It captures most relevant Azure governance capabilities such as Azure Policy, RBAC, and a lot more. From the collected data Azure Governance Visualizer provides visibility on your __HierarchyMap__, creates a __TenantSummary__, creates __DefinitionInsights__ and builds granular __ScopeInsights__ on Azure management groups and subscriptions. The technical requirements as well as the required permissions are minimal.
+Azure Governance Visualizer is a PowerShell based script that iterates through your Azure Tenant's Management Group hierarchy, starting from the root Management Group down to the Subscription, Resource Group and Resource level. It collects data from various Azure APIs including Azure ARM, Microsoft Graph and Storage.
+
+From the collected data it generates enriched insights for capabilities such as Azure Policy, RBAC, and a lot more. 
+
+Within an HTML output it provides visibility on your __HierarchyMap__, creates a __TenantSummary__, creates __DefinitionInsights__ and builds granular __ScopeInsights__ on Azure Management Groups and Subscriptions. 
+
+Further, CSV exports with enriched information per capability will be generated and detailed JSON files are exported which document your entire Azure tenant setup for Management Groups, Subscriptions, Azure RBAC definitions and assignments, Azure policy definitions and assignments. These exports come in handy for change tracking scenarios as well as redeployment of configuration (e.g. tenant migration scenrio) and can even serve as a backup. 
+
+The technical requirements as well as the required permissions are minimal.
 
 You can run the script either for your tenant root management group or any other management group.
 
@@ -24,9 +32,8 @@ Azure Governance Visualizer is intended to help you to get a holistic overview o
 * [Azure Governance Visualizer aka AzGovViz](#azure-governance-visualizer-aka-azgovviz)
   * [Mission](#mission)
   * [Table of contents](#table-of-contents)
-  * [Azure Governance Visualizer @ Microsoft CAF \& WAF](#azure-governance-visualizer--microsoft-caf--waf)
+  * [Azure Governance Visualizer @ Microsoft CAF](#azure-governance-visualizer--microsoft-caf)
     * [Microsoft Cloud Adoption Framework (CAF)](#microsoft-cloud-adoption-framework-caf)
-    * [Microsoft Well Architected Framework (WAF)](#microsoft-well-architected-framework-waf)
     * [Azure Governance Visualizer accelerator](#azure-governance-visualizer-accelerator)
   * [ChatGPT](#chatgpt)
   * [:rocket: Azure Governance Visualizer deployment guide](#rocket-azure-governance-visualizer-deployment-guide)
@@ -57,16 +64,12 @@ Azure Governance Visualizer is intended to help you to get a holistic overview o
   * [AzADServicePrincipalInsights](#azadserviceprincipalinsights)
   * [Closing Note](#closing-note)
 
-## Azure Governance Visualizer @ Microsoft CAF & WAF
+## Azure Governance Visualizer @ Microsoft CAF
 
 ### Microsoft Cloud Adoption Framework (CAF)
 
 * Listed as [tool](https://learn.microsoft.com/azure/cloud-adoption-framework/resources/tools-templates#govern) for the Govern discipline in the Microsoft Cloud Adoption Framework.
 * Included in the Cloud Adoption Framework's [Strategy-Plan-Ready-Governance](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template.
-
-### Microsoft Well Architected Framework (WAF)
-
-* Listed as [security monitoring tool](https://learn.microsoft.com/azure/architecture/framework/security/monitor-tools) in the Microsoft Well Architected Framework
 
 ### Azure Governance Visualizer accelerator
 
@@ -78,9 +81,9 @@ The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Gov
 
 ## :rocket: Azure Governance Visualizer deployment guide
 
-The instructions to deploy the Azure Governance Visualizer is found in the __[Azure Governance Visualizer (AzGovViz) deployment guide](setup.md)__. Follow those instructions to run AzGovViz from your terminal, Azure DevOps, or GitHub.
+The instructions to deploy the Azure Governance Visualizer is found in the __[Azure Governance Visualizer (AzGovViz) deployment guide](setup.md)__. Follow those instructions to run AzGovViz from your terminal (console), GitHub Codepaces, Azure DevOps, or GitHub.
 
-Additionally, you can use the [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) to provide HTML output access through Azure Web Apps.
+As an alternative, you can use the [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) to deploy the Azure Governance Visualizer per code.
 
 ## Release history
 
@@ -365,8 +368,8 @@ VMConnection
 
 These permissions are __mandatory__ in each and every scenario!
 
-| Scenario | Permissions |
-| :------- | :---------- |
+| Scenario | Permissions                                        |
+| :------- | :------------------------------------------------- |
 | ALL      | '__Reader__' role assignment on _management group_ |
 
 ### Required permissions in Microsoft Entra ID
@@ -545,7 +548,7 @@ Azure Governance Visualizer polls the following APIs
 
 | Endpoint | API version        | API name                                                                                                                               |
 | -------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| MS Graph | beta               | /groups/`entraGroupId`/transitiveMembers                                                                                                 |
+| MS Graph | beta               | /groups/`entraGroupId`/transitiveMembers                                                                                               |
 | MS Graph | beta               | /privilegedAccess/azureResources/resources                                                                                             |
 | MS Graph | beta               | /privilegedAccess/azureResources/roleAssignments                                                                                       |
 | MS Graph | v1.0               | /applications                                                                                                                          |
