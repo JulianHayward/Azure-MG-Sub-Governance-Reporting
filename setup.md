@@ -34,6 +34,6 @@ To set up the Azure Governance Visualizer lifecycle, including automated actions
 
 ## Optional Publishing the Azure Governance Visualizer HTML to a Azure Web App
 
-Set up the Azure Web App, so that with each execution of the Azure Governance Visualizer the latest HTML file gets published to the azure Web App. Supported setups are Azure DevOps and GitHub Actions.
+Set up the Azure Web App, so that with each execution of the Azure Governance Visualizer the latest HTML file gets published to an Azure Web App. Supported setups are Azure DevOps and GitHub Actions.
 
-:arrow_right: Follow the instructions to [Optional Publishing the Azure Governance Visualizer HTML to a Azure Web App](./run-from/azure-web-app.md).
+:arrow_right: Follow the instructions to [Optional Publishing the Azure Governance Visualizer HTML to a Azure Web App](./setup/azure-web-app.md).
