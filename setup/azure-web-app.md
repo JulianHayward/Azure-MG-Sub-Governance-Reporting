@@ -7,7 +7,7 @@ You can either setup the azure Web App [manually](#manual-setup) or deploy [code
 ## Manual setup
 
 ### Prerequisites 
-* Deploy a simple webapp on Azure. This can be the smallest SKU or a FREE SKU. It doesn't matter whether you choose Windows or Linux as the platform  
+* Deploy a Web App on Azure. This can be the smallest SKU or a FREE SKU. It doesn't matter whether you choose Windows or Linux as the platform  
 ![alt text](../img/webapp_create.png "Azure Web App Create")
 * Step through the configuration. I typically use the Code for the publish and then select the Runtime stack that you standardize on 
 ![alt text](../img/webapp_configure.png "Azure Web App Configure")
