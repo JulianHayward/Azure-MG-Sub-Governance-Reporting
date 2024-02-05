@@ -86,7 +86,7 @@ function getOrphanedResources {
         $subsToProcessInCustomDataCollection = $using:subsToProcessInCustomDataCollection
         $azAPICallConf = $using:azAPICallConf
 
-        #Batching: https://docs.microsoft.com/en-us/azure/governance/resource-graph/troubleshoot/general#toomanysubscription
+        #Batching: https://learn.microsoft.com/azure/governance/resource-graph/troubleshoot/general#toomanysubscription
         $counterBatch = [PSCustomObject] @{ Value = 0 }
         $batchSize = 1000
         $subscriptionsBatch = $subsToProcessInCustomDataCollection | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
