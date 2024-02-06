@@ -94,7 +94,7 @@ __Changes__ (2024-Feb-06 / 6.4.0 Minor)
 * update ARM API-version for RBAC Role definitions. Using `2022-05-01-preview` instead of `2018-11-01-preview` consequently
 * fix *_roleDefinitions.csv - description partially missing
 * optimize array handling / best practices
-* optimize getting private endpoint capacle resource types / in case resource provider 'microsoft.network' is not registered, try with next available subscription instead of throwing
+* optimize getting private endpoint capable resource types / in case resource provider 'microsoft.network' is not registered, try with next available subscription instead of throwing
 * use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.2.0
 * documentation update - style guidance, links updates - kudos @ckittel
 
