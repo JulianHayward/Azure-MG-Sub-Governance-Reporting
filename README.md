@@ -8,7 +8,7 @@ From the collected data it generates enriched insights for capabilities such as 
 
 Within an HTML output it provides visibility on your __HierarchyMap__, creates a __TenantSummary__, creates __DefinitionInsights__ and builds granular __ScopeInsights__ on Azure Management Groups and Subscriptions. 
 
-Further, CSV exports with enriched information per capability will be generated and detailed JSON files are exported which document your entire Azure tenant setup for Management Groups, Subscriptions, Azure RBAC definitions and assignments, Azure policy definitions and assignments. These exports come in handy for change tracking scenarios as well as redeployment of configuration (e.g. tenant migration scenrio) and can even serve as a backup. 
+Further, CSV exports with enriched information per capability will be generated and detailed JSON files are exported which document your entire Azure tenant setup for Management Groups, Subscriptions, Azure RBAC definitions and assignments, Azure policy definitions and assignments. These exports come in handy for change tracking scenarios as well as redeployment of configuration (e.g. tenant migration scenario) and can even serve as a backup. 
 
 The technical requirements as well as the required permissions are minimal.
 
@@ -87,9 +87,16 @@ As an alternative, you can use the [Azure Governance Visualizer accelerator](htt
 
 ## Release history
 
-__Changes__ (2024-Jan-08 / 6.3.7 Minor)
+__Changes__ (2024-Feb-06 / 6.4.0 Minor)
 
-* fix: Ignore `ARMLocation` in case not Public Cloud (AzureCloud)
+* change PowerShell parallel handling / batches
+* add addition JSON outputs  'definitions_tracking' and 'assignments_tracking' (JSON filenames have no displayName included; GUIDs only)
+* update ARM API-version for RBAC Role definitions. Using `2022-05-01-preview` instead of `2018-11-01-preview` consequently
+* fix *_roleDefinitions.csv - description partially missing
+* optimize array handling / best practices
+* optimize getting private endpoint capacle resource types / in case resource provider 'microsoft.network' is not registered, try with next available subscription instead of throwing
+* use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.2.0
+* documentation update - style guidance, links updates - kudos @ckittel
 
 [Full release history](history.md)
 

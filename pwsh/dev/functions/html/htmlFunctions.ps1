@@ -238,7 +238,7 @@ function processScopeInsights($mgChild, $mgChildOf) {
 "@
         if ($mgId -eq $defaultManagementGroupId) {
             $script:html += @'
-        <tr><td class="detailstd"><p><i class="fa fa-circle" aria-hidden="true"></i> <b>Default</b> Management Group <a class="externallink" href="https://learn.microsoft.com/azure/governance/management-groups/how-to/protect-resource-hierarchy#setting---default-management-group" target="_blank" rel="noopener" rel="noopener">docs <i class="fa fa-external-link" aria-hidden="true"></i></a></p></td></tr>
+        <tr><td class="detailstd"><p><i class="fa fa-circle" aria-hidden="true"></i> <b>Default</b> Management Group <a class="externallink" href="https://learn.microsoft.com/azure/governance/management-groups/how-to/protect-resource-hierarchy#setting---default-management-group" target="_blank" rel="noopener" rel="noopener">learn <i class="fa fa-external-link" aria-hidden="true"></i></a></p></td></tr>
 '@
         }
         $script:html += @"

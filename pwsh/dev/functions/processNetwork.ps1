@@ -76,7 +76,7 @@ function processNetwork {
                             }
                         }
                         else {
-                            $arrayRemoteMGPath = @()
+                            $arrayRemoteMGPath = [System.Collections.ArrayList]@()
                             foreach ($remoteId in $remoteTenantId) {
                                 if ($remoteId -eq 'SubscriptionNotFound Tenant unknown') {
                                     $remoteMGPath = 'unknown'
@@ -86,10 +86,10 @@ function processNetwork {
                                     $objectGuid = [System.Guid]::empty
                                     if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
                                         if ($remoteId -in $MSTenantIds) {
-                                            $arrayRemoteMGPath += "$remoteId (MS)"
+                                            $null = $arrayRemoteMGPath.Add("$remoteId (MS)")
                                         }
                                         else {
-                                            $arrayRemoteMGPath += $remoteId
+                                            $null = $arrayRemoteMGPath.Add($remoteId)
                                         }
                                         if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
                                             $peeringXTenant = 'false'

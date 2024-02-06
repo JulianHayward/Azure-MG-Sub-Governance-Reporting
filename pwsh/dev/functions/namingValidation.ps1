@@ -1,16 +1,16 @@
 function NamingValidation($toCheck) {
     $checks = @(':', '/', '\', '<', '>', '|', '"')
-    $array = @()
+    $array = [System.Collections.ArrayList]@()
     foreach ($check in $checks) {
         if ($toCheck -like "*$($check)*") {
-            $array += $check
+            $null = $array.Add($check)
         }
     }
     if ($toCheck -match '\*') {
-        $array += '*'
+        $null = $array.Add('*')
     }
     if ($toCheck -match '\?') {
-        $array += '?'
+        $null = $array.Add('?')
     }
     return $array
 }

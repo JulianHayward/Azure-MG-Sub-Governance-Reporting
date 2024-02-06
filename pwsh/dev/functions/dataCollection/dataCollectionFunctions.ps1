@@ -510,15 +510,19 @@ function dataCollectionResources {
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime,properties&api-version=2023-07-01"
     $method = 'GET'
     $resourcesSubscriptionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
-    #Write-Host 'arm resList count:'$resourcesSubscriptionResult.Count
     #endregion resources LIST
 
     #region resources GET
     if ($resourcesSubscriptionResult.Count -gt 0) {
         $arrayResourcesWithProperties = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-        $resourcesSubscriptionResult | ForEach-Object -Parallel {
-            $resource = $_
 
+        $batchSize = [math]::ceiling($resourcesSubscriptionResult.Count / $azAPICallConf['htParameters'].ThrottleLimit)
+        #Write-Host "Optimal batch size: $($batchSize)"
+        $counterBatch = [PSCustomObject] @{ Value = 0 }
+        $resourcesSubscriptionResultBatch = ($resourcesSubscriptionResult) | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
+        #Write-Host "Processing data in $($resourcesSubscriptionResultBatch.Count) batches"
+
+        $resourcesSubscriptionResultBatch | ForEach-Object -Parallel {
             #region using
             $arrayResourcesWithProperties = $using:arrayResourcesWithProperties
             $htResourceProvidersRef = $using:htResourceProvidersRef
@@ -532,64 +536,61 @@ function dataCollectionResources {
             #$htResourcesWithProperties = $using:htResourcesWithProperties
             #endregion using
 
-            if ($htAvailablePrivateEndpointTypes.(($resource.type).ToLower())) {
-                #Write-Host "$($resource.type) in `$htAvailablePrivateEndpointTypes"
-                if ($htResourceProvidersRef.($resource.type)) {
-                    if ($htResourceProvidersRef.($resource.type).APIDefault) {
-                        $apiVersionToUse = $htResourceProvidersRef.($resource.type).APIDefault
-                        $apiRef = 'default'
-                    }
-                    else {
-                        $apiVersionToUse = $htResourceProvidersRef.($resource.type).APILatest
-                        $apiRef = 'latest'
-                    }
+            foreach ($resource in $_.Group) {
 
-                    $currentTask = "Getting Resource Properties API-version: '$apiVersionToUse' ($apiRef); ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)'"
-                    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($resource.id)?api-version=$apiVersionToUse"
-                    $method = 'GET'
-                    $resourceResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -listenOn Content -unhandledErrorAction Continue
+                if ($htAvailablePrivateEndpointTypes.(($resource.type).ToLower())) {
+                    if ($htResourceProvidersRef.($resource.type)) {
+                        if ($htResourceProvidersRef.($resource.type).APIDefault) {
+                            $apiVersionToUse = $htResourceProvidersRef.($resource.type).APIDefault
+                            $apiRef = 'default'
+                        }
+                        else {
+                            $apiVersionToUse = $htResourceProvidersRef.($resource.type).APILatest
+                            $apiRef = 'latest'
+                        }
 
-                    if ($resourceResult -ne 'ResourceOrResourcegroupNotFound' -and $resourceResult -ne 'convertfromJSONError') {
-                        $null = $script:arrayResourcesWithProperties.Add($resourceResult)
-                        #$script:htResourcesWithProperties.($resourceResult.id) = $resourceResult
-                        if ($resourceResult.properties.privateEndpointConnections.Count -gt 0) {
-                            foreach ($privateEndpointConnection in $resourceResult.properties.privateEndpointConnections) {
-                                $resourceResultIdSplit = $resourceResult.id -split '/'
-                                $null = $script:arrayPrivateEndPointsFromResourceProperties.Add([PSCustomObject]@{
-                                        ResourceName              = $resourceResult.name
-                                        ResourceType              = $resourceResult.type
-                                        ResourceId                = $resourceResult.id
-                                        ResourceResourceGroup     = $resourceResultIdSplit[4]
-                                        ResourceSubscriptionId    = $scopeId
-                                        ResourceSubscriptionName  = $scopeDisplayName
-                                        ResourceMGPath            = $ChildMgParentNameChainDelimited
-                                        privateEndpointConnection = $privateEndpointConnection
-                                    })
+                        $currentTask = "Getting Resource Properties API-version: '$apiVersionToUse' ($apiRef); ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)'"
+                        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($resource.id)?api-version=$apiVersionToUse"
+                        $method = 'GET'
+                        $resourceResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -listenOn Content -unhandledErrorAction Continue
+
+                        if ($resourceResult -ne 'ResourceOrResourcegroupNotFound' -and $resourceResult -ne 'convertfromJSONError') {
+                            $null = $script:arrayResourcesWithProperties.Add($resourceResult)
+                            #$script:htResourcesWithProperties.($resourceResult.id) = $resourceResult
+                            if ($resourceResult.properties.privateEndpointConnections.Count -gt 0) {
+                                foreach ($privateEndpointConnection in $resourceResult.properties.privateEndpointConnections) {
+                                    $resourceResultIdSplit = $resourceResult.id -split '/'
+                                    $null = $script:arrayPrivateEndPointsFromResourceProperties.Add([PSCustomObject]@{
+                                            ResourceName              = $resourceResult.name
+                                            ResourceType              = $resourceResult.type
+                                            ResourceId                = $resourceResult.id
+                                            ResourceResourceGroup     = $resourceResultIdSplit[4]
+                                            ResourceSubscriptionId    = $scopeId
+                                            ResourceSubscriptionName  = $scopeDisplayName
+                                            ResourceMGPath            = $ChildMgParentNameChainDelimited
+                                            privateEndpointConnection = $privateEndpointConnection
+                                        })
+                                }
+                            }
+                        }
+                        else {
+                            if ($resourceResult -eq 'convertfromJSONError') {
+                                $script:htResourcePropertiesConvertfromJSONFailed.($resource.id) = @{}
                             }
                         }
                     }
                     else {
-                        if ($resourceResult -eq 'convertfromJSONError') {
-                            $script:htResourcePropertiesConvertfromJSONFailed.($resource.id) = @{}
-                        }
+                        Write-Host "[Azure Governance Visualizer] Please file an issue at the Azure Governance Visualizer GitHub repository (aka.ms/AzGovViz) and provide this information (scrub subscription Id and company identifyable names): No API-version matches! ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)' - Thank you!" -ForegroundColor DarkRed
                     }
                 }
                 else {
-                    Write-Host "[Azure Governance Visualizer] Please file an issue at the Azure Governance Visualizer GitHub repository (aka.ms/AzGovViz) and provide this information (scrub subscription Id and company identifyable names): No API-version matches! ResourceType: '$($resource.type)'; ResourceId: '$($resource.id)' - Thank you!" -ForegroundColor DarkRed
+                    #Write-Host "$($resource.type) not in `$htAvailablePrivateEndpointTypes"
                 }
-            }
-            else {
-                #Write-Host "$($resource.type) not in `$htAvailablePrivateEndpointTypes"
             }
 
         } -ThrottleLimit $azAPICallConf['htParameters'].ThrottleLimit
     }
-    #Write-Host 'arm resGet count:' $arrayResourcesWithProperties.Count
     #endregion resources GET
-
-    # if ($resourcesSubscriptionResult.Count -ne $arrayResourcesWithProperties.Count) {
-    #     Write-Host " FYI: Getting Resources for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']  - ARM list count: $($resourcesSubscriptionResult.Count); ARG get count: $($arrayResourcesWithProperties.Count)"
-    # }
 
     #region PSRule
     if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
@@ -1253,7 +1254,6 @@ function dataCollectionResources {
                 foreach ($naming in $namingConvention) {
                     if (($resource.name).StartsWith($naming, 'CurrentCultureIgnoreCase')) {
                         $cafResourceNamingCheck = 'passed'
-                        #$applicableNaming = $naming
                     }
                 }
             }
@@ -1358,7 +1358,6 @@ function dataCollectionResourceGroups {
         $subscriptionQuotaId
     )
 
-    #https://management.azure.com/subscriptions/{subscriptionId}/resourcegroups?api-version=2020-06-01
     $currentTask = "Getting ResourceGroups for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/resourcegroups?api-version=2021-04-01"
     $method = 'GET'
@@ -2193,12 +2192,11 @@ function dataCollectionPolicyDefinitions {
                     if (-not [string]::IsNullOrEmpty($roledefinitionId)) {
                         if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
                             $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId) = @{}
-                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies = [array]$hlpPolicyDefinitionId
+                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies = [System.Collections.ArrayList]@()
+                            $null = $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies.Add($hlpPolicyDefinitionId)
                         }
                         else {
-                            $usedInPolicies = $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies
-                            $usedInPolicies += $hlpPolicyDefinitionId
-                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies = $usedInPolicies
+                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies.Add($hlpPolicyDefinitionId)
                         }
                     }
                     else {
@@ -2776,7 +2774,6 @@ function dataCollectionPolicyAssignmentsMG {
                         $policySetCategory = $policySetDefinition.Category
                     }
                     else {
-                        #test
                         #Write-Host "pa '($L0mgmtGroupPolicyAssignment.Id)' scope: '$($scopeId)' - policySetDefinition not available: $policySetDefinitionId"
                         Start-Sleep -Seconds 1
                     }
@@ -3467,11 +3464,11 @@ function dataCollectionRoleDefinitions {
 
     if ($TargetMgOrSub -eq 'Sub') {
         $currentTask = "Getting Custom Role definitions for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2018-07-01&`$filter=type eq 'CustomRole'"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'CustomRole'"
     }
     if ($TargetMgOrSub -eq 'MG') {
         $currentTask = "Getting Custom Role definitions for Management Group: '$($scopeDisplayName)' ('$scopeId')"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2018-07-01&`$filter=type eq 'CustomRole'"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'CustomRole'"
     }
     $method = 'GET'
     $scopeCustomRoleDefinitions = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
@@ -3557,7 +3554,6 @@ function dataCollectionRoleAssignmentsMG {
             $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
             $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
             if ($roleAssignmentScheduleInstancesCount -gt 0) {
-                #$htRoleAssignmentsPIM = @{}
                 foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
                     $script:htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
                 }
@@ -3839,7 +3835,6 @@ function dataCollectionRoleAssignmentsSub {
             $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
             $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
             if ($roleAssignmentScheduleInstancesCount -gt 0) {
-                #$htRoleAssignmentsPIM = @{}
                 foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
                     $script:htRoleAssignmentsPIM.($roleAssignmentScheduleInstance.properties.originRoleAssignmentId.tolower()) = $roleAssignmentScheduleInstance.properties
                 }

@@ -54,8 +54,15 @@ function processAADGroups {
 
         Write-Host " processing $($aadGroupsCount) Microsoft Entra groups (indicating progress in steps of $indicator)"
 
-        $optimizedTableForAADGroupsQuery | ForEach-Object -Parallel {
-            $aadGroupIdWithRoleAssignment = $_
+        $ThrottleLimitThis = $ThrottleLimit * 2
+        $batchSize = [math]::ceiling($optimizedTableForAADGroupsQuery.Count / $ThrottleLimitThis)
+        Write-Host "Optimal batch size: $($batchSize)"
+        $counterBatch = [PSCustomObject] @{ Value = 0 }
+        $optimizedTableForAADGroupsQueryBatch = ($optimizedTableForAADGroupsQuery) | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
+        Write-Host "Processing data in $($optimizedTableForAADGroupsQueryBatch.Count) batches"
+
+        $optimizedTableForAADGroupsQueryBatch | ForEach-Object -Parallel {
+            #$aadGroupIdWithRoleAssignment = $_
             #region UsingVARs
             #fromOtherFunctions
             $AADGroupMembersLimit = $using:AADGroupMembersLimit
@@ -74,41 +81,41 @@ function processAADGroups {
             $function:getGroupmembers = $using:funcGetGroupmembers
             #endregion UsingVARs
 
-            $rndom = Get-Random -Minimum 10 -Maximum 750
-            Start-Sleep -Millisecond $rndom
+            foreach ($aadGroupIdWithRoleAssignment in $_.Group) {
 
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/groups/$($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)/transitiveMembers/`$count"
-            $method = 'GET'
-            $aadGroupMembersCount = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask "getGroupMembersCountTransitive $($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)" -listenOn 'Content' -consistencyLevel 'eventual'
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/groups/$($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)/transitiveMembers/`$count"
+                $method = 'GET'
+                $aadGroupMembersCount = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask "getGroupMembersCountTransitive $($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)" -listenOn 'Content' -consistencyLevel 'eventual'
 
-            if ($aadGroupMembersCount -eq 'Request_ResourceNotFound') {
-                $null = $script:arrayGroupRequestResourceNotFound.Add([PSCustomObject]@{
-                        groupId = $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId
-                    })
-            }
-            else {
-                if ($aadGroupMembersCount -gt $AADGroupMembersLimit) {
-                    Write-Host "  Group exceeding limit ($($AADGroupMembersLimit)); memberCount: $aadGroupMembersCount; Group: $($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityDisplayname) ($($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)); Members will not be resolved adjust the limit using parameter -AADGroupMembersLimit"
-                    $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId) = @{}
-                    $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId).MembersAllCount = $aadGroupMembersCount
-                    $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId).MembersUsersCount = 'n/a'
-                    $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId).MembersGroupsCount = 'n/a'
-                    $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId).MembersServicePrincipalsCount = 'n/a'
+                if ($aadGroupMembersCount -eq 'Request_ResourceNotFound') {
+                    $null = $script:arrayGroupRequestResourceNotFound.Add([PSCustomObject]@{
+                            groupId = $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId
+                        })
                 }
                 else {
-                    getGroupmembers -aadGroupId $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId -aadGroupDisplayName $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityDisplayname
+                    if ($aadGroupMembersCount -gt $AADGroupMembersLimit) {
+                        Write-Host "  Group exceeding limit ($($AADGroupMembersLimit)); memberCount: $aadGroupMembersCount; Group: $($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityDisplayname) ($($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)); Members will not be resolved adjust the limit using parameter -AADGroupMembersLimit"
+                        $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId) = @{}
+                        $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId).MembersAllCount = $aadGroupMembersCount
+                        $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId).MembersUsersCount = 'n/a'
+                        $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId).MembersGroupsCount = 'n/a'
+                        $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId).MembersServicePrincipalsCount = 'n/a'
+                    }
+                    else {
+                        getGroupmembers -aadGroupId $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId -aadGroupDisplayName $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityDisplayname
+                    }
                 }
-            }
 
-            $null = $script:arrayProgressedAADGroups.Add($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)
-            $processedAADGroupsCount = $null
-            $processedAADGroupsCount = ($arrayProgressedAADGroups).Count
-            if ($processedAADGroupsCount) {
-                if ($processedAADGroupsCount % $indicator -eq 0) {
-                    Write-Host " $processedAADGroupsCount Microsoft Entra groups processed"
+                $null = $script:arrayProgressedAADGroups.Add($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)
+                $processedAADGroupsCount = $null
+                $processedAADGroupsCount = ($arrayProgressedAADGroups).Count
+                if ($processedAADGroupsCount) {
+                    if ($processedAADGroupsCount % $indicator -eq 0) {
+                        Write-Host " $processedAADGroupsCount Microsoft Entra groups processed"
+                    }
                 }
             }
-        } -ThrottleLimit ($ThrottleLimit * 2)
+        } -ThrottleLimit ($ThrottleLimitThis)
     }
     else {
         Write-Host " processing $($aadGroupsCount) Microsoft Entra groups"
