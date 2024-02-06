@@ -57,9 +57,8 @@ function processDefinitionInsights() {
                 ($htPolicyWithAssignments).policy.($customPolicy.PolicyDefinitionId).Assignments = [array]($htPoliciesWithAssignmentOnRgRes.($customPolicy.PolicyDefinitionId).Assignments)
             }
             else {
-                $array = @()
-                $array += ($htPolicyWithAssignments).policy.($customPolicy.PolicyDefinitionId).Assignments
-                $array += $htPoliciesWithAssignmentOnRgRes.($customPolicy.PolicyDefinitionId).Assignments
+                $array = [System.Collections.ArrayList]@()
+                $null = $array.Add($htPoliciesWithAssignmentOnRgRes.($customPolicy.PolicyDefinitionId).Assignments)
                 ($htPolicyWithAssignments).policy.($customPolicy.PolicyDefinitionId).Assignments = $array
             }
         }
@@ -72,9 +71,8 @@ function processDefinitionInsights() {
                 ($htPolicyWithAssignments).policySet.($customPolicySet.PolicyDefinitionId).Assignments = [array]($htPoliciesWithAssignmentOnRgRes.($customPolicySet.PolicyDefinitionId).Assignments)
             }
             else {
-                $array = @()
-                $array += ($htPolicyWithAssignments).policySet.($customPolicySet.PolicyDefinitionId).Assignments
-                $array += $htPoliciesWithAssignmentOnRgRes.($customPolicySet.PolicyDefinitionId).Assignments
+                $array = [System.Collections.ArrayList]@()
+                $null = $array.Add($htPoliciesWithAssignmentOnRgRes.($customPolicySet.PolicyDefinitionId).Assignments)
                 ($htPolicyWithAssignments).policySet.($customPolicySet.PolicyDefinitionId).Assignments = $array
             }
         }
@@ -843,7 +841,7 @@ tf.init();}}
             $null = $arrayRoleDefinitionsForCSVExport.Add([PSCustomObject]@{
                     Name                  = $role.Name
                     Id                    = $role.Id
-                    Description           = $role.Json.description
+                    Description           = $role.Json.properties.description
                     Type                  = $roleType
                     AssignmentsCount      = $assignmentsCount
                     AssignableScopesCount = $AssignableScopesCount

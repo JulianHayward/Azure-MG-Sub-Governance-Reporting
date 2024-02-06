@@ -1,7 +1,7 @@
 function getDefaultManagementGroup {
     $currentTask = 'Get Default Management Group'
     Write-Host $currentTask
-    #https://docs.microsoft.com/en-us/azure/governance/management-groups/how-to/protect-resource-hierarchy#setting---default-management-group
+    #https://learn.microsoft.com/azure/governance/management-groups/how-to/protect-resource-hierarchy#setting---default-management-group
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($azAPICallConf['checkContext'].Tenant.Id)/settings?api-version=2020-02-01"
     $method = 'GET'
     $settingsMG = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask

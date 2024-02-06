@@ -32,9 +32,11 @@ function buildJSON {
                     $htSubRGPolicyAssignments.($subId) = @{}
                 }
                 if (-not $htSubRGPolicyAssignments.($subId).PolicyAssignments) {
-                    $htSubRGPolicyAssignments.($subId).PolicyAssignments = @()
+                    $htSubRGPolicyAssignments.($subId).PolicyAssignments = [System.Collections.ArrayList]@()
                 }
-                $htSubRGPolicyAssignments.($subId).PolicyAssignments += $rgpa.group
+                foreach ($rgpafg in $rgpa.group) {
+                    $null = $htSubRGPolicyAssignments.($subId).PolicyAssignments.Add($rgpafg)
+                }
             }
         }
     }
@@ -54,9 +56,11 @@ function buildJSON {
                     $htSubRGRoleAssignments.($subId) = @{}
                 }
                 if (-not $htSubRGRoleAssignments.($subId).RoleAssignments) {
-                    $htSubRGRoleAssignments.($subId).RoleAssignments = @()
+                    $htSubRGRoleAssignments.($subId).RoleAssignments = [System.Collections.ArrayList]@()
                 }
-                $htSubRGRoleAssignments.($subId).RoleAssignments += $rgra.group
+                foreach ($rgrafg in $rgra.group) {
+                    $null = $htSubRGRoleAssignments.($subId).RoleAssignments.Add($rgrafg)
+                }
             }
 
             #res
@@ -307,6 +311,9 @@ function buildJSON {
         }
 
         if (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)") {
+            if (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)Definitions") {
+                $createDefinitionsLegacyAndNew = $true
+            }
             Write-Host ' Cleaning old state (Pipeline only)'
             Remove-Item -Recurse -Force "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)"
         }
@@ -328,6 +335,7 @@ function buildJSON {
     }
 
     $null = New-Item -Name "$($JSONPath)$($DirectorySeparatorChar)Definitions" -ItemType directory -Path $outputPath
+    $null = New-Item -Name "$($JSONPath)$($DirectorySeparatorChar)Definitions_tracking" -ItemType directory -Path $outputPath
 
 
 
@@ -341,16 +349,47 @@ function buildJSON {
         $null = New-Item -Name "$($pathRoleDefinitionCustom)" -ItemType directory -Path $outputPath
         $null = New-Item -Name "$($pathRoleDefinitionBuiltIn)" -ItemType directory -Path $outputPath
     }
+    $pathRoleDefinitionsTracking = "$($JSONPath)$($DirectorySeparatorChar)Definitions_tracking$($DirectorySeparatorChar)RoleDefinitions"
+    if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionsTracking)")) {
+        $null = New-Item -Name $pathRoleDefinitionsTracking -ItemType directory -Path $outputPath
+        $pathRoleDefinitionCustomTracking = "$($pathRoleDefinitionsTracking)$($DirectorySeparatorChar)Custom"
+        $pathRoleDefinitionBuiltInTracking = "$($pathRoleDefinitionsTracking)$($DirectorySeparatorChar)BuiltIn"
+        $null = New-Item -Name "$($pathRoleDefinitionCustomTracking)" -ItemType directory -Path $outputPath
+        $null = New-Item -Name "$($pathRoleDefinitionBuiltInTracking)" -ItemType directory -Path $outputPath
+    }
 
     if (($htCacheDefinitionsRole).Keys.Count -gt 0) {
         foreach ($roleDefinition in ($htCacheDefinitionsRole).Keys.where( { ($htCacheDefinitionsRole).($_).IsCustom }) | Sort-Object) {
             $htJSON.RoleDefinitions.($roleDefinition) = ($htCacheDefinitionsRole).($roleDefinition).Json.properties
             $jsonConverted = ($htCacheDefinitionsRole).($roleDefinition).Json.properties | ConvertTo-Json -Depth 99
             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionCustom)$($DirectorySeparatorChar)$(removeInvalidFileNameChars ($htCacheDefinitionsRole).($roleDefinition).Name) ($(($htCacheDefinitionsRole).($roleDefinition).Id)).json" -Encoding utf8
+
+            #if a custom role has multiple assignable scopes, the definition id may vary depending which scope AzGovViz retrieved the definition from, therefore for better change tracking we pack assignablescopes, sort them and use the first entry as id
+
+            if (($htCacheDefinitionsRole).($roleDefinition).Json.properties.assignableScopes.Count -gt 1) {
+                $jsonAdjustment4Tracking = (($htCacheDefinitionsRole).($roleDefinition).Json).psobject.copy()
+                $arrayAssignableScopes = [System.Collections.ArrayList]@()
+                foreach ($assignableScope in $jsonAdjustment4Tracking.properties.assignableScopes) {
+                    if ($assignableScope -like '/subscriptions/*') {
+                        $null = $arrayAssignableScopes.Add("$($assignableScope)/providers/Microsoft.Authorization/roleDefinitions/$($jsonAdjustment4Tracking.name)")
+                    }
+                    else {
+                        $null = $arrayAssignableScopes.Add("/providers/Microsoft.Authorization/roleDefinitions/$($jsonAdjustment4Tracking.name)")
+                    }
+                }
+                $jsonAdjustment4Tracking.id = ($arrayAssignableScopes | Sort-Object)[0]
+                $jsonConvertedTracking = $jsonAdjustment4Tracking | ConvertTo-Json -Depth 99
+            }
+            else {
+                $jsonConvertedTracking = ($htCacheDefinitionsRole).($roleDefinition).Json | ConvertTo-Json -Depth 99
+            }
+            $jsonConvertedTracking | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionCustomTracking)$($DirectorySeparatorChar)$(($htCacheDefinitionsRole).($roleDefinition).Id).json" -Encoding utf8
         }
         foreach ($roleDefinition in ($htCacheDefinitionsRole).Keys.where( { -not ($htCacheDefinitionsRole).($_).IsCustom })) {
-            $jsonConverted = ($htCacheDefinitionsRole).($roleDefinition).Json | ConvertTo-Json -Depth 99
+            $jsonConverted = ($htCacheDefinitionsRole).($roleDefinition).Json.properties | ConvertTo-Json -Depth 99
             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionBuiltIn)$($DirectorySeparatorChar)$(removeInvalidFileNameChars ($htCacheDefinitionsRole).($roleDefinition).Name ) ($(($htCacheDefinitionsRole).($roleDefinition).Id)).json" -Encoding utf8
+            $jsonConvertedTracking = ($htCacheDefinitionsRole).($roleDefinition).Json | ConvertTo-Json -Depth 99
+            $jsonConvertedTracking | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionBuiltInTracking)$($DirectorySeparatorChar)$(($htCacheDefinitionsRole).($roleDefinition).Id).json" -Encoding utf8
         }
     }
 
@@ -360,10 +399,18 @@ function buildJSON {
         $pathPolicyDefinitionBuiltIn = "$($pathPolicyDefinitions)$($DirectorySeparatorChar)BuiltIn"
         $null = New-Item -Name "$($pathPolicyDefinitionBuiltIn)" -ItemType directory -Path $outputPath
     }
+    $pathPolicyDefinitionsTracking = "$($JSONPath)$($DirectorySeparatorChar)Definitions_tracking$($DirectorySeparatorChar)PolicyDefinitions"
+    if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicyDefinitionsTracking)")) {
+        $null = New-Item -Name $pathPolicyDefinitionsTracking -ItemType directory -Path $outputPath
+        $pathPolicyDefinitionBuiltInTracking = "$($pathPolicyDefinitionsTracking)$($DirectorySeparatorChar)BuiltIn"
+        $null = New-Item -Name "$($pathPolicyDefinitionBuiltInTracking)" -ItemType directory -Path $outputPath
+    }
     if (($htCacheDefinitionsPolicy).Keys.Count -gt 0) {
         foreach ($policyDefinition in ($htCacheDefinitionsPolicy).Keys.where( { ($htCacheDefinitionsPolicy).($_).Type -eq 'BuiltIn' })) {
             $jsonConverted = ($htCacheDefinitionsPolicy).($policyDefinition).Json.properties | ConvertTo-Json -Depth 99
             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicyDefinitionBuiltIn)$($DirectorySeparatorChar)$(removeInvalidFileNameChars ($htCacheDefinitionsPolicy).($policyDefinition).displayName) ($(($htCacheDefinitionsPolicy).($policyDefinition).Json.name)).json" -Encoding utf8
+            $jsonConvertedTracking = ($htCacheDefinitionsPolicy).($policyDefinition).Json | ConvertTo-Json -Depth 99
+            $jsonConvertedTracking | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicyDefinitionBuiltInTracking)$($DirectorySeparatorChar)$(($htCacheDefinitionsPolicy).($policyDefinition).Json.name).json" -Encoding utf8
         }
     }
 
@@ -373,10 +420,18 @@ function buildJSON {
         $pathPolicySetDefinitionBuiltIn = "$($pathPolicySetDefinitions)$($DirectorySeparatorChar)BuiltIn"
         $null = New-Item -Name "$($pathPolicySetDefinitionBuiltIn)" -ItemType directory -Path $outputPath
     }
+    $pathPolicySetDefinitionsTracking = "$($JSONPath)$($DirectorySeparatorChar)Definitions_tracking$($DirectorySeparatorChar)PolicySetDefinitions"
+    if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicySetDefinitionsTracking)")) {
+        $null = New-Item -Name $pathPolicySetDefinitionsTracking -ItemType directory -Path $outputPath
+        $pathPolicySetDefinitionBuiltInTracking = "$($pathPolicySetDefinitionsTracking)$($DirectorySeparatorChar)BuiltIn"
+        $null = New-Item -Name "$($pathPolicySetDefinitionBuiltInTracking)" -ItemType directory -Path $outputPath
+    }
     if (($htCacheDefinitionsPolicySet).Keys.Count -gt 0) {
         foreach ($policySetDefinition in ($htCacheDefinitionsPolicySet).Keys.where( { ($htCacheDefinitionsPolicySet).($_).Type -eq 'BuiltIn' })) {
             $jsonConverted = ($htCacheDefinitionsPolicySet).($policySetDefinition).Json.properties | ConvertTo-Json -Depth 99
             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicySetDefinitionBuiltIn)$($DirectorySeparatorChar)$(removeInvalidFileNameChars ($htCacheDefinitionsPolicySet).($policySetDefinition).displayName) ($(($htCacheDefinitionsPolicySet).($policySetDefinition).Json.name)).json" -Encoding utf8
+            $jsonConverted = ($htCacheDefinitionsPolicySet).($policySetDefinition).Json | ConvertTo-Json -Depth 99
+            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicySetDefinitionBuiltInTracking)$($DirectorySeparatorChar)$(($htCacheDefinitionsPolicySet).($policySetDefinition).Json.name).json" -Encoding utf8
         }
     }
 
@@ -411,6 +466,12 @@ function buildJSON {
             $null = New-Item -Name $path -ItemType directory -Path $outputPath
         }
         $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($RoleAssignment.Assignment.ObjectType)_$($pim)$($RoleAssignment.Assignment.RoleAssignmentId -replace '.*/').json" -Encoding utf8
+
+        $pathTracking = "$($JSONPath)$($DirectorySeparatorChar)Assignments_tracking$($DirectorySeparatorChar)RoleAssignments$($DirectorySeparatorChar)Tenant"
+        if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)")) {
+            $null = New-Item -Name $pathTracking -ItemType directory -Path $outputPath
+        }
+        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$($RoleAssignment.Assignment.ObjectType)_$($pim)$($RoleAssignment.Assignment.RoleAssignmentId -replace '.*/').json" -Encoding utf8
     }
 
     $htTree.'Tenant'.'ManagementGroups' = [ordered] @{}
@@ -418,6 +479,9 @@ function buildJSON {
 
     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)Assignments")) {
         $null = New-Item -Name "$($JSONPath)$($DirectorySeparatorChar)Assignments" -ItemType directory -Path $outputPath
+    }
+    if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)Assignments_tracking")) {
+        $null = New-Item -Name "$($JSONPath)$($DirectorySeparatorChar)Assignments_tracking" -ItemType directory -Path $outputPath
     }
 
     buildTree -mgId $ManagementGroupId -json $json -prnt "$($JSONPath)$($DirectorySeparatorChar)Tenant"

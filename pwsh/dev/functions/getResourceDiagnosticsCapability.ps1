@@ -42,7 +42,7 @@ function getResourceDiagnosticsCapability {
 
                     #thx @Jim Britt (Microsoft) https://github.com/JimGBritt/AzurePolicy/tree/master/AzureMonitor/Scripts Create-AzDiagPolicy.ps1
                     $responseJSON = ''
-                    $logCategories = @()
+                    $logCategories = [System.Collections.ArrayList]@()
                     $metrics = $false
                     $logs = $false
 
@@ -102,7 +102,7 @@ function getResourceDiagnosticsCapability {
                                 }
                                 if ($response.properties.categoryType -eq 'Logs') {
                                     $logs = $true
-                                    $logCategories += $response.name
+                                    $null = $logCategories.Add($response.name)
                                 }
                             }
                         }

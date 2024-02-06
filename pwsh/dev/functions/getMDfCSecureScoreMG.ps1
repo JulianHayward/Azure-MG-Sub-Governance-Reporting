@@ -2,7 +2,7 @@ function getMDfCSecureScoreMG {
     $start = Get-Date
     $currentTask = 'Getting Microsoft Defender for Cloud Secure Score for Management Groups'
     Write-Host $currentTask
-    #ref: https://docs.microsoft.com/en-us/azure/governance/management-groups/resource-graph-samples?tabs=azure-cli#secure-score-per-management-group
+    #ref: https://learn.microsoft.com/azure/governance/management-groups/resource-graph-samples?tabs=azure-cli#secure-score-per-management-group
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01"
     $method = 'POST'
 
@@ -33,24 +33,21 @@ function getMDfCSecureScoreMG {
         }
 "@
 
-    $getMgAscSecureScore = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -body $body -listenOn 'Content'
-
+    $getMgAscSecureScore = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -body $body -listenOn 'Content' -unhandledErrorAction ContinueQuiet
     if ($getMgAscSecureScore) {
-        if ($getMgAscSecureScore -eq 'capitulation') {
-            Write-Host ' Microsoft Defender for Cloud SecureScore for Management Groups will not be available' -ForegroundColor Yellow
-        }
-        else {
-            Write-Host " Retrieved 'Microsoft Defender for Cloud' SecureScore for $($getMgAscSecureScore.Count) Management Groups"
-            foreach ($entry in $getMgAscSecureScore) {
-                $script:htMgASCSecureScore.($entry.mgId) = @{}
-                if ($entry.secureScore -eq 404) {
-                    $script:htMgASCSecureScore.($entry.mgId).SecureScore = 'n/a'
-                }
-                else {
-                    $script:htMgASCSecureScore.($entry.mgId).SecureScore = $entry.secureScore
-                }
+        Write-Host " Retrieved 'Microsoft Defender for Cloud' SecureScore for $($getMgAscSecureScore.Count) Management Groups"
+        foreach ($entry in $getMgAscSecureScore) {
+            $script:htMgASCSecureScore.($entry.mgId) = @{}
+            if ($entry.secureScore -eq 404) {
+                $script:htMgASCSecureScore.($entry.mgId).SecureScore = 'n/a'
+            }
+            else {
+                $script:htMgASCSecureScore.($entry.mgId).SecureScore = $entry.secureScore
             }
         }
+    }
+    else {
+        Write-Host ' Microsoft Defender for Cloud SecureScore for Management Groups will not be available' -ForegroundColor Yellow
     }
 
     $end = Get-Date

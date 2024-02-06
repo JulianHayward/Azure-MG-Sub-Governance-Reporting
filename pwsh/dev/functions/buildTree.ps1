@@ -12,12 +12,13 @@ function buildTree($mgId, $prnt) {
         $json.'ManagementGroups' = [ordered]@{}
     }
     $json = $json.'ManagementGroups'.($getMg.Id) = [ordered]@{}
-    foreach ($mgCap in $htJSON.ManagementGroups.($getMg.Id).keys) {
-        $json.$mgCap = $htJSON.ManagementGroups.($getMg.Id).$mgCap
+    $mgJson = $htJSON.ManagementGroups.($getMg.Id)
+    foreach ($mgCap in $mgJson.keys) {
+        $json.$mgCap = $mgJson.$mgCap
         if ($mgCap -eq 'PolicyDefinitionsCustom') {
             $mgCapShort = 'pd'
-            foreach ($pdc in $htJSON.ManagementGroups.($getMg.Id).($mgCap).Keys) {
-                $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($pdc)
+            foreach ($pdc in $mgJson.($mgCap).Keys) {
+                $hlp = $mgJson.($mgCap).($pdc)
                 if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                     $displayName = 'noDisplayNameGiven'
                 }
@@ -31,12 +32,19 @@ function buildTree($mgId, $prnt) {
                     $null = New-Item -Name $path -ItemType directory -Path $outputPath
                 }
                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
+
+                $jsonConvertedTracking = $hlp | ConvertTo-Json -Depth 99
+                $pathTracking = "$($JSONPath)$($DirectorySeparatorChar)Definitions_tracking$($DirectorySeparatorChar)PolicyDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid)"
+                if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)")) {
+                    $null = New-Item -Name $pathTracking -ItemType directory -Path $outputPath
+                }
+                $jsonConvertedTracking | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $hlp.name).json" -Encoding utf8
             }
         }
         if ($mgCap -eq 'PolicySetDefinitionsCustom') {
             $mgCapShort = 'psd'
-            foreach ($psdc in $htJSON.ManagementGroups.($getMg.Id).($mgCap).Keys) {
-                $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($psdc)
+            foreach ($psdc in $mgJson.($mgCap).Keys) {
+                $hlp = $mgJson.($mgCap).($psdc)
                 if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                     $displayName = 'noDisplayNameGiven'
                 }
@@ -50,12 +58,19 @@ function buildTree($mgId, $prnt) {
                     $null = New-Item -Name $path -ItemType directory -Path $outputPath
                 }
                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
+
+                $jsonConvertedTracking = $hlp | ConvertTo-Json -Depth 99
+                $pathTracking = "$($JSONPath)$($DirectorySeparatorChar)Definitions_tracking$($DirectorySeparatorChar)PolicySetDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid)"
+                if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)")) {
+                    $null = New-Item -Name $pathTracking -ItemType directory -Path $outputPath
+                }
+                $jsonConvertedTracking | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $hlp.name).json" -Encoding utf8
             }
         }
         if ($mgCap -eq 'PolicyAssignments') {
             $mgCapShort = 'pa'
-            foreach ($pa in $htJSON.ManagementGroups.($getMg.Id).($mgCap).Keys) {
-                $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($pa)
+            foreach ($pa in $mgJson.($mgCap).Keys) {
+                $hlp = $mgJson.($mgCap).($pa)
                 if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                     $displayName = 'noDisplayNameGiven'
                 }
@@ -68,15 +83,20 @@ function buildTree($mgId, $prnt) {
                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                     $null = New-Item -Name $path -ItemType directory -Path $outputPath
                 }
-
                 $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
+
+                $pathTracking = "$($JSONPath)$($DirectorySeparatorChar)Assignments_tracking$($DirectorySeparatorChar)$($mgCap)$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid)"
+                if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)")) {
+                    $null = New-Item -Name $pathTracking -ItemType directory -Path $outputPath
+                }
+                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $hlp.name).json" -Encoding utf8
             }
         }
         #marker
         if ($mgCap -eq 'RoleAssignments') {
             $mgCapShort = 'ra'
-            foreach ($ra in $htJSON.ManagementGroups.($getMg.Id).($mgCap).Keys) {
-                $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($ra)
+            foreach ($ra in $mgJson.($mgCap).Keys) {
+                $hlp = $mgJson.($mgCap).($ra)
                 if ($hlp.PIM -eq 'true') {
                     $pim = 'PIM_'
                 }
@@ -94,15 +114,15 @@ function buildTree($mgId, $prnt) {
         }
 
         if ($mgCap -eq 'Subscriptions') {
-            foreach ($sub in $htJSON.ManagementGroups.($getMg.Id).($mgCap).Keys) {
-                $subNameValid = removeInvalidFileNameChars $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).SubscriptionName
+            foreach ($sub in $mgJson.($mgCap).Keys) {
+                $subNameValid = removeInvalidFileNameChars $mgJson.($mgCap).($sub).SubscriptionName
                 $subFolderName = "$($prntx)$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
                 $null = New-Item -Name $subFolderName -ItemType directory -Path $outputPath
-                foreach ($subCap in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).Keys) {
+                foreach ($subCap in $mgJson.($mgCap).($sub).Keys) {
                     if ($subCap -eq 'PolicyDefinitionsCustom') {
                         $subCapShort = 'pd'
-                        foreach ($pdc in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys) {
-                            $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($pdc)
+                        foreach ($pdc in $mgJson.($mgCap).($sub).($subCap).Keys) {
+                            $hlp = $mgJson.($mgCap).($sub).($subCap).($pdc)
                             if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                                 $displayName = 'noDisplayNameGiven'
                             }
@@ -116,12 +136,19 @@ function buildTree($mgId, $prnt) {
                                 $null = New-Item -Name $path -ItemType directory -Path $outputPath
                             }
                             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
+
+                            $jsonConvertedTracking = $hlp | ConvertTo-Json -Depth 99
+                            $pathTracking = "$($JSONPath)$($DirectorySeparatorChar)Definitions_tracking$($DirectorySeparatorChar)PolicyDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($sub)"
+                            if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)")) {
+                                $null = New-Item -Name $pathTracking -ItemType directory -Path $outputPath
+                            }
+                            $jsonConvertedTracking | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $hlp.name).json" -Encoding utf8
                         }
                     }
                     if ($subCap -eq 'PolicySetDefinitionsCustom') {
                         $subCapShort = 'psd'
-                        foreach ($psdc in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys) {
-                            $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($psdc)
+                        foreach ($psdc in $mgJson.($mgCap).($sub).($subCap).Keys) {
+                            $hlp = $mgJson.($mgCap).($sub).($subCap).($psdc)
                             if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                                 $displayName = 'noDisplayNameGiven'
                             }
@@ -135,12 +162,19 @@ function buildTree($mgId, $prnt) {
                                 $null = New-Item -Name $path -ItemType directory -Path $outputPath
                             }
                             $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
+
+                            $jsonConvertedTracking = $hlp | ConvertTo-Json -Depth 99
+                            $pathTracking = "$($JSONPath)$($DirectorySeparatorChar)Definitions_tracking$($DirectorySeparatorChar)PolicySetDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($sub)"
+                            if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)")) {
+                                $null = New-Item -Name $pathTracking -ItemType directory -Path $outputPath
+                            }
+                            $jsonConvertedTracking | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $hlp.name).json" -Encoding utf8
                         }
                     }
                     if ($subCap -eq 'PolicyAssignments') {
                         $subCapShort = 'pa'
-                        foreach ($pa in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys) {
-                            $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($pa)
+                        foreach ($pa in $mgJson.($mgCap).($sub).($subCap).Keys) {
+                            $hlp = $mgJson.($mgCap).($sub).($subCap).($pa)
                             if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                                 $displayName = 'noDisplayNameGiven'
                             }
@@ -159,8 +193,8 @@ function buildTree($mgId, $prnt) {
                     #marker
                     if ($subCap -eq 'RoleAssignments') {
                         $subCapShort = 'ra'
-                        foreach ($ra in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys) {
-                            $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($ra)
+                        foreach ($ra in $mgJson.($mgCap).($sub).($subCap).Keys) {
+                            $hlp = $mgJson.($mgCap).($sub).($subCap).($ra)
                             if ($hlp.PIM -eq 'true') {
                                 $pim = 'PIM_'
                             }
@@ -181,12 +215,12 @@ function buildTree($mgId, $prnt) {
                     if (-not $azAPICallConf['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
                         if (-not $JsonExportExcludeResourceGroups) {
                             if ($subCap -eq 'ResourceGroups') {
-                                foreach ($rg in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys | Sort-Object) {
+                                foreach ($rg in $mgJson.($mgCap).($sub).($subCap).Keys | Sort-Object) {
                                     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)")) {
                                         $null = New-Item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)" -ItemType directory -Path "$($outputPath)"
                                     }
-                                    foreach ($pa in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).PolicyAssignments.keys) {
-                                        $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).PolicyAssignments.($pa)
+                                    foreach ($pa in $mgJson.($mgCap).($sub).($subCap).($rg).PolicyAssignments.keys) {
+                                        $hlp = $mgJson.($mgCap).($sub).($subCap).($rg).PolicyAssignments.($pa)
                                         if ([string]::IsNullOrEmpty($hlp.properties.displayName)) {
                                             $displayName = 'noDisplayNameGiven'
                                         }
@@ -211,12 +245,12 @@ function buildTree($mgId, $prnt) {
                     if (-not $azAPICallConf['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
                         if (-not $JsonExportExcludeResourceGroups) {
                             if ($subCap -eq 'ResourceGroups') {
-                                foreach ($rg in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).Keys | Sort-Object) {
+                                foreach ($rg in $mgJson.($mgCap).($sub).($subCap).Keys | Sort-Object) {
                                     if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)")) {
                                         $null = New-Item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)" -ItemType directory -Path "$($outputPath)"
                                     }
-                                    foreach ($ra in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).RoleAssignments.keys) {
-                                        $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).RoleAssignments.($ra)
+                                    foreach ($ra in $mgJson.($mgCap).($sub).($subCap).($rg).RoleAssignments.keys) {
+                                        $hlp = $mgJson.($mgCap).($sub).($subCap).($rg).RoleAssignments.($ra)
                                         if ($hlp.PIM -eq 'true') {
                                             $pim = 'PIM_'
                                         }
@@ -234,12 +268,12 @@ function buildTree($mgId, $prnt) {
                                     #res
                                     if (-not $JsonExportExcludeResources) {
 
-                                        foreach ($res in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).Resources.keys) {
+                                        foreach ($res in $mgJson.($mgCap).($sub).($subCap).($rg).Resources.keys) {
                                             if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)")) {
                                                 $null = New-Item -Name "$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)" -ItemType directory -Path "$($outputPath)"
                                             }
-                                            foreach ($ra in $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.keys) {
-                                                $hlp = $htJSON.ManagementGroups.($getMg.Id).($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.($ra)
+                                            foreach ($ra in $mgJson.($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.keys) {
+                                                $hlp = $mgJson.($mgCap).($sub).($subCap).($rg).Resources.($res).RoleAssignments.($ra)
                                                 if ($hlp.PIM -eq 'true') {
                                                     $pim = 'PIM_'
                                                 }

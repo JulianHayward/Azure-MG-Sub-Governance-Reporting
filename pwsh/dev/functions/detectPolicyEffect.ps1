@@ -47,10 +47,10 @@ function detectPolicyEffect {
                         if (-not [string]::IsNullOrWhiteSpace($policyDefinition.properties.parameters.($Match.Value).allowedValues)) {
                             if ($policyDefinition.properties.parameters.($Match.Value).allowedValues.Count -gt 0) {
                                 #Write-Host "allowedValues count $($policyDefinition.properties.parameters.($Match.Value).allowedValues) - $($policyDefinition.name) ($($policyDefinition.properties.policyType))"
-                                $arrayAllowed = @()
+                                $arrayAllowed = [System.Collections.ArrayList]@()
                                 foreach ($allowedValue in $policyDefinition.properties.parameters.($Match.Value).allowedValues) {
                                     if ($allowedValue -in $ValidPolicyEffects) {
-                                        $arrayAllowed += $allowedValue
+                                        $null = $arrayAllowed.Add($allowedValue)
                                     }
                                     else {
                                         Write-Host "invalid allowedValue effect $($allowedValue) - $($policyDefinition.name) ($($policyDefinition.properties.policyType))"

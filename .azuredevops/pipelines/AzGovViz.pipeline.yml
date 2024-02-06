@@ -20,7 +20,7 @@ schedules:
     - master #CHECK branch 'master' is applicable? - delete me :)
 
 #Running AzOps? Run Azure Governance Visualizer after 'AzOps - Push' ..
-#AzOps Accellerator https://github.com/Azure/AzOps-Accelerator
+#AzOps accelerator https://github.com/Azure/AzOps-Accelerator
 #resources:
 #  pipelines:
 #    - pipeline: 'Push'
@@ -188,7 +188,7 @@ jobs:
         }
         else {
             Write-Host "Assuming and insisting that you do not want to publish your tenant insights to the public"
-            Write-Host "HTML NOT published. Please configure authentication on the webApp ($($env:WEBAPPNAME))"
+            Write-Host "HTML NOT published. Please configure authentication on the Azure Web App ($($env:WEBAPPNAME))."
             exit 1
         }
       azurePowerShellVersion: latestVersion

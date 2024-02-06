@@ -76,7 +76,7 @@ function processNetwork {
                             }
                         }
                         else {
-                            $arrayRemoteMGPath = @()
+                            $arrayRemoteMGPath = [System.Collections.ArrayList]@()
                             foreach ($remoteId in $remoteTenantId) {
                                 if ($remoteId -eq 'SubscriptionNotFound Tenant unknown') {
                                     $remoteMGPath = 'unknown'
@@ -86,10 +86,10 @@ function processNetwork {
                                     $objectGuid = [System.Guid]::empty
                                     if ([System.Guid]::TryParse($remoteId, [System.Management.Automation.PSReference]$ObjectGuid)) {
                                         if ($remoteId -in $MSTenantIds) {
-                                            $arrayRemoteMGPath += "$remoteId (MS)"
+                                            $null = $arrayRemoteMGPath.Add("$remoteId (MS)")
                                         }
                                         else {
-                                            $arrayRemoteMGPath += $remoteId
+                                            $null = $arrayRemoteMGPath.Add($remoteId)
                                         }
                                         if ($remoteId -eq $azApiCallConf['checkcontext'].tenant.id) {
                                             $peeringXTenant = 'false'
@@ -378,7 +378,7 @@ function processNetwork {
                 $Mask = $AddressPrefix.substring($AddressPrefix.Length - 2, 2)
 
                 #Amount of available IP Addresses minus the 3 IPs that Azure consumes, minus net and broadcast
-                #https://learn.microsoft.com/en-us/azure/virtual-network/virtual-networks-faq#are-there-any-restrictions-on-using-ip-addresses-within-these-subnets
+                #https://learn.microsoft.com/azure/virtual-network/virtual-networks-faq#are-there-any-restrictions-on-using-ip-addresses-within-these-subnets
                 switch ($Mask) {
                     '30' { $AvailableAddresses = [Math]::Pow(2, 2) - 5 }
                     '29' { $AvailableAddresses = [Math]::Pow(2, 3) - 5 }

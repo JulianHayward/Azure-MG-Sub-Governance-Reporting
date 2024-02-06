@@ -96,7 +96,7 @@ function runInfo {
         }
 
         if (-not $NoAADGroupsResolveMembers) {
-            Write-Host " AAD Groups resolve members enabled (honors parameter -DoNotShowRoleAssignmentsUserData) - use parameter: '-NoAADGroupsResolveMembers' to disable resolving AAD Group memberships" -ForegroundColor Yellow
+            Write-Host " Microsoft Entra groups resolve members enabled (honors parameter -DoNotShowRoleAssignmentsUserData) - use parameter: '-NoAADGroupsResolveMembers' to disable resolving group memberships" -ForegroundColor Yellow
             $script:paramsUsed += 'NoAADGroupsResolveMembers: false &#13;'
             if ($AADGroupMembersLimit -eq 500) {
                 Write-Host " AADGroupMembersLimit = $AADGroupMembersLimit" -ForegroundColor Yellow
@@ -108,7 +108,7 @@ function runInfo {
             }
         }
         else {
-            Write-Host " AAD Groups resolve members disabled (-NoAADGroupsResolveMembers = $($NoAADGroupsResolveMembers))" -ForegroundColor Green
+            Write-Host " Microsoft Entra groups resolve members disabled (-NoAADGroupsResolveMembers = $($NoAADGroupsResolveMembers))" -ForegroundColor Green
             $script:paramsUsed += 'NoAADGroupsResolveMembers: true &#13;'
         }
 
