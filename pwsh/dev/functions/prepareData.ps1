@@ -8,19 +8,23 @@ function prepareData {
     $script:optimizedTableForPathQuerySub = ($hlperOptimizedTableForPathQuery | Select-Object -Property subscription*) | Sort-Object -Property subscriptionId -Unique
 
     foreach ($entry in $optimizedTableForPathQuery) {
-        $script:htMgDetails.($entry.mgId) = @{}
         $mgSubs = $optimizedTableForPathQueryMgAndSub.where( { $_.mgId -eq $entry.mgId } )
-        $script:htMgDetails.($entry.mgId).subscriptionsCount = $mgSubs.Count
-        $script:htMgDetails.($entry.mgId).subscriptions = $mgSubs
-        $script:htMgDetails.($entry.mgId).details = $entry
         $mgChildren = ($optimizedTableForPathQueryMg.where( { $_.mgParentId -eq $entry.mgId } )).MgId
-        $script:htMgDetails.($entry.mgId).mgChildren = $mgChildren
-        $script:htMgDetails.($entry.mgId).mgChildrenCount = $mgChildren.Count
+        $script:htMgDetails.($entry.mgId) = @{
+            subscriptionsCount = $mgSubs.Count
+            subscriptions      = $mgSubs
+            details            = $entry
+            mgChildren         = $mgChildren
+            mgChildrenCount    = $mgChildren.Count
+        }
+
+
     }
 
     foreach ($entry in $optimizedTableForPathQueryMgAndSub) {
-        $script:htSubDetails.($entry.SubscriptionId) = @{}
-        $script:htSubDetails.($entry.SubscriptionId).details = $optimizedTableForPathQueryMgAndSub.where( { $_.SubscriptionId -eq $entry.SubscriptionId } )
+        $script:htSubDetails.($entry.SubscriptionId) = @{
+            details = $optimizedTableForPathQueryMgAndSub.where( { $_.SubscriptionId -eq $entry.SubscriptionId } )
+        }
     }
 
     $script:parentMgBaseQuery = ($optimizedTableForPathQueryMg.where( { $_.MgParentId -eq $getMgParentId } ))

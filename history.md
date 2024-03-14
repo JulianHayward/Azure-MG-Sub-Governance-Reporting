@@ -4,6 +4,10 @@
 
 ### Azure Governance Visualizer version 6
 
+__Changes__ (2024-Mar-14 / 6.4.1 Minor)
+
+* optimize objects handling / best practices
+
 __Changes__ (2024-Feb-06 / 6.4.0 Minor)
 
 * change PowerShell parallel handling / batches

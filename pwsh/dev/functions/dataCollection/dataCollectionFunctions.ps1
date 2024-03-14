@@ -656,8 +656,9 @@ function dataCollectionResources {
 
     foreach ($resourceType in ($resourcesSubscriptionResult | Group-Object -Property type)) {
         if (-not $htResourceTypesUniqueResource.(($resourceType.name).ToLower())) {
-            $script:htResourceTypesUniqueResource.(($resourceType.name).ToLower()) = @{}
-            $script:htResourceTypesUniqueResource.(($resourceType.name).ToLower()).resourceId = $resourceType.Group.Id | Select-Object -First 1
+            $script:htResourceTypesUniqueResource.(($resourceType.name).ToLower()) = @{
+                resourceId = $resourceType.Group.Id | Select-Object -First 1
+            }
         }
     }
 
@@ -1319,8 +1320,9 @@ function dataCollectionResources {
 
 
     #resourceTags
-    $script:htSubscriptionTagList.($scopeId) = @{}
-    $script:htSubscriptionTagList.($scopeId).Resource = @{}
+    $script:htSubscriptionTagList.($scopeId) = @{
+        Resource = @{}
+    }
     foreach ($tags in ($resourcesSubscriptionResult.where( { $_.Tags -and -not [String]::IsNullOrWhiteSpace($_.Tags) } )).Tags) {
         foreach ($tagName in $tags.PSObject.Properties.Name) {
             #resource
@@ -1601,9 +1603,11 @@ function dataCollectionTags {
         $subscriptionTagsCount = 0
         $subscriptionTags = 'none'
     }
-    $htSubscriptionTagsReturn = @{}
-    $htSubscriptionTagsReturn.subscriptionTagsCount = $subscriptionTagsCount
-    $htSubscriptionTagsReturn.subscriptionTags = $subscriptionTags
+    $htSubscriptionTagsReturn = @{
+        subscriptionTagsCount = $subscriptionTagsCount
+        subscriptionTags      = $subscriptionTags
+    }
+
     return $htSubscriptionTagsReturn
 }
 $funcDataCollectionTags = $function:dataCollectionTags.ToString()
@@ -1863,7 +1867,7 @@ function dataCollectionBluePrintAssignmentsSub {
             foreach ($subscriptionBlueprintAssignment in $subscriptionBlueprintAssignmentsResult) {
 
                 if (-not ($htCacheAssignmentsBlueprint).($subscriptionBlueprintAssignment.Id)) {
-                ($script:htCacheAssignmentsBlueprint).($subscriptionBlueprintAssignment.Id) = @{}
+                    #($script:htCacheAssignmentsBlueprint).($subscriptionBlueprintAssignment.Id) = @{}
                 ($script:htCacheAssignmentsBlueprint).($subscriptionBlueprintAssignment.Id) = $subscriptionBlueprintAssignment
                 }
 
@@ -2191,13 +2195,14 @@ function dataCollectionPolicyDefinitions {
                 foreach ($roledefinitionId in $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
                     if (-not [string]::IsNullOrEmpty($roledefinitionId)) {
                         if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
-                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId) = @{}
-                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies = [System.Collections.ArrayList]@()
-                            $null = $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies.Add($hlpPolicyDefinitionId)
+                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId) = @{
+                                UsedInPolicies = [System.Collections.ArrayList]@()
+                            }
+                            #$null = $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies.Add($hlpPolicyDefinitionId)
                         }
-                        else {
-                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies.Add($hlpPolicyDefinitionId)
-                        }
+                        #else {
+                        $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies.Add($hlpPolicyDefinitionId)
+                        #}
                     }
                     else {
                         Write-Host "$currentTask $($hlpPolicyDefinitionId) Finding: empty roleDefinitionId in roledefinitionIds"
@@ -3499,26 +3504,29 @@ function dataCollectionRoleDefinitions {
                 $roleCapable4RoleAssignmentsWrite = $false
             }
 
-            $htTemp = @{}
-            $htTemp.Id = $($scopeCustomRoleDefinition.name)
-            $htTemp.Name = $($scopeCustomRoleDefinition.properties.roleName)
-            $htTemp.IsCustom = $true
-            $htTemp.AssignableScopes = $($scopeCustomRoleDefinition.properties.AssignableScopes)
-            $htTemp.Actions = $($scopeCustomRoleDefinition.properties.permissions.Actions)
-            $htTemp.NotActions = $($scopeCustomRoleDefinition.properties.permissions.NotActions)
-            $htTemp.DataActions = $($scopeCustomRoleDefinition.properties.permissions.DataActions)
-            $htTemp.NotDataActions = $($scopeCustomRoleDefinition.properties.permissions.NotDataActions)
-            $htTemp.Json = $scopeCustomRoleDefinition
-            $htTemp.RoleCanDoRoleAssignments = $roleCapable4RoleAssignmentsWrite
+            $htTemp = @{
+                Id                       = $($scopeCustomRoleDefinition.name)
+                Name                     = $($scopeCustomRoleDefinition.properties.roleName)
+                IsCustom                 = $true
+                AssignableScopes         = $($scopeCustomRoleDefinition.properties.AssignableScopes)
+                Actions                  = $($scopeCustomRoleDefinition.properties.permissions.Actions)
+                NotActions               = $($scopeCustomRoleDefinition.properties.permissions.NotActions)
+                DataActions              = $($scopeCustomRoleDefinition.properties.permissions.DataActions)
+                NotDataActions           = $($scopeCustomRoleDefinition.properties.permissions.NotDataActions)
+                Json                     = $scopeCustomRoleDefinition
+                RoleCanDoRoleAssignments = $roleCapable4RoleAssignmentsWrite
+            }
+
             ($script:htCacheDefinitionsRole).($scopeCustomRoleDefinition.name) = $htTemp
 
             #namingValidation
             if (-not [string]::IsNullOrEmpty($scopeCustomRoleDefinition.properties.roleName)) {
                 $namingValidationResult = NamingValidation -toCheck $scopeCustomRoleDefinition.properties.roleName
                 if ($namingValidationResult.Count -gt 0) {
-                    $script:htNamingValidation.Role.($scopeCustomRoleDefinition.name) = @{}
-                    $script:htNamingValidation.Role.($scopeCustomRoleDefinition.name).roleNameInvalidChars = ($namingValidationResult -join '')
-                    $script:htNamingValidation.Role.($scopeCustomRoleDefinition.name).roleName = $scopeCustomRoleDefinition.properties.roleName
+                    $script:htNamingValidation.Role.($scopeCustomRoleDefinition.name) = @{
+                        roleNameInvalidChars = ($namingValidationResult -join '')
+                        roleName             = $scopeCustomRoleDefinition.properties.roleName
+                    }
                 }
             }
         }
@@ -3584,8 +3592,9 @@ function dataCollectionRoleAssignmentsMG {
 
     $L0mgmtGroupRoleAssignmentsLimitUtilization = (($L0mgmtGroupRoleAssignments.properties.where( { $_.scope -eq "/providers/Microsoft.Management/managementGroups/$($scopeId)" } ))).count
     if (-not $htMgAtScopeRoleAssignments.($scopeId)) {
-        $script:htMgAtScopeRoleAssignments.($scopeId) = @{}
-        $script:htMgAtScopeRoleAssignments.($scopeId).AssignmentsCount = $L0mgmtGroupRoleAssignmentsLimitUtilization
+        $script:htMgAtScopeRoleAssignments.($scopeId) = @{
+            AssignmentsCount = $L0mgmtGroupRoleAssignmentsLimitUtilization
+        }
     }
 
     if ($azAPICallConf['htParameters'].LargeTenant -eq $true -or $azAPICallConf['htParameters'].RBACAtScopeOnly -eq $true) {
@@ -3595,8 +3604,9 @@ function dataCollectionRoleAssignmentsMG {
         #tenantLevelRoleAssignments
         if (-not $htMgAtScopeRoleAssignments.'tenantLevelRoleAssignments') {
             $tenantLevelRoleAssignmentsCount = (($L0mgmtGroupRoleAssignments.where( { $_.id -like '/providers/Microsoft.Authorization/roleAssignments/*' } ))).count
-            $script:htMgAtScopeRoleAssignments.'tenantLevelRoleAssignments' = @{}
-            $script:htMgAtScopeRoleAssignments.'tenantLevelRoleAssignments'.AssignmentsCount = $tenantLevelRoleAssignmentsCount
+            $script:htMgAtScopeRoleAssignments.'tenantLevelRoleAssignments' = @{
+                AssignmentsCount = $tenantLevelRoleAssignmentsCount
+            }
         }
     }
     foreach ($L0mgmtGroupRoleAssignment in $L0mgmtGroupRoleAssignments) {
@@ -3622,8 +3632,9 @@ function dataCollectionRoleAssignmentsMG {
         }
 
         if (-not $htRoleAssignmentsFromAPIInheritancePrevention.($roleAssignmentId -replace '.*/')) {
-            $script:htRoleAssignmentsFromAPIInheritancePrevention.($roleAssignmentId -replace '.*/') = @{}
-            $script:htRoleAssignmentsFromAPIInheritancePrevention.($roleAssignmentId -replace '.*/').assignment = $L0mgmtGroupRoleAssignment
+            $script:htRoleAssignmentsFromAPIInheritancePrevention.($roleAssignmentId -replace '.*/') = @{
+                assignment = $L0mgmtGroupRoleAssignment
+            }
         }
 
         $roleDefinitionId = $L0mgmtGroupRoleAssignment.properties.roleDefinitionId
@@ -4182,8 +4193,9 @@ function dataCollectionClassicAdministratorsSub {
                     })
             }
         }
-        $script:htClassicAdministrators.($scopeId) = @{}
-        $script:htClassicAdministrators.($scopeId).ClassicAdministrators = $arrayClassicAdministrators
+        $script:htClassicAdministrators.($scopeId) = @{
+            ClassicAdministrators = $arrayClassicAdministrators
+        }
     }
 }
 $funcDataCollectionClassicAdministratorsSub = $function:dataCollectionClassicAdministratorsSub.ToString()

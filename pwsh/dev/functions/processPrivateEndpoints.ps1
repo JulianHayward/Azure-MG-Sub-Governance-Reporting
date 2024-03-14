@@ -56,8 +56,9 @@ function processPrivateEndpoints {
                                 $peXTenant = $true
                             }
                         }
-                        $script:htUnknownTenantsForSubscription.($peSubscriptionId) = @{}
-                        $script:htUnknownTenantsForSubscription.($peSubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
+                        $script:htUnknownTenantsForSubscription.($peSubscriptionId) = @{
+                            TenantId = $arrayRemoteMGPath -join ', '
+                        }
                         $peMGPath = $arrayRemoteMGPath -join ', '
                     }
                 }
@@ -215,8 +216,9 @@ function processPrivateEndpoints {
                                     $resourceXTenant = $true
                                 }
                             }
-                            $script:htUnknownTenantsForSubscription.($resourceSubscriptionId) = @{}
-                            $script:htUnknownTenantsForSubscription.($resourceSubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
+                            $script:htUnknownTenantsForSubscription.($resourceSubscriptionId) = @{
+                                TenantId = $arrayRemoteMGPath -join ', '
+                            }
                             $resourceMGPath = $arrayRemoteMGPath -join ', '
                         }
                     }
