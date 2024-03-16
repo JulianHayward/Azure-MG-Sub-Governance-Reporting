@@ -302,7 +302,7 @@
     Note if you use parameter -LargeTenant then parameter -NoScopeInsights will be set to true
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoScopeInsights
 
-Defines the limit (default=500) of Microsoft Entra group members; For groups that have more members than the defined limit group members will not be resolved
+    Defines the limit (default=500) of Microsoft Entra group members; For groups that have more members than the defined limit group members will not be resolved
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -AADGroupMembersLimit 750
 
     Will speed up the processing time but information like Resource diagnostics capability, resource type stats, UserAssigned Identities assigned to Resources is excluded (featured for large tenants)
@@ -365,7 +365,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.4.1',
+    $ProductVersion = '6.4.2',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -4356,7 +4356,7 @@ function getTenantDetails {
     $tenantDetailsResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
 
     if (($tenantDetailsResult).count -gt 0) {
-        $tenantDetails = $tenantDetailsResult | Where-Object { $_.tenantId -eq ($azAPICallConf['checkContext']).Tenant.Id }
+        $tenantDetails = $tenantDetailsResult.where({ $_.tenantId -eq ($azAPICallConf['checkContext']).Tenant.Id })
         if ($tenantDetails.displayName) {
             $script:tenantDisplayName = $tenantDetails.displayName
             Write-Host " Tenant DisplayName: $tenantDisplayName"
@@ -6194,11 +6194,11 @@ function processDataCollection {
             $method = 'GET'
             $upperScopesPolicyAssignments = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-            $upperScopesPolicyAssignments = $upperScopesPolicyAssignments | Where-Object { $_.properties.scope -ne "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" }
-            $upperScopesPolicyAssignmentsPolicyCount = (($upperScopesPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policyDefinitions/' })).count
-            $upperScopesPolicyAssignmentsPolicySetCount = (($upperScopesPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policySetDefinitions/' })).count
-            $upperScopesPolicyAssignmentsPolicyAtScopeCount = (($upperScopesPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policyDefinitions/' -and $_.Id -match "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" })).count
-            $upperScopesPolicyAssignmentsPolicySetAtScopeCount = (($upperScopesPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policySetDefinitions/' -and $_.Id -match "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" })).count
+            $upperScopesPolicyAssignments = $upperScopesPolicyAssignments.where({ $_.properties.scope -ne "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" })
+            $upperScopesPolicyAssignmentsPolicyCount = (($upperScopesPolicyAssignments.where({ $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policyDefinitions/' }))).count
+            $upperScopesPolicyAssignmentsPolicySetCount = (($upperScopesPolicyAssignments.where({ $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policySetDefinitions/' }))).count
+            $upperScopesPolicyAssignmentsPolicyAtScopeCount = (($upperScopesPolicyAssignments.where({ $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policyDefinitions/' -and $_.Id -match "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" }))).count
+            $upperScopesPolicyAssignmentsPolicySetAtScopeCount = (($upperScopesPolicyAssignments.where({ $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policySetDefinitions/' -and $_.Id -match "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" }))).count
             $upperScopesPolicyAssignmentsPolicyAndPolicySetAtScopeCount = ($upperScopesPolicyAssignmentsPolicyAtScopeCount + $upperScopesPolicyAssignmentsPolicySetAtScopeCount)
             foreach ($L0mgmtGroupPolicyAssignment in $upperScopesPolicyAssignments) {
 
@@ -6480,10 +6480,10 @@ function processDataCollection {
         #$upperScopesRoleAssignments = GetRoleAssignments -Scope "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" -scopeDetails "getRoleAssignments upperScopes (Mg)"
         $upperScopesRoleAssignments = $roleAssignmentsFromAPI
 
-        $upperScopesRoleAssignmentsLimitUtilization = (($upperScopesRoleAssignments | Where-Object { $_.properties.scope -eq "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" })).count
+        $upperScopesRoleAssignmentsLimitUtilization = (($upperScopesRoleAssignments.where({ $_.properties.scope -eq "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" }))).count
         #tenantLevelRoleAssignments
         if (-not $htMgAtScopeRoleAssignments.'tenantLevelRoleAssignments') {
-            $tenantLevelRoleAssignmentsCount = (($upperScopesRoleAssignments | Where-Object { $_.id -like '/providers/Microsoft.Authorization/roleAssignments/*' })).count
+            $tenantLevelRoleAssignmentsCount = (($upperScopesRoleAssignments.where({ $_.id -like '/providers/Microsoft.Authorization/roleAssignments/*' }))).count
             $htMgAtScopeRoleAssignments.'tenantLevelRoleAssignments' = @{
                 AssignmentsCount = $tenantLevelRoleAssignmentsCount
             }
@@ -7750,14 +7750,14 @@ $mgInLevel(`"$mgNameId`") --> SubsOf$mgInLevel(`"$(($subsUnderMg | Measure-Objec
             }
 
             if (($script:outOfScopeSubscriptions | Measure-Object).count -gt 0) {
-                $subsoosUnderMg = ($outOfScopeSubscriptions | Where-Object { $_.Level -eq $mgLevel -and $_.ManagementGroupId -eq $mgInLevel }).SubscriptionId | Get-Unique
+                $subsoosUnderMg = ($outOfScopeSubscriptions.where({ $_.Level -eq $mgLevel -and $_.ManagementGroupId -eq $mgInLevel })).SubscriptionId | Get-Unique
                 if (($subsoosUnderMg | Measure-Object).count -gt 0) {
                     foreach ($subUnderMg in $subsoosUnderMg) {
                         $null = $script:arraySubsOos.Add("SubsoosOf$mgInLevel")
                         $mgDetalsN = ($optimizedTableForPathQueryMg.where( { $_.Level -eq $mgLevel -and $_.ManagementGroupId -eq $mgInLevel } ))
                         $mgName = $mgDetalsN.MgName | Get-Unique
                     }
-                    $mgName = ($outOfScopeSubscriptions | Where-Object { $_.Level -eq $mgLevel -and $_.ManagementGroupId -eq $mgInLevel }).ManagementGroupName | Get-Unique
+                    $mgName = ($outOfScopeSubscriptions.where({ $_.Level -eq $mgLevel -and $_.ManagementGroupId -eq $mgInLevel })).ManagementGroupName | Get-Unique
                     if ($mgName -eq $mgInLevel) {
                         $mgNameId = $mgName
                     }
@@ -13715,10 +13715,10 @@ function processTenantSummary() {
                                             $sptype = "MI $miType"
                                             $custObjectType = "ObjectType: SP $sptype, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
                                             $ht = @{
-                                                'ObjectType' = "SP $sptype"
+                                                'ObjectType'        = "SP $sptype"
                                                 'ObjectDisplayName' = $($resolvedIdentity.displayName)
-                                                'ObjectSignInName' = 'n/a'
-                                                'ObjectId' = $resolvedIdentity.id
+                                                'ObjectSignInName'  = 'n/a'
+                                                'ObjectId'          = $resolvedIdentity.id
                                             }
 
                                         }
@@ -13728,19 +13728,19 @@ function processTenantSummary() {
                                                 if ($resolvedIdentity.appOwnerOrganizationId -eq $azAPICallConf['checkContext'].Tenant.Id) {
                                                     $custObjectType = "ObjectType: SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
                                                     $ht = @{
-                                                        'ObjectType' = "SP $sptype INT"
+                                                        'ObjectType'        = "SP $sptype INT"
                                                         'ObjectDisplayName' = $($resolvedIdentity.displayName)
-                                                        'ObjectSignInName' = 'n/a'
-                                                        'ObjectId' = $resolvedIdentity.id
+                                                        'ObjectSignInName'  = 'n/a'
+                                                        'ObjectId'          = $resolvedIdentity.id
                                                     }
                                                 }
                                                 else {
                                                     $custObjectType = "ObjectType: SP $sptype EXT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
                                                     $ht = @{
-                                                        'ObjectType' = "SP $sptype EXT"
+                                                        'ObjectType'        = "SP $sptype EXT"
                                                         'ObjectDisplayName' = $($resolvedIdentity.displayName)
-                                                        'ObjectSignInName' = 'n/a'
-                                                        'ObjectId' = $resolvedIdentity.id
+                                                        'ObjectSignInName'  = 'n/a'
+                                                        'ObjectId'          = $resolvedIdentity.id
                                                     }
                                                 }
                                             }
@@ -13763,10 +13763,10 @@ function processTenantSummary() {
                                         }
                                         $custObjectType = "ObjectType: User, ObjectDisplayName: $hlpObjectDisplayName, ObjectSignInName: $hlpObjectSigninName, ObjectId: $($resolvedIdentity.id) (r)"
                                         $ht = @{
-                                            'ObjectType' = 'User'
+                                            'ObjectType'        = 'User'
                                             'ObjectDisplayName' = $hlpObjectDisplayName
-                                            'ObjectSignInName' = $hlpObjectSigninName
-                                            'ObjectId' = $resolvedIdentity.id
+                                            'ObjectSignInName'  = $hlpObjectSigninName
+                                            'ObjectId'          = $resolvedIdentity.id
                                         }
 
                                         $script:htResolvedIdentities.($resolvedIdentity.id).custObjectType = $custObjectType
@@ -13774,7 +13774,7 @@ function processTenantSummary() {
                                     }
                                     if (-not $htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id)) {
                                         $script:htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id) = @{
-                                            details = $custObjectType
+                                            details     = $custObjectType
                                             detailsJson = $ht
                                         }
 
@@ -15980,7 +15980,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $policyExemptionsCount
         $htmlTableId = 'TenantSummary_policyExemptions'
 
-        $expiredExemptionsCount = ($htPolicyAssignmentExemptions.Keys | Where-Object { $htPolicyAssignmentExemptions.($_).exemption.properties.expiresOn -and $htPolicyAssignmentExemptions.($_).exemption.properties.expiresOn -lt (Get-Date).ToUniversalTime() } | Measure-Object).count
+        $expiredExemptionsCount = ($htPolicyAssignmentExemptions.Keys.where({ $htPolicyAssignmentExemptions.($_).exemption.properties.expiresOn -and $htPolicyAssignmentExemptions.($_).exemption.properties.expiresOn -lt (Get-Date).ToUniversalTime() }) | Measure-Object).count
 
         [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_policyExemptions"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($policyExemptionsCount) Policy exemptions | Expired: $($expiredExemptionsCount)</span>
@@ -19319,7 +19319,7 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYBlueprintDefinitions
     Write-Host '  processing TenantSummary Blueprints'
-    $blueprintDefinitions = ($blueprintBaseQuery | Where-Object { [String]::IsNullOrEmpty($_.BlueprintAssignmentId) })
+    $blueprintDefinitions = ($blueprintBaseQuery.where({ [String]::IsNullOrEmpty($_.BlueprintAssignmentId) }))
     $blueprintDefinitionsCount = ($blueprintDefinitions).count
     if ($blueprintDefinitionsCount -gt 0) {
         $htmlTableId = 'TenantSummary_BlueprintDefinitions'
@@ -19408,7 +19408,7 @@ extensions: [{ name: 'sort' }]
 
     #region SUMMARYBlueprintAssignments
     Write-Host '  processing TenantSummary BlueprintAssignments'
-    $blueprintAssignments = ($blueprintBaseQuery | Where-Object { -not [String]::IsNullOrEmpty($_.BlueprintAssignmentId) })
+    $blueprintAssignments = ($blueprintBaseQuery.where({ -not [String]::IsNullOrEmpty($_.BlueprintAssignmentId) }))
     $blueprintAssignmentsCount = ($blueprintAssignments).count
 
     if ($blueprintAssignmentsCount -gt 0) {
@@ -23945,23 +23945,23 @@ extensions: [{ name: 'sort' }]
                     foreach ($policy in $policiesThatDefineDiagnostics) {
 
                         if (
-                            (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match '/providers/diagnosticSettings' }).properties.workspaceId -or
-                            (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match '/providers/diagnosticSettings' }).properties.eventHubAuthorizationRuleId -or
-                            (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match '/providers/diagnosticSettings' }).properties.storageAccountId
+                            (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources.where({ $_.type -match '/providers/diagnosticSettings' })).properties.workspaceId -or
+                            (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources.where({ $_.type -match '/providers/diagnosticSettings' })).properties.eventHubAuthorizationRuleId -or
+                            (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources.where({ $_.type -match '/providers/diagnosticSettings' })).properties.storageAccountId
                         ) {
-                            if ( (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match '/providers/diagnosticSettings' }).properties.workspaceId) {
+                            if ( (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources.where({ $_.type -match '/providers/diagnosticSettings' })).properties.workspaceId) {
                                 $diagnosticsDestination = 'LA'
                             }
-                            if ( (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match '/providers/diagnosticSettings' }).properties.eventHubAuthorizationRuleId) {
+                            if ( (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources.where({ $_.type -match '/providers/diagnosticSettings' })).properties.eventHubAuthorizationRuleId) {
                                 $diagnosticsDestination = 'EH'
                             }
-                            if ( (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match '/providers/diagnosticSettings' }).properties.storageAccountId) {
+                            if ( (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources.where({ $_.type -match '/providers/diagnosticSettings' })).properties.storageAccountId) {
                                 $diagnosticsDestination = 'SA'
                             }
 
-                            if ( (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match '/providers/diagnosticSettings' }).properties.logs ) {
+                            if ( (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources.where({ $_.type -match '/providers/diagnosticSettings' })).properties.logs ) {
 
-                                $resourceType = ( (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match '/providers/diagnosticSettings' }).type -replace '/providers/diagnosticSettings')
+                                $resourceType = ( (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources.where({ $_.type -match '/providers/diagnosticSettings' })).type -replace '/providers/diagnosticSettings')
 
                                 $resourceTypeCountFromResourceTypesSummarizedArray = ($resourceTypesSummarizedArray.where( { $_.ResourceType -eq $resourceType })).ResourceCount
                                 if ($resourceTypeCountFromResourceTypesSummarizedArray) {
@@ -23970,7 +23970,7 @@ extensions: [{ name: 'sort' }]
                                 else {
                                     $resourceCount = '0'
                                 }
-                                $supportedLogs = $resourceTypesDiagnosticsArray | Where-Object { $_.ResourceType -eq ( (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match '/providers/diagnosticSettings' }).type -replace '/providers/diagnosticSettings') }
+                                $supportedLogs = $resourceTypesDiagnosticsArray.where({ $_.ResourceType -eq ( (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources.where({ $_.type -match '/providers/diagnosticSettings' })).type -replace '/providers/diagnosticSettings') })
 
                                 $diagnosticsLogCategoriesSupported = $supportedLogs.LogCategories
                                 if (($supportedLogs | Measure-Object).count -gt 0) {
@@ -23991,7 +23991,7 @@ extensions: [{ name: 'sort' }]
                                     }
                                 }
 
-                                $policyHasPolicyAssignments = $policyBaseQuery | Where-Object { $_.PolicyDefinitionId -eq $policy.Id } | Sort-Object -Property PolicyDefinitionId, PolicyAssignmentId -Unique
+                                $policyHasPolicyAssignments = $policyBaseQuery.where({ $_.PolicyDefinitionId -eq $policy.Id }) | Sort-Object -Property PolicyDefinitionId, PolicyAssignmentId -Unique
                                 $policyHasPolicyAssignmentCount = ($policyHasPolicyAssignments | Measure-Object).count
                                 if ($policyHasPolicyAssignmentCount -gt 0) {
                                     $policyAssignmentsArray = @()
@@ -24051,7 +24051,7 @@ extensions: [{ name: 'sort' }]
                                     $priority = '4-Low'
                                 }
 
-                                $diagnosticsLogCategoriesCoveredByPolicy = (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match '/providers/diagnosticSettings' }).properties.logs
+                                $diagnosticsLogCategoriesCoveredByPolicy = (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources.where({ $_.type -match '/providers/diagnosticSettings' })).properties.logs
                                 if (($diagnosticsLogCategoriesCoveredByPolicy.category | Measure-Object).count -gt 0) {
 
                                     if (($supportedLogs | Measure-Object).count -gt 0) {
@@ -24127,7 +24127,7 @@ extensions: [{ name: 'sort' }]
                                 }
                             }
                             else {
-                                if (-not (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources | Where-Object { $_.type -match '/providers/diagnosticSettings' }).properties.metrics ) {
+                                if (-not (($policy).Json.properties.policyrule.then.details.deployment.properties.template.resources.where({ $_.type -match '/providers/diagnosticSettings' })).properties.metrics ) {
                                     Write-Host "  DiagnosticsLifeCycle check?!: $($policy.DisplayName) ($($policy.Id)) - something unexpected, no Logs and no Metrics defined"
                                 }
                             }
@@ -24139,11 +24139,11 @@ extensions: [{ name: 'sort' }]
                     #where no Policy exists
                     $diagnosticsPolicyAnalysisCount = ($diagnosticsPolicyAnalysis).count
                     if ($diagnosticsPolicyAnalysisCount -gt 0) {
-                        foreach ($resourceTypeDiagnosticsCapable in $resourceTypesDiagnosticsArray | Where-Object { $_.Logs -eq $true }) {
+                        foreach ($resourceTypeDiagnosticsCapable in $resourceTypesDiagnosticsArray.where({ $_.Logs -eq $true })) {
                             if (($diagnosticsPolicyAnalysis.ResourceType).ToLower() -notcontains ( ($resourceTypeDiagnosticsCapable.ResourceType).ToLower() )) {
-                                $supportedLogs = ($resourceTypesDiagnosticsArray | Where-Object { $_.ResourceType -eq $resourceTypeDiagnosticsCapable.ResourceType }).LogCategories
+                                $supportedLogs = ($resourceTypesDiagnosticsArray.where({ $_.ResourceType -eq $resourceTypeDiagnosticsCapable.ResourceType })).LogCategories
                                 $logsSupported = 'yes'
-                                $resourceTypeCountFromResourceTypesSummarizedArray = ($resourceTypesSummarizedArray | Where-Object { $_.ResourceType -eq $resourceTypeDiagnosticsCapable.ResourceType }).ResourceCount
+                                $resourceTypeCountFromResourceTypesSummarizedArray = ($resourceTypesSummarizedArray.where({ $_.ResourceType -eq $resourceTypeDiagnosticsCapable.ResourceType })).ResourceCount
                                 if ($resourceTypeCountFromResourceTypesSummarizedArray) {
                                     $resourceCount = $resourceTypeCountFromResourceTypesSummarizedArray
                                 }

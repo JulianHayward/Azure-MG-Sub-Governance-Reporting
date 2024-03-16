@@ -6,7 +6,7 @@ function getTenantDetails {
     $tenantDetailsResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
 
     if (($tenantDetailsResult).count -gt 0) {
-        $tenantDetails = $tenantDetailsResult | Where-Object { $_.tenantId -eq ($azAPICallConf['checkContext']).Tenant.Id }
+        $tenantDetails = $tenantDetailsResult.where({ $_.tenantId -eq ($azAPICallConf['checkContext']).Tenant.Id })
         if ($tenantDetails.displayName) {
             $script:tenantDisplayName = $tenantDetails.displayName
             Write-Host " Tenant DisplayName: $tenantDisplayName"

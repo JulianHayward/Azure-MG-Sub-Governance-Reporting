@@ -302,7 +302,7 @@
     Note if you use parameter -LargeTenant then parameter -NoScopeInsights will be set to true
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoScopeInsights
 
-Defines the limit (default=500) of Microsoft Entra group members; For groups that have more members than the defined limit group members will not be resolved
+    Defines the limit (default=500) of Microsoft Entra group members; For groups that have more members than the defined limit group members will not be resolved
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -AADGroupMembersLimit 750
 
     Will speed up the processing time but information like Resource diagnostics capability, resource type stats, UserAssigned Identities assigned to Resources is excluded (featured for large tenants)
@@ -365,7 +365,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.4.1',
+    $ProductVersion = '6.4.2',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
