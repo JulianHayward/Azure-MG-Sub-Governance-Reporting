@@ -46,8 +46,9 @@ function ResolveObjectIds {
                     $arrayIdentityObject = [System.Collections.ArrayList]@()
                     if ($identity.'@odata.type' -eq '#microsoft.graph.user') {
                         if ($identity.userType -eq 'Guest') {
-                            $script:htUserTypesGuest.($identity.id) = @{}
-                            $script:htUserTypesGuest.($identity.id).userType = 'Guest'
+                            $script:htUserTypesGuest.($identity.id) = @{
+                                userType = 'Guest'
+                            }
                         }
                         $null = $arrayIdentityObject.Add([PSCustomObject]@{
                                 type        = 'User'
@@ -130,7 +131,7 @@ function ResolveObjectIds {
                                 })
                         }
                         if (-not $htServicePrincipals.($identity.id)) {
-                            $script:htServicePrincipals.($identity.id) = @{}
+                            #$script:htServicePrincipals.($identity.id) = @{}
                             $script:htServicePrincipals.($identity.id) = $arrayIdentityObject
                         }
                     }

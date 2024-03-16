@@ -56,17 +56,20 @@ function getEntities {
         if ($entity.Type -eq '/subscriptions') {
             $parent = $entity.properties.parent.Id -replace '.*/'
             $parentId = $entity.properties.parent.Id
-            $script:htSubscriptionsMgPath.($entity.name) = @{}
-            $script:htSubscriptionsMgPath.($entity.name).ParentNameChain = $entity.properties.parentNameChain
-            $script:htSubscriptionsMgPath.($entity.name).ParentNameChainDelimited = $entity.properties.parentNameChain -join '/'
-            $script:htSubscriptionsMgPath.($entity.name).Parent = $entity.properties.parent.Id -replace '.*/'
-            $script:htSubscriptionsMgPath.($entity.name).ParentName = $htEntitiesPlain.($entity.properties.parent.Id -replace '.*/').properties.displayName
-            $script:htSubscriptionsMgPath.($entity.name).DisplayName = $entity.properties.displayName
+
             $array = $entity.properties.parentNameChain
             $array += $entity.name
-            $script:htSubscriptionsMgPath.($entity.name).path = $array
-            $script:htSubscriptionsMgPath.($entity.name).pathDelimited = $array -join '/'
-            $script:htSubscriptionsMgPath.($entity.name).level = (($entity.properties.parentNameChain).Count - 1)
+            $script:htSubscriptionsMgPath.($entity.name) = @{
+                ParentNameChain          = $entity.properties.parentNameChain
+                ParentNameChainDelimited = $entity.properties.parentNameChain -join '/'
+                Parent                   = $entity.properties.parent.Id -replace '.*/'
+                ParentName               = $htEntitiesPlain.($entity.properties.parent.Id -replace '.*/').properties.displayName
+                DisplayName              = $entity.properties.displayName
+                path                     = $array
+                pathDelimited            = $array -join '/'
+                level                    = (($entity.properties.parentNameChain).Count - 1)
+            }
+
         }
         if ($entity.Type -eq 'Microsoft.Management/managementGroups') {
             if ([string]::IsNullOrEmpty($entity.properties.parent.Id)) {
@@ -77,36 +80,48 @@ function getEntities {
                 $parent = $entity.properties.parent.Id -replace '.*/'
                 $parentId = $entity.properties.parent.Id
             }
-            $script:htManagementGroupsMgPath.($entity.name) = @{}
-            $script:htManagementGroupsMgPath.($entity.name).ParentNameChain = $entity.properties.parentNameChain
-            $script:htManagementGroupsMgPath.($entity.name).ParentNameChainDelimited = $entity.properties.parentNameChain -join '/'
-            $script:htManagementGroupsMgPath.($entity.name).ParentNameChainCount = ($entity.properties.parentNameChain | Measure-Object).Count
-            $script:htManagementGroupsMgPath.($entity.name).Parent = $parent
-            $script:htManagementGroupsMgPath.($entity.name).ChildMgsAll = ($arrayEntitiesFromAPI.where( { $_.Type -eq 'Microsoft.Management/managementGroups' -and $_.properties.ParentNameChain -contains $entity.name } )).Name
-            $script:htManagementGroupsMgPath.($entity.name).ChildMgsDirect = ($arrayEntitiesFromAPI.where( { $_.Type -eq 'Microsoft.Management/managementGroups' -and $_.properties.Parent.Id -replace '.*/' -eq $entity.name } )).Name
-            $script:htManagementGroupsMgPath.($entity.name).DisplayName = $entity.properties.displayName
-            $script:htManagementGroupsMgPath.($entity.name).Id = ($entity.name)
+
             $array = $entity.properties.parentNameChain
             $array += $entity.name
-            $script:htManagementGroupsMgPath.($entity.name).path = $array
-            $script:htManagementGroupsMgPath.($entity.name).pathDelimited = $array -join '/'
-            $script:htManagementGroupsMgPath.($entity.name).level = $array.Count
+            $script:htManagementGroupsMgPath.($entity.name) = @{
+                ParentNameChain          = $entity.properties.parentNameChain
+                ParentNameChainDelimited = $entity.properties.parentNameChain -join '/'
+                ParentNameChainCount     = ($entity.properties.parentNameChain | Measure-Object).Count
+                Parent                   = $parent
+                ChildMgsAll              = ($arrayEntitiesFromAPI.where( { $_.Type -eq 'Microsoft.Management/managementGroups' -and $_.properties.ParentNameChain -contains $entity.name } )).Name
+                ChildMgsDirect           = ($arrayEntitiesFromAPI.where( { $_.Type -eq 'Microsoft.Management/managementGroups' -and $_.properties.Parent.Id -replace '.*/' -eq $entity.name } )).Name
+                DisplayName              = $entity.properties.displayName
+                Id                       = ($entity.name)
+                path                     = $array
+                pathDelimited            = $array -join '/'
+                level                    = $array.Count
+            }
+
         }
 
-        $script:htEntities.($entity.name) = @{}
-        $script:htEntities.($entity.name).ParentNameChain = $entity.properties.parentNameChain
-        $script:htEntities.($entity.name).Parent = $parent
-        $script:htEntities.($entity.name).ParentId = $parentId
+        $script:htEntities.($entity.name) = @{
+            ParentNameChain = $entity.properties.parentNameChain
+            Parent          = $parent
+            ParentId        = $parentId
+        }
+
+
         if ($parent -eq '__TenantRoot__') {
             $parentDisplayName = '__TenantRoot__'
         }
         else {
             $parentDisplayName = $htEntitiesPlain.($htEntities.($entity.name).Parent).properties.displayName
         }
-        $script:htEntities.($entity.name).ParentDisplayName = $parentDisplayName
-        $script:htEntities.($entity.name).DisplayName = $entity.properties.displayName
-        $script:htEntities.($entity.name).Id = $entity.Name
-        $script:htEntities.($entity.name).Type = $entity.Type
+        $script:htEntities.($entity.name) = @{
+            ParentNameChain   = $entity.properties.parentNameChain
+            Parent            = $parent
+            ParentId          = $parentId
+            ParentDisplayName = $parentDisplayName
+            DisplayName       = $entity.properties.displayName
+            Id                = $entity.Name
+            Type              = $entity.Type
+        }
+
     }
 
     Write-Host "  $(($htManagementGroupsMgPath.Keys).Count) relevant Management Groups"

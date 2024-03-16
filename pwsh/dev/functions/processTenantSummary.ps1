@@ -764,30 +764,34 @@ function processTenantSummary() {
                                             }
                                             $sptype = "MI $miType"
                                             $custObjectType = "ObjectType: SP $sptype, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
-                                            $ht = @{}
-                                            $ht.'ObjectType' = "SP $sptype"
-                                            $ht.'ObjectDisplayName' = $($resolvedIdentity.displayName)
-                                            $ht.'ObjectSignInName' = 'n/a'
-                                            $ht.'ObjectId' = $resolvedIdentity.id
+                                            $ht = @{
+                                                'ObjectType' = "SP $sptype"
+                                                'ObjectDisplayName' = $($resolvedIdentity.displayName)
+                                                'ObjectSignInName' = 'n/a'
+                                                'ObjectId' = $resolvedIdentity.id
+                                            }
+
                                         }
                                         else {
                                             if ($resolvedIdentity.servicePrincipalType -eq 'Application') {
                                                 $sptype = 'App'
                                                 if ($resolvedIdentity.appOwnerOrganizationId -eq $azAPICallConf['checkContext'].Tenant.Id) {
                                                     $custObjectType = "ObjectType: SP $sptype INT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
-                                                    $ht = @{}
-                                                    $ht.'ObjectType' = "SP $sptype INT"
-                                                    $ht.'ObjectDisplayName' = $($resolvedIdentity.displayName)
-                                                    $ht.'ObjectSignInName' = 'n/a'
-                                                    $ht.'ObjectId' = $resolvedIdentity.id
+                                                    $ht = @{
+                                                        'ObjectType' = "SP $sptype INT"
+                                                        'ObjectDisplayName' = $($resolvedIdentity.displayName)
+                                                        'ObjectSignInName' = 'n/a'
+                                                        'ObjectId' = $resolvedIdentity.id
+                                                    }
                                                 }
                                                 else {
                                                     $custObjectType = "ObjectType: SP $sptype EXT, ObjectDisplayName: $($resolvedIdentity.displayName), ObjectSignInName: n/a, ObjectId: $($resolvedIdentity.id) (r)"
-                                                    $ht = @{}
-                                                    $ht.'ObjectType' = "SP $sptype EXT"
-                                                    $ht.'ObjectDisplayName' = $($resolvedIdentity.displayName)
-                                                    $ht.'ObjectSignInName' = 'n/a'
-                                                    $ht.'ObjectId' = $resolvedIdentity.id
+                                                    $ht = @{
+                                                        'ObjectType' = "SP $sptype EXT"
+                                                        'ObjectDisplayName' = $($resolvedIdentity.displayName)
+                                                        'ObjectSignInName' = 'n/a'
+                                                        'ObjectId' = $resolvedIdentity.id
+                                                    }
                                                 }
                                             }
                                             else {
@@ -808,19 +812,22 @@ function processTenantSummary() {
                                             $hlpObjectSigninName = $resolvedIdentity.userPrincipalName
                                         }
                                         $custObjectType = "ObjectType: User, ObjectDisplayName: $hlpObjectDisplayName, ObjectSignInName: $hlpObjectSigninName, ObjectId: $($resolvedIdentity.id) (r)"
-                                        $ht = @{}
-                                        $ht.'ObjectType' = 'User'
-                                        $ht.'ObjectDisplayName' = $hlpObjectDisplayName
-                                        $ht.'ObjectSignInName' = $hlpObjectSigninName
-                                        $ht.'ObjectId' = $resolvedIdentity.id
+                                        $ht = @{
+                                            'ObjectType' = 'User'
+                                            'ObjectDisplayName' = $hlpObjectDisplayName
+                                            'ObjectSignInName' = $hlpObjectSigninName
+                                            'ObjectId' = $resolvedIdentity.id
+                                        }
 
                                         $script:htResolvedIdentities.($resolvedIdentity.id).custObjectType = $custObjectType
                                         $script:htResolvedIdentities.($resolvedIdentity.id).obj = $resolvedIdentity
                                     }
                                     if (-not $htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id)) {
-                                        $script:htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id) = @{}
-                                        $script:htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id).details = $custObjectType
-                                        $script:htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id).detailsJson = $ht
+                                        $script:htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id) = @{
+                                            details = $custObjectType
+                                            detailsJson = $ht
+                                        }
+
                                     }
                                 }
 
@@ -5794,8 +5801,9 @@ extensions: [{ name: 'sort' }]
         $htRoleAssignments4RolesCanDoRoleAssignments = @{}
         foreach ($roleAssignment4RolesCanDoRoleAssignments in $roleAssignments4RolesCanDoRoleAssignments) {
             if (-not $htRoleAssignments4RolesCanDoRoleAssignments.($roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId)) {
-                $htRoleAssignments4RolesCanDoRoleAssignments.($roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId) = @{}
-                $htRoleAssignments4RolesCanDoRoleAssignments.($roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId).roleAssignments = [System.Collections.ArrayList]@()
+                $htRoleAssignments4RolesCanDoRoleAssignments.($roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId) = @{
+                    roleAssignments = [System.Collections.ArrayList]@()
+                }
             }
             $null = $htRoleAssignments4RolesCanDoRoleAssignments.($roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId).roleAssignments.Add($roleAssignment4RolesCanDoRoleAssignments.RoleAssignmentId)
         }
@@ -8889,16 +8897,18 @@ extensions: [{ name: 'sort' }]
             foreach ($entry in $arrayUserAssignedIdentities4Resources) {
                 #UserAssignedIdentities
                 if (-not $htUserAssignedIdentitiesAssignedResources.($entry.miPrincipalId)) {
-                    $script:htUserAssignedIdentitiesAssignedResources.($entry.miPrincipalId) = @{}
-                    $script:htUserAssignedIdentitiesAssignedResources.($entry.miPrincipalId).ResourcesCount = 1
+                    $script:htUserAssignedIdentitiesAssignedResources.($entry.miPrincipalId) = @{
+                        ResourcesCount = 1
+                    }
                 }
                 else {
                     $script:htUserAssignedIdentitiesAssignedResources.($entry.miPrincipalId).ResourcesCount++
                 }
                 #Resources
                 if (-not $htResourcesAssignedUserAssignedIdentities.(($entry.resourceId).tolower())) {
-                    $script:htResourcesAssignedUserAssignedIdentities.(($entry.resourceId).tolower()) = @{}
-                    $script:htResourcesAssignedUserAssignedIdentities.(($entry.resourceId).tolower()).UserAssignedIdentitiesCount = 1
+                    $script:htResourcesAssignedUserAssignedIdentities.(($entry.resourceId).tolower()) = @{
+                        UserAssignedIdentitiesCount = 1
+                    }
                 }
                 else {
                     $script:htResourcesAssignedUserAssignedIdentities.(($entry.resourceId).tolower()).UserAssignedIdentitiesCount++
@@ -13000,8 +13010,9 @@ tf.init();}}
     $roleAssignmentsForServicePrincipalsRgRes = (((($htCacheAssignmentsRBACOnResourceGroupsAndResources).values).where( { $_.ObjectType -eq 'ServicePrincipal' })) | Sort-Object -Property RoleAssignmentId -Unique)
     foreach ($spWithRoleAssignment in $roleAssignmentsForServicePrincipalsRgRes | Group-Object -Property ObjectId) {
         if (-not $htRoleAssignmentsForServicePrincipalsRgRes.($spWithRoleAssignment.Name)) {
-            $htRoleAssignmentsForServicePrincipalsRgRes.($spWithRoleAssignment.Name) = @{}
-            $htRoleAssignmentsForServicePrincipalsRgRes.($spWithRoleAssignment.Name).RoleAssignments = $spWithRoleAssignment.group
+            $htRoleAssignmentsForServicePrincipalsRgRes.($spWithRoleAssignment.Name) = @{
+                RoleAssignments = $spWithRoleAssignment.group
+            }
         }
     }
 

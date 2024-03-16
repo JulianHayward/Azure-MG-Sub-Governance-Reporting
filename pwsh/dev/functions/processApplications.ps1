@@ -56,10 +56,11 @@ function processApplications {
                         Write-Host "$($sp.appId) no data returned / seems non existent?"
                     }
                     else {
-                        $script:htAppDetails.($sp.id) = @{}
-                        $script:htAppDetails.($sp.id).servicePrincipalType = $sp.servicePrincipalType
-                        $script:htAppDetails.($sp.id).spGraphDetails = $sp
-                        $script:htAppDetails.($sp.id).appGraphDetails = $getApplication
+                        $script:htAppDetails.($sp.id) = @{
+                            servicePrincipalType = $sp.servicePrincipalType
+                            spGraphDetails       = $sp
+                            appGraphDetails      = $getApplication
+                        }
 
                         $appPasswordCredentialsCount = ($getApplication.passwordCredentials).count
                         if ($appPasswordCredentialsCount -gt 0) {

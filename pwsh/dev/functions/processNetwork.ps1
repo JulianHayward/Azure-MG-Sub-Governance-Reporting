@@ -98,8 +98,9 @@ function processNetwork {
                                             $peeringXTenant = 'true'
                                         }
                                     }
-                                    $script:htUnknownTenantsForSubscription.($remotesubscriptionId) = @{}
-                                    $script:htUnknownTenantsForSubscription.($remotesubscriptionId).TenantId = $arrayRemoteMGPath -join ', '
+                                    $script:htUnknownTenantsForSubscription.($remotesubscriptionId) = @{
+                                        TenantId = $arrayRemoteMGPath -join ', '
+                                    }
                                     $remoteMGPath += $arrayRemoteMGPath -join ', '
                                 }
                             }

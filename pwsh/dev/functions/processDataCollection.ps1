@@ -139,9 +139,11 @@ function processDataCollection {
                     if (-not [string]::IsNullOrEmpty($mgdetail.properties.displayName)) {
                         $namingValidationResult = NamingValidation -toCheck $mgdetail.properties.displayName
                         if ($namingValidationResult.Count -gt 0) {
-                            $script:htNamingValidation.ManagementGroup.($mgdetail.Name) = @{}
-                            $script:htNamingValidation.ManagementGroup.($mgdetail.Name).nameInvalidChars = ($namingValidationResult -join '')
-                            $script:htNamingValidation.ManagementGroup.($mgdetail.Name).name = $mgdetail.properties.displayName
+                            $script:htNamingValidation.ManagementGroup.($mgdetail.Name) = @{
+                                nameInvalidChars = ($namingValidationResult -join '')
+                                name             = $mgdetail.properties.displayName
+                            }
+
                         }
                     }
 
@@ -187,8 +189,9 @@ function processDataCollection {
                     $policySetDefinitionsScopedCount = $functionReturn.'PolicySetDefinitionsScopedCount'
 
                     if (-not $htMgAtScopePoliciesScoped.($mgdetail.Name)) {
-                        $script:htMgAtScopePoliciesScoped.($mgdetail.Name) = @{}
-                        $script:htMgAtScopePoliciesScoped.($mgdetail.Name).ScopedCount = $policyDefinitionsScopedCount + $policySetDefinitionsScopedCount
+                        $script:htMgAtScopePoliciesScoped.($mgdetail.Name) = @{
+                            ScopedCount = $policyDefinitionsScopedCount + $policySetDefinitionsScopedCount
+                        }
                     }
 
                     $scopedPolicyCounts = @{
@@ -420,9 +423,11 @@ function processDataCollection {
                     $namingValidationResult = NamingValidation -toCheck $childMgSubDisplayName
                     if ($namingValidationResult.Count -gt 0) {
 
-                        $script:htNamingValidation.Subscription.($childMgSubId) = @{}
-                        $script:htNamingValidation.Subscription.($childMgSubId).displayNameInvalidChars = ($namingValidationResult -join '')
-                        $script:htNamingValidation.Subscription.($childMgSubId).displayName = $childMgSubDisplayName
+                        $script:htNamingValidation.Subscription.($childMgSubId) = @{
+                            displayNameInvalidChars = ($namingValidationResult -join '')
+                            displayName             = $childMgSubDisplayName
+                        }
+
                     }
                 }
 
@@ -1203,8 +1208,9 @@ function processDataCollection {
         #tenantLevelRoleAssignments
         if (-not $htMgAtScopeRoleAssignments.'tenantLevelRoleAssignments') {
             $tenantLevelRoleAssignmentsCount = (($upperScopesRoleAssignments | Where-Object { $_.id -like '/providers/Microsoft.Authorization/roleAssignments/*' })).count
-            $htMgAtScopeRoleAssignments.'tenantLevelRoleAssignments' = @{}
-            $htMgAtScopeRoleAssignments.'tenantLevelRoleAssignments'.AssignmentsCount = $tenantLevelRoleAssignmentsCount
+            $htMgAtScopeRoleAssignments.'tenantLevelRoleAssignments' = @{
+                AssignmentsCount = $tenantLevelRoleAssignmentsCount
+            }
         }
 
         foreach ($upperScopesRoleAssignment in $upperScopesRoleAssignments) {

@@ -11,10 +11,12 @@ function processStorageAccountAnalysis {
             $saConsumptionByResourceId = $allConsumptionData.where({ $_.resourceType -eq 'microsoft.storage/storageaccounts' }) | Group-Object -Property resourceid
 
             foreach ($sa in $saConsumptionByResourceId) {
-                $htSACost.($sa.Name) = @{}
-                $htSACost.($sa.Name).meterCategoryAll = ($sa.Group.MeterCategory | Sort-Object) -join ', '
-                $htSACost.($sa.Name).costAll = ($sa.Group.PreTaxCost | Measure-Object -Sum).Sum #[decimal]($sa.Group.PreTaxCost | Measure-Object -Sum).Sum
-                $htSACost.($sa.Name).currencyAll = ($sa.Group.Currency | Sort-Object -Unique) -join ', '
+                $htSACost.($sa.Name) = @{
+                    meterCategoryAll = ($sa.Group.MeterCategory | Sort-Object) -join ', '
+                    costAll          = ($sa.Group.PreTaxCost | Measure-Object -Sum).Sum #[decimal]($sa.Group.PreTaxCost | Measure-Object -Sum).Sum
+                    currencyAll      = ($sa.Group.Currency | Sort-Object -Unique) -join ', '
+                }
+
                 foreach ($costentry in $sa.Group) {
                     $htSACost.($sa.Name)."cost_$($costentry.MeterCategory)" = $costentry.PreTaxCost
                     $htSACost.($sa.Name)."currency_$($costentry.MeterCategory)" = $costentry.Currency

@@ -1,9 +1,11 @@
 
 function getGroupmembers($aadGroupId, $aadGroupDisplayName) {
     if (-not $htAADGroupsDetails.($aadGroupId)) {
-        $script:htAADGroupsDetails.$aadGroupId = @{}
-        $script:htAADGroupsDetails.($aadGroupId).Id = $aadGroupId
-        $script:htAADGroupsDetails.($aadGroupId).displayname = $aadGroupDisplayName
+        $script:htAADGroupsDetails.$aadGroupId = @{
+            Id          = $aadGroupId
+            displayname = $aadGroupDisplayName
+        }
+
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/groups/$($aadGroupId)/transitiveMembers"
         $method = 'GET'
         $aadGroupMembers = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask "getGroupmembers $($aadGroupId)"
@@ -93,7 +95,7 @@ function getGroupmembers($aadGroupId, $aadGroupDisplayName) {
                 }
                 if (-not $htServicePrincipals.($identity.id)) {
                     #Write-Host "$($identity.displayName) $($identity.id) added - - - - - - - - "
-                    $script:htServicePrincipals.($identity.id) = @{}
+                    #$script:htServicePrincipals.($identity.id) = @{}
                     $script:htServicePrincipals.($identity.id) = $arrayIdentityObject
                 }
             }
@@ -109,8 +111,9 @@ function getGroupmembers($aadGroupId, $aadGroupDisplayName) {
                     if (-not $htUserTypesGuest.($aadGroupMembersUser.id)) {
                         $cnty++
                         #Write-Host "$($aadGroupMembersUser.id) is Guest"
-                        $script:htUserTypesGuest.($aadGroupMembersUser.id) = @{}
-                        $script:htUserTypesGuest.($aadGroupMembersUser.id).userType = 'Guest'
+                        $script:htUserTypesGuest.($aadGroupMembersUser.id) = @{
+                            userType = 'Guest'
+                        }
                     }
                     else {
                         #Write-Host "$($aadGroupMembersUser.id) already known as Guest"

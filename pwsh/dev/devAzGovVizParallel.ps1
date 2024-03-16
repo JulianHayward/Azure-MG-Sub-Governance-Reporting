@@ -365,7 +365,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.4.0',
+    $ProductVersion = '6.4.1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -1155,7 +1155,7 @@ if (-not $HierarchyMapOnly) {
 
         #region Getting Available Private Endpoint Types
         $startGetAvailablePrivateEndpointTypes = Get-Date
-
+        $privateEndpointAvailabilityCheckCompleted = $false
         $subsToProcessForGettingPrivateEndpointTypes = [System.Collections.ArrayList]@()
         $prioCounter = 0
         foreach ($subscription in $subsToProcessInCustomDataCollection) {

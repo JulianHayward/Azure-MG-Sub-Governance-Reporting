@@ -129,9 +129,11 @@ function getOrphanedResources {
                 if ($consumptionResourceTypeAndCurrencySplitted[0] -in $orphanedResourcesResourceTypesCostRelevant ) {
                     foreach ($entry in $consumptionResourceTypeAndCurrency.Group) {
                         if (-not $htC.($entry.resourceId)) {
-                            $htC.($entry.resourceId) = @{}
-                            $htC.($entry.resourceId).cost = $entry.PreTaxCost
-                            $htC.($entry.resourceId).currency = $entry.Currency
+                            $htC.($entry.resourceId) = @{
+                                cost     = $entry.PreTaxCost
+                                currency = $entry.Currency
+                            }
+
                         }
                         else {
                             $htC.($entry.resourceId).cost = $htC.($entry.resourceId).cost + $entry.PreTaxCost

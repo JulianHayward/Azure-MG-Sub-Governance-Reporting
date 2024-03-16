@@ -9,10 +9,12 @@ function processManagedIdentities {
             if ($hlpSp.alternativeNames -gt 0) {
                 foreach ($usageentry in $hlpSp.alternativeNames) {
                     if ($usageentry -like '*/providers/Microsoft.Authorization/policyAssignments/*') {
-                        $script:htManagedIdentityForPolicyAssignment.($hlpSp.Id) = @{}
-                        $script:htManagedIdentityForPolicyAssignment.($hlpSp.Id).policyAssignmentId = $usageentry.ToLower()
-                        $script:htPolicyAssignmentManagedIdentity.($usageentry.ToLower()) = @{}
-                        $script:htPolicyAssignmentManagedIdentity.($usageentry.ToLower()).miObjectId = $hlpSp.id
+                        $script:htManagedIdentityForPolicyAssignment.($hlpSp.Id) = @{
+                            policyAssignmentId = $usageentry.ToLower()
+                        }
+                        $script:htPolicyAssignmentManagedIdentity.($usageentry.ToLower()) = @{
+                            miObjectId = $hlpSp.id
+                        }
                         if (-not $htManagedIdentityDisplayName.($hlpSp.displayName)) {
                             $script:htManagedIdentityDisplayName.("$($hlpSp.displayName)_$($usageentry.ToLower())") = $hlpSp
                         }

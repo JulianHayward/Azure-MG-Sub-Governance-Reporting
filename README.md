@@ -87,6 +87,10 @@ As an alternative, you can use the [Azure Governance Visualizer accelerator](htt
 
 ## Release history
 
+__Changes__ (2024-Mar-14 / 6.4.1 Minor)
+
+* optimize objects handling / best practices
+
 __Changes__ (2024-Feb-06 / 6.4.0 Minor)
 
 * change PowerShell parallel handling / batches
