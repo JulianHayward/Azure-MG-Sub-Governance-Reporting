@@ -4,7 +4,7 @@
 
 ### Azure Governance Visualizer version 6
 
-__Changes__ (2024-Mar-14 / 6.4.1 Minor)
+__Changes__ (2024-Mar-14 / 6.4.2 Minor)
 
 * optimize objects handling / best practices
 

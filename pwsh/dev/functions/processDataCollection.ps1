@@ -918,11 +918,11 @@ function processDataCollection {
             $method = 'GET'
             $upperScopesPolicyAssignments = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
-            $upperScopesPolicyAssignments = $upperScopesPolicyAssignments | Where-Object { $_.properties.scope -ne "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" }
-            $upperScopesPolicyAssignmentsPolicyCount = (($upperScopesPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policyDefinitions/' })).count
-            $upperScopesPolicyAssignmentsPolicySetCount = (($upperScopesPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policySetDefinitions/' })).count
-            $upperScopesPolicyAssignmentsPolicyAtScopeCount = (($upperScopesPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policyDefinitions/' -and $_.Id -match "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" })).count
-            $upperScopesPolicyAssignmentsPolicySetAtScopeCount = (($upperScopesPolicyAssignments | Where-Object { $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policySetDefinitions/' -and $_.Id -match "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" })).count
+            $upperScopesPolicyAssignments = $upperScopesPolicyAssignments.where({ $_.properties.scope -ne "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" })
+            $upperScopesPolicyAssignmentsPolicyCount = (($upperScopesPolicyAssignments.where({ $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policyDefinitions/' }))).count
+            $upperScopesPolicyAssignmentsPolicySetCount = (($upperScopesPolicyAssignments.where({ $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policySetDefinitions/' }))).count
+            $upperScopesPolicyAssignmentsPolicyAtScopeCount = (($upperScopesPolicyAssignments.where({ $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policyDefinitions/' -and $_.Id -match "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" }))).count
+            $upperScopesPolicyAssignmentsPolicySetAtScopeCount = (($upperScopesPolicyAssignments.where({ $_.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policySetDefinitions/' -and $_.Id -match "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" }))).count
             $upperScopesPolicyAssignmentsPolicyAndPolicySetAtScopeCount = ($upperScopesPolicyAssignmentsPolicyAtScopeCount + $upperScopesPolicyAssignmentsPolicySetAtScopeCount)
             foreach ($L0mgmtGroupPolicyAssignment in $upperScopesPolicyAssignments) {
 
@@ -1204,10 +1204,10 @@ function processDataCollection {
         #$upperScopesRoleAssignments = GetRoleAssignments -Scope "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" -scopeDetails "getRoleAssignments upperScopes (Mg)"
         $upperScopesRoleAssignments = $roleAssignmentsFromAPI
 
-        $upperScopesRoleAssignmentsLimitUtilization = (($upperScopesRoleAssignments | Where-Object { $_.properties.scope -eq "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" })).count
+        $upperScopesRoleAssignmentsLimitUtilization = (($upperScopesRoleAssignments.where({ $_.properties.scope -eq "/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)" }))).count
         #tenantLevelRoleAssignments
         if (-not $htMgAtScopeRoleAssignments.'tenantLevelRoleAssignments') {
-            $tenantLevelRoleAssignmentsCount = (($upperScopesRoleAssignments | Where-Object { $_.id -like '/providers/Microsoft.Authorization/roleAssignments/*' })).count
+            $tenantLevelRoleAssignmentsCount = (($upperScopesRoleAssignments.where({ $_.id -like '/providers/Microsoft.Authorization/roleAssignments/*' }))).count
             $htMgAtScopeRoleAssignments.'tenantLevelRoleAssignments' = @{
                 AssignmentsCount = $tenantLevelRoleAssignmentsCount
             }

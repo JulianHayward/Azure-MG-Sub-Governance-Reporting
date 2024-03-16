@@ -66,14 +66,14 @@ $mgInLevel(`"$mgNameId`") --> SubsOf$mgInLevel(`"$(($subsUnderMg | Measure-Objec
             }
 
             if (($script:outOfScopeSubscriptions | Measure-Object).count -gt 0) {
-                $subsoosUnderMg = ($outOfScopeSubscriptions | Where-Object { $_.Level -eq $mgLevel -and $_.ManagementGroupId -eq $mgInLevel }).SubscriptionId | Get-Unique
+                $subsoosUnderMg = ($outOfScopeSubscriptions.where({ $_.Level -eq $mgLevel -and $_.ManagementGroupId -eq $mgInLevel })).SubscriptionId | Get-Unique
                 if (($subsoosUnderMg | Measure-Object).count -gt 0) {
                     foreach ($subUnderMg in $subsoosUnderMg) {
                         $null = $script:arraySubsOos.Add("SubsoosOf$mgInLevel")
                         $mgDetalsN = ($optimizedTableForPathQueryMg.where( { $_.Level -eq $mgLevel -and $_.ManagementGroupId -eq $mgInLevel } ))
                         $mgName = $mgDetalsN.MgName | Get-Unique
                     }
-                    $mgName = ($outOfScopeSubscriptions | Where-Object { $_.Level -eq $mgLevel -and $_.ManagementGroupId -eq $mgInLevel }).ManagementGroupName | Get-Unique
+                    $mgName = ($outOfScopeSubscriptions.where({ $_.Level -eq $mgLevel -and $_.ManagementGroupId -eq $mgInLevel })).ManagementGroupName | Get-Unique
                     if ($mgName -eq $mgInLevel) {
                         $mgNameId = $mgName
                     }
