@@ -365,7 +365,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.4.2',
+    $ProductVersion = '6.4.3',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -453,6 +453,9 @@ Param
 
     [switch]
     $DoAzureConsumption,
+
+    [switch]
+    $DoAzureConsumptionPreviousMonth,
 
     [int]
     $AzureConsumptionPeriod = 1,
@@ -938,6 +941,10 @@ if (-not $HierarchyMapOnly) {
         $arrayTotalCostSummary = @()
         $azureConsumptionStartDate = ((Get-Date).AddDays( - ($($AzureConsumptionPeriod)))).ToString('yyyy-MM-dd')
         $azureConsumptionEndDate = ((Get-Date).AddDays(-1)).ToString('yyyy-MM-dd')
+        if ($azAPICallConf['htParameters'].DoAzureConsumptionPreviousMonth -eq $true) {
+            $azureConsumptionStartDate = ((Get-Date).AddMonths(-1).AddDays( - $((Get-Date).Day) + 1)).ToString('yyyy-MM-dd')
+            $azureConsumptionEndDate = ((Get-Date).AddDays( - $((Get-Date).Day))).ToString('yyyy-MM-dd')
+        }
     }
     $customDataCollectionDuration = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htResourceLocks = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
