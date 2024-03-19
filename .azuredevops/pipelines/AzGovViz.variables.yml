@@ -149,8 +149,8 @@ variables:
 
   # Define if Azure Consumption data should be reported for previous month
   - name: DoAzureConsumptionPreviousMonth
-    # Switch | example: value: false
-    value: false
+    # Switch | example: value: true
+    value:
 
   # Do not include Role assignments on ResourceGroups and Resources
   - name: DoNotIncludeResourceGroupsAndResourcesOnRBAC
