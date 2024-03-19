@@ -17,6 +17,7 @@ function addHtParameters {
 
     $script:azAPICallConf['htParameters'] += [ordered]@{
         DoAzureConsumption                           = [bool]$DoAzureConsumption
+        DoAzureConsumptionPreviousMonth              = [bool]$DoAzureConsumptionPreviousMonth
         DoNotIncludeResourceGroupsOnPolicy           = [bool]$DoNotIncludeResourceGroupsOnPolicy
         DoNotIncludeResourceGroupsAndResourcesOnRBAC = [bool]$DoNotIncludeResourceGroupsAndResourcesOnRBAC
         DoNotShowRoleAssignmentsUserData             = [bool]$DoNotShowRoleAssignmentsUserData

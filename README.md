@@ -509,6 +509,7 @@ Screenshot of Microsoft Graph permissions in the Microsoft Entra admin center
 * ~~`-ServicePrincipalExpiryWarningDays`~~ `-AADServicePrincipalExpiryWarningDays` - Define warning period for Service Principal secret and certificate expiry; default is 14 days
 * ~~`-NoAzureConsumption`~~ - Azure Consumption data should not be collected/reported
 * `-DoAzureConsumption` - Azure Consumption data should be collected/reported
+* `-DoAzureConsumptionPreviousMonth` - Azure Consumption data should be collected/reported for the previous month
 * `-AzureConsumptionPeriod` - Define for which time period Azure Consumption data should be gathered; default is 1 day
 * `-NoAzureConsumptionReportExportToCSV` - Azure Consumption data should not be exported (CSV)
 * `-NoScopeInsights` - Q: Why would you want to do this? A: In larger tenants the ScopeInsights section blows up the html file (up to unusable due to html file size). Use `-LargeTenant` to further reduce the output.
@@ -798,3 +799,4 @@ Also check <https://aka.ms/AzADServicePrincipalInsights> - What about your Micro
 ## Closing Note
 
 Please note that while being developed by a Microsoft employee, Azure Governance Visualizer is not a Microsoft service or product. Azure Governance Visualizer is a personal/community driven project, there are no implicit or explicit obligations related to this project, it is provided 'as is' with no warranties and confer no rights.
+
