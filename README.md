@@ -87,6 +87,10 @@ As an alternative, you can use the [Azure Governance Visualizer accelerator](htt
 
 ## Release history
 
+__Changes__ (2024-Mar-19 / 6.4.3 Minor)
+
+* Support for `-DoAzureConsumptionPreviousMonth` - Azure Consumption data should be collected/reported for the previous month
+
 __Changes__ (2024-Mar-14 / 6.4.2 Minor)
 
 * optimize objects handling / best practices
