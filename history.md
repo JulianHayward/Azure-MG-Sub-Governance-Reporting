@@ -4,6 +4,15 @@
 
 ### Azure Governance Visualizer version 6
 
+__Changes__ (2024-Apr-17 / 6.4.4 Minor)
+
+* fix issue #230
+  * use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.2.1
+* update [API reference](#api-reference) Microsoft.Security/pricings use API version 2024-01-01 (previous 2018-06-01)
+* add 'Mutate' to `ValidPolicyEffects`
+* location related tasks - use only physical locations (exclude logical)
+* optimize collection of Role definitions that are used in Policy definitions
+
 __Changes__ (2024-Mar-19 / 6.4.3 Minor)
 
 * Support for `-DoAzureConsumptionPreviousMonth` - Azure Consumption data should be collected/reported for the previous month

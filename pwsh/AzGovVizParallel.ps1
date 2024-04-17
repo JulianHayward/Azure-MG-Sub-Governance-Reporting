@@ -365,14 +365,14 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.4.3',
+    $ProductVersion = '6.4.4',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
 
     # <--- AzAPICall related parameters #consult the AzAPICall GitHub repository for details aka.ms/AzAPICall
     [string]
-    $AzAPICallVersion = '1.2.0',
+    $AzAPICallVersion = '1.2.1',
 
     [switch]
     $DebugAzAPICall,
@@ -627,7 +627,7 @@ Param
     $MSTenantIds = @('2f4a9838-26b7-47ee-be60-ccc1fdec5953', '33e01921-4d64-4f8c-a055-5bdaffd5e33d'),
 
     [array]
-    $ValidPolicyEffects = @('append', 'audit', 'auditIfNotExists', 'deny', 'denyAction', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting')
+    $ValidPolicyEffects = @('append', 'audit', 'auditIfNotExists', 'deny', 'denyAction', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting', 'Mutate')
 )
 
 $Error.clear()
@@ -2037,15 +2037,12 @@ function cacheBuiltIn {
                 if (-not [string]::IsNullOrWhiteSpace($builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
                     foreach ($roledefinitionId in $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
-                        if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
-                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId) = @{
+                        if (-not $htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower())) {
+                            $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()) = @{
                                 UsedInPolicies = [System.Collections.ArrayList]@()
                             }
-                            #$null = $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies.Add($builtinPolicyDefinition.Id)
                         }
-                        #else {
-                        $null = $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies.Add($builtinPolicyDefinition.Id)
-                        #}
+                        $null = $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()).UsedInPolicies.Add($builtinPolicyDefinition.Id)
                     }
                 }
                 else {
@@ -2128,15 +2125,12 @@ function cacheBuiltIn {
                 if (-not [string]::IsNullOrWhiteSpace($staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
                     foreach ($roledefinitionId in $staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
-                        if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
-                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId) = @{
+                        if (-not $htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower())) {
+                            $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()) = @{
                                 UsedInPolicies = [System.Collections.ArrayList]@()
                             }
-                            #$null = $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies.Add($staticPolicyDefinition.Id)
                         }
-                        #else {
-                        $null = $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies.Add($staticPolicyDefinition.Id)
-                        #}
+                        $null = $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()).UsedInPolicies.Add($staticPolicyDefinition.Id)
                     }
                 }
                 else {
@@ -4187,6 +4181,90 @@ function getPolicyRemediation {
         }
     }
 }
+function getPrivateEndpointCapableResourceTypes {
+    $startGetAvailablePrivateEndpointTypes = Get-Date
+    $privateEndpointAvailabilityCheckCompleted = $false
+    $subsToProcessForGettingPrivateEndpointTypes = [System.Collections.ArrayList]@()
+    $prioCounter = 0
+    foreach ($subscription in $subsToProcessInCustomDataCollection) {
+        $prioCounter++
+        if ($subscription.subscriptionId -eq $azAPICallConf['checkcontext'].Subscription.Id) {
+            $null = $subsToProcessForGettingPrivateEndpointTypes.Add([PSCustomObject]@{
+                    subscriptionInfo = $subscription
+                    prio             = 0
+                })
+        }
+        else {
+            $null = $subsToProcessForGettingPrivateEndpointTypes.Add([PSCustomObject]@{
+                    subscriptionInfo = $subscription
+                    prio             = $prioCounter
+                })
+        }
+    }
+
+    foreach ($subscription in $subsToProcessForGettingPrivateEndpointTypes | Sort-Object -Property prio) {
+
+        if ($privateEndpointAvailabilityCheckCompleted) {
+            continue
+        }
+
+        $subscriptionId = $subscription.subscriptionInfo.subscriptionId
+        $subscriptionName = $subscription.subscriptionInfo.subscriptionName
+
+        $armLocationsFromAzAPICall = $azAPICallConf['htParameters'].ARMLocations
+
+        Write-Host "Getting 'Available Private Endpoint Types' for Subscription '$($subscriptionName)' ($($subscriptionId)) for $($armLocationsFromAzAPICall.Count) locations"
+
+        $batchSize = [math]::ceiling($armLocationsFromAzAPICall.Count / $ThrottleLimit)
+        Write-Host "Optimal batch size: $($batchSize)"
+        $counterBatch = [PSCustomObject] @{ Value = 0 }
+        $locationsBatch = ($armLocationsFromAzAPICall) | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
+        Write-Host "Processing data in $($locationsBatch.Count) batches"
+
+        $locationsBatch | ForEach-Object -Parallel {
+
+            $subscriptionId = $using:subscriptionId
+            $azAPICallConf = $using:azAPICallConf
+            $htAvailablePrivateEndpointTypes = $using:htAvailablePrivateEndpointTypes
+
+            foreach ($location in $_.Group) {
+                $currentTask = "Getting 'Available Private Endpoint Types' for location $($location)"
+                #Write-Host $currentTask
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subscriptionId)/providers/Microsoft.Network/locations/$($location)/availablePrivateEndpointTypes?api-version=2022-07-01"
+                $method = 'GET'
+                $availablePrivateEndpointTypes = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -skipOnErrorCode 400, 409
+                Write-Host " Returned $($availablePrivateEndpointTypes.Count) 'Available Private Endpoint Types' for location $($location)"
+                foreach ($availablePrivateEndpointType in $availablePrivateEndpointTypes) {
+                    if (-not $htAvailablePrivateEndpointTypes.(($availablePrivateEndpointType.resourceName).ToLower())) {
+                        $script:htAvailablePrivateEndpointTypes.(($availablePrivateEndpointType.resourceName).ToLower()) = @{}
+                    }
+                }
+            }
+        } -ThrottleLimit $ThrottleLimit
+
+        if ($htAvailablePrivateEndpointTypes.Keys.Count -gt 0) {
+            #Write-Host " Created ht for $($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types'"
+            $privateEndpointAvailabilityCheckCompleted = $true
+        }
+        else {
+            Write-Host " $($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types' - likely the Resource Provider 'Microsoft.Network' is not registered - trying next available subscription"
+            $privateEndpointAvailabilityCheckCompleted = $false
+        }
+    }
+
+    if ($htAvailablePrivateEndpointTypes.Keys.Count -gt 0) {
+        Write-Host " Created ht for $($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types'"
+    }
+    else {
+        $throwmsg = "$($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types' - Checked for $($subsToProcessForGettingPrivateEndpointTypes.Count) Subscriptions with no success. Make sure that for at least one Subscription the Resource Provider 'Microsoft.Network' is registered. Once you registered the Resource Provider for Subscription 'subscriptionEnabled' it may be a good idea to use the parameter: -SubscriptionId4AzContext '<subscriptionId of subscriptionEnabled>'"
+        Write-Host $throwmsg -ForegroundColor DarkRed
+        Throw $throwmsg
+    }
+
+    $endGetAvailablePrivateEndpointTypes = Get-Date
+    Write-Host "Getting 'Available Private Endpoint Types' duration: $((New-TimeSpan -Start $startGetAvailablePrivateEndpointTypes -End $endGetAvailablePrivateEndpointTypes).TotalMinutes) minutes ($((New-TimeSpan -Start $startGetAvailablePrivateEndpointTypes -End $endGetAvailablePrivateEndpointTypes).TotalSeconds) seconds)"
+    #endregion Getting Available Private Endpoint Types
+}
 function getResourceDiagnosticsCapability {
     Write-Host 'Checking Resource Types Diagnostics capability (1st party only)'
     $startResourceDiagnosticsCheck = Get-Date
@@ -4437,6 +4515,141 @@ function prepareData {
 
     $endPreparingArrays = Get-Date
     Write-Host "Preparing Arrays duration: $((New-TimeSpan -Start $startPreparingArrays -End $endPreparingArrays).TotalMinutes) minutes ($((New-TimeSpan -Start $startPreparingArrays -End $endPreparingArrays).TotalSeconds) seconds)"
+}
+function processAADGroups {
+    if ($NoPIMEligibility) {
+        Write-Host 'Resolving Microsoft Entra groups (for which a RBAC role assignment exists)'
+    }
+    else {
+        Write-Host 'Resolving Microsoft Entra groups (for which a RBAC role assignment or PIM eligibility exists)'
+    }
+
+    Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (before resolving Microsoft Entra groups)"
+    $startAADGroupsResolveMembers = Get-Date
+
+    $roleAssignmentsforGroups = ($roleAssignmentsUniqueById.where( { $_.RoleAssignmentIdentityObjectType -eq 'Group' } ) | Select-Object -Property RoleAssignmentIdentityObjectId, RoleAssignmentIdentityDisplayname) | Sort-Object -Property RoleAssignmentIdentityObjectId -Unique
+    $optimizedTableForAADGroupsQuery = [System.Collections.ArrayList]@()
+    if ($roleAssignmentsforGroups.Count -gt 0) {
+        foreach ($roleAssignmentforGroups in $roleAssignmentsforGroups) {
+            $null = $optimizedTableForAADGroupsQuery.Add($roleAssignmentforGroups)
+        }
+    }
+
+    $aadGroupsCount = ($optimizedTableForAADGroupsQuery).Count
+    Write-Host " $aadGroupsCount Groups from RoleAssignments"
+
+    if (-not $NoPIMEligibility) {
+        $PIMEligibleGroups = $arrayPIMEligible.where({ $_.IdentityType -eq 'Group' }) | Select-Object IdentityObjectId, IdentityDisplayName | Sort-Object -Property IdentityObjectId -Unique
+        $cntPIMEligibleGroupsTotal = 0
+        $cntPIMEligibleGroupsNotCoveredFromRoleAssignments = 0
+        foreach ($PIMEligibleGroup in  $PIMEligibleGroups) {
+            $cntPIMEligibleGroupsTotal++
+            if ($optimizedTableForAADGroupsQuery.RoleAssignmentIdentityObjectId -notcontains $PIMEligibleGroup.IdentityObjectId) {
+                $cntPIMEligibleGroupsNotCoveredFromRoleAssignments++
+                $null = $optimizedTableForAADGroupsQuery.Add([PSCustomObject]@{
+                        RoleAssignmentIdentityObjectId    = $PIMEligibleGroup.IdentityObjectId
+                        RoleAssignmentIdentityDisplayname = $PIMEligibleGroup.IdentityDisplayName
+                    })
+            }
+        }
+        Write-Host " $cntPIMEligibleGroupsTotal groups from PIM eligibility; $cntPIMEligibleGroupsNotCoveredFromRoleAssignments groups added ($($cntPIMEligibleGroupsTotal - $cntPIMEligibleGroupsNotCoveredFromRoleAssignments) already covered in role assignments)"
+        $aadGroupsCount = ($optimizedTableForAADGroupsQuery).Count
+        Write-Host " $aadGroupsCount groups from role assignments and PIM eligibility"
+    }
+
+    if ($aadGroupsCount -gt 0) {
+
+        switch ($aadGroupsCount) {
+            { $_ -gt 0 } { $indicator = 1 }
+            { $_ -gt 10 } { $indicator = 5 }
+            { $_ -gt 50 } { $indicator = 10 }
+            { $_ -gt 100 } { $indicator = 20 }
+            { $_ -gt 250 } { $indicator = 25 }
+            { $_ -gt 500 } { $indicator = 50 }
+            { $_ -gt 1000 } { $indicator = 100 }
+            { $_ -gt 10000 } { $indicator = 250 }
+        }
+
+        Write-Host " processing $($aadGroupsCount) Microsoft Entra groups (indicating progress in steps of $indicator)"
+
+        $ThrottleLimitThis = $ThrottleLimit * 2
+        $batchSize = [math]::ceiling($optimizedTableForAADGroupsQuery.Count / $ThrottleLimitThis)
+        Write-Host "Optimal batch size: $($batchSize)"
+        $counterBatch = [PSCustomObject] @{ Value = 0 }
+        $optimizedTableForAADGroupsQueryBatch = ($optimizedTableForAADGroupsQuery) | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
+        Write-Host "Processing data in $($optimizedTableForAADGroupsQueryBatch.Count) batches"
+
+        $optimizedTableForAADGroupsQueryBatch | ForEach-Object -Parallel {
+            #$aadGroupIdWithRoleAssignment = $_
+            #region UsingVARs
+            #fromOtherFunctions
+            $AADGroupMembersLimit = $using:AADGroupMembersLimit
+            $azAPICallConf = $using:azAPICallConf
+            $scriptPath = $using:ScriptPath
+            #Array&HTs
+            $htAADGroupsDetails = $using:htAADGroupsDetails
+            $arrayGroupRoleAssignmentsOnServicePrincipals = $using:arrayGroupRoleAssignmentsOnServicePrincipals
+            $arrayGroupRequestResourceNotFound = $using:arrayGroupRequestResourceNotFound
+            $arrayProgressedAADGroups = $using:arrayProgressedAADGroups
+            $htAADGroupsExeedingMemberLimit = $using:htAADGroupsExeedingMemberLimit
+            $indicator = $using:indicator
+            $htUserTypesGuest = $using:htUserTypesGuest
+            $htServicePrincipals = $using:htServicePrincipals
+            #other
+            $function:getGroupmembers = $using:funcGetGroupmembers
+            #endregion UsingVARs
+
+            foreach ($aadGroupIdWithRoleAssignment in $_.Group) {
+
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/groups/$($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)/transitiveMembers/`$count"
+                $method = 'GET'
+                $aadGroupMembersCount = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask "getGroupMembersCountTransitive $($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)" -listenOn 'Content' -consistencyLevel 'eventual'
+
+                if ($aadGroupMembersCount -eq 'Request_ResourceNotFound') {
+                    $null = $script:arrayGroupRequestResourceNotFound.Add([PSCustomObject]@{
+                            groupId = $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId
+                        })
+                }
+                else {
+                    if ($aadGroupMembersCount -gt $AADGroupMembersLimit) {
+                        Write-Host "  Group exceeding limit ($($AADGroupMembersLimit)); memberCount: $aadGroupMembersCount; Group: $($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityDisplayname) ($($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)); Members will not be resolved adjust the limit using parameter -AADGroupMembersLimit"
+                        $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId) = @{
+                            MembersAllCount               = $aadGroupMembersCount
+                            MembersUsersCount             = 'n/a'
+                            MembersGroupsCount            = 'n/a'
+                            MembersServicePrincipalsCount = 'n/a'
+                        }
+
+                    }
+                    else {
+                        getGroupmembers -aadGroupId $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId -aadGroupDisplayName $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityDisplayname
+                    }
+                }
+
+                $null = $script:arrayProgressedAADGroups.Add($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)
+                $processedAADGroupsCount = $null
+                $processedAADGroupsCount = ($arrayProgressedAADGroups).Count
+                if ($processedAADGroupsCount) {
+                    if ($processedAADGroupsCount % $indicator -eq 0) {
+                        Write-Host " $processedAADGroupsCount Microsoft Entra groups processed"
+                    }
+                }
+            }
+        } -ThrottleLimit ($ThrottleLimitThis)
+    }
+    else {
+        Write-Host " processing $($aadGroupsCount) Microsoft Entra groups"
+    }
+
+    $arrayGroupRequestResourceNotFoundCount = ($arrayGroupRequestResourceNotFound).Count
+    if ($arrayGroupRequestResourceNotFoundCount -gt 0) {
+        Write-Host "$arrayGroupRequestResourceNotFoundCount Groups could not be checked for Memberships"
+    }
+
+    Write-Host " processed $($arrayProgressedAADGroups.Count) Microsoft Entra groups"
+    $endAADGroupsResolveMembers = Get-Date
+    Write-Host "Resolving Microsoft Entra groups duration: $((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
+    Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (after resolving Microsoft Entra groups)"
 }
 function processALZPolicyVersionChecker {
     $start = Get-Date
@@ -17596,7 +17809,7 @@ extensions: [{ name: 'sort' }]
                 }
 
                 #role used in a policyDef (rule roledefinitionIds)
-                if ($htRoleDefinitionIdsUsedInPolicy.Keys -contains "/providers/Microsoft.Authorization/roleDefinitions/$($customRoleAll.Id)") {
+                if ($htRoleDefinitionIdsUsedInPolicy.Keys -contains ("/providers/Microsoft.Authorization/roleDefinitions/$($customRoleAll.Id)".Tolower())) {
                     $roleIsUsed = $true
                 }
 
@@ -17726,7 +17939,7 @@ extensions: [{ name: 'sort' }]
                 }
 
                 #role used in a policyDef (rule roledefinitionIds)
-                if ($htRoleDefinitionIdsUsedInPolicy.Keys -contains "/providers/Microsoft.Authorization/roleDefinitions/$($customRoleAll.Id)") {
+                if ($htRoleDefinitionIdsUsedInPolicy.Keys -contains ("/providers/Microsoft.Authorization/roleDefinitions/$($customRoleAll.Id)".ToLower())) {
                     $roleIsUsed = $true
                 }
 
@@ -27968,141 +28181,6 @@ extensions: [{ name: 'sort' }]
     $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
     $script:html = $null
 }
-function processAADGroups {
-    if ($NoPIMEligibility) {
-        Write-Host 'Resolving Microsoft Entra groups (for which a RBAC role assignment exists)'
-    }
-    else {
-        Write-Host 'Resolving Microsoft Entra groups (for which a RBAC role assignment or PIM eligibility exists)'
-    }
-
-    Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (before resolving Microsoft Entra groups)"
-    $startAADGroupsResolveMembers = Get-Date
-
-    $roleAssignmentsforGroups = ($roleAssignmentsUniqueById.where( { $_.RoleAssignmentIdentityObjectType -eq 'Group' } ) | Select-Object -Property RoleAssignmentIdentityObjectId, RoleAssignmentIdentityDisplayname) | Sort-Object -Property RoleAssignmentIdentityObjectId -Unique
-    $optimizedTableForAADGroupsQuery = [System.Collections.ArrayList]@()
-    if ($roleAssignmentsforGroups.Count -gt 0) {
-        foreach ($roleAssignmentforGroups in $roleAssignmentsforGroups) {
-            $null = $optimizedTableForAADGroupsQuery.Add($roleAssignmentforGroups)
-        }
-    }
-
-    $aadGroupsCount = ($optimizedTableForAADGroupsQuery).Count
-    Write-Host " $aadGroupsCount Groups from RoleAssignments"
-
-    if (-not $NoPIMEligibility) {
-        $PIMEligibleGroups = $arrayPIMEligible.where({ $_.IdentityType -eq 'Group' }) | Select-Object IdentityObjectId, IdentityDisplayName | Sort-Object -Property IdentityObjectId -Unique
-        $cntPIMEligibleGroupsTotal = 0
-        $cntPIMEligibleGroupsNotCoveredFromRoleAssignments = 0
-        foreach ($PIMEligibleGroup in  $PIMEligibleGroups) {
-            $cntPIMEligibleGroupsTotal++
-            if ($optimizedTableForAADGroupsQuery.RoleAssignmentIdentityObjectId -notcontains $PIMEligibleGroup.IdentityObjectId) {
-                $cntPIMEligibleGroupsNotCoveredFromRoleAssignments++
-                $null = $optimizedTableForAADGroupsQuery.Add([PSCustomObject]@{
-                        RoleAssignmentIdentityObjectId    = $PIMEligibleGroup.IdentityObjectId
-                        RoleAssignmentIdentityDisplayname = $PIMEligibleGroup.IdentityDisplayName
-                    })
-            }
-        }
-        Write-Host " $cntPIMEligibleGroupsTotal groups from PIM eligibility; $cntPIMEligibleGroupsNotCoveredFromRoleAssignments groups added ($($cntPIMEligibleGroupsTotal - $cntPIMEligibleGroupsNotCoveredFromRoleAssignments) already covered in role assignments)"
-        $aadGroupsCount = ($optimizedTableForAADGroupsQuery).Count
-        Write-Host " $aadGroupsCount groups from role assignments and PIM eligibility"
-    }
-
-    if ($aadGroupsCount -gt 0) {
-
-        switch ($aadGroupsCount) {
-            { $_ -gt 0 } { $indicator = 1 }
-            { $_ -gt 10 } { $indicator = 5 }
-            { $_ -gt 50 } { $indicator = 10 }
-            { $_ -gt 100 } { $indicator = 20 }
-            { $_ -gt 250 } { $indicator = 25 }
-            { $_ -gt 500 } { $indicator = 50 }
-            { $_ -gt 1000 } { $indicator = 100 }
-            { $_ -gt 10000 } { $indicator = 250 }
-        }
-
-        Write-Host " processing $($aadGroupsCount) Microsoft Entra groups (indicating progress in steps of $indicator)"
-
-        $ThrottleLimitThis = $ThrottleLimit * 2
-        $batchSize = [math]::ceiling($optimizedTableForAADGroupsQuery.Count / $ThrottleLimitThis)
-        Write-Host "Optimal batch size: $($batchSize)"
-        $counterBatch = [PSCustomObject] @{ Value = 0 }
-        $optimizedTableForAADGroupsQueryBatch = ($optimizedTableForAADGroupsQuery) | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
-        Write-Host "Processing data in $($optimizedTableForAADGroupsQueryBatch.Count) batches"
-
-        $optimizedTableForAADGroupsQueryBatch | ForEach-Object -Parallel {
-            #$aadGroupIdWithRoleAssignment = $_
-            #region UsingVARs
-            #fromOtherFunctions
-            $AADGroupMembersLimit = $using:AADGroupMembersLimit
-            $azAPICallConf = $using:azAPICallConf
-            $scriptPath = $using:ScriptPath
-            #Array&HTs
-            $htAADGroupsDetails = $using:htAADGroupsDetails
-            $arrayGroupRoleAssignmentsOnServicePrincipals = $using:arrayGroupRoleAssignmentsOnServicePrincipals
-            $arrayGroupRequestResourceNotFound = $using:arrayGroupRequestResourceNotFound
-            $arrayProgressedAADGroups = $using:arrayProgressedAADGroups
-            $htAADGroupsExeedingMemberLimit = $using:htAADGroupsExeedingMemberLimit
-            $indicator = $using:indicator
-            $htUserTypesGuest = $using:htUserTypesGuest
-            $htServicePrincipals = $using:htServicePrincipals
-            #other
-            $function:getGroupmembers = $using:funcGetGroupmembers
-            #endregion UsingVARs
-
-            foreach ($aadGroupIdWithRoleAssignment in $_.Group) {
-
-                $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/groups/$($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)/transitiveMembers/`$count"
-                $method = 'GET'
-                $aadGroupMembersCount = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask "getGroupMembersCountTransitive $($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)" -listenOn 'Content' -consistencyLevel 'eventual'
-
-                if ($aadGroupMembersCount -eq 'Request_ResourceNotFound') {
-                    $null = $script:arrayGroupRequestResourceNotFound.Add([PSCustomObject]@{
-                            groupId = $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId
-                        })
-                }
-                else {
-                    if ($aadGroupMembersCount -gt $AADGroupMembersLimit) {
-                        Write-Host "  Group exceeding limit ($($AADGroupMembersLimit)); memberCount: $aadGroupMembersCount; Group: $($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityDisplayname) ($($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)); Members will not be resolved adjust the limit using parameter -AADGroupMembersLimit"
-                        $script:htAADGroupsDetails.($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId) = @{
-                            MembersAllCount               = $aadGroupMembersCount
-                            MembersUsersCount             = 'n/a'
-                            MembersGroupsCount            = 'n/a'
-                            MembersServicePrincipalsCount = 'n/a'
-                        }
-
-                    }
-                    else {
-                        getGroupmembers -aadGroupId $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId -aadGroupDisplayName $aadGroupIdWithRoleAssignment.RoleAssignmentIdentityDisplayname
-                    }
-                }
-
-                $null = $script:arrayProgressedAADGroups.Add($aadGroupIdWithRoleAssignment.RoleAssignmentIdentityObjectId)
-                $processedAADGroupsCount = $null
-                $processedAADGroupsCount = ($arrayProgressedAADGroups).Count
-                if ($processedAADGroupsCount) {
-                    if ($processedAADGroupsCount % $indicator -eq 0) {
-                        Write-Host " $processedAADGroupsCount Microsoft Entra groups processed"
-                    }
-                }
-            }
-        } -ThrottleLimit ($ThrottleLimitThis)
-    }
-    else {
-        Write-Host " processing $($aadGroupsCount) Microsoft Entra groups"
-    }
-
-    $arrayGroupRequestResourceNotFoundCount = ($arrayGroupRequestResourceNotFound).Count
-    if ($arrayGroupRequestResourceNotFoundCount -gt 0) {
-        Write-Host "$arrayGroupRequestResourceNotFoundCount Groups could not be checked for Memberships"
-    }
-
-    Write-Host " processed $($arrayProgressedAADGroups.Count) Microsoft Entra groups"
-    $endAADGroupsResolveMembers = Get-Date
-    Write-Host "Resolving Microsoft Entra groups duration: $((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
-    Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (after resolving Microsoft Entra groups)"
-}
 function removeInvalidFileNameChars {
     param(
         [Parameter(Mandatory = $true,
@@ -29505,7 +29583,7 @@ function dataCollectionDefenderPlans {
 
     $currentTask = "Getting Microsoft Defender for Cloud plans for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
     #https://learn.microsoft.com/rest/api/defenderforcloud/pricings
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/pricings?api-version=2018-06-01"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/pricings?api-version=2024-01-01"
     $method = 'GET'
     $defenderPlansResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
@@ -31671,15 +31749,12 @@ function dataCollectionPolicyDefinitions {
                 $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId).RoleDefinitionIds = $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
                 foreach ($roledefinitionId in $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
                     if (-not [string]::IsNullOrEmpty($roledefinitionId)) {
-                        if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
-                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId) = @{
+                        if (-not $htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower())) {
+                            $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()) = @{
                                 UsedInPolicies = [System.Collections.ArrayList]@()
                             }
-                            #$null = $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies.Add($hlpPolicyDefinitionId)
                         }
-                        #else {
-                        $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies.Add($hlpPolicyDefinitionId)
-                        #}
+                        $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()).UsedInPolicies.Add($hlpPolicyDefinitionId)
                     }
                     else {
                         Write-Host "$currentTask $($hlpPolicyDefinitionId) Finding: empty roleDefinitionId in roledefinitionIds"
@@ -34137,14 +34212,14 @@ if (-not $ignoreARMLocation) {
 #EndRegion initAZAPICall
 
 #region required AzAPICall version
-if (-not ([System.Version]"$($azapicallConf['htParameters'].azAPICallModuleVersion)" -ge [System.Version]'1.1.84')) {
+if (-not ([System.Version]"$($azapicallConf['htParameters'].azAPICallModuleVersion)" -ge [System.Version]'1.2.1')) {
     Write-Host ''
     Write-Host 'Azure Governance Visualizer version '$ProductVersion' - AzAPICall PowerShell module version check failed -> https://aka.ms/AzAPICall; https://www.powershellgallery.com/packages/AzAPICall'
-    throw "This version of Azure Governance Visualizer '$ProductVersion' requires AzAPICall PowerShell module version '1.1.84' or greater"
+    throw "This version of Azure Governance Visualizer '$ProductVersion' requires AzAPICall PowerShell module version '1.2.1' or greater"
 }
 else {
     Write-Host ''
-    Write-Host "Azure Governance Visualizer version '$ProductVersion' - AzAPICall PowerShell module version requirement check succeeded: '1.1.84' or greater - current: '$($azapicallConf['htParameters'].azAPICallModuleVersion)' " -ForegroundColor Green
+    Write-Host "Azure Governance Visualizer version '$ProductVersion' - AzAPICall PowerShell module version requirement check succeeded: '1.2.1' or greater - current: '$($azapicallConf['htParameters'].azAPICallModuleVersion)' " -ForegroundColor Green
 }
 #endregion required AzAPICall version
 
@@ -34477,93 +34552,7 @@ if (-not $HierarchyMapOnly) {
         Write-Host "Getting Tenant Resource Providers duration: $((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalMinutes) minutes ($((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalSeconds) seconds)"
         #endregion Getting Tenant Resource Providers
 
-        #region Getting Available Private Endpoint Types
-        $startGetAvailablePrivateEndpointTypes = Get-Date
-        $privateEndpointAvailabilityCheckCompleted = $false
-        $subsToProcessForGettingPrivateEndpointTypes = [System.Collections.ArrayList]@()
-        $prioCounter = 0
-        foreach ($subscription in $subsToProcessInCustomDataCollection) {
-            $prioCounter++
-            if ($subscription.subscriptionId -eq $azAPICallConf['checkcontext'].Subscription.Id) {
-                $null = $subsToProcessForGettingPrivateEndpointTypes.Add([PSCustomObject]@{
-                        subscriptionInfo = $subscription
-                        prio             = 0
-                    })
-            }
-            else {
-                $null = $subsToProcessForGettingPrivateEndpointTypes.Add([PSCustomObject]@{
-                        subscriptionInfo = $subscription
-                        prio             = $prioCounter
-                    })
-            }
-        }
-
-        foreach ($subscription in $subsToProcessForGettingPrivateEndpointTypes | Sort-Object -Property prio) {
-
-            if ($privateEndpointAvailabilityCheckCompleted) {
-                continue
-            }
-
-            $subscriptionId = $subscription.subscriptionInfo.subscriptionId
-            $subscriptionName = $subscription.subscriptionInfo.subscriptionName
-
-            $currentTask = "Getting Locations for Subscription '$($subscriptionName)' ($($subscriptionId))"
-            Write-Host $currentTask
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subscriptionId)/locations?api-version=2020-01-01"
-            $method = 'GET'
-            $getLocations = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
-            Write-Host " Returned $($getLocations.Count) locations"
-
-            Write-Host "Getting 'Available Private Endpoint Types' for Subscription '$($subscriptionName)' ($($subscriptionId)) for $($getLocations.Count) locations"
-
-            $batchSize = [math]::ceiling($getLocations.Count / $ThrottleLimit)
-            Write-Host "Optimal batch size: $($batchSize)"
-            $counterBatch = [PSCustomObject] @{ Value = 0 }
-            $getLocationsBatch = ($getLocations) | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
-            Write-Host "Processing data in $($getLocationsBatch.Count) batches"
-
-            $getLocationsBatch | ForEach-Object -Parallel {
-                $subscriptionId = $using:subscriptionId
-                $azAPICallConf = $using:azAPICallConf
-                $htAvailablePrivateEndpointTypes = $using:htAvailablePrivateEndpointTypes
-
-                foreach ($location in $_.Group) {
-                    $currentTask = "Getting 'Available Private Endpoint Types' for location $($location.name)"
-                    #Write-Host $currentTask
-                    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subscriptionId)/providers/Microsoft.Network/locations/$($location.name)/availablePrivateEndpointTypes?api-version=2022-07-01"
-                    $method = 'GET'
-                    $availablePrivateEndpointTypes = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -skipOnErrorCode 400, 409
-                    Write-Host " Returned $($availablePrivateEndpointTypes.Count) 'Available Private Endpoint Types' for location $($location.name)"
-                    foreach ($availablePrivateEndpointType in $availablePrivateEndpointTypes) {
-                        if (-not $htAvailablePrivateEndpointTypes.(($availablePrivateEndpointType.resourceName).ToLower())) {
-                            $script:htAvailablePrivateEndpointTypes.(($availablePrivateEndpointType.resourceName).ToLower()) = @{}
-                        }
-                    }
-                }
-            } -ThrottleLimit $ThrottleLimit
-
-            if ($htAvailablePrivateEndpointTypes.Keys.Count -gt 0) {
-                #Write-Host " Created ht for $($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types'"
-                $privateEndpointAvailabilityCheckCompleted = $true
-            }
-            else {
-                Write-Host " $($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types' - likely the Resource Provider 'Microsoft.Network' is not registered - trying next available subscription"
-                $privateEndpointAvailabilityCheckCompleted = $false
-            }
-        }
-
-        if ($htAvailablePrivateEndpointTypes.Keys.Count -gt 0) {
-            Write-Host " Created ht for $($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types'"
-        }
-        else {
-            $throwmsg = "$($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types' - Checked for $($subsToProcessForGettingPrivateEndpointTypes.Count) Subscriptions with no success. Make sure that for at least one Subscription the Resource Provider 'Microsoft.Network' is registered. Once you registered the Resource Provider for Subscription 'subscriptionEnabled' it may be a good idea to use the parameter: -SubscriptionId4AzContext '<subscriptionId of subscriptionEnabled>'"
-            Write-Host $throwmsg -ForegroundColor DarkRed
-            Throw $throwmsg
-        }
-
-        $endGetAvailablePrivateEndpointTypes = Get-Date
-        Write-Host "Getting 'Available Private Endpoint Types' duration: $((New-TimeSpan -Start $startGetAvailablePrivateEndpointTypes -End $endGetAvailablePrivateEndpointTypes).TotalMinutes) minutes ($((New-TimeSpan -Start $startGetAvailablePrivateEndpointTypes -End $endGetAvailablePrivateEndpointTypes).TotalSeconds) seconds)"
-        #endregion Getting Available Private Endpoint Types
+        getPrivateEndpointCapableResourceTypes
     }
 
     Write-Host 'Collecting custom data'

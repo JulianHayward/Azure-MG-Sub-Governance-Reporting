@@ -87,24 +87,14 @@ As an alternative, you can use the [Azure Governance Visualizer accelerator](htt
 
 ## Release history
 
-__Changes__ (2024-Mar-19 / 6.4.3 Minor)
+__Changes__ (2024-Apr-17 / 6.4.4 Minor)
 
-* Support for `-DoAzureConsumptionPreviousMonth` - Azure Consumption data should be collected/reported for the previous month
-
-__Changes__ (2024-Mar-14 / 6.4.2 Minor)
-
-* optimize objects handling / best practices
-
-__Changes__ (2024-Feb-06 / 6.4.0 Minor)
-
-* change PowerShell parallel handling / batches
-* add addition JSON outputs  'definitions_tracking' and 'assignments_tracking' (JSON filenames have no displayName included; GUIDs only)
-* update ARM API-version for RBAC Role definitions. Using `2022-05-01-preview` instead of `2018-11-01-preview` consequently
-* fix *_roleDefinitions.csv - description partially missing
-* optimize array handling / best practices
-* optimize getting private endpoint capable resource types / in case resource provider 'microsoft.network' is not registered, try with next available subscription instead of throwing
-* use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.2.0
-* documentation update - style guidance, links updates - kudos @ckittel
+* fix issue #230
+  * use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.2.1
+* update [API reference](#api-reference) Microsoft.Security/pricings use API version 2024-01-01 (previous 2018-06-01)
+* add 'Mutate' to `ValidPolicyEffects`
+* location related tasks - use only physical locations (exclude logical)
+* optimize collection of Role definitions that are used in Policy definitions
 
 [Full release history](history.md)
 
@@ -614,7 +604,7 @@ Azure Governance Visualizer polls the following APIs
 | ARM      | 2022-05-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Network/privateEndpoints                                                           |
 | ARM      | 2022-05-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Network/virtualNetworks                                                            |
 | ARM      | 2020-06-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Resources/tags/default                                                             |
-| ARM      | 2018-06-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/pricings                                                                  |
+| ARM      | 2024-01-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/pricings                                                                  |
 | ARM      | 2020-01-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securescores                                                              |
 | ARM      | 2020-01-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securityContacts                                                          |
 | ARM      | 2019-10-01         | /subscriptions/`subscriptionId`/providers                                                                                              |

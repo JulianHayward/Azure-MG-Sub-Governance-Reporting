@@ -365,14 +365,14 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.4.3',
+    $ProductVersion = '6.4.4',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
 
     # <--- AzAPICall related parameters #consult the AzAPICall GitHub repository for details aka.ms/AzAPICall
     [string]
-    $AzAPICallVersion = '1.2.0',
+    $AzAPICallVersion = '1.2.1',
 
     [switch]
     $DebugAzAPICall,
@@ -627,7 +627,7 @@ Param
     $MSTenantIds = @('2f4a9838-26b7-47ee-be60-ccc1fdec5953', '33e01921-4d64-4f8c-a055-5bdaffd5e33d'),
 
     [array]
-    $ValidPolicyEffects = @('append', 'audit', 'auditIfNotExists', 'deny', 'denyAction', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting')
+    $ValidPolicyEffects = @('append', 'audit', 'auditIfNotExists', 'deny', 'denyAction', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting', 'Mutate')
 )
 
 $Error.clear()
@@ -648,6 +648,7 @@ if ($ManagementGroupId -match ' ') {
 }
 
 #region Functions
+. ".\$($ScriptPath)\functions\getPrivateEndpointCapableResourceTypes.ps1"
 . ".\$($ScriptPath)\functions\validateLeastPrivilegeForUser.ps1"
 . ".\$($ScriptPath)\functions\getPolicyRemediation.ps1"
 . ".\$($ScriptPath)\functions\getPolicyHash.ps1"
@@ -820,14 +821,14 @@ if (-not $ignoreARMLocation) {
 #EndRegion initAZAPICall
 
 #region required AzAPICall version
-if (-not ([System.Version]"$($azapicallConf['htParameters'].azAPICallModuleVersion)" -ge [System.Version]'1.1.84')) {
+if (-not ([System.Version]"$($azapicallConf['htParameters'].azAPICallModuleVersion)" -ge [System.Version]'1.2.1')) {
     Write-Host ''
     Write-Host 'Azure Governance Visualizer version '$ProductVersion' - AzAPICall PowerShell module version check failed -> https://aka.ms/AzAPICall; https://www.powershellgallery.com/packages/AzAPICall'
-    throw "This version of Azure Governance Visualizer '$ProductVersion' requires AzAPICall PowerShell module version '1.1.84' or greater"
+    throw "This version of Azure Governance Visualizer '$ProductVersion' requires AzAPICall PowerShell module version '1.2.1' or greater"
 }
 else {
     Write-Host ''
-    Write-Host "Azure Governance Visualizer version '$ProductVersion' - AzAPICall PowerShell module version requirement check succeeded: '1.1.84' or greater - current: '$($azapicallConf['htParameters'].azAPICallModuleVersion)' " -ForegroundColor Green
+    Write-Host "Azure Governance Visualizer version '$ProductVersion' - AzAPICall PowerShell module version requirement check succeeded: '1.2.1' or greater - current: '$($azapicallConf['htParameters'].azAPICallModuleVersion)' " -ForegroundColor Green
 }
 #endregion required AzAPICall version
 
@@ -1160,93 +1161,7 @@ if (-not $HierarchyMapOnly) {
         Write-Host "Getting Tenant Resource Providers duration: $((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalMinutes) minutes ($((New-TimeSpan -Start $startGetRPs -End $endGetRPs).TotalSeconds) seconds)"
         #endregion Getting Tenant Resource Providers
 
-        #region Getting Available Private Endpoint Types
-        $startGetAvailablePrivateEndpointTypes = Get-Date
-        $privateEndpointAvailabilityCheckCompleted = $false
-        $subsToProcessForGettingPrivateEndpointTypes = [System.Collections.ArrayList]@()
-        $prioCounter = 0
-        foreach ($subscription in $subsToProcessInCustomDataCollection) {
-            $prioCounter++
-            if ($subscription.subscriptionId -eq $azAPICallConf['checkcontext'].Subscription.Id) {
-                $null = $subsToProcessForGettingPrivateEndpointTypes.Add([PSCustomObject]@{
-                        subscriptionInfo = $subscription
-                        prio             = 0
-                    })
-            }
-            else {
-                $null = $subsToProcessForGettingPrivateEndpointTypes.Add([PSCustomObject]@{
-                        subscriptionInfo = $subscription
-                        prio             = $prioCounter
-                    })
-            }
-        }
-
-        foreach ($subscription in $subsToProcessForGettingPrivateEndpointTypes | Sort-Object -Property prio) {
-
-            if ($privateEndpointAvailabilityCheckCompleted) {
-                continue
-            }
-
-            $subscriptionId = $subscription.subscriptionInfo.subscriptionId
-            $subscriptionName = $subscription.subscriptionInfo.subscriptionName
-
-            $currentTask = "Getting Locations for Subscription '$($subscriptionName)' ($($subscriptionId))"
-            Write-Host $currentTask
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subscriptionId)/locations?api-version=2020-01-01"
-            $method = 'GET'
-            $getLocations = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
-            Write-Host " Returned $($getLocations.Count) locations"
-
-            Write-Host "Getting 'Available Private Endpoint Types' for Subscription '$($subscriptionName)' ($($subscriptionId)) for $($getLocations.Count) locations"
-
-            $batchSize = [math]::ceiling($getLocations.Count / $ThrottleLimit)
-            Write-Host "Optimal batch size: $($batchSize)"
-            $counterBatch = [PSCustomObject] @{ Value = 0 }
-            $getLocationsBatch = ($getLocations) | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
-            Write-Host "Processing data in $($getLocationsBatch.Count) batches"
-
-            $getLocationsBatch | ForEach-Object -Parallel {
-                $subscriptionId = $using:subscriptionId
-                $azAPICallConf = $using:azAPICallConf
-                $htAvailablePrivateEndpointTypes = $using:htAvailablePrivateEndpointTypes
-
-                foreach ($location in $_.Group) {
-                    $currentTask = "Getting 'Available Private Endpoint Types' for location $($location.name)"
-                    #Write-Host $currentTask
-                    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subscriptionId)/providers/Microsoft.Network/locations/$($location.name)/availablePrivateEndpointTypes?api-version=2022-07-01"
-                    $method = 'GET'
-                    $availablePrivateEndpointTypes = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -skipOnErrorCode 400, 409
-                    Write-Host " Returned $($availablePrivateEndpointTypes.Count) 'Available Private Endpoint Types' for location $($location.name)"
-                    foreach ($availablePrivateEndpointType in $availablePrivateEndpointTypes) {
-                        if (-not $htAvailablePrivateEndpointTypes.(($availablePrivateEndpointType.resourceName).ToLower())) {
-                            $script:htAvailablePrivateEndpointTypes.(($availablePrivateEndpointType.resourceName).ToLower()) = @{}
-                        }
-                    }
-                }
-            } -ThrottleLimit $ThrottleLimit
-
-            if ($htAvailablePrivateEndpointTypes.Keys.Count -gt 0) {
-                #Write-Host " Created ht for $($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types'"
-                $privateEndpointAvailabilityCheckCompleted = $true
-            }
-            else {
-                Write-Host " $($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types' - likely the Resource Provider 'Microsoft.Network' is not registered - trying next available subscription"
-                $privateEndpointAvailabilityCheckCompleted = $false
-            }
-        }
-
-        if ($htAvailablePrivateEndpointTypes.Keys.Count -gt 0) {
-            Write-Host " Created ht for $($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types'"
-        }
-        else {
-            $throwmsg = "$($htAvailablePrivateEndpointTypes.Keys.Count) 'Available Private Endpoint Types' - Checked for $($subsToProcessForGettingPrivateEndpointTypes.Count) Subscriptions with no success. Make sure that for at least one Subscription the Resource Provider 'Microsoft.Network' is registered. Once you registered the Resource Provider for Subscription 'subscriptionEnabled' it may be a good idea to use the parameter: -SubscriptionId4AzContext '<subscriptionId of subscriptionEnabled>'"
-            Write-Host $throwmsg -ForegroundColor DarkRed
-            Throw $throwmsg
-        }
-
-        $endGetAvailablePrivateEndpointTypes = Get-Date
-        Write-Host "Getting 'Available Private Endpoint Types' duration: $((New-TimeSpan -Start $startGetAvailablePrivateEndpointTypes -End $endGetAvailablePrivateEndpointTypes).TotalMinutes) minutes ($((New-TimeSpan -Start $startGetAvailablePrivateEndpointTypes -End $endGetAvailablePrivateEndpointTypes).TotalSeconds) seconds)"
-        #endregion Getting Available Private Endpoint Types
+        getPrivateEndpointCapableResourceTypes
     }
 
     Write-Host 'Collecting custom data'

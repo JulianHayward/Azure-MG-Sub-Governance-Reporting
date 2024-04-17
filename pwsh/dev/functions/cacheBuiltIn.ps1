@@ -79,15 +79,12 @@ function cacheBuiltIn {
                 if (-not [string]::IsNullOrWhiteSpace($builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
                     foreach ($roledefinitionId in $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
-                        if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
-                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId) = @{
+                        if (-not $htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower())) {
+                            $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()) = @{
                                 UsedInPolicies = [System.Collections.ArrayList]@()
                             }
-                            #$null = $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies.Add($builtinPolicyDefinition.Id)
                         }
-                        #else {
-                        $null = $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies.Add($builtinPolicyDefinition.Id)
-                        #}
+                        $null = $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()).UsedInPolicies.Add($builtinPolicyDefinition.Id)
                     }
                 }
                 else {
@@ -170,15 +167,12 @@ function cacheBuiltIn {
                 if (-not [string]::IsNullOrWhiteSpace($staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
                     foreach ($roledefinitionId in $staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
-                        if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId)) {
-                            $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId) = @{
+                        if (-not $htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower())) {
+                            $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()) = @{
                                 UsedInPolicies = [System.Collections.ArrayList]@()
                             }
-                            #$null = $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies.Add($staticPolicyDefinition.Id)
                         }
-                        #else {
-                        $null = $script:htRoleDefinitionIdsUsedInPolicy.($roledefinitionId).UsedInPolicies.Add($staticPolicyDefinition.Id)
-                        #}
+                        $null = $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()).UsedInPolicies.Add($staticPolicyDefinition.Id)
                     }
                 }
                 else {

@@ -4777,7 +4777,7 @@ extensions: [{ name: 'sort' }]
                 }
 
                 #role used in a policyDef (rule roledefinitionIds)
-                if ($htRoleDefinitionIdsUsedInPolicy.Keys -contains "/providers/Microsoft.Authorization/roleDefinitions/$($customRoleAll.Id)") {
+                if ($htRoleDefinitionIdsUsedInPolicy.Keys -contains ("/providers/Microsoft.Authorization/roleDefinitions/$($customRoleAll.Id)".Tolower())) {
                     $roleIsUsed = $true
                 }
 
@@ -4907,7 +4907,7 @@ extensions: [{ name: 'sort' }]
                 }
 
                 #role used in a policyDef (rule roledefinitionIds)
-                if ($htRoleDefinitionIdsUsedInPolicy.Keys -contains "/providers/Microsoft.Authorization/roleDefinitions/$($customRoleAll.Id)") {
+                if ($htRoleDefinitionIdsUsedInPolicy.Keys -contains ("/providers/Microsoft.Authorization/roleDefinitions/$($customRoleAll.Id)".ToLower())) {
                     $roleIsUsed = $true
                 }
 
