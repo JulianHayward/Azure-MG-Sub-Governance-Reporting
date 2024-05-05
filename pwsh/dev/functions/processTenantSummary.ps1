@@ -4777,7 +4777,7 @@ extensions: [{ name: 'sort' }]
                 }
 
                 #role used in a policyDef (rule roledefinitionIds)
-                if ($htRoleDefinitionIdsUsedInPolicy.Keys -contains ("/providers/Microsoft.Authorization/roleDefinitions/$($customRoleAll.Id)".Tolower())) {
+                if ($htRoleDefinitionIdsUsedInPolicy.Keys -contains ($customRoleAll.Id)) {
                     $roleIsUsed = $true
                 }
 
@@ -4907,7 +4907,7 @@ extensions: [{ name: 'sort' }]
                 }
 
                 #role used in a policyDef (rule roledefinitionIds)
-                if ($htRoleDefinitionIdsUsedInPolicy.Keys -contains ("/providers/Microsoft.Authorization/roleDefinitions/$($customRoleAll.Id)".ToLower())) {
+                if ($htRoleDefinitionIdsUsedInPolicy.Keys -contains ($customRoleAll.Id)) {
                     $roleIsUsed = $true
                 }
 
@@ -7893,7 +7893,7 @@ extensions: [{ name: 'sort' }]
             $orphanedIncludingCost = $true
             $hintTableTH = " ($($AzureConsumptionPeriod) days)"
 
-            $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type, currency
+            $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type, intent, currency
             $orphanedResourceTypesCount = ($arrayOrphanedResourcesGroupedByType | Measure-Object).Count
             $orphanedResourceTypesCountUnique = ($arrayOrphanedResourcesSlim.type | Sort-Object -Unique).Count
         }
@@ -7901,7 +7901,7 @@ extensions: [{ name: 'sort' }]
             $orphanedIncludingCost = $false
             $hintTableTH = ''
 
-            $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type
+            $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type, intent
             $orphanedResourceTypesCount = ($arrayOrphanedResourcesGroupedByType | Measure-Object).Count
             $orphanedResourceTypesCountUnique = ($arrayOrphanedResourcesSlim.type | Sort-Object -Unique).Count
         }

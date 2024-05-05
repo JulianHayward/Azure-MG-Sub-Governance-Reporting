@@ -1,8 +1,8 @@
 function getPolicyRemediation {
     $currentTask = 'Getting NonCompliant (dine/modify)'
     Write-Host $currentTask
-    #ref: https://learn.microsoft.com/rest/api/azureresourcegraph/resourcegraph(2021-03-01)/resources/resources
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01"
+    #ref: https://learn.microsoft.com/en-us/rest/api/azureresourcegraph/resourcegraph/resources/resources
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01"
     $method = 'POST'
 
     if ($ManagementGroupsOnly) {
