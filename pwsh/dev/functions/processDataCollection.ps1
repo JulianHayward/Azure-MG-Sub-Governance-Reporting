@@ -58,7 +58,6 @@ function processDataCollection {
             $htCacheDefinitionsPolicySet = $using:htCacheDefinitionsPolicySet
             $htCacheDefinitionsRole = $using:htCacheDefinitionsRole
             $htCacheDefinitionsBlueprint = $using:htCacheDefinitionsBlueprint
-            $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
             $htCachePolicyComplianceMG = $using:htCachePolicyComplianceMG
             $htCachePolicyComplianceResponseTooLargeMG = $using:htCachePolicyComplianceResponseTooLargeMG
             $htCacheAssignmentsRole = $using:htCacheAssignmentsRole
@@ -318,7 +317,6 @@ function processDataCollection {
             $htCacheDefinitionsPolicySet = $using:htCacheDefinitionsPolicySet
             $htCacheDefinitionsRole = $using:htCacheDefinitionsRole
             $htCacheDefinitionsBlueprint = $using:htCacheDefinitionsBlueprint
-            $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
             $htCachePolicyComplianceSUB = $using:htCachePolicyComplianceSUB
             $htCachePolicyComplianceResponseTooLargeSUB = $using:htCachePolicyComplianceResponseTooLargeSUB
             $htCacheAssignmentsRole = $using:htCacheAssignmentsRole

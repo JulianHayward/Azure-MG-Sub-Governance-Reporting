@@ -2,101 +2,388 @@ function getOrphanedResources {
     $start = Get-Date
     Write-Host 'Getting orphaned/unused resources (ARG)'
 
+    #region queries
     $queries = [System.Collections.ArrayList]@()
     $intent = 'cost savings - stopped but not deallocated VM'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.compute/virtualmachines'
-            query     = "Resources | where type =~ 'microsoft.compute/virtualmachines' and properties.extended.instanceView.powerState.code =~ 'PowerState/stopped' | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources
+| where type =~ 'microsoft.compute/virtualmachines'
+| where properties.extended.instanceView.powerState.code =~ 'PowerState/stopped'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'clean up'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.resources/subscriptions/resourceGroups'
-            query     = "ResourceContainers | where type =~ 'microsoft.resources/subscriptions/resourceGroups' | extend rgAndSub = strcat(resourceGroup, '--', subscriptionId) | join kind=leftouter (Resources | extend rgAndSub = strcat(resourceGroup, '--', subscriptionId) | summarize count() by rgAndSub) on rgAndSub | where isnull(count_) | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resourcecontainers
+| where type =~ 'microsoft.resources/subscriptions/resourceGroups'
+| extend rgAndSub = strcat(resourceGroup, '--', subscriptionId)
+| join kind=leftouter (
+    resources
+    | extend rgAndSub = strcat(resourceGroup, '--', subscriptionId)
+    | summarize count() by rgAndSub
+) on rgAndSub
+| where isnull(count_)
+| order by id
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'misconfiguration'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/networkSecurityGroups'
-            query     = "Resources | where type =~ 'microsoft.network/networkSecurityGroups' and isnull(properties.networkInterfaces) and isnull(properties.subnets) | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources
+| where type =~ 'microsoft.network/networkSecurityGroups'
+| where isnull(properties.networkInterfaces) and isnull(properties.subnets)
+| order by id
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'misconfiguration'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/routeTables'
-            query     = "resources | where type =~ 'microsoft.network/routeTables' | where isnull(properties.subnets) | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources
+| where type =~ 'microsoft.network/routeTables'
+| where isnull(properties.subnets)
+| order by id
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'misconfiguration'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/networkInterfaces'
-            query     = "Resources | where type =~ 'microsoft.network/networkInterfaces' | where isnull(properties.privateEndpoint) | where isnull(properties.privateLinkService) | where properties.hostedWorkloads == '[]' | where properties !has 'virtualmachine' | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources
+| where type =~ 'microsoft.network/networkInterfaces'
+| where isnull(properties.privateEndpoint) and isnull(properties.privateLinkService) and properties.hostedWorkloads == '[]' and properties !has 'virtualmachine'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'cost savings'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.compute/disks'
-            query     = "Resources | where type =~ 'microsoft.compute/disks' | extend diskState = tostring(properties.diskState) | where managedBy == '' | where not(name endswith '-ASRReplica' or name startswith 'ms-asr-' or name startswith 'asrseeddisk-') | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources
+| where type has 'microsoft.compute/disks'
+| where isempty(managedBy) or properties.diskState =~ 'unattached' and not(name endswith '-ASRReplica' or name startswith 'ms-asr-' or name startswith 'asrseeddisk-')
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'cost savings'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/publicIpAddresses'
-            query     = "Resources | where type =~ 'microsoft.network/publicIpAddresses' | where properties.ipConfiguration == '' and properties.natGateway == '' | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources | where type =~ 'microsoft.network/publicIpAddresses'
+| where properties.ipConfiguration == '' and properties.natGateway == '' and properties.publicIPPrefix == '' and properties.publicIPAllocationMethod =~ 'Static'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/publicIpAddresses'
+            query     = @"
+resources | where type =~ 'microsoft.network/publicIpAddresses'
+| where properties.ipConfiguration == '' and properties.natGateway == '' and properties.publicIPPrefix == '' and properties.publicIPAllocationMethod =~ 'Dynamic'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'misconfiguration'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.compute/availabilitySets'
-            query     = "Resources | where type =~ 'microsoft.compute/availabilitySets' | where properties.virtualMachines == '[]' | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources
+| where type =~ 'microsoft.compute/availabilitySets'
+| where properties.virtualMachines == '[]'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'misconfiguration'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/loadBalancers'
-            query     = "Resources | where type =~ 'microsoft.network/loadBalancers' | where properties.backendAddressPools == '[]' | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources
+| where type =~ 'microsoft.network/loadBalancers'
+| where properties.backendAddressPools == '[]'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'cost savings'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/applicationGateways'
-            query     = "resources | where type =~ 'Microsoft.Network/applicationGateways' | extend backendPoolsCount = array_length(properties.backendAddressPools),SKUName= tostring(properties.sku.name), SKUTier= tostring(properties.sku.tier),SKUCapacity=properties.sku.capacity,backendPools=properties.backendAddressPools | project  type, subscriptionId, Resource=id, Intent='$intent' | join (resources | where type =~ 'Microsoft.Network/applicationGateways' | mvexpand backendPools = properties.backendAddressPools | extend backendIPCount = array_length(backendPools.properties.backendIPConfigurations) | extend backendAddressesCount = array_length(backendPools.properties.backendAddresses) | extend backendPoolName  = backendPools.properties.backendAddressPools.name | extend Resource = id | summarize backendIPCount = sum(backendIPCount) ,backendAddressesCount=sum(backendAddressesCount) by Resource) on Resource | project-away Resource1 | where  (backendIPCount == 0 or isempty(backendIPCount)) and (backendAddressesCount==0 or isempty(backendAddressesCount)) | order by Resource asc"
+            query     = @"
+resources
+| where type =~ 'microsoft.network/applicationgateways'
+| extend backendPoolsCount = array_length(properties.backendAddressPools),SKUName= tostring(properties.sku.name), SKUTier= tostring(properties.sku.tier),SKUCapacity=properties.sku.capacity,backendPools=properties.backendAddressPools , AppGwId = tostring(id)
+| project type, AppGwId, resourceGroup, location, subscriptionId, tags, name, SKUName, SKUTier, SKUCapacity
+| join (
+    resources
+    | where type =~ 'microsoft.network/applicationgateways'
+    | mvexpand backendPools = properties.backendAddressPools
+    | extend backendIPCount = array_length(backendPools.properties.backendIPConfigurations)
+    | extend backendAddressesCount = array_length(backendPools.properties.backendAddresses)
+    | extend backendPoolName  = backendPools.properties.backendAddressPools.name
+    | extend AppGwId = tostring(id)
+    | summarize backendIPCount = sum(backendIPCount) ,backendAddressesCount=sum(backendAddressesCount) by AppGwId
+) on AppGwId
+| project-away AppGwId1
+| where  (backendIPCount == 0 or isempty(backendIPCount)) and (backendAddressesCount == 0 or isempty(backendAddressesCount))
+| project type, subscriptionId, Resource=AppGwId, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'cost savings'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.web/serverfarms'
-            query     = "Resources | where type =~ 'microsoft.web/serverfarms' | where properties.numberOfSites == 0 | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources
+| where type =~ 'microsoft.web/serverfarms'
+| where properties.numberOfSites == 0 and sku.tier !~ 'Free'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
-    $queries | ForEach-Object -Parallel {
-        $queryDetail = $_
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.web/serverfarms'
+            query     = @"
+resources
+| where type =~ 'microsoft.web/serverfarms'
+| where properties.numberOfSites == 0 and sku.tier =~ 'Free'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    #new
+    $intent = 'cost savings'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.sql/servers/elasticpools'
+            query     = @"
+resources
+| where type =~ 'microsoft.sql/servers/elasticpools'
+| project type, elasticPoolId = tolower(id), Resource = id, resourceGroup, location, subscriptionId, tags, properties, Details = pack_all(), Intent='$intent'
+| join kind=leftouter (
+    resources
+    | where type =~ 'Microsoft.Sql/servers/databases'
+    | project id, properties
+    | extend elasticPoolId = tolower(properties.elasticPoolId)
+) on elasticPoolId
+| summarize databaseCount = countif(id != '') by type, Resource, subscriptionId, Intent
+| where databaseCount == 0
+| project-away databaseCount
+"@
+            intent    = $intent
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/trafficmanagerprofiles'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/trafficmanagerprofiles'
+| where properties.endpoints == '[]'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/virtualnetworks'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/virtualnetworks'
+| where properties.subnets == '[]'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/virtualnetworks/subnets'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/virtualnetworks'
+| extend subnet = properties.subnets
+| mv-expand subnet
+| extend ipConfigurations = subnet.properties.ipConfigurations
+| extend delegations = subnet.properties.delegations
+| where isnull(ipConfigurations) and delegations == '[]'
+| order by tostring(subnet.id)
+| project type, subscriptionId, Resource=(subnet.id), Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'cost savings'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/natgateways'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/natgateways'
+| where isnull(properties.subnets)
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/ipgroups'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/ipgroups'
+| where properties.firewalls == '[]' and properties.firewallPolicies == '[]'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/privatednszones'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/privatednszones'
+| where properties.numberOfVirtualNetworkLinks == 0
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/privateendpoints'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/privateendpoints'
+| extend connection = iff(array_length(properties.manualPrivateLinkServiceConnections) > 0, properties.manualPrivateLinkServiceConnections[0], properties.privateLinkServiceConnections[0])
+| extend stateEnum = tostring(connection.properties.privateLinkServiceConnectionState.status)
+| where stateEnum =~ 'Disconnected'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'cost savings'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/virtualnetworkgateways'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/virtualnetworkgateways'
+| extend vpnClientConfiguration = properties.vpnClientConfiguration
+| extend Resource = id
+| join kind=leftouter (
+    resources
+    | where type =~ 'microsoft.network/connections'
+    | mv-expand Resource = pack_array(properties.virtualNetworkGateway1.id, properties.virtualNetworkGateway2.id) to typeof(string)
+    | project Resource, connectionId = id, ConnectionProperties=properties
+    ) on Resource
+| where isempty(vpnClientConfiguration) and isempty(connectionId)
+| project type, subscriptionId, Resource, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'cost savings'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/ddosprotectionplans'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/ddosprotectionplans'
+| where isnull(properties.virtualNetworks)
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.Web/connections'
+            query     = @"
+resources
+| where type =~ 'Microsoft.Web/connections'
+| project type, resourceId = id , apiName = name, subscriptionId, resourceGroup, tags, location
+| join kind = leftouter (
+    resources
+    | where type =~ 'microsoft.logic/workflows'
+    | extend resourceGroup, location, subscriptionId, properties
+    | extend var_json = properties['parameters']['`$connections']['value']
+    | mvexpand var_connection = var_json
+    | where notnull(var_connection)
+    | extend connectionId = extract('connectionId\\\":\\\"(.*?)\\\"', 1, tostring(var_connection))
+    | project connectionId, name
+    )
+    on `$left.resourceId == `$right.connectionId
+| where connectionId == ''
+| project type, subscriptionId, Resource=resourceId, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'cost savings'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.Web/certificates'
+            query     = @"
+resources
+| where type =~ 'microsoft.web/certificates'
+| extend expiresOn = todatetime(properties.expirationDate)
+| where expiresOn <= now()
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+    #endregion queries
+
+    $batchSize = [math]::ceiling($queries.Count / $azAPICallConf['htParameters'].ThrottleLimit)
+    #Write-Host "Optimal batch size: $($batchSize)"
+    $counterBatch = [PSCustomObject] @{ Value = 0 }
+    $queriesBatch = ($queries) | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
+    Write-Host " Processing queries in $($queriesBatch.Count) batches"
+
+    $queriesBatch | ForEach-Object -Parallel {
         $arrayOrphanedResources = $using:arrayOrphanedResources
         $subsToProcessInCustomDataCollection = $using:subsToProcessInCustomDataCollection
         $azAPICallConf = $using:azAPICallConf
+        foreach ($queryDetail in $_.Group) {
+            #Batching: https://learn.microsoft.com/azure/governance/resource-graph/troubleshoot/general#toomanysubscription
+            $counterBatch = [PSCustomObject] @{ Value = 0 }
+            $batchSize = 1000
+            $subscriptionsBatch = $subsToProcessInCustomDataCollection | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
 
-        #Batching: https://learn.microsoft.com/azure/governance/resource-graph/troubleshoot/general#toomanysubscription
-        $counterBatch = [PSCustomObject] @{ Value = 0 }
-        $batchSize = 1000
-        $subscriptionsBatch = $subsToProcessInCustomDataCollection | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
-
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01"
-        $method = 'POST'
-        foreach ($batch in $subscriptionsBatch) {
-            Write-Host " Getting orphaned $($queryDetail.queryName) for $($batch.Group.subscriptionId.Count) Subscriptions"
-            $subscriptions = '"{0}"' -f ($batch.Group.subscriptionId -join '","')
-            $body = @"
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01"
+            $method = 'POST'
+            foreach ($batch in $subscriptionsBatch) {
+                Write-Host " Getting orphaned $($queryDetail.queryName) for $($batch.Group.subscriptionId.Count) Subscriptions"
+                $subscriptions = '"{0}"' -f ($batch.Group.subscriptionId -join '","')
+                $body = @"
 {
     "query": "$($queryDetail.query)",
     "subscriptions": [$($subscriptions)],
@@ -106,16 +393,17 @@ function getOrphanedResources {
 }
 "@
 
-            $res = (AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -listenOn 'Content' -currentTask "Getting orphaned $($queryDetail.queryName)")
-            #Write-Host '$res.count:' $res.count
-            if ($res.count -gt 0) {
-                foreach ($resource in $res) {
-                    $null = $script:arrayOrphanedResources.Add($resource)
+                $res = (AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -listenOn 'Content' -currentTask "Getting orphaned $($queryDetail.queryName)")
+
+                if ($res.count -gt 0) {
+                    foreach ($resource in $res) {
+                        $null = $script:arrayOrphanedResources.Add($resource)
+                    }
                 }
+                Write-Host "  $($res.count) orphaned $($queryDetail.queryName) found"
             }
-            Write-Host "  $($res.count) orphaned $($queryDetail.queryName) found"
         }
-    } -ThrottleLimit ($queries.Count)
+    } -ThrottleLimit ($azAPICallConf['htParameters'].ThrottleLimit)
 
     if ($arrayOrphanedResources.Count -gt 0) {
 
@@ -126,6 +414,7 @@ function getOrphanedResources {
             $htC = @{}
             foreach ($consumptionResourceTypeAndCurrency in $allConsumptionDataGroupedByTypeAndCurrency) {
                 $consumptionResourceTypeAndCurrencySplitted = $consumptionResourceTypeAndCurrency.Name.split(', ')
+                #$consumptionResourceTypeAndCurrencySplitted[0]
                 if ($consumptionResourceTypeAndCurrencySplitted[0] -in $orphanedResourcesResourceTypesCostRelevant ) {
                     foreach ($entry in $consumptionResourceTypeAndCurrency.Group) {
                         if (-not $htC.($entry.resourceId)) {

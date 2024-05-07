@@ -14,7 +14,6 @@ function cacheBuiltIn {
         $htCacheDefinitionsPolicy = $using:htCacheDefinitionsPolicy
         $htCacheDefinitionsPolicySet = $using:htCacheDefinitionsPolicySet
         $htCacheDefinitionsRole = $using:htCacheDefinitionsRole
-        $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
         $ValidPolicyEffects = $using:ValidPolicyEffects
         $htHashesBuiltInPolicy = $using:htHashesBuiltInPolicy
         #vars
@@ -78,14 +77,6 @@ function cacheBuiltIn {
 
                 if (-not [string]::IsNullOrWhiteSpace($builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
-                    foreach ($roledefinitionId in $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
-                        if (-not $htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower())) {
-                            $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()) = @{
-                                UsedInPolicies = [System.Collections.ArrayList]@()
-                            }
-                        }
-                        $null = $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()).UsedInPolicies.Add($builtinPolicyDefinition.Id)
-                    }
                 }
                 else {
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = 'n/a'
@@ -166,14 +157,6 @@ function cacheBuiltIn {
 
                 if (-not [string]::IsNullOrWhiteSpace($staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
-                    foreach ($roledefinitionId in $staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
-                        if (-not $htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower())) {
-                            $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()) = @{
-                                UsedInPolicies = [System.Collections.ArrayList]@()
-                            }
-                        }
-                        $null = $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()).UsedInPolicies.Add($staticPolicyDefinition.Id)
-                    }
                 }
                 else {
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).RoleDefinitionIds = 'n/a'
@@ -236,22 +219,23 @@ function cacheBuiltIn {
         }
 
         if ($builtInCapability -eq 'RoleDefinitions') {
-            #Write-Host "`$ignoreARMLocation = '$ignoreARMLocation'" -ForegroundColor Yellow
+
+            #region subscriptionScope
             if ($ignoreARMLocation) {
-                $currentTask = 'Caching built-in Role definitions'
+                $currentTask = 'Caching built-in Role definitions (subscriptionScope)'
                 Write-Host " $currentTask"
-                $uri = "$($azAPICallConf['azAPIEndpointUrls'].'ARM')/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'BuiltInRole'"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].'ARM')/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'BuiltInRole'"
             }
             else {
-                $currentTask = "Caching built-in Role definitions (Location: '$($ARMLocation)')"
+                $currentTask = "Caching built-in Role definitions (Location: '$($ARMLocation)') (subscriptionScope)"
                 Write-Host " $currentTask"
-                $uri = "$($azAPICallConf['azAPIEndpointUrls']."ARM$($ARMLocation)")/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'BuiltInRole'"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls']."ARM$($ARMLocation)")/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'BuiltInRole'"
             }
 
             $method = 'GET'
             $requestRoleDefinitionAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
 
-            Write-Host " $($requestRoleDefinitionAPI.Count) built-in Role definitions returned"
+            Write-Host " $($requestRoleDefinitionAPI.Count) built-in Role definitions returned (subscriptionScope)"
             foreach ($roleDefinition in $requestRoleDefinitionAPI) {
                 if (
                     (
@@ -276,7 +260,7 @@ function cacheBuiltIn {
                     $roleCapable4RoleAssignmentsWrite = $false
                 }
 
-                    ($script:htCacheDefinitionsRole).($roleDefinition.name) = @{
+                ($script:htCacheDefinitionsRole).($roleDefinition.name) = @{
                     Id                       = ($roleDefinition.name)
                     Name                     = ($roleDefinition.properties.roleName)
                     IsCustom                 = $false
@@ -291,6 +275,67 @@ function cacheBuiltIn {
                 }
 
             }
+            #endregion subscriptionScope
+
+            #region tenantScope
+            if ($ignoreARMLocation) {
+                $currentTask = 'Caching built-in Role definitions (tenantScope)'
+                Write-Host " $currentTask"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].'ARM')/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'BuiltInRole'"
+            }
+            else {
+                $currentTask = "Caching built-in Role definitions (Location: '$($ARMLocation)') (tenantScope)"
+                Write-Host " $currentTask"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls']."ARM$($ARMLocation)")/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'BuiltInRole'"
+            }
+
+            $method = 'GET'
+            $requestRoleDefinitionTenantScopeAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
+
+            Write-Host " $($requestRoleDefinitionTenantScopeAPI.Count) built-in Role definitions returned (tenantScope)"
+            foreach ($roleDefinition in $requestRoleDefinitionTenantScopeAPI) {
+                if (-not $htCacheDefinitionsRole.($roleDefinition.name)) {
+                    Write-Host "tenantScope role: '$($roleDefinition.properties.roleName)' - $($roleDefinition.name)"
+                    if (
+                        (
+                            $roleDefinition.properties.permissions.actions -contains 'Microsoft.Authorization/roleassignments/write' -or
+                            $roleDefinition.properties.permissions.actions -contains 'Microsoft.Authorization/roleassignments/*' -or
+                            $roleDefinition.properties.permissions.actions -contains 'Microsoft.Authorization/*/write' -or
+                            $roleDefinition.properties.permissions.actions -contains 'Microsoft.Authorization/*' -or
+                            $roleDefinition.properties.permissions.actions -contains '*/write' -or
+                            $roleDefinition.properties.permissions.actions -contains '*'
+                        ) -and (
+                            $roleDefinition.properties.permissions.notActions -notcontains 'Microsoft.Authorization/roleassignments/write' -and
+                            $roleDefinition.properties.permissions.notActions -notcontains 'Microsoft.Authorization/roleassignments/*' -and
+                            $roleDefinition.properties.permissions.notActions -notcontains 'Microsoft.Authorization/*/write' -and
+                            $roleDefinition.properties.permissions.notActions -notcontains 'Microsoft.Authorization/*' -and
+                            $roleDefinition.properties.permissions.notActions -notcontains '*/write' -and
+                            $roleDefinition.properties.permissions.notActions -notcontains '*'
+                        )
+                    ) {
+                        $roleCapable4RoleAssignmentsWrite = $true
+                    }
+                    else {
+                        $roleCapable4RoleAssignmentsWrite = $false
+                    }
+
+                    ($script:htCacheDefinitionsRole).($roleDefinition.name) = @{
+                        Id                       = ($roleDefinition.name)
+                        Name                     = ($roleDefinition.properties.roleName)
+                        IsCustom                 = $false
+                        AssignableScopes         = ($roleDefinition.properties.assignableScopes)
+                        Actions                  = ($roleDefinition.properties.permissions.actions)
+                        NotActions               = ($roleDefinition.properties.permissions.notActions)
+                        DataActions              = ($roleDefinition.properties.permissions.dataActions)
+                        NotDataActions           = ($roleDefinition.properties.permissions.notDataActions)
+                        Json                     = $roleDefinition
+                        LinkToAzAdvertizer       = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($roleDefinition.name).html`" target=`"_blank`" rel=`"noopener`">$($roleDefinition.properties.roleName)</a>"
+                        RoleCanDoRoleAssignments = $roleCapable4RoleAssignmentsWrite
+                    }
+                }
+
+            }
+            #endregion tenantScope
         }
     }
 

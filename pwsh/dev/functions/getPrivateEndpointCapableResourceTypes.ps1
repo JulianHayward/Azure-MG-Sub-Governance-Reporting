@@ -30,7 +30,7 @@ function getPrivateEndpointCapableResourceTypes {
 
         $armLocationsFromAzAPICall = $azAPICallConf['htParameters'].ARMLocations
 
-        Write-Host "Getting 'Available Private Endpoint Types' for Subscription '$($subscriptionName)' ($($subscriptionId)) for $($armLocationsFromAzAPICall.Count) locations"
+        Write-Host "Getting 'Available Private Endpoint Types' for Subscription '$($subscriptionName)' ($($subscriptionId)) for $($armLocationsFromAzAPICall.Count) physical locations"
 
         $batchSize = [math]::ceiling($armLocationsFromAzAPICall.Count / $ThrottleLimit)
         Write-Host "Optimal batch size: $($batchSize)"

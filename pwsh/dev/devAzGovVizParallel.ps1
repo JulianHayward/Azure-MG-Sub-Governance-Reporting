@@ -365,7 +365,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.4.4',
+    $ProductVersion = '6.4.5',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -458,7 +458,7 @@ Param
     $DoAzureConsumptionPreviousMonth,
 
     [int]
-    $AzureConsumptionPeriod = 1,
+    $AzureConsumptionPeriod = 2,
 
     [switch]
     $NoAzureConsumptionReportExportToCSV,
@@ -627,7 +627,7 @@ Param
     $MSTenantIds = @('2f4a9838-26b7-47ee-be60-ccc1fdec5953', '33e01921-4d64-4f8c-a055-5bdaffd5e33d'),
 
     [array]
-    $ValidPolicyEffects = @('append', 'audit', 'auditIfNotExists', 'deny', 'denyAction', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting', 'Mutate')
+    $ValidPolicyEffects = @('addToNetworkGroup', 'append', 'audit', 'auditIfNotExists', 'deny', 'denyAction', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting', 'mutate')
 )
 
 $Error.clear()
@@ -920,7 +920,6 @@ if (-not $HierarchyMapOnly) {
     $htCacheDefinitionsPolicySet = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htCacheDefinitionsRole = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htCacheDefinitionsBlueprint = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-    $htRoleDefinitionIdsUsedInPolicy = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htRoleAssignmentsPIM = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htPoliciesUsedInPolicySets = @{}
     $htSubscriptionTags = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
@@ -1347,6 +1346,42 @@ if (-not $HierarchyMapOnly) {
     $tenantBuiltInPoliciesCount = ($tenantBuiltInPolicies).count
     $tenantCustomPolicies = (($htCacheDefinitionsPolicy).Values).where({ $_.Type -eq 'Custom' } )
     $tenantCustomPoliciesCount = ($tenantCustomPolicies).count
+
+    #roleDefinitions used in policyDefinitions
+    Write-Host 'Processing roleDefinitions used in policyDefinitions'
+    $startRoleDefinitionsUsedInPolicyDefinitions = Get-Date
+    $htRoleDefinitionIdsUsedInPolicy = @{}
+    foreach ($policyDefinitionId in $htCacheDefinitionsPolicy.Keys) {
+        if (-not [string]::IsNullOrWhiteSpace($htCacheDefinitionsPolicy.($policyDefinitionId).Json.properties.policyRule.then.details.roleDefinitionIds)) {
+            foreach ($roledefinitionId in $htCacheDefinitionsPolicy.($policyDefinitionId).Json.properties.policyRule.then.details.roleDefinitionIds) {
+                if (-not [string]::IsNullOrWhitespace($roledefinitionId)) {
+                    if (-not $htCacheDefinitionsRole.($roledefinitionId -replace '.*/')) {
+                        Write-Host "Finding: policyDefinitionId '$($policyDefinitionId)' has unknown roleDefinitionId '$roledefinitionId' in policyRule.then.details.roleDefinitionIds" -ForegroundColor DarkRed
+                    }
+                    else {
+                        if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId -replace '.*/')) {
+                            $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId -replace '.*/') = [System.Collections.ArrayList]@()
+                        }
+                        try {
+                            $null = $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId -replace '.*/').Add($policyDefinitionId)
+                        }
+                        catch {
+                            Write-Host "policyDefinitionId '$($policyDefinitionId)' JSON:"
+                            $htCacheDefinitionsPolicy.($policyDefinitionId).Json | ConvertTo-Json -Depth 99
+                            Write-Host '--->'
+                            Throw "Failed: `$policyDefinitionId: '$($policyDefinitionId)' trying to add `$roledefinitionId: '$roledefinitionId' from policyRule.then.details.roleDefinitionIds to `$htRoleDefinitionIdsUsedInPolicy.(`$roledefinitionId).UsedInPolicies"
+                        }
+                    }
+                }
+                else {
+                    Write-Host "Finding: policyDefinitionId '$($policyDefinitionId)' has empty roleDefinitionId in policyRule.then.details.roleDefinitionIds" -ForegroundColor DarkRed
+                }
+            }
+        }
+    }
+    Write-Host " $($htRoleDefinitionIdsUsedInPolicy.Keys.Count) roleDefinitions are used in policyDefinitions"
+    $endRoleDefinitionsUsedInPolicyDefinitions = Get-Date
+    Write-Host " roleDefinitions used in policyDefinitions duration: $((New-TimeSpan -Start $startRoleDefinitionsUsedInPolicyDefinitions -End $endRoleDefinitionsUsedInPolicyDefinitions).TotalSeconds) seconds"
 
     #hashes for parity builtin/custom
     Write-Host 'Processing Policy custom/built-In parity check'
@@ -2467,7 +2502,7 @@ Write-Host '--------------------'
 Write-Host "Azure Governance Visualizer ($ProductVersion) completed successful" -ForegroundColor Green
 
 if ($Error.Count -gt 0) {
-    Write-Host "Don't bother about dumped errors"
+    Write-Host "Don't bother about dumped errors, execution was successful - if you see errors above this line, those were handled by the tool and are only dumped informational."
 }
 
 if ($DoPSRule) {

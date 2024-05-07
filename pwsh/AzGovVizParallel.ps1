@@ -365,7 +365,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.4.4',
+    $ProductVersion = '6.4.5',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -458,7 +458,7 @@ Param
     $DoAzureConsumptionPreviousMonth,
 
     [int]
-    $AzureConsumptionPeriod = 1,
+    $AzureConsumptionPeriod = 2,
 
     [switch]
     $NoAzureConsumptionReportExportToCSV,
@@ -627,7 +627,7 @@ Param
     $MSTenantIds = @('2f4a9838-26b7-47ee-be60-ccc1fdec5953', '33e01921-4d64-4f8c-a055-5bdaffd5e33d'),
 
     [array]
-    $ValidPolicyEffects = @('append', 'audit', 'auditIfNotExists', 'deny', 'denyAction', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting', 'Mutate')
+    $ValidPolicyEffects = @('addToNetworkGroup', 'append', 'audit', 'auditIfNotExists', 'deny', 'denyAction', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting', 'mutate')
 )
 
 $Error.clear()
@@ -1972,7 +1972,6 @@ function cacheBuiltIn {
         $htCacheDefinitionsPolicy = $using:htCacheDefinitionsPolicy
         $htCacheDefinitionsPolicySet = $using:htCacheDefinitionsPolicySet
         $htCacheDefinitionsRole = $using:htCacheDefinitionsRole
-        $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
         $ValidPolicyEffects = $using:ValidPolicyEffects
         $htHashesBuiltInPolicy = $using:htHashesBuiltInPolicy
         #vars
@@ -2036,14 +2035,6 @@ function cacheBuiltIn {
 
                 if (-not [string]::IsNullOrWhiteSpace($builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
-                    foreach ($roledefinitionId in $builtinPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
-                        if (-not $htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower())) {
-                            $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()) = @{
-                                UsedInPolicies = [System.Collections.ArrayList]@()
-                            }
-                        }
-                        $null = $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()).UsedInPolicies.Add($builtinPolicyDefinition.Id)
-                    }
                 }
                 else {
                     $script:htCacheDefinitionsPolicy.(($builtinPolicyDefinition.Id).ToLower()).RoleDefinitionIds = 'n/a'
@@ -2124,14 +2115,6 @@ function cacheBuiltIn {
 
                 if (-not [string]::IsNullOrWhiteSpace($staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).RoleDefinitionIds = $staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
-                    foreach ($roledefinitionId in $staticPolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
-                        if (-not $htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower())) {
-                            $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()) = @{
-                                UsedInPolicies = [System.Collections.ArrayList]@()
-                            }
-                        }
-                        $null = $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()).UsedInPolicies.Add($staticPolicyDefinition.Id)
-                    }
                 }
                 else {
                     $script:htCacheDefinitionsPolicy.(($staticPolicyDefinition.Id).ToLower()).RoleDefinitionIds = 'n/a'
@@ -2194,22 +2177,23 @@ function cacheBuiltIn {
         }
 
         if ($builtInCapability -eq 'RoleDefinitions') {
-            #Write-Host "`$ignoreARMLocation = '$ignoreARMLocation'" -ForegroundColor Yellow
+
+            #region subscriptionScope
             if ($ignoreARMLocation) {
-                $currentTask = 'Caching built-in Role definitions'
+                $currentTask = 'Caching built-in Role definitions (subscriptionScope)'
                 Write-Host " $currentTask"
-                $uri = "$($azAPICallConf['azAPIEndpointUrls'].'ARM')/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'BuiltInRole'"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].'ARM')/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'BuiltInRole'"
             }
             else {
-                $currentTask = "Caching built-in Role definitions (Location: '$($ARMLocation)')"
+                $currentTask = "Caching built-in Role definitions (Location: '$($ARMLocation)') (subscriptionScope)"
                 Write-Host " $currentTask"
-                $uri = "$($azAPICallConf['azAPIEndpointUrls']."ARM$($ARMLocation)")/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'BuiltInRole'"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls']."ARM$($ARMLocation)")/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'BuiltInRole'"
             }
 
             $method = 'GET'
             $requestRoleDefinitionAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
 
-            Write-Host " $($requestRoleDefinitionAPI.Count) built-in Role definitions returned"
+            Write-Host " $($requestRoleDefinitionAPI.Count) built-in Role definitions returned (subscriptionScope)"
             foreach ($roleDefinition in $requestRoleDefinitionAPI) {
                 if (
                     (
@@ -2234,7 +2218,7 @@ function cacheBuiltIn {
                     $roleCapable4RoleAssignmentsWrite = $false
                 }
 
-                    ($script:htCacheDefinitionsRole).($roleDefinition.name) = @{
+                ($script:htCacheDefinitionsRole).($roleDefinition.name) = @{
                     Id                       = ($roleDefinition.name)
                     Name                     = ($roleDefinition.properties.roleName)
                     IsCustom                 = $false
@@ -2249,6 +2233,67 @@ function cacheBuiltIn {
                 }
 
             }
+            #endregion subscriptionScope
+
+            #region tenantScope
+            if ($ignoreARMLocation) {
+                $currentTask = 'Caching built-in Role definitions (tenantScope)'
+                Write-Host " $currentTask"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].'ARM')/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'BuiltInRole'"
+            }
+            else {
+                $currentTask = "Caching built-in Role definitions (Location: '$($ARMLocation)') (tenantScope)"
+                Write-Host " $currentTask"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls']."ARM$($ARMLocation)")/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'BuiltInRole'"
+            }
+
+            $method = 'GET'
+            $requestRoleDefinitionTenantScopeAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
+
+            Write-Host " $($requestRoleDefinitionTenantScopeAPI.Count) built-in Role definitions returned (tenantScope)"
+            foreach ($roleDefinition in $requestRoleDefinitionTenantScopeAPI) {
+                if (-not $htCacheDefinitionsRole.($roleDefinition.name)) {
+                    Write-Host "tenantScope role: '$($roleDefinition.properties.roleName)' - $($roleDefinition.name)"
+                    if (
+                        (
+                            $roleDefinition.properties.permissions.actions -contains 'Microsoft.Authorization/roleassignments/write' -or
+                            $roleDefinition.properties.permissions.actions -contains 'Microsoft.Authorization/roleassignments/*' -or
+                            $roleDefinition.properties.permissions.actions -contains 'Microsoft.Authorization/*/write' -or
+                            $roleDefinition.properties.permissions.actions -contains 'Microsoft.Authorization/*' -or
+                            $roleDefinition.properties.permissions.actions -contains '*/write' -or
+                            $roleDefinition.properties.permissions.actions -contains '*'
+                        ) -and (
+                            $roleDefinition.properties.permissions.notActions -notcontains 'Microsoft.Authorization/roleassignments/write' -and
+                            $roleDefinition.properties.permissions.notActions -notcontains 'Microsoft.Authorization/roleassignments/*' -and
+                            $roleDefinition.properties.permissions.notActions -notcontains 'Microsoft.Authorization/*/write' -and
+                            $roleDefinition.properties.permissions.notActions -notcontains 'Microsoft.Authorization/*' -and
+                            $roleDefinition.properties.permissions.notActions -notcontains '*/write' -and
+                            $roleDefinition.properties.permissions.notActions -notcontains '*'
+                        )
+                    ) {
+                        $roleCapable4RoleAssignmentsWrite = $true
+                    }
+                    else {
+                        $roleCapable4RoleAssignmentsWrite = $false
+                    }
+
+                    ($script:htCacheDefinitionsRole).($roleDefinition.name) = @{
+                        Id                       = ($roleDefinition.name)
+                        Name                     = ($roleDefinition.properties.roleName)
+                        IsCustom                 = $false
+                        AssignableScopes         = ($roleDefinition.properties.assignableScopes)
+                        Actions                  = ($roleDefinition.properties.permissions.actions)
+                        NotActions               = ($roleDefinition.properties.permissions.notActions)
+                        DataActions              = ($roleDefinition.properties.permissions.dataActions)
+                        NotDataActions           = ($roleDefinition.properties.permissions.notDataActions)
+                        Json                     = $roleDefinition
+                        LinkToAzAdvertizer       = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($roleDefinition.name).html`" target=`"_blank`" rel=`"noopener`">$($roleDefinition.properties.roleName)</a>"
+                        RoleCanDoRoleAssignments = $roleCapable4RoleAssignmentsWrite
+                    }
+                }
+
+            }
+            #endregion tenantScope
         }
     }
 
@@ -2693,7 +2738,7 @@ function getConsumption {
             $currenttask = "Getting Consumption data (scope MG '$($ManagementGroupId)') for $($subsToProcessInCustomDataCollectionCount) Subscriptions (QuotaId Whitelist: '$($SubscriptionQuotaIdWhitelist -join ', ')') for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
             Write-Host "$currentTask"
             #https://learn.microsoft.com/rest/api/cost-management/query/usage
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2023-03-01&`$top=5000"
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2024-01-01&`$top=5000"
             $method = 'POST'
 
             $counterBatch = [PSCustomObject] @{ Value = 0 }
@@ -2846,7 +2891,7 @@ function getConsumption {
                         #test
                         Write-Host $currentTask
                         #https://learn.microsoft.com/rest/api/cost-management/query/usage
-                        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2023-03-01&`$top=5000"
+                        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2024-01-01&`$top=5000"
                         $method = 'POST'
                         $subConsumptionData = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
                         if ($subConsumptionData -eq 'Unauthorized' -or $subConsumptionData -eq 'OfferNotSupported' -or $subConsumptionData -eq 'InvalidQueryDefinition' -or $subConsumptionData -eq 'NonValidWebDirectAIRSOfferType' -or $subConsumptionData -eq 'NotFoundNotSupported' -or $subConsumptionData -eq 'IndirectCostDisabled') {
@@ -2909,7 +2954,7 @@ function getConsumption {
             $currenttask = "Getting Consumption data (scope MG '$($ManagementGroupId)') for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
             Write-Host "$currentTask"
             #https://learn.microsoft.com/rest/api/cost-management/query/usage
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2023-03-01&`$top=5000"
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2024-01-01&`$top=5000"
             $method = 'POST'
             $body = @"
 {
@@ -3041,7 +3086,7 @@ function getConsumption {
                         #test
                         Write-Host $currentTask
                         #https://learn.microsoft.com/rest/api/cost-management/query/usage
-                        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2023-03-01&`$top=5000"
+                        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2024-01-01&`$top=5000"
                         $method = 'POST'
                         $subConsumptionData = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
                         if ($subConsumptionData -eq 'Unauthorized' -or $subConsumptionData -eq 'OfferNotSupported' -or $subConsumptionData -eq 'InvalidQueryDefinition' -or $subConsumptionData -eq 'NonValidWebDirectAIRSOfferType' -or $subConsumptionData -eq 'NotFoundNotSupported' -or $subConsumptionData -eq 'IndirectCostDisabled') {
@@ -3595,7 +3640,7 @@ function getMDfCSecureScoreMG {
     $currentTask = 'Getting Microsoft Defender for Cloud Secure Score for Management Groups'
     Write-Host $currentTask
     #ref: https://learn.microsoft.com/azure/governance/management-groups/resource-graph-samples?tabs=azure-cli#secure-score-per-management-group
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01"
     $method = 'POST'
 
     $query = @'
@@ -3649,101 +3694,388 @@ function getOrphanedResources {
     $start = Get-Date
     Write-Host 'Getting orphaned/unused resources (ARG)'
 
+    #region queries
     $queries = [System.Collections.ArrayList]@()
     $intent = 'cost savings - stopped but not deallocated VM'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.compute/virtualmachines'
-            query     = "Resources | where type =~ 'microsoft.compute/virtualmachines' and properties.extended.instanceView.powerState.code =~ 'PowerState/stopped' | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources
+| where type =~ 'microsoft.compute/virtualmachines'
+| where properties.extended.instanceView.powerState.code =~ 'PowerState/stopped'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'clean up'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.resources/subscriptions/resourceGroups'
-            query     = "ResourceContainers | where type =~ 'microsoft.resources/subscriptions/resourceGroups' | extend rgAndSub = strcat(resourceGroup, '--', subscriptionId) | join kind=leftouter (Resources | extend rgAndSub = strcat(resourceGroup, '--', subscriptionId) | summarize count() by rgAndSub) on rgAndSub | where isnull(count_) | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resourcecontainers
+| where type =~ 'microsoft.resources/subscriptions/resourceGroups'
+| extend rgAndSub = strcat(resourceGroup, '--', subscriptionId)
+| join kind=leftouter (
+    resources
+    | extend rgAndSub = strcat(resourceGroup, '--', subscriptionId)
+    | summarize count() by rgAndSub
+) on rgAndSub
+| where isnull(count_)
+| order by id
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'misconfiguration'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/networkSecurityGroups'
-            query     = "Resources | where type =~ 'microsoft.network/networkSecurityGroups' and isnull(properties.networkInterfaces) and isnull(properties.subnets) | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources
+| where type =~ 'microsoft.network/networkSecurityGroups'
+| where isnull(properties.networkInterfaces) and isnull(properties.subnets)
+| order by id
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'misconfiguration'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/routeTables'
-            query     = "resources | where type =~ 'microsoft.network/routeTables' | where isnull(properties.subnets) | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources
+| where type =~ 'microsoft.network/routeTables'
+| where isnull(properties.subnets)
+| order by id
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'misconfiguration'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/networkInterfaces'
-            query     = "Resources | where type =~ 'microsoft.network/networkInterfaces' | where isnull(properties.privateEndpoint) | where isnull(properties.privateLinkService) | where properties.hostedWorkloads == '[]' | where properties !has 'virtualmachine' | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources
+| where type =~ 'microsoft.network/networkInterfaces'
+| where isnull(properties.privateEndpoint) and isnull(properties.privateLinkService) and properties.hostedWorkloads == '[]' and properties !has 'virtualmachine'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'cost savings'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.compute/disks'
-            query     = "Resources | where type =~ 'microsoft.compute/disks' | extend diskState = tostring(properties.diskState) | where managedBy == '' | where not(name endswith '-ASRReplica' or name startswith 'ms-asr-' or name startswith 'asrseeddisk-') | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources
+| where type has 'microsoft.compute/disks'
+| where isempty(managedBy) or properties.diskState =~ 'unattached' and not(name endswith '-ASRReplica' or name startswith 'ms-asr-' or name startswith 'asrseeddisk-')
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'cost savings'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/publicIpAddresses'
-            query     = "Resources | where type =~ 'microsoft.network/publicIpAddresses' | where properties.ipConfiguration == '' and properties.natGateway == '' | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources | where type =~ 'microsoft.network/publicIpAddresses'
+| where properties.ipConfiguration == '' and properties.natGateway == '' and properties.publicIPPrefix == '' and properties.publicIPAllocationMethod =~ 'Static'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/publicIpAddresses'
+            query     = @"
+resources | where type =~ 'microsoft.network/publicIpAddresses'
+| where properties.ipConfiguration == '' and properties.natGateway == '' and properties.publicIPPrefix == '' and properties.publicIPAllocationMethod =~ 'Dynamic'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'misconfiguration'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.compute/availabilitySets'
-            query     = "Resources | where type =~ 'microsoft.compute/availabilitySets' | where properties.virtualMachines == '[]' | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources
+| where type =~ 'microsoft.compute/availabilitySets'
+| where properties.virtualMachines == '[]'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'misconfiguration'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/loadBalancers'
-            query     = "Resources | where type =~ 'microsoft.network/loadBalancers' | where properties.backendAddressPools == '[]' | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources
+| where type =~ 'microsoft.network/loadBalancers'
+| where properties.backendAddressPools == '[]'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'cost savings'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/applicationGateways'
-            query     = "resources | where type =~ 'Microsoft.Network/applicationGateways' | extend backendPoolsCount = array_length(properties.backendAddressPools),SKUName= tostring(properties.sku.name), SKUTier= tostring(properties.sku.tier),SKUCapacity=properties.sku.capacity,backendPools=properties.backendAddressPools | project  type, subscriptionId, Resource=id, Intent='$intent' | join (resources | where type =~ 'Microsoft.Network/applicationGateways' | mvexpand backendPools = properties.backendAddressPools | extend backendIPCount = array_length(backendPools.properties.backendIPConfigurations) | extend backendAddressesCount = array_length(backendPools.properties.backendAddresses) | extend backendPoolName  = backendPools.properties.backendAddressPools.name | extend Resource = id | summarize backendIPCount = sum(backendIPCount) ,backendAddressesCount=sum(backendAddressesCount) by Resource) on Resource | project-away Resource1 | where  (backendIPCount == 0 or isempty(backendIPCount)) and (backendAddressesCount==0 or isempty(backendAddressesCount)) | order by Resource asc"
+            query     = @"
+resources
+| where type =~ 'microsoft.network/applicationgateways'
+| extend backendPoolsCount = array_length(properties.backendAddressPools),SKUName= tostring(properties.sku.name), SKUTier= tostring(properties.sku.tier),SKUCapacity=properties.sku.capacity,backendPools=properties.backendAddressPools , AppGwId = tostring(id)
+| project type, AppGwId, resourceGroup, location, subscriptionId, tags, name, SKUName, SKUTier, SKUCapacity
+| join (
+    resources
+    | where type =~ 'microsoft.network/applicationgateways'
+    | mvexpand backendPools = properties.backendAddressPools
+    | extend backendIPCount = array_length(backendPools.properties.backendIPConfigurations)
+    | extend backendAddressesCount = array_length(backendPools.properties.backendAddresses)
+    | extend backendPoolName  = backendPools.properties.backendAddressPools.name
+    | extend AppGwId = tostring(id)
+    | summarize backendIPCount = sum(backendIPCount) ,backendAddressesCount=sum(backendAddressesCount) by AppGwId
+) on AppGwId
+| project-away AppGwId1
+| where  (backendIPCount == 0 or isempty(backendIPCount)) and (backendAddressesCount == 0 or isempty(backendAddressesCount))
+| project type, subscriptionId, Resource=AppGwId, Intent='$intent'
+"@
             intent    = $intent
         })
 
     $intent = 'cost savings'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.web/serverfarms'
-            query     = "Resources | where type =~ 'microsoft.web/serverfarms' | where properties.numberOfSites == 0 | project type, subscriptionId, Resource=id, Intent='$intent'"
+            query     = @"
+resources
+| where type =~ 'microsoft.web/serverfarms'
+| where properties.numberOfSites == 0 and sku.tier !~ 'Free'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
             intent    = $intent
         })
 
-    $queries | ForEach-Object -Parallel {
-        $queryDetail = $_
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.web/serverfarms'
+            query     = @"
+resources
+| where type =~ 'microsoft.web/serverfarms'
+| where properties.numberOfSites == 0 and sku.tier =~ 'Free'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    #new
+    $intent = 'cost savings'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.sql/servers/elasticpools'
+            query     = @"
+resources
+| where type =~ 'microsoft.sql/servers/elasticpools'
+| project type, elasticPoolId = tolower(id), Resource = id, resourceGroup, location, subscriptionId, tags, properties, Details = pack_all(), Intent='$intent'
+| join kind=leftouter (
+    resources
+    | where type =~ 'Microsoft.Sql/servers/databases'
+    | project id, properties
+    | extend elasticPoolId = tolower(properties.elasticPoolId)
+) on elasticPoolId
+| summarize databaseCount = countif(id != '') by type, Resource, subscriptionId, Intent
+| where databaseCount == 0
+| project-away databaseCount
+"@
+            intent    = $intent
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/trafficmanagerprofiles'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/trafficmanagerprofiles'
+| where properties.endpoints == '[]'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/virtualnetworks'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/virtualnetworks'
+| where properties.subnets == '[]'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/virtualnetworks/subnets'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/virtualnetworks'
+| extend subnet = properties.subnets
+| mv-expand subnet
+| extend ipConfigurations = subnet.properties.ipConfigurations
+| extend delegations = subnet.properties.delegations
+| where isnull(ipConfigurations) and delegations == '[]'
+| order by tostring(subnet.id)
+| project type, subscriptionId, Resource=(subnet.id), Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'cost savings'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/natgateways'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/natgateways'
+| where isnull(properties.subnets)
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/ipgroups'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/ipgroups'
+| where properties.firewalls == '[]' and properties.firewallPolicies == '[]'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/privatednszones'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/privatednszones'
+| where properties.numberOfVirtualNetworkLinks == 0
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/privateendpoints'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/privateendpoints'
+| extend connection = iff(array_length(properties.manualPrivateLinkServiceConnections) > 0, properties.manualPrivateLinkServiceConnections[0], properties.privateLinkServiceConnections[0])
+| extend stateEnum = tostring(connection.properties.privateLinkServiceConnectionState.status)
+| where stateEnum =~ 'Disconnected'
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'cost savings'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/virtualnetworkgateways'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/virtualnetworkgateways'
+| extend vpnClientConfiguration = properties.vpnClientConfiguration
+| extend Resource = id
+| join kind=leftouter (
+    resources
+    | where type =~ 'microsoft.network/connections'
+    | mv-expand Resource = pack_array(properties.virtualNetworkGateway1.id, properties.virtualNetworkGateway2.id) to typeof(string)
+    | project Resource, connectionId = id, ConnectionProperties=properties
+    ) on Resource
+| where isempty(vpnClientConfiguration) and isempty(connectionId)
+| project type, subscriptionId, Resource, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'cost savings'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.network/ddosprotectionplans'
+            query     = @"
+resources
+| where type =~ 'microsoft.network/ddosprotectionplans'
+| where isnull(properties.virtualNetworks)
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'misconfiguration'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.Web/connections'
+            query     = @"
+resources
+| where type =~ 'Microsoft.Web/connections'
+| project type, resourceId = id , apiName = name, subscriptionId, resourceGroup, tags, location
+| join kind = leftouter (
+    resources
+    | where type =~ 'microsoft.logic/workflows'
+    | extend resourceGroup, location, subscriptionId, properties
+    | extend var_json = properties['parameters']['`$connections']['value']
+    | mvexpand var_connection = var_json
+    | where notnull(var_connection)
+    | extend connectionId = extract('connectionId\\\":\\\"(.*?)\\\"', 1, tostring(var_connection))
+    | project connectionId, name
+    )
+    on `$left.resourceId == `$right.connectionId
+| where connectionId == ''
+| project type, subscriptionId, Resource=resourceId, Intent='$intent'
+"@
+            intent    = $intent
+        })
+
+    $intent = 'cost savings'
+    $null = $queries.Add([PSCustomObject]@{
+            queryName = 'microsoft.Web/certificates'
+            query     = @"
+resources
+| where type =~ 'microsoft.web/certificates'
+| extend expiresOn = todatetime(properties.expirationDate)
+| where expiresOn <= now()
+| project type, subscriptionId, Resource=id, Intent='$intent'
+"@
+            intent    = $intent
+        })
+    #endregion queries
+
+    $batchSize = [math]::ceiling($queries.Count / $azAPICallConf['htParameters'].ThrottleLimit)
+    #Write-Host "Optimal batch size: $($batchSize)"
+    $counterBatch = [PSCustomObject] @{ Value = 0 }
+    $queriesBatch = ($queries) | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
+    Write-Host " Processing queries in $($queriesBatch.Count) batches"
+
+    $queriesBatch | ForEach-Object -Parallel {
         $arrayOrphanedResources = $using:arrayOrphanedResources
         $subsToProcessInCustomDataCollection = $using:subsToProcessInCustomDataCollection
         $azAPICallConf = $using:azAPICallConf
+        foreach ($queryDetail in $_.Group) {
+            #Batching: https://learn.microsoft.com/azure/governance/resource-graph/troubleshoot/general#toomanysubscription
+            $counterBatch = [PSCustomObject] @{ Value = 0 }
+            $batchSize = 1000
+            $subscriptionsBatch = $subsToProcessInCustomDataCollection | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
 
-        #Batching: https://learn.microsoft.com/azure/governance/resource-graph/troubleshoot/general#toomanysubscription
-        $counterBatch = [PSCustomObject] @{ Value = 0 }
-        $batchSize = 1000
-        $subscriptionsBatch = $subsToProcessInCustomDataCollection | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
-
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01"
-        $method = 'POST'
-        foreach ($batch in $subscriptionsBatch) {
-            Write-Host " Getting orphaned $($queryDetail.queryName) for $($batch.Group.subscriptionId.Count) Subscriptions"
-            $subscriptions = '"{0}"' -f ($batch.Group.subscriptionId -join '","')
-            $body = @"
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01"
+            $method = 'POST'
+            foreach ($batch in $subscriptionsBatch) {
+                Write-Host " Getting orphaned $($queryDetail.queryName) for $($batch.Group.subscriptionId.Count) Subscriptions"
+                $subscriptions = '"{0}"' -f ($batch.Group.subscriptionId -join '","')
+                $body = @"
 {
     "query": "$($queryDetail.query)",
     "subscriptions": [$($subscriptions)],
@@ -3753,16 +4085,17 @@ function getOrphanedResources {
 }
 "@
 
-            $res = (AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -listenOn 'Content' -currentTask "Getting orphaned $($queryDetail.queryName)")
-            #Write-Host '$res.count:' $res.count
-            if ($res.count -gt 0) {
-                foreach ($resource in $res) {
-                    $null = $script:arrayOrphanedResources.Add($resource)
+                $res = (AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -listenOn 'Content' -currentTask "Getting orphaned $($queryDetail.queryName)")
+
+                if ($res.count -gt 0) {
+                    foreach ($resource in $res) {
+                        $null = $script:arrayOrphanedResources.Add($resource)
+                    }
                 }
+                Write-Host "  $($res.count) orphaned $($queryDetail.queryName) found"
             }
-            Write-Host "  $($res.count) orphaned $($queryDetail.queryName) found"
         }
-    } -ThrottleLimit ($queries.Count)
+    } -ThrottleLimit ($azAPICallConf['htParameters'].ThrottleLimit)
 
     if ($arrayOrphanedResources.Count -gt 0) {
 
@@ -3773,6 +4106,7 @@ function getOrphanedResources {
             $htC = @{}
             foreach ($consumptionResourceTypeAndCurrency in $allConsumptionDataGroupedByTypeAndCurrency) {
                 $consumptionResourceTypeAndCurrencySplitted = $consumptionResourceTypeAndCurrency.Name.split(', ')
+                #$consumptionResourceTypeAndCurrencySplitted[0]
                 if ($consumptionResourceTypeAndCurrencySplitted[0] -in $orphanedResourcesResourceTypesCostRelevant ) {
                     foreach ($entry in $consumptionResourceTypeAndCurrency.Group) {
                         if (-not $htC.($entry.resourceId)) {
@@ -4080,8 +4414,8 @@ function getPolicyHash {
 function getPolicyRemediation {
     $currentTask = 'Getting NonCompliant (dine/modify)'
     Write-Host $currentTask
-    #ref: https://learn.microsoft.com/rest/api/azureresourcegraph/resourcegraph(2021-03-01)/resources/resources
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01"
+    #ref: https://learn.microsoft.com/en-us/rest/api/azureresourcegraph/resourcegraph/resources/resources
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01"
     $method = 'POST'
 
     if ($ManagementGroupsOnly) {
@@ -4213,7 +4547,7 @@ function getPrivateEndpointCapableResourceTypes {
 
         $armLocationsFromAzAPICall = $azAPICallConf['htParameters'].ARMLocations
 
-        Write-Host "Getting 'Available Private Endpoint Types' for Subscription '$($subscriptionName)' ($($subscriptionId)) for $($armLocationsFromAzAPICall.Count) locations"
+        Write-Host "Getting 'Available Private Endpoint Types' for Subscription '$($subscriptionName)' ($($subscriptionId)) for $($armLocationsFromAzAPICall.Count) physical locations"
 
         $batchSize = [math]::ceiling($armLocationsFromAzAPICall.Count / $ThrottleLimit)
         Write-Host "Optimal batch size: $($batchSize)"
@@ -5416,7 +5750,6 @@ function processDataCollection {
             $htCacheDefinitionsPolicySet = $using:htCacheDefinitionsPolicySet
             $htCacheDefinitionsRole = $using:htCacheDefinitionsRole
             $htCacheDefinitionsBlueprint = $using:htCacheDefinitionsBlueprint
-            $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
             $htCachePolicyComplianceMG = $using:htCachePolicyComplianceMG
             $htCachePolicyComplianceResponseTooLargeMG = $using:htCachePolicyComplianceResponseTooLargeMG
             $htCacheAssignmentsRole = $using:htCacheAssignmentsRole
@@ -5676,7 +6009,6 @@ function processDataCollection {
             $htCacheDefinitionsPolicySet = $using:htCacheDefinitionsPolicySet
             $htCacheDefinitionsRole = $using:htCacheDefinitionsRole
             $htCacheDefinitionsBlueprint = $using:htCacheDefinitionsBlueprint
-            $htRoleDefinitionIdsUsedInPolicy = $using:htRoleDefinitionIdsUsedInPolicy
             $htCachePolicyComplianceSUB = $using:htCachePolicyComplianceSUB
             $htCachePolicyComplianceResponseTooLargeSUB = $using:htCachePolicyComplianceResponseTooLargeSUB
             $htCacheAssignmentsRole = $using:htCacheAssignmentsRole
@@ -10472,14 +10804,14 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
                     $orphanedIncludingCost = $true
                     $hintTableTH = " ($($AzureConsumptionPeriod) days)"
 
-                    $orphanedResourcesThisSubscriptionGroupedByType = $orphanedResourcesThisSubscription.Group | Group-Object -Property type, currency
+                    $orphanedResourcesThisSubscriptionGroupedByType = $orphanedResourcesThisSubscription.Group | Group-Object -Property type, intent, currency
                     $orphanedResourcesThisSubscriptionGroupedByTypeCount = ($orphanedResourcesThisSubscriptionGroupedByType | Measure-Object).Count
                 }
                 else {
                     $orphanedIncludingCost = $false
                     $hintTableTH = ''
 
-                    $orphanedResourcesThisSubscriptionGroupedByType = $orphanedResourcesThisSubscription.Group | Group-Object -Property type
+                    $orphanedResourcesThisSubscriptionGroupedByType = $orphanedResourcesThisSubscription.Group | Group-Object -Property type, intent
                     $orphanedResourcesThisSubscriptionGroupedByTypeCount = ($orphanedResourcesThisSubscriptionGroupedByType | Measure-Object).Count
                 }
 
@@ -17809,7 +18141,7 @@ extensions: [{ name: 'sort' }]
                 }
 
                 #role used in a policyDef (rule roledefinitionIds)
-                if ($htRoleDefinitionIdsUsedInPolicy.Keys -contains ("/providers/Microsoft.Authorization/roleDefinitions/$($customRoleAll.Id)".Tolower())) {
+                if ($htRoleDefinitionIdsUsedInPolicy.Keys -contains ($customRoleAll.Id)) {
                     $roleIsUsed = $true
                 }
 
@@ -17939,7 +18271,7 @@ extensions: [{ name: 'sort' }]
                 }
 
                 #role used in a policyDef (rule roledefinitionIds)
-                if ($htRoleDefinitionIdsUsedInPolicy.Keys -contains ("/providers/Microsoft.Authorization/roleDefinitions/$($customRoleAll.Id)".ToLower())) {
+                if ($htRoleDefinitionIdsUsedInPolicy.Keys -contains ($customRoleAll.Id)) {
                     $roleIsUsed = $true
                 }
 
@@ -20925,7 +21257,7 @@ extensions: [{ name: 'sort' }]
             $orphanedIncludingCost = $true
             $hintTableTH = " ($($AzureConsumptionPeriod) days)"
 
-            $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type, currency
+            $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type, intent, currency
             $orphanedResourceTypesCount = ($arrayOrphanedResourcesGroupedByType | Measure-Object).Count
             $orphanedResourceTypesCountUnique = ($arrayOrphanedResourcesSlim.type | Sort-Object -Unique).Count
         }
@@ -20933,7 +21265,7 @@ extensions: [{ name: 'sort' }]
             $orphanedIncludingCost = $false
             $hintTableTH = ''
 
-            $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type
+            $arrayOrphanedResourcesGroupedByType = $arrayOrphanedResourcesSlim | Group-Object type, intent
             $orphanedResourceTypesCount = ($arrayOrphanedResourcesGroupedByType | Measure-Object).Count
             $orphanedResourceTypesCountUnique = ($arrayOrphanedResourcesSlim.type | Sort-Object -Unique).Count
         }
@@ -29394,11 +29726,11 @@ function validateLeastPrivilegeForUser {
     $currentTask = "Validate least priviledge (Azure Resource side) for executing user $($azapicallConf['htParameters'].userObjectId)"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.Authorization/roleAssignments?api-version=2022-04-01&`$filter=principalId eq '$($azapicallConf['htParameters'].userObjectId)'"
     $method = 'GET'
-    $getRoleAssignmentsForExecutingUserAtManagementGroupId = AzAPICall -AzAPICallConfiguration $azapicallConf -uri $uri
-    $nonReaderRolesAssigned = ($getRoleAssignmentsForExecutingUserAtManagementGroupId.properties.RoleDefinitionId | Sort-object -Unique).where({$_ -notlike '*acdd72a7-3385-48ef-bd42-f606fba81ae7'})
+    $getRoleAssignmentsForExecutingUserAtManagementGroupId = AzAPICall -AzAPICallConfiguration $azapicallConf -uri $uri -method $method -currentTask $currentTask
+    $nonReaderRolesAssigned = ($getRoleAssignmentsForExecutingUserAtManagementGroupId.properties.RoleDefinitionId | Sort-Object -Unique).where({ $_ -notlike '*acdd72a7-3385-48ef-bd42-f606fba81ae7' })
     if ($nonReaderRolesAssigned.Count -gt 0) {
-        Write-Host "* * * LEAST PRIVILEGE ADVICE" -ForegroundColor DarkRed
-        Write-Host "The Azure Governance Visualizer script is executed with more permissions than required."
+        Write-Host '* * * LEAST PRIVILEGE ADVICE' -ForegroundColor DarkRed
+        Write-Host 'The Azure Governance Visualizer script is executed with more permissions than required.'
         Write-Host "The executing identity '$($azapicallConf['checkContext'].Account.Id)' ($($azapicallConf['checkContext'].Account.Type)) Id: '$($azapicallConf['htparameters'].userObjectId)' has the following RBAC Role(s) assigned at Management Group scope '$ManagementGroupId':"
         foreach ($nonReaderRoleAssigned in $nonReaderRolesAssigned) {
             $currentTask = "Get RBAC Role definition '$nonReaderRoleAssigned'"
@@ -29409,14 +29741,14 @@ function validateLeastPrivilegeForUser {
             if ($getRole.properties.roleName -eq 'owner' -or $getRole.properties.roleName -eq 'contributor') {
                 Write-Host " - $($getRole.properties.roleName) ($($getRole.properties.type)) !!!"
             }
-            else{
+            else {
                 Write-Host " - $($getRole.properties.roleName) ($($getRole.properties.type))"
             }
         }
         Write-Host "The required Azure RBAC role at Management Group scope '$ManagementGroupId' is 'Reader' (acdd72a7-3385-48ef-bd42-f606fba81ae7)."
         Write-Host "Recommendation: consider executing the script in context of a Service Principal with least privilege. Review the Azure Governance Visualizer Setup Guide at 'https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/setup.md'"
         Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor DarkRed
-        pause
+        Pause
     }
     else {
         Write-Host "Azure Governance Visualizer Least Privilege check (Azure Resource side) for executing identity '$($azapicallConf['checkContext'].Account.Id)' ($($azapicallConf['checkContext'].Account.Type)) Id: '$($azapicallConf['htparameters'].userObjectId)' succeeded" -ForegroundColor Green
@@ -31747,19 +32079,6 @@ function dataCollectionPolicyDefinitions {
 
             if (-not [string]::IsNullOrWhiteSpace($scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds)) {
                 $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId).RoleDefinitionIds = $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds
-                foreach ($roledefinitionId in $scopePolicyDefinition.properties.policyRule.then.details.roleDefinitionIds) {
-                    if (-not [string]::IsNullOrEmpty($roledefinitionId)) {
-                        if (-not $htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower())) {
-                            $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()) = @{
-                                UsedInPolicies = [System.Collections.ArrayList]@()
-                            }
-                        }
-                        $script:htRoleDefinitionIdsUsedInPolicy.(($roledefinitionId).ToLower()).UsedInPolicies.Add($hlpPolicyDefinitionId)
-                    }
-                    else {
-                        Write-Host "$currentTask $($hlpPolicyDefinitionId) Finding: empty roleDefinitionId in roledefinitionIds"
-                    }
-                }
             }
             else {
                 $script:htCacheDefinitionsPolicy.($hlpPolicyDefinitionId).RoleDefinitionIds = 'n/a'
@@ -33021,11 +33340,11 @@ function dataCollectionRoleDefinitions {
 
     if ($TargetMgOrSub -eq 'Sub') {
         $currentTask = "Getting Custom Role definitions for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'CustomRole'"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'CustomRole'"
     }
     if ($TargetMgOrSub -eq 'MG') {
         $currentTask = "Getting Custom Role definitions for Management Group: '$($scopeDisplayName)' ('$scopeId')"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2022-05-01-preview&`$filter=type eq 'CustomRole'"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'CustomRole'"
     }
     $method = 'GET'
     $scopeCustomRoleDefinitions = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
@@ -34311,7 +34630,6 @@ if (-not $HierarchyMapOnly) {
     $htCacheDefinitionsPolicySet = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htCacheDefinitionsRole = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htCacheDefinitionsBlueprint = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
-    $htRoleDefinitionIdsUsedInPolicy = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htRoleAssignmentsPIM = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{} #[System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
     $htPoliciesUsedInPolicySets = @{}
     $htSubscriptionTags = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
@@ -34738,6 +35056,42 @@ if (-not $HierarchyMapOnly) {
     $tenantBuiltInPoliciesCount = ($tenantBuiltInPolicies).count
     $tenantCustomPolicies = (($htCacheDefinitionsPolicy).Values).where({ $_.Type -eq 'Custom' } )
     $tenantCustomPoliciesCount = ($tenantCustomPolicies).count
+
+    #roleDefinitions used in policyDefinitions
+    Write-Host 'Processing roleDefinitions used in policyDefinitions'
+    $startRoleDefinitionsUsedInPolicyDefinitions = Get-Date
+    $htRoleDefinitionIdsUsedInPolicy = @{}
+    foreach ($policyDefinitionId in $htCacheDefinitionsPolicy.Keys) {
+        if (-not [string]::IsNullOrWhiteSpace($htCacheDefinitionsPolicy.($policyDefinitionId).Json.properties.policyRule.then.details.roleDefinitionIds)) {
+            foreach ($roledefinitionId in $htCacheDefinitionsPolicy.($policyDefinitionId).Json.properties.policyRule.then.details.roleDefinitionIds) {
+                if (-not [string]::IsNullOrWhitespace($roledefinitionId)) {
+                    if (-not $htCacheDefinitionsRole.($roledefinitionId -replace '.*/')) {
+                        Write-Host "Finding: policyDefinitionId '$($policyDefinitionId)' has unknown roleDefinitionId '$roledefinitionId' in policyRule.then.details.roleDefinitionIds" -ForegroundColor DarkRed
+                    }
+                    else {
+                        if (-not $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId -replace '.*/')) {
+                            $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId -replace '.*/') = [System.Collections.ArrayList]@()
+                        }
+                        try {
+                            $null = $htRoleDefinitionIdsUsedInPolicy.($roledefinitionId -replace '.*/').Add($policyDefinitionId)
+                        }
+                        catch {
+                            Write-Host "policyDefinitionId '$($policyDefinitionId)' JSON:"
+                            $htCacheDefinitionsPolicy.($policyDefinitionId).Json | ConvertTo-Json -Depth 99
+                            Write-Host '--->'
+                            Throw "Failed: `$policyDefinitionId: '$($policyDefinitionId)' trying to add `$roledefinitionId: '$roledefinitionId' from policyRule.then.details.roleDefinitionIds to `$htRoleDefinitionIdsUsedInPolicy.(`$roledefinitionId).UsedInPolicies"
+                        }
+                    }
+                }
+                else {
+                    Write-Host "Finding: policyDefinitionId '$($policyDefinitionId)' has empty roleDefinitionId in policyRule.then.details.roleDefinitionIds" -ForegroundColor DarkRed
+                }
+            }
+        }
+    }
+    Write-Host " $($htRoleDefinitionIdsUsedInPolicy.Keys.Count) roleDefinitions are used in policyDefinitions"
+    $endRoleDefinitionsUsedInPolicyDefinitions = Get-Date
+    Write-Host " roleDefinitions used in policyDefinitions duration: $((New-TimeSpan -Start $startRoleDefinitionsUsedInPolicyDefinitions -End $endRoleDefinitionsUsedInPolicyDefinitions).TotalSeconds) seconds"
 
     #hashes for parity builtin/custom
     Write-Host 'Processing Policy custom/built-In parity check'
@@ -35858,7 +36212,7 @@ Write-Host '--------------------'
 Write-Host "Azure Governance Visualizer ($ProductVersion) completed successful" -ForegroundColor Green
 
 if ($Error.Count -gt 0) {
-    Write-Host "Don't bother about dumped errors"
+    Write-Host "Don't bother about dumped errors, execution was successful - if you see errors above this line, those were handled by the tool and are only dumped informational."
 }
 
 if ($DoPSRule) {
