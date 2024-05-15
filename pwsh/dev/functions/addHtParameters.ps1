@@ -1,4 +1,4 @@
-function addHtParameters {
+﻿function addHtParameters {
     Write-Host 'Add Azure Governance Visualizer htParameters'
     if ($LargeTenant -eq $true) {
         $script:NoScopeInsights = $true

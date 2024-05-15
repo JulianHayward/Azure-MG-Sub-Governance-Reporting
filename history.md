@@ -4,6 +4,11 @@
 
 ### Azure Governance Visualizer version 6
 
+**Changes** (2024-May-15 / 6.4.6 Minor)
+
+- DevSkim and PSScriptAnalyzer integration
+- fixes and optimization based on DevSkim and PSScriptAnalyzer findings
+
 **Changes** (2024-May-05 / 6.4.5 Minor)
 
 - updated orphaned resources queries following the source repository [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources/blob/111a7ea4ced2016760b1b95544f298b9b4be8dee/Queries/orphan-resources-queries.md) with slight adjustments

@@ -1,4 +1,4 @@
-function getDefaultManagementGroup {
+﻿function getDefaultManagementGroup {
     $currentTask = 'Get Default Management Group'
     Write-Host $currentTask
     #https://learn.microsoft.com/azure/governance/management-groups/how-to/protect-resource-hierarchy#setting---default-management-group

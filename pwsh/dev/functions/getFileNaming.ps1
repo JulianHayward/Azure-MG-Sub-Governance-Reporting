@@ -1,4 +1,4 @@
-function getFileNaming {
+﻿function getFileNaming {
     if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions -eq $true) {
         if ($HierarchyMapOnly) {
             $script:fileName = "AzGovViz_HierarchyMapOnly_$($ManagementGroupId)"

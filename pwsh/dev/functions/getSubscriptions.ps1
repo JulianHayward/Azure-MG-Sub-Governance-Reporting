@@ -1,4 +1,4 @@
-function getSubscriptions {
+﻿function getSubscriptions {
     $startGetSubscriptions = Get-Date
     $currentTask = 'Getting all Subscriptions'
     Write-Host "$currentTask"

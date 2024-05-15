@@ -1,4 +1,4 @@
-function prepareData {
+﻿function prepareData {
     Write-Host 'Preparing Data'
     $startPreparingArrays = Get-Date
     $script:optimizedTableForPathQuery = ($newTable | Select-Object -Property level, mg*, subscription*) | Sort-Object -Property level, mgid, subscriptionId -Unique

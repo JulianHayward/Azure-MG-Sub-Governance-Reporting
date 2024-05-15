@@ -1,4 +1,4 @@
-function setTranscript {
+﻿function setTranscript {
     if ($ManagementGroupId) {
         if ($onAzureDevOpsOrGitHubActions -eq $true) {
             if ($HierarchyMapOnly -eq $true) {

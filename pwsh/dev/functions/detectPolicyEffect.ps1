@@ -1,4 +1,4 @@
-function detectPolicyEffect {
+﻿function detectPolicyEffect {
     [CmdletBinding()]
     Param
     (

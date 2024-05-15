@@ -87,25 +87,10 @@ As an alternative, you can use the [Azure Governance Visualizer accelerator](htt
 
 ## Release history
 
-**Changes** (2024-May-05 / 6.4.5 Minor)
+**Changes** (2024-May-15 / 6.4.6 Minor)
 
-- updated orphaned resources queries following the source repository [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources/blob/111a7ea4ced2016760b1b95544f298b9b4be8dee/Queries/orphan-resources-queries.md) with slight adjustments
-- covering _I´ll call it_ 'tenant/service level Role definitions'
-- optimize/bug fix 'Processing roleDefinitions used in policyDefinitions'
-- increase the default value for `-AzureConsumptionPeriod` from `1` to `2` - if the Azure Governance Visualizer is executed early in the day, consumption data may not be accurate enough.. (reminder: the switch parameter `-DoAzureConsumption` must be set to `true` for the consumption data collection to kick in)
-- update default value for parameter `-ValidPolicyEffects`
-- update [API reference](#api-reference) Microsoft.Authorization/roleDefinitions use API version 2023-07-01-preview (previous 2022-05-01-preview)
-- update [API reference](#api-reference) Microsoft.ResourceGraph/resources use API version 2022-10-01 (previous 2021-03-01)
-- update [API reference](#api-reference) Microsoft.CostManagement/query use API version 2024-01-01 (previous 2023-03-01)
-
-**Changes** (2024-Apr-17 / 6.4.4 Minor)
-
-- fix issue #230
-  - use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.2.1
-- update [API reference](#api-reference) Microsoft.Security/pricings use API version 2024-01-01 (previous 2018-06-01)
-- add 'Mutate' to `ValidPolicyEffects`
-- location related tasks - use only physical locations (exclude logical)
-- optimize collection of Role definitions that are used in Policy definitions
+- DevSkim and PSScriptAnalyzer integration
+- fixes and optimization based on DevSkim and PSScriptAnalyzer findings
 
 [Full release history](history.md)
 

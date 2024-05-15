@@ -1,4 +1,4 @@
-function buildPolicyAllJSON {
+﻿function buildPolicyAllJSON {
     Write-Host 'Creating PolicyAll JSON'
     $startPolicyAllJSON = Get-Date
     $htPolicyAndPolicySet = [ordered]@{}

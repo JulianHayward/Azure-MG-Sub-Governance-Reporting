@@ -1,4 +1,4 @@
-function showMemoryUsage {
+﻿function showMemoryUsage {
 
     function makeDouble {
         [CmdletBinding()]

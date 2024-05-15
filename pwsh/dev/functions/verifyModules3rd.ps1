@@ -1,4 +1,4 @@
-function verifyModules3rd {
+﻿function verifyModules3rd {
     [CmdletBinding()]Param(
         [object]$modules
     )

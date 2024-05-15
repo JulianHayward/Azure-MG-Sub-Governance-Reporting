@@ -1,4 +1,4 @@
-#region functions4DataCollection
+﻿#region functions4DataCollection
 
 function dataCollectionMGSecureScore {
     [CmdletBinding()]Param(
@@ -3615,8 +3615,9 @@ function dataCollectionRoleAssignmentsMG {
             $pimSlotEnd = ''
         }
 
-        if (-not $htRoleAssignmentsFromAPIInheritancePrevention.($roleAssignmentId -replace '.*/')) {
-            $script:htRoleAssignmentsFromAPIInheritancePrevention.($roleAssignmentId -replace '.*/') = @{
+        $roleAssignmentIdGuid = $roleAssignmentId -replace '.*/'
+        if (-not $htRoleAssignmentsFromAPIInheritancePrevention.($roleAssignmentIdGuid)) {
+            $script:htRoleAssignmentsFromAPIInheritancePrevention.($roleAssignmentIdGuid) = @{
                 assignment = $L0mgmtGroupRoleAssignment
             }
         }
@@ -3848,11 +3849,12 @@ function dataCollectionRoleAssignmentsSub {
         foreach ($roleAssignmentFromAPI in $roleAssignmentsFromAPI) {
 
             if ($roleAssignmentFromAPI.id -match "/subscriptions/$($scopeId)/") {
-                if (-not $htRoleAssignmentsFromAPIInheritancePrevention.($roleAssignmentFromAPI.id -replace '.*/')) {
+                $roleAssignmentIdGuid = $roleAssignmentFromAPI.id -replace '.*/'
+                if (-not $htRoleAssignmentsFromAPIInheritancePrevention.($roleAssignmentIdGuid)) {
                     $null = $baseRoleAssignments.Add($roleAssignmentFromAPI)
                 }
                 else {
-                    $null = $baseRoleAssignments.Add($htRoleAssignmentsFromAPIInheritancePrevention.($roleAssignmentFromAPI.id -replace '.*/').assignment)
+                    $null = $baseRoleAssignments.Add($htRoleAssignmentsFromAPIInheritancePrevention.($roleAssignmentIdGuid).assignment)
                 }
             }
             else {

@@ -1,4 +1,4 @@
-function processAADGroups {
+﻿function processAADGroups {
     if ($NoPIMEligibility) {
         Write-Host 'Resolving Microsoft Entra groups (for which a RBAC role assignment exists)'
     }

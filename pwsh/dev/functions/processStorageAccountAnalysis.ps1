@@ -1,4 +1,4 @@
-function processStorageAccountAnalysis {
+﻿function processStorageAccountAnalysis {
     $start = Get-Date
     Write-Host 'Processing Storage Account Analysis'
     $storageAccountsCount = $storageAccounts.count

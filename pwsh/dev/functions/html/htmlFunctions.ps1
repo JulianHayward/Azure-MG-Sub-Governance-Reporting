@@ -1,4 +1,4 @@
-#region HTML
+﻿#region HTML
 function HierarchyMgHTML($mgChild) {
     $mgDetails = $htMgDetails.($mgChild).details
     $mgName = $mgDetails.mgName

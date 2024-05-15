@@ -1,4 +1,4 @@
-function processHierarchyMapOnlyCustomData {
+﻿function processHierarchyMapOnlyCustomData {
     Write-Host 'HierarchyMapOnly with custom data' -ForegroundColor Yellow
     Write-Host ' Parameter HierarchyMapOnly:' $HierarchyMapOnly
     Write-Host ' Check if HierarchyMapOnlyCustomDataJSON is valid JSON'

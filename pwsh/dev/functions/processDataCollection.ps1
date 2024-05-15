@@ -1,4 +1,4 @@
-function processDataCollection {
+﻿function processDataCollection {
     [CmdletBinding()]Param(
         [string]$mgId
     )

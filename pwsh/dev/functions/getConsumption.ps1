@@ -1,4 +1,4 @@
-function getConsumption {
+﻿function getConsumption {
 
     function addToAllConsumptionData {
         [CmdletBinding()]Param(

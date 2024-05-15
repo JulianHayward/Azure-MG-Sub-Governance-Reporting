@@ -1,8 +1,8 @@
-function processDefinitionInsights() {
+﻿function processDefinitionInsights() {
     $startDefinitionInsights = Get-Date
     Write-Host ' Building DefinitionInsights'
 
-    $md5 = New-Object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
+    $SHA256 = New-Object -TypeName System.Security.Cryptography.SHA256CryptoServiceProvider
     $utf8 = New-Object -TypeName System.Text.UTF8Encoding
 
     #region definitionInsightsAzurePolicy
@@ -275,7 +275,7 @@ function processDefinitionInsights() {
         }
 
         $json = $($policy.Json | ConvertTo-Json -Depth 99)
-        $guid = ([System.BitConverter]::ToString($md5.ComputeHash($utf8.GetBytes($policy.PolicyDefinitionId)))) -replace '-'
+        $guid = ([System.BitConverter]::ToString($SHA256.ComputeHash($utf8.GetBytes($policy.PolicyDefinitionId)))) -replace '-'
         @"
 <tr>
 <td class="definitionInsightsjsontd">
@@ -564,7 +564,7 @@ tf.init();}}
             $scopeDetails = "$($policySet.ScopeId) ($($htEntities.($policySet.ScopeId).DisplayName))"
         }
         $json = $($policySet.Json | ConvertTo-Json -Depth 99)
-        $guid = ([System.BitConverter]::ToString($md5.ComputeHash($utf8.GetBytes($policySet.PolicyDefinitionId)))) -replace '-'
+        $guid = ([System.BitConverter]::ToString($SHA256.ComputeHash($utf8.GetBytes($policySet.PolicyDefinitionId)))) -replace '-'
         @"
 <tr>
 <td class="definitionInsightsjsontd">

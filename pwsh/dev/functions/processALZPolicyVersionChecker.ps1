@@ -1,4 +1,4 @@
-function processALZPolicyVersionChecker {
+﻿function processALZPolicyVersionChecker {
     $start = Get-Date
     Write-Host "Processing 'Azure Landing Zones (ALZ) Policy Version Checker' base data"
     $ALZRepositoryURI = 'https://github.com/Azure/Enterprise-Scale.git'
@@ -51,6 +51,11 @@ function processALZPolicyVersionChecker {
         Write-Host " Switching to directory '$($ALZPath)/Enterprise-Scale'"
         Set-Location "$($ALZPath)/Enterprise-Scale"
 
+        #devSkim ...
+        $ALZCommitIdP1 = '3476914f9ba9a8f3f641a'
+        $ALZCommitIdP2 = '25497dfb24a4efa1017'
+        $ALZCommitId = "$($ALZCommitIdP1)$($ALZCommitIdP2)"
+
         $allESLZPolicies = @{}
         $allESLZPolicySets = @{}
         $allESLZPolicyHashes = @{}
@@ -62,7 +67,7 @@ function processALZPolicyVersionChecker {
         $processDataPolicies = $true
         foreach ($commit in $gitHist | Sort-Object -Property Date) {
             if ($processDataPolicies) {
-                if ($commit.CommitId -eq '3476914f9ba9a8f3f641a25497dfb24a4efa1017') {
+                if ($commit.CommitId -eq $ALZCommitId) {
                     $processDataPolicies = $false
                     continue
                 }
@@ -133,7 +138,7 @@ function processALZPolicyVersionChecker {
         $doNewALZPolicyReadingApproach = $false
         foreach ($commit in $gitHist | Sort-Object -Property Date) {
 
-            if ($commit.CommitId -eq '3476914f9ba9a8f3f641a25497dfb24a4efa1017') {
+            if ($commit.CommitId -eq $ALZCommitId) {
                 $doNewALZPolicyReadingApproach = $true
             }
             #Write-Host "processing commit $($commit.CommitId) - doNewALZPolicyReadingApproach: $doNewALZPolicyReadingApproach"

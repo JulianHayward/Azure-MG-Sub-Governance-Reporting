@@ -1,4 +1,4 @@
-function getOrphanedResources {
+﻿function getOrphanedResources {
     $start = Get-Date
     Write-Host 'Getting orphaned/unused resources (ARG)'
 

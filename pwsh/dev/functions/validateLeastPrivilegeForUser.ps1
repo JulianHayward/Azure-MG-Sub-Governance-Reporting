@@ -1,4 +1,4 @@
-function validateLeastPrivilegeForUser {
+﻿function validateLeastPrivilegeForUser {
     $currentTask = "Validate least priviledge (Azure Resource side) for executing user $($azapicallConf['htParameters'].userObjectId)"
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.Authorization/roleAssignments?api-version=2022-04-01&`$filter=principalId eq '$($azapicallConf['htParameters'].userObjectId)'"
     $method = 'GET'
@@ -12,7 +12,7 @@ function validateLeastPrivilegeForUser {
             $currentTask = "Get RBAC Role definition '$nonReaderRoleAssigned'"
             $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($nonReaderRoleAssigned)?api-version=2022-04-01"
             $method = 'GET'
-            $getRole = AzAPICall -AzAPICallConfiguration $azapicallConf -uri $uri -listenOn Content
+            $getRole = AzAPICall -AzAPICallConfiguration $azapicallConf -uri $uri -method $method -listenOn Content
 
             if ($getRole.properties.roleName -eq 'owner' -or $getRole.properties.roleName -eq 'contributor') {
                 Write-Host " - $($getRole.properties.roleName) ($($getRole.properties.type)) !!!"

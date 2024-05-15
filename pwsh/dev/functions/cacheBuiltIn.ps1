@@ -1,4 +1,4 @@
-function cacheBuiltIn {
+﻿function cacheBuiltIn {
     $startDefinitionsCaching = Get-Date
     Write-Host 'Caching built-in Policy and RBAC Role definitions'
 
