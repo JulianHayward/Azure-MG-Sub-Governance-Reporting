@@ -14,8 +14,8 @@ on:
   #   - cron: '28 13 * * 2'
 
 jobs:
-  if: github.repository == 'JulianHayward/Azure-MG-Sub-Governance-Reporting'
   lint:
+    if: github.repository == 'JulianHayward/Azure-MG-Sub-Governance-Reporting'
     name: DevSkim
     runs-on: ubuntu-20.04
     permissions:
