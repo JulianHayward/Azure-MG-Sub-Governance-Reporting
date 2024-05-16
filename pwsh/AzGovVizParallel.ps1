@@ -388,7 +388,7 @@ Param
     # AzAPICall related parameters --->
 
     [string]
-    $ARMLocation = 'westeurope',
+    $ARMLocation = 'northeurope',
 
     [string]
     $ScriptPath = 'pwsh', #e.g. 'myfolder\pwsh'
@@ -3807,6 +3807,7 @@ resources | where type =~ 'microsoft.network/publicIpAddresses'
 resources
 | where type =~ 'microsoft.compute/availabilitySets'
 | where properties.virtualMachines == '[]'
+| where not(name endswith "-asr")
 | project type, subscriptionId, Resource=id, Intent='$intent'
 "@
             intent    = $intent
