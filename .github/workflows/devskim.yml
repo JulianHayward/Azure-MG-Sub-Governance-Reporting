@@ -15,7 +15,7 @@ on:
 
 jobs:
   lint:
-    if: github.repository == 'JulianHayward/Azure-MG-Sub-Governance-Reporting'
+    if: github.repository == 'NOTJulianHayward/Azure-MG-Sub-Governance-Reporting'
     name: DevSkim
     runs-on: ubuntu-20.04
     permissions:
