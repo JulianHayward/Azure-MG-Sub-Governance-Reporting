@@ -87,10 +87,11 @@ As an alternative, you can use the [Azure Governance Visualizer accelerator](htt
 
 ## Release history
 
-**Changes** (2024-May-15 / 6.4.6 Minor)
+**Changes** (2024-May-23 / 6.4.7 Minor)
 
 - DevSkim and PSScriptAnalyzer integration
 - fixes and optimization based on DevSkim and PSScriptAnalyzer findings
+- api version mapping in param for cloud environment api version availability drift
 
 [Full release history](history.md)
 

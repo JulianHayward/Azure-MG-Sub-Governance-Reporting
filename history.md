@@ -4,10 +4,11 @@
 
 ### Azure Governance Visualizer version 6
 
-**Changes** (2024-May-15 / 6.4.6 Minor)
+**Changes** (2024-May-23 / 6.4.7 Minor)
 
 - DevSkim and PSScriptAnalyzer integration
 - fixes and optimization based on DevSkim and PSScriptAnalyzer findings
+- api version mapping in param for cloud environment api version availability drift
 
 **Changes** (2024-May-05 / 6.4.5 Minor)
 
