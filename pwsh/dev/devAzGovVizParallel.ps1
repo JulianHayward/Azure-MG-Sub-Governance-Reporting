@@ -365,7 +365,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.4.6',
+    $ProductVersion = '6.4.7',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -627,7 +627,26 @@ Param
     $MSTenantIds = @('2f4a9838-26b7-47ee-be60-ccc1fdec5953', '33e01921-4d64-4f8c-a055-5bdaffd5e33d'),
 
     [array]
-    $ValidPolicyEffects = @('addToNetworkGroup', 'append', 'audit', 'auditIfNotExists', 'deny', 'denyAction', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting', 'mutate')
+    $ValidPolicyEffects = @('addToNetworkGroup', 'append', 'audit', 'auditIfNotExists', 'deny', 'denyAction', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting', 'mutate'),
+
+    [hashtable]
+    $APIMappingCloudEnvironment = @{
+        roleDefinitions     = @{
+            AzureCloud        = '2023-07-01-preview'
+            AzureUSGovernment = '2022-05-01-preview'
+            AzureChinaCloud   = '2022-05-01-preview'
+        }
+        costManagementQuery = @{
+            AzureCloud        = '2024-01-01'
+            AzureUSGovernment = '2023-09-01'
+            AzureChinaCloud   = '2023-09-01'
+        }
+        securityPricings    = @{
+            AzureCloud        = '2024-01-01'
+            AzureUSGovernment = '2023-01-01'
+            AzureChinaCloud   = '2023-01-01'
+        }
+    }
 )
 
 $Error.clear()

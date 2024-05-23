@@ -220,16 +220,18 @@
 
         if ($builtInCapability -eq 'RoleDefinitions') {
 
+            $roledefinitionsAPIVersion = $azAPICallConf['htParameters'].APIMappingCloudEnvironment.roledefinitions.($azAPICallConf['htParameters'].azureCloudEnvironment)
+
             #region subscriptionScope
             if ($ignoreARMLocation) {
                 $currentTask = 'Caching built-in Role definitions (subscriptionScope)'
                 Write-Host " $currentTask"
-                $uri = "$($azAPICallConf['azAPIEndpointUrls'].'ARM')/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'BuiltInRole'"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].'ARM')/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=$($roledefinitionsAPIVersion)&`$filter=type eq 'BuiltInRole'"
             }
             else {
                 $currentTask = "Caching built-in Role definitions (Location: '$($ARMLocation)') (subscriptionScope)"
                 Write-Host " $currentTask"
-                $uri = "$($azAPICallConf['azAPIEndpointUrls']."ARM$($ARMLocation)")/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'BuiltInRole'"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls']."ARM$($ARMLocation)")/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=$($roledefinitionsAPIVersion)&`$filter=type eq 'BuiltInRole'"
             }
 
             $method = 'GET'
@@ -281,12 +283,12 @@
             if ($ignoreARMLocation) {
                 $currentTask = 'Caching built-in Role definitions (tenantScope)'
                 Write-Host " $currentTask"
-                $uri = "$($azAPICallConf['azAPIEndpointUrls'].'ARM')/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'BuiltInRole'"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].'ARM')/providers/Microsoft.Authorization/roleDefinitions?api-version=$($roledefinitionsAPIVersion)&`$filter=type eq 'BuiltInRole'"
             }
             else {
                 $currentTask = "Caching built-in Role definitions (Location: '$($ARMLocation)') (tenantScope)"
                 Write-Host " $currentTask"
-                $uri = "$($azAPICallConf['azAPIEndpointUrls']."ARM$($ARMLocation)")/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'BuiltInRole'"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls']."ARM$($ARMLocation)")/providers/Microsoft.Authorization/roleDefinitions?api-version=$($roledefinitionsAPIVersion)&`$filter=type eq 'BuiltInRole'"
             }
 
             $method = 'GET'

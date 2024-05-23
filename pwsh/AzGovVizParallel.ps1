@@ -365,7 +365,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.4.6',
+    $ProductVersion = '6.4.7',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -627,7 +627,26 @@ Param
     $MSTenantIds = @('2f4a9838-26b7-47ee-be60-ccc1fdec5953', '33e01921-4d64-4f8c-a055-5bdaffd5e33d'),
 
     [array]
-    $ValidPolicyEffects = @('addToNetworkGroup', 'append', 'audit', 'auditIfNotExists', 'deny', 'denyAction', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting', 'mutate')
+    $ValidPolicyEffects = @('addToNetworkGroup', 'append', 'audit', 'auditIfNotExists', 'deny', 'denyAction', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting', 'mutate'),
+
+    [hashtable]
+    $APIMappingCloudEnvironment = @{
+        roleDefinitions     = @{
+            AzureCloud        = '2023-07-01-preview'
+            AzureUSGovernment = '2022-05-01-preview'
+            AzureChinaCloud   = '2022-05-01-preview'
+        }
+        costManagementQuery = @{
+            AzureCloud        = '2024-01-01'
+            AzureUSGovernment = '2023-09-01'
+            AzureChinaCloud   = '2023-09-01'
+        }
+        securityPricings    = @{
+            AzureCloud        = '2024-01-01'
+            AzureUSGovernment = '2023-01-01'
+            AzureChinaCloud   = '2023-01-01'
+        }
+    }
 )
 
 $Error.clear()
@@ -690,6 +709,7 @@ function addHtParameters {
         GitHubActionsOIDC                            = [bool]$GitHubActionsOIDC
         NoNetwork                                    = [bool]$NoNetwork
         ThrottleLimit                                = $ThrottleLimit
+        APIMappingCloudEnvironment                   = $APIMappingCloudEnvironment
     }
     Write-Host 'htParameters:'
     $azAPICallConf['htParameters'] | Format-Table -AutoSize | Out-String
@@ -2178,16 +2198,18 @@ function cacheBuiltIn {
 
         if ($builtInCapability -eq 'RoleDefinitions') {
 
+            $roledefinitionsAPIVersion = $azAPICallConf['htParameters'].APIMappingCloudEnvironment.roledefinitions.($azAPICallConf['htParameters'].azureCloudEnvironment)
+
             #region subscriptionScope
             if ($ignoreARMLocation) {
                 $currentTask = 'Caching built-in Role definitions (subscriptionScope)'
                 Write-Host " $currentTask"
-                $uri = "$($azAPICallConf['azAPIEndpointUrls'].'ARM')/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'BuiltInRole'"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].'ARM')/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=$($roledefinitionsAPIVersion)&`$filter=type eq 'BuiltInRole'"
             }
             else {
                 $currentTask = "Caching built-in Role definitions (Location: '$($ARMLocation)') (subscriptionScope)"
                 Write-Host " $currentTask"
-                $uri = "$($azAPICallConf['azAPIEndpointUrls']."ARM$($ARMLocation)")/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'BuiltInRole'"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls']."ARM$($ARMLocation)")/subscriptions/$($azAPICallConf['checkContext'].Subscription.Id)/providers/Microsoft.Authorization/roleDefinitions?api-version=$($roledefinitionsAPIVersion)&`$filter=type eq 'BuiltInRole'"
             }
 
             $method = 'GET'
@@ -2239,12 +2261,12 @@ function cacheBuiltIn {
             if ($ignoreARMLocation) {
                 $currentTask = 'Caching built-in Role definitions (tenantScope)'
                 Write-Host " $currentTask"
-                $uri = "$($azAPICallConf['azAPIEndpointUrls'].'ARM')/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'BuiltInRole'"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].'ARM')/providers/Microsoft.Authorization/roleDefinitions?api-version=$($roledefinitionsAPIVersion)&`$filter=type eq 'BuiltInRole'"
             }
             else {
                 $currentTask = "Caching built-in Role definitions (Location: '$($ARMLocation)') (tenantScope)"
                 Write-Host " $currentTask"
-                $uri = "$($azAPICallConf['azAPIEndpointUrls']."ARM$($ARMLocation)")/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'BuiltInRole'"
+                $uri = "$($azAPICallConf['azAPIEndpointUrls']."ARM$($ARMLocation)")/providers/Microsoft.Authorization/roleDefinitions?api-version=$($roledefinitionsAPIVersion)&`$filter=type eq 'BuiltInRole'"
             }
 
             $method = 'GET'
@@ -2704,6 +2726,8 @@ function exportResourceLocks {
 }
 function getConsumption {
 
+    $costManagementQueryAPIVersion = $azAPICallConf['htParameters'].APIMappingCloudEnvironment.costManagementQuery.($azAPICallConf['htParameters'].azureCloudEnvironment)
+
     function addToAllConsumptionData {
         [CmdletBinding()]Param(
             [Parameter(Mandatory)]
@@ -2738,7 +2762,7 @@ function getConsumption {
             $currenttask = "Getting Consumption data (scope MG '$($ManagementGroupId)') for $($subsToProcessInCustomDataCollectionCount) Subscriptions (QuotaId Whitelist: '$($SubscriptionQuotaIdWhitelist -join ', ')') for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
             Write-Host "$currentTask"
             #https://learn.microsoft.com/rest/api/cost-management/query/usage
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2024-01-01&`$top=5000"
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=$($costManagementQueryAPIVersion)&`$top=5000"
             $method = 'POST'
 
             $counterBatch = [PSCustomObject] @{ Value = 0 }
@@ -2885,13 +2909,14 @@ function getConsumption {
                         $htConsumptionExceptionLog = $using:htConsumptionExceptionLog
                         #other
                         $function:addToAllConsumptionData = $using:funcAddToAllConsumptionData
+                        $costManagementQueryAPIVersion = $using:costManagementQueryAPIVersion
                         #endregion UsingVARs
 
                         $currentTask = "  Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)) (whitelist))"
                         #test
                         Write-Host $currentTask
                         #https://learn.microsoft.com/rest/api/cost-management/query/usage
-                        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2024-01-01&`$top=5000"
+                        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=$($costManagementQueryAPIVersion)&`$top=5000"
                         $method = 'POST'
                         $subConsumptionData = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
                         if ($subConsumptionData -eq 'Unauthorized' -or $subConsumptionData -eq 'OfferNotSupported' -or $subConsumptionData -eq 'InvalidQueryDefinition' -or $subConsumptionData -eq 'NonValidWebDirectAIRSOfferType' -or $subConsumptionData -eq 'NotFoundNotSupported' -or $subConsumptionData -eq 'IndirectCostDisabled') {
@@ -2954,7 +2979,7 @@ function getConsumption {
             $currenttask = "Getting Consumption data (scope MG '$($ManagementGroupId)') for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
             Write-Host "$currentTask"
             #https://learn.microsoft.com/rest/api/cost-management/query/usage
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=2024-01-01&`$top=5000"
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=$($costManagementQueryAPIVersion)&`$top=5000"
             $method = 'POST'
             $body = @"
 {
@@ -3080,13 +3105,14 @@ function getConsumption {
                         $htConsumptionExceptionLog = $using:htConsumptionExceptionLog
                         #other
                         $function:addToAllConsumptionData = $using:funcAddToAllConsumptionData
+                        $costManagementQueryAPIVersion = $using:costManagementQueryAPIVersion
                         #endregion UsingVARs
 
                         $currentTask = "  Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
                         #test
                         Write-Host $currentTask
                         #https://learn.microsoft.com/rest/api/cost-management/query/usage
-                        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=2024-01-01&`$top=5000"
+                        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=$($costManagementQueryAPIVersion)&`$top=5000"
                         $method = 'POST'
                         $subConsumptionData = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
                         if ($subConsumptionData -eq 'Unauthorized' -or $subConsumptionData -eq 'OfferNotSupported' -or $subConsumptionData -eq 'InvalidQueryDefinition' -or $subConsumptionData -eq 'NonValidWebDirectAIRSOfferType' -or $subConsumptionData -eq 'NotFoundNotSupported' -or $subConsumptionData -eq 'IndirectCostDisabled') {
@@ -3807,7 +3833,7 @@ resources | where type =~ 'microsoft.network/publicIpAddresses'
 resources
 | where type =~ 'microsoft.compute/availabilitySets'
 | where properties.virtualMachines == '[]'
-| where not(name endswith "-asr")
+| where not(name endswith '-asr')
 | project type, subscriptionId, Resource=id, Intent='$intent'
 "@
             intent    = $intent
@@ -29928,7 +29954,8 @@ function dataCollectionDefenderPlans {
 
     $currentTask = "Getting Microsoft Defender for Cloud plans for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
     #https://learn.microsoft.com/rest/api/defenderforcloud/pricings
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/pricings?api-version=2024-01-01"
+    $securitypricingsAPIVersion = $azAPICallConf['htParameters'].APIMappingCloudEnvironment.securityPricings.($azAPICallConf['htParameters'].azureCloudEnvironment)
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/pricings?api-version=$($securitypricingsAPIVersion)"
     $method = 'GET'
     $defenderPlansResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
 
@@ -33351,13 +33378,15 @@ function dataCollectionRoleDefinitions {
         $subscriptionQuotaId
     )
 
+    $roledefinitionsAPIVersion = $azAPICallConf['htParameters'].APIMappingCloudEnvironment.roledefinitions.($azAPICallConf['htParameters'].azureCloudEnvironment)
+
     if ($TargetMgOrSub -eq 'Sub') {
         $currentTask = "Getting Custom Role definitions for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'CustomRole'"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=$($roledefinitionsAPIVersion)&`$filter=type eq 'CustomRole'"
     }
     if ($TargetMgOrSub -eq 'MG') {
         $currentTask = "Getting Custom Role definitions for Management Group: '$($scopeDisplayName)' ('$scopeId')"
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=2023-07-01-preview&`$filter=type eq 'CustomRole'"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/Microsoft.Authorization/roleDefinitions?api-version=$($roledefinitionsAPIVersion)&`$filter=type eq 'CustomRole'"
     }
     $method = 'GET'
     $scopeCustomRoleDefinitions = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
