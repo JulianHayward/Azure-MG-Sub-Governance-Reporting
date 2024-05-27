@@ -388,7 +388,7 @@ Param
     # AzAPICall related parameters --->
 
     [string]
-    $ARMLocation = 'northeurope',
+    $ARMLocation = 'westeurope',
 
     [string]
     $ScriptPath = 'pwsh', #e.g. 'myfolder\pwsh'
