@@ -35,7 +35,6 @@ Azure Governance Visualizer is intended to help you to get a holistic overview o
   - [Azure Governance Visualizer @ Microsoft CAF](#azure-governance-visualizer--microsoft-caf)
     - [Microsoft Cloud Adoption Framework (CAF)](#microsoft-cloud-adoption-framework-caf)
     - [Azure Governance Visualizer accelerator](#azure-governance-visualizer-accelerator)
-  - [ChatGPT](#chatgpt)
   - [:rocket: Azure Governance Visualizer deployment guide](#rocket-azure-governance-visualizer-deployment-guide)
   - [Release history](#release-history)
   - [Demo](#demo)
@@ -74,10 +73,6 @@ Azure Governance Visualizer is intended to help you to get a holistic overview o
 ### Azure Governance Visualizer accelerator
 
 The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) provides an easy and fast deployment process that automates the creation and publishing of AzGovViz to an Azure Web Application and provides automation to configuring the pre-requisites for AzGovViz.
-
-## ChatGPT
-
-![ChatGPT](img/chatGPT.png)
 
 ## :rocket: Azure Governance Visualizer deployment guide
 
