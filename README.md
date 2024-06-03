@@ -82,8 +82,9 @@ As an alternative, you can use the [Azure Governance Visualizer accelerator](htt
 
 ## Release history
 
-**Changes** (2024-May-24 / 6.4.7 Minor)
+**Changes** (2024-June-03 / 6.4.8 Minor)
 
+- ALZ policy refresh H2 FY24 (initiatives.json)
 - [DevSkim](https://github.com/microsoft/DevSkim-Action), [PSScriptAnalyzer](https://github.com/microsoft/psscriptanalyzer-action) and [OpenSSF Scorecard](https://github.com/ossf/scorecard?tab=readme-ov-file#scorecard-github-action) integration
 - fixes and optimization based on DevSkim, PSScriptAnalyzer and OpenSSF Scorecard findings
 - api version mapping in param block for cloud environment api version availability drift
