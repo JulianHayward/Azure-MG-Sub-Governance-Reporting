@@ -365,7 +365,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.4.8',
+    $ProductVersion = '6.4.9',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -702,6 +702,7 @@ if ($ManagementGroupId -match ' ') {
 . ".\$($ScriptPath)\functions\getOrphanedResources.ps1"
 . ".\$($ScriptPath)\functions\getMDfCSecureScoreMG.ps1"
 . ".\$($ScriptPath)\functions\getConsumption.ps1"
+. ".\$($ScriptPath)\functions\getConsumptionv2.ps1"
 . ".\$($ScriptPath)\functions\cacheBuiltIn.ps1"
 . ".\$($ScriptPath)\functions\prepareData.ps1"
 . ".\$($ScriptPath)\functions\getGroupmembers.ps1"

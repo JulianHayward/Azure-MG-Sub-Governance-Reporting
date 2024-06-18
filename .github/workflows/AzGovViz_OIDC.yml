@@ -42,7 +42,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Connect Azure OIDC
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           client-id: ${{secrets.CLIENT_ID}} #create this secret
           tenant-id: ${{secrets.TENANT_ID}} #create this secret
@@ -91,7 +91,7 @@ jobs:
       #log again to avoid timeout before web publishing
       - name: Connect Azure OIDC
         if: env.WebAppPublish == 'true'
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           client-id: ${{secrets.CLIENT_ID}} #create this secret (GitHub/Setting/Secrets)
           tenant-id: ${{secrets.TENANT_ID}} #create this secret

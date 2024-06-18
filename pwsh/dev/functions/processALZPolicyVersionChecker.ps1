@@ -263,6 +263,7 @@
                     $hashPolicyDefinitions = [System.Security.Cryptography.HashAlgorithm]::Create('sha256').ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonPolicyDefinitions))
                     $stringHashPolicyDefinitions = [System.BitConverter]::ToString($hashPolicyDefinitions)
                     $stringHash = "$($stringHashParameters)_$($stringHashPolicyDefinitions)"
+                    #($policyJsonRebuild.properties | ConvertTo-Json -Depth 99) > "c:\temp\alz3\$($policyJsonRebuild.name)_$($policyJsonRebuild.properties.metadata.version).json"
 
                     if (-not $allESLZPolicySets.($policyJsonRebuild.name)) {
                         $allESLZPolicySets.($policyJsonRebuild.name) = @{}
@@ -410,6 +411,7 @@
                         $hashPolicyDefinitions = [System.Security.Cryptography.HashAlgorithm]::Create('sha256').ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonPolicyDefinitions))
                         $stringHashPolicyDefinitions = [System.BitConverter]::ToString($hashPolicyDefinitions)
                         $stringHash = "$($stringHashParameters)_$($stringHashPolicyDefinitions)"
+                        #($policyJsonRebuild.properties | ConvertTo-Json -Depth 99) > "c:\temp\alz3\$($policyJsonRebuild.name)_$($policyJsonRebuild.properties.metadata.version).json"
 
                         if (-not $allESLZPolicySets.($policyJsonRebuild.name)) {
                             $allESLZPolicySets.($policyJsonRebuild.name) = @{}
@@ -524,6 +526,7 @@
                 $hashPolicyDefinitions = [System.Security.Cryptography.HashAlgorithm]::Create('sha256').ComputeHash([System.Text.Encoding]::UTF8.GetBytes($policyJsonPolicyDefinitions))
                 $stringHashPolicyDefinitions = [System.BitConverter]::ToString($hashPolicyDefinitions)
                 $stringHash = "$($stringHashParameters)_$($stringHashPolicyDefinitions)"
+                #($policyJsonRebuild.properties | ConvertTo-Json -Depth 99) > "c:\temp\alz3\$($policyJsonRebuild.name)_$($policyJsonRebuild.properties.metadata.version).json"
 
                 if (-not $allESLZPolicySets.($policyJsonRebuild.name)) {
                     $allESLZPolicySets.($policyJsonRebuild.name) = @{}

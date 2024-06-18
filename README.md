@@ -82,12 +82,16 @@ As an alternative, you can use the [Azure Governance Visualizer accelerator](htt
 
 ## Release history
 
-**Changes** (2024-June-03 / 6.4.8 Minor)
+**Changes** (2024-June-18 / 6.4.9 Minor)
 
 - ALZ policy refresh H2 FY24 (initiatives.json)
 - [DevSkim](https://github.com/microsoft/DevSkim-Action), [PSScriptAnalyzer](https://github.com/microsoft/psscriptanalyzer-action) and [OpenSSF Scorecard](https://github.com/ossf/scorecard?tab=readme-ov-file#scorecard-github-action) integration
 - fixes and optimization based on DevSkim, PSScriptAnalyzer and OpenSSF Scorecard findings
 - api version mapping in param block for cloud environment api version availability drift
+- update GitHub workflows to use azure/login@v2 (previous: azure/login@v1):
+  - [AzGovViz_OIDC.yml](/.github/workflows/AzGovViz_OIDC.yml)
+  - [AzGovViz.yml](/.github/workflows/AzGovViz.yml)
+- update getConsumption (experimental for now): instead of full Management Group scope costmanagement data retrieval, batch by Subscription quotaId in batches of 100. Failing batches will fallback to get costmanagement data per Subscription. In order to use this you must update the AzGovVizParallel.ps1 file to use the function `getConsumptionv2` instead of `getConsumption`
 
 [Full release history](history.md)
 
