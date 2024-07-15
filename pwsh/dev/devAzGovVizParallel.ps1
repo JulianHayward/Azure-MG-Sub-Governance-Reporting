@@ -365,7 +365,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.4.10',
+    $ProductVersion = '6.4.11',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -646,7 +646,10 @@ Param
             AzureUSGovernment = '2023-01-01'
             AzureChinaCloud   = '2023-01-01'
         }
-    }
+    },
+
+    [array]
+    $SubscriptionQuotaIdsThatDoNotSupportCostManagementManagementGroupScopeQuery = @('CSP_2015-05-01') #PayAsYouGo_2014-09-01
 )
 
 $Error.clear()

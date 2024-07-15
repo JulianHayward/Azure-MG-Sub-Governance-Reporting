@@ -37,13 +37,10 @@
     $startConsumptionData = Get-Date
 
     if ($subsToProcessInCustomDataCollectionCount -gt 0) {
-
-        #$subscriptionIdsOptimizedForBody = '"{0}"' -f ($subsToProcessInCustomDataCollection.subscriptionId -join '","')
-        $currenttask = "Getting Consumption data (scope MG '$($ManagementGroupId)') for $($subsToProcessInCustomDataCollectionCount) Subscriptions for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
+        $currenttask = "Getting Consumption data scope MG (ManagementGroupId '$($ManagementGroupId)') for $($subsToProcessInCustomDataCollectionCount) Subscriptions for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
         Write-Host "$currentTask"
         #https://learn.microsoft.com/rest/api/cost-management/query/usage
-        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=$($costManagementQueryAPIVersion)&`$top=100"
-        $method = 'POST'
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=$($costManagementQueryAPIVersion)&`$top=5000"
 
         $subsToProcessInCustomDataCollectionGroupedByQuotaId = $subsToProcessInCustomDataCollection | Group-Object -Property subscriptionQuotaId
         $cnter = 0
@@ -53,16 +50,22 @@
             $batchSize = 100
             $subscriptionsBatch = ($quotaIdGroup.Group) | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
             $batchCnt = 0
-            Write-Host " Processing $($quotaIdGroup.Count) Subscriptions with QuotaId $($quotaIdGroup.Name) in $(($subscriptionsBatch | Measure-Object).Count) batch(es) of max $batchSize Subscriptions"
+            Write-Host " Processing $($quotaIdGroup.Count) Subscriptions with QuotaId '$($quotaIdGroup.Name)' in $(($subscriptionsBatch | Measure-Object).Count) batch(es) of max $batchSize Subscriptions"
 
             foreach ($batch in $subscriptionsBatch) {
                 $cnter++
                 $batchCnt++
-                $subscriptionIdsOptimizedForBody = '"{0}"' -f (($batch.Group).subscriptionId -join '","')
-                $currenttask = "  Getting Consumption data quotaId:'$($quotaIdGroup.Name)' #batch$($batchCnt)/$(($subscriptionsBatch | Measure-Object).Count) (scope MG '$($ManagementGroupId)') for $(($batch.Group).Count) Subscriptions for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
-                Write-Host "$currentTask" -ForegroundColor Cyan
+                if ($quotaIdGroup.Name -in $SubscriptionQuotaIdsThatDoNotSupportCostManagementManagementGroupScopeQuery) {
+                    Write-Host " Enforcing 'foreach Subscription' Subscription scope mode, due to QuotaId '$($quotaIdGroup.Name)' for $($batch.Group.Count) Subscriptions"
+                    $mgConsumptionData = 'NoValidSubscriptions'
+                }
+                else {
+                    $subscriptionIdsOptimizedForBody = '"{0}"' -f (($batch.Group).subscriptionId -join '","')
+                    $currenttask = "  Getting Consumption data QuotaId '$($quotaIdGroup.Name)' #batch$($batchCnt)/$(($subscriptionsBatch | Measure-Object).Count) (scope MG '$($ManagementGroupId)') for $(($batch.Group).Count) Subscriptions for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
+                    Write-Host "$currentTask" -ForegroundColor Cyan
 
-                $body = @"
+
+                    $bodyMGScope = @"
     {
     "type": "ActualCost",
     "dataset": {
@@ -113,7 +116,17 @@
     }
 "@
 
-                $mgConsumptionData = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
+                    $mgConsumptionDataParametersSplat = @{
+                        AzAPICallConfiguration = $azAPICallConf
+                        uri                    = $uri
+                        method                 = 'POST'
+                        body                   = $bodyMGScope
+                        currentTask            = $currentTask
+                        listenOn               = 'ContentProperties'
+                    }
+                    $mgConsumptionData = AzAPICall @mgConsumptionDataParametersSplat
+
+                }
 
                 <#test
                 #$mgConsumptionData = "OfferNotSupported"
@@ -134,8 +147,8 @@
                         Subscriptions = ($batch.Group).subscriptionId
                     }
 
-                    Write-Host " Switching to 'foreach Subscription' Subscription scope mode. Getting Consumption data #batch$($batchCnt) using Management Group scope failed."
-                    $body = @"
+                    Write-Host " Switching to 'foreach Subscription' Subscription scope mode. Getting Consumption data for $($batch.Group.Count) Subscriptions of QuotaId '$($quotaIdGroup.Name)' #batch$($batchCnt)/$(($subscriptionsBatch | Measure-Object).Count)"
+                    $bodySubScope = @"
     {
     "type": "ActualCost",
     "dataset": {
@@ -182,7 +195,7 @@
                         $subNameToProcess = $_.subscriptionName
                         $subQuotaId = $_.subscriptionQuotaId
                         #region UsingVARs
-                        $body = $using:body
+                        $bodySubScope = $using:bodySubScope
                         $azureConsumptionStartDate = $using:azureConsumptionStartDate
                         $azureConsumptionEndDate = $using:azureConsumptionEndDate
                         #fromOtherFunctions
@@ -198,15 +211,23 @@
                         $costManagementQueryAPIVersion = $using:costManagementQueryAPIVersion
                         #endregion UsingVARs
 
-                        $currentTask = "  Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)')"
+                        $currentTask = "  Getting Consumption data scope Sub (Subscription: $($subNameToProcess) '$($subIdToProcess)' QuotaId '$($subQuotaId)')"
                         #test
                         Write-Host $currentTask
                         #https://learn.microsoft.com/rest/api/cost-management/query/usage
                         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=$($costManagementQueryAPIVersion)&`$top=5000"
-                        $method = 'POST'
-                        $subConsumptionData = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
+                        $subConsumptionDataParametersSplat = @{
+                            AzAPICallConfiguration = $azAPICallConf
+                            uri                    = $uri
+                            method                 = 'POST'
+                            body                   = $bodySubScope
+                            currentTask            = $currentTask
+                            listenOn               = 'ContentProperties'
+                        }
+                        $subConsumptionData = AzAPICall @subConsumptionDataParametersSplat
+
                         if ($subConsumptionData -eq 'Unauthorized' -or $subConsumptionData -eq 'OfferNotSupported' -or $subConsumptionData -eq 'InvalidQueryDefinition' -or $subConsumptionData -eq 'NonValidWebDirectAIRSOfferType' -or $subConsumptionData -eq 'NotFoundNotSupported' -or $subConsumptionData -eq 'IndirectCostDisabled') {
-                            Write-Host "   Failed ($subConsumptionData) - Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)')"
+                            Write-Host "   Failed ($subConsumptionData) - Getting Consumption data scope Sub (Subscription: $($subNameToProcess) '$($subIdToProcess)' QuotaId '$($subQuotaId)')"
                             $hlper = $htAllSubscriptionsFromAPI.($subIdToProcess).subDetails
                             $hlper2 = $htSubscriptionsMgPath.($subIdToProcess)
                             $script:htConsumptionExceptionLog.Sub.($subIdToProcess) = @{
@@ -229,14 +250,13 @@
                     } -ThrottleLimit $ThrottleLimit
                 }
                 else {
-                    Write-Host "  #batch$($batchCnt)/$(($subscriptionsBatch | Measure-Object).Count) returned $($mgConsumptionData.properties.rows.Count) Consumption data entries"
+                    Write-Host "  #batch$($batchCnt)/$(($subscriptionsBatch | Measure-Object).Count) for $($batch.Group.Count) Subscriptions of QuotaId '$($quotaIdGroup.Name)' returned $($mgConsumptionData.properties.rows.Count) Consumption data entries"
                     if ($mgConsumptionData.Count -gt 0) {
                         addToAllConsumptionData -consumptiondataFromAPI $mgConsumptionData -subscriptionQuotaId $quotaIdGroup.Name
                     }
                 }
             }
         }
-
     }
     else {
         $detailShowStopperResult = 'NoSubscriptionsPresent'

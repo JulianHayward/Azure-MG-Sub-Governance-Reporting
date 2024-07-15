@@ -70,19 +70,19 @@ Azure Governance Visualizer is intended to help you to get a holistic overview o
 - Listed as [tool](https://learn.microsoft.com/azure/cloud-adoption-framework/resources/tools-templates#govern) for the Govern discipline in the Microsoft Cloud Adoption Framework.
 - Included in the Cloud Adoption Framework's [Strategy-Plan-Ready-Governance](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template.
 
-### Azure Governance Visualizer accelerator
-
-The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) provides an easy and fast deployment process that automates the creation and publishing of AzGovViz to an Azure Web Application and provides automation to configuring the pre-requisites for AzGovViz.
-
 ## :rocket: Azure Governance Visualizer deployment guide
 
 The instructions to deploy the Azure Governance Visualizer is found in the **[Azure Governance Visualizer (AzGovViz) deployment guide](setup.md)**. Follow those instructions to run AzGovViz from your terminal (console), GitHub Codepaces, Azure DevOps, or GitHub.
 
 As an alternative, you can use the [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) to deploy the Azure Governance Visualizer per code.
 
+### Azure Governance Visualizer accelerator
+
+The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) provides an easy and fast deployment process that automates the creation and publishing of AzGovViz to an Azure Web Application and provides automation to configuring the pre-requisites for AzGovViz.
+
 ## Release history
 
-**Changes** (2024-June-18 / 6.4.10 Minor)
+**Changes** (2024-July-15 / 6.4.11 Minor)
 
 - ALZ policy refresh H2 FY24 (initiatives.json)
 - [DevSkim](https://github.com/microsoft/DevSkim-Action), [PSScriptAnalyzer](https://github.com/microsoft/psscriptanalyzer-action) and [OpenSSF Scorecard](https://github.com/ossf/scorecard?tab=readme-ov-file#scorecard-github-action) integration
@@ -91,8 +91,9 @@ As an alternative, you can use the [Azure Governance Visualizer accelerator](htt
 - update GitHub workflows to use azure/login@v2 (previous: azure/login@v1):
   - [AzGovViz_OIDC.yml](/.github/workflows/AzGovViz_OIDC.yml)
   - [AzGovViz.yml](/.github/workflows/AzGovViz.yml)
-- update getConsumption (experimental for now): instead of full Management Group scope costmanagement data retrieval, batch by Subscription quotaId in batches of 100. Failing batches will fallback to get costmanagement data per Subscription. In order to use this you must update the AzGovVizParallel.ps1 file to use the function `getConsumptionv2` instead of `getConsumption`
+- update getConsumption (experimental for now): instead of full Management Group scope costmanagement data retrieval, batch by Subscription quotaId in batches of 100. Failing batches and batches of Subscriptions of quotaId `CSP_2015-05-01` (see param block variable `SubscriptionQuotaIdsThatDoNotSupportCostManagementManagementGroupScopeQuery`) will fallback to get costmanagement data per Subscription. In order to use this you must update the AzGovVizParallel.ps1 file to use the function `getConsumptionv2` instead of `getConsumption`
 - html; update jquery; source tablefilter js
+- update `.devcontainer/devcontainer.json`
 
 [Full release history](history.md)
 
@@ -109,6 +110,7 @@ More [demo output](https://github.com/JulianHayward/AzGovViz)
 - Microsoft Tech Talks - Bevan Sinclair (Cloud Solution Architect Microsoft) [Automated Governance Reporting in Azure (MTT0AEDT)](https://mtt.eventbuilder.com/event/66431) (register to view)
 - Microsoft Dev Radio (YouTube) [Get visibility into your environment with Azure Governance Visualizer](https://www.youtube.com/watch?v=hZXvF5oypLE)
 - Jack Tracey (Cloud Solution Architect Microsoft) [Azure Governance Visualizer With Azure DevOps](https://jacktracey.co.uk/azgovviz-with-azure-devops/)
+- SCHUTTEN.CLOUD [Automate Pertinent Governance Insight with Azure Governance Visualizer](https://schutten.cloud/post/azure-governance-visualizer/)
 
 ### Presentations
 

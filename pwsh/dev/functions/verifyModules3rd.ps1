@@ -93,7 +93,6 @@
                     if (-not $installAzAPICallModuleSuccess) {
                         throw " Installing '$($module.ModuleName)' module ($($moduleVersion)) failed"
                     }
-
                 }
                 else {
                     do {
