@@ -649,7 +649,7 @@ Param
     },
 
     [array]
-    $SubscriptionQuotaIdsThatDoNotSupportCostManagementManagementGroupScopeQuery = @('CSP_2015-05-01') #PayAsYouGo_2014-09-01
+    $SubscriptionQuotaIdsThatDoNotSupportCostManagementManagementGroupScopeQuery = @('CSP_2015-05-01') #https://learn.microsoft.com/en-us/azure/cost-management-billing/costs/understand-cost-mgt-data#supported-microsoft-azure-offers
 )
 
 $Error.clear()
