@@ -4,7 +4,7 @@
 
 ### Azure Governance Visualizer version 6
 
-**Changes** (2024-July-15 / 6.4.11 Minor)
+**Changes** (2024-July-15 / 6.4.12 Minor)
 
 - ALZ policy refresh H2 FY24 (initiatives.json)
 - [DevSkim](https://github.com/microsoft/DevSkim-Action), [PSScriptAnalyzer](https://github.com/microsoft/psscriptanalyzer-action) and [OpenSSF Scorecard](https://github.com/ossf/scorecard?tab=readme-ov-file#scorecard-github-action) integration
@@ -16,6 +16,7 @@
 - update getConsumption (experimental for now): instead of full Management Group scope costmanagement data retrieval, batch by Subscription quotaId in batches of 100. Failing batches and batches of Subscriptions of quotaId `CSP_2015-05-01` (see param block variable `SubscriptionQuotaIdsThatDoNotSupportCostManagementManagementGroupScopeQuery`) will fallback to get costmanagement data per Subscription. In order to use this you must update the AzGovVizParallel.ps1 file to use the function `getConsumptionv2` instead of `getConsumption`
 - html; update jquery; source tablefilter js
 - update `.devcontainer/devcontainer.json`
+- use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.2.3 (Handle costManagement error `SubscriptionCostDisabled`)
 
 **Changes** (2024-May-05 / 6.4.5 Minor)
 

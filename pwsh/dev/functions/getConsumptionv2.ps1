@@ -226,7 +226,17 @@
                         }
                         $subConsumptionData = AzAPICall @subConsumptionDataParametersSplat
 
-                        if ($subConsumptionData -eq 'Unauthorized' -or $subConsumptionData -eq 'OfferNotSupported' -or $subConsumptionData -eq 'InvalidQueryDefinition' -or $subConsumptionData -eq 'NonValidWebDirectAIRSOfferType' -or $subConsumptionData -eq 'NotFoundNotSupported' -or $subConsumptionData -eq 'IndirectCostDisabled') {
+                        $subscriptionScopeKnownErrors = @(
+                            'Unauthorized',
+                            'OfferNotSupported',
+                            'InvalidQueryDefinition',
+                            'NonValidWebDirectAIRSOfferType',
+                            'NotFoundNotSupported',
+                            'IndirectCostDisabled',
+                            'SubscriptionCostDisabled'
+                        )
+
+                        if ($subConsumptionData -in $subscriptionScopeKnownErrors) {
                             Write-Host "   Failed ($subConsumptionData) - Getting Consumption data scope Sub (Subscription: $($subNameToProcess) '$($subIdToProcess)' QuotaId '$($subQuotaId)')"
                             $hlper = $htAllSubscriptionsFromAPI.($subIdToProcess).subDetails
                             $hlper2 = $htSubscriptionsMgPath.($subIdToProcess)
@@ -243,7 +253,7 @@
                         }
                         else {
                             Write-Host "   $($subConsumptionData.properties.rows.Count) Consumption data entries (scope Sub $($subNameToProcess) '$($subIdToProcess)')"
-                            if ($subConsumptionData.Count -gt 0) {
+                            if ($subConsumptionData.properties.rows.Count -gt 0) {
                                 addToAllConsumptionData -consumptiondataFromAPI $subConsumptionData -subscriptionQuotaId $subQuotaId
                             }
                         }
@@ -251,7 +261,7 @@
                 }
                 else {
                     Write-Host "  #batch$($batchCnt)/$(($subscriptionsBatch | Measure-Object).Count) for $($batch.Group.Count) Subscriptions of QuotaId '$($quotaIdGroup.Name)' returned $($mgConsumptionData.properties.rows.Count) Consumption data entries"
-                    if ($mgConsumptionData.Count -gt 0) {
+                    if ($mgConsumptionData.properties.rows.Count -gt 0) {
                         addToAllConsumptionData -consumptiondataFromAPI $mgConsumptionData -subscriptionQuotaId $quotaIdGroup.Name
                     }
                 }
