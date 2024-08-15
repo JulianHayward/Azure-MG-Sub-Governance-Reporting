@@ -1,4 +1,4 @@
-function processNetwork {
+﻿function processNetwork {
     $start = Get-Date
     Write-Host "Processing Network enrichment ($($arrayVNets.Count) Virtual Networks)"
 

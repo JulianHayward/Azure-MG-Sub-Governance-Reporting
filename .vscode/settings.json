@@ -20,5 +20,8 @@
     "powershell.codeFormatting.whitespaceBeforeOpenBrace": true,
     "powershell.codeFormatting.whitespaceBeforeOpenParen": true,
     "powershell.codeFormatting.whitespaceBetweenParameters": true,
-    "markdown.extension.toc.unorderedList.marker": "*"
+    "markdown.extension.toc.unorderedList.marker": "*",
+    "[powershell]": {
+        "files.encoding": "utf8bom"
+    }
 }

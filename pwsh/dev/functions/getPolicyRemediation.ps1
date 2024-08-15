@@ -1,4 +1,4 @@
-function getPolicyRemediation {
+﻿function getPolicyRemediation {
     $currentTask = 'Getting NonCompliant (dine/modify)'
     Write-Host $currentTask
     #ref: https://learn.microsoft.com/en-us/rest/api/azureresourcegraph/resourcegraph/resources/resources

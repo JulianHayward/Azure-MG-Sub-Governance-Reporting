@@ -1,4 +1,4 @@
-
+﻿
 function getGroupmembers($aadGroupId, $aadGroupDisplayName) {
     if (-not $htAADGroupsDetails.($aadGroupId)) {
         $script:htAADGroupsDetails.$aadGroupId = @{

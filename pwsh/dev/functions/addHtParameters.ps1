@@ -1,4 +1,4 @@
-function addHtParameters {
+﻿function addHtParameters {
     Write-Host 'Add Azure Governance Visualizer htParameters'
     if ($LargeTenant -eq $true) {
         $script:NoScopeInsights = $true
@@ -40,6 +40,7 @@ function addHtParameters {
         GitHubActionsOIDC                            = [bool]$GitHubActionsOIDC
         NoNetwork                                    = [bool]$NoNetwork
         ThrottleLimit                                = $ThrottleLimit
+        APIMappingCloudEnvironment                   = $APIMappingCloudEnvironment
     }
     Write-Host 'htParameters:'
     $azAPICallConf['htParameters'] | Format-Table -AutoSize | Out-String

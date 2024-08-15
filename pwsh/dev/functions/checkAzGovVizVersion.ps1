@@ -1,4 +1,4 @@
-function checkAzGovVizVersion {
+﻿function checkAzGovVizVersion {
     try {
         $getRepoVersion = Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/master/version.json'
         $repoVersion = ($getRepoVersion.Content | ConvertFrom-Json).ProductVersion

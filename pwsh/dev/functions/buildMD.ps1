@@ -1,4 +1,4 @@
-function buildMD {
+﻿function buildMD {
     Write-Host 'Building Markdown'
     $startBuildMD = Get-Date
     $script:arrayMgs = [System.Collections.ArrayList]@()

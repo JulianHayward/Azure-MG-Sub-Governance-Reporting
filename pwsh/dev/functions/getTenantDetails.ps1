@@ -1,4 +1,4 @@
-function getTenantDetails {
+﻿function getTenantDetails {
     $currentTask = 'Get Tenant details'
     Write-Host $currentTask
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/tenants?api-version=2020-01-01"

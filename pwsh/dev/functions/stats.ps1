@@ -1,4 +1,4 @@
-function stats {
+﻿function stats {
     #region Stats
     if (-not $StatsOptOut) {
 

@@ -1,4 +1,4 @@
-function exportBaseCSV {
+﻿function exportBaseCSV {
     if (-not $NoCsvExport) {
         Write-Host "Exporting CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName).csv'"
         $startBuildCSV = Get-Date

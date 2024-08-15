@@ -1,4 +1,4 @@
-function getEntities {
+﻿function getEntities {
     Write-Host 'Entities'
     $startEntities = Get-Date
     $currentTask = ' Getting Entities'
@@ -59,11 +59,12 @@ function getEntities {
 
             $array = $entity.properties.parentNameChain
             $array += $entity.name
+
             $script:htSubscriptionsMgPath.($entity.name) = @{
                 ParentNameChain          = $entity.properties.parentNameChain
                 ParentNameChainDelimited = $entity.properties.parentNameChain -join '/'
-                Parent                   = $entity.properties.parent.Id -replace '.*/'
-                ParentName               = $htEntitiesPlain.($entity.properties.parent.Id -replace '.*/').properties.displayName
+                Parent                   = $parent
+                ParentName               = $htEntitiesPlain.($parent).properties.displayName
                 DisplayName              = $entity.properties.displayName
                 path                     = $array
                 pathDelimited            = $array -join '/'

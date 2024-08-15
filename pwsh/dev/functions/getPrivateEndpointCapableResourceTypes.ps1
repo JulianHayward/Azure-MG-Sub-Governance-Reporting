@@ -1,4 +1,4 @@
-function getPrivateEndpointCapableResourceTypes {
+﻿function getPrivateEndpointCapableResourceTypes {
     $startGetAvailablePrivateEndpointTypes = Get-Date
     $privateEndpointAvailabilityCheckCompleted = $false
     $subsToProcessForGettingPrivateEndpointTypes = [System.Collections.ArrayList]@()

@@ -1,4 +1,4 @@
-function apiCallTracking {
+﻿function apiCallTracking {
     [CmdletBinding()]Param(
         [string]$stage,
         [string]$spacing

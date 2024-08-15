@@ -1,4 +1,4 @@
-function testGuid {
+﻿function testGuid {
     [OutputType([bool])]
     param
     (

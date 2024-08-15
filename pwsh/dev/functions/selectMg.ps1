@@ -1,4 +1,4 @@
-function selectMg() {
+﻿function selectMg() {
     Write-Host 'Please select a Management Group from the list below:'
     $MgtGroupArray | Select-Object '#', Name, @{Name = 'displayName'; Expression = { $_.properties.displayName } }, Id | Format-Table
     Write-Host "If you don't see your ManagementGroupID try using the parameter -ManagementGroupID" -ForegroundColor Yellow

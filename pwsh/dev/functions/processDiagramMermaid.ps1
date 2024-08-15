@@ -1,4 +1,4 @@
-function processDiagramMermaid() {
+﻿function processDiagramMermaid() {
     if ($ManagementGroupId -ne $azAPICallConf['checkContext'].Tenant.Id) {
         $optimizedTableForPathQueryMg = $optimizedTableForPathQueryMg.where({ $_.mgParentId -ne "'upperScopes'" })
     }

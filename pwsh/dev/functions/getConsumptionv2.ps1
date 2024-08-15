@@ -1,4 +1,4 @@
-﻿function getConsumption {
+﻿function getConsumptionv2 {
 
     $costManagementQueryAPIVersion = $azAPICallConf['htParameters'].APIMappingCloudEnvironment.costManagementQuery.($azAPICallConf['htParameters'].azureCloudEnvironment)
 
@@ -6,7 +6,11 @@
         [CmdletBinding()]Param(
             [Parameter(Mandatory)]
             [object]
-            $consumptiondataFromAPI
+            $consumptiondataFromAPI,
+
+            [Parameter(Mandatory)]
+            [string]
+            $subscriptionQuotaId
         )
 
         foreach ($consumptionline in $consumptiondataFromAPI.properties.rows) {
@@ -16,6 +20,7 @@
                     "$($consumptiondataFromAPI.properties.columns.name[0])" = [decimal]$consumptionline[0]
                     "$($consumptiondataFromAPI.properties.columns.name[1])" = $consumptionline[1]
                     SubscriptionName                                        = $hlper.DisplayName
+                    subscriptionQuotaId                                     = $subscriptionQuotaId
                     SubscriptionMgPath                                      = $hlper.ParentNameChainDelimited
                     "$($consumptiondataFromAPI.properties.columns.name[2])" = $consumptionline[2]
                     "$($consumptiondataFromAPI.properties.columns.name[3])" = $consumptionline[3]
@@ -28,81 +33,97 @@
 
     $startConsumptionData = Get-Date
 
-    #cost only for whitelisted quotaId
-    if ($SubscriptionQuotaIdWhitelist[0] -ne 'undefined') {
-        if ($subsToProcessInCustomDataCollectionCount -gt 0) {
-            #region mgScopeWhitelisted
-            #$subscriptionIdsOptimizedForBody = '"{0}"' -f ($subsToProcessInCustomDataCollection.subscriptionId -join '","')
-            $currenttask = "Getting Consumption data (scope MG '$($ManagementGroupId)') for $($subsToProcessInCustomDataCollectionCount) Subscriptions (QuotaId Whitelist: '$($SubscriptionQuotaIdWhitelist -join ', ')') for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
-            Write-Host "$currentTask"
-            #https://learn.microsoft.com/rest/api/cost-management/query/usage
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=$($costManagementQueryAPIVersion)&`$top=5000"
-            $method = 'POST'
+    if ($subsToProcessInCustomDataCollectionCount -gt 0) {
+        $currenttask = "Getting Consumption data scope MG (ManagementGroupId '$($ManagementGroupId)') for $($subsToProcessInCustomDataCollectionCount) Subscriptions for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
+        Write-Host "$currentTask"
+        #https://learn.microsoft.com/rest/api/cost-management/query/usage
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=$($costManagementQueryAPIVersion)&`$top=5000"
+
+        $subsToProcessInCustomDataCollectionGroupedByQuotaId = $subsToProcessInCustomDataCollection | Group-Object -Property subscriptionQuotaId
+        $cnter = 0
+        foreach ($quotaIdGroup in $subsToProcessInCustomDataCollectionGroupedByQuotaId) {
 
             $counterBatch = [PSCustomObject] @{ Value = 0 }
             $batchSize = 100
-            $subscriptionsBatch = ($subsToProcessInCustomDataCollection | Sort-Object -Property subscriptionQuotaId) | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
+            $subscriptionsBatch = ($quotaIdGroup.Group) | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
             $batchCnt = 0
+            Write-Host " Processing $($quotaIdGroup.Count) Subscriptions with QuotaId '$($quotaIdGroup.Name)' in $(($subscriptionsBatch | Measure-Object).Count) batch(es) of max $batchSize Subscriptions"
 
             foreach ($batch in $subscriptionsBatch) {
+                $cnter++
                 $batchCnt++
-                $subscriptionIdsOptimizedForBody = '"{0}"' -f (($batch.Group).subscriptionId -join '","')
-                $currenttask = "Getting Consumption data #batch$($batchCnt)/$(($subscriptionsBatch | Measure-Object).Count) (scope MG '$($ManagementGroupId)') for $(($batch.Group).Count) Subscriptions (QuotaId Whitelist: '$($SubscriptionQuotaIdWhitelist -join ', ')') for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
-                Write-Host "$currentTask" -ForegroundColor Cyan
+                if ($quotaIdGroup.Name -in $SubscriptionQuotaIdsThatDoNotSupportCostManagementManagementGroupScopeQuery) {
+                    Write-Host " Enforcing 'foreach Subscription' Subscription scope mode, due to QuotaId '$($quotaIdGroup.Name)' for $($batch.Group.Count) Subscriptions"
+                    $mgConsumptionData = 'NoValidSubscriptions'
+                }
+                else {
+                    $subscriptionIdsOptimizedForBody = '"{0}"' -f (($batch.Group).subscriptionId -join '","')
+                    $currenttask = "  Getting Consumption data QuotaId '$($quotaIdGroup.Name)' #batch$($batchCnt)/$(($subscriptionsBatch | Measure-Object).Count) (scope MG '$($ManagementGroupId)') for $(($batch.Group).Count) Subscriptions for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
+                    Write-Host "$currentTask" -ForegroundColor Cyan
 
-                $body = @"
-{
-"type": "ActualCost",
-"dataset": {
-    "granularity": "none",
-    "filter": {
-        "dimensions": {
-            "name": "SubscriptionId",
-            "operator": "In",
-            "values": [
-                $($subscriptionIdsOptimizedForBody)
-            ]
-        }
+
+                    $bodyMGScope = @"
+    {
+    "type": "ActualCost",
+    "dataset": {
+        "granularity": "none",
+        "filter": {
+            "dimensions": {
+                "name": "SubscriptionId",
+                "operator": "In",
+                "values": [
+                    $($subscriptionIdsOptimizedForBody)
+                ]
+            }
+        },
+        "aggregation": {
+            "totalCost": {
+                "name": "PreTaxCost",
+                "function": "Sum"
+            }
+        },
+        "grouping": [
+            {
+                "type": "Dimension",
+                "name": "SubscriptionId"
+            },
+            {
+                "type": "Dimension",
+                "name": "ResourceId"
+            },
+            {
+                "type": "Dimension",
+                "name": "ResourceType"
+            },
+            {
+                "type": "Dimension",
+                "name": "MeterCategory"
+            },
+            {
+                "type": "Dimension",
+                "name": "ChargeType"
+            }
+        ]
     },
-    "aggregation": {
-        "totalCost": {
-            "name": "PreTaxCost",
-            "function": "Sum"
-        }
-    },
-    "grouping": [
-        {
-            "type": "Dimension",
-            "name": "SubscriptionId"
-        },
-        {
-            "type": "Dimension",
-            "name": "ResourceId"
-        },
-        {
-            "type": "Dimension",
-            "name": "ResourceType"
-        },
-        {
-            "type": "Dimension",
-            "name": "MeterCategory"
-        },
-        {
-            "type": "Dimension",
-            "name": "ChargeType"
-        }
-    ]
-},
-"timeframe": "Custom",
-"timeperiod": {
-    "from": "$($azureConsumptionStartDate)",
-    "to": "$($azureConsumptionEndDate)"
-}
-}
+    "timeframe": "Custom",
+    "timeperiod": {
+        "from": "$($azureConsumptionStartDate)",
+        "to": "$($azureConsumptionEndDate)"
+    }
+    }
 "@
 
-                $mgConsumptionData = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
-                #endregion mgScopeWhitelisted
+                    $mgConsumptionDataParametersSplat = @{
+                        AzAPICallConfiguration = $azAPICallConf
+                        uri                    = $uri
+                        method                 = 'POST'
+                        body                   = $bodyMGScope
+                        currentTask            = $currentTask
+                        listenOn               = 'ContentProperties'
+                    }
+                    $mgConsumptionData = AzAPICall @mgConsumptionDataParametersSplat
+
+                }
 
                 <#test
                 #$mgConsumptionData = "OfferNotSupported"
@@ -110,7 +131,10 @@
                     $mgConsumptionData = "OfferNotSupported"
                 }
                 #>
-
+                #enforce switch to 'foreach Subscription' Subscription scope mode
+                # if ($cnter -eq 2) {
+                #     $mgConsumptionData = 'Unauthorized'
+                # }
                 if ($mgConsumptionData -eq 'Unauthorized' -or $mgConsumptionData -eq 'OfferNotSupported' -or $mgConsumptionData -eq 'NoValidSubscriptions') {
                     if (-not $script:htConsumptionExceptionLog.Mg.($ManagementGroupId)) {
                         $script:htConsumptionExceptionLog.Mg.($ManagementGroupId) = @{}
@@ -120,59 +144,57 @@
                         Subscriptions = ($batch.Group).subscriptionId
                     }
 
-                    Write-Host " Switching to 'foreach Subscription' Subscription scope mode. Getting Consumption data #batch$($batchCnt) using Management Group scope failed."
-                    #region subScopewhitelisted
-                    $body = @"
-{
-"type": "ActualCost",
-"dataset": {
-    "granularity": "none",
-    "aggregation": {
-        "totalCost": {
-            "name": "PreTaxCost",
-            "function": "Sum"
-        }
+                    Write-Host " Switching to 'foreach Subscription' Subscription scope mode. Getting Consumption data for $($batch.Group.Count) Subscriptions of QuotaId '$($quotaIdGroup.Name)' #batch$($batchCnt)/$(($subscriptionsBatch | Measure-Object).Count)"
+                    $bodySubScope = @"
+    {
+    "type": "ActualCost",
+    "dataset": {
+        "granularity": "none",
+        "aggregation": {
+            "totalCost": {
+                "name": "PreTaxCost",
+                "function": "Sum"
+            }
+        },
+        "grouping": [
+            {
+                "type": "Dimension",
+                "name": "SubscriptionId"
+            },
+            {
+                "type": "Dimension",
+                "name": "ResourceId"
+            },
+            {
+                "type": "Dimension",
+                "name": "ResourceType"
+            },
+            {
+                "type": "Dimension",
+                "name": "MeterCategory"
+            },
+            {
+                "type": "Dimension",
+                "name": "ChargeType"
+            }
+        ]
     },
-    "grouping": [
-        {
-            "type": "Dimension",
-            "name": "SubscriptionId"
-        },
-        {
-            "type": "Dimension",
-            "name": "ResourceId"
-        },
-        {
-            "type": "Dimension",
-            "name": "ResourceType"
-        },
-        {
-            "type": "Dimension",
-            "name": "MeterCategory"
-        },
-        {
-            "type": "Dimension",
-            "name": "ChargeType"
-        }
-    ]
-},
-"timeframe": "Custom",
-"timeperiod": {
-    "from": "$($azureConsumptionStartDate)",
-    "to": "$($azureConsumptionEndDate)"
-}
-}
+    "timeframe": "Custom",
+    "timeperiod": {
+        "from": "$($azureConsumptionStartDate)",
+        "to": "$($azureConsumptionEndDate)"
+    }
+    }
 "@
                     $funcAddToAllConsumptionData = $function:addToAllConsumptionData.ToString()
                     $batch.Group | ForEach-Object -Parallel {
                         $subIdToProcess = $_.subscriptionId
                         $subNameToProcess = $_.subscriptionName
-                        $subscriptionQuotaIdToProcess = $_.subscriptionQuotaId
+                        $subQuotaId = $_.subscriptionQuotaId
                         #region UsingVARs
-                        $body = $using:body
+                        $bodySubScope = $using:bodySubScope
                         $azureConsumptionStartDate = $using:azureConsumptionStartDate
                         $azureConsumptionEndDate = $using:azureConsumptionEndDate
-                        $SubscriptionQuotaIdWhitelist = $using:SubscriptionQuotaIdWhitelist
                         #fromOtherFunctions
                         $azAPICallConf = $using:azAPICallConf
                         $scriptPath = $using:ScriptPath
@@ -186,15 +208,33 @@
                         $costManagementQueryAPIVersion = $using:costManagementQueryAPIVersion
                         #endregion UsingVARs
 
-                        $currentTask = "  Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)) (whitelist))"
+                        $currentTask = "  Getting Consumption data scope Sub (Subscription: $($subNameToProcess) '$($subIdToProcess)' QuotaId '$($subQuotaId)')"
                         #test
                         Write-Host $currentTask
                         #https://learn.microsoft.com/rest/api/cost-management/query/usage
                         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=$($costManagementQueryAPIVersion)&`$top=5000"
-                        $method = 'POST'
-                        $subConsumptionData = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
-                        if ($subConsumptionData -eq 'Unauthorized' -or $subConsumptionData -eq 'OfferNotSupported' -or $subConsumptionData -eq 'InvalidQueryDefinition' -or $subConsumptionData -eq 'NonValidWebDirectAIRSOfferType' -or $subConsumptionData -eq 'NotFoundNotSupported' -or $subConsumptionData -eq 'IndirectCostDisabled') {
-                            Write-Host "   Failed ($subConsumptionData) - Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)) (whitelist))"
+                        $subConsumptionDataParametersSplat = @{
+                            AzAPICallConfiguration = $azAPICallConf
+                            uri                    = $uri
+                            method                 = 'POST'
+                            body                   = $bodySubScope
+                            currentTask            = $currentTask
+                            listenOn               = 'ContentProperties'
+                        }
+                        $subConsumptionData = AzAPICall @subConsumptionDataParametersSplat
+
+                        $subscriptionScopeKnownErrors = @(
+                            'Unauthorized',
+                            'OfferNotSupported',
+                            'InvalidQueryDefinition',
+                            'NonValidWebDirectAIRSOfferType',
+                            'NotFoundNotSupported',
+                            'IndirectCostDisabled',
+                            'SubscriptionCostDisabled'
+                        )
+
+                        if ($subConsumptionData -in $subscriptionScopeKnownErrors) {
+                            Write-Host "   Failed ($subConsumptionData) - Getting Consumption data scope Sub (Subscription: $($subNameToProcess) '$($subIdToProcess)' QuotaId '$($subQuotaId)')"
                             $hlper = $htAllSubscriptionsFromAPI.($subIdToProcess).subDetails
                             $hlper2 = $htSubscriptionsMgPath.($subIdToProcess)
                             $script:htConsumptionExceptionLog.Sub.($subIdToProcess) = @{
@@ -209,240 +249,34 @@
                             Continue
                         }
                         else {
-                            Write-Host "   $($subConsumptionData.Count) Consumption data entries ((scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess))))"
-                            if ($subConsumptionData.Count -gt 0) {
-                                addToAllConsumptionData -consumptiondataFromAPI $subConsumptionData
-                                <#
-                                foreach ($consumptionEntry in $subConsumptionData) {
-                                    if ($consumptionEntry.PreTaxCost -ne 0) {
-                                        $null = $script:allConsumptionData.Add($consumptionEntry)
-                                    }
-                                }
-                                #>
-
+                            Write-Host "   $($subConsumptionData.properties.rows.Count) Consumption data entries (scope Sub $($subNameToProcess) '$($subIdToProcess)')"
+                            if ($subConsumptionData.properties.rows.Count -gt 0) {
+                                addToAllConsumptionData -consumptiondataFromAPI $subConsumptionData -subscriptionQuotaId $subQuotaId
                             }
                         }
                     } -ThrottleLimit $ThrottleLimit
-                    #endregion subScopewhitelisted
                 }
                 else {
-                    Write-Host " $($mgConsumptionData.Count) Consumption data entries"
-                    if ($mgConsumptionData.Count -gt 0) {
-                        addToAllConsumptionData -consumptiondataFromAPI $mgConsumptionData
-                        <#
-                        foreach ($consumptionEntry in $mgConsumptionData) {
-                            if ($consumptionEntry.PreTaxCost -ne 0) {
-                                $null = $script:allConsumptionData.Add($consumptionEntry)
-                            }
-                        }
-                        #>
+                    Write-Host "  #batch$($batchCnt)/$(($subscriptionsBatch | Measure-Object).Count) for $($batch.Group.Count) Subscriptions of QuotaId '$($quotaIdGroup.Name)' returned $($mgConsumptionData.properties.rows.Count) Consumption data entries"
+                    if ($mgConsumptionData.properties.rows.Count -gt 0) {
+                        addToAllConsumptionData -consumptiondataFromAPI $mgConsumptionData -subscriptionQuotaId $quotaIdGroup.Name
                     }
                 }
             }
-        }
-        else {
-            $detailShowStopperResult = 'NoWhitelistSubscriptionsPresent'
-            Write-Host ' No Subscriptions matching whitelist present, skipping Consumption data processing'
-            #überprüfen
         }
     }
     else {
-
-        if ($subsToProcessInCustomDataCollectionCount -gt 0) {
-            #region mgScope
-            $currenttask = "Getting Consumption data (scope MG '$($ManagementGroupId)') for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
-            Write-Host "$currentTask"
-            #https://learn.microsoft.com/rest/api/cost-management/query/usage
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=$($costManagementQueryAPIVersion)&`$top=5000"
-            $method = 'POST'
-            $body = @"
-{
-    "type": "ActualCost",
-    "dataset": {
-        "granularity": "none",
-        "aggregation": {
-            "totalCost": {
-                "name": "PreTaxCost",
-                "function": "Sum"
-            }
-        },
-        "grouping": [
-            {
-                "type": "Dimension",
-                "name": "SubscriptionId"
-            },
-            {
-                "type": "Dimension",
-                "name": "ResourceId"
-            },
-            {
-                "type": "Dimension",
-                "name": "ResourceType"
-            },
-            {
-                "type": "Dimension",
-                "name": "MeterCategory"
-            },
-            {
-                "type": "Dimension",
-                "name": "ChargeType"
-            }
-        ]
-    },
-    "timeframe": "Custom",
-    "timeperiod": {
-        "from": "$($azureConsumptionStartDate)",
-        "to": "$($azureConsumptionEndDate)"
-    }
-}
-"@
-            #$script:allConsumptionData = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
-            $allConsumptionDataAPIResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
-            #endregion mgScope
-
-            #test
-            #$allConsumptionData = "OfferNotSupported"
-
-            if ($allConsumptionDataAPIResult -eq 'AccountCostDisabled' <#-or $allConsumptionDataAPIResult -eq 'NoValidSubscriptions'#>) {
-                if ($allConsumptionDataAPIResult -eq 'AccountCostDisabled') {
-                    $detailShowStopperResult = $allConsumptionDataAPIResult
-                }
-                <#if ($allConsumptionDataAPIResult -eq 'NoValidSubscriptions') {
-                    $detailShowStopperResult = $allConsumptionDataAPIResult
-                }#>
-            }
-            else {
-                if ($allConsumptionDataAPIResult -eq 'Unauthorized' -or $allConsumptionDataAPIResult -eq 'OfferNotSupported' -or $allConsumptionDataAPIResult -eq 'NoValidSubscriptions' -or $allConsumptionDataAPIResult -eq 'tooManySubscriptions') {
-                    $script:htConsumptionExceptionLog.Mg.($ManagementGroupId) = @{
-                        Exception = $allConsumptionDataAPIResult
-                    }
-                    Write-Host " Switching to 'foreach Subscription' mode. Getting Consumption data using Management Group scope failed."
-                    #region subScope
-                    $body = @"
-{
-    "type": "ActualCost",
-    "dataset": {
-        "granularity": "none",
-        "aggregation": {
-            "totalCost": {
-                "name": "PreTaxCost",
-                "function": "Sum"
-            }
-        },
-        "grouping": [
-            {
-                "type": "Dimension",
-                "name": "SubscriptionId"
-            },
-            {
-                "type": "Dimension",
-                "name": "ResourceId"
-            },
-            {
-                "type": "Dimension",
-                "name": "ResourceType"
-            },
-            {
-                "type": "Dimension",
-                "name": "MeterCategory"
-            },
-            {
-                "type": "Dimension",
-                "name": "ChargeType"
-            }
-        ]
-    },
-    "timeframe": "Custom",
-    "timeperiod": {
-        "from": "$($azureConsumptionStartDate)",
-        "to": "$($azureConsumptionEndDate)"
-    }
-}
-"@
-
-                    $funcAddToAllConsumptionData = $function:addToAllConsumptionData.ToString()
-                    $subsToProcessInCustomDataCollection | ForEach-Object -Parallel {
-                        $subIdToProcess = $_.subscriptionId
-                        $subNameToProcess = $_.subscriptionName
-                        $subscriptionQuotaIdToProcess = $_.subscriptionQuotaId
-                        #region UsingVARs
-                        $body = $using:body
-                        $azureConsumptionStartDate = $using:azureConsumptionStartDate
-                        $azureConsumptionEndDate = $using:azureConsumptionEndDate
-                        #fromOtherFunctions
-                        $azAPICallConf = $using:azAPICallConf
-                        $scriptPath = $using:ScriptPath
-                        #Array&HTs
-                        $htSubscriptionsMgPath = $using:htSubscriptionsMgPath
-                        $htAllSubscriptionsFromAPI = $using:htAllSubscriptionsFromAPI
-                        $allConsumptionData = $using:allConsumptionData
-                        $htConsumptionExceptionLog = $using:htConsumptionExceptionLog
-                        #other
-                        $function:addToAllConsumptionData = $using:funcAddToAllConsumptionData
-                        $costManagementQueryAPIVersion = $using:costManagementQueryAPIVersion
-                        #endregion UsingVARs
-
-                        $currentTask = "  Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
-                        #test
-                        Write-Host $currentTask
-                        #https://learn.microsoft.com/rest/api/cost-management/query/usage
-                        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subIdToProcess)/providers/Microsoft.CostManagement/query?api-version=$($costManagementQueryAPIVersion)&`$top=5000"
-                        $method = 'POST'
-                        $subConsumptionData = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask -listenOn 'ContentProperties'
-                        if ($subConsumptionData -eq 'Unauthorized' -or $subConsumptionData -eq 'OfferNotSupported' -or $subConsumptionData -eq 'InvalidQueryDefinition' -or $subConsumptionData -eq 'NonValidWebDirectAIRSOfferType' -or $subConsumptionData -eq 'NotFoundNotSupported' -or $subConsumptionData -eq 'IndirectCostDisabled') {
-                            Write-Host "   Failed ($subConsumptionData) - Getting Consumption data (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
-                            $hlper = $htAllSubscriptionsFromAPI.($subIdToProcess).subDetails
-                            $hlper2 = $htSubscriptionsMgPath.($subIdToProcess)
-                            $script:htConsumptionExceptionLog.Sub.($subIdToProcess) = @{
-                                Exception        = $subConsumptionData
-                                SubscriptionId   = $subIdToProcess
-                                SubscriptionName = $hlper.displayName
-                                QuotaId          = $hlper.subscriptionPolicies.quotaId
-                                mgPath           = $hlper2.ParentNameChainDelimited
-                                mgParent         = $hlper2.Parent
-                            }
-
-                            Continue
-                        }
-                        else {
-                            Write-Host "   $($subConsumptionData.Count) Consumption data entries (scope Sub $($subNameToProcess) '$($subIdToProcess)' ($($subscriptionQuotaIdToProcess)))"
-                            if ($subConsumptionData.Count -gt 0) {
-                                addToAllConsumptionData -consumptiondataFromAPI $subConsumptionData
-                                <#
-                            foreach ($consumptionEntry in $subConsumptionData) {
-                                if ($consumptionEntry.PreTaxCost -ne 0) {
-                                    $null = $script:allConsumptionData.Add($consumptionEntry)
-                                }
-                            }
-                            #>
-                            }
-                        }
-                    } -ThrottleLimit $ThrottleLimit
-                    #endregion subScope
-                }
-                else {
-                    Write-Host " $($allConsumptionDataAPIResult.properties.rows.Count) Consumption data entries"
-                    if ($allConsumptionDataAPIResult.properties.rows.Count -gt 0) {
-                        addToAllConsumptionData -consumptiondataFromAPI $allConsumptionDataAPIResult
-                    }
-                }
-            }
-        }
-        else {
-            $detailShowStopperResult = 'NoSubscriptionsPresent'
-            Write-Host ' No Subscriptions present, skipping Consumption data processing'
-        }
+        $detailShowStopperResult = 'NoSubscriptionsPresent'
+        Write-Host ' No Subscriptions present, skipping Consumption data processing'
     }
 
-    if ($detailShowStopperResult -eq 'AccountCostDisabled' -or $detailShowStopperResult -eq 'NoValidSubscriptions' -or $detailShowStopperResult -eq 'NoWhitelistSubscriptionsPresent' -or $detailShowStopperResult -eq 'NoSubscriptionsPresent') {
+
+    if ($detailShowStopperResult -eq 'AccountCostDisabled' -or $detailShowStopperResult -eq 'NoValidSubscriptions' -or $detailShowStopperResult -eq 'NoSubscriptionsPresent') {
         if ($detailShowStopperResult -eq 'AccountCostDisabled') {
             Write-Host ' Seems Access to cost data has been disabled for this Account - skipping CostManagement'
         }
         if ($detailShowStopperResult -eq 'NoValidSubscriptions') {
             Write-Host ' Seems there are no valid Subscriptions present - skipping CostManagement'
-        }
-        if ($detailShowStopperResult -eq 'NoWhitelistSubscriptionsPresent') {
-            Write-Host " Seems there are no Subscriptions present that match the whitelist ($($SubscriptionQuotaIdWhitelist -join ', ')) - skipping CostManagement"
         }
         if ($detailShowStopperResult -eq 'NoSubscriptionsPresent') {
             Write-Host ' Seems there are no Subscriptions present - skipping CostManagement'

@@ -1,4 +1,4 @@
-function buildJSON {
+﻿function buildJSON {
     #$fileTimestamp  = Get-Date -Format "yyyyMM-dd HHmmss"
     $startJSON = Get-Date
     $startBuildHt = Get-Date

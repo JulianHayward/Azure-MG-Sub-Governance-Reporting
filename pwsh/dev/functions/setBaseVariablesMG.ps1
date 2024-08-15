@@ -1,4 +1,4 @@
-function setBaseVariablesMG {
+﻿function setBaseVariablesMG {
     if (($azAPICallConf['checkContext']).Tenant.Id -ne $ManagementGroupId) {
         $script:mgSubPathTopMg = $selectedManagementGroupId.ParentName
         $script:getMgParentId = $selectedManagementGroupId.ParentName

@@ -1,4 +1,4 @@
-function processManagedIdentities {
+﻿function processManagedIdentities {
     Write-Host 'Processing Service Principals - Managed Identities'
     $startSPMI = Get-Date
     $script:servicePrincipalsOfTypeManagedIdentity = $htServicePrincipals.Keys.where( { $htServicePrincipals.($_).servicePrincipalType -eq 'ManagedIdentity' } )

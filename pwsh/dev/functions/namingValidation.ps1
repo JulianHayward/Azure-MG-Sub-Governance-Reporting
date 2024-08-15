@@ -1,4 +1,4 @@
-function NamingValidation($toCheck) {
+﻿function NamingValidation($toCheck) {
     $checks = @(':', '/', '\', '<', '>', '|', '"')
     $array = [System.Collections.ArrayList]@()
     foreach ($check in $checks) {

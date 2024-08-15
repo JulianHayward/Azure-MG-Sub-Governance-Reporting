@@ -1,4 +1,4 @@
-function buildTree($mgId, $prnt) {
+﻿function buildTree($mgId, $prnt) {
     $getMg = $htEntities.values.where( { $_.type -eq 'Microsoft.Management/managementGroups' -and $_.id -eq $mgId })
     $childrenManagementGroups = $htEntities.values.where( { $_.type -eq 'Microsoft.Management/managementGroups' -and $_.parentId -eq "/providers/Microsoft.Management/managementGroups/$($getMg.Id)" })
     $mgNameValid = removeInvalidFileNameChars $getMg.Id

@@ -1,4 +1,4 @@
-function getResourceDiagnosticsCapability {
+﻿function getResourceDiagnosticsCapability {
     Write-Host 'Checking Resource Types Diagnostics capability (1st party only)'
     $startResourceDiagnosticsCheck = Get-Date
     if (($resourcesAll).count -gt 0) {

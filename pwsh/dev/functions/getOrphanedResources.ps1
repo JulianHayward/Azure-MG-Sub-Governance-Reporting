@@ -1,4 +1,4 @@
-function getOrphanedResources {
+﻿function getOrphanedResources {
     $start = Get-Date
     Write-Host 'Getting orphaned/unused resources (ARG)'
 
@@ -114,6 +114,7 @@ resources | where type =~ 'microsoft.network/publicIpAddresses'
 resources
 | where type =~ 'microsoft.compute/availabilitySets'
 | where properties.virtualMachines == '[]'
+| where not(name endswith '-asr')
 | project type, subscriptionId, Resource=id, Intent='$intent'
 "@
             intent    = $intent
