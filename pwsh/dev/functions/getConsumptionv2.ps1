@@ -1,7 +1,4 @@
 ﻿function getConsumptionv2 {
-    #todo: remove
-    Write-Host '#########-----------------#########' -ForegroundColor DarkMagenta
-    Write-Host 'Executing getConsumptionv2' -ForegroundColor DarkMagenta
 
     $costManagementQueryAPIVersion = $azAPICallConf['htParameters'].APIMappingCloudEnvironment.costManagementQuery.($azAPICallConf['htParameters'].azureCloudEnvironment)
 

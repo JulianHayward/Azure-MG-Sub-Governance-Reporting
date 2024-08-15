@@ -365,7 +365,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.4.12',
+    $ProductVersion = '6.5.0',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -3339,9 +3339,6 @@ function getConsumption {
     Write-Host "Getting Consumption data duration: $((New-TimeSpan -Start $startConsumptionData -End $endConsumptionData).TotalSeconds) seconds"
 }
 function getConsumptionv2 {
-    #todo: remove
-    Write-Host '#########-----------------#########' -ForegroundColor DarkMagenta
-    Write-Host 'Executing getConsumptionv2' -ForegroundColor DarkMagenta
 
     $costManagementQueryAPIVersion = $azAPICallConf['htParameters'].APIMappingCloudEnvironment.costManagementQuery.($azAPICallConf['htParameters'].azureCloudEnvironment)
 
@@ -35421,7 +35418,7 @@ if (-not $HierarchyMapOnly) {
     }
 
     if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
-        getConsumption
+        getConsumptionv2
     }
 
     getOrphanedResources

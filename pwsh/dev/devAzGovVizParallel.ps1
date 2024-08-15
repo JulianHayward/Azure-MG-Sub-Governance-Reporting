@@ -365,7 +365,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.4.12',
+    $ProductVersion = '6.5.0',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -1123,7 +1123,7 @@ if (-not $HierarchyMapOnly) {
     }
 
     if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
-        getConsumption
+        getConsumptionv2
     }
 
     getOrphanedResources
