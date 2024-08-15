@@ -1,5 +1,7 @@
 # Azure Governance Visualizer aka AzGovViz
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/badge)](https://scorecard.dev/viewer/?uri=github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting)
+
 _Do you want to get granular insights on your technical Azure Governance implementation and document it in CSV, HTML, Markdown, and JSON?_
 
 Azure Governance Visualizer is a PowerShell based script that iterates through your Azure Tenant's Management Group hierarchy, starting from the root Management Group down to the Subscription, Resource Group and Resource level. It collects data from various Azure APIs including Azure ARM, Microsoft Graph and Storage.
