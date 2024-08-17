@@ -1,4 +1,4 @@
-function exportResourceLocks {
+﻿function exportResourceLocks {
     $arrayResourceLocks4CSV = [System.Collections.ArrayList]@()
     foreach ($sub in $htResourceLocks.Keys) {
         $hlper = $htSubscriptionsMgPath.($sub)

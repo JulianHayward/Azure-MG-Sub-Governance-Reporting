@@ -1,4 +1,4 @@
-function handleCloudEnvironment {
+﻿function handleCloudEnvironment {
     Write-Host "Environment: $($azAPICallConf['checkContext'].Environment.Name)"
     if ($DoAzureConsumption) {
         if ($azAPICallConf['checkContext'].Environment.Name -eq 'AzureChinaCloud') {

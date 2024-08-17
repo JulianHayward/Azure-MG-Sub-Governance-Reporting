@@ -1,4 +1,4 @@
-function getPIMEligible {
+﻿function getPIMEligible {
     $start = Get-Date
 
     $currentTask = 'Get PIM onboarded Subscriptions and Management Groups'
@@ -12,15 +12,16 @@ function getPIMEligible {
         if (-not $PIMEligibilityIgnoreScope) {
             if (($azAPICallConf['checkContext']).Tenant.Id -ne $ManagementGroupId) {
                 foreach ($entry in $res) {
+                    $entryIdGuid = $entry.externalId -replace '.*/'
                     if ($entry.type -eq 'managementGroup') {
-                        if ($htManagementGroupsMgPath.($ManagementGroupId).ParentNameChain -contains ($entry.externalId -replace '.*/') -or $htManagementGroupsMgPath.($entry.externalId -replace '.*/').path -contains $ManagementGroupId) {
+                        if ($htManagementGroupsMgPath.($ManagementGroupId).ParentNameChain -contains ($entryIdGuid) -or $htManagementGroupsMgPath.($entryIdGuid).path -contains $ManagementGroupId) {
                             $null = $scopesToIterate.Add($entry)
                         }
                     }
                     if ($entry.type -eq 'subscription') {
-                        if ($htSubscriptionsMgPath.($entry.externalId -replace '.*/').ParentNameChain -contains $ManagementGroupId) {
-                            if ($htOutOfScopeSubscriptions.($entry.externalId -replace '.*/')) {
-                                Write-Host "excluding subscription $($entry.externalId -replace '.*/') (outOfScopeSubscription -> $($htOutOfScopeSubscriptions.($entry.externalId -replace '.*/').outOfScopeReason)) (`$PIMEligibilityIgnoreScope=$PIMEligibilityIgnoreScope)"
+                        if ($htSubscriptionsMgPath.($entryIdGuid).ParentNameChain -contains $ManagementGroupId) {
+                            if ($htOutOfScopeSubscriptions.($entryIdGuid)) {
+                                Write-Host "excluding subscription $($entryIdGuid) (outOfScopeSubscription -> $($htOutOfScopeSubscriptions.($entryIdGuid).outOfScopeReason)) (`$PIMEligibilityIgnoreScope=$PIMEligibilityIgnoreScope)"
                             }
                             else {
                                 $null = $scopesToIterate.Add($entry)
@@ -31,8 +32,9 @@ function getPIMEligible {
             }
             else {
                 foreach ($entry in $res) {
-                    if ($htOutOfScopeSubscriptions.($entry.externalId -replace '.*/')) {
-                        Write-Host "excluding subscription $($entry.externalId -replace '.*/') (outOfScopeSubscription -> $($htOutOfScopeSubscriptions.($entry.externalId -replace '.*/').outOfScopeReason)) (`$PIMEligibilityIgnoreScope=$PIMEligibilityIgnoreScope)"
+                    $entryIdGuid = $entry.externalId -replace '.*/'
+                    if ($htOutOfScopeSubscriptions.($entryIdGuid)) {
+                        Write-Host "excluding subscription $($entryIdGuid) (outOfScopeSubscription -> $($htOutOfScopeSubscriptions.($entryIdGuid).outOfScopeReason)) (`$PIMEligibilityIgnoreScope=$PIMEligibilityIgnoreScope)"
                     }
                     else {
                         $null = $scopesToIterate.Add($entry)
@@ -51,7 +53,7 @@ function getPIMEligible {
             Write-Host " Found $($entry.Count) PIM onboarded $($entry.Name)s"
         }
 
-        $htPIMEligibleDirect = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable)) #@{}
+        $htPIMEligibleDirect = [System.Collections.Hashtable]::Synchronized(@{})
         $relevantSubscriptionIds = $subsToProcessInCustomDataCollection.subscriptionId
 
         if ($scopesToIterate.Count -gt 0) {

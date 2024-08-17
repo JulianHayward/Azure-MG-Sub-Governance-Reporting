@@ -1,5 +1,7 @@
 # Azure Governance Visualizer aka AzGovViz
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/badge)](https://scorecard.dev/viewer/?uri=github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting)
+
 _Do you want to get granular insights on your technical Azure Governance implementation and document it in CSV, HTML, Markdown, and JSON?_
 
 Azure Governance Visualizer is a PowerShell based script that iterates through your Azure Tenant's Management Group hierarchy, starting from the root Management Group down to the Subscription, Resource Group and Resource level. It collects data from various Azure APIs including Azure ARM, Microsoft Graph and Storage.
@@ -35,7 +37,6 @@ Azure Governance Visualizer is intended to help you to get a holistic overview o
   - [Azure Governance Visualizer @ Microsoft CAF](#azure-governance-visualizer--microsoft-caf)
     - [Microsoft Cloud Adoption Framework (CAF)](#microsoft-cloud-adoption-framework-caf)
     - [Azure Governance Visualizer accelerator](#azure-governance-visualizer-accelerator)
-  - [ChatGPT](#chatgpt)
   - [:rocket: Azure Governance Visualizer deployment guide](#rocket-azure-governance-visualizer-deployment-guide)
   - [Release history](#release-history)
   - [Demo](#demo)
@@ -71,41 +72,31 @@ Azure Governance Visualizer is intended to help you to get a holistic overview o
 - Listed as [tool](https://learn.microsoft.com/azure/cloud-adoption-framework/resources/tools-templates#govern) for the Govern discipline in the Microsoft Cloud Adoption Framework.
 - Included in the Cloud Adoption Framework's [Strategy-Plan-Ready-Governance](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template.
 
-### Azure Governance Visualizer accelerator
-
-The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) provides an easy and fast deployment process that automates the creation and publishing of AzGovViz to an Azure Web Application and provides automation to configuring the pre-requisites for AzGovViz.
-
-## ChatGPT
-
-![ChatGPT](img/chatGPT.png)
-
 ## :rocket: Azure Governance Visualizer deployment guide
 
 The instructions to deploy the Azure Governance Visualizer is found in the **[Azure Governance Visualizer (AzGovViz) deployment guide](setup.md)**. Follow those instructions to run AzGovViz from your terminal (console), GitHub Codepaces, Azure DevOps, or GitHub.
 
 As an alternative, you can use the [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) to deploy the Azure Governance Visualizer per code.
 
+### Azure Governance Visualizer accelerator
+
+The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) provides an easy and fast deployment process that automates the creation and publishing of AzGovViz to an Azure Web Application and provides automation to configuring the pre-requisites for AzGovViz.
+
 ## Release history
 
-**Changes** (2024-May-05 / 6.4.5 Minor)
+**Changes** (2024-August-15 / 6.5.0 Minor/Patch)
 
-- updated orphaned resources queries following the source repository [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources/blob/111a7ea4ced2016760b1b95544f298b9b4be8dee/Queries/orphan-resources-queries.md) with slight adjustments
-- covering _I´ll call it_ 'tenant/service level Role definitions'
-- optimize/bug fix 'Processing roleDefinitions used in policyDefinitions'
-- increase the default value for `-AzureConsumptionPeriod` from `1` to `2` - if the Azure Governance Visualizer is executed early in the day, consumption data may not be accurate enough.. (reminder: the switch parameter `-DoAzureConsumption` must be set to `true` for the consumption data collection to kick in)
-- update default value for parameter `-ValidPolicyEffects`
-- update [API reference](#api-reference) Microsoft.Authorization/roleDefinitions use API version 2023-07-01-preview (previous 2022-05-01-preview)
-- update [API reference](#api-reference) Microsoft.ResourceGraph/resources use API version 2022-10-01 (previous 2021-03-01)
-- update [API reference](#api-reference) Microsoft.CostManagement/query use API version 2024-01-01 (previous 2023-03-01)
-
-**Changes** (2024-Apr-17 / 6.4.4 Minor)
-
-- fix issue #230
-  - use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.2.1
-- update [API reference](#api-reference) Microsoft.Security/pricings use API version 2024-01-01 (previous 2018-06-01)
-- add 'Mutate' to `ValidPolicyEffects`
-- location related tasks - use only physical locations (exclude logical)
-- optimize collection of Role definitions that are used in Policy definitions
+- ALZ policy refresh H2 FY24 (initiatives.json)
+- [DevSkim](https://github.com/microsoft/DevSkim-Action), [PSScriptAnalyzer](https://github.com/microsoft/psscriptanalyzer-action) and [OpenSSF Scorecard](https://github.com/ossf/scorecard?tab=readme-ov-file#scorecard-github-action) integration
+- fixes and optimization based on DevSkim, PSScriptAnalyzer and OpenSSF Scorecard findings
+- api version mapping in param block for cloud environment api version availability drift
+- update GitHub workflows to use azure/login@v2 (previous: azure/login@v1):
+  - [AzGovViz_OIDC.yml](/.github/workflows/AzGovViz_OIDC.yml)
+  - [AzGovViz.yml](/.github/workflows/AzGovViz.yml)
+- update getConsumption (getConsumptionv2): instead of full Management Group scope costmanagement data retrieval, batch by Subscription quotaId in batches of 100. Failing batches and batches of Subscriptions of quotaId `CSP_2015-05-01` (see param block variable `SubscriptionQuotaIdsThatDoNotSupportCostManagementManagementGroupScopeQuery`) will fallback to get costmanagement data per Subscription.
+- html; update jquery; source tablefilter js
+- update `.devcontainer/devcontainer.json`
+- use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.2.3 (Handle costManagement error `SubscriptionCostDisabled`)
 
 [Full release history](history.md)
 
@@ -122,6 +113,7 @@ More [demo output](https://github.com/JulianHayward/AzGovViz)
 - Microsoft Tech Talks - Bevan Sinclair (Cloud Solution Architect Microsoft) [Automated Governance Reporting in Azure (MTT0AEDT)](https://mtt.eventbuilder.com/event/66431) (register to view)
 - Microsoft Dev Radio (YouTube) [Get visibility into your environment with Azure Governance Visualizer](https://www.youtube.com/watch?v=hZXvF5oypLE)
 - Jack Tracey (Cloud Solution Architect Microsoft) [Azure Governance Visualizer With Azure DevOps](https://jacktracey.co.uk/azgovviz-with-azure-devops/)
+- SCHUTTEN.CLOUD [Automate Pertinent Governance Insight with Azure Governance Visualizer](https://schutten.cloud/post/azure-governance-visualizer/)
 
 ### Presentations
 

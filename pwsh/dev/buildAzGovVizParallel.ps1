@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]
     $skipVersionCompare
 )
@@ -20,7 +20,7 @@ $endIndex = $AzGovVizScriptFile.IndexOf('#endregion Functions')
 $textBefore = $AzGovVizScriptFile.SubString(0, $startIndex)
 $textAfter = $AzGovVizScriptFile.SubString($endIndex)
 
-$textBefore.TrimEnd(), $newContent, $textAfter | Set-Content -Path .\pwsh\AzGovVizParallel.ps1
+$textBefore.TrimEnd(), $newContent, $textAfter | Set-Content -Path .\pwsh\AzGovVizParallel.ps1 -Encoding utf8BOM
 
 $versionPattern = 'ProductVersion = '
 $versiontxt = (Select-String -Path .\pwsh\AzGovVizParallel.ps1 -Pattern $versionPattern) -replace ".*$versionPattern" -replace "'" -replace ','

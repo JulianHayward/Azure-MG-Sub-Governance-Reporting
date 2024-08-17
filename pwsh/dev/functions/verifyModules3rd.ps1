@@ -1,4 +1,4 @@
-function verifyModules3rd {
+﻿function verifyModules3rd {
     [CmdletBinding()]Param(
         [object]$modules
     )
@@ -93,7 +93,6 @@ function verifyModules3rd {
                     if (-not $installAzAPICallModuleSuccess) {
                         throw " Installing '$($module.ModuleName)' module ($($moduleVersion)) failed"
                     }
-
                 }
                 else {
                     do {

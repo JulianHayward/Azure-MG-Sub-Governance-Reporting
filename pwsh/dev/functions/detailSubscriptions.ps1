@@ -1,4 +1,4 @@
-function detailSubscriptions {
+﻿function detailSubscriptions {
     $start = Get-Date
     Write-Host 'Subscription picking'
     #API in rare cases returns duplicates, therefor sorting unique (id)

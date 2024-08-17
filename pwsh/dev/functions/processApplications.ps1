@@ -1,4 +1,4 @@
-function processApplications {
+﻿function processApplications {
     Write-Host 'Processing Service Principals - Applications'
     $script:servicePrincipalsOfTypeApplication = $htServicePrincipals.Keys.where( { $htServicePrincipals.($_).servicePrincipalType -eq 'Application' -and $htServicePrincipals.($_).appOwnerOrganizationId -eq $azAPICallConf['checkContext'].Subscription.TenantId } )
     if ($azAPICallConf['htParameters'].userType -eq 'Guest') {

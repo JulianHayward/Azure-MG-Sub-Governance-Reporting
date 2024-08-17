@@ -1,4 +1,4 @@
-function createTagList {
+﻿function createTagList {
     $startTagListArray = Get-Date
     Write-Host 'Creating TagList array'
 

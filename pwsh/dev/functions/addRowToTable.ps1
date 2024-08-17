@@ -1,4 +1,4 @@
-function addRowToTable() {
+﻿function addRowToTable() {
     Param (
         [string]$level = 0,
         [string]$mgName = '',

@@ -1,4 +1,4 @@
-function ResolveObjectIds {
+﻿function ResolveObjectIds {
     [CmdletBinding()]Param(
         [object]
         $objectIds,

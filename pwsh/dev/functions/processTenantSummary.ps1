@@ -1,4 +1,4 @@
-function processTenantSummary() {
+﻿function processTenantSummary() {
     Write-Host ' Building TenantSummary'
     showMemoryUsage
     if ($getMgParentName -eq 'Tenant Root') {
@@ -958,16 +958,17 @@ function processTenantSummary() {
         if (($tenantPolicy.RoleDefinitionIds) -ne 'n/a') {
             $policyRoleDefinitionsArray = @()
             $policyRoleDefinitionsArray = foreach ($roleDefinitionId in $tenantPolicy.RoleDefinitionIds | Sort-Object) {
-                if (($htCacheDefinitionsRole).($roleDefinitionId -replace '.*/').LinkToAzAdvertizer) {
-                    ($htCacheDefinitionsRole).($roleDefinitionId -replace '.*/').LinkToAzAdvertizer
+                $roleDefinitionIdGuid = $roledefinitionId -replace '.*/'
+                if (($htCacheDefinitionsRole).($roleDefinitionIdGuid).LinkToAzAdvertizer) {
+                    ($htCacheDefinitionsRole).($roleDefinitionIdGuid).LinkToAzAdvertizer
                 }
                 else {
-                    ($htCacheDefinitionsRole).($roleDefinitionId -replace '.*/').Name -replace '<', '&lt;' -replace '>', '&gt;'
+                    ($htCacheDefinitionsRole).($roleDefinitionIdGuid).Name -replace '<', '&lt;' -replace '>', '&gt;'
                 }
             }
             $policyRoleDefinitionsClearArray = @()
             $policyRoleDefinitionsClearArray = foreach ($roleDefinitionId in $tenantPolicy.RoleDefinitionIds | Sort-Object) {
-                ($htCacheDefinitionsRole).($roleDefinitionId -replace '.*/').Name
+                ($htCacheDefinitionsRole).($roleDefinitionIdGuid).Name
             }
             $policyRoleDefinitions = $policyRoleDefinitionsArray -join "$CsvDelimiterOpposite "
             $policyRoleDefinitionsClear = $policyRoleDefinitionsClearArray -join "$CsvDelimiterOpposite "
@@ -3797,8 +3798,9 @@ extensions: [{ name: 'sort' }]
             $hlp = $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentAll.PolicyAssignmentId)
             $relatedRoleAssignments = $hlp.relatedRoleAssignments
             $relatedRoleAssignmentsClear = $hlp.relatedRoleAssignmentsClear
-            if ($htManagedIdentityDisplayName.("$($policyAssignmentAll.PolicyAssignmentId -replace '.*/')_$($policyAssignmentAll.PolicyAssignmentId)")) {
-                $hlp = $htManagedIdentityDisplayName.("$($policyAssignmentAll.PolicyAssignmentId -replace '.*/')_$($policyAssignmentAll.PolicyAssignmentId)")
+            $hlperVar = "$($policyAssignmentAll.PolicyAssignmentId -replace '.*/')_$($policyAssignmentAll.PolicyAssignmentId)"
+            if ($htManagedIdentityDisplayName.($hlperVar)) {
+                $hlp = $htManagedIdentityDisplayName.($hlperVar)
                 $policyAssignmentMI = "$($hlp.displayname) (SPObjId: $($hlp.id))"
             }
         }
@@ -11032,8 +11034,9 @@ extensions: [{ name: 'sort' }]
 
                                 $roleDefinitionIdsArray = [System.Collections.ArrayList]@()
                                 foreach ($roleDefinitionId in ($policy).Json.properties.policyrule.then.details.roleDefinitionIds) {
-                                    if (($htCacheDefinitionsRole).($roleDefinitionId -replace '.*/')) {
-                                        $null = $roleDefinitionIdsArray.Add("<b>$(($htCacheDefinitionsRole).($roleDefinitionId -replace '.*/').Name)</b> ($($roleDefinitionId -replace '.*/'))")
+                                    $roleDefinitionIdGuid = $roleDefinitionId -replace '.*/'
+                                    if (($htCacheDefinitionsRole).($roleDefinitionIdGuid)) {
+                                        $null = $roleDefinitionIdsArray.Add("<b>$(($htCacheDefinitionsRole).($roleDefinitionIdGuid).Name)</b> ($($roleDefinitionIdGuid))")
                                     }
                                     else {
                                         Write-Host "  DiagnosticsLifeCycle: unknown RoleDefinition '$roleDefinitionId'"

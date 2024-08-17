@@ -1,4 +1,4 @@
-function processPrivateEndpoints {
+﻿function processPrivateEndpoints {
     $start = Get-Date
     Write-Host 'Processing Private Endpoints enrichment'
 

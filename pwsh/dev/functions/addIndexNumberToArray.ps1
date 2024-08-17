@@ -1,4 +1,4 @@
-function addIndexNumberToArray (
+﻿function addIndexNumberToArray (
     [Parameter(Mandatory = $True)]
     [array]$array
 ) {

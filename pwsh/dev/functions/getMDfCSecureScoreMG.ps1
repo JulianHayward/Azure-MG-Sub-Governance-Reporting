@@ -1,4 +1,4 @@
-function getMDfCSecureScoreMG {
+﻿function getMDfCSecureScoreMG {
     $start = Get-Date
     $currentTask = 'Getting Microsoft Defender for Cloud Secure Score for Management Groups'
     Write-Host $currentTask

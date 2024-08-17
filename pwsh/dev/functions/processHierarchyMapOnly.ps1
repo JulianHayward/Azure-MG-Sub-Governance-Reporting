@@ -1,4 +1,4 @@
-function processHierarchyMapOnly {
+﻿function processHierarchyMapOnly {
     foreach ($entity in $htEntities.values) {
         if ($entity.parentNameChain -contains $ManagementGroupID -or $entity.Id -eq $ManagementGroupId) {
 

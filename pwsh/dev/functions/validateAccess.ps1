@@ -1,4 +1,4 @@
-function validateAccess {
+﻿function validateAccess {
     #region validationAccess
     #validation / check 'Microsoft Graph API' Access
     $permissionCheckResults = @()

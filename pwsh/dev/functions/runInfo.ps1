@@ -1,4 +1,4 @@
-function runInfo {
+﻿function runInfo {
     #region RunInfo
     Write-Host 'Run Info:'
     if ($HierarchyMapOnly) {
