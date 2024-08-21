@@ -365,7 +365,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.5.0',
+    $ProductVersion = '6.5.1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
