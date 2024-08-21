@@ -967,6 +967,8 @@ if (-not $HierarchyMapOnly) {
         if ($azAPICallConf['htParameters'].DoAzureConsumptionPreviousMonth -eq $true) {
             $azureConsumptionStartDate = ((Get-Date).AddMonths(-1).AddDays( - $((Get-Date).Day) + 1)).ToString('yyyy-MM-dd')
             $azureConsumptionEndDate = ((Get-Date).AddDays( - $((Get-Date).Day))).ToString('yyyy-MM-dd')
+            # Since the start and end date is calculated to start of day, we need to add one to get the full month
+            $AzureConsumptionPeriod = (New-TimeSpan -Start $azureConsumptionStartDate -End $azureConsumptionEndDate).Days + 1
         }
     }
     $customDataCollectionDuration = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
