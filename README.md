@@ -84,9 +84,9 @@ The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Gov
 
 ## Release history
 
-**Changes** (2024-August-21 / 6.5.1 Patch)
+**Changes** (2024-August-28 / 6.5.2 Patch)
 
-- Calculate time span for AzureConsumptionPeriod when using `-DoAzureConsumptionPreviousMonth`
+- AAD -> EntraId
 
 [Full release history](history.md)
 
