@@ -4,6 +4,10 @@
 
 ### Azure Governance Visualizer version 6
 
+**Changes** (2024-August-21 / 6.5.1 Patch)
+
+- Calculate time span for AzureConsumptionPeriod when using `-DoAzureConsumptionPreviousMonth`
+
 **Changes** (2024-August-15 / 6.5.0 Minor/Patch)
 
 - ALZ policy refresh H2 FY24 (initiatives.json)

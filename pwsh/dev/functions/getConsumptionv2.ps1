@@ -34,7 +34,7 @@
     $startConsumptionData = Get-Date
 
     if ($subsToProcessInCustomDataCollectionCount -gt 0) {
-        $currenttask = "Getting Consumption data scope MG (ManagementGroupId '$($ManagementGroupId)') for $($subsToProcessInCustomDataCollectionCount) Subscriptions for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
+        $currenttask = "Getting Consumption data scope MG (ManagementGroupId '$($ManagementGroupId)') for $($subsToProcessInCustomDataCollectionCount) Subscriptions for $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
         Write-Host "$currentTask"
         #https://learn.microsoft.com/rest/api/cost-management/query/usage
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.CostManagement/query?api-version=$($costManagementQueryAPIVersion)&`$top=5000"
@@ -58,7 +58,7 @@
                 }
                 else {
                     $subscriptionIdsOptimizedForBody = '"{0}"' -f (($batch.Group).subscriptionId -join '","')
-                    $currenttask = "  Getting Consumption data QuotaId '$($quotaIdGroup.Name)' #batch$($batchCnt)/$(($subscriptionsBatch | Measure-Object).Count) (scope MG '$($ManagementGroupId)') for $(($batch.Group).Count) Subscriptions for period $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
+                    $currenttask = "  Getting Consumption data QuotaId '$($quotaIdGroup.Name)' #batch$($batchCnt)/$(($subscriptionsBatch | Measure-Object).Count) (scope MG '$($ManagementGroupId)') for $(($batch.Group).Count) Subscriptions for $AzureConsumptionPeriod days ($azureConsumptionStartDate - $azureConsumptionEndDate)"
                     Write-Host "$currentTask" -ForegroundColor Cyan
 
 
