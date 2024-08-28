@@ -4,6 +4,10 @@
 
 ### Azure Governance Visualizer version 6
 
+**Changes** (2024-August-28 / 6.5.2 Patch)
+
+- AAD -> EntraId
+
 **Changes** (2024-August-21 / 6.5.1 Patch)
 
 - Calculate time span for AzureConsumptionPeriod when using `-DoAzureConsumptionPreviousMonth`
