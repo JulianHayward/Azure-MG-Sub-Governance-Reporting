@@ -365,7 +365,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.5.2',
+    $ProductVersion = '6.5.3',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -2435,51 +2435,33 @@ function detailSubscriptions {
     foreach ($childrenSubscription in $childrenSubscriptions) {
 
         $sub = $htAllSubscriptionsFromAPI.($childrenSubscription.name)
-        if ($sub.subDetails.subscriptionPolicies.quotaId.startswith('AAD_', 'CurrentCultureIgnoreCase') -or $sub.subDetails.state -ne 'Enabled') {
-            if (($sub.subDetails.subscriptionPolicies.quotaId).startswith('AAD_', 'CurrentCultureIgnoreCase')) {
-                $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{
-                        subscriptionId      = $childrenSubscription.name
-                        subscriptionName    = $childrenSubscription.properties.displayName
-                        outOfScopeReason    = "QuotaId: AAD_ (State: $($sub.subDetails.state))"
-                        ManagementGroupId   = $htSubscriptionsMgPath.($childrenSubscription.name).Parent
-                        ManagementGroupName = $htSubscriptionsMgPath.($childrenSubscription.name).ParentName
-                        Level               = $htSubscriptionsMgPath.($childrenSubscription.name).level
-                    })
-            }
-            if ($sub.subDetails.state -ne 'Enabled') {
-                $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{
-                        subscriptionId      = $childrenSubscription.name
-                        subscriptionName    = $childrenSubscription.properties.displayName
-                        outOfScopeReason    = "State: $($sub.subDetails.state)"
-                        ManagementGroupId   = $htSubscriptionsMgPath.($childrenSubscription.name).Parent
-                        ManagementGroupName = $htSubscriptionsMgPath.($childrenSubscription.name).ParentName
-                        Level               = $htSubscriptionsMgPath.($childrenSubscription.name).level
-                    })
-            }
+        if ($sub.subDetails.subscriptionPolicies.quotaId -eq $null) {
+            $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{
+                    subscriptionId      = $childrenSubscription.name
+                    subscriptionName    = $childrenSubscription.properties.displayName
+                    outOfScopeReason    = 'QuotaId: null'
+                    ManagementGroupId   = $htSubscriptionsMgPath.($childrenSubscription.name).Parent
+                    ManagementGroupName = $htSubscriptionsMgPath.($childrenSubscription.name).ParentName
+                    Level               = $htSubscriptionsMgPath.($childrenSubscription.name).level
+                })
         }
         else {
-            if ($SubscriptionQuotaIdWhitelist[0] -ne 'undefined') {
-                $whitelistMatched = 'unknown'
-                foreach ($subscriptionQuotaIdWhitelistQuotaId in $SubscriptionQuotaIdWhitelist) {
-                    if (($sub.subDetails.subscriptionPolicies.quotaId).startswith($subscriptionQuotaIdWhitelistQuotaId, 'CurrentCultureIgnoreCase')) {
-                        $whitelistMatched = 'inWhitelist'
-                    }
-                }
-
-                if ($whitelistMatched -eq 'inWhitelist') {
-                    #write-host "$($childrenSubscription.properties.displayName) in whitelist"
-                    $null = $script:subsToProcessInCustomDataCollection.Add([PSCustomObject]@{
-                            subscriptionId      = $childrenSubscription.name
-                            subscriptionName    = $childrenSubscription.properties.displayName
-                            subscriptionQuotaId = $sub.subDetails.subscriptionPolicies.quotaId
-                        })
-                }
-                else {
-                    #Write-Host " preCustomDataCollection: $($childrenSubscription.properties.displayName) ($($childrenSubscription.name)) Subscription Quota Id: $($sub.subDetails.subscriptionPolicies.quotaId) is out of scope for Azure Governance Visualizer (not in Whitelist)"
+            if ($sub.subDetails.subscriptionPolicies.quotaId.startswith('AAD_', 'CurrentCultureIgnoreCase') -or $sub.subDetails.state -ne 'Enabled') {
+                if (($sub.subDetails.subscriptionPolicies.quotaId).startswith('AAD_', 'CurrentCultureIgnoreCase')) {
                     $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{
                             subscriptionId      = $childrenSubscription.name
                             subscriptionName    = $childrenSubscription.properties.displayName
-                            outOfScopeReason    = "QuotaId: '$($sub.subDetails.subscriptionPolicies.quotaId)' not in Whitelist"
+                            outOfScopeReason    = "QuotaId: AAD_ (State: $($sub.subDetails.state))"
+                            ManagementGroupId   = $htSubscriptionsMgPath.($childrenSubscription.name).Parent
+                            ManagementGroupName = $htSubscriptionsMgPath.($childrenSubscription.name).ParentName
+                            Level               = $htSubscriptionsMgPath.($childrenSubscription.name).level
+                        })
+                }
+                if ($sub.subDetails.state -ne 'Enabled') {
+                    $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{
+                            subscriptionId      = $childrenSubscription.name
+                            subscriptionName    = $childrenSubscription.properties.displayName
+                            outOfScopeReason    = "State: $($sub.subDetails.state)"
                             ManagementGroupId   = $htSubscriptionsMgPath.($childrenSubscription.name).Parent
                             ManagementGroupName = $htSubscriptionsMgPath.($childrenSubscription.name).ParentName
                             Level               = $htSubscriptionsMgPath.($childrenSubscription.name).level
@@ -2487,11 +2469,41 @@ function detailSubscriptions {
                 }
             }
             else {
-                $null = $script:subsToProcessInCustomDataCollection.Add([PSCustomObject]@{
-                        subscriptionId      = $childrenSubscription.name
-                        subscriptionName    = $childrenSubscription.properties.displayName
-                        subscriptionQuotaId = $sub.subDetails.subscriptionPolicies.quotaId
-                    })
+                if ($SubscriptionQuotaIdWhitelist[0] -ne 'undefined') {
+                    $whitelistMatched = 'unknown'
+                    foreach ($subscriptionQuotaIdWhitelistQuotaId in $SubscriptionQuotaIdWhitelist) {
+                        if (($sub.subDetails.subscriptionPolicies.quotaId).startswith($subscriptionQuotaIdWhitelistQuotaId, 'CurrentCultureIgnoreCase')) {
+                            $whitelistMatched = 'inWhitelist'
+                        }
+                    }
+
+                    if ($whitelistMatched -eq 'inWhitelist') {
+                        #write-host "$($childrenSubscription.properties.displayName) in whitelist"
+                        $null = $script:subsToProcessInCustomDataCollection.Add([PSCustomObject]@{
+                                subscriptionId      = $childrenSubscription.name
+                                subscriptionName    = $childrenSubscription.properties.displayName
+                                subscriptionQuotaId = $sub.subDetails.subscriptionPolicies.quotaId
+                            })
+                    }
+                    else {
+                        #Write-Host " preCustomDataCollection: $($childrenSubscription.properties.displayName) ($($childrenSubscription.name)) Subscription Quota Id: $($sub.subDetails.subscriptionPolicies.quotaId) is out of scope for Azure Governance Visualizer (not in Whitelist)"
+                        $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{
+                                subscriptionId      = $childrenSubscription.name
+                                subscriptionName    = $childrenSubscription.properties.displayName
+                                outOfScopeReason    = "QuotaId: '$($sub.subDetails.subscriptionPolicies.quotaId)' not in Whitelist"
+                                ManagementGroupId   = $htSubscriptionsMgPath.($childrenSubscription.name).Parent
+                                ManagementGroupName = $htSubscriptionsMgPath.($childrenSubscription.name).ParentName
+                                Level               = $htSubscriptionsMgPath.($childrenSubscription.name).level
+                            })
+                    }
+                }
+                else {
+                    $null = $script:subsToProcessInCustomDataCollection.Add([PSCustomObject]@{
+                            subscriptionId      = $childrenSubscription.name
+                            subscriptionName    = $childrenSubscription.properties.displayName
+                            subscriptionQuotaId = $sub.subDetails.subscriptionPolicies.quotaId
+                        })
+                }
             }
         }
     }
