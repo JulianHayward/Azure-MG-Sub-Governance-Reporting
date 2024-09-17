@@ -84,9 +84,9 @@ The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Gov
 
 ## Release history
 
-**Changes** (2024-August-28 / 6.5.2 Patch)
+**Changes** (2024-September-17 / 6.5.3 Patch)
 
-- AAD -> EntraId
+- fix stop error for subscriptions with null valued quotaId. the function detailSubscription uses `.startsWith()` method to check for `AAD_` but cannot validate when a null-valued `.quotaId` occurs. 
 
 [Full release history](history.md)
 
