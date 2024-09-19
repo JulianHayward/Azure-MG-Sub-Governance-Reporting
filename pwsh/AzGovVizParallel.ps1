@@ -365,7 +365,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.5.3',
+    $ProductVersion = '6.5.4',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -2435,7 +2435,7 @@ function detailSubscriptions {
     foreach ($childrenSubscription in $childrenSubscriptions) {
 
         $sub = $htAllSubscriptionsFromAPI.($childrenSubscription.name)
-        if ($sub.subDetails.subscriptionPolicies.quotaId -eq $null) {
+        if ($null -eq $sub.subDetails.subscriptionPolicies.quotaId) {
             $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{
                     subscriptionId      = $childrenSubscription.name
                     subscriptionName    = $childrenSubscription.properties.displayName

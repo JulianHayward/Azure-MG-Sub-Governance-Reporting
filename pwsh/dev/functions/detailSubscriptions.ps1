@@ -37,7 +37,7 @@
     foreach ($childrenSubscription in $childrenSubscriptions) {
 
         $sub = $htAllSubscriptionsFromAPI.($childrenSubscription.name)
-        if ($sub.subDetails.subscriptionPolicies.quotaId -eq $null) {
+        if ($null -eq $sub.subDetails.subscriptionPolicies.quotaId) {
             $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{
                     subscriptionId      = $childrenSubscription.name
                     subscriptionName    = $childrenSubscription.properties.displayName
