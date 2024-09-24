@@ -164,6 +164,12 @@
     If you do not want to execute the 'Azure Landing Zones (ALZ) Policy Version Checker' feature then use this parameter
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 
+.Parameter NoALZPolicyAssignmentsChecker
+    'Azure Landing Zones (ALZ) Policy Assignments Checker' for Policy and Set assignments. Azure Governance Visualizer will clone the ALZ Library GitHub repository and collect the standard ALZ policy and set assignments. The ALZ data will be compared with the data from your tenant so that you can get an inventory for ALZ policy and set assignments that already exist in your tenant and compare with the standard assignments of ALZ. The 'Azure Landing Zones (ALZ) Policy Assignments Checker' results will be displayed in the TenantSummary and a CSV export `*_ALZPolicyAssignmentsChecker.csv` will be provided.
+    If you do not want to execute the 'Azure Landing Zones (ALZ) Policy Version Checker' feature then use this parameter
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
+
+
 .PARAMETER NoDefinitionInsightsDedicatedHTML
     DefinitionInsights will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep DefinitionInsights in the main html file then use this parameter
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML
@@ -334,6 +340,9 @@
 
     Define if the 'Azure Landing Zones (ALZ) Policy Version Checker' feature should not be executed
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
+
+    Define if the 'Azure Landing Zones (ALZ) Policy assignments Checker' feature should not be executed
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyAssignmentsChecker
 
     Define if DefinitionInsights should not be written to a seperate html file (*_DefinitionInsights.html)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML
@@ -558,6 +567,9 @@ Param
     $NoALZPolicyVersionChecker,
 
     [switch]
+    $NoALZPolicyAssignmentsChecker,
+
+    [switch]
     $NoDefinitionInsightsDedicatedHTML,
 
     [switch]
@@ -708,6 +720,7 @@ function addHtParameters {
         DoPSRule                                     = [bool]$DoPSRule
         PSRuleFailedOnly                             = [bool]$PSRuleFailedOnly
         NoALZPolicyVersionChecker                    = [bool]$NoALZPolicyVersionChecker
+        NoALZPolicyAssignmentsChecker                = [bool]$NoALZPolicyAssignmentsChecker
         NoStorageAccountAccessAnalysis               = [bool]$NoStorageAccountAccessAnalysis
         GitHubActionsOIDC                            = [bool]$GitHubActionsOIDC
         NoNetwork                                    = [bool]$NoNetwork
@@ -5474,6 +5487,81 @@ function processAADGroups {
     Write-Host "Resolving Microsoft Entra groups duration: $((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
     Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (after resolving Microsoft Entra groups)"
 }
+
+function processALZPolicyAssignmentsChecker {
+    $start = Get-Date
+    Write-Host "Processing 'Azure Landing Zones (ALZ) Policy Assignment Checker' base data"
+    $ALZLibraryRepositoryURI = 'https://github.com/Azure/Azure-Landing-Zones-Library.git'
+    $workingPath = Get-Location
+    Write-Host " Working directory is '$($workingPath)'"
+    $AlZLibraryFolderName = "ALZ_Library_$(Get-Date -Format $FileTimeStampFormat)"
+    $ALZLibraryPath = "$($OutputPath)/$($AlZLibraryFolderName)"
+
+    if (-not (Test-Path -LiteralPath "$($ALZLibraryPath)")) {
+        Write-Host " Creating temporary directory '$($ALZLibraryPath)'"
+        $null = mkdir $ALZLibraryPath
+    }
+    else {
+        Write-Host " Unexpected: The path '$($ALZLibraryPath)' already exists"
+        throw
+    }
+
+    Write-Host " Switching to temporary directory '$($ALZLibraryPath)'"
+    Set-Location $ALZLibraryPath
+    $ALZCloneSuccess = $false
+
+    try {
+        Write-Host " Try cloning '$($ALZLibraryRepositoryURI)'"
+        git clone $ALZLibraryRepositoryURI
+        if (-not (Test-Path -LiteralPath "$($ALZLibraryPath)/Azure-Landing-Zones-Library" -PathType Container)) {
+            $ALZCloneSuccess = $false
+            Write-Host " Cloning '$($ALZLibraryRepositoryURI)' failed"
+            Write-Host " Setting switch parameter '-NoALZPolicyAssignmentsChecker' to true"
+            $script:NoALZPolicyAssignmentsChecker = $true
+            $script:azAPICallConf['htParameters'].NoALZPolicyAssignmentsChecker = $true
+            Write-Host " Switching back to working directory '$($workingPath)'"
+            Set-Location $workingPath
+        }
+        else {
+            Write-Host " Cloning '$($ALZLibraryRepositoryURI)' succeeded"
+            $ALZCloneSuccess = $true
+        }
+    }
+    catch {
+        $_
+        Write-Host " Cloning '$($ALZLibraryRepositoryURI)' failed"
+        Write-Host " Setting switch parameter '-NoALZPolicyAssignmentsChecker' to true"
+        $script:NoALZPolicyAssignmentsChecker = $true
+        $script:azAPICallConf['htParameters'].NoALZPolicyAssignmentsChecker = $true
+        Write-Host " Switching back to working directory '$($workingPath)'"
+        Set-Location $workingPath
+    }
+
+    if ($ALZCloneSuccess) {
+        Write-Host " Switching to directory '$($ALZLibraryPath)/Azure-Landing-Zones-Library'"
+        Set-Location "$($ALZLibraryPath)/Azure-Landing-Zones-Library"
+        $script:alzPolicyAssignments = @{}
+        $archetypesPath = ".\platform\alz\archetype_definitions"
+        $archetypesDefinition = Get-ChildItem -Path $archetypesPath -Filter "*.json"
+
+        foreach ($archetype in $archetypesDefinition) {
+            $key = ($archetype.BaseName -split '\.')[0]
+            $content = Get-Content $archetype.FullName | ConvertFrom-Json
+            if ($content.policy_assignments) {
+                $script:alzPolicyAssignments[$key] = $content.policy_assignments
+            }
+        }
+
+        # Output the result
+        $script:alzPolicyAssignments | ConvertTo-Json -Depth 10 | Out-File "$($OutputPath)/ALZPolicyAssignmentsChecker.json"
+        Write-Host " Switching back to working directory '$($workingPath)'"
+        Set-Location $workingPath
+
+        Write-Host " Removing temporary directory '$($ALZLibraryPath)'"
+        Remove-Item -Recurse -Force $ALZLibraryPath
+    }
+}
+
 function processALZPolicyVersionChecker {
     $start = Get-Date
     Write-Host "Processing 'Azure Landing Zones (ALZ) Policy Version Checker' base data"
@@ -35350,6 +35438,7 @@ if (-not $HierarchyMapOnly) {
     $alzPolicySets = @{}
     $alzPolicyHashes = @{}
     $alzPolicySetHashes = @{}
+    $alzPolicyAssignments = @{}
     $htDoARMRoleAssignmentScheduleInstances = [System.Collections.Hashtable]::Synchronized(@{})
     $htDoARMRoleAssignmentScheduleInstances.Do = $true
     $storageAccounts = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
@@ -35374,14 +35463,18 @@ if (-not $HierarchyMapOnly) {
             'Azurecloud' {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
                 processALZPolicyVersionChecker
+                processALZPolicyAssignmentsChecker
+                Write-Host $script:alzPolicyAssignments
             }
             'AzureChinaCloud' {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
                 processALZPolicyVersionChecker
+                processALZPolicyAssignmentsChecker
             }
             'AzureUSGovernment' {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
                 processALZPolicyVersionChecker
+                processALZPolicyAssignmentsChecker
             }
             Default {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
