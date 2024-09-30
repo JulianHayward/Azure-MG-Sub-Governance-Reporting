@@ -5632,7 +5632,7 @@ function processALZPolicyAssignmentsChecker {
         $archetypesPath = '.\platform\alz\archetype_definitions'
         $archetypesDefinition = Get-ChildItem -Path $archetypesPath -Filter '*.json'
 
-        $script:ALZManagementGroupIdRoot = 'ALZ'
+        <#$script:ALZManagementGroupIdRoot = 'ALZ'
         $script:ALZManagementGroupIdPlatform = 'ALZ-platform'
         $script:ALZManagementGroupIdConnectivity = 'ALZ-connectivity'
         $script:ALZManagementGroupIdCorp = 'ALZ-CORP'
@@ -5641,7 +5641,7 @@ function processALZPolicyAssignmentsChecker {
         $script:ALZManagementGroupIdDecommissioned = 'ALZ-decommissioned'
         $script:ALZManagementGroupIdLandingZones = 'ALZ-landingzones'
         $script:ALZManagementGroupIdIdentity = 'ALZ-identity'
-        $script:ALZManagementGroupIdManagement = 'ALZ-management'
+        $script:ALZManagementGroupIdManagement = 'ALZ-management'#>
 
 
         foreach ($archetype in $archetypesDefinition) {
@@ -35650,19 +35650,19 @@ if (-not $HierarchyMapOnly) {
 }
 
 if (-not $HierarchyMapOnly) {
-    if($ALZPolicyAssignmentsChecker -and $ALZManagementGroupIdPlatform -and $ALZManagementGroupIdRoot -and $ALZManagementGroupIdConnectivity -and $ALZManagementGroupIdCorp -and $ALZManagementGroupIdOnline -and $ALZManagementGroupIdSandboxes -and $ALZManagementGroupIdDecommissioned -and $ALZManagementGroupIdLandingZones -and $ALZManagementGroupIdIdentity -and $ALZManagementGroupIdManagement){
+    if ($ALZPolicyAssignmentsChecker -and $ALZManagementGroupIdPlatform -and $ALZManagementGroupIdRoot -and $ALZManagementGroupIdConnectivity -and $ALZManagementGroupIdCorp -and $ALZManagementGroupIdOnline -and $ALZManagementGroupIdSandboxes -and $ALZManagementGroupIdDecommissioned -and $ALZManagementGroupIdLandingZones -and $ALZManagementGroupIdIdentity -and $ALZManagementGroupIdManagement) {
         switch ($azAPICallConf['checkContext'].Environment.Name) {
             'Azurecloud' {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Assignment Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                processALZPolicyAssignmentsComparison
+                processALZPolicyAssignmentsChecker
             }
             'AzureChinaCloud' {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Assignment Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                processALZPolicyAssignmentsComparison
+                processALZPolicyAssignmentsChecker
             }
             'AzureUSGovernment' {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Assignment Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                processALZPolicyAssignmentsComparison
+                processALZPolicyAssignmentsChecker
             }
             Default {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Assignment Checker' feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"

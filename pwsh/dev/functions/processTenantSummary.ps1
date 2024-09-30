@@ -2518,6 +2518,7 @@ extensions: [{ name: 'sort' }]
     Write-Host '  processing TenantSummary ALZPoliciesAssignments'
 
     if ($ALZPolicyAssignmentsChecker) {
+        ## TODO: Add else condition,to show an empty table
 
         #$alzPoliciesInTenant = [System.Collections.ArrayList]@()
         $azGovVizPolicies = $script:htCacheAssignmentsPolicy
@@ -2594,8 +2595,8 @@ extensions: [{ name: 'sort' }]
                 }
             }
         }
-        if ($alzPoliciesInTenant.Count -gt 0) {
-            $tfCount = $alzPoliciesInTenant.Count
+        if ($env.Count -gt 0) {
+            $tfCount = $env.Count
             $htmlTableId = 'TenantSummary_ALZPoliciesAssignments'
             $abbrALZ = " <abbr title=`"obsolete: this policy is no longer ALZ maintained by ALZ&#13;outDated: a new version of the policy available&#13;unknown: ALZ related policy could not be mapped&#13;upToDate: policy matches with latest ALZ policy`"><i class=`"fa fa-question-circle`" aria-hidden=`"true`"></i></abbr>"
             [void]$htmlTenantSummary.AppendLine(@"
@@ -2622,7 +2623,8 @@ extensions: [{ name: 'sort' }]
 
             $htmlSUMMARYALZPolicyAssignmentsChecker = $null
             $exemptionData4CSVExport = [System.Collections.ArrayList]@()
-            $alzPoliciesInTenantSorted = $alzPoliciesInTenant | Sort-Object -Property PolicyName, PolicyId, ALZPolicyName, Type
+            $alzPoliciesInTenantSorted = $env.GetEnumerator() | Sort-Object -Property Name
+            #$alzPoliciesInTenantSorted = $alzPoliciesInTenant | Sort-Object -Property PolicyName, PolicyId, ALZPolicyName, Type
             $htmlSUMMARYALZPolicyAssignmentsChecker = foreach ($entry in $alzPoliciesInTenantSorted) {
                 if ([string]::IsNullOrWhiteSpace($entry.AzAdvertizerUrl)) {
                     $link = ''
@@ -2650,7 +2652,7 @@ extensions: [{ name: 'sort' }]
                     $alzPoliciesInTenantSorted | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ALZPolicyVersionChecker.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
                 }
 
-                [void]$htmlTenantSummary.AppendLine($htmlSUMMARYALZPolicyVersionChecker)
+                [void]$htmlTenantSummary.AppendLine($htmlSUMMARYALZPolicyAssignmentsChecker)
                 [void]$htmlTenantSummary.AppendLine(@"
 </tbody>
 </table>
@@ -2712,13 +2714,13 @@ tf.init();}}
             }
             else {
                 [void]$htmlTenantSummary.AppendLine(@'
-<p><i class="padlx fa fa-ban" aria-hidden="true"></i> Azure Landing Zones (ALZ) Policy Version Checker</p>
+<p><i class="padlx fa fa-ban" aria-hidden="true"></i> Azure Landing Zones (ALZ) Policy Assignments Checker</p>
 '@)
             }
         }
         else {
             [void]$htmlTenantSummary.AppendLine(@"
-<p><i class="padlx fa fa-ban" aria-hidden="true"></i> Azure Landing Zones (ALZ) Policy Version Checker (parameter -NoALZPolicyVersionChecker = $NoALZPolicyVersionChecker)</p>
+<p><i class="padlx fa fa-ban" aria-hidden="true"></i> Azure Landing Zones (ALZ) Policy Assignments Checker (parameter -ALZPolicyAssignmentsChecker = $ALZPolicyAssignmentsChecker)</p>
 "@)
         }
         return $currentPolicyAssignments
