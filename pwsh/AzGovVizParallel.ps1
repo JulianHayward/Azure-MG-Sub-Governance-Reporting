@@ -169,55 +169,10 @@
     If you do want to execute the 'Azure Landing Zones (ALZ) Policy Version Checker' feature then use this parameter
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 
-.Parameter ALZManagementGroupIdRoot
-    'Azure Landing Zones (ALZ) Root management group Id'. This is the Id of the ALZ intermediary root management group.
+.Parameter ALZManagementGroupsIds
+    'Azure Landing Zones (ALZ) Management groups Ids'. This is the Ids of the ALZ management groups hierarchy.
     This is required if ALZPolicyAssignmentsChecker is enabled.
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupIdRoot
-
-.Parameter ALZManagementGroupIdPlatform
-    'Azure Landing Zones (ALZ) Platform management group Id'. This is the Id of the ALZ Platform management group.
-    This is required if ALZPolicyAssignmentsChecker is enabled.
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupIdPlatform
-
-.Parameter ALZManagementGroupIdConnectivity
-    'Azure Landing Zones (ALZ) Connectivity management group Id'. This is the Id of the ALZ Connectivity management group.
-    This is required if ALZPolicyAssignmentsChecker is enabled.
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupIdConnectivity
-
-.Parameter ALZManagementGroupIdCorp
-    'Azure Landing Zones (ALZ) Corp management group Id'. This is the Id of the ALZ Corp management group.
-    This is required if ALZPolicyAssignmentsChecker is enabled.
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupIdCorp
-
-.Parameter ALZManagementGroupIdOnline
-    'Azure Landing Zones (ALZ) Online management group Id'. This is the Id of the ALZ Online management group.
-    This is required if ALZPolicyAssignmentsChecker is enabled.
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupIdOnline
-
-.Parameter ALZManagementGroupIdSandboxes
-    'Azure Landing Zones (ALZ) Sandboxes management group Id'. This is the Id of the ALZ Sandboxes management group.
-    This is required if ALZPolicyAssignmentsChecker is enabled.
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupIdSandboxes
-
-.Parameter ALZManagementGroupIdDecommissioned
-    'Azure Landing Zones (ALZ) Decommissioned management group Id'. This is the Id of the ALZ Decommissioned management group.
-    This is required if ALZPolicyAssignmentsChecker is enabled.
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupIdDecommissioned
-
-.Parameter ALZManagementGroupIdLandingZones
-    'Azure Landing Zones (ALZ) Landing Zones management group Id'. This is the Id of the ALZ Landing Zones management group.
-    This is required if ALZPolicyAssignmentsChecker is enabled.
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupIdLandingZones
-
-.Parameter ALZManagementGroupIdIdentity
-    'Azure Landing Zones (ALZ) Identity management group Id'. This is the Id of the ALZ Identity management group.
-    This is required if ALZPolicyAssignmentsChecker is enabled.
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupIdIdentity
-
-.Parameter ALZManagementGroupIdManagement
-    'Azure Landing Zones (ALZ) Management management group Id'. This is the Id of the ALZ Management management group.
-    This is required if ALZPolicyAssignmentsChecker is enabled.
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupIdManagement
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupsIds @{}
 
 .PARAMETER NoDefinitionInsightsDedicatedHTML
     DefinitionInsights will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep DefinitionInsights in the main html file then use this parameter
@@ -391,7 +346,7 @@
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 
     Define if the 'Azure Landing Zones (ALZ) Policy assignments Checker' feature should be executed
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupIdRoot <alz-management-group-id> -ALZManagementGroupIdPlatform <alz-platform-management-group-id> -ALZManagementGroupIdConnectivity <alz-connectivity-management-group-id> -ALZManagementGroupIdCorp <alz-corp-management-group-id> -ALZManagementGroupIdOnline <alz-online-managmenet-group-id> -ALZManagementGroupIdSandboxes <alz-sandboxes-management-group-id> -ALZManagementGroupIdDecommissioned <alz-decommissioned-management-group-id> -ALZManagementGroupIdLandingZones <alz-landing-zones-management-group-id> -ALZManagementGroupIdIdentity <alz-identity-management-group-id> -ALZManagementGroupIdManagement <alz-management-management-group-id>
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupsIds @{}
 
     Define if DefinitionInsights should not be written to a seperate html file (*_DefinitionInsights.html)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML
@@ -423,7 +378,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.5.4',
+    $ProductVersion = '6.5.5',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -618,35 +573,8 @@ Param
     [switch]
     $ALZPolicyAssignmentsChecker,
 
-    [string]
-    $ALZManagementGroupIdRoot,
-
-    [string]
-    $ALZManagementGroupIdPlatform,
-
-    [string]
-    $ALZManagementGroupIdConnectivity,
-
-    [string]
-    $ALZManagementGroupIdCorp,
-
-    [string]
-    $ALZManagementGroupIdOnline,
-
-    [string]
-    $ALZManagementGroupIdSandboxes,
-
-    [string]
-    $ALZManagementGroupIdDecommissioned,
-
-    [string]
-    $ALZManagementGroupIdLandingZones,
-
-    [string]
-    $ALZManagementGroupIdIdentity,
-
-    [string]
-    $ALZManagementGroupIdManagement,
+    [hashtable]
+    $ALZManagementGroupsIds,
 
     [switch]
     $NoDefinitionInsightsDedicatedHTML,
@@ -800,16 +728,6 @@ function addHtParameters {
         PSRuleFailedOnly                             = [bool]$PSRuleFailedOnly
         NoALZPolicyVersionChecker                    = [bool]$NoALZPolicyVersionChecker
         ALZPolicyAssignmentsChecker                  = [bool]$ALZPolicyAssignmentsChecker
-        ALZManagementGroupIdRoot                     = [bool]$ALZManagementGroupIdRoot
-        ALZManagementGroupIdPlatform                 = [bool]$ALZManagementGroupIdPlatform
-        ALZManagementGroupIdConnectivity             = [bool]$ALZManagementGroupIdConnectivity
-        ALZManagementGroupIdCorp                     = [bool]$ALZManagementGroupIdCorp
-        ALZManagementGroupIdOnline                   = [bool]$ALZManagementGroupIdOnline
-        ALZManagementGroupIdSandboxes                = [bool]$ALZManagementGroupIdSandboxes
-        ALZManagementGroupIdDecommissioned           = [bool]$ALZManagementGroupIdDecommissioned
-        ALZManagementGroupIdLandingZones             = [bool]$ALZManagementGroupIdLandingZones
-        ALZManagementGroupIdIdentity                 = [bool]$ALZManagementGroupIdIdentity
-        ALZManagementGroupIdManagement               = [bool]$ALZManagementGroupIdManagement
         NoStorageAccountAccessAnalysis               = [bool]$NoStorageAccountAccessAnalysis
         GitHubActionsOIDC                            = [bool]$GitHubActionsOIDC
         NoNetwork                                    = [bool]$NoNetwork
@@ -5576,7 +5494,6 @@ function processAADGroups {
     Write-Host "Resolving Microsoft Entra groups duration: $((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalMinutes) minutes ($((New-TimeSpan -Start $startAADGroupsResolveMembers -End $endAADGroupsResolveMembers).TotalSeconds) seconds)"
     Write-Host " Users known as Guest count: $($htUserTypesGuest.Keys.Count) (after resolving Microsoft Entra groups)"
 }
-
 function processALZPolicyAssignmentsChecker {
     Write-Host "Processing 'Azure Landing Zones (ALZ) Policy Assignment Checker' base data"
     $ALZLibraryRepositoryURI = 'https://github.com/Azure/Azure-Landing-Zones-Library.git'
@@ -5628,132 +5545,110 @@ function processALZPolicyAssignmentsChecker {
     if ($ALZCloneSuccess) {
         Write-Host " Switching to directory '$($ALZLibraryPath)/Azure-Landing-Zones-Library'"
         Set-Location "$($ALZLibraryPath)/Azure-Landing-Zones-Library"
-        $script:alzPolicyAssignments = @{}
+        $script:referenceALZPolicyAssignments = @{}
         $archetypesPath = '.\platform\alz\archetype_definitions'
         $archetypesDefinition = Get-ChildItem -Path $archetypesPath -Filter '*.json'
 
-        <#$script:ALZManagementGroupIdRoot = 'ALZ'
-        $script:ALZManagementGroupIdPlatform = 'ALZ-platform'
-        $script:ALZManagementGroupIdConnectivity = 'ALZ-connectivity'
-        $script:ALZManagementGroupIdCorp = 'ALZ-CORP'
-        $script:ALZManagementGroupIdOnline = 'ALZ-online'
-        $script:ALZManagementGroupIdSandboxes = 'ALZ-sandboxes'
-        $script:ALZManagementGroupIdDecommissioned = 'ALZ-decommissioned'
-        $script:ALZManagementGroupIdLandingZones = 'ALZ-landingzones'
-        $script:ALZManagementGroupIdIdentity = 'ALZ-identity'
-        $script:ALZManagementGroupIdManagement = 'ALZ-management'#>
-
-
+        $ALZManagementGroupsIds = $script:ALZManagementGroupsIds
         foreach ($archetype in $archetypesDefinition) {
             $key = ($archetype.BaseName -split '\.')[0]
             switch ($key) {
-                'connectivity' { if ($null -ne $script:ALZManagementGroupIdConnectivity) { $key = $script:ALZManagementGroupIdConnectivity } }
-                'corp' { if ($null -ne $script:ALZManagementGroupIdCorp) { $key = $script:ALZManagementGroupIdCorp } }
-                'root' { if ($null -ne $script:ALZManagementGroupIdRoot) { $key = $script:ALZManagementGroupIdRoot } }
-                'platform' { if ($null -ne $script:ALZManagementGroupIdPlatform) { $key = $script:ALZManagementGroupIdPlatform } }
-                'online' { if ($null -ne $script:ALZManagementGroupIdOnline) { $key = $script:ALZManagementGroupIdOnline } }
-                'sandboxes' { if ($null -ne $script:ALZManagementGroupIdSandboxes) { $key = $script:ALZManagementGroupIdSandboxes } }
-                'decommissioned' { if ($null -ne $script:ALZManagementGroupIdDecommissioned) { $key = $script:ALZManagementGroupIdDecommissioned } }
-                'management' { if ($null -ne $script:ALZManagementGroupIdManagement) { $key = $script:ALZManagementGroupIdManagement } }
-                'identity' { if ($null -ne $script:ALZManagementGroupIdIdentity) { $key = $script:ALZManagementGroupIdIdentity } }
-                'landing_zones' { if ($null -ne $script:ALZManagementGroupIdLandingZones) { $key = $script:ALZManagementGroupIdLandingZones } }
+                'connectivity' { if ($ALZManagementGroupsIds.containsKey('connectivity')) { $key = $ALZManagementGroupsIds['connectivity'] } }
+                'corp' { if ($ALZManagementGroupsIds.containsKey('corp')) { $key = $ALZManagementGroupsIds['corp'] } }
+                'root' { if ($ALZManagementGroupsIds.containsKey('root')) { $key = $ALZManagementGroupsIds['root'] } }
+                'platform' { if ($ALZManagementGroupsIds.containsKey('platform')) { $key = $ALZManagementGroupsIds['platform'] } }
+                'online' { if ($ALZManagementGroupsIds.containsKey('online')) { $key = $ALZManagementGroupsIds['online'] } }
+                'sandboxes' { if ($ALZManagementGroupsIds.containsKey('sandboxes')) { $key = $ALZManagementGroupsIds['sandboxes'] } }
+                'decommissioned' { if ($ALZManagementGroupsIds.containsKey('decommissioned')) { $key = $ALZManagementGroupsIds['decommissioned'] } }
+                'management' { if ($ALZManagementGroupsIds.containsKey('management')) { $key = $ALZManagementGroupsIds['management'] } }
+                'identity' { if ($ALZManagementGroupsIds.containsKey('identity')) { $key = $ALZManagementGroupsIds['identity'] } }
+                'landing_zones' { if ($ALZManagementGroupsIds.containsKey('landing_zones')) { $key = $ALZManagementGroupsIds['landing_zones'] } }
                 Default {}
             }
             $content = Get-Content $archetype.FullName | ConvertFrom-Json
             if ($content.policy_assignments) {
-                $script:alzPolicyAssignments[$key] = $content.policy_assignments
+                $script:referenceALZPolicyAssignments[$key] = $content.policy_assignments
             }
         }
 
         # Output the result
-        $script:alzPolicyAssignments | ConvertTo-Json -Depth 10 | Out-File "$($OutputPath)/ALZPolicyAssignmentsChecker.json"
+        $script:referenceALZPolicyAssignments | ConvertTo-Json -Depth 10 | Out-File "$($OutputPath)/ALZPolicyAssignmentsChecker.json"
         Write-Host " Switching back to working directory '$($workingPath)'"
         Set-Location $workingPath
 
         Write-Host " Removing temporary directory '$($ALZLibraryPath)'"
         Remove-Item -Recurse -Force $ALZLibraryPath
-    }
-}
 
-<#function processALZPolicyAssignmentsComparison {
+        $currentALZPolicyAssignments = @{}
 
-    $azGovVizPolicies = $script:htCacheAssignmentsPolicy
-    $currentPolicyAssignments = @{}
+        # Define the variables and their default values
+        $variableMap = @{
+            'connectivity'   = @{ Variable = $ALZManagementGroupsIds['connectivity']; Default = 'connectivity' }
+            'corp'           = @{ Variable = $ALZManagementGroupsIds['corp']; Default = 'corp' }
+            'root'           = @{ Variable = $ALZManagementGroupsIds['root']; Default = 'root' }
+            'platform'       = @{ Variable = $ALZManagementGroupsIds['platform']; Default = 'platform' }
+            'online'         = @{ Variable = $ALZManagementGroupsIds['online']; Default = 'online' }
+            'sandboxes'      = @{ Variable = $ALZManagementGroupsIds['sandboxes']; Default = 'sandboxes' }
+            'decommissioned' = @{ Variable = $ALZManagementGroupsIds['decommissioned']; Default = 'decommissioned' }
+            'management'     = @{ Variable = $ALZManagementGroupsIds['management']; Default = 'management' }
+            'identity'       = @{ Variable = $ALZManagementGroupsIds['identity']; Default = 'identity' }
+            'landingzones'   = @{ Variable = $ALZManagementGroupsIds['landing_zones']; Default = 'landing_zones' }
+        }
 
-    # Define the variables and their default values
-    $variableMap = @{
-        'Connectivity'   = @{ Variable = $script:ALZManagementGroupIdConnectivity; Default = 'connectivity' }
-        'Corp'           = @{ Variable = $script:ALZManagementGroupIdCorp; Default = 'corp' }
-        'Root'           = @{ Variable = $script:ALZManagementGroupIdRoot; Default = 'root' }
-        'Platform'       = @{ Variable = $script:ALZManagementGroupIdPlatform; Default = 'platform' }
-        'Online'         = @{ Variable = $script:ALZManagementGroupIdOnline; Default = 'online' }
-        'Sandboxes'      = @{ Variable = $script:ALZManagementGroupIdSandboxes; Default = 'sandboxes' }
-        'Decommissioned' = @{ Variable = $script:ALZManagementGroupIdDecommissioned; Default = 'decommissioned' }
-        'Management'     = @{ Variable = $script:ALZManagementGroupIdManagement; Default = 'management' }
-        'Identity'       = @{ Variable = $script:ALZManagementGroupIdIdentity; Default = 'identity' }
-        'LandingZones'   = @{ Variable = $script:ALZManagementGroupIdLandingZones; Default = 'landing_zones' }
-    }
+        # Populate the hashtable
+        foreach ($item in $variableMap.GetEnumerator()) {
+            $key = if ($null -ne $item.Value.Variable) { $item.Value.Variable } else { $item.Value.Default }
+            $currentALZPolicyAssignments[$key] = @()
+        }
 
-    # Populate the hashtable
-    foreach ($item in $variableMap.GetEnumerator()) {
-        $key = if ($null -ne $item.Value.Variable) { $item.Value.Variable } else { $item.Value.Default }
-        $currentPolicyAssignments[$key] = @()
-    }
+        $htCacheAssignmentsPolicy.GetEnumerator() | ForEach-Object {
+            if ($_.value.AssignmentScopeMgSubRg -eq 'Mg') {
+                $assignmentName = ($_.key).split('/')[-1]
+                $managementGroup = ($_.key).split('/')[4]
+                if ($currentALZPolicyAssignments.ContainsKey($managementGroup)) {
+                    $currentALZPolicyAssignments[$managementGroup] += $assignmentName
+                }
+                else {
+                    $currentALZPolicyAssignments[$managementGroup] = @($assignmentName)
+                }
+            }
+        }
 
-    $azGovVizPolicies.GetEnumerator() | ForEach-Object {
-        if ($_.value.AssignmentScopeMgSubRg -eq 'Mg') {
-            $assignmentName = ($_.key).split('/')[-1]
-            $managementGroup = ($_.key).split('/')[4]
-            if ($currentPolicyAssignments.ContainsKey($managementGroup)) {
-                $currentPolicyAssignments[$managementGroup] += $assignmentName
+        # Output the result
+        $referenceALZPolicyAssignments = $script:referenceALZPolicyAssignments
+
+        # Function to compare hashtables
+        function Compare-ALZPolicyHashTables($array1, $array2) {
+            $comparison = Compare-Object -ReferenceObject $array1 -DifferenceObject $array2 -PassThru | Where-Object { $_.SideIndicator -eq '=>' }
+            return $comparison
+        }
+
+        # Compare the hashtables and find items in reference that are not in the current environment
+        $differences = @{}
+
+        foreach ($key in $referenceALZPolicyAssignments.Keys) {
+            if ($currentALZPolicyAssignments.ContainsKey($key)) {
+                $diff = Compare-ALZPolicyHashTables $currentALZPolicyAssignments[$key] $referenceALZPolicyAssignments[$key]
+                if ($diff) {
+                    $differences[$key] = $diff
+                }
             }
             else {
-                $currentPolicyAssignments[$managementGroup] = @($assignmentName)
+                # If the key doesn't exist in current environment, all items in reference are different
+                $differences[$key] = $referenceALZPolicyAssignments[$key]
             }
         }
-    }
-
-    # Output the result
-    $env = $currentPolicyAssignments
-    $reference = $script:alzPolicyAssignments
-
-    # Function to compare hashtables
-    function Compare-ALZPolicyHashTables($array1, $array2) {
-        $comparison = Compare-Object -ReferenceObject $array1 -DifferenceObject $array2 -PassThru | Where-Object { $_.SideIndicator -eq '=>' }
-        return $comparison
-    }
-
-    # Compare the hashtables and find items in reference that are not in the current environment
-    $differences = @{}
-
-    foreach ($key in $reference.Keys) {
-        if ($env.ContainsKey($key)) {
-            $diff = Compare-ALZPolicyHashTables $env[$key] $reference[$key]
-            if ($diff) {
-                $differences[$key] = $diff
-            }
-        }
-        else {
-            # If the key doesn't exist in env, all items in reference are different
-            $differences[$key] = $reference[$key]
-        }
-    }
-    # Output the results
-    if ($differences.Count -eq 0) {
-        Write-Output 'ALZ policy assignments in your environment are matching the reference policy assignments.'
-    }
-    else {
-        Write-Output 'ALZ policy assignments that are missing from your enviornment:'
-        $differences.GetEnumerator() | ForEach-Object {
+        $script:ALZPolicyAssignmentsDifferences = $differences
+        <#Write-Output '%%%%%%%%%%%%%%%%ALZ Policy Assignments Differences before:%%%%%%%%%%%%5'
+        $script:ALZPolicyAssignmentsDifferences.GetEnumerator() | ForEach-Object {
             Write-Output "  $($_.Key):"
             $_.Value | ForEach-Object {
                 Write-Output "    - $_"
             }
         }
+        Write-Output '%%%%%%%%%%%%%%%%ALZ Policy Assignments Differences:%%%%%%%%%%%%5'#>
     }
-    return $currentPolicyAssignments
-}#>
-
+}
 function processALZPolicyVersionChecker {
     $start = Get-Date
     Write-Host "Processing 'Azure Landing Zones (ALZ) Policy Version Checker' base data"
@@ -16770,6 +16665,122 @@ extensions: [{ name: 'sort' }]
 '@)
     }
     #endregion SUMMARYPolicyParityCustomBuiltIn
+
+    #region SUMMARYALZPoliciesAssignments
+    Write-Host '  processing TenantSummary ALZPolicyAssigments'
+
+    if ($ALZPolicyAssignmentsChecker -and $ALZManagementGroupsIds.Count -gt 0) {
+
+        $ALZPolicyAssignmentsDifferences = $script:ALZPolicyAssignmentsDifferences
+        # Output the results
+        if ($ALZPolicyAssignmentsDifferences.Count -eq 0) {
+            Write-Output 'ALZ policy assignments in your environment are matching the reference policy assignments.'
+        }
+        else {
+            #Write-Output 'ALZ policy assignments that are missing from your enviornment:'
+            #Write-Output "  $($_.Key):"
+            #$_.Value | ForEach-Object {
+            #    Write-Output "    - $_"
+            #}
+            $htmlTableId = 'TenantSummary_ALZPolicyAssignmentsChecker'
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ALZPolicyAssignmentsChecker"><i class="padlx fa fa-retweet" aria-hidden="true" style="color:#23C632"></i> <span class="valignMiddle">Azure Landing Zones (ALZ) Policy Assignments Checker</span>
+</button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Landing Zones (ALZ)</span> <a class="externallink" href="https://github.com/Azure/Enterprise-Scale/blob/main/docs/ESLZ-Policies.md" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id= "$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>ALZ Management Group</th>
+<th>ALZ Missing Policy Assignment</th>
+</tr>
+</thead>
+<tbody>
+"@)
+            $htmlSUMMARYALZPolicyAssignmentsChecker = $null
+            $htmlSUMMARYALZPolicyAssignmentsChecker = $ALZPolicyAssignmentsDifferences.GetEnumerator() | ForEach-Object {
+                $formattedValues = @()
+                $_.Value | ForEach-Object {
+                    $entry = "$_,"
+                    $formattedValues += $entry
+                }
+                $lastIndex = $formattedValues.Count - 1
+                $formattedValues[$lastIndex] = $formattedValues[$lastIndex].TrimEnd(',')
+@"
+<tr>
+<td>$($_.key)</td>
+<td>$($formattedValues)</td>
+</tr>
+"@
+            }
+            [void]$htmlTenantSummary.AppendLine($htmlSUMMARYALZPolicyAssignmentsChecker)
+            [void]$htmlTenantSummary.AppendLine(@"
+            </tbody>
+        </table>
+    </div>
+    <script>
+        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+            window.helpertfConfig4$htmlTableId =1;
+            var tfConfig4$htmlTableId = {
+            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+            col_0: 'select',
+            col_3: 'select',
+            col_7: 'multiple',
+            col_8: 'select',
+            col_9: 'select',
+            col_types: [
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring',
+                'caseinsensitivestring'
+            ],
+extensions: [{ name: 'sort' }]
+        };
+        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+        tf.init();}}
+    </script>
+"@)
+        }
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@'
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> Azure Landing Zones (ALZ) Policy Version Checker</p>
+'@)
+    }
+    #endregion SUMMARYALZPoliciesAssignments
 
     #region SUMMARYALZPolicies
     Write-Host '  processing TenantSummary ALZPolicies'
@@ -35630,7 +35641,6 @@ if (-not $HierarchyMapOnly) {
     $alzPolicySets = @{}
     $alzPolicyHashes = @{}
     $alzPolicySetHashes = @{}
-    $alzPolicyAssignments = @{}
     $htDoARMRoleAssignmentScheduleInstances = [System.Collections.Hashtable]::Synchronized(@{})
     $htDoARMRoleAssignmentScheduleInstances.Do = $true
     $storageAccounts = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
@@ -35647,30 +35657,10 @@ if (-not $HierarchyMapOnly) {
     $htHashesBuiltInPolicy = [System.Collections.Hashtable]::Synchronized(@{})
     $arrayCustomBuiltInPolicyParity = [System.Collections.ArrayList]@()
     $arrayRemediatable = [System.Collections.ArrayList]@()
+    $ALZPolicyAssignmentsDifferences = @{}
 }
 
 if (-not $HierarchyMapOnly) {
-    if ($ALZPolicyAssignmentsChecker -and $ALZManagementGroupIdPlatform -and $ALZManagementGroupIdRoot -and $ALZManagementGroupIdConnectivity -and $ALZManagementGroupIdCorp -and $ALZManagementGroupIdOnline -and $ALZManagementGroupIdSandboxes -and $ALZManagementGroupIdDecommissioned -and $ALZManagementGroupIdLandingZones -and $ALZManagementGroupIdIdentity -and $ALZManagementGroupIdManagement) {
-        switch ($azAPICallConf['checkContext'].Environment.Name) {
-            'Azurecloud' {
-                Write-Host "'Azure Landing Zones (ALZ) Policy Assignment Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                processALZPolicyAssignmentsChecker
-            }
-            'AzureChinaCloud' {
-                Write-Host "'Azure Landing Zones (ALZ) Policy Assignment Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                processALZPolicyAssignmentsChecker
-            }
-            'AzureUSGovernment' {
-                Write-Host "'Azure Landing Zones (ALZ) Policy Assignment Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                processALZPolicyAssignmentsChecker
-            }
-            Default {
-                Write-Host "'Azure Landing Zones (ALZ) Policy Assignment Checker' feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
-                Write-Host "Setting parameter -ALZPolicyAssignmentsChecker to 'false'"
-                $ALZPolicyAssignmentsChecker = $false
-            }
-        }
-    }
     if (-not $NoALZPolicyVersionChecker) {
         switch ($azAPICallConf['checkContext'].Environment.Name) {
             'Azurecloud' {
@@ -35868,6 +35858,34 @@ if (-not $HierarchyMapOnly) {
         showMemoryUsage
     }
 }
+
+if (-not $HierarchyMapOnly) {
+    if ($ALZPolicyAssignmentsChecker -and $ALZManagementGroupsIds.Count -gt 0) {
+        switch ($azAPICallConf['checkContext'].Environment.Name) {
+            'Azurecloud' {
+                Write-Host "'Azure Landing Zones (ALZ) Policy Assignments Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZPolicyAssignmentsChecker
+            }
+            'AzureChinaCloud' {
+                Write-Host "'Azure Landing Zones (ALZ) Policy Assignments Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZPolicyAssignmentsChecker
+            }
+            'AzureUSGovernment' {
+                Write-Host "'Azure Landing Zones (ALZ) Policy Assignments Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZPolicyAssignmentsChecker
+            }
+            Default {
+                Write-Host "'Azure Landing Zones (ALZ) Policy Assignments Checker' feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                Write-Host "Setting parameter -ALZPolicyAssignmentsChecker to 'false'"
+                $ALZPolicyAssignmentsChecker = $false
+            }
+        }
+    }
+    else {
+        #Write-Host "Skipping 'Azure Landing Zones (ALZ) Policy Assignments Checker' (parameter -ALZPolicyAssignmentsChecker = $ALZPolicyAssignmentsChecker)"
+    }
+}
+
 #endregion runDataCollection
 
 #region createoutputs
@@ -36385,6 +36403,7 @@ if (-not $HierarchyMapOnly) {
     $endSummarizeDataCollectionResults = Get-Date
     Write-Host " Summary data collection duration: $((New-TimeSpan -Start $startSummarizeDataCollectionResults -End $endSummarizeDataCollectionResults).TotalSeconds) seconds"
     showMemoryUsage
+
     #endregion summarizeDataCollectionResults
 }
 
@@ -37188,4 +37207,3 @@ if ($ShowRunIdentifier) {
     Write-Host "Azure Governance Visualizer ($ProductVersion) run identifier: '$($statsIdentifier)'"
 }
 #endregion runIdentifier
-
