@@ -57,16 +57,16 @@
         foreach ($archetype in $archetypesDefinition) {
             $key = ($archetype.BaseName -split '\.')[0]
             switch ($key) {
-                'connectivity' { if ($ALZManagementGroupsIds.containsKey('connectivity')) { $key = $ALZManagementGroupsIds['connectivity'] } else { $key = 'connectivity (Id no provided)' } }
-                'corp' { if ($ALZManagementGroupsIds.containsKey('corp')) { $key = $ALZManagementGroupsIds['corp'] } else { $key = 'corp (Id no provided)' } }
-                'root' { if ($ALZManagementGroupsIds.containsKey('root')) { $key = $ALZManagementGroupsIds['root'] } else { $key = 'root (Id no provided)' } }
-                'platform' { if ($ALZManagementGroupsIds.containsKey('platform')) { $key = $ALZManagementGroupsIds['platform'] } else { $key = 'platform (Id no provided)' } }
-                'online' { if ($ALZManagementGroupsIds.containsKey('online')) { $key = $ALZManagementGroupsIds['online'] } else { $key = 'online (Id no provided)' } }
-                'sandboxes' { if ($ALZManagementGroupsIds.containsKey('sandboxes')) { $key = $ALZManagementGroupsIds['sandboxes'] } else { $key = 'sandboxes (Id no provided)' } }
-                'decommissioned' { if ($ALZManagementGroupsIds.containsKey('decommissioned')) { $key = $ALZManagementGroupsIds['decommissioned'] } else { $key = 'decommissioned (Id no provided)' } }
-                'management' { if ($ALZManagementGroupsIds.containsKey('management')) { $key = $ALZManagementGroupsIds['management'] } else { $key = 'management (Id no provided)' } }
-                'identity' { if ($ALZManagementGroupsIds.containsKey('identity')) { $key = $ALZManagementGroupsIds['identity'] } else { $key = 'identity (Id no provided)' } }
-                'landing_zones' { if ($ALZManagementGroupsIds.containsKey('landing_zones')) { $key = $ALZManagementGroupsIds['landing_zones'] } else { $key = 'landing_zones (Id no provided)' } }
+                'connectivity' { if ($ALZManagementGroupsIds.containsKey('connectivity')) { $key = $ALZManagementGroupsIds['connectivity'] } else { $key = 'connectivity (Id not provided)' } }
+                'corp' { if ($ALZManagementGroupsIds.containsKey('corp')) { $key = $ALZManagementGroupsIds['corp'] } else { $key = 'corp (Id not provided)' } }
+                'root' { if ($ALZManagementGroupsIds.containsKey('root')) { $key = $ALZManagementGroupsIds['root'] } else { $key = 'root (Id not provided)' } }
+                'platform' { if ($ALZManagementGroupsIds.containsKey('platform')) { $key = $ALZManagementGroupsIds['platform'] } else { $key = 'platform (Id not provided)' } }
+                'online' { if ($ALZManagementGroupsIds.containsKey('online')) { $key = $ALZManagementGroupsIds['online'] } else { $key = 'online (Id not provided)' } }
+                'sandboxes' { if ($ALZManagementGroupsIds.containsKey('sandboxes')) { $key = $ALZManagementGroupsIds['sandboxes'] } else { $key = 'sandboxes (Id not provided)' } }
+                'decommissioned' { if ($ALZManagementGroupsIds.containsKey('decommissioned')) { $key = $ALZManagementGroupsIds['decommissioned'] } else { $key = 'decommissioned (Id not provided)' } }
+                'management' { if ($ALZManagementGroupsIds.containsKey('management')) { $key = $ALZManagementGroupsIds['management'] } else { $key = 'management (Id not provided)' } }
+                'identity' { if ($ALZManagementGroupsIds.containsKey('identity')) { $key = $ALZManagementGroupsIds['identity'] } else { $key = 'identity (Id not provided)' } }
+                'landing_zones' { if ($ALZManagementGroupsIds.containsKey('landing_zones')) { $key = $ALZManagementGroupsIds['landing_zones'] } else { $key = 'landing_zones (Id not provided)' } }
                 Default {}
             }
             $content = Get-Content $archetype.FullName | ConvertFrom-Json

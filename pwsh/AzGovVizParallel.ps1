@@ -172,7 +172,19 @@
 .Parameter ALZManagementGroupsIds
     'Azure Landing Zones (ALZ) Management groups Ids'. This is the Ids of the ALZ management groups hierarchy.
     This is required if ALZPolicyAssignmentsChecker is enabled.
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupsIds @{}
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupsIds @{
+        root           = 'ALZ'
+        platform       = 'ALZ-platform'
+        connectivity   = 'ALZ-connectivity'
+        identity       = 'ALZ-identity'
+        management     = 'ALZ-management'
+        landing_zones  = 'ALZ-landingzones'
+        corp           = 'ALZ-corp'
+        online         = 'ALZ-online'
+        sandboxes      = 'ALZ-sandboxes'
+        decommissioned = 'ALZ-decommissioned'
+    }
+
 
 .PARAMETER NoDefinitionInsightsDedicatedHTML
     DefinitionInsights will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep DefinitionInsights in the main html file then use this parameter
@@ -346,7 +358,18 @@
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 
     Define if the 'Azure Landing Zones (ALZ) Policy assignments Checker' feature should be executed
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupsIds @{}
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupsIds @{
+        root           = 'ALZ'
+        platform       = 'ALZ-platform'
+        connectivity   = 'ALZ-connectivity'
+        identity       = 'ALZ-identity'
+        management     = 'ALZ-management'
+        landing_zones  = 'ALZ-landingzones'
+        corp           = 'ALZ-corp'
+        online         = 'ALZ-online'
+        sandboxes      = 'ALZ-sandboxes'
+        decommissioned = 'ALZ-decommissioned'
+    }
 
     Define if DefinitionInsights should not be written to a seperate html file (*_DefinitionInsights.html)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML
@@ -5553,16 +5576,16 @@ function processALZPolicyAssignmentsChecker {
         foreach ($archetype in $archetypesDefinition) {
             $key = ($archetype.BaseName -split '\.')[0]
             switch ($key) {
-                'connectivity' { if ($ALZManagementGroupsIds.containsKey('connectivity')) { $key = $ALZManagementGroupsIds['connectivity'] } else { $key = 'connectivity' } }
-                'corp' { if ($ALZManagementGroupsIds.containsKey('corp')) { $key = $ALZManagementGroupsIds['corp'] } else { $key = 'corp' } }
-                'root' { if ($ALZManagementGroupsIds.containsKey('root')) { $key = $ALZManagementGroupsIds['root'] } else { $key = 'root' } }
-                'platform' { if ($ALZManagementGroupsIds.containsKey('platform')) { $key = $ALZManagementGroupsIds['platform'] } else { $key = 'platform' } }
-                'online' { if ($ALZManagementGroupsIds.containsKey('online')) { $key = $ALZManagementGroupsIds['online'] } else { $key = 'online' } }
-                'sandboxes' { if ($ALZManagementGroupsIds.containsKey('sandboxes')) { $key = $ALZManagementGroupsIds['sandboxes'] } else { $key = 'sandboxes-placeholder' } }
-                'decommissioned' { if ($ALZManagementGroupsIds.containsKey('decommissioned')) { $key = $ALZManagementGroupsIds['decommissioned'] } else { $key = 'decommissioned-placeholder' } }
-                'management' { if ($ALZManagementGroupsIds.containsKey('management')) { $key = $ALZManagementGroupsIds['management'] } else { $key = 'management' } }
-                'identity' { if ($ALZManagementGroupsIds.containsKey('identity')) { $key = $ALZManagementGroupsIds['identity'] } else { $key = 'identity' } }
-                'landing_zones' { if ($ALZManagementGroupsIds.containsKey('landing_zones')) { $key = $ALZManagementGroupsIds['landing_zones'] } else { $key = 'landing_zones' } }
+                'connectivity' { if ($ALZManagementGroupsIds.containsKey('connectivity')) { $key = $ALZManagementGroupsIds['connectivity'] } else { $key = 'connectivity (Id not provided)' } }
+                'corp' { if ($ALZManagementGroupsIds.containsKey('corp')) { $key = $ALZManagementGroupsIds['corp'] } else { $key = 'corp (Id not provided)' } }
+                'root' { if ($ALZManagementGroupsIds.containsKey('root')) { $key = $ALZManagementGroupsIds['root'] } else { $key = 'root (Id not provided)' } }
+                'platform' { if ($ALZManagementGroupsIds.containsKey('platform')) { $key = $ALZManagementGroupsIds['platform'] } else { $key = 'platform (Id not provided)' } }
+                'online' { if ($ALZManagementGroupsIds.containsKey('online')) { $key = $ALZManagementGroupsIds['online'] } else { $key = 'online (Id not provided)' } }
+                'sandboxes' { if ($ALZManagementGroupsIds.containsKey('sandboxes')) { $key = $ALZManagementGroupsIds['sandboxes'] } else { $key = 'sandboxes (Id not provided)' } }
+                'decommissioned' { if ($ALZManagementGroupsIds.containsKey('decommissioned')) { $key = $ALZManagementGroupsIds['decommissioned'] } else { $key = 'decommissioned (Id not provided)' } }
+                'management' { if ($ALZManagementGroupsIds.containsKey('management')) { $key = $ALZManagementGroupsIds['management'] } else { $key = 'management (Id not provided)' } }
+                'identity' { if ($ALZManagementGroupsIds.containsKey('identity')) { $key = $ALZManagementGroupsIds['identity'] } else { $key = 'identity (Id not provided)' } }
+                'landing_zones' { if ($ALZManagementGroupsIds.containsKey('landing_zones')) { $key = $ALZManagementGroupsIds['landing_zones'] } else { $key = 'landing_zones (Id not provided)' } }
                 Default {}
             }
             $content = Get-Content $archetype.FullName | ConvertFrom-Json
@@ -5636,10 +5659,11 @@ function processALZPolicyAssignmentsChecker {
             else {
                 # If the key doesn't exist in current environment, all items in reference are different
                 #$differences[$key] = $referenceALZPolicyAssignments[$key]
-                $differences[$key] = 'Management Group Id not provided!!'
+                $differences[$key] = 'N/A'
             }
         }
         $script:ALZPolicyAssignmentsDifferences = $differences
+        Remove-Item "$($OutputPath)/ALZPolicyAssignmentsChecker.json" -Force
     }
 }
 function processALZPolicyVersionChecker {
@@ -16765,7 +16789,7 @@ extensions: [{ name: 'sort' }]
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@'
-            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> Azure Landing Zones (ALZ) Policy Version Checker</p>
+            <p><i class="padlx fa fa-ban" aria-hidden="true"></i> Azure Landing Zones (ALZ) Policy Assignments Checker</p>
 '@)
     }
     #endregion SUMMARYALZPoliciesAssignments

@@ -172,7 +172,19 @@
 .Parameter ALZManagementGroupsIds
     'Azure Landing Zones (ALZ) Management groups Ids'. This is the Ids of the ALZ management groups hierarchy.
     This is required if ALZPolicyAssignmentsChecker is enabled.
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupsIds @{}
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupsIds @{
+        root           = 'ALZ'
+        platform       = 'ALZ-platform'
+        connectivity   = 'ALZ-connectivity'
+        identity       = 'ALZ-identity'
+        management     = 'ALZ-management'
+        landing_zones  = 'ALZ-landingzones'
+        corp           = 'ALZ-corp'
+        online         = 'ALZ-online'
+        sandboxes      = 'ALZ-sandboxes'
+        decommissioned = 'ALZ-decommissioned'
+    }
+
 
 .PARAMETER NoDefinitionInsightsDedicatedHTML
     DefinitionInsights will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep DefinitionInsights in the main html file then use this parameter
@@ -346,7 +358,18 @@
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 
     Define if the 'Azure Landing Zones (ALZ) Policy assignments Checker' feature should be executed
-    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupsIds @{}
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupsIds @{
+        root           = 'ALZ'
+        platform       = 'ALZ-platform'
+        connectivity   = 'ALZ-connectivity'
+        identity       = 'ALZ-identity'
+        management     = 'ALZ-management'
+        landing_zones  = 'ALZ-landingzones'
+        corp           = 'ALZ-corp'
+        online         = 'ALZ-online'
+        sandboxes      = 'ALZ-sandboxes'
+        decommissioned = 'ALZ-decommissioned'
+    }
 
     Define if DefinitionInsights should not be written to a seperate html file (*_DefinitionInsights.html)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML
