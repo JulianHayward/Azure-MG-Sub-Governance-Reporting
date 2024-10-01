@@ -57,16 +57,16 @@
         foreach ($archetype in $archetypesDefinition) {
             $key = ($archetype.BaseName -split '\.')[0]
             switch ($key) {
-                'connectivity' { if ($ALZManagementGroupsIds.containsKey('connectivity')) { $key = $ALZManagementGroupsIds['connectivity'] } }
-                'corp' { if ($ALZManagementGroupsIds.containsKey('corp')) { $key = $ALZManagementGroupsIds['corp'] } }
-                'root' { if ($ALZManagementGroupsIds.containsKey('root')) { $key = $ALZManagementGroupsIds['root'] } }
-                'platform' { if ($ALZManagementGroupsIds.containsKey('platform')) { $key = $ALZManagementGroupsIds['platform'] } }
-                'online' { if ($ALZManagementGroupsIds.containsKey('online')) { $key = $ALZManagementGroupsIds['online'] } }
-                'sandboxes' { if ($ALZManagementGroupsIds.containsKey('sandboxes')) { $key = $ALZManagementGroupsIds['sandboxes'] } }
-                'decommissioned' { if ($ALZManagementGroupsIds.containsKey('decommissioned')) { $key = $ALZManagementGroupsIds['decommissioned'] } }
-                'management' { if ($ALZManagementGroupsIds.containsKey('management')) { $key = $ALZManagementGroupsIds['management'] } }
-                'identity' { if ($ALZManagementGroupsIds.containsKey('identity')) { $key = $ALZManagementGroupsIds['identity'] } }
-                'landing_zones' { if ($ALZManagementGroupsIds.containsKey('landing_zones')) { $key = $ALZManagementGroupsIds['landing_zones'] } }
+                'connectivity' { if ($ALZManagementGroupsIds.containsKey('connectivity')) { $key = $ALZManagementGroupsIds['connectivity'] } else { $key = 'connectivity (Id no provided)' } }
+                'corp' { if ($ALZManagementGroupsIds.containsKey('corp')) { $key = $ALZManagementGroupsIds['corp'] } else { $key = 'corp (Id no provided)' } }
+                'root' { if ($ALZManagementGroupsIds.containsKey('root')) { $key = $ALZManagementGroupsIds['root'] } else { $key = 'root (Id no provided)' } }
+                'platform' { if ($ALZManagementGroupsIds.containsKey('platform')) { $key = $ALZManagementGroupsIds['platform'] } else { $key = 'platform (Id no provided)' } }
+                'online' { if ($ALZManagementGroupsIds.containsKey('online')) { $key = $ALZManagementGroupsIds['online'] } else { $key = 'online (Id no provided)' } }
+                'sandboxes' { if ($ALZManagementGroupsIds.containsKey('sandboxes')) { $key = $ALZManagementGroupsIds['sandboxes'] } else { $key = 'sandboxes (Id no provided)' } }
+                'decommissioned' { if ($ALZManagementGroupsIds.containsKey('decommissioned')) { $key = $ALZManagementGroupsIds['decommissioned'] } else { $key = 'decommissioned (Id no provided)' } }
+                'management' { if ($ALZManagementGroupsIds.containsKey('management')) { $key = $ALZManagementGroupsIds['management'] } else { $key = 'management (Id no provided)' } }
+                'identity' { if ($ALZManagementGroupsIds.containsKey('identity')) { $key = $ALZManagementGroupsIds['identity'] } else { $key = 'identity (Id no provided)' } }
+                'landing_zones' { if ($ALZManagementGroupsIds.containsKey('landing_zones')) { $key = $ALZManagementGroupsIds['landing_zones'] } else { $key = 'landing_zones (Id no provided)' } }
                 Default {}
             }
             $content = Get-Content $archetype.FullName | ConvertFrom-Json
@@ -96,7 +96,7 @@
             'decommissioned' = @{ Variable = $ALZManagementGroupsIds['decommissioned']; Default = 'decommissioned' }
             'management'     = @{ Variable = $ALZManagementGroupsIds['management']; Default = 'management' }
             'identity'       = @{ Variable = $ALZManagementGroupsIds['identity']; Default = 'identity' }
-            'landingzones'   = @{ Variable = $ALZManagementGroupsIds['landing_zones']; Default = 'landing_zones' }
+            'landingzones'   = @{ Variable = $ALZManagementGroupsIds['landing_zones']; Default = 'landingzones' }
         }
 
         # Populate the hashtable
@@ -139,17 +139,11 @@
             }
             else {
                 # If the key doesn't exist in current environment, all items in reference are different
-                $differences[$key] = $referenceALZPolicyAssignments[$key]
+                #$differences[$key] = $referenceALZPolicyAssignments[$key]
+                $differences[$key] = 'Management Group Id not provided!!'
             }
         }
         $script:ALZPolicyAssignmentsDifferences = $differences
-        <#Write-Output '%%%%%%%%%%%%%%%%ALZ Policy Assignments Differences before:%%%%%%%%%%%%5'
-        $script:ALZPolicyAssignmentsDifferences.GetEnumerator() | ForEach-Object {
-            Write-Output "  $($_.Key):"
-            $_.Value | ForEach-Object {
-                Write-Output "    - $_"
-            }
-        }
-        Write-Output '%%%%%%%%%%%%%%%%ALZ Policy Assignments Differences:%%%%%%%%%%%%5'#>
+        Remove-Item "$($OutputPath)/ALZPolicyAssignmentsChecker.json" -Force
     }
 }

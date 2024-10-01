@@ -2525,11 +2525,6 @@ extensions: [{ name: 'sort' }]
             Write-Output 'ALZ policy assignments in your environment are matching the reference policy assignments.'
         }
         else {
-            #Write-Output 'ALZ policy assignments that are missing from your enviornment:'
-            #Write-Output "  $($_.Key):"
-            #$_.Value | ForEach-Object {
-            #    Write-Output "    - $_"
-            #}
             $htmlTableId = 'TenantSummary_ALZPolicyAssignmentsChecker'
             [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ALZPolicyAssignmentsChecker"><i class="padlx fa fa-retweet" aria-hidden="true" style="color:#23C632"></i> <span class="valignMiddle">Azure Landing Zones (ALZ) Policy Assignments Checker</span>
@@ -2541,7 +2536,7 @@ extensions: [{ name: 'sort' }]
 <thead>
 <tr>
 <th>ALZ Management Group</th>
-<th>ALZ Missing Policy Assignment</th>
+<th>ALZ Missing Policy Assignments</th>
 </tr>
 </thead>
 <tbody>

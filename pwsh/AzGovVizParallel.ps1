@@ -5553,16 +5553,16 @@ function processALZPolicyAssignmentsChecker {
         foreach ($archetype in $archetypesDefinition) {
             $key = ($archetype.BaseName -split '\.')[0]
             switch ($key) {
-                'connectivity' { if ($ALZManagementGroupsIds.containsKey('connectivity')) { $key = $ALZManagementGroupsIds['connectivity'] } }
-                'corp' { if ($ALZManagementGroupsIds.containsKey('corp')) { $key = $ALZManagementGroupsIds['corp'] } }
-                'root' { if ($ALZManagementGroupsIds.containsKey('root')) { $key = $ALZManagementGroupsIds['root'] } }
-                'platform' { if ($ALZManagementGroupsIds.containsKey('platform')) { $key = $ALZManagementGroupsIds['platform'] } }
-                'online' { if ($ALZManagementGroupsIds.containsKey('online')) { $key = $ALZManagementGroupsIds['online'] } }
-                'sandboxes' { if ($ALZManagementGroupsIds.containsKey('sandboxes')) { $key = $ALZManagementGroupsIds['sandboxes'] } }
-                'decommissioned' { if ($ALZManagementGroupsIds.containsKey('decommissioned')) { $key = $ALZManagementGroupsIds['decommissioned'] } }
-                'management' { if ($ALZManagementGroupsIds.containsKey('management')) { $key = $ALZManagementGroupsIds['management'] } }
-                'identity' { if ($ALZManagementGroupsIds.containsKey('identity')) { $key = $ALZManagementGroupsIds['identity'] } }
-                'landing_zones' { if ($ALZManagementGroupsIds.containsKey('landing_zones')) { $key = $ALZManagementGroupsIds['landing_zones'] } }
+                'connectivity' { if ($ALZManagementGroupsIds.containsKey('connectivity')) { $key = $ALZManagementGroupsIds['connectivity'] } else { $key = 'connectivity' } }
+                'corp' { if ($ALZManagementGroupsIds.containsKey('corp')) { $key = $ALZManagementGroupsIds['corp'] } else { $key = 'corp' } }
+                'root' { if ($ALZManagementGroupsIds.containsKey('root')) { $key = $ALZManagementGroupsIds['root'] } else { $key = 'root' } }
+                'platform' { if ($ALZManagementGroupsIds.containsKey('platform')) { $key = $ALZManagementGroupsIds['platform'] } else { $key = 'platform' } }
+                'online' { if ($ALZManagementGroupsIds.containsKey('online')) { $key = $ALZManagementGroupsIds['online'] } else { $key = 'online' } }
+                'sandboxes' { if ($ALZManagementGroupsIds.containsKey('sandboxes')) { $key = $ALZManagementGroupsIds['sandboxes'] } else { $key = 'sandboxes-placeholder' } }
+                'decommissioned' { if ($ALZManagementGroupsIds.containsKey('decommissioned')) { $key = $ALZManagementGroupsIds['decommissioned'] } else { $key = 'decommissioned-placeholder' } }
+                'management' { if ($ALZManagementGroupsIds.containsKey('management')) { $key = $ALZManagementGroupsIds['management'] } else { $key = 'management' } }
+                'identity' { if ($ALZManagementGroupsIds.containsKey('identity')) { $key = $ALZManagementGroupsIds['identity'] } else { $key = 'identity' } }
+                'landing_zones' { if ($ALZManagementGroupsIds.containsKey('landing_zones')) { $key = $ALZManagementGroupsIds['landing_zones'] } else { $key = 'landing_zones' } }
                 Default {}
             }
             $content = Get-Content $archetype.FullName | ConvertFrom-Json
@@ -5592,7 +5592,7 @@ function processALZPolicyAssignmentsChecker {
             'decommissioned' = @{ Variable = $ALZManagementGroupsIds['decommissioned']; Default = 'decommissioned' }
             'management'     = @{ Variable = $ALZManagementGroupsIds['management']; Default = 'management' }
             'identity'       = @{ Variable = $ALZManagementGroupsIds['identity']; Default = 'identity' }
-            'landingzones'   = @{ Variable = $ALZManagementGroupsIds['landing_zones']; Default = 'landing_zones' }
+            'landingzones'   = @{ Variable = $ALZManagementGroupsIds['landing_zones']; Default = 'landingzones' }
         }
 
         # Populate the hashtable
@@ -5635,18 +5635,11 @@ function processALZPolicyAssignmentsChecker {
             }
             else {
                 # If the key doesn't exist in current environment, all items in reference are different
-                $differences[$key] = $referenceALZPolicyAssignments[$key]
+                #$differences[$key] = $referenceALZPolicyAssignments[$key]
+                $differences[$key] = 'Management Group Id not provided!!'
             }
         }
         $script:ALZPolicyAssignmentsDifferences = $differences
-        <#Write-Output '%%%%%%%%%%%%%%%%ALZ Policy Assignments Differences before:%%%%%%%%%%%%5'
-        $script:ALZPolicyAssignmentsDifferences.GetEnumerator() | ForEach-Object {
-            Write-Output "  $($_.Key):"
-            $_.Value | ForEach-Object {
-                Write-Output "    - $_"
-            }
-        }
-        Write-Output '%%%%%%%%%%%%%%%%ALZ Policy Assignments Differences:%%%%%%%%%%%%5'#>
     }
 }
 function processALZPolicyVersionChecker {
@@ -16677,11 +16670,6 @@ extensions: [{ name: 'sort' }]
             Write-Output 'ALZ policy assignments in your environment are matching the reference policy assignments.'
         }
         else {
-            #Write-Output 'ALZ policy assignments that are missing from your enviornment:'
-            #Write-Output "  $($_.Key):"
-            #$_.Value | ForEach-Object {
-            #    Write-Output "    - $_"
-            #}
             $htmlTableId = 'TenantSummary_ALZPolicyAssignmentsChecker'
             [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ALZPolicyAssignmentsChecker"><i class="padlx fa fa-retweet" aria-hidden="true" style="color:#23C632"></i> <span class="valignMiddle">Azure Landing Zones (ALZ) Policy Assignments Checker</span>
@@ -16693,7 +16681,7 @@ extensions: [{ name: 'sort' }]
 <thead>
 <tr>
 <th>ALZ Management Group</th>
-<th>ALZ Missing Policy Assignment</th>
+<th>ALZ Missing Policy Assignments</th>
 </tr>
 </thead>
 <tbody>
@@ -16707,7 +16695,7 @@ extensions: [{ name: 'sort' }]
                 }
                 $lastIndex = $formattedValues.Count - 1
                 $formattedValues[$lastIndex] = $formattedValues[$lastIndex].TrimEnd(',')
-@"
+                @"
 <tr>
 <td>$($_.key)</td>
 <td>$($formattedValues)</td>
