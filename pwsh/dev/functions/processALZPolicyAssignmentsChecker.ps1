@@ -140,7 +140,7 @@
             else {
                 # If the key doesn't exist in current environment, all items in reference are different
                 #$differences[$key] = $referenceALZPolicyAssignments[$key]
-                $differences[$key] = 'Management Group Id not provided!!'
+                $differences[$key] = 'N/A'
             }
         }
         $script:ALZPolicyAssignmentsDifferences = $differences
