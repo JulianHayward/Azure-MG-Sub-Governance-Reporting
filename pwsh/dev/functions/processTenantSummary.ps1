@@ -2518,7 +2518,6 @@ extensions: [{ name: 'sort' }]
     Write-Host '  processing TenantSummary ALZPolicyAssigments'
 
     if ($ALZPolicyAssignmentsChecker -and $ALZManagementGroupsIds.Count -gt 0) {
-
         $ALZPolicyAssignmentsDifferences = $script:ALZPolicyAssignmentsDifferences
         # Output the results
         if ($ALZPolicyAssignmentsDifferences.Count -eq 0) {
@@ -2537,6 +2536,7 @@ extensions: [{ name: 'sort' }]
 <tr>
 <th>ALZ Management Group</th>
 <th>ALZ Missing Policy Assignments</th>
+<th>AzAdvertizer Link</th>
 </tr>
 </thead>
 <tbody>
@@ -2546,10 +2546,12 @@ extensions: [{ name: 'sort' }]
                 $key = $_.Key
                 $_.Value | ForEach-Object {
                     $entry = $_
+                    $policyDefinitionId = $script:ALZpolicyDefinitionsTable[$entry]
                     @"
 <tr>
 <td>$($key)</td>
 <td>$($entry)</td>
+<td>$($policyDefinitionId)</td>
 </tr>
 "@
                 }

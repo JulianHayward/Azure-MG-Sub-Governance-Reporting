@@ -5569,7 +5569,9 @@ function processALZPolicyAssignmentsChecker {
         Write-Host " Switching to directory '$($ALZLibraryPath)/Azure-Landing-Zones-Library'"
         Set-Location "$($ALZLibraryPath)/Azure-Landing-Zones-Library"
         $script:referenceALZPolicyAssignments = @{}
+        $script:ALZpolicyDefinitionsTable = @{}
         $archetypesPath = '.\platform\alz\archetype_definitions'
+        $policyAssignmentsPath = '.\platform\alz\policy_assignments'
         $archetypesDefinition = Get-ChildItem -Path $archetypesPath -Filter '*.json'
 
         $ALZManagementGroupsIds = $script:ALZManagementGroupsIds
@@ -5591,11 +5593,17 @@ function processALZPolicyAssignmentsChecker {
             $content = Get-Content $archetype.FullName | ConvertFrom-Json
             if ($content.policy_assignments) {
                 $script:referenceALZPolicyAssignments[$key] = $content.policy_assignments
+                $content.policy_assignments | ForEach-Object {
+                    $assignmentName = $_ -replace '-', '_'
+                    $filename = "$assignmentName.alz_policy_assignment.json"
+                    $PolicyContent = Get-Content -Path "$policyAssignmentsPath\$filename" | ConvertFrom-Json
+                    $script:ALZpolicyDefinitionsTable[$_] = $PolicyContent.properties.policyDefinitionId
+                }
             }
         }
-
         # Output the result
         $script:referenceALZPolicyAssignments | ConvertTo-Json -Depth 10 | Out-File "$($OutputPath)/ALZPolicyAssignmentsChecker.json"
+        $script:ALZpolicyDefinitionsTable | ConvertTo-Json -Depth 10 | Out-File "$($OutputPath)/ALZPolicyAssignmentsDefinitions.json"
         Write-Host " Switching back to working directory '$($workingPath)'"
         Set-Location $workingPath
 
@@ -16687,7 +16695,6 @@ extensions: [{ name: 'sort' }]
     Write-Host '  processing TenantSummary ALZPolicyAssigments'
 
     if ($ALZPolicyAssignmentsChecker -and $ALZManagementGroupsIds.Count -gt 0) {
-
         $ALZPolicyAssignmentsDifferences = $script:ALZPolicyAssignmentsDifferences
         # Output the results
         if ($ALZPolicyAssignmentsDifferences.Count -eq 0) {
@@ -16706,6 +16713,7 @@ extensions: [{ name: 'sort' }]
 <tr>
 <th>ALZ Management Group</th>
 <th>ALZ Missing Policy Assignments</th>
+<th>AzAdvertizer Link</th>
 </tr>
 </thead>
 <tbody>
@@ -16715,10 +16723,12 @@ extensions: [{ name: 'sort' }]
                 $key = $_.Key
                 $_.Value | ForEach-Object {
                     $entry = $_
+                    $policyDefinitionId = $script:ALZpolicyDefinitionsTable[$entry]
                     @"
 <tr>
 <td>$($key)</td>
 <td>$($entry)</td>
+<td>$($policyDefinitionId)</td>
 </tr>
 "@
                 }
