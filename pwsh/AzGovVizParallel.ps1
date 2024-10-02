@@ -5544,7 +5544,7 @@ function processALZPolicyAssignmentsChecker {
         if (-not (Test-Path -LiteralPath "$($ALZLibraryPath)/Azure-Landing-Zones-Library" -PathType Container)) {
             $ALZCloneSuccess = $false
             Write-Host " Cloning '$($ALZLibraryRepositoryURI)' failed"
-            Write-Host " Setting switch parameter '-ALZPolicyAssignmentsChecker' to true"
+            Write-Host " Setting switch parameter '-ALZPolicyAssignmentsChecker' to false"
             $script:ALZPolicyAssignmentsChecker = $false
             $script:azAPICallConf['htParameters'].ALZPolicyAssignmentsChecker = $false
             Write-Host " Switching back to working directory '$($workingPath)'"
@@ -5558,9 +5558,9 @@ function processALZPolicyAssignmentsChecker {
     catch {
         $_
         Write-Host " Cloning '$($ALZLibraryRepositoryURI)' failed"
-        Write-Host " Setting switch parameter '-ALZPolicyAssignmentsChecker' to true"
-        $script:ALZPolicyAssignmentsChecker = $true
-        $script:azAPICallConf['htParameters'].ALZPolicyAssignmentsChecker = $true
+        Write-Host " Setting switch parameter '-ALZPolicyAssignmentsChecker' to false"
+        $script:ALZPolicyAssignmentsChecker = $false
+        $script:azAPICallConf['htParameters'].ALZPolicyAssignmentsChecker = $false
         Write-Host " Switching back to working directory '$($workingPath)'"
         Set-Location $workingPath
     }
@@ -16712,19 +16712,16 @@ extensions: [{ name: 'sort' }]
 "@)
             $htmlSUMMARYALZPolicyAssignmentsChecker = $null
             $htmlSUMMARYALZPolicyAssignmentsChecker = $ALZPolicyAssignmentsDifferences.GetEnumerator() | ForEach-Object {
-                $formattedValues = @()
+                $key = $_.Key
                 $_.Value | ForEach-Object {
-                    $entry = "$_,"
-                    $formattedValues += $entry
-                }
-                $lastIndex = $formattedValues.Count - 1
-                $formattedValues[$lastIndex] = $formattedValues[$lastIndex].TrimEnd(',')
-                @"
+                    $entry = $_
+                    @"
 <tr>
-<td>$($_.key)</td>
-<td>$($formattedValues)</td>
+<td>$($key)</td>
+<td>$($entry)</td>
 </tr>
 "@
+                }
             }
             [void]$htmlTenantSummary.AppendLine($htmlSUMMARYALZPolicyAssignmentsChecker)
             [void]$htmlTenantSummary.AppendLine(@"

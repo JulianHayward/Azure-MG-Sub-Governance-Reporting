@@ -25,7 +25,7 @@
         if (-not (Test-Path -LiteralPath "$($ALZLibraryPath)/Azure-Landing-Zones-Library" -PathType Container)) {
             $ALZCloneSuccess = $false
             Write-Host " Cloning '$($ALZLibraryRepositoryURI)' failed"
-            Write-Host " Setting switch parameter '-ALZPolicyAssignmentsChecker' to true"
+            Write-Host " Setting switch parameter '-ALZPolicyAssignmentsChecker' to false"
             $script:ALZPolicyAssignmentsChecker = $false
             $script:azAPICallConf['htParameters'].ALZPolicyAssignmentsChecker = $false
             Write-Host " Switching back to working directory '$($workingPath)'"
@@ -39,9 +39,9 @@
     catch {
         $_
         Write-Host " Cloning '$($ALZLibraryRepositoryURI)' failed"
-        Write-Host " Setting switch parameter '-ALZPolicyAssignmentsChecker' to true"
-        $script:ALZPolicyAssignmentsChecker = $true
-        $script:azAPICallConf['htParameters'].ALZPolicyAssignmentsChecker = $true
+        Write-Host " Setting switch parameter '-ALZPolicyAssignmentsChecker' to false"
+        $script:ALZPolicyAssignmentsChecker = $false
+        $script:azAPICallConf['htParameters'].ALZPolicyAssignmentsChecker = $false
         Write-Host " Switching back to working directory '$($workingPath)'"
         Set-Location $workingPath
     }

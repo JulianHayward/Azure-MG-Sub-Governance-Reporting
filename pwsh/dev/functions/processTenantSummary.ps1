@@ -2543,19 +2543,16 @@ extensions: [{ name: 'sort' }]
 "@)
             $htmlSUMMARYALZPolicyAssignmentsChecker = $null
             $htmlSUMMARYALZPolicyAssignmentsChecker = $ALZPolicyAssignmentsDifferences.GetEnumerator() | ForEach-Object {
-                $formattedValues = @()
+                $key = $_.Key
                 $_.Value | ForEach-Object {
-                    $entry = "$_,"
-                    $formattedValues += $entry
-                }
-                $lastIndex = $formattedValues.Count - 1
-                $formattedValues[$lastIndex] = $formattedValues[$lastIndex].TrimEnd(',')
-                @"
+                    $entry = $_
+                    @"
 <tr>
-<td>$($_.key)</td>
-<td>$($formattedValues)</td>
+<td>$($key)</td>
+<td>$($entry)</td>
 </tr>
 "@
+                }
             }
             [void]$htmlTenantSummary.AppendLine($htmlSUMMARYALZPolicyAssignmentsChecker)
             [void]$htmlTenantSummary.AppendLine(@"
