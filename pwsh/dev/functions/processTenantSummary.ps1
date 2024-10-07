@@ -2535,7 +2535,9 @@ extensions: [{ name: 'sort' }]
 <thead>
 <tr>
 <th>ALZ Management Group</th>
+<th>Management Group exists / provided</th>
 <th>ALZ Missing Policy Assignments</th>
+<th>ALZ Policy Assignment Payload</th>
 <th>AzAdvertizer Link</th>
 </tr>
 </thead>
@@ -2544,14 +2546,37 @@ extensions: [{ name: 'sort' }]
             $htmlSUMMARYALZPolicyAssignmentsChecker = $null
             $htmlSUMMARYALZPolicyAssignmentsChecker = $ALZPolicyAssignmentsDifferences.GetEnumerator() | ForEach-Object {
                 $key = $_.Key
+                $managementGroupExists = $true
+                if ($key -match 'notProvided') {
+                    $key = $key.replace('-notProvided', '')
+                    $managementGroupExists = $false
+                    $mGExists = "<input type=`"checkbox`" style=`"accent-color: red; pointer-events: none;`" checked><span style=`"color:red;`">&#10006;</span>"
+                }
+                else {
+                    $mGExists = "<input type=`"checkbox`" style=`"accent-color: green; pointer-events: none;`" checked>"
+                }
                 $_.Value | ForEach-Object {
                     $entry = $_
+                    $ALZPolicyAssignmentsPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/policy_assignments/$($ALZPolicyAssignmentsPayloadFiles[$entry])"
+                    $assignmentPayLoadlink = "<a class=`"externallink`" href=`"$(($ALZPolicyAssignmentsPayload).ToLower())`" target=`"_blank`" rel=`"noopener`">Assignment payload Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
                     $policyDefinitionId = $script:ALZpolicyDefinitionsTable[$entry]
+                    $policyGuid = $policyDefinitionId.split('/')[-1]
+                    $azAdvertizerURL = ''
+                    if ($policyDefinitionId -match 'policyDefinitions') {
+                        $azAdvertizerURL = "https://www.azadvertizer.net/azpolicyadvertizer/${policyGuid}.html"
+
+                    }
+                    elseif ($policyDefinitionId -match 'policySetDefinitions') {
+                        $azAdvertizerURL = "https://www.azadvertizer.net/azpolicyinitiativesadvertizer/${policyGuid}.html"
+                    }
+                    $azAdvertiserlink = "<a class=`"externallink`" href=`"$($azAdvertizerURL)`" target=`"_blank`" rel=`"noopener`">AzA Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
                     @"
 <tr>
 <td>$($key)</td>
+<td>$($mGExists)</td>
 <td>$($entry)</td>
-<td>$($policyDefinitionId)</td>
+<td>$($assignmentPayLoadlink)</td>
+<td>$($azAdvertiserlink)</td>
 </tr>
 "@
                 }

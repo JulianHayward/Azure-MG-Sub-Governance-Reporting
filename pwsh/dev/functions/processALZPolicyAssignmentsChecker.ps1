@@ -51,24 +51,40 @@
         Set-Location "$($ALZLibraryPath)/Azure-Landing-Zones-Library"
         $script:referenceALZPolicyAssignments = @{}
         $script:ALZpolicyDefinitionsTable = @{}
+        $script:ALZPolicyAssignmentsPayloadFiles = @{}
         $archetypesPath = '.\platform\alz\archetype_definitions'
         $policyAssignmentsPath = '.\platform\alz\policy_assignments'
         $archetypesDefinition = Get-ChildItem -Path $archetypesPath -Filter '*.json'
+
+        function Test-ALZManagementGroupIds {
+            param (
+                [string]$managementGroupIdTobeChecked
+            )
+            $ALZMangementGroupFound = ($arrayEntitiesFromAPI.where( { $_.Type -eq 'Microsoft.Management/managementGroups' -and $_.id.split('/')[-1] -eq $managementGroupIdTobeChecked -and ($_.properties.parentNameChain -match $ManagementGroupId -or $managementGroupIdTobeChecked -eq $ManagementGroupId) })).id
+            if ($null -eq $ALZMangementGroupFound) {
+                return $false
+            }
+            else {
+                return $true
+            }
+
+            return $ALZMangementGroupFound
+        }
 
         $ALZManagementGroupsIds = $script:ALZManagementGroupsIds
         foreach ($archetype in $archetypesDefinition) {
             $key = ($archetype.BaseName -split '\.')[0]
             switch ($key) {
-                'connectivity' { if ($ALZManagementGroupsIds.containsKey('connectivity')) { $key = $ALZManagementGroupsIds['connectivity'] } else { $key = 'connectivity (Id not provided)' } }
-                'corp' { if ($ALZManagementGroupsIds.containsKey('corp')) { $key = $ALZManagementGroupsIds['corp'] } else { $key = 'corp (Id not provided)' } }
-                'root' { if ($ALZManagementGroupsIds.containsKey('root')) { $key = $ALZManagementGroupsIds['root'] } else { $key = 'root (Id not provided)' } }
-                'platform' { if ($ALZManagementGroupsIds.containsKey('platform')) { $key = $ALZManagementGroupsIds['platform'] } else { $key = 'platform (Id not provided)' } }
-                'online' { if ($ALZManagementGroupsIds.containsKey('online')) { $key = $ALZManagementGroupsIds['online'] } else { $key = 'online (Id not provided)' } }
-                'sandboxes' { if ($ALZManagementGroupsIds.containsKey('sandboxes')) { $key = $ALZManagementGroupsIds['sandboxes'] } else { $key = 'sandboxes (Id not provided)' } }
-                'decommissioned' { if ($ALZManagementGroupsIds.containsKey('decommissioned')) { $key = $ALZManagementGroupsIds['decommissioned'] } else { $key = 'decommissioned (Id not provided)' } }
-                'management' { if ($ALZManagementGroupsIds.containsKey('management')) { $key = $ALZManagementGroupsIds['management'] } else { $key = 'management (Id not provided)' } }
-                'identity' { if ($ALZManagementGroupsIds.containsKey('identity')) { $key = $ALZManagementGroupsIds['identity'] } else { $key = 'identity (Id not provided)' } }
-                'landing_zones' { if ($ALZManagementGroupsIds.containsKey('landing_zones')) { $key = $ALZManagementGroupsIds['landing_zones'] } else { $key = 'landing_zones (Id not provided)' } }
+                'connectivity' { if ($ALZManagementGroupsIds.containsKey('connectivity') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['connectivity'])) { $key = $ALZManagementGroupsIds['connectivity'] } else { $key = 'connectivity-notProvided' } }
+                'corp' { if ($ALZManagementGroupsIds.containsKey('corp') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['corp'])) { $key = $ALZManagementGroupsIds['corp'] } else { $key = 'corp-notProvided' } }
+                'root' { if ($ALZManagementGroupsIds.containsKey('root') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['root'])) { $key = $ALZManagementGroupsIds['root'] } else { $key = 'root-notProvided' } }
+                'platform' { if ($ALZManagementGroupsIds.containsKey('platform') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['platform'])) { $key = $ALZManagementGroupsIds['platform'] } else { $key = 'platform-notProvided' } }
+                'online' { if ($ALZManagementGroupsIds.containsKey('online') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['online'])) { $key = $ALZManagementGroupsIds['online'] } else { $key = 'online-notProvided' } }
+                'sandboxes' { if ($ALZManagementGroupsIds.containsKey('sandboxes') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['sandboxes'])) { $key = $ALZManagementGroupsIds['sandboxes'] } else { $key = 'sandboxes-notProvided' } }
+                'decommissioned' { if ($ALZManagementGroupsIds.containsKey('decommissioned') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['decommissioned'])) { $key = $ALZManagementGroupsIds['decommissioned'] } else { $key = 'decommissioned-notProvided' } }
+                'management' { if ($ALZManagementGroupsIds.containsKey('management') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['management'])) { $key = $ALZManagementGroupsIds['management'] } else { $key = 'management-notProvided' } }
+                'identity' { if ($ALZManagementGroupsIds.containsKey('identity') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['identity'])) { $key = $ALZManagementGroupsIds['identity'] } else { $key = 'identity-notProvided' } }
+                'landing_zones' { if ($ALZManagementGroupsIds.containsKey('landing_zones') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['landing_zones'])) { $key = $ALZManagementGroupsIds['landing_zones'] } else { $key = 'landing_zones-notProvided' } }
                 Default {}
             }
             $content = Get-Content $archetype.FullName | ConvertFrom-Json
@@ -77,6 +93,7 @@
                 $content.policy_assignments | ForEach-Object {
                     $assignmentName = $_ -replace '-', '_'
                     $filename = "$assignmentName.alz_policy_assignment.json"
+                    $script:ALZPolicyAssignmentsPayloadFiles[$_] = $filename
                     $PolicyContent = Get-Content -Path "$policyAssignmentsPath\$filename" | ConvertFrom-Json
                     $script:ALZpolicyDefinitionsTable[$_] = $PolicyContent.properties.policyDefinitionId
                 }
@@ -103,12 +120,12 @@
             'decommissioned' = @{ Variable = $ALZManagementGroupsIds['decommissioned']; Default = 'decommissioned' }
             'management'     = @{ Variable = $ALZManagementGroupsIds['management']; Default = 'management' }
             'identity'       = @{ Variable = $ALZManagementGroupsIds['identity']; Default = 'identity' }
-            'landingzones'   = @{ Variable = $ALZManagementGroupsIds['landing_zones']; Default = 'landingzones' }
+            'landingzones'   = @{ Variable = $ALZManagementGroupsIds['landing_zones']; Default = 'landing_zones' }
         }
 
         # Populate the hashtable
         foreach ($item in $variableMap.GetEnumerator()) {
-            $key = if ($null -ne $item.Value.Variable) { $item.Value.Variable } else { $item.Value.Default }
+            $key = if ($null -ne $item.Value.Variable -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds[$item.Value.Default])) { $item.Value.Variable } else { $item.Value.Default }
             $currentALZPolicyAssignments[$key] = @()
         }
 
@@ -146,8 +163,8 @@
             }
             else {
                 # If the key doesn't exist in current environment, all items in reference are different
-                #$differences[$key] = $referenceALZPolicyAssignments[$key]
-                $differences[$key] = 'N/A'
+                $differences[$key] = $referenceALZPolicyAssignments[$key]
+                #$differences[$key] = 'N/A'
             }
         }
         $script:ALZPolicyAssignmentsDifferences = $differences
