@@ -2537,15 +2537,15 @@ extensions: [{ name: 'sort' }]
 <th>ALZ Management Group</th>
 <th>Management Group exists / provided</th>
 <th>ALZ Missing Policy Assignments</th>
-<th>ALZ Policy Assignment Payload</th>
 <th>AzAdvertizer Link</th>
 </tr>
 </thead>
 <tbody>
 "@)
-            $htmlSUMMARYALZPolicyAssignmentsChecker = $null
-            $htmlSUMMARYALZPolicyAssignmentsChecker = $ALZPolicyAssignmentsDifferences.GetEnumerator() | ForEach-Object {
+            #$htmlSUMMARYALZPolicyAssignmentsChecker = $null
+            $htmlSUMMARYALZPolicyAssignmentsChecker = $script:ALZPolicyAssignmentsDifferences.GetEnumerator() | ForEach-Object {
                 $key = $_.Key
+                #$matchingManagementGroupReference = ($ALZArchetypeMgIdReference.GetEnumerator() | Where-Object { $_.Value.Variable -eq $key }).Key
                 $managementGroupExists = $true
                 if ($key -match 'notProvided') {
                     $key = $key.replace('-notProvided', '')
@@ -2554,11 +2554,13 @@ extensions: [{ name: 'sort' }]
                 }
                 else {
                     $mGExists = "<input type=`"checkbox`" style=`"accent-color: green; pointer-events: none;`" checked>"
+                    #$key = "$matchingManagementGroupReference => $key"
                 }
+                #$ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/archetype_definitions/$($key).json"
                 $_.Value | ForEach-Object {
                     $entry = $_
                     $ALZPolicyAssignmentsPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/policy_assignments/$($ALZPolicyAssignmentsPayloadFiles[$entry])"
-                    $assignmentPayLoadlink = "<a class=`"externallink`" href=`"$(($ALZPolicyAssignmentsPayload).ToLower())`" target=`"_blank`" rel=`"noopener`">Assignment payload Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                    $assignmentPayLoadlink = "<a class=`"externallink`" href=`"$(($ALZPolicyAssignmentsPayload).ToLower())`" target=`"_blank`" rel=`"noopener`">$($entry)&nbsp;JSON payload Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
                     $policyDefinitionId = $script:ALZpolicyDefinitionsTable[$entry]
                     $policyGuid = $policyDefinitionId.split('/')[-1]
                     $azAdvertizerURL = ''
@@ -2569,12 +2571,11 @@ extensions: [{ name: 'sort' }]
                     elseif ($policyDefinitionId -match 'policySetDefinitions') {
                         $azAdvertizerURL = "https://www.azadvertizer.net/azpolicyinitiativesadvertizer/${policyGuid}.html"
                     }
-                    $azAdvertiserlink = "<a class=`"externallink`" href=`"$($azAdvertizerURL)`" target=`"_blank`" rel=`"noopener`">AzA Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                    $azAdvertiserlink = "<a class=`"externallink`" href=`"$($azAdvertizerURL)`" target=`"_blank`" rel=`"noopener`">$($entry)&nbsp;AzA Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
                     @"
 <tr>
 <td>$($key)</td>
 <td>$($mGExists)</td>
-<td>$($entry)</td>
 <td>$($assignmentPayLoadlink)</td>
 <td>$($azAdvertiserlink)</td>
 </tr>

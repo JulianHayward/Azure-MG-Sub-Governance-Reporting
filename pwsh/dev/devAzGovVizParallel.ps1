@@ -170,19 +170,19 @@
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 
 .Parameter ALZManagementGroupsIds
-    'Azure Landing Zones (ALZ) Management groups Ids'. This is the Ids of the ALZ management groups hierarchy.
+    'Azure Landing Zones (ALZ) Management groups Ids'. This is the list of Ids of the ALZ management groups hierarchy.
     This is required if ALZPolicyAssignmentsChecker is enabled.
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupsIds @{
-        root           = 'ALZ'
-        platform       = 'ALZ-platform'
-        connectivity   = 'ALZ-connectivity'
-        identity       = 'ALZ-identity'
-        management     = 'ALZ-management'
-        landing_zones  = 'ALZ-landingzones'
-        corp           = 'ALZ-corp'
-        online         = 'ALZ-online'
-        sandboxes      = 'ALZ-sandboxes'
-        decommissioned = 'ALZ-decommissioned'
+        root           = '<Intermediary root management group Id>'
+        platform       = '<Platform management group Id>'
+        connectivity   = '<Connectivity management group Id>'
+        identity       = '<Identity management group Id>'
+        management     = '<Management management group Id>'
+        landing_zones  = '<Landing_zones management group Id>'
+        corp           = '<Corp management group Id>'
+        online         = '<Online management group Id>'
+        sandboxes      = '<Sandboxes management group Id>'
+        decommissioned = '<Decommissioned management group Id>'
     }
 
 
@@ -359,16 +359,16 @@
 
     Define if the 'Azure Landing Zones (ALZ) Policy assignments Checker' feature should be executed
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupsIds @{
-        root           = 'ALZ'
-        platform       = 'ALZ-platform'
-        connectivity   = 'ALZ-connectivity'
-        identity       = 'ALZ-identity'
-        management     = 'ALZ-management'
-        landing_zones  = 'ALZ-landingzones'
-        corp           = 'ALZ-corp'
-        online         = 'ALZ-online'
-        sandboxes      = 'ALZ-sandboxes'
-        decommissioned = 'ALZ-decommissioned'
+        root           = '<Intermediary root management group Id>'
+        platform       = '<Platform management group Id>'
+        connectivity   = '<Connectivity management group Id>'
+        identity       = '<Identity management group Id>'
+        management     = '<Management management group Id>'
+        landing_zones  = '<Landing_zones management group Id>'
+        corp           = '<Corp management group Id>'
+        online         = '<Online management group Id>'
+        sandboxes      = '<Sandboxes management group Id>'
+        decommissioned = '<Decommissioned management group Id>'
     }
 
     Define if DefinitionInsights should not be written to a seperate html file (*_DefinitionInsights.html)

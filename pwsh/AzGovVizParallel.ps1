@@ -170,19 +170,19 @@
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 
 .Parameter ALZManagementGroupsIds
-    'Azure Landing Zones (ALZ) Management groups Ids'. This is the Ids of the ALZ management groups hierarchy.
+    'Azure Landing Zones (ALZ) Management groups Ids'. This is the list of Ids of the ALZ management groups hierarchy.
     This is required if ALZPolicyAssignmentsChecker is enabled.
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupsIds @{
-        root           = 'ALZ'
-        platform       = 'ALZ-platform'
-        connectivity   = 'ALZ-connectivity'
-        identity       = 'ALZ-identity'
-        management     = 'ALZ-management'
-        landing_zones  = 'ALZ-landingzones'
-        corp           = 'ALZ-corp'
-        online         = 'ALZ-online'
-        sandboxes      = 'ALZ-sandboxes'
-        decommissioned = 'ALZ-decommissioned'
+        root           = '<Intermediary root management group Id>'
+        platform       = '<Platform management group Id>'
+        connectivity   = '<Connectivity management group Id>'
+        identity       = '<Identity management group Id>'
+        management     = '<Management management group Id>'
+        landing_zones  = '<Landing_zones management group Id>'
+        corp           = '<Corp management group Id>'
+        online         = '<Online management group Id>'
+        sandboxes      = '<Sandboxes management group Id>'
+        decommissioned = '<Decommissioned management group Id>'
     }
 
 
@@ -359,16 +359,16 @@
 
     Define if the 'Azure Landing Zones (ALZ) Policy assignments Checker' feature should be executed
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupsIds @{
-        root           = 'ALZ'
-        platform       = 'ALZ-platform'
-        connectivity   = 'ALZ-connectivity'
-        identity       = 'ALZ-identity'
-        management     = 'ALZ-management'
-        landing_zones  = 'ALZ-landingzones'
-        corp           = 'ALZ-corp'
-        online         = 'ALZ-online'
-        sandboxes      = 'ALZ-sandboxes'
-        decommissioned = 'ALZ-decommissioned'
+        root           = '<Intermediary root management group Id>'
+        platform       = '<Platform management group Id>'
+        connectivity   = '<Connectivity management group Id>'
+        identity       = '<Identity management group Id>'
+        management     = '<Management management group Id>'
+        landing_zones  = '<Landing_zones management group Id>'
+        corp           = '<Corp management group Id>'
+        online         = '<Online management group Id>'
+        sandboxes      = '<Sandboxes management group Id>'
+        decommissioned = '<Decommissioned management group Id>'
     }
 
     Define if DefinitionInsights should not be written to a seperate html file (*_DefinitionInsights.html)
@@ -5629,7 +5629,7 @@ function processALZPolicyAssignmentsChecker {
         $currentALZPolicyAssignments = @{}
 
         # Define the variables and their default values
-        $variableMap = @{
+        $ALZArchetypeMgIdReference = @{
             'connectivity'   = @{ Variable = $ALZManagementGroupsIds['connectivity']; Default = 'connectivity' }
             'corp'           = @{ Variable = $ALZManagementGroupsIds['corp']; Default = 'corp' }
             'root'           = @{ Variable = $ALZManagementGroupsIds['root']; Default = 'root' }
@@ -5643,7 +5643,7 @@ function processALZPolicyAssignmentsChecker {
         }
 
         # Populate the hashtable
-        foreach ($item in $variableMap.GetEnumerator()) {
+        foreach ($item in $ALZArchetypeMgIdReference.GetEnumerator()) {
             $key = if ($null -ne $item.Value.Variable -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds[$item.Value.Default])) { $item.Value.Variable } else { $item.Value.Default }
             $currentALZPolicyAssignments[$key] = @()
         }
@@ -16730,15 +16730,15 @@ extensions: [{ name: 'sort' }]
 <th>ALZ Management Group</th>
 <th>Management Group exists / provided</th>
 <th>ALZ Missing Policy Assignments</th>
-<th>ALZ Policy Assignment Payload</th>
 <th>AzAdvertizer Link</th>
 </tr>
 </thead>
 <tbody>
 "@)
-            $htmlSUMMARYALZPolicyAssignmentsChecker = $null
-            $htmlSUMMARYALZPolicyAssignmentsChecker = $ALZPolicyAssignmentsDifferences.GetEnumerator() | ForEach-Object {
+            #$htmlSUMMARYALZPolicyAssignmentsChecker = $null
+            $htmlSUMMARYALZPolicyAssignmentsChecker = $script:ALZPolicyAssignmentsDifferences.GetEnumerator() | ForEach-Object {
                 $key = $_.Key
+                #$matchingManagementGroupReference = ($ALZArchetypeMgIdReference.GetEnumerator() | Where-Object { $_.Value.Variable -eq $key }).Key
                 $managementGroupExists = $true
                 if ($key -match 'notProvided') {
                     $key = $key.replace('-notProvided', '')
@@ -16747,11 +16747,13 @@ extensions: [{ name: 'sort' }]
                 }
                 else {
                     $mGExists = "<input type=`"checkbox`" style=`"accent-color: green; pointer-events: none;`" checked>"
+                    #$key = "$matchingManagementGroupReference => $key"
                 }
+                #$ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/archetype_definitions/$($key).json"
                 $_.Value | ForEach-Object {
                     $entry = $_
                     $ALZPolicyAssignmentsPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/policy_assignments/$($ALZPolicyAssignmentsPayloadFiles[$entry])"
-                    $assignmentPayLoadlink = "<a class=`"externallink`" href=`"$(($ALZPolicyAssignmentsPayload).ToLower())`" target=`"_blank`" rel=`"noopener`">Assignment payload Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                    $assignmentPayLoadlink = "<a class=`"externallink`" href=`"$(($ALZPolicyAssignmentsPayload).ToLower())`" target=`"_blank`" rel=`"noopener`">$($entry) &nbsp; JSON payload Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
                     $policyDefinitionId = $script:ALZpolicyDefinitionsTable[$entry]
                     $policyGuid = $policyDefinitionId.split('/')[-1]
                     $azAdvertizerURL = ''
@@ -16762,13 +16764,12 @@ extensions: [{ name: 'sort' }]
                     elseif ($policyDefinitionId -match 'policySetDefinitions') {
                         $azAdvertizerURL = "https://www.azadvertizer.net/azpolicyinitiativesadvertizer/${policyGuid}.html"
                     }
-                    $azAdvertiserlink = "<a class=`"externallink`" href=`"$($azAdvertizerURL)`" target=`"_blank`" rel=`"noopener`">AzA Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                    $azAdvertiserlink = "<a class=`"externallink`" href=`"$($azAdvertizerURL)`" target=`"_blank`" rel=`"noopener`">$($entry) &nbsp; AzA Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
                     @"
 <tr>
 <td>$($key)</td>
 <td>$($mGExists)</td>
-<td>$($entry)</td>
-<td>$($assignmentPayLoadlink)</td>
+<td>$($entry)$($assignmentPayLoadlink)</td>
 <td>$($azAdvertiserlink)</td>
 </tr>
 "@
