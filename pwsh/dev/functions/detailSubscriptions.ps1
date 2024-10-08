@@ -35,7 +35,17 @@
     }
 
     foreach ($childrenSubscription in $childrenSubscriptions) {
-
+        if ($SubscriptionIdWhitelist[0] -ne 'undefined' -and $SubscriptionIdWhitelist -notcontains $childrenSubscription.name) {
+            $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{
+                    subscriptionId      = $childrenSubscription.name
+                    subscriptionName    = $childrenSubscription.properties.displayName
+                    outOfScopeReason    = "SubscriptionId: '$($childrenSubscription.name)' not in Whitelist"
+                    ManagementGroupId   = $htSubscriptionsMgPath.($childrenSubscription.name).Parent
+                    ManagementGroupName = $htSubscriptionsMgPath.($childrenSubscription.name).ParentName
+                    Level               = $htSubscriptionsMgPath.($childrenSubscription.name).level
+                })
+            continue
+        }
         $sub = $htAllSubscriptionsFromAPI.($childrenSubscription.name)
         if ($null -eq $sub.subDetails.subscriptionPolicies.quotaId) {
             $null = $script:outOfScopeSubscriptions.Add([PSCustomObject]@{
