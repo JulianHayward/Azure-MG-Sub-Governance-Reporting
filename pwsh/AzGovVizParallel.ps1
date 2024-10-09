@@ -5629,7 +5629,7 @@ function processALZPolicyAssignmentsChecker {
         $currentALZPolicyAssignments = @{}
 
         # Define the variables and their default values
-        $ALZArchetypeMgIdReference = @{
+        $variableMap = @{
             'connectivity'   = @{ Variable = $ALZManagementGroupsIds['connectivity']; Default = 'connectivity' }
             'corp'           = @{ Variable = $ALZManagementGroupsIds['corp']; Default = 'corp' }
             'root'           = @{ Variable = $ALZManagementGroupsIds['root']; Default = 'root' }
@@ -5642,8 +5642,10 @@ function processALZPolicyAssignmentsChecker {
             'landingzones'   = @{ Variable = $ALZManagementGroupsIds['landing_zones']; Default = 'landing_zones' }
         }
 
+        $script:ALZArchetypeMgIdReference = $variableMap
+
         # Populate the hashtable
-        foreach ($item in $ALZArchetypeMgIdReference.GetEnumerator()) {
+        foreach ($item in $variableMap.GetEnumerator()) {
             $key = if ($null -ne $item.Value.Variable -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds[$item.Value.Default])) { $item.Value.Variable } else { $item.Value.Default }
             $currentALZPolicyAssignments[$key] = @()
         }
@@ -16735,10 +16737,9 @@ extensions: [{ name: 'sort' }]
 </thead>
 <tbody>
 "@)
-            #$htmlSUMMARYALZPolicyAssignmentsChecker = $null
             $htmlSUMMARYALZPolicyAssignmentsChecker = $script:ALZPolicyAssignmentsDifferences.GetEnumerator() | ForEach-Object {
                 $key = $_.Key
-                #$matchingManagementGroupReference = ($ALZArchetypeMgIdReference.GetEnumerator() | Where-Object { $_.Value.Variable -eq $key }).Key
+                $matchingManagementGroupReference = ($script:ALZArchetypeMgIdReference.GetEnumerator() | Where-Object { $_.Value.Variable -eq $key }).Key
                 $managementGroupExists = $true
                 if ($key -match 'notProvided') {
                     $key = $key.replace('-notProvided', '')
@@ -16747,13 +16748,13 @@ extensions: [{ name: 'sort' }]
                 }
                 else {
                     $mGExists = "<input type=`"checkbox`" style=`"accent-color: green; pointer-events: none;`" checked>"
-                    #$key = "$matchingManagementGroupReference => $key"
+                    $key = "$matchingManagementGroupReference => $key"
                 }
-                #$ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/archetype_definitions/$($key).json"
+                $ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/archetype_definitions/$($key).alz_archetype_definition.json"
                 $_.Value | ForEach-Object {
                     $entry = $_
                     $ALZPolicyAssignmentsPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/policy_assignments/$($ALZPolicyAssignmentsPayloadFiles[$entry])"
-                    $assignmentPayLoadlink = "<a class=`"externallink`" href=`"$(($ALZPolicyAssignmentsPayload).ToLower())`" target=`"_blank`" rel=`"noopener`">$($entry) &nbsp; JSON payload Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                    $assignmentPayLoadlink = "<a class=`"externallink`" href=`"$(($ALZPolicyAssignmentsPayload).ToLower())`" target=`"_blank`" rel=`"noopener`">$($entry)&nbsp;payload Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
                     $policyDefinitionId = $script:ALZpolicyDefinitionsTable[$entry]
                     $policyGuid = $policyDefinitionId.split('/')[-1]
                     $azAdvertizerURL = ''
@@ -16764,12 +16765,13 @@ extensions: [{ name: 'sort' }]
                     elseif ($policyDefinitionId -match 'policySetDefinitions') {
                         $azAdvertizerURL = "https://www.azadvertizer.net/azpolicyinitiativesadvertizer/${policyGuid}.html"
                     }
-                    $azAdvertiserlink = "<a class=`"externallink`" href=`"$($azAdvertizerURL)`" target=`"_blank`" rel=`"noopener`">$($entry) &nbsp; AzA Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                    $azAdvertiserlink = "<a class=`"externallink`" href=`"$($azAdvertizerURL)`" target=`"_blank`" rel=`"noopener`">$($entry)&nbsp;AzA Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                    $archetypeLink = "<a class=`"externallink`" href=`"$($ALZArchetypeDefinitionPayload)`" target=`"_blank`" rel=`"noopener`">$($key)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
                     @"
 <tr>
-<td>$($key)</td>
+<td>$($archetypeLink)</td>
 <td>$($mGExists)</td>
-<td>$($entry)$($assignmentPayLoadlink)</td>
+<td>$($assignmentPayLoadlink)</td>
 <td>$($azAdvertiserlink)</td>
 </tr>
 "@

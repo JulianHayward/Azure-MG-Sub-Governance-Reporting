@@ -110,7 +110,7 @@
         $currentALZPolicyAssignments = @{}
 
         # Define the variables and their default values
-        $ALZArchetypeMgIdReference = @{
+        $variableMap = @{
             'connectivity'   = @{ Variable = $ALZManagementGroupsIds['connectivity']; Default = 'connectivity' }
             'corp'           = @{ Variable = $ALZManagementGroupsIds['corp']; Default = 'corp' }
             'root'           = @{ Variable = $ALZManagementGroupsIds['root']; Default = 'root' }
@@ -123,8 +123,10 @@
             'landingzones'   = @{ Variable = $ALZManagementGroupsIds['landing_zones']; Default = 'landing_zones' }
         }
 
+        $script:ALZArchetypeMgIdReference = $variableMap
+
         # Populate the hashtable
-        foreach ($item in $ALZArchetypeMgIdReference.GetEnumerator()) {
+        foreach ($item in $variableMap.GetEnumerator()) {
             $key = if ($null -ne $item.Value.Variable -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds[$item.Value.Default])) { $item.Value.Variable } else { $item.Value.Default }
             $currentALZPolicyAssignments[$key] = @()
         }
