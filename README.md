@@ -31,39 +31,39 @@ Azure Governance Visualizer is intended to help you to get a holistic overview o
 
 ## Table of contents
 
-- [Azure Governance Visualizer aka AzGovViz](#azure-governance-visualizer-aka-azgovviz)
-  - [Mission](#mission)
-  - [Table of contents](#table-of-contents)
-  - [Azure Governance Visualizer @ Microsoft CAF](#azure-governance-visualizer--microsoft-caf)
-    - [Microsoft Cloud Adoption Framework (CAF)](#microsoft-cloud-adoption-framework-caf)
-    - [Azure Governance Visualizer accelerator](#azure-governance-visualizer-accelerator)
-  - [:rocket: Azure Governance Visualizer deployment guide](#rocket-azure-governance-visualizer-deployment-guide)
-  - [Release history](#release-history)
-  - [Demo](#demo)
-  - [Media](#media)
-    - [Presentations](#presentations)
-  - [Features](#features)
-  - [Screenshots](#screenshots)
-  - [Outputs](#outputs)
-  - [Trust](#trust)
-  - [Technical documentation](#technical-documentation)
-    - [Permissions overview](#permissions-overview)
-    - [Required permissions in Azure](#required-permissions-in-azure)
-    - [Required permissions in Microsoft Entra ID](#required-permissions-in-microsoft-entra-id)
-    - [PowerShell](#powershell)
-    - [Parameters](#parameters)
-    - [API reference](#api-reference)
-  - [Integrate with AzOps](#integrate-with-azops)
-  - [Integrate PSRule for Azure](#integrate-psrule-for-azure)
-  - [Stats](#stats)
-    - [How / What?](#how--what)
-  - [Security](#security)
-  - [Known issues](#known-issues)
-  - [Facts](#facts)
-  - [Contribution](#contribution)
-  - [AzAdvertizer](#azadvertizer)
-  - [AzADServicePrincipalInsights](#azadserviceprincipalinsights)
-  - [Closing Note](#closing-note)
+* [Azure Governance Visualizer aka AzGovViz](#azure-governance-visualizer-aka-azgovviz)
+  * [Mission](#mission)
+  * [Table of contents](#table-of-contents)
+  * [Azure Governance Visualizer @ Microsoft CAF](#azure-governance-visualizer--microsoft-caf)
+    * [Microsoft Cloud Adoption Framework (CAF)](#microsoft-cloud-adoption-framework-caf)
+  * [:rocket: Azure Governance Visualizer deployment guide](#rocket-azure-governance-visualizer-deployment-guide)
+    * [Azure Governance Visualizer accelerator](#azure-governance-visualizer-accelerator)
+  * [Release history](#release-history)
+  * [Demo](#demo)
+  * [Media](#media)
+    * [Presentations](#presentations)
+  * [Features](#features)
+  * [Screenshots](#screenshots)
+  * [Outputs](#outputs)
+  * [Trust](#trust)
+  * [Technical documentation](#technical-documentation)
+    * [Permissions overview](#permissions-overview)
+    * [Required permissions in Azure](#required-permissions-in-azure)
+    * [Required permissions in Microsoft Entra ID](#required-permissions-in-microsoft-entra-id)
+    * [PowerShell](#powershell)
+    * [Parameters](#parameters)
+    * [API reference](#api-reference)
+  * [Integrate with AzOps](#integrate-with-azops)
+  * [Integrate PSRule for Azure](#integrate-psrule-for-azure)
+  * [Stats](#stats)
+    * [How / What?](#how--what)
+  * [Security](#security)
+  * [Known issues](#known-issues)
+  * [Facts](#facts)
+  * [Contribution](#contribution)
+  * [AzAdvertizer](#azadvertizer)
+  * [AzADServicePrincipalInsights](#azadserviceprincipalinsights)
+  * [Closing Note](#closing-note)
 
 ## Azure Governance Visualizer @ Microsoft CAF
 
@@ -83,6 +83,23 @@ As an alternative, you can use the [Azure Governance Visualizer accelerator](htt
 The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) provides an easy and fast deployment process that automates the creation and publishing of AzGovViz to an Azure Web Application and provides automation to configuring the pre-requisites for AzGovViz.
 
 ## Release history
+
+**Changes** (2024-October-09 / 6.5.5 Patch)
+
+- New feature "ALZ Policy Assignments Checker" - This new view, will compare the current deployed ALZ hierarchy with the ALZ archetypes definitions and point out the missing policy assignments. It will also reference the missing policy assignments' payloads and AzAdvertiser links.
+  - New Parameter `-ALZPolicyAssignmentsChecker` - Execute the ALZPolicyAssignmentsChecker feature
+  - New Parameter `-ALZManagementGroupsIds` - Provide the management group Ids of the deployed ALZ hierarchy. Example: -ALZManagementGroupsIds @{
+"root"           = "ALZ"
+"platform"       = "ALZ-platform"
+"connectivity"   = "ALZ-connectivity"
+"identity"       = "ALZ-identity"
+"management"     = "ALZ-management"
+"landing_zones"  = "ALZ-landingzones"
+"corp"           = "ALZ-corp"
+"online"         = "ALZ-online"
+"sandboxes"      = "ALZ-sandboxes"
+"decommissioned" = "ALZ-decommissioned"
+  }
 
 **Changes** (2024-September-19 / 6.5.4 Patch)
 
