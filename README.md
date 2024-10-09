@@ -88,7 +88,8 @@ The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Gov
 
 - New feature "ALZ Policy Assignments Checker" - This new view, will compare the current deployed ALZ hierarchy with the ALZ archetypes definitions and point out the missing policy assignments. It will also reference the missing policy assignments' payloads and AzAdvertiser links.
   - New Parameter `-ALZPolicyAssignmentsChecker` - Execute the ALZPolicyAssignmentsChecker feature
-  - New Parameter `-ALZManagementGroupsIds` - Provide the management group Ids of the deployed ALZ hierarchy. Example: -ALZManagementGroupsIds @{
+  - New Parameter `-ALZManagementGroupsIds` - Provide the management group Ids of the deployed ALZ hierarchy.
+  Example: -ALZManagementGroupsIds @{
 "root"           = "ALZ"
 "platform"       = "ALZ-platform"
 "connectivity"   = "ALZ-connectivity"
