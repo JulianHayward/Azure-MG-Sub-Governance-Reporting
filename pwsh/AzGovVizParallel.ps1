@@ -5639,7 +5639,7 @@ function processALZPolicyAssignmentsChecker {
             'decommissioned' = @{ Variable = $ALZManagementGroupsIds['decommissioned']; Default = 'decommissioned' }
             'management'     = @{ Variable = $ALZManagementGroupsIds['management']; Default = 'management' }
             'identity'       = @{ Variable = $ALZManagementGroupsIds['identity']; Default = 'identity' }
-            'landingzones'   = @{ Variable = $ALZManagementGroupsIds['landing_zones']; Default = 'landing_zones' }
+            'landing_zones'  = @{ Variable = $ALZManagementGroupsIds['landing_zones']; Default = 'landing_zones' }
         }
 
         $script:ALZArchetypeMgIdReference = $variableMap
@@ -16741,16 +16741,21 @@ extensions: [{ name: 'sort' }]
                 $key = $_.Key
                 $matchingManagementGroupReference = ($script:ALZArchetypeMgIdReference.GetEnumerator() | Where-Object { $_.Value.Variable -eq $key }).Key
                 $managementGroupExists = $true
+                $ALZArchetypeDefinitionPayload = ''
                 if ($key -match 'notProvided') {
                     $key = $key.replace('-notProvided', '')
                     $managementGroupExists = $false
                     $mGExists = "<input type=`"checkbox`" style=`"accent-color: red; pointer-events: none;`" checked><span style=`"color:red;`">&#10006;</span>"
+                    $ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/archetype_definitions/$($key).alz_archetype_definition.json"
+                    $archetypeLink = "<a class=`"externallink`" href=`"$(($ALZArchetypeDefinitionPayload).ToLower())`" target=`"_blank`" rel=`"noopener`">$($key)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+
+
                 }
                 else {
                     $mGExists = "<input type=`"checkbox`" style=`"accent-color: green; pointer-events: none;`" checked>"
-                    $key = "$matchingManagementGroupReference => $key"
+                    $ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/archetype_definitions/$($matchingManagementGroupReference).alz_archetype_definition.json"
+                    $archetypeLink = "<a class=`"externallink`" href=`"$(($ALZArchetypeDefinitionPayload).ToLower())`" target=`"_blank`" rel=`"noopener`">$($matchingManagementGroupReference)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a><span> => $($key)</span>"
                 }
-                $ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/archetype_definitions/$($key).alz_archetype_definition.json"
                 $_.Value | ForEach-Object {
                     $entry = $_
                     $ALZPolicyAssignmentsPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/policy_assignments/$($ALZPolicyAssignmentsPayloadFiles[$entry])"
@@ -16766,7 +16771,6 @@ extensions: [{ name: 'sort' }]
                         $azAdvertizerURL = "https://www.azadvertizer.net/azpolicyinitiativesadvertizer/${policyGuid}.html"
                     }
                     $azAdvertiserlink = "<a class=`"externallink`" href=`"$($azAdvertizerURL)`" target=`"_blank`" rel=`"noopener`">$($entry)&nbsp;AzA Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
-                    $archetypeLink = "<a class=`"externallink`" href=`"$($ALZArchetypeDefinitionPayload)`" target=`"_blank`" rel=`"noopener`">$($key)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
                     @"
 <tr>
 <td>$($archetypeLink)</td>

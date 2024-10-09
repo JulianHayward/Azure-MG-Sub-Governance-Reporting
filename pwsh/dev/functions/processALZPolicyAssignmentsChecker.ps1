@@ -120,7 +120,7 @@
             'decommissioned' = @{ Variable = $ALZManagementGroupsIds['decommissioned']; Default = 'decommissioned' }
             'management'     = @{ Variable = $ALZManagementGroupsIds['management']; Default = 'management' }
             'identity'       = @{ Variable = $ALZManagementGroupsIds['identity']; Default = 'identity' }
-            'landingzones'   = @{ Variable = $ALZManagementGroupsIds['landing_zones']; Default = 'landing_zones' }
+            'landing_zones'  = @{ Variable = $ALZManagementGroupsIds['landing_zones']; Default = 'landing_zones' }
         }
 
         $script:ALZArchetypeMgIdReference = $variableMap
