@@ -29,6 +29,16 @@ parameters:
     default:
       - undefined
 
+    # Processes only Subscriptions that must match the SubscriptionIds
+  - name: SubscriptionIdWhitelistParameters
+    type: object
+    # example:
+    #   default:
+    #     - 2f4a9838-26b7-47ee-be60-ccc1fdec5953
+    #     - <SubscriptionId>
+    default:
+      - undefined
+
     # Subscription Tag names for Storage Account Access Analysis
   - name: StorageAccountAccessAnalysisSubscriptionTagsParameters
     type: object
@@ -351,6 +361,9 @@ variables:
 
   - name: SubscriptionQuotaIdWhitelist
     value: ${{ join(',',parameters.SubscriptionQuotaIdWhitelistParameters) }}
+
+  - name: SubscriptionIdWhitelist
+    value: ${{ join(',',parameters.SubscriptionIdWhitelistParameters) }}
 
   - name: StorageAccountAccessAnalysisSubscriptionTags
     value: ${{ join(',',parameters.StorageAccountAccessAnalysisSubscriptionTagsParameters) }}
