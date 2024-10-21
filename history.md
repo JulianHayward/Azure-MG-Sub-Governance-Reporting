@@ -16,7 +16,7 @@
 
 **Changes** (2024-September-17 / 6.5.3 Patch)
 
-- fix stop error for subscriptions with null valued quotaId. the function detailSubscription uses `.startsWith()` method to check for `AAD_` but cannot validate when a null-valued `.quotaId` occurs. 
+- fix stop error for subscriptions with null valued quotaId. the function detailSubscription uses `.startsWith()` method to check for `AAD_` but cannot validate when a null-valued `.quotaId` occurs.
 
 **Changes** (2024-August-28 / 6.5.2 Patch)
 

@@ -91,7 +91,8 @@
             if ($content.policy_assignments) {
                 $script:referenceALZPolicyAssignments[$key] = $content.policy_assignments
                 $content.policy_assignments | ForEach-Object {
-                    $assignmentName = $_ -replace '-', '_'
+                    #$assignmentName = $_ -replace '-', '_'
+                    $assignmentName = $_
                     $filename = "$assignmentName.alz_policy_assignment.json"
                     $script:ALZPolicyAssignmentsPayloadFiles[$_] = $filename
                     $PolicyContent = Get-Content -Path "$policyAssignmentsPath\$filename" | ConvertFrom-Json
