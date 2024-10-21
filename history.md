@@ -4,6 +4,11 @@
 
 ### Azure Governance Visualizer version 6
 
+**Changes** (2024-October-09 / 6.5.5 Patch)
+
+- New feature "ALZ Policy Assignments Checker" - This new view, will compare the current deployed ALZ hierarchy with the ALZ archetypes definitions and point out the missing policy assignments. It will also reference the missing policy assignments' payloads and AzAdvertiser links.
+  - New Parameter `-ALZPolicyAssignmentsChecker` - Execute the ALZPolicyAssignmentsChecker feature
+  - New Parameter `-ALZManagementGroupsIds` - Provide the management group Ids of the deployed ALZ hierarchy.
 
 **Changes** (2024-September-19 / 6.5.4 Patch)
 
@@ -11,7 +16,7 @@
 
 **Changes** (2024-September-17 / 6.5.3 Patch)
 
-- fix stop error for subscriptions with null valued quotaId. the function detailSubscription uses `.startsWith()` method to check for `AAD_` but cannot validate when a null-valued `.quotaId` occurs. 
+- fix stop error for subscriptions with null valued quotaId. the function detailSubscription uses `.startsWith()` method to check for `AAD_` but cannot validate when a null-valued `.quotaId` occurs.
 
 **Changes** (2024-August-28 / 6.5.2 Patch)
 
