@@ -371,7 +371,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.5.5',
+    $ProductVersion = '6.6.0',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -679,6 +679,7 @@ if ($ManagementGroupId -match ' ') {
 }
 
 #region Functions
+. ".\$($ScriptPath)\functions\processMDfCCoverage.ps1"
 . ".\$($ScriptPath)\functions\getPrivateEndpointCapableResourceTypes.ps1"
 . ".\$($ScriptPath)\functions\validateLeastPrivilegeForUser.ps1"
 . ".\$($ScriptPath)\functions\getPolicyRemediation.ps1"
@@ -1024,6 +1025,7 @@ if (-not $HierarchyMapOnly) {
     $htDailySummary = @{}
     $arrayDefenderPlans = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayDefenderPlansSubscriptionsSkipped = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $htSecuritySettings = [System.Collections.Hashtable]::Synchronized(@{})
     $arrayUserAssignedIdentities4Resources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htSubscriptionsRoleAssignmentLimit = [System.Collections.Hashtable]::Synchronized(@{})
     if ($azAPICallConf['htParameters'].NoMDfCSecureScore -eq $false) {

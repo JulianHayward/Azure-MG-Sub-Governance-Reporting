@@ -279,7 +279,7 @@ resources
             intent    = $intent
         })
 
-    $intent = 'misconfiguration'
+    $intent = 'cost savings'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/privateendpoints'
             query     = @"

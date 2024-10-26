@@ -371,7 +371,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.5.5',
+    $ProductVersion = '6.6.0',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -4477,7 +4477,7 @@ resources
             intent    = $intent
         })
 
-    $intent = 'misconfiguration'
+    $intent = 'cost savings'
     $null = $queries.Add([PSCustomObject]@{
             queryName = 'microsoft.network/privateendpoints'
             query     = @"
@@ -6667,6 +6667,7 @@ function processDataCollection {
             $htUserTypesGuest = $using:htUserTypesGuest
             $arrayDefenderPlans = $using:arrayDefenderPlans
             $arrayDefenderPlansSubscriptionsSkipped = $using:arrayDefenderPlansSubscriptionsSkipped
+            $htSecuritySettings = $using:htSecuritySettings
             $arrayUserAssignedIdentities4Resources = $using:arrayUserAssignedIdentities4Resources
             $htSubscriptionsRoleAssignmentLimit = $using:htSubscriptionsRoleAssignmentLimit
             $arrayPsRule = $using:arrayPsRule
@@ -7209,8 +7210,33 @@ function processDataCollection {
                 #DataCollection Export of All Resources
                 if ($resourcesIdsAll.Count -gt 0) {
                     if (-not $NoCsvExport) {
+                        $startExportingResourcesAllCSV = Get-Date
                         Write-Host "Exporting ResourcesAll CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv'"
-                        $resourcesIdsAll | Sort-Object -Property id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                        $arrListSKUKeys = [System.Collections.ArrayList]@()
+                        foreach ($entry in $resourcesIdsAll.where({ $_.sku }).sku) {
+                            foreach ($noteProperty in ($entry | Get-Member).where({ $_.MemberType -eq 'NoteProperty' })) {
+                                if ($arrListSKUKeys -notcontains $noteProperty.Name) {
+                                    $null = $arrListSKUKeys.Add($noteProperty.Name)
+                                }
+                            }
+                        }
+                        Write-Host " SKU keys: $(($arrListSKUKeys | Sort-Object) -join ', ')"
+
+                        Write-Host ' Enriching resources with SKU keys'
+                        foreach ($entry in $resourcesIdsAll) {
+                            foreach ($key in $arrListSKUKeys | Sort-Object) {
+                                if ($entry.sku.$key) {
+                                    $entry | Add-Member -MemberType NoteProperty -Name "sku_$($key)" -Value $entry.sku.$key
+                                }
+                                else {
+                                    $entry | Add-Member -MemberType NoteProperty -Name "sku_$($key)" -Value $null
+                                }
+                            }
+                        }
+
+                        $resourcesIdsAll | Sort-Object -Property id | Select-Object -Property subscriptionId, subscriptionName, mgPath, type, sku_*, kind, id, name, location, tags, createdTime, changedTime, cafResourceNamingResult, cafResourceNaming, cafResourceNamingFriendlyName | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                        $endExportingResourcesAllCSV = Get-Date
+                        Write-Host " Exporting ResourcesAll CSV duration: $((New-TimeSpan -Start $startExportingResourcesAllCSV -End $endExportingResourcesAllCSV).TotalMinutes) minutes ($((New-TimeSpan -Start $startExportingResourcesAllCSV -End $endExportingResourcesAllCSV).TotalSeconds) seconds)"
                     }
                 }
                 else {
@@ -8939,6 +8965,131 @@ function processManagedIdentities {
     }
     $endSPMI = Get-Date
     Write-Host "Processing Service Principals - Managed Identities duration: $((New-TimeSpan -Start $startSPMI -End $endSPMI).TotalMinutes) minutes ($((New-TimeSpan -Start $startSPMI -End $endSPMI).TotalSeconds) seconds)"
+}
+function processMDfCCoverage {
+    Write-Host '   Processing Defender Coverage'
+    $start = Get-Date
+
+    $htDefenderProps = @{}
+    $htDefenderExtensions = @{}
+    foreach ($x in $arrayDefenderPlans) {
+        if (-not $htDefenderProps.($x.defenderPlan)) {
+            $htDefenderProps.($x.defenderPlan) = [System.Collections.ArrayList]@()
+        }
+        if (-not $htDefenderExtensions.($x.defenderPlan)) {
+            $htDefenderExtensions.($x.defenderPlan) = [System.Collections.ArrayList]@()
+        }
+        foreach ($noteprop in ($x.defenderPlanFull.properties | Get-Member).where({ $_.MemberType -eq 'NoteProperty' })) {
+            if ($htDefenderProps.($x.defenderPlan) -notcontains $noteprop.Name) {
+                $null = $htDefenderProps.($x.defenderPlan).Add($noteprop.Name)
+            }
+            if ($noteprop.Name -eq 'extensions') {
+                foreach ($extension in $x.defenderPlanFull.properties.($noteprop.Name)) {
+                    if ($htDefenderExtensions.($x.defenderPlan) -notcontains $extension.name) {
+                        $null = $htDefenderExtensions.($x.defenderPlan).Add($extension.name)
+                    }
+                }
+            }
+        }
+    }
+
+    $arrayDefenderPlansNamesUnique = $arrayDefenderPlans.defenderPlan | Sort-Object -Unique
+    $script:arrayDefenderPlansCoverage = [System.Collections.ArrayList]@()
+    foreach ($defenderPlanName in $arrayDefenderPlansNamesUnique) {
+        foreach ($defenderPlanEntry in $arrayDefenderPlans.where({ $_.defenderPlan -eq $defenderPlanName })) {
+            $objDefenderPlan = [ordered]@{
+                plan               = $defenderPlanEntry.defenderPlan
+                subscriptionId     = $defenderPlanEntry.subscriptionId
+                subscriptionName   = $defenderPlanEntry.subscriptionName
+                subscriptionMgPath = $defenderPlanEntry.subscriptionMgPath
+            }
+            foreach ($prop in $htDefenderProps.($defenderPlanName)) {
+                if ($prop -eq 'extensions') {
+                    foreach ($extension in $htDefenderExtensions.($defenderPlanName)) {
+                        $extensionObject = $defenderPlanEntry.defenderPlanFull.properties.extensions.where({ $_.name -eq $extension })
+                        if ($extensionObject.count -gt 0) {
+                            $objDefenderPlan.("ext_$($extension)") = $extensionObject.isEnabled
+                            if ($defenderPlanName -eq 'StorageAccounts' -and $extension -eq 'OnUploadMalwareScanning') {
+                                if ($extensionObject.additionalExtensionProperties.CapGBPerMonthPerStorageAccount) {
+                                    $objDefenderPlan.("ext_$("$($extension)_CapGBPerMonthPerStorageAccount")") = $extensionObject.additionalExtensionProperties.CapGBPerMonthPerStorageAccount
+                                }
+                                else {
+                                    $objDefenderPlan.("ext_$("$($extension)_CapGBPerMonthPerStorageAccount")") = $null
+                                }
+                            }
+                        }
+                        else {
+                            $objDefenderPlan.("ext_$($extension)") = $null
+                            if ($defenderPlanName -eq 'StorageAccounts' -and $extension -eq 'OnUploadMalwareScanning') {
+                                $objDefenderPlan.("ext_$("$($extension)_CapGBPerMonthPerStorageAccount")") = $null
+                            }
+                        }
+                    }
+                }
+                elseif ($prop -eq 'replacedBy') {
+                    $objDefenderPlan.($prop) = $defenderPlanEntry.defenderPlanFull.properties.($prop) -join ';'
+                }
+                else {
+                    $objDefenderPlan.($prop) = $defenderPlanEntry.defenderPlanFull.properties.($prop)
+                }
+
+                if ($defenderPlanName -eq 'VirtualMachines' -and $prop -eq 'subPlan') {
+                    if ($defenderPlanEntry.defenderPlanFull.properties.($prop)) {
+                        if ($htSecuritySettings.($defenderPlanEntry.subscriptionId).WDATP) {
+                            $objDefenderPlan.('ext_MicrosoftDefenderforEndpoint') = ($htSecuritySettings.($defenderPlanEntry.subscriptionId).WDATP.properties.enabled).ToString()
+                        }
+                        else {
+                            $objDefenderPlan.('ext_MicrosoftDefenderforEndpoint') = 'unknown'
+                        }
+                    }
+                    else {
+                        $objDefenderPlan.('ext_MicrosoftDefenderforEndpoint') = 'n/a'
+                    }
+
+                }
+            }
+            $null = $script:arrayDefenderPlansCoverage.Add($objDefenderPlan)
+        }
+    }
+
+    # $tstsmp = Get-Date -Format 'yyyyMMdd_HHmmss'
+    # $arrayDefenderPlansCoverage | ConvertTo-Json -Depth 99 > "c:\temp\defenderCoverage_Final_$($tstsmp).json"
+
+    $arrayDefenderPlanSpecificProperties = [System.Collections.ArrayList]@()
+    $arrayDefenderPlanCommonProperties = @('plan', 'subscriptionId', 'subscriptionName', 'subscriptionMgPath', 'pricingTier', 'freeTrialRemainingTime')
+    foreach ($plan in $arrayDefenderPlansCoverage) {
+        $plan.Keys | ForEach-Object {
+            if ($_ -notin $arrayDefenderPlanCommonProperties) {
+                $null = $arrayDefenderPlanSpecificProperties.Add("$($plan.plan)_$($_)")
+            }
+        }
+    }
+    $arrayDefenderPlanSpecificPropertiesUnique = $arrayDefenderPlanSpecificProperties | Sort-Object -Unique
+
+    $arrayDefenderPlansCoverageAll = [System.Collections.ArrayList]@()
+    foreach ($entry in $arrayDefenderPlansCoverage) {
+        $obj = [PSCustomObject]@{}
+        foreach ($cprop in $arrayDefenderPlanCommonProperties) {
+            $obj | Add-Member -MemberType NoteProperty -Name $cprop -Value $entry.($cprop)
+        }
+        foreach ($sprop in $arrayDefenderPlanSpecificPropertiesUnique) {
+            if ($sprop -like "$($entry.plan)_*") {
+                $obj | Add-Member -MemberType NoteProperty -Name $sprop -Value $entry.($sprop -replace "$($entry.plan)_", '' )
+            }
+            else {
+                $obj | Add-Member -MemberType NoteProperty -Name $sprop -Value $null
+            }
+        }
+        $null = $arrayDefenderPlansCoverageAll.Add($obj)
+    }
+
+    if (-not $NoCsvExport) {
+        Write-Host "    Exporting MDfCCoverage CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCCoverage.csv'"
+        $arrayDefenderPlansCoverageAll | Sort-Object -Property plan, subscriptionName | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_MDfCCoverage.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+    }
+
+    $end = Get-Date
+    Write-Host "    Defender Coverage processing duration: $((New-TimeSpan -Start $start -End $end).TotalMinutes) minutes ($((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds)"
 }
 function processNetwork {
     $start = Get-Date
@@ -22881,6 +23032,118 @@ extensions: [{ name: 'sort' }]
     Write-Host "   Microsoft Defender for Cloud plans by Subscription processing duration: $((New-TimeSpan -Start $startDefenderPlans -End $endDefenderPlans).TotalMinutes) minutes ($((New-TimeSpan -Start $startDefenderPlans -End $endDefenderPlans).TotalSeconds) seconds)"
     #endregion SUMMARYSubDefenderPlansBySubscription
 
+    #region SUMMARYSubDefenderCoverage
+    processMDfCCoverage
+    #open main div
+    $htmlTableId = 'TenantSummary_DefenderCoverage'
+
+    #open main div
+    [void]$htmlTenantSummary.AppendLine(@'
+<button type="button" class="collapsible" id="buttonTenantSummary_DefenderCoverage"><i class="padlx fa fa-shield" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">Microsoft Defender Coverage</span></button>
+<div class="content TenantSummary">
+'@)
+
+    foreach ($mdfcPlanGroup in ($arrayDefenderPlansCoverage | Group-Object -Property { $_.plan })) {
+
+        $tfCount = $mdfcPlanGroup.Group.Count
+        $htmlTableId = "TenantSummary_DefenderCoverage_$($mdfcPlanGroup.Name)"
+        $props = $mdfcPlanGroup.Group[0].Keys
+        $propsCount = $props.Count
+
+        [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_DefenderCoverage_$($mdfcPlanGroup.Name)"><i class="padlxx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle"> $($mdfcPlanGroup.Name)</span></button>
+<div class="content TenantSummary">
+<i class="padlxxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+$(($props | ForEach-Object { "<th>$_</th>" }) -join '')
+</tr>
+</thead>
+<tbody>
+"@)
+
+        foreach ($entry in $mdfcPlanGroup.Group | Sort-Object -Property { $_.subscriptionName }) {
+            [void]$htmlTenantSummary.AppendLine('<tr>')
+            foreach ($groupKey in $props) {
+                if ($entry.($groupKey)) {
+                    [void]$htmlTenantSummary.AppendLine("<td>$($entry.($groupKey))</td>")
+                }
+                else {
+                    [void]$htmlTenantSummary.AppendLine('<td><i>n/a</i></td>')
+                }
+            }
+            [void]$htmlTenantSummary.AppendLine('</tr>')
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+</tbody>
+</table>
+</div>
+<script>
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+window.helpertfConfig4$htmlTableId =1;
+var tfConfig4$htmlTableId = {
+base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+        }
+        [void]$htmlTenantSummary.AppendLine(@'
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+linked_filters: true,
+'@)
+
+        $cntProps = 0
+        $arrCols = @()
+        do {
+            $cntProps++
+            if ($cntProps -gt 4) {
+                if ($mdfcPlanGroup.Group[0].Keys[$cntProps - 1] -ne 'enablementTime') {
+                    $arrCols += "col_$($cntProps -1): 'select',"
+                }
+            }
+        }
+        until ($cntProps -eq $propsCount)
+
+        [void]$htmlTenantSummary.AppendLine(@"
+$($arrCols -join '')
+extensions: [{ name: 'sort' }]
+};
+var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+tf.init();}}
+</script>
+"@)
+    }
+
+
+    #close main div
+    [void]$htmlTenantSummary.AppendLine(@'
+</div>
+'@)
+    #endregion SUMMARYSubDefenderCoverage
+
+
     if ($azAPICallConf['htParameters'].NoResources -eq $false) {
         #region SUMMARYSubUserAssignedIdentities4Resources
         Write-Host '  processing TenantSummary Subscriptions UserAssigned Managed Identities assigned to Resources'
@@ -30573,10 +30836,29 @@ function dataCollectionDefenderPlans {
                         subscriptionMgPath = $childMgMgPath
                         defenderPlan       = $defenderPlanResult.name
                         defenderPlanTier   = $defenderPlanResult.properties.pricingTier
+                        defenderPlanFull   = $defenderPlanResult
                     })
             }
         }
     }
+
+    $currentTask = "Getting Microsoft Defender for Cloud settings for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/settings?api-version=2022-05-01"
+    $method = 'GET'
+    $securitySettingsResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
+
+    if ($securitySettingsResult -eq 'SubScriptionNotRegistered' -or $securitySettingsResult -eq 'DisallowedProvider') {
+        Write-Host "Subscription $scopeId skipped for SecuritySettings ($securitySettingsResult)"
+    }
+    else {
+        foreach ($setting in $securitySettingsResult) {
+            if (-not $htSecuritySettings.$scopeId) {
+                $script:htSecuritySettings.$scopeId = @{}
+            }
+            $script:htSecuritySettings.($scopeId).($setting.name) = $setting
+        }
+    }
+
 }
 $funcDataCollectionDefenderPlans = $function:dataCollectionDefenderPlans.ToString()
 
@@ -31029,7 +31311,7 @@ function dataCollectionResources {
 
     #region resources LIST
     $currentTask = "Getting Resources for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime,properties&api-version=2023-07-01"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime,properties&api-version=2024-03-01"
     $method = 'GET'
     $resourcesSubscriptionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
     #endregion resources LIST
@@ -31784,10 +32066,24 @@ function dataCollectionResources {
                 $cafResourceNamingCheck = 'n/a'
                 $applicableNaming = 'n/a'
             }
+
+            $sku = $null
+            if ($resource.sku) {
+                $sku = $resource.sku
+            }
+
+            $kind = $null
+            if ($resource.kind) {
+                $kind = $resource.kind
+            }
+
             $null = $script:resourcesIdsAll.Add([PSCustomObject]@{
                     subscriptionId                = $scopeId
+                    subscriptionName              = $scopeDisplayName
                     mgPath                        = $childMgMgPath
                     type                          = ($resource.type).ToLower()
+                    sku                           = $sku
+                    kind                          = $kind
                     id                            = ($resource.Id).ToLower()
                     name                          = ($resource.name).ToLower()
                     location                      = ($resource.location).ToLower()
@@ -35341,6 +35637,7 @@ if (-not $HierarchyMapOnly) {
     $htDailySummary = @{}
     $arrayDefenderPlans = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayDefenderPlansSubscriptionsSkipped = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $htSecuritySettings = [System.Collections.Hashtable]::Synchronized(@{})
     $arrayUserAssignedIdentities4Resources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htSubscriptionsRoleAssignmentLimit = [System.Collections.Hashtable]::Synchronized(@{})
     if ($azAPICallConf['htParameters'].NoMDfCSecureScore -eq $false) {
