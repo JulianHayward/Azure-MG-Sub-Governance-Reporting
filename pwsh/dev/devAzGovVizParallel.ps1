@@ -36,6 +36,9 @@
 .PARAMETER SubscriptionQuotaIdWhitelist
     default is 'undefined', this parameter defines the QuotaIds the subscriptions must match so that Azure Governance Visualizer processes them. The script checks if the QuotaId startswith the string that you have put in. Separate multiple strings with comma e.g. MSDN_,EnterpriseAgreement_
 
+.PARAMETER SubscriptionIdWhitelist
+    default is 'undefined', this parameter defines the subscriptions that must match in order for the Azure Governance Visualizer to process them. Separate multiple strings with comma e.g. 2f4a9838-26b7-47ee-be60-ccc1fdec5953,33e01921-4d64-4f8c-a055-5bdaffd5e33d
+
 .PARAMETER NoPolicyComplianceStates
     use this parameter if policy compliance states should not be queried
 
@@ -215,6 +218,9 @@
     Define the QuotaId whitelist by providing strings separated by a comma
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionQuotaIdWhitelist MSDN_,EnterpriseAgreement_
 
+    Define the subscriptions whitelist by providing strings separated by a comma
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -SubscriptionIdWhitelist 2f4a9838-26b7-47ee-be60-ccc1fdec5953,33e01921-4d64-4f8c-a055-5bdaffd5e33d
+
     Define if policy compliance states should be queried
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPolicyComplianceStates
 
@@ -365,7 +371,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.5.4',
+    $ProductVersion = '6.5.5',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -435,6 +441,9 @@ Param
 
     [array]
     $SubscriptionQuotaIdWhitelist = @('undefined'),
+
+    [array]
+    $SubscriptionIdWhitelist = @('undefined'),
 
     [switch]
     $NoPolicyComplianceStates,

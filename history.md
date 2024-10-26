@@ -4,6 +4,9 @@
 
 ### Azure Governance Visualizer version 6
 
+**Changes** (2024-October-9 / 6.5.5 Patch)
+
+- introduce a new optional parameter `-SubscriptionIdWhitelist`, which defines the subscriptions that must match in order to be processed.
 
 **Changes** (2024-September-19 / 6.5.4 Patch)
 
