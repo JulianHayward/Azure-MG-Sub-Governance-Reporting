@@ -8885,6 +8885,118 @@ extensions: [{ name: 'sort' }]
     Write-Host "   Microsoft Defender for Cloud plans by Subscription processing duration: $((New-TimeSpan -Start $startDefenderPlans -End $endDefenderPlans).TotalMinutes) minutes ($((New-TimeSpan -Start $startDefenderPlans -End $endDefenderPlans).TotalSeconds) seconds)"
     #endregion SUMMARYSubDefenderPlansBySubscription
 
+    #region SUMMARYSubDefenderCoverage
+    processMDfCCoverage
+    #open main div
+    $htmlTableId = 'TenantSummary_DefenderCoverage'
+
+    #open main div
+    [void]$htmlTenantSummary.AppendLine(@'
+<button type="button" class="collapsible" id="buttonTenantSummary_DefenderCoverage"><i class="padlx fa fa-shield" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">Microsoft Defender Coverage</span></button>
+<div class="content TenantSummary">
+'@)
+
+    foreach ($mdfcPlanGroup in ($arrayDefenderPlansCoverage | Group-Object -Property { $_.plan })) {
+
+        $tfCount = $mdfcPlanGroup.Group.Count
+        $htmlTableId = "TenantSummary_DefenderCoverage_$($mdfcPlanGroup.Name)"
+        $props = $mdfcPlanGroup.Group[0].Keys
+        $propsCount = $props.Count
+
+        [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_DefenderCoverage_$($mdfcPlanGroup.Name)"><i class="padlxx fa fa-shield" aria-hidden="true"></i> <span class="valignMiddle"> $($mdfcPlanGroup.Name)</span></button>
+<div class="content TenantSummary">
+<i class="padlxxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id="$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+$(($props | ForEach-Object { "<th>$_</th>" }) -join '')
+</tr>
+</thead>
+<tbody>
+"@)
+
+        foreach ($entry in $mdfcPlanGroup.Group | Sort-Object -Property { $_.subscriptionName }) {
+            [void]$htmlTenantSummary.AppendLine('<tr>')
+            foreach ($groupKey in $props) {
+                if ($entry.($groupKey)) {
+                    [void]$htmlTenantSummary.AppendLine("<td>$($entry.($groupKey))</td>")
+                }
+                else {
+                    [void]$htmlTenantSummary.AppendLine('<td><i>n/a</i></td>')
+                }
+            }
+            [void]$htmlTenantSummary.AppendLine('</tr>')
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+</tbody>
+</table>
+</div>
+<script>
+function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+window.helpertfConfig4$htmlTableId =1;
+var tfConfig4$htmlTableId = {
+base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+        if ($tfCount -gt 10) {
+            $spectrum = "10, $tfCount"
+            if ($tfCount -gt 50) {
+                $spectrum = "10, 25, 50, $tfCount"
+            }
+            if ($tfCount -gt 100) {
+                $spectrum = "10, 30, 50, 100, $tfCount"
+            }
+            if ($tfCount -gt 500) {
+                $spectrum = "10, 30, 50, 100, 250, $tfCount"
+            }
+            if ($tfCount -gt 1000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+            }
+            if ($tfCount -gt 2000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+            }
+            if ($tfCount -gt 3000) {
+                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+        }
+        [void]$htmlTenantSummary.AppendLine(@'
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+linked_filters: true,
+'@)
+
+        $cntProps = 0
+        $arrCols = @()
+        do {
+            $cntProps++
+            if ($cntProps -gt 4) {
+                if ($mdfcPlanGroup.Group[0].Keys[$cntProps - 1] -ne 'enablementTime') {
+                    $arrCols += "col_$($cntProps -1): 'select',"
+                }
+            }
+        }
+        until ($cntProps -eq $propsCount)
+
+        [void]$htmlTenantSummary.AppendLine(@"
+$($arrCols -join '')
+extensions: [{ name: 'sort' }]
+};
+var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+tf.init();}}
+</script>
+"@)
+    }
+
+
+    #close main div
+    [void]$htmlTenantSummary.AppendLine(@'
+</div>
+'@)
+    #endregion SUMMARYSubDefenderCoverage
+
+
     if ($azAPICallConf['htParameters'].NoResources -eq $false) {
         #region SUMMARYSubUserAssignedIdentities4Resources
         Write-Host '  processing TenantSummary Subscriptions UserAssigned Managed Identities assigned to Resources'

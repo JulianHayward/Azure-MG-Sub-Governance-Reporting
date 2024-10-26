@@ -84,13 +84,17 @@ The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Gov
 
 ## Release history
 
+**Changes** (2024-October-26 / 6.6.0 Minor)
+
+- Microsoft Defender for Cloud Coverage (Tenant Summary and CSV export). Example html:
+![MicrosoftDefenderForCloudCoverage_preview](img/MicrosoftDefenderForCloudCoverage_preview.png)
+- CostOptimization add `microsoft.network/privateendpoints` for intent=cost savings
+- extend ResourcesAll.csv output with sku and kind information
+- update [API reference](#api-reference) '/subscriptions/`subscriptionId`/resources' use API version 2024-03-01 (previous 2023-07-01)
+
 **Changes** (2024-October-9 / 6.5.5 Patch)
 
 - introduce a new optional [parameter](#parameters) `-SubscriptionIdWhitelist`, which defines the subscriptions that must match in order to be processed.
-  
-**Changes** (2024-September-19 / 6.5.4 Patch)
-
-- minor PSScriptAnalyzer finding resolved
 
 [Full release history](history.md)
 
@@ -609,7 +613,7 @@ Azure Governance Visualizer polls the following APIs
 | ARM      | 2020-01-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securityContacts                                                          |
 | ARM      | 2019-10-01         | /subscriptions/`subscriptionId`/providers                                                                                              |
 | ARM      | 2021-04-01         | /subscriptions/`subscriptionId`/resourcegroups                                                                                         |
-| ARM      | 2023-07-01         | /subscriptions/`subscriptionId`/resources                                                                                              |
+| ARM      | 2024-03-01         | /subscriptions/`subscriptionId`/resources                                                                                              |
 | ARM      | 2020-01-01         | /subscriptions                                                                                                                         |
 | ARM      | 2020-01-01         | /tenants                                                                                                                               |
 

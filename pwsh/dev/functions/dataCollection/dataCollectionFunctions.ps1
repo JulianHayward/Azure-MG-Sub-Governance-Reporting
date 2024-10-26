@@ -52,10 +52,29 @@ function dataCollectionDefenderPlans {
                         subscriptionMgPath = $childMgMgPath
                         defenderPlan       = $defenderPlanResult.name
                         defenderPlanTier   = $defenderPlanResult.properties.pricingTier
+                        defenderPlanFull   = $defenderPlanResult
                     })
             }
         }
     }
+
+    $currentTask = "Getting Microsoft Defender for Cloud settings for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/settings?api-version=2022-05-01"
+    $method = 'GET'
+    $securitySettingsResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
+
+    if ($securitySettingsResult -eq 'SubScriptionNotRegistered' -or $securitySettingsResult -eq 'DisallowedProvider') {
+        Write-Host "Subscription $scopeId skipped for SecuritySettings ($securitySettingsResult)"
+    }
+    else {
+        foreach ($setting in $securitySettingsResult) {
+            if (-not $htSecuritySettings.$scopeId) {
+                $script:htSecuritySettings.$scopeId = @{}
+            }
+            $script:htSecuritySettings.($scopeId).($setting.name) = $setting
+        }
+    }
+
 }
 $funcDataCollectionDefenderPlans = $function:dataCollectionDefenderPlans.ToString()
 
@@ -508,7 +527,7 @@ function dataCollectionResources {
 
     #region resources LIST
     $currentTask = "Getting Resources for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime,properties&api-version=2023-07-01"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/resources?`$expand=createdTime,changedTime,properties&api-version=2024-03-01"
     $method = 'GET'
     $resourcesSubscriptionResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
     #endregion resources LIST
@@ -1263,10 +1282,24 @@ function dataCollectionResources {
                 $cafResourceNamingCheck = 'n/a'
                 $applicableNaming = 'n/a'
             }
+
+            $sku = $null
+            if ($resource.sku) {
+                $sku = $resource.sku
+            }
+
+            $kind = $null
+            if ($resource.kind) {
+                $kind = $resource.kind
+            }
+
             $null = $script:resourcesIdsAll.Add([PSCustomObject]@{
                     subscriptionId                = $scopeId
+                    subscriptionName              = $scopeDisplayName
                     mgPath                        = $childMgMgPath
                     type                          = ($resource.type).ToLower()
+                    sku                           = $sku
+                    kind                          = $kind
                     id                            = ($resource.Id).ToLower()
                     name                          = ($resource.name).ToLower()
                     location                      = ($resource.location).ToLower()

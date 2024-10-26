@@ -345,6 +345,7 @@
             $htUserTypesGuest = $using:htUserTypesGuest
             $arrayDefenderPlans = $using:arrayDefenderPlans
             $arrayDefenderPlansSubscriptionsSkipped = $using:arrayDefenderPlansSubscriptionsSkipped
+            $htSecuritySettings = $using:htSecuritySettings
             $arrayUserAssignedIdentities4Resources = $using:arrayUserAssignedIdentities4Resources
             $htSubscriptionsRoleAssignmentLimit = $using:htSubscriptionsRoleAssignmentLimit
             $arrayPsRule = $using:arrayPsRule
@@ -887,8 +888,33 @@
                 #DataCollection Export of All Resources
                 if ($resourcesIdsAll.Count -gt 0) {
                     if (-not $NoCsvExport) {
+                        $startExportingResourcesAllCSV = Get-Date
                         Write-Host "Exporting ResourcesAll CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv'"
-                        $resourcesIdsAll | Sort-Object -Property id | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                        $arrListSKUKeys = [System.Collections.ArrayList]@()
+                        foreach ($entry in $resourcesIdsAll.where({ $_.sku }).sku) {
+                            foreach ($noteProperty in ($entry | Get-Member).where({ $_.MemberType -eq 'NoteProperty' })) {
+                                if ($arrListSKUKeys -notcontains $noteProperty.Name) {
+                                    $null = $arrListSKUKeys.Add($noteProperty.Name)
+                                }
+                            }
+                        }
+                        Write-Host " SKU keys: $(($arrListSKUKeys | Sort-Object) -join ', ')"
+
+                        Write-Host ' Enriching resources with SKU keys'
+                        foreach ($entry in $resourcesIdsAll) {
+                            foreach ($key in $arrListSKUKeys | Sort-Object) {
+                                if ($entry.sku.$key) {
+                                    $entry | Add-Member -MemberType NoteProperty -Name "sku_$($key)" -Value $entry.sku.$key
+                                }
+                                else {
+                                    $entry | Add-Member -MemberType NoteProperty -Name "sku_$($key)" -Value $null
+                                }
+                            }
+                        }
+
+                        $resourcesIdsAll | Sort-Object -Property id | Select-Object -Property subscriptionId, subscriptionName, mgPath, type, sku_*, kind, id, name, location, tags, createdTime, changedTime, cafResourceNamingResult, cafResourceNaming, cafResourceNamingFriendlyName | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ResourcesAll.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                        $endExportingResourcesAllCSV = Get-Date
+                        Write-Host " Exporting ResourcesAll CSV duration: $((New-TimeSpan -Start $startExportingResourcesAllCSV -End $endExportingResourcesAllCSV).TotalMinutes) minutes ($((New-TimeSpan -Start $startExportingResourcesAllCSV -End $endExportingResourcesAllCSV).TotalSeconds) seconds)"
                     }
                 }
                 else {
