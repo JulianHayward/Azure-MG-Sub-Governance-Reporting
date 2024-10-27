@@ -84,6 +84,14 @@ The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Gov
 
 ## Release history
 
+**Changes** (2024-October-26 / 6.6.0 Minor)
+
+- Microsoft Defender for Cloud Coverage (Tenant Summary and CSV export). Example html:
+![MicrosoftDefenderForCloudCoverage_preview](img/MicrosoftDefenderForCloudCoverage_preview.png)
+- CostOptimization add `microsoft.network/privateendpoints` for intent=cost savings
+- extend ResourcesAll.csv output with sku and kind information
+- update [API reference](#api-reference) '/subscriptions/`subscriptionId`/resources' use API version 2024-03-01 (previous 2023-07-01)
+
 **Changes** (2024-October-09 / 6.5.5 Patch)
 
 - New feature "ALZ Policy Assignments Checker" - This new view, will compare the current deployed ALZ hierarchy with the ALZ archetypes definitions and point out the missing policy assignments. It will also reference the missing policy assignments' payloads and AzAdvertiser links.
