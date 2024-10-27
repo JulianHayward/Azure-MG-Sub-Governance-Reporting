@@ -92,11 +92,15 @@ The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Gov
 
 **Changes** (2024-September-19 / 6.5.4 Patch)
 
-- minor PSScriptAnalyzer finding resolved
+- Microsoft Defender for Cloud Coverage (Tenant Summary and CSV export). Example html:
+![MicrosoftDefenderForCloudCoverage_preview](img/MicrosoftDefenderForCloudCoverage_preview.png)
+- CostOptimization add `microsoft.network/privateendpoints` for intent=cost savings
+- extend ResourcesAll.csv output with sku and kind information
+- update [API reference](#api-reference) '/subscriptions/`subscriptionId`/resources' use API version 2024-03-01 (previous 2023-07-01)
 
-**Changes** (2024-September-17 / 6.5.3 Patch)
+**Changes** (2024-October-9 / 6.5.5 Patch)
 
-- fix stop error for subscriptions with null valued quotaId. the function detailSubscription uses `.startsWith()` method to check for `AAD_` but cannot validate when a null-valued `.quotaId` occurs.
+- introduce a new optional [parameter](#parameters) `-SubscriptionIdWhitelist`, which defines the subscriptions that must match in order to be processed.
 
 [Full release history](history.md)
 
@@ -496,6 +500,7 @@ Screenshot of Microsoft Graph permissions in the Microsoft Entra admin center
 - `-LimitCriticalPercentage` - Limit warning level, default is 80%
 - ~~`-HierarchyTreeOnly`~~ `-HierarchyMapOnly` - Output only the **HierarchyMap** for Management Groups including linked Subscriptions
 - `-SubscriptionQuotaIdWhitelist` - Process only Subscriptions with defined QuotaId(s). Example: .\AzGovVizParallel.ps1 `-SubscriptionQuotaIdWhitelist MSDN_,Enterprise_`
+- `-SubscriptionIdWhitelist` - Process only defined Subscriptions. Example: .\AzGovVizParallel.ps1 `-SubscriptionIdWhitelist 2f4a9838-26b7-47ee-be60-ccc1fdec5953,33e01921-4d64-4f8c-a055-5bdaffd5e33d`
 - `-NoResourceProvidersDetailed` - Disables output for ResourceProvider states for all Subscriptions in the **TenantSummary** section, in large Tenants this can become time consuming
 - `-NoResourceProvidersAtAll` - Resource Providers will not be collected
 - `-NoMDfCSecureScore` - Disables Microsoft Defender for Cloud Secure Score request for Subscriptions and Management Groups.
@@ -614,7 +619,7 @@ Azure Governance Visualizer polls the following APIs
 | ARM      | 2020-01-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securityContacts                                                          |
 | ARM      | 2019-10-01         | /subscriptions/`subscriptionId`/providers                                                                                              |
 | ARM      | 2021-04-01         | /subscriptions/`subscriptionId`/resourcegroups                                                                                         |
-| ARM      | 2023-07-01         | /subscriptions/`subscriptionId`/resources                                                                                              |
+| ARM      | 2024-03-01         | /subscriptions/`subscriptionId`/resources                                                                                              |
 | ARM      | 2020-01-01         | /subscriptions                                                                                                                         |
 | ARM      | 2020-01-01         | /tenants                                                                                                                               |
 

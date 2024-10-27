@@ -4,11 +4,17 @@
 
 ### Azure Governance Visualizer version 6
 
-**Changes** (2024-October-09 / 6.5.5 Patch)
+**Changes** (2024-October-26 / 6.6.0 Minor)
 
-- New feature "ALZ Policy Assignments Checker" - This new view, will compare the current deployed ALZ hierarchy with the ALZ archetypes definitions and point out the missing policy assignments. It will also reference the missing policy assignments' payloads and AzAdvertiser links.
-  - New Parameter `-ALZPolicyAssignmentsChecker` - Execute the ALZPolicyAssignmentsChecker feature
-  - New Parameter `-ALZManagementGroupsIds` - Provide the management group Ids of the deployed ALZ hierarchy.
+- Microsoft Defender for Cloud Coverage (Tenant Summary and CSV export)
+![MicrosoftDefenderForCloudCoverage_preview](img/MicrosoftDefenderForCloudCoverage_preview.png)
+- CostOptimization add `microsoft.network/privateendpoints` for intent=cost savings
+- extend ResourcesAll.csv output with sku and kind information
+- update [API reference](#api-reference) '/subscriptions/`subscriptionId`/resources' use API version 2024-03-01 (previous 2023-07-01)
+
+**Changes** (2024-October-9 / 6.5.5 Patch)
+
+- introduce a new optional parameter `-SubscriptionIdWhitelist`, which defines the subscriptions that must match in order to be processed.
 
 **Changes** (2024-September-19 / 6.5.4 Patch)
 
