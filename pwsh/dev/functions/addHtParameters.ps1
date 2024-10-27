@@ -36,6 +36,7 @@
         DoPSRule                                     = [bool]$DoPSRule
         PSRuleFailedOnly                             = [bool]$PSRuleFailedOnly
         NoALZPolicyVersionChecker                    = [bool]$NoALZPolicyVersionChecker
+        ALZPolicyAssignmentsChecker                  = [bool]$ALZPolicyAssignmentsChecker
         NoStorageAccountAccessAnalysis               = [bool]$NoStorageAccountAccessAnalysis
         GitHubActionsOIDC                            = [bool]$GitHubActionsOIDC
         NoNetwork                                    = [bool]$NoNetwork
