@@ -168,7 +168,7 @@
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 
 .Parameter ALZPolicyAssignmentsChecker
-    'Azure Landing Zones (ALZ) Policy Assignments Checker' for Policy and Set assignments. Azure Governance Visualizer will clone the ALZ Library GitHub repository and collect the standard ALZ policy and set assignments. The ALZ data will be compared with the data from your tenant so that you can get an inventory for ALZ policy and set assignments that already exist in your tenant and compare with the standard assignments of ALZ. The 'Azure Landing Zones (ALZ) Policy Assignments Checker' results will be displayed in the TenantSummary and a CSV export `*_ALZPolicyAssignmentsChecker.csv` will be provided.
+    'Azure Landing Zones (ALZ) Policy Assignments Checker' for Policy and Set assignments. Azure Governance Visualizer will clone the ALZ Library GitHub repository and collect the standard ALZ policy and set assignments. The ALZ data will be compared with the data from your tenant so that you can get an inventory for ALZ policy and set assignments that already exist in your tenant and compare with the standard assignments of ALZ. The 'Azure Landing Zones (ALZ) Policy Assignments Checker' results will be displayed in the TenantSummary.
     If you do want to execute the 'Azure Landing Zones (ALZ) Policy Version Checker' feature then use this parameter
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 .Parameter ALZManagementGroupsIds
