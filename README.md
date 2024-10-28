@@ -31,39 +31,39 @@ Azure Governance Visualizer is intended to help you to get a holistic overview o
 
 ## Table of contents
 
-- [Azure Governance Visualizer aka AzGovViz](#azure-governance-visualizer-aka-azgovviz)
-  - [Mission](#mission)
-  - [Table of contents](#table-of-contents)
-  - [Azure Governance Visualizer @ Microsoft CAF](#azure-governance-visualizer--microsoft-caf)
-    - [Microsoft Cloud Adoption Framework (CAF)](#microsoft-cloud-adoption-framework-caf)
-    - [Azure Governance Visualizer accelerator](#azure-governance-visualizer-accelerator)
-  - [:rocket: Azure Governance Visualizer deployment guide](#rocket-azure-governance-visualizer-deployment-guide)
-  - [Release history](#release-history)
-  - [Demo](#demo)
-  - [Media](#media)
-    - [Presentations](#presentations)
-  - [Features](#features)
-  - [Screenshots](#screenshots)
-  - [Outputs](#outputs)
-  - [Trust](#trust)
-  - [Technical documentation](#technical-documentation)
-    - [Permissions overview](#permissions-overview)
-    - [Required permissions in Azure](#required-permissions-in-azure)
-    - [Required permissions in Microsoft Entra ID](#required-permissions-in-microsoft-entra-id)
-    - [PowerShell](#powershell)
-    - [Parameters](#parameters)
-    - [API reference](#api-reference)
-  - [Integrate with AzOps](#integrate-with-azops)
-  - [Integrate PSRule for Azure](#integrate-psrule-for-azure)
-  - [Stats](#stats)
-    - [How / What?](#how--what)
-  - [Security](#security)
-  - [Known issues](#known-issues)
-  - [Facts](#facts)
-  - [Contribution](#contribution)
-  - [AzAdvertizer](#azadvertizer)
-  - [AzADServicePrincipalInsights](#azadserviceprincipalinsights)
-  - [Closing Note](#closing-note)
+* [Azure Governance Visualizer aka AzGovViz](#azure-governance-visualizer-aka-azgovviz)
+  * [Mission](#mission)
+  * [Table of contents](#table-of-contents)
+  * [Azure Governance Visualizer @ Microsoft CAF](#azure-governance-visualizer--microsoft-caf)
+    * [Microsoft Cloud Adoption Framework (CAF)](#microsoft-cloud-adoption-framework-caf)
+  * [:rocket: Azure Governance Visualizer deployment guide](#rocket-azure-governance-visualizer-deployment-guide)
+    * [Azure Governance Visualizer accelerator](#azure-governance-visualizer-accelerator)
+  * [Release history](#release-history)
+  * [Demo](#demo)
+  * [Media](#media)
+    * [Presentations](#presentations)
+  * [Features](#features)
+  * [Screenshots](#screenshots)
+  * [Outputs](#outputs)
+  * [Trust](#trust)
+  * [Technical documentation](#technical-documentation)
+    * [Permissions overview](#permissions-overview)
+    * [Required permissions in Azure](#required-permissions-in-azure)
+    * [Required permissions in Microsoft Entra ID](#required-permissions-in-microsoft-entra-id)
+    * [PowerShell](#powershell)
+    * [Parameters](#parameters)
+    * [API reference](#api-reference)
+  * [Integrate with AzOps](#integrate-with-azops)
+  * [Integrate PSRule for Azure](#integrate-psrule-for-azure)
+  * [Stats](#stats)
+    * [How / What?](#how--what)
+  * [Security](#security)
+  * [Known issues](#known-issues)
+  * [Facts](#facts)
+  * [Contribution](#contribution)
+  * [AzAdvertizer](#azadvertizer)
+  * [AzADServicePrincipalInsights](#azadserviceprincipalinsights)
+  * [Closing Note](#closing-note)
 
 ## Azure Governance Visualizer @ Microsoft CAF
 
@@ -91,6 +91,9 @@ The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Gov
 - CostOptimization add `microsoft.network/privateendpoints` for intent=cost savings
 - extend ResourcesAll.csv output with sku and kind information
 - update [API reference](#api-reference) '/subscriptions/`subscriptionId`/resources' use API version 2024-03-01 (previous 2023-07-01)
+- New feature "ALZ Policy Assignments Checker" - This new view, will compare the current deployed ALZ hierarchy with the ALZ archetypes definitions and point out the missing policy assignments. It will also reference the missing policy assignments' payloads and AzAdvertiser links.
+  - New Parameter `-ALZPolicyAssignmentsChecker` - Execute the ALZPolicyAssignmentsChecker feature
+  - New Parameter `-ALZManagementGroupsIds` - Provide the management group Ids of the deployed ALZ hierarchy.
 
 **Changes** (2024-October-9 / 6.5.5 Patch)
 
@@ -161,6 +164,7 @@ Short presentation on Azure Governance Visualizer: [download](slides/AzGovViz_in
       - Parameters used
   - Azure landing zone (ALZ) policy version checker for policy and set definitions. Azure Governance Visualizer will clone the Azure landing zone GitHub repository and collect the Azure landing zone policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ policy version checker results will be displayed in the **TenantSummary** and a CSV export `*_ALZPolicyVersionChecker.csv` will be provided.
   - Policy Remediation - list all remediatable policies including relevant information such as assignment and definition data
+  - Azure landing zone (ALZ) policy assignments checker for policy and set definitions. Azure Governance Visualizer will clone the Azure landing zone library GitHub repository and collect the Azure landing zone policy and set assignments. The ALZ data will be compared with the data from your tenant so that you see the missing assignments for ALZ policy and set definitions that should be assigned for ALZ management groups plus a list of ALZ policy and set definitions that are missing in your tenant. The ALZ policy assignment checker results will be displayed in the **TenantSummary** and a CSV export `*_ALZPolicyAssignmentsChecker.csv` will be provided.
 - **Azure role-based access control (RBAC)**
   - Custom role definitions
     - List assignable scopes

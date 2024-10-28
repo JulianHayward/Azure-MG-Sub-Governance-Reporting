@@ -11,6 +11,9 @@
 - CostOptimization add `microsoft.network/privateendpoints` for intent=cost savings
 - extend ResourcesAll.csv output with sku and kind information
 - update [API reference](#api-reference) '/subscriptions/`subscriptionId`/resources' use API version 2024-03-01 (previous 2023-07-01)
+- New feature "ALZ Policy Assignments Checker" - This new view, will compare the current deployed ALZ hierarchy with the ALZ archetypes definitions and point out the missing policy assignments. It will also reference the missing policy assignments' payloads and AzAdvertiser links.
+  - New Parameter `-ALZPolicyAssignmentsChecker` - Execute the ALZPolicyAssignmentsChecker feature
+  - New Parameter `-ALZManagementGroupsIds` - Provide the management group Ids of the deployed ALZ hierarchy.
 
 **Changes** (2024-October-9 / 6.5.5 Patch)
 
