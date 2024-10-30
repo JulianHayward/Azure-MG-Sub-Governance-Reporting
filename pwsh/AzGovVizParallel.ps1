@@ -5245,15 +5245,30 @@ function getSubscriptions {
     $startGetSubscriptions = Get-Date
     $currentTask = 'Getting all Subscriptions'
     Write-Host "$currentTask"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions?api-version=2020-01-01"
     $method = 'GET'
-    $requestAllSubscriptionsAPI = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions?api-version=2020-01-01"
+
+    $allSubscriptions = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
+
+    if ($null -ne $managementGroupId) {
+        # Retrieve the subscriptions within the managementGroup specified in the managementGroupId parameter
+        # As the 'subscriptions' API does not support filtering by managementGroup, we need to use the management group descendants API to retrieve those.
+        # Afterwards, we filter the subscriptions retrived with all the subscriptions retrieved by the sbuscriptions API,
+        # as this API contains the relevant subscription properties for further processing.
+        $managementGroupDescendantsRequestUri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($managementGroupId)/descendants?api-version=2020-05-01"
+        $managementGroupDescendants = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $managementGroupDescendantsRequestUri -method $method -currentTask $currentTask | Where-Object {$_.type -eq 'Microsoft.Management/managementGroups/subscriptions'}
+        $relevantSubscriptions = $allSubscriptions | Where-Object {$_.subscriptionId -in $managementGroupDescendants.name}
+    }
+    else {
+        # If no managementGroupId is specified in the parameter file, we use all subscriptions within the tenant.
+        $relevantSubscriptions = $allSubscriptions
+    }
 
     $script:htAllSubscriptionsFromAPI = @{}
     $script:htSubscriptionsFromOtherTenants = @{}
 
-    Write-Host " $($requestAllSubscriptionsAPI.Count) Subscriptions returned"
-    foreach ($subscription in $requestAllSubscriptionsAPI) {
+    Write-Host " $($relevantSubscriptions.Count) Subscriptions returned"
+    foreach ($subscription in $relevantSubscriptions) {
 
         if ($subscription.tenantId -ne $azAPICallConf['checkcontext'].tenant.id) {
             Write-Host "  Finding: $($subscription.displayName) ($($subscription.subscriptionId)) belongs to foreign tenant '$($subscription.tenantId)' - Azure Governance Visualizer: excluding this Subscripion" -ForegroundColor DarkRed
