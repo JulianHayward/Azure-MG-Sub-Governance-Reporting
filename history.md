@@ -4,6 +4,11 @@
 
 ### Azure Governance Visualizer version 6
 
+**Changes** (2024-November-01 / 6.6.1 Patch)
+
+- HTML fix filters __TenantSummary__ PolicyAssignment, __ScopeInsights__ PolicySetAssignments
+- use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.2.4 (Handle 'subscription not registered' `/providers/Microsoft.Security/settings`)
+
 **Changes** (2024-October-26 / 6.6.0 Minor)
 
 - Microsoft Defender for Cloud Coverage (Tenant Summary and CSV export)
