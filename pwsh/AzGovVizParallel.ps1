@@ -3842,7 +3842,7 @@ function getEntities {
     #https://management.azure.com/providers/Microsoft.Management/getEntities?api-version=2020-02-01
     $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/getEntities?api-version=2020-02-01"
     $method = 'POST'
-    $arrayEntitiesFromAPIInitial = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask | Where-Object {$_.properties.parentNameChain -contains $managementGroupId}
+    $arrayEntitiesFromAPIInitial = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask #| Where-Object {$_.properties.parentNameChain -contains $managementGroupId}
     Write-Host "  $($arrayEntitiesFromAPIInitial.Count) Entities returned"
 
     $script:arrayEntitiesFromAPI = [System.Collections.ArrayList]@()
