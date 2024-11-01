@@ -5256,8 +5256,8 @@ function getSubscriptions {
         # Afterwards, we filter the subscriptions retrived with all the subscriptions retrieved by the sbuscriptions API,
         # as this API contains the relevant subscription properties for further processing.
         $managementGroupDescendantsRequestUri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($managementGroupId)/descendants?api-version=2020-05-01"
-        $managementGroupDescendants = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $managementGroupDescendantsRequestUri -method $method -currentTask $currentTask | Where-Object {$_.type -eq 'Microsoft.Management/managementGroups/subscriptions'}
-        $relevantSubscriptions = $allSubscriptions | Where-Object {$_.subscriptionId -in $managementGroupDescendants.name}
+        $managementGroupDescendants = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $managementGroupDescendantsRequestUri -method $method -currentTask $currentTask | Where-Object { $_.type -eq 'Microsoft.Management/managementGroups/subscriptions' }
+        $relevantSubscriptions = $allSubscriptions | Where-Object { $_.subscriptionId -in $managementGroupDescendants.name }
     }
     else {
         # If no managementGroupId is specified in the parameter file, we use all subscriptions within the tenant.
