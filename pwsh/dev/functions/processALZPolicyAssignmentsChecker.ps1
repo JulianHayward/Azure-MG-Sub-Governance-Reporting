@@ -71,6 +71,7 @@
             Write-Host 'Release not found or error accessing the URL'
             $ESLZRelease = $null
             $ESLZReleaseURL = $null
+            $script:ALZPolicyAssignmentsChecker = $false
         }
 
         $script:referenceALZPolicyAssignments = @{}
