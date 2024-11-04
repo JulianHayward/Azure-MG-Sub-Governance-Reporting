@@ -84,11 +84,10 @@ The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Gov
 
 ## Release history
 
-**Changes** (2024-October-28 / 6.7.0 Minor)
+**Changes** (2024-November-01 / 6.6.1 Patch)
 
-- New feature "ALZ Policy Assignments Checker" - This new view, will compare the current deployed ALZ hierarchy with the ALZ archetypes definitions and point out the missing policy assignments. It will also reference the missing policy assignments' payloads and AzAdvertiser links.
-  - New Parameter `-ALZPolicyAssignmentsChecker` - Execute the ALZPolicyAssignmentsChecker feature
-  - New Parameter `-ALZManagementGroupsIds` - Provide the management group Ids of the deployed ALZ hierarchy.
+- HTML fix filters __TenantSummary__ PolicyAssignment, __ScopeInsights__ PolicySetAssignments
+- use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.2.4 (Handle 'subscription not registered' `/providers/Microsoft.Security/settings`)
 
 **Changes** (2024-October-26 / 6.6.0 Minor)
 
@@ -618,6 +617,7 @@ Azure Governance Visualizer polls the following APIs
 | ARM      | 2024-01-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/pricings                                                                  |
 | ARM      | 2020-01-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securescores                                                              |
 | ARM      | 2020-01-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securityContacts                                                          |
+| ARM      | 2022-05-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/settings                                                                  |
 | ARM      | 2019-10-01         | /subscriptions/`subscriptionId`/providers                                                                                              |
 | ARM      | 2021-04-01         | /subscriptions/`subscriptionId`/resourcegroups                                                                                         |
 | ARM      | 2024-03-01         | /subscriptions/`subscriptionId`/resources                                                                                              |

@@ -4488,7 +4488,7 @@ extensions: [{ name: 'sort' }]
             col_11: 'select',
             col_12: 'select',
             col_14: 'select',
-            col_16: 'select',
+            col_15: 'select',
             col_17: 'select',
             locale: 'en-US',
             col_types: [

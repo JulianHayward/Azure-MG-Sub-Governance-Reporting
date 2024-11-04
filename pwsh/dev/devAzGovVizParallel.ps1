@@ -405,14 +405,14 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.7.0',
+    $ProductVersion = '6.6.1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
 
     # <--- AzAPICall related parameters #consult the AzAPICall GitHub repository for details aka.ms/AzAPICall
     [string]
-    $AzAPICallVersion = '1.2.3',
+    $AzAPICallVersion = '1.2.4',
 
     [switch]
     $DebugAzAPICall,
@@ -895,14 +895,14 @@ if (-not $ignoreARMLocation) {
 #EndRegion initAZAPICall
 
 #region required AzAPICall version
-if (-not ([System.Version]"$($azapicallConf['htParameters'].azAPICallModuleVersion)" -ge [System.Version]'1.2.1')) {
+if (-not ([System.Version]"$($azapicallConf['htParameters'].azAPICallModuleVersion)" -ge [System.Version]'1.2.4')) {
     Write-Host ''
     Write-Host 'Azure Governance Visualizer version '$ProductVersion' - AzAPICall PowerShell module version check failed -> https://aka.ms/AzAPICall; https://www.powershellgallery.com/packages/AzAPICall'
-    throw "This version of Azure Governance Visualizer '$ProductVersion' requires AzAPICall PowerShell module version '1.2.1' or greater"
+    throw "This version of Azure Governance Visualizer '$ProductVersion' requires AzAPICall PowerShell module version '1.2.4' or greater"
 }
 else {
     Write-Host ''
-    Write-Host "Azure Governance Visualizer version '$ProductVersion' - AzAPICall PowerShell module version requirement check succeeded: '1.2.1' or greater - current: '$($azapicallConf['htParameters'].azAPICallModuleVersion)' " -ForegroundColor Green
+    Write-Host "Azure Governance Visualizer version '$ProductVersion' - AzAPICall PowerShell module version requirement check succeeded: '1.2.4' or greater - current: '$($azapicallConf['htParameters'].azAPICallModuleVersion)' " -ForegroundColor Green
 }
 #endregion required AzAPICall version
 

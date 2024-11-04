@@ -3008,7 +3008,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             linked_filters: true,
             col_1: 'select',
             col_4: 'select',
-            col_7: 'select',
+            col_6: 'select',
             col_8: 'select',
             locale: 'en-US',
             col_types: [
