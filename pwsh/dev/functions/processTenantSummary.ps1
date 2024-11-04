@@ -2536,8 +2536,10 @@ extensions: [{ name: 'sort' }]
 <tr>
 <th>ALZ Management Group</th>
 <th>Management Group exists / provided</th>
-<th>ALZ Missing Policy Assignments</th>
+<th>Missing ALZ Policy Assignments</th>
 <th>AzAdvertizer Link</th>
+<th>ALZ Library release</th>
+<th>ALZ release</th>
 </tr>
 </thead>
 <tbody>
@@ -2551,19 +2553,19 @@ extensions: [{ name: 'sort' }]
                     $key = $key.replace('-notProvided', '')
                     $managementGroupExists = $false
                     $mGExists = "<input type=`"checkbox`" style=`"accent-color: red; pointer-events: none;`" checked><span style=`"color:red;`">&#10006;</span>"
-                    $ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/archetype_definitions/$($key).alz_archetype_definition.json"
+                    $ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/tree/$latestALZLibraryCommit/platform/alz/archetype_definitions/$($key).alz_archetype_definition.json"
                     $archetypeLink = "<a class=`"externallink`" href=`"$(($ALZArchetypeDefinitionPayload).ToLower())`" target=`"_blank`" rel=`"noopener`">$($key)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
 
 
                 }
                 else {
                     $mGExists = "<input type=`"checkbox`" style=`"accent-color: gray; pointer-events: none;`" checked>"
-                    $ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/archetype_definitions/$($matchingManagementGroupReference).alz_archetype_definition.json"
+                    $ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/tree/$latestALZLibraryCommit/platform/alz/archetype_definitions/$($matchingManagementGroupReference).alz_archetype_definition.json"
                     $archetypeLink = "<a class=`"externallink`" href=`"$($ALZArchetypeDefinitionPayload)`" target=`"_blank`" rel=`"noopener`">$($matchingManagementGroupReference)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a><span> => $($key)</span>"
                 }
                 $_.Value | ForEach-Object {
                     $entry = $_
-                    $ALZPolicyAssignmentsPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/policy_assignments/$($ALZPolicyAssignmentsPayloadFiles[$entry])"
+                    $ALZPolicyAssignmentsPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/tree/$latestALZLibraryCommit/platform/alz/policy_assignments/$($ALZPolicyAssignmentsPayloadFiles[$entry])"
                     $assignmentPayLoadlink = "<a class=`"externallink`" href=`"$($ALZPolicyAssignmentsPayload)`" target=`"_blank`" rel=`"noopener`">$($entry)&nbsp;payload Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
                     $policyDefinitionId = $script:ALZpolicyDefinitionsTable[$entry]
                     $policyGuid = $policyDefinitionId.split('/')[-1]
@@ -2576,12 +2578,21 @@ extensions: [{ name: 'sort' }]
                         $azAdvertizerURL = "https://www.azadvertizer.net/azpolicyinitiativesadvertizer/${policyGuid}.html"
                     }
                     $azAdvertiserlink = "<a class=`"externallink`" href=`"$($azAdvertizerURL)`" target=`"_blank`" rel=`"noopener`">$($entry)&nbsp;AzA Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                    $latestALZLibraryReleaseValue = "<a class=`"externallink`" href=`"$($latestALZLibraryReleaseURL)`" target=`"_blank`" rel=`"noopener`">$($latestALZLibraryRelease)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                    if ($null -eq $script:ESLZRelease) {
+                        $ESLZReleaseValue = 'N/A'
+                    }
+                    else {
+                        $ESLZReleaseValue = "<a class=`"externallink`" href=`"$($ESLZReleaseURL)`" target=`"_blank`" rel=`"noopener`">$($ESLZRelease)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                    }
                     @"
 <tr>
 <td>$($archetypeLink)</td>
 <td>$($mGExists)</td>
 <td>$($assignmentPayLoadlink)</td>
 <td>$($azAdvertiserlink)</td>
+<td>$($latestALZLibraryReleaseValue)</td>
+<td>$($ESLZReleaseValue)</td>
 </tr>
 "@
                 }

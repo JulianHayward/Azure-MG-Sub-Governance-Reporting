@@ -168,7 +168,7 @@
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 
 .Parameter ALZPolicyAssignmentsChecker
-    'Azure Landing Zones (ALZ) Policy Assignments Checker' for Policy and Set assignments. Azure Governance Visualizer will clone the ALZ Library GitHub repository and collect the standard ALZ policy and set assignments. The ALZ data will be compared with the data from your tenant so that you can get an inventory for ALZ policy and set assignments that already exist in your tenant and compare with the standard assignments of ALZ. The 'Azure Landing Zones (ALZ) Policy Assignments Checker' results will be displayed in the TenantSummary and a CSV export `*_ALZPolicyAssignmentsChecker.csv` will be provided.
+    'Azure Landing Zones (ALZ) Policy Assignments Checker' for Policy and Set assignments. Azure Governance Visualizer will clone the ALZ Library GitHub repository and collect the standard ALZ policy and set assignments. The ALZ data will be compared with the data from your tenant so that you can get an inventory for ALZ policy and set assignments that already exist in your tenant and compare with the standard assignments of ALZ. The 'Azure Landing Zones (ALZ) Policy Assignments Checker' results will be displayed in the TenantSummary.
     If you do want to execute the 'Azure Landing Zones (ALZ) Policy Version Checker' feature then use this parameter
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 .Parameter ALZManagementGroupsIds
@@ -5585,9 +5585,38 @@ function processALZPolicyAssignmentsChecker {
     if ($ALZCloneSuccess) {
         Write-Host " Switching to directory '$($ALZLibraryPath)/Azure-Landing-Zones-Library'"
         Set-Location "$($ALZLibraryPath)/Azure-Landing-Zones-Library"
+
+        Write-Host ' Fetching the latest Azure Landing Zones Library releases'
+        git fetch --tags
+        Write-Host ' Getting the latest Azure Landing Zones Library release'
+        $latestALZLibraryRelease = git tag --sort=-creatordate | Select-Object -First 1
+        $latestALZLibraryReleaseURL = "https://github.com/Azure/Azure-Landing-Zones-Library/releases/tag/$latestALZLibraryRelease"
+        $latestALZLibraryCommit = git rev-parse $latestALZLibraryRelease
+        Write-Host ' Checking if the latest Azure Landing Zones Library release matches to an ESLZ release'
+        try {
+            $latestALZLibraryReleaseRequest = Invoke-WebRequest -Uri "https://api.github.com/repos/azure/azure-landing-zones-library/releases/tags/$latestALZLibraryRelease"
+            $latestALZLibraryReleaseBody = ($latestALZLibraryReleaseRequest | ConvertFrom-Json).body
+            if ($latestALZLibraryReleaseRequest.StatusCode -eq 200) {
+                $ESLZReleasePattern = 'https://github\.com/Azure/Enterprise-Scale/releases/tag/[^\s\)]*'
+                $ESLZReleaseURL = [regex]::Match($latestALZLibraryReleaseBody, $ESLZReleasePattern).Value
+                $ESLZRelease = ([regex]::Match($latestALZLibraryReleaseBody, $ESLZReleasePattern).Value).split('/')[-1]
+                git checkout $latestALZLibraryCommit
+            }
+        }
+        catch {
+            Write-Host 'Release not found or error accessing the URL'
+            $ESLZRelease = $null
+            $ESLZReleaseURL = $null
+        }
+
         $script:referenceALZPolicyAssignments = @{}
         $script:ALZpolicyDefinitionsTable = @{}
         $script:ALZPolicyAssignmentsPayloadFiles = @{}
+        $script:ESLZRelease = $ESLZRelease
+        $script:ESLZReleaseURL = $ESLZReleaseURL
+        $script:latestALZLibraryReleaseURL = $latestALZLibraryReleaseURL
+        $script:latestALZLibraryRelease = $latestALZLibraryRelease
+        $script:latestALZLibraryCommit = $latestALZLibraryCommit
         $archetypesPath = '.\platform\alz\archetype_definitions'
         $policyAssignmentsPath = '.\platform\alz\policy_assignments'
         $archetypesDefinition = Get-ChildItem -Path $archetypesPath -Filter '*.json'
@@ -5627,7 +5656,6 @@ function processALZPolicyAssignmentsChecker {
             if ($content.policy_assignments) {
                 $script:referenceALZPolicyAssignments[$key] = $content.policy_assignments
                 $content.policy_assignments | ForEach-Object {
-                    #$assignmentName = $_ -replace '-', '_'
                     $assignmentName = $_
                     $filename = "$assignmentName.alz_policy_assignment.json"
                     $script:ALZPolicyAssignmentsPayloadFiles[$_] = $filename
@@ -16900,8 +16928,10 @@ extensions: [{ name: 'sort' }]
 <tr>
 <th>ALZ Management Group</th>
 <th>Management Group exists / provided</th>
-<th>ALZ Missing Policy Assignments</th>
+<th>Missing ALZ Policy Assignments</th>
 <th>AzAdvertizer Link</th>
+<th>ALZ Library release</th>
+<th>ESLZ release</th>
 </tr>
 </thead>
 <tbody>
@@ -16915,19 +16945,19 @@ extensions: [{ name: 'sort' }]
                     $key = $key.replace('-notProvided', '')
                     $managementGroupExists = $false
                     $mGExists = "<input type=`"checkbox`" style=`"accent-color: red; pointer-events: none;`" checked><span style=`"color:red;`">&#10006;</span>"
-                    $ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/archetype_definitions/$($key).alz_archetype_definition.json"
+                    $ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/tree/$latestALZLibraryCommit/platform/alz/archetype_definitions/$($key).alz_archetype_definition.json"
                     $archetypeLink = "<a class=`"externallink`" href=`"$(($ALZArchetypeDefinitionPayload).ToLower())`" target=`"_blank`" rel=`"noopener`">$($key)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
 
 
                 }
                 else {
                     $mGExists = "<input type=`"checkbox`" style=`"accent-color: gray; pointer-events: none;`" checked>"
-                    $ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/archetype_definitions/$($matchingManagementGroupReference).alz_archetype_definition.json"
+                    $ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/tree/$latestALZLibraryCommit/platform/alz/archetype_definitions/$($matchingManagementGroupReference).alz_archetype_definition.json"
                     $archetypeLink = "<a class=`"externallink`" href=`"$($ALZArchetypeDefinitionPayload)`" target=`"_blank`" rel=`"noopener`">$($matchingManagementGroupReference)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a><span> => $($key)</span>"
                 }
                 $_.Value | ForEach-Object {
                     $entry = $_
-                    $ALZPolicyAssignmentsPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/blob/main/platform/alz/policy_assignments/$($ALZPolicyAssignmentsPayloadFiles[$entry])"
+                    $ALZPolicyAssignmentsPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/tree/$latestALZLibraryCommit/platform/alz/policy_assignments/$($ALZPolicyAssignmentsPayloadFiles[$entry])"
                     $assignmentPayLoadlink = "<a class=`"externallink`" href=`"$($ALZPolicyAssignmentsPayload)`" target=`"_blank`" rel=`"noopener`">$($entry)&nbsp;payload Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
                     $policyDefinitionId = $script:ALZpolicyDefinitionsTable[$entry]
                     $policyGuid = $policyDefinitionId.split('/')[-1]
@@ -16940,12 +16970,21 @@ extensions: [{ name: 'sort' }]
                         $azAdvertizerURL = "https://www.azadvertizer.net/azpolicyinitiativesadvertizer/${policyGuid}.html"
                     }
                     $azAdvertiserlink = "<a class=`"externallink`" href=`"$($azAdvertizerURL)`" target=`"_blank`" rel=`"noopener`">$($entry)&nbsp;AzA Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                    $latestALZLibraryReleaseValue = "<a class=`"externallink`" href=`"$($latestALZLibraryReleaseURL)`" target=`"_blank`" rel=`"noopener`">$($latestALZLibraryRelease)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                    if ($null -eq $script:ESLZRelease) {
+                        $ESLZReleaseValue = 'N/A'
+                    }
+                    else {
+                        $ESLZReleaseValue = "<a class=`"externallink`" href=`"$($ESLZReleaseURL)`" target=`"_blank`" rel=`"noopener`">$($ESLZRelease)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                    }
                     @"
 <tr>
 <td>$($archetypeLink)</td>
 <td>$($mGExists)</td>
 <td>$($assignmentPayLoadlink)</td>
 <td>$($azAdvertiserlink)</td>
+<td>$($latestALZLibraryReleaseValue)</td>
+<td>$($ESLZReleaseValue)</td>
 </tr>
 "@
                 }

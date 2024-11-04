@@ -49,9 +49,38 @@
     if ($ALZCloneSuccess) {
         Write-Host " Switching to directory '$($ALZLibraryPath)/Azure-Landing-Zones-Library'"
         Set-Location "$($ALZLibraryPath)/Azure-Landing-Zones-Library"
+
+        Write-Host ' Fetching the latest Azure Landing Zones Library releases'
+        git fetch --tags
+        Write-Host ' Getting the latest Azure Landing Zones Library release'
+        $latestALZLibraryRelease = git tag --sort=-creatordate | Select-Object -First 1
+        $latestALZLibraryReleaseURL = "https://github.com/Azure/Azure-Landing-Zones-Library/releases/tag/$latestALZLibraryRelease"
+        $latestALZLibraryCommit = git rev-parse $latestALZLibraryRelease
+        Write-Host ' Checking if the latest Azure Landing Zones Library release matches to an ESLZ release'
+        try {
+            $latestALZLibraryReleaseRequest = Invoke-WebRequest -Uri "https://api.github.com/repos/azure/azure-landing-zones-library/releases/tags/$latestALZLibraryRelease"
+            $latestALZLibraryReleaseBody = ($latestALZLibraryReleaseRequest | ConvertFrom-Json).body
+            if ($latestALZLibraryReleaseRequest.StatusCode -eq 200) {
+                $ESLZReleasePattern = 'https://github\.com/Azure/Enterprise-Scale/releases/tag/[^\s\)]*'
+                $ESLZReleaseURL = [regex]::Match($latestALZLibraryReleaseBody, $ESLZReleasePattern).Value
+                $ESLZRelease = ([regex]::Match($latestALZLibraryReleaseBody, $ESLZReleasePattern).Value).split('/')[-1]
+                git checkout $latestALZLibraryCommit
+            }
+        }
+        catch {
+            Write-Host 'Release not found or error accessing the URL'
+            $ESLZRelease = $null
+            $ESLZReleaseURL = $null
+        }
+
         $script:referenceALZPolicyAssignments = @{}
         $script:ALZpolicyDefinitionsTable = @{}
         $script:ALZPolicyAssignmentsPayloadFiles = @{}
+        $script:ESLZRelease = $ESLZRelease
+        $script:ESLZReleaseURL = $ESLZReleaseURL
+        $script:latestALZLibraryReleaseURL = $latestALZLibraryReleaseURL
+        $script:latestALZLibraryRelease = $latestALZLibraryRelease
+        $script:latestALZLibraryCommit = $latestALZLibraryCommit
         $archetypesPath = '.\platform\alz\archetype_definitions'
         $policyAssignmentsPath = '.\platform\alz\policy_assignments'
         $archetypesDefinition = Get-ChildItem -Path $archetypesPath -Filter '*.json'
@@ -91,7 +120,6 @@
             if ($content.policy_assignments) {
                 $script:referenceALZPolicyAssignments[$key] = $content.policy_assignments
                 $content.policy_assignments | ForEach-Object {
-                    #$assignmentName = $_ -replace '-', '_'
                     $assignmentName = $_
                     $filename = "$assignmentName.alz_policy_assignment.json"
                     $script:ALZPolicyAssignmentsPayloadFiles[$_] = $filename
