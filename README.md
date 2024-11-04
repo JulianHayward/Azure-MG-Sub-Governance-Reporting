@@ -618,6 +618,7 @@ Azure Governance Visualizer polls the following APIs
 | ARM      | 2020-01-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securescores                                                              |
 | ARM      | 2020-01-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securityContacts                                                          |
 | ARM      | 2022-05-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/settings                                                                  |
+| ARM      | 2022-05-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/settings                                                                  |
 | ARM      | 2019-10-01         | /subscriptions/`subscriptionId`/providers                                                                                              |
 | ARM      | 2021-04-01         | /subscriptions/`subscriptionId`/resourcegroups                                                                                         |
 | ARM      | 2024-03-01         | /subscriptions/`subscriptionId`/resources                                                                                              |
