@@ -5607,6 +5607,8 @@ function processALZPolicyAssignmentsChecker {
             Write-Host 'Release not found or error accessing the URL'
             $ESLZRelease = $null
             $ESLZReleaseURL = $null
+            $script:ALZPolicyAssignmentsChecker = $false
+            $script:azAPICallConf['htParameters'].ALZPolicyAssignmentsChecker = $false
         }
 
         $script:referenceALZPolicyAssignments = @{}
@@ -5636,106 +5638,112 @@ function processALZPolicyAssignmentsChecker {
             return $ALZMangementGroupFound
         }
 
-        $ALZManagementGroupsIds = $script:ALZManagementGroupsIds
-        foreach ($archetype in $archetypesDefinition) {
-            $key = ($archetype.BaseName -split '\.')[0]
-            switch ($key) {
-                'connectivity' { if ($ALZManagementGroupsIds.containsKey('connectivity') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['connectivity'])) { $key = $ALZManagementGroupsIds['connectivity'] } else { $key = 'connectivity-notProvided' } }
-                'corp' { if ($ALZManagementGroupsIds.containsKey('corp') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['corp'])) { $key = $ALZManagementGroupsIds['corp'] } else { $key = 'corp-notProvided' } }
-                'root' { if ($ALZManagementGroupsIds.containsKey('root') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['root'])) { $key = $ALZManagementGroupsIds['root'] } else { $key = 'root-notProvided' } }
-                'platform' { if ($ALZManagementGroupsIds.containsKey('platform') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['platform'])) { $key = $ALZManagementGroupsIds['platform'] } else { $key = 'platform-notProvided' } }
-                'online' { if ($ALZManagementGroupsIds.containsKey('online') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['online'])) { $key = $ALZManagementGroupsIds['online'] } else { $key = 'online-notProvided' } }
-                'sandboxes' { if ($ALZManagementGroupsIds.containsKey('sandboxes') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['sandboxes'])) { $key = $ALZManagementGroupsIds['sandboxes'] } else { $key = 'sandboxes-notProvided' } }
-                'decommissioned' { if ($ALZManagementGroupsIds.containsKey('decommissioned') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['decommissioned'])) { $key = $ALZManagementGroupsIds['decommissioned'] } else { $key = 'decommissioned-notProvided' } }
-                'management' { if ($ALZManagementGroupsIds.containsKey('management') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['management'])) { $key = $ALZManagementGroupsIds['management'] } else { $key = 'management-notProvided' } }
-                'identity' { if ($ALZManagementGroupsIds.containsKey('identity') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['identity'])) { $key = $ALZManagementGroupsIds['identity'] } else { $key = 'identity-notProvided' } }
-                'landing_zones' { if ($ALZManagementGroupsIds.containsKey('landing_zones') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['landing_zones'])) { $key = $ALZManagementGroupsIds['landing_zones'] } else { $key = 'landing_zones-notProvided' } }
-                Default {}
-            }
-            $content = Get-Content $archetype.FullName | ConvertFrom-Json
-            if ($content.policy_assignments) {
-                $script:referenceALZPolicyAssignments[$key] = $content.policy_assignments
-                $content.policy_assignments | ForEach-Object {
-                    $assignmentName = $_
-                    $filename = "$assignmentName.alz_policy_assignment.json"
-                    $script:ALZPolicyAssignmentsPayloadFiles[$_] = $filename
-                    $PolicyContent = Get-Content -Path "$policyAssignmentsPath\$filename" | ConvertFrom-Json
-                    $script:ALZpolicyDefinitionsTable[$_] = $PolicyContent.properties.policyDefinitionId
+        try {
+            $ALZManagementGroupsIds = $script:ALZManagementGroupsIds
+            foreach ($archetype in $archetypesDefinition) {
+                $key = ($archetype.BaseName -split '\.')[0]
+                switch ($key) {
+                    'connectivity' { if ($ALZManagementGroupsIds.containsKey('connectivity') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['connectivity'])) { $key = $ALZManagementGroupsIds['connectivity'] } else { $key = 'connectivity-notProvided' } }
+                    'corp' { if ($ALZManagementGroupsIds.containsKey('corp') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['corp'])) { $key = $ALZManagementGroupsIds['corp'] } else { $key = 'corp-notProvided' } }
+                    'root' { if ($ALZManagementGroupsIds.containsKey('root') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['root'])) { $key = $ALZManagementGroupsIds['root'] } else { $key = 'root-notProvided' } }
+                    'platform' { if ($ALZManagementGroupsIds.containsKey('platform') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['platform'])) { $key = $ALZManagementGroupsIds['platform'] } else { $key = 'platform-notProvided' } }
+                    'online' { if ($ALZManagementGroupsIds.containsKey('online') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['online'])) { $key = $ALZManagementGroupsIds['online'] } else { $key = 'online-notProvided' } }
+                    'sandboxes' { if ($ALZManagementGroupsIds.containsKey('sandboxes') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['sandboxes'])) { $key = $ALZManagementGroupsIds['sandboxes'] } else { $key = 'sandboxes-notProvided' } }
+                    'decommissioned' { if ($ALZManagementGroupsIds.containsKey('decommissioned') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['decommissioned'])) { $key = $ALZManagementGroupsIds['decommissioned'] } else { $key = 'decommissioned-notProvided' } }
+                    'management' { if ($ALZManagementGroupsIds.containsKey('management') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['management'])) { $key = $ALZManagementGroupsIds['management'] } else { $key = 'management-notProvided' } }
+                    'identity' { if ($ALZManagementGroupsIds.containsKey('identity') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['identity'])) { $key = $ALZManagementGroupsIds['identity'] } else { $key = 'identity-notProvided' } }
+                    'landing_zones' { if ($ALZManagementGroupsIds.containsKey('landing_zones') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['landing_zones'])) { $key = $ALZManagementGroupsIds['landing_zones'] } else { $key = 'landing_zones-notProvided' } }
+                    Default {}
+                }
+                $content = Get-Content $archetype.FullName | ConvertFrom-Json
+                if ($content.policy_assignments) {
+                    $script:referenceALZPolicyAssignments[$key] = $content.policy_assignments
+                    $content.policy_assignments | ForEach-Object {
+                        $assignmentName = $_
+                        $filename = "$assignmentName.alz_policy_assignment.json"
+                        $script:ALZPolicyAssignmentsPayloadFiles[$_] = $filename
+                        $PolicyContent = Get-Content -Path "$policyAssignmentsPath\$filename" | ConvertFrom-Json
+                        $script:ALZpolicyDefinitionsTable[$_] = $PolicyContent.properties.policyDefinitionId
+                    }
                 }
             }
-        }
-        # Output the result
-        $script:referenceALZPolicyAssignments | ConvertTo-Json -Depth 10 | Out-File "$($OutputPath)/ALZPolicyAssignmentsChecker.json"
-        Write-Host " Switching back to working directory '$($workingPath)'"
-        Set-Location $workingPath
+            # Output the result
+            $script:referenceALZPolicyAssignments | ConvertTo-Json -Depth 10 | Out-File "$($OutputPath)/ALZPolicyAssignmentsChecker.json"
+            Write-Host " Switching back to working directory '$($workingPath)'"
+            Set-Location $workingPath
 
-        Write-Host " Removing temporary directory '$($ALZLibraryPath)'"
-        Remove-Item -Recurse -Force $ALZLibraryPath
+            Write-Host " Removing temporary directory '$($ALZLibraryPath)'"
+            Remove-Item -Recurse -Force $ALZLibraryPath
 
-        $currentALZPolicyAssignments = @{}
+            $currentALZPolicyAssignments = @{}
 
-        # Define the variables and their default values
-        $variableMap = @{
-            'connectivity'   = @{ Variable = $ALZManagementGroupsIds['connectivity']; Default = 'connectivity' }
-            'corp'           = @{ Variable = $ALZManagementGroupsIds['corp']; Default = 'corp' }
-            'root'           = @{ Variable = $ALZManagementGroupsIds['root']; Default = 'root' }
-            'platform'       = @{ Variable = $ALZManagementGroupsIds['platform']; Default = 'platform' }
-            'online'         = @{ Variable = $ALZManagementGroupsIds['online']; Default = 'online' }
-            'sandboxes'      = @{ Variable = $ALZManagementGroupsIds['sandboxes']; Default = 'sandboxes' }
-            'decommissioned' = @{ Variable = $ALZManagementGroupsIds['decommissioned']; Default = 'decommissioned' }
-            'management'     = @{ Variable = $ALZManagementGroupsIds['management']; Default = 'management' }
-            'identity'       = @{ Variable = $ALZManagementGroupsIds['identity']; Default = 'identity' }
-            'landing_zones'  = @{ Variable = $ALZManagementGroupsIds['landing_zones']; Default = 'landing_zones' }
-        }
+            # Define the variables and their default values
+            $variableMap = @{
+                'connectivity'   = @{ Variable = $ALZManagementGroupsIds['connectivity']; Default = 'connectivity' }
+                'corp'           = @{ Variable = $ALZManagementGroupsIds['corp']; Default = 'corp' }
+                'root'           = @{ Variable = $ALZManagementGroupsIds['root']; Default = 'root' }
+                'platform'       = @{ Variable = $ALZManagementGroupsIds['platform']; Default = 'platform' }
+                'online'         = @{ Variable = $ALZManagementGroupsIds['online']; Default = 'online' }
+                'sandboxes'      = @{ Variable = $ALZManagementGroupsIds['sandboxes']; Default = 'sandboxes' }
+                'decommissioned' = @{ Variable = $ALZManagementGroupsIds['decommissioned']; Default = 'decommissioned' }
+                'management'     = @{ Variable = $ALZManagementGroupsIds['management']; Default = 'management' }
+                'identity'       = @{ Variable = $ALZManagementGroupsIds['identity']; Default = 'identity' }
+                'landing_zones'  = @{ Variable = $ALZManagementGroupsIds['landing_zones']; Default = 'landing_zones' }
+            }
 
-        $script:ALZArchetypeMgIdReference = $variableMap
+            $script:ALZArchetypeMgIdReference = $variableMap
 
-        # Populate the hashtable
-        foreach ($item in $variableMap.GetEnumerator()) {
-            $key = if ($null -ne $item.Value.Variable -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds[$item.Value.Default])) { $item.Value.Variable } else { $item.Value.Default }
-            $currentALZPolicyAssignments[$key] = @()
-        }
+            # Populate the hashtable
+            foreach ($item in $variableMap.GetEnumerator()) {
+                $key = if ($null -ne $item.Value.Variable -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds[$item.Value.Default])) { $item.Value.Variable } else { $item.Value.Default }
+                $currentALZPolicyAssignments[$key] = @()
+            }
 
-        $htCacheAssignmentsPolicy.GetEnumerator() | ForEach-Object {
-            if ($_.value.AssignmentScopeMgSubRg -eq 'Mg') {
-                $assignmentName = ($_.key).split('/')[-1]
-                $managementGroup = ($_.key).split('/')[4]
-                if ($currentALZPolicyAssignments.ContainsKey($managementGroup)) {
-                    $currentALZPolicyAssignments[$managementGroup] += $assignmentName
+            $htCacheAssignmentsPolicy.GetEnumerator() | ForEach-Object {
+                if ($_.value.AssignmentScopeMgSubRg -eq 'Mg') {
+                    $assignmentName = ($_.key).split('/')[-1]
+                    $managementGroup = ($_.key).split('/')[4]
+                    if ($currentALZPolicyAssignments.ContainsKey($managementGroup)) {
+                        $currentALZPolicyAssignments[$managementGroup] += $assignmentName
+                    }
+                    else {
+                        $currentALZPolicyAssignments[$managementGroup] = @($assignmentName)
+                    }
+                }
+            }
+
+            # Output the result
+            $referenceALZPolicyAssignments = $script:referenceALZPolicyAssignments
+
+            # Function to compare hashtables
+            function Compare-ALZPolicyHashTables($array1, $array2) {
+                $comparison = Compare-Object -ReferenceObject $array1 -DifferenceObject $array2 -PassThru | Where-Object { $_.SideIndicator -eq '=>' }
+                return $comparison
+            }
+
+            # Compare the hashtables and find items in reference that are not in the current environment
+            $differences = @{}
+
+            foreach ($key in $referenceALZPolicyAssignments.Keys) {
+                if ($currentALZPolicyAssignments.ContainsKey($key)) {
+                    $diff = Compare-ALZPolicyHashTables $currentALZPolicyAssignments[$key] $referenceALZPolicyAssignments[$key]
+                    if ($diff) {
+                        $differences[$key] = $diff
+                    }
                 }
                 else {
-                    $currentALZPolicyAssignments[$managementGroup] = @($assignmentName)
+                    # If the key doesn't exist in current environment, all items in reference are different
+                    $differences[$key] = $referenceALZPolicyAssignments[$key]
+                    #$differences[$key] = 'N/A'
                 }
             }
+            $script:ALZPolicyAssignmentsDifferences = $differences
+            Remove-Item "$($OutputPath)/ALZPolicyAssignmentsChecker.json" -Force
         }
-
-        # Output the result
-        $referenceALZPolicyAssignments = $script:referenceALZPolicyAssignments
-
-        # Function to compare hashtables
-        function Compare-ALZPolicyHashTables($array1, $array2) {
-            $comparison = Compare-Object -ReferenceObject $array1 -DifferenceObject $array2 -PassThru | Where-Object { $_.SideIndicator -eq '=>' }
-            return $comparison
+        catch {
+            $script:ALZPolicyAssignmentsChecker = $false
+            $script:azAPICallConf['htParameters'].ALZPolicyAssignmentsChecker = $false
         }
-
-        # Compare the hashtables and find items in reference that are not in the current environment
-        $differences = @{}
-
-        foreach ($key in $referenceALZPolicyAssignments.Keys) {
-            if ($currentALZPolicyAssignments.ContainsKey($key)) {
-                $diff = Compare-ALZPolicyHashTables $currentALZPolicyAssignments[$key] $referenceALZPolicyAssignments[$key]
-                if ($diff) {
-                    $differences[$key] = $diff
-                }
-            }
-            else {
-                # If the key doesn't exist in current environment, all items in reference are different
-                $differences[$key] = $referenceALZPolicyAssignments[$key]
-                #$differences[$key] = 'N/A'
-            }
-        }
-        $script:ALZPolicyAssignmentsDifferences = $differences
-        Remove-Item "$($OutputPath)/ALZPolicyAssignmentsChecker.json" -Force
     }
 }
 function processALZPolicyVersionChecker {
@@ -16931,7 +16939,7 @@ extensions: [{ name: 'sort' }]
 <th>Missing ALZ Policy Assignments</th>
 <th>AzAdvertizer Link</th>
 <th>ALZ Library release</th>
-<th>ESLZ release</th>
+<th>ALZ release</th>
 </tr>
 </thead>
 <tbody>
