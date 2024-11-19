@@ -29631,7 +29631,7 @@ function runInfo {
             $script:paramsUsed += 'SubscriptionQuotaIdWhitelist: false &#13;'
         }
         else {
-            Write-Host ' Subscription Whitelist enabled. Azure Governance Visualizer will only process Subscriptions where QuotaId startswith one of the following strings:' -ForegroundColor Green
+            Write-Host ' Subscription Whitelist enabled. Azure Governance Visualizer will only process Subscriptions where QuotaId starts with one of the following strings:' -ForegroundColor Green
             foreach ($quotaIdFromSubscriptionQuotaIdWhitelist in $SubscriptionQuotaIdWhitelist) {
                 Write-Host "  - $($quotaIdFromSubscriptionQuotaIdWhitelist)" -ForegroundColor Green
             }
