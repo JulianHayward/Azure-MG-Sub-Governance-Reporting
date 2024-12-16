@@ -2514,6 +2514,157 @@ extensions: [{ name: 'sort' }]
     }
     #endregion SUMMARYPolicyParityCustomBuiltIn
 
+    #region SUMMARYALZPoliciesAssignments
+    Write-Host '  processing TenantSummary ALZPolicyAssigments'
+
+    if ($ALZPolicyAssignmentsChecker -and $ALZManagementGroupsIds.Count -gt 0) {
+        $ALZPolicyAssignmentsDifferences = $script:ALZPolicyAssignmentsDifferences
+        # Output the results
+        if ($ALZPolicyAssignmentsDifferences.Count -eq 0) {
+            Write-Output 'ALZ policy assignments in your environment are matching the reference policy assignments.'
+        }
+        else {
+            $htmlTableId = 'TenantSummary_ALZPolicyAssignmentsChecker'
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ALZPolicyAssignmentsChecker"><i class="padlx fa fa-retweet" aria-hidden="true" style="color:#23C632"></i> <span class="valignMiddle">Azure Landing Zones (ALZ) Policy Assignments Checker</span>
+</button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-lightbulb-o" aria-hidden="true"></i> <span class="info">Azure Landing Zones (ALZ)</span> <a class="externallink" href="https://github.com/Azure/Enterprise-Scale/blob/main/docs/ESLZ-Policies.md" target="_blank" rel="noopener">GitHub <i class="fa fa-external-link" aria-hidden="true"></i></a><br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
+<table id= "$htmlTableId" class="summaryTable">
+<thead>
+<tr>
+<th>ALZ Management Group</th>
+<th>Management Group exists / provided</th>
+<th>Missing ALZ Policy Assignments</th>
+<th>AzAdvertizer Link</th>
+<th>ALZ Library release</th>
+<th>ALZ release</th>
+</tr>
+</thead>
+<tbody>
+"@)
+            $htmlSUMMARYALZPolicyAssignmentsChecker = $script:ALZPolicyAssignmentsDifferences.GetEnumerator() | ForEach-Object {
+                $key = $_.Key
+                $matchingManagementGroupReference = ($script:ALZArchetypeMgIdReference.GetEnumerator() | Where-Object { $_.Value.Variable -eq $key }).Key
+                $managementGroupExists = $true
+                $ALZArchetypeDefinitionPayload = ''
+                if ($key -match 'notProvided') {
+                    $key = $key.replace('-notProvided', '')
+                    $managementGroupExists = $false
+                    $mGExists = "<input type=`"checkbox`" style=`"accent-color: red; pointer-events: none;`" checked><span style=`"color:red;`">&#10006;</span>"
+                    $ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/tree/$latestALZLibraryCommit/platform/alz/archetype_definitions/$($key).alz_archetype_definition.json"
+                    $archetypeLink = "<a class=`"externallink`" href=`"$(($ALZArchetypeDefinitionPayload).ToLower())`" target=`"_blank`" rel=`"noopener`">$($key)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+
+
+                }
+                else {
+                    $mGExists = "<input type=`"checkbox`" style=`"accent-color: gray; pointer-events: none;`" checked>"
+                    $ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/tree/$latestALZLibraryCommit/platform/alz/archetype_definitions/$($matchingManagementGroupReference).alz_archetype_definition.json"
+                    $archetypeLink = "<a class=`"externallink`" href=`"$($ALZArchetypeDefinitionPayload)`" target=`"_blank`" rel=`"noopener`">$($matchingManagementGroupReference)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a><span> => $($key)</span>"
+                }
+                $_.Value | ForEach-Object {
+                    $entry = $_
+                    $ALZPolicyAssignmentsPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/tree/$latestALZLibraryCommit/platform/alz/policy_assignments/$($ALZPolicyAssignmentsPayloadFiles[$entry])"
+                    $assignmentPayLoadlink = "<a class=`"externallink`" href=`"$($ALZPolicyAssignmentsPayload)`" target=`"_blank`" rel=`"noopener`">$($entry)&nbsp;payload Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                    $policyDefinitionId = $script:ALZpolicyDefinitionsTable[$entry]
+                    $policyGuid = $policyDefinitionId.split('/')[-1]
+                    $azAdvertizerURL = ''
+                    if ($policyDefinitionId -match 'policyDefinitions') {
+                        $azAdvertizerURL = "https://www.azadvertizer.net/azpolicyadvertizer/${policyGuid}.html"
+
+                    }
+                    elseif ($policyDefinitionId -match 'policySetDefinitions') {
+                        $azAdvertizerURL = "https://www.azadvertizer.net/azpolicyinitiativesadvertizer/${policyGuid}.html"
+                    }
+                    $azAdvertiserlink = "<a class=`"externallink`" href=`"$($azAdvertizerURL)`" target=`"_blank`" rel=`"noopener`">$($entry)&nbsp;AzA Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                    $latestALZLibraryReleaseValue = "<a class=`"externallink`" href=`"$($latestALZLibraryReleaseURL)`" target=`"_blank`" rel=`"noopener`">$($latestALZLibraryRelease)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                    if ($null -eq $script:ESLZRelease) {
+                        $ESLZReleaseValue = 'N/A'
+                    }
+                    else {
+                        $ESLZReleaseValue = "<a class=`"externallink`" href=`"$($ESLZReleaseURL)`" target=`"_blank`" rel=`"noopener`">$($ESLZRelease)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
+                    }
+                    @"
+<tr>
+<td>$($archetypeLink)</td>
+<td>$($mGExists)</td>
+<td>$($assignmentPayLoadlink)</td>
+<td>$($azAdvertiserlink)</td>
+<td>$($latestALZLibraryReleaseValue)</td>
+<td>$($ESLZReleaseValue)</td>
+</tr>
+"@
+                }
+            }
+            [void]$htmlTenantSummary.AppendLine($htmlSUMMARYALZPolicyAssignmentsChecker)
+            [void]$htmlTenantSummary.AppendLine(@"
+        </tbody>
+    </table>
+</div>
+<script>
+    function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
+        window.helpertfConfig4$htmlTableId =1;
+        var tfConfig4$htmlTableId = {
+        base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+"@)
+            if ($tfCount -gt 10) {
+                $spectrum = "10, $tfCount"
+                if ($tfCount -gt 50) {
+                    $spectrum = "10, 25, 50, $tfCount"
+                }
+                if ($tfCount -gt 100) {
+                    $spectrum = "10, 30, 50, 100, $tfCount"
+                }
+                if ($tfCount -gt 500) {
+                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
+                }
+                if ($tfCount -gt 1000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
+                }
+                if ($tfCount -gt 2000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
+                }
+                if ($tfCount -gt 3000) {
+                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
+                }
+                [void]$htmlTenantSummary.AppendLine(@"
+paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
+"@)
+            }
+            [void]$htmlTenantSummary.AppendLine(@"
+btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
+        col_0: 'select',
+        col_3: 'select',
+        col_7: 'multiple',
+        col_8: 'select',
+        col_9: 'select',
+        col_types: [
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring',
+            'caseinsensitivestring'
+        ],
+extensions: [{ name: 'sort' }]
+    };
+    var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
+    tf.init();}}
+</script>
+"@)
+        }
+    }
+    else {
+        [void]$htmlTenantSummary.AppendLine(@'
+        <p><i class="padlx fa fa-ban" aria-hidden="true"></i> Azure Landing Zones (ALZ) Policy Assignments Checker</p>
+'@)
+    }
+    #endregion SUMMARYALZPoliciesAssignments
+
     #region SUMMARYALZPolicies
     Write-Host '  processing TenantSummary ALZPolicies'
 
