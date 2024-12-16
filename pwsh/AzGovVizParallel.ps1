@@ -5590,7 +5590,7 @@ function processALZPolicyAssignmentsChecker {
         Write-Host ' Fetching the latest Azure Landing Zones Library releases'
         git fetch --tags
         Write-Host ' Getting the latest Azure Landing Zones Library release'
-        $latestALZLibraryRelease = git tag --sort=-creatordate | Select-Object -First 1
+        $latestALZLibraryRelease = git tag --sort=-creatordate | Where-Object { $_ -match 'platform/alz' } | Select-Object -First 1
         $latestALZLibraryReleaseURL = "https://github.com/Azure/Azure-Landing-Zones-Library/releases/tag/$latestALZLibraryRelease"
         $latestALZLibraryCommit = git rev-parse $latestALZLibraryRelease
         Write-Host ' Checking if the latest Azure Landing Zones Library release matches to an ESLZ release'
@@ -5600,7 +5600,13 @@ function processALZPolicyAssignmentsChecker {
             if ($latestALZLibraryReleaseRequest.StatusCode -eq 200) {
                 $ESLZReleasePattern = 'https://github\.com/Azure/Enterprise-Scale/releases/tag/[^\s\)]*'
                 $ESLZReleaseURL = [regex]::Match($latestALZLibraryReleaseBody, $ESLZReleasePattern).Value
-                $ESLZRelease = ([regex]::Match($latestALZLibraryReleaseBody, $ESLZReleasePattern).Value).split('/')[-1]
+                if ($ESLZReleaseURL) {
+                    $ESLZRelease = ([regex]::Match($latestALZLibraryReleaseBody, $ESLZReleasePattern).Value).split('/')[-1]
+                }
+                else {
+                    $ESLZRelease = $null
+                    $ESLZReleaseURL = $null
+                }
                 git checkout $latestALZLibraryCommit
             }
         }
@@ -16980,7 +16986,7 @@ extensions: [{ name: 'sort' }]
                     }
                     $azAdvertiserlink = "<a class=`"externallink`" href=`"$($azAdvertizerURL)`" target=`"_blank`" rel=`"noopener`">$($entry)&nbsp;AzA Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
                     $latestALZLibraryReleaseValue = "<a class=`"externallink`" href=`"$($latestALZLibraryReleaseURL)`" target=`"_blank`" rel=`"noopener`">$($latestALZLibraryRelease)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
-                    if ($null -eq $script:ESLZRelease) {
+                    if ($null -eq $ESLZRelease -or $null -eq $ESLZReleaseURL) {
                         $ESLZReleaseValue = 'N/A'
                     }
                     else {

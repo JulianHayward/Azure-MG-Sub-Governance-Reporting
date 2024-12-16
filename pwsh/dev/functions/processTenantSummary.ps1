@@ -2579,7 +2579,7 @@ extensions: [{ name: 'sort' }]
                     }
                     $azAdvertiserlink = "<a class=`"externallink`" href=`"$($azAdvertizerURL)`" target=`"_blank`" rel=`"noopener`">$($entry)&nbsp;AzA Link <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
                     $latestALZLibraryReleaseValue = "<a class=`"externallink`" href=`"$($latestALZLibraryReleaseURL)`" target=`"_blank`" rel=`"noopener`">$($latestALZLibraryRelease)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a>"
-                    if ($null -eq $script:ESLZRelease) {
+                    if ($null -eq $ESLZRelease -or $null -eq $ESLZReleaseURL) {
                         $ESLZReleaseValue = 'N/A'
                     }
                     else {

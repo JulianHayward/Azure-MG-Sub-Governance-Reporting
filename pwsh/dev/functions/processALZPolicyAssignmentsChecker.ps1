@@ -53,7 +53,7 @@
         Write-Host ' Fetching the latest Azure Landing Zones Library releases'
         git fetch --tags
         Write-Host ' Getting the latest Azure Landing Zones Library release'
-        $latestALZLibraryRelease = git tag --sort=-creatordate | Select-Object -First 1
+        $latestALZLibraryRelease = git tag --sort=-creatordate | Where-Object { $_ -match 'platform/alz' } | Select-Object -First 1
         $latestALZLibraryReleaseURL = "https://github.com/Azure/Azure-Landing-Zones-Library/releases/tag/$latestALZLibraryRelease"
         $latestALZLibraryCommit = git rev-parse $latestALZLibraryRelease
         Write-Host ' Checking if the latest Azure Landing Zones Library release matches to an ESLZ release'
@@ -63,7 +63,13 @@
             if ($latestALZLibraryReleaseRequest.StatusCode -eq 200) {
                 $ESLZReleasePattern = 'https://github\.com/Azure/Enterprise-Scale/releases/tag/[^\s\)]*'
                 $ESLZReleaseURL = [regex]::Match($latestALZLibraryReleaseBody, $ESLZReleasePattern).Value
-                $ESLZRelease = ([regex]::Match($latestALZLibraryReleaseBody, $ESLZReleasePattern).Value).split('/')[-1]
+                if ($ESLZReleaseURL) {
+                    $ESLZRelease = ([regex]::Match($latestALZLibraryReleaseBody, $ESLZReleasePattern).Value).split('/')[-1]
+                }
+                else {
+                    $ESLZRelease = $null
+                    $ESLZReleaseURL = $null
+                }
                 git checkout $latestALZLibraryCommit
             }
         }
