@@ -118,7 +118,7 @@
                     'root' { if ($ALZManagementGroupsIds.containsKey('root') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['root'])) { $key = $ALZManagementGroupsIds['root'] } else { $key = 'root-notProvided' } }
                     'platform' { if ($ALZManagementGroupsIds.containsKey('platform') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['platform'])) { $key = $ALZManagementGroupsIds['platform'] } else { $key = 'platform-notProvided' } }
                     'online' { if ($ALZManagementGroupsIds.containsKey('online') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['online'])) { $key = $ALZManagementGroupsIds['online'] } else { $key = 'online-notProvided' } }
-                    'sandboxes' { if ($ALZManagementGroupsIds.containsKey('sandboxes') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['sandboxes'])) { $key = $ALZManagementGroupsIds['sandboxes'] } else { $key = 'sandboxes-notProvided' } }
+                    'sandbox' { if ($ALZManagementGroupsIds.containsKey('sandbox') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['sandbox'])) { $key = $ALZManagementGroupsIds['sandbox'] } else { $key = 'sandbox-notProvided' } }
                     'decommissioned' { if ($ALZManagementGroupsIds.containsKey('decommissioned') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['decommissioned'])) { $key = $ALZManagementGroupsIds['decommissioned'] } else { $key = 'decommissioned-notProvided' } }
                     'management' { if ($ALZManagementGroupsIds.containsKey('management') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['management'])) { $key = $ALZManagementGroupsIds['management'] } else { $key = 'management-notProvided' } }
                     'identity' { if ($ALZManagementGroupsIds.containsKey('identity') -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds['identity'])) { $key = $ALZManagementGroupsIds['identity'] } else { $key = 'identity-notProvided' } }
@@ -154,7 +154,7 @@
                 'root'           = @{ Variable = $ALZManagementGroupsIds['root']; Default = 'root' }
                 'platform'       = @{ Variable = $ALZManagementGroupsIds['platform']; Default = 'platform' }
                 'online'         = @{ Variable = $ALZManagementGroupsIds['online']; Default = 'online' }
-                'sandboxes'      = @{ Variable = $ALZManagementGroupsIds['sandboxes']; Default = 'sandboxes' }
+                'sandbox'        = @{ Variable = $ALZManagementGroupsIds['sandbox']; Default = 'sandbox' }
                 'decommissioned' = @{ Variable = $ALZManagementGroupsIds['decommissioned']; Default = 'decommissioned' }
                 'management'     = @{ Variable = $ALZManagementGroupsIds['management']; Default = 'management' }
                 'identity'       = @{ Variable = $ALZManagementGroupsIds['identity']; Default = 'identity' }

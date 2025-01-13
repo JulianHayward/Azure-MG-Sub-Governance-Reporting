@@ -60,19 +60,19 @@ parameters:
       - undefined
 
 variables:
-### Required Variables
+  ### Required Variables
 
   # Name of the Azure DevOps Service Connection used to access Azure resources
   - name: ServiceConnection
     # String | example: value: 'azure-ado-serviceconnection'
-    value: '<YourServiceConnection>'
+    value: "<YourServiceConnection>"
 
   # The Management Group ID for the script to process
   - name: ManagementGroupId
     # String | example: value: 'MyManagementGroupId'
-    value: '<YourManagementGroupId>' #ATTENTION! Provide the Management Group Id, not the displayName AND Make sure the casing is correct
+    value: "<YourManagementGroupId>" #ATTENTION! Provide the Management Group Id, not the displayName AND Make sure the casing is correct
 
-### Default Variables - Modify as Needed
+  ### Default Variables - Modify as Needed
 
   # If you integrate Azure Governance Visualizer into an existing repository you may need to adjust the script directory
   - name: ScriptDir
@@ -113,19 +113,19 @@ variables:
   # The world is split into two kind of delimiters - comma and semicolon - choose yours
   - name: CsvDelimiter
     # String | default = ';' | example: value: ';'
-    value: ';'
+    value: ";"
 
   # Specifies the path to output the results from Azure Governance Visualizer
   - name: OutputPath
     # String | example: value: 'wiki'
-    value: 'wiki'
+    value: "wiki"
 
-### Optional Variables - Modify as Needed
+  ### Optional Variables - Modify as Needed
 
   # Define the Azure Resource Manager location to use (default is to use westeurope; this is used to optimize the built-in Azure RBAC Role definitions tracking)
   - name: ARMLocation
     # String | example: value: "westus"
-    value: 'westeurope'
+    value: "westeurope"
 
   # Defines the limit (default=500) of Microsoft Entra group members; For Microsoft Entra groups that have more members than the defined limit, group members will not be resolved
   - name: AADGroupMembersLimit
@@ -301,12 +301,12 @@ variables:
     # Switch | example: value: true
     value:
 
-# Execute PSRule
+  # Execute PSRule
   - name: DoPSRule
     # Switch | example: value: true
     value:
 
-# WebApp publish
+  # WebApp publish
   - name: WebAppPublish
     # Switch | example: value: true
     value:
@@ -320,42 +320,63 @@ variables:
     # String | example: value: "<Name of the WebApp>"
     value: <Name> e.g. MyAzGovVizWebApp
 
-# Do not report on PIM (Privileged Identity Management) Eligible Role assignments
+  # Do not report on PIM (Privileged Identity Management) Eligible Role assignments
   - name: NoPIMEligibility
     # Switch | example: value: true
     value:
 
-# Ignore the current scope (ManagementGrouId) and get all PIM (Privileged Identity Management) eligible Role assignments
+  # Ignore the current scope (ManagementGrouId) and get all PIM (Privileged Identity Management) eligible Role assignments
   - name: PIMEligibilityIgnoreScope
     # Switch | example: value: true
     value:
 
-# Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
+  # Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
   - name: NoPIMEligibilityIntegrationRoleAssignmentsAll
     # Switch | example: value: true
     value:
 
-# Do not execute Azure Landing Zones (ALZ) Policy Version Checker
+  # Do not execute Azure Landing Zones (ALZ) Policy Version Checker
   - name: noALZPolicyVersionChecker
     # Switch | example: value: true
     value:
 
-# Create a dedicated DefinitionInsights HTML file
+  # Execute Azure Landing Zones (ALZ) Policy Assignments Checker
+  - name: ALZPolicyAssignmentsChecker
+    # Switch | example: value: true
+    value:
+
+  # ALZ Management Group Ids for the Azure Landing Zones (ALZ) Policy Assignments Checker
+  - name: ALZManagementGroupsIds
+    # Hashtable | example: value: @{
+    #    root           = '<Intermediary root management group Id>'
+    #    platform       = '<Platform management group Id>'
+    #    connectivity   = '<Connectivity management group Id>'
+    #    identity       = '<Identity management group Id>'
+    #    management     = '<Management management group Id>'
+    #    landing_zones  = '<Landing_zones management group Id>'
+    #    corp           = '<Corp management group Id>'
+    #    online         = '<Online management group Id>'
+    #    sandboxes      = '<Sandboxes management group Id>'
+    #    decommissioned = '<Decommissioned management group Id>'
+    #}
+    value:
+
+  # Create a dedicated DefinitionInsights HTML file
   - name: NoDefinitionInsightsDedicatedHTML
     # Switch | example: value: true
     value:
 
-# Do not execute Storage Account Access Analysis
+  # Do not execute Storage Account Access Analysis
   - name: NoStorageAccountAccessAnalysis
     # Switch | example: value: true
     value:
 
-# Do not execute Network analysis / Virtual Network and Virtual Network Peerings
+  # Do not execute Network analysis / Virtual Network and Virtual Network Peerings
   - name: NoNetwork
     # Switch | example: value: true
     value:
 
-# Dynamic Variables - Do Not Modify Anything Below this line!
+  # Dynamic Variables - Do Not Modify Anything Below this line!
   - name: ExcludedResourceTypesDiagnosticsCapable
     value: ${{ join(',',parameters.ExcludedResourceTypesDiagnosticsCapableParameters) }}
 
