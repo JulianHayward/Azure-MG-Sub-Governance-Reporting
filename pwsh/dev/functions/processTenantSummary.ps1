@@ -2561,7 +2561,7 @@ extensions: [{ name: 'sort' }]
                 else {
                     $mGExists = "<input type=`"checkbox`" style=`"accent-color: gray; pointer-events: none;`" checked>"
                     $ALZArchetypeDefinitionPayload = "https://github.com/Azure/Azure-Landing-Zones-Library/tree/$latestALZLibraryCommit/platform/alz/archetype_definitions/$($matchingManagementGroupReference).alz_archetype_definition.json"
-                    $archetypeLink = "<a class=`"externallink`" href=`"$($ALZArchetypeDefinitionPayload)`" target=`"_blank`" rel=`"noopener`">$($matchingManagementGroupReference)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a><span> => $($key)</span>"
+                    $archetypeLink = "<a class=`"externallink`" href=`"$($ALZArchetypeDefinitionPayload)`" target=`"_blank`" rel=`"noopener`">$($matchingManagementGroupReference)<i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a><span> : $($key)</span>"
                 }
                 $_.Value | ForEach-Object {
                     $entry = $_
