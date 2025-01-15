@@ -5594,6 +5594,7 @@ function processALZPolicyAssignmentsChecker {
         $latestALZLibraryReleaseURL = "https://github.com/Azure/Azure-Landing-Zones-Library/releases/tag/$latestALZLibraryRelease"
         $latestALZLibraryCommit = git rev-parse $latestALZLibraryRelease
         Write-Host ' Checking if the latest Azure Landing Zones Library release matches to an ESLZ release'
+        git config --global advice.detachedHead false
         try {
             $latestALZLibraryReleaseRequest = Invoke-WebRequest -Uri "https://api.github.com/repos/azure/azure-landing-zones-library/releases/tags/$latestALZLibraryRelease"
             $latestALZLibraryReleaseBody = ($latestALZLibraryReleaseRequest | ConvertFrom-Json).body
