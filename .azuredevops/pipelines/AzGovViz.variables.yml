@@ -340,6 +340,27 @@ variables:
     # Switch | example: value: true
     value:
 
+  # Execute Azure Landing Zones (ALZ) Policy Assignments Checker
+  - name: ALZPolicyAssignmentsChecker
+    # Switch | example: value: true
+    value:
+
+  # ALZ Management Group Ids for the Azure Landing Zones (ALZ) Policy Assignments Checker
+  - name: ALZManagementGroupsIds
+    # Hashtable | example: value: @{
+    #    root           = '<Intermediary root management group Id>'
+    #    platform       = '<Platform management group Id>'
+    #    connectivity   = '<Connectivity management group Id>'
+    #    identity       = '<Identity management group Id>'
+    #    management     = '<Management management group Id>'
+    #    landing_zones  = '<Landing_zones management group Id>'
+    #    corp           = '<Corp management group Id>'
+    #    online         = '<Online management group Id>'
+    #    sandboxes      = '<Sandboxes management group Id>'
+    #    decommissioned = '<Decommissioned management group Id>'
+    #}
+    value:
+
 # Create a dedicated DefinitionInsights HTML file
   - name: NoDefinitionInsightsDedicatedHTML
     # Switch | example: value: true
