@@ -100,12 +100,12 @@ variables:
 
   # Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
   - name: SubscriptionId4AzContext
-    # String | example: value: '<your-Subscription-Id>'
+    # String | example: value: "<your-Subscription-Id>"
     value:
 
   # Define the Tenant Id to use for AzContext (default is to use the Tenant Id from the current context)
   - name: TenantId4AzContext
-    # String | example: value: '<your-Tenant-Id>'
+    # String | example: value: "<your-Tenant-Id>"
     value:
 
   ## AzAPICall parameters --->
@@ -124,7 +124,7 @@ variables:
 
   # Define the Azure Resource Manager location to use (default is to use westeurope; this is used to optimize the built-in Azure RBAC Role definitions tracking)
   - name: ARMLocation
-    # String | example: value: 'westus'
+    # String | example: value: "westus"
     value: 'westeurope'
 
   # Defines the limit (default=500) of Microsoft Entra group members; For Microsoft Entra groups that have more members than the defined limit, group members will not be resolved
@@ -311,13 +311,13 @@ variables:
     # Switch | example: value: true
     value:
   - name: WebAppSubscriptionId
-    # String | example: value: '<Subscription-Id of the WebApp>'
+    # String | example: value: "<Subscription-Id of the WebApp>"
     value: <subscriptionId> e.g. 2674403a-4acd-40e6-a694-2ac7b968761e
   - name: WebAppResourceGroup
-    # String | example: value: '<ResourceGroup name of the WebApp>'
+    # String | example: value: "<ResourceGroup name of the WebApp>"
     value: <ResourceGroupName> e.g. MyWebAppResourceGroup
   - name: WebAppName
-    # String | example: value: '<Name of the WebApp>'
+    # String | example: value: "<Name of the WebApp>"
     value: <Name> e.g. MyAzGovVizWebApp
 
   # Do not report on PIM (Privileged Identity Management) Eligible Role assignments
@@ -338,27 +338,6 @@ variables:
   # Do not execute Azure Landing Zones (ALZ) Policy Version Checker
   - name: noALZPolicyVersionChecker
     # Switch | example: value: true
-    value:
-
-  # Execute Azure Landing Zones (ALZ) Policy Assignments Checker
-  - name: ALZPolicyAssignmentsChecker
-    # Switch | example: value: true
-    value:
-
-  # ALZ Management Group Ids for the Azure Landing Zones (ALZ) Policy Assignments Checker
-  - name: ALZManagementGroupsIds
-    # Hashtable | example: value: @{
-    #    root           = '<Intermediary root management group Id>'
-    #    platform       = '<Platform management group Id>'
-    #    connectivity   = '<Connectivity management group Id>'
-    #    identity       = '<Identity management group Id>'
-    #    management     = '<Management management group Id>'
-    #    landing_zones  = '<Landing_zones management group Id>'
-    #    corp           = '<Corp management group Id>'
-    #    online         = '<Online management group Id>'
-    #    sandboxes      = '<Sandboxes management group Id>'
-    #    decommissioned = '<Decommissioned management group Id>'
-    #}
     value:
 
   # Create a dedicated DefinitionInsights HTML file
