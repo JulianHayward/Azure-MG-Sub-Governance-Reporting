@@ -37,6 +37,7 @@
         PSRuleFailedOnly                             = [bool]$PSRuleFailedOnly
         NoALZPolicyVersionChecker                    = [bool]$NoALZPolicyVersionChecker
         ALZPolicyAssignmentsChecker                  = [bool]$ALZPolicyAssignmentsChecker
+        ALZManagementGroupsIds                       = $ALZManagementGroupsIds
         NoStorageAccountAccessAnalysis               = [bool]$NoStorageAccountAccessAnalysis
         GitHubActionsOIDC                            = [bool]$GitHubActionsOIDC
         NoNetwork                                    = [bool]$NoNetwork
@@ -44,6 +45,6 @@
         APIMappingCloudEnvironment                   = $APIMappingCloudEnvironment
     }
     Write-Host 'htParameters:'
-    $azAPICallConf['htParameters'] | Format-Table -AutoSize | Out-String
+    $azAPICallConf['htParameters'] | ConvertTo-Json -Depth 99 | Out-String
     Write-Host 'Add Azure Governance Visualizer htParameters succeeded' -ForegroundColor Green
 }

@@ -413,7 +413,7 @@ Param
 
     # <--- AzAPICall related parameters #consult the AzAPICall GitHub repository for details aka.ms/AzAPICall
     [string]
-    $AzAPICallVersion = '1.2.4',
+    $AzAPICallVersion = '1.2.5',
 
     [switch]
     $DebugAzAPICall,
@@ -605,7 +605,18 @@ Param
     $ALZPolicyAssignmentsChecker,
 
     [hashtable]
-    $ALZManagementGroupsIds,
+    $ALZManagementGroupsIds <#= @{
+        root           = '<Intermediary root management group Id>'
+        platform       = '<Platform management group Id>'
+        connectivity   = '<Connectivity management group Id>'
+        identity       = '<Identity management group Id>'
+        management     = '<Management management group Id>'
+        landing_zones  = '<Landing_zones management group Id>'
+        corp           = '<Corp management group Id>'
+        online         = '<Online management group Id>'
+        sandboxes      = '<Sandboxes management group Id>'
+        decommissioned = '<Decommissioned management group Id>'
+    }#>,
 
     [switch]
     $NoDefinitionInsightsDedicatedHTML,

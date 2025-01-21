@@ -4,11 +4,12 @@
 
 ### Azure Governance Visualizer version 6
 
-**Changes** (2024-December-16 / 6.7.0 Minor)
+**Changes** (2025-January-21 / 6.7.0 Minor)
 
-- New feature "ALZ Policy Assignments Checker" - This new view, will compare the current deployed ALZ hierarchy with the ALZ archetypes definitions and point out the missing policy assignments. It will also reference the missing policy assignments' payloads and AzAdvertiser links.
-  - New Parameter `-ALZPolicyAssignmentsChecker` - Execute the ALZPolicyAssignmentsChecker feature
-  - New Parameter `-ALZManagementGroupsIds` - Provide the management group Ids of the deployed ALZ hierarchy.
+- New feature "ALZ Policy Assignments Checker" - This new view, will compare the current deployed ALZ hierarchy with the ALZ archetypes definitions and point out the missing policy assignments. It will also reference the missing policy assignments' payloads and [AzAdvertizer](https://www.azadvertizer.net/) links.
+  - New switch-parameter `-ALZPolicyAssignmentsChecker` - Execute the ALZPolicyAssignmentsChecker feature
+  - New Parameter `-ALZManagementGroupsIds` - Provide the management group Ids of the deployed ALZ hierarchy
+- use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.2.5 (handle errorCode 499)
 
 **Changes** (2024-November-01 / 6.6.1 Patch)
 

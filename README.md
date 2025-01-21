@@ -70,42 +70,28 @@ Azure Governance Visualizer is intended to help you to get a holistic overview o
 ### Microsoft Cloud Adoption Framework (CAF)
 
 - Listed as [tool](https://learn.microsoft.com/azure/cloud-adoption-framework/resources/tools-templates#govern) for the Govern discipline in the Microsoft Cloud Adoption Framework.
-- Included in the Cloud Adoption Framework's [Strategy-Plan-Ready-Governance](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template.
+- Microsoft Cloud Adoption Framework [non-microsoft-tooling](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/landing-zone/design-area/governance#non-microsoft-tooling)
 
 ## :rocket: Azure Governance Visualizer deployment guide
 
 The instructions to deploy the Azure Governance Visualizer is found in the **[Azure Governance Visualizer (AzGovViz) deployment guide](setup.md)**. Follow those instructions to run AzGovViz from your terminal (console), GitHub Codepaces, Azure DevOps, or GitHub.
 
-As an alternative, you can use the [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) to deploy the Azure Governance Visualizer per code.
+As an alternative, you can use the __Azure Governance Visualizer accelerator__ (see next section) accelerator to deploy the Azure Governance Visualizer per code.
 
 ### Azure Governance Visualizer accelerator
 
 The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) provides an easy and fast deployment process that automates the creation and publishing of AzGovViz to an Azure Web Application and provides automation to configuring the pre-requisites for AzGovViz.
 
+Azure Architecture Center (Landing zones): [Azure Governance Visualizer deployment guidance](https://learn.microsoft.com/en-us/azure/architecture/landing-zones/azure-governance-visualizer-accelerator)
+
 ## Release history
 
-**Changes** (2024-December-16 / 6.7.0 Minor)
+**Changes** (2025-January-21 / 6.7.0 Minor)
 
-- New feature "ALZ Policy Assignments Checker" - This new view, will compare the current deployed ALZ hierarchy with the ALZ archetypes definitions and point out the missing policy assignments. It will also reference the missing policy assignments' payloads and AzAdvertiser links.
-  - New Parameter `-ALZPolicyAssignmentsChecker` - Execute the ALZPolicyAssignmentsChecker feature
-  - New Parameter `-ALZManagementGroupsIds` - Provide the management group Ids of the deployed ALZ hierarchy.
-
-**Changes** (2024-November-01 / 6.6.1 Patch)
-
-- HTML fix filters __TenantSummary__ PolicyAssignment, __ScopeInsights__ PolicySetAssignments
-- use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.2.4 (Handle 'subscription not registered' `/providers/Microsoft.Security/settings`)
-
-**Changes** (2024-October-26 / 6.6.0 Minor)
-
-- Microsoft Defender for Cloud Coverage (Tenant Summary and CSV export). Example html:
-![MicrosoftDefenderForCloudCoverage_preview](img/MicrosoftDefenderForCloudCoverage_preview.png)
-- CostOptimization add `microsoft.network/privateendpoints` for intent=cost savings
-- extend ResourcesAll.csv output with sku and kind information
-- update [API reference](#api-reference) '/subscriptions/`subscriptionId`/resources' use API version 2024-03-01 (previous 2023-07-01)
-
-**Changes** (2024-October-9 / 6.5.5 Patch)
-
-- introduce a new optional [parameter](#parameters) `-SubscriptionIdWhitelist`, which defines the subscriptions that must match in order to be processed.
+- New feature "ALZ Policy Assignments Checker" - This new view, will compare the current deployed ALZ hierarchy with the ALZ archetypes definitions and point out the missing policy assignments. It will also reference the missing policy assignments' payloads and [AzAdvertizer](https://www.azadvertizer.net/) links.
+  - New switch-parameter `-ALZPolicyAssignmentsChecker` - Execute the ALZPolicyAssignmentsChecker feature
+  - New Parameter `-ALZManagementGroupsIds` - Provide the management group Ids of the deployed ALZ hierarchy
+- use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.2.5 (handle errorCode 499)
 
 [Full release history](history.md)
 
