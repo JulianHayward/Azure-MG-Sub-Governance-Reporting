@@ -549,7 +549,7 @@ Screenshot of Microsoft Graph permissions in the Microsoft Entra admin center
   - `-NetworkSubnetIPAddressUsageCriticalPercentage` - Warning level when certain percentage of IP addresses is used (default = 90%)
 - `-TenantId4AzContext` - Define the Tenant Id to use for AzContext (default is to use the Tenant Id from the current context)
 - `-ALZPolicyAssignmentsChecker` - Execute the 'Azure Landing Zones (ALZ) Policy Assignments Checker' feature
-- `-ALZManagementGroupsIds` - if your Management Group (MG) structure deviates form the ALZ defaults, then you will need to map your MG structure to the default alz structure. If your MG structure does not deviate from the ALZ defaults then you do not need to define this parameter
+- `-ALZManagementGroupsIds` - if your Management Group (MG) structure deviates from the ALZ defaults, then you will need to map your MG structure to the default ALZ structure. If your MG structure does not deviate from the ALZ defaults then you do not need to define this parameter
 
 _example:_
 ```
