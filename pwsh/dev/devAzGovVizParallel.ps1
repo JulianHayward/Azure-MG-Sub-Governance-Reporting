@@ -167,6 +167,27 @@
     If you do not want to execute the 'Azure Landing Zones (ALZ) Policy Version Checker' feature then use this parameter
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 
+.Parameter ALZPolicyAssignmentsChecker
+    'Azure Landing Zones (ALZ) Policy Assignments Checker' for Policy and Set assignments. Azure Governance Visualizer will clone the ALZ Library GitHub repository and collect the standard ALZ policy and set assignments. The ALZ data will be compared with the data from your tenant so that you can get an inventory for ALZ policy and set assignments that already exist in your tenant and compare with the standard assignments of ALZ. The 'Azure Landing Zones (ALZ) Policy Assignments Checker' results will be displayed in the TenantSummary.
+    If you do want to execute the 'Azure Landing Zones (ALZ) Policy Version Checker' feature then use this parameter
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
+
+.Parameter ALZManagementGroupsIds
+    'Azure Landing Zones (ALZ) Management groups Ids'. This is the list of Ids of the ALZ management groups hierarchy.
+    This is required if ALZPolicyAssignmentsChecker is enabled.
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupsIds @{
+        root           = '<Intermediary root management group Id>'
+        platform       = '<Platform management group Id>'
+        connectivity   = '<Connectivity management group Id>'
+        identity       = '<Identity management group Id>'
+        management     = '<Management management group Id>'
+        landing_zones  = '<Landing_zones management group Id>'
+        corp           = '<Corp management group Id>'
+        online         = '<Online management group Id>'
+        sandboxes      = '<Sandboxes management group Id>'
+        decommissioned = '<Decommissioned management group Id>'
+    }
+
 .PARAMETER NoDefinitionInsightsDedicatedHTML
     DefinitionInsights will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep DefinitionInsights in the main html file then use this parameter
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML
@@ -341,6 +362,20 @@
     Define if the 'Azure Landing Zones (ALZ) Policy Version Checker' feature should not be executed
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoALZPolicyVersionChecker
 
+    Define if the 'Azure Landing Zones (ALZ) Policy assignments Checker' feature should be executed
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupsIds @{
+        root           = '<Intermediary root management group Id>'
+        platform       = '<Platform management group Id>'
+        connectivity   = '<Connectivity management group Id>'
+        identity       = '<Identity management group Id>'
+        management     = '<Management management group Id>'
+        landing_zones  = '<Landing_zones management group Id>'
+        corp           = '<Corp management group Id>'
+        online         = '<Online management group Id>'
+        sandboxes      = '<Sandboxes management group Id>'
+        decommissioned = '<Decommissioned management group Id>'
+    }
+
     Define if DefinitionInsights should not be written to a seperate html file (*_DefinitionInsights.html)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoDefinitionInsightsDedicatedHTML
 
@@ -371,7 +406,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.6.1',
+    $ProductVersion = '6.7.0',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -567,6 +602,12 @@ Param
     $NoALZPolicyVersionChecker,
 
     [switch]
+    $ALZPolicyAssignmentsChecker,
+
+    [hashtable]
+    $ALZManagementGroupsIds,
+
+    [switch]
     $NoDefinitionInsightsDedicatedHTML,
 
     [switch]
@@ -691,6 +732,7 @@ if ($ManagementGroupId -match ' ') {
 . ".\$($ScriptPath)\functions\processNetwork.ps1"
 . ".\$($ScriptPath)\functions\processStorageAccountAnalysis.ps1"
 . ".\$($ScriptPath)\functions\processALZPolicyVersionChecker.ps1"
+. ".\$($ScriptPath)\functions\processALZPolicyAssignmentsChecker.ps1"
 . ".\$($ScriptPath)\functions\getPIMEligible.ps1"
 . ".\$($ScriptPath)\functions\testGuid.ps1"
 . ".\$($ScriptPath)\functions\apiCallTracking.ps1"
@@ -1070,6 +1112,7 @@ if (-not $HierarchyMapOnly) {
     $htHashesBuiltInPolicy = [System.Collections.Hashtable]::Synchronized(@{})
     $arrayCustomBuiltInPolicyParity = [System.Collections.ArrayList]@()
     $arrayRemediatable = [System.Collections.ArrayList]@()
+    $ALZPolicyAssignmentsDifferences = @{}
 }
 
 if (-not $HierarchyMapOnly) {
@@ -1270,6 +1313,35 @@ if (-not $HierarchyMapOnly) {
         showMemoryUsage
     }
 }
+
+if (-not $HierarchyMapOnly) {
+    if ($ALZPolicyAssignmentsChecker -and $ALZManagementGroupsIds.Count -gt 0) {
+        switch ($azAPICallConf['checkContext'].Environment.Name) {
+            'Azurecloud' {
+                Write-Host "'Azure Landing Zones (ALZ) Policy Assignments Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZPolicyAssignmentsChecker
+            }
+            'AzureChinaCloud' {
+                Write-Host "'Azure Landing Zones (ALZ) Policy Assignments Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZPolicyAssignmentsChecker
+            }
+            'AzureUSGovernment' {
+                Write-Host "'Azure Landing Zones (ALZ) Policy Assignments Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                processALZPolicyAssignmentsChecker
+            }
+            Default {
+                Write-Host "'Azure Landing Zones (ALZ) Policy Assignments Checker' feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
+                Write-Host "Setting parameter -ALZPolicyAssignmentsChecker to 'false'"
+                $ALZPolicyAssignmentsChecker = $false
+            }
+        }
+    }
+    else {
+        #Write-Host "Skipping 'Azure Landing Zones (ALZ) Policy Assignments Checker' (parameter -ALZPolicyAssignmentsChecker = $ALZPolicyAssignmentsChecker)"
+    }
+}
+
+
 #endregion runDataCollection
 
 #region createoutputs
