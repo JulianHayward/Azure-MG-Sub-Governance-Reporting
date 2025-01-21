@@ -82,10 +82,6 @@ As an alternative, you can use the __Azure Governance Visualizer accelerator__ (
 
 The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) provides an easy and fast deployment process that automates the creation and publishing of AzGovViz to an Azure Web Application and provides automation to configuring the pre-requisites for AzGovViz.
 
-<div style="width:50px;height:50px">
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" preserveAspectRatio="xMidYMin meet">		  <g data-name="Layer 1">			<path fill="#919191" d="M49.82 12.94v6.77H24.6v-6a3.35 3.35 0 0 0-.05-.63 4.42 4.42 0 0 0-2.1-3.18h29a5.09 5.09 0 0 0-1.63 3.04zM58.67 19.71h-7.54v-6.62a3.79 3.79 0 0 1 3.74-3.21c3.64 0 3.79 3.75 3.79 3.79v6z"></path>			<path d="M54.88 9.31a4.38 4.38 0 0 0-4.33 3.76v41.05h-34.3V13.68a4.38 4.38 0 0 1 4.38-4.37z" fill-opacity=".3" fill="#e3e3e3"></path>			<path d="M54.88 8.55H20a5.12 5.12 0 0 0-5.12 5.12v41.78H51.1V13.09a3.79 3.79 0 0 1 3.74-3.21c3.64 0 3.79 3.75 3.79 3.79v6H60v-6a5.08 5.08 0 0 0-5.12-5.12zm-5.06 4.39V54.12H16.25V13.67A3.79 3.79 0 0 1 20 9.88h31.45a5.09 5.09 0 0 0-1.63 3.06z" fill="#e3e3e3"></path>			<path d="M10 27.08l10.77 8.56H10v-8.56M4 14.69v26.94h33.93L4 14.69z" class="fill-current-color" fill="#0079d6"></path>		  </g>		</svg>
-</div>
-
 Azure Architecture Center (Landing zones): [Azure Governance Visualizer deployment guidance](https://learn.microsoft.com/en-us/azure/architecture/landing-zones/azure-governance-visualizer-accelerator)
 
 ## Release history
