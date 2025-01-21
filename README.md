@@ -76,7 +76,7 @@ Azure Governance Visualizer is intended to help you to get a holistic overview o
 
 The instructions to deploy the Azure Governance Visualizer is found in the **[Azure Governance Visualizer (AzGovViz) deployment guide](setup.md)**. Follow those instructions to run AzGovViz from your terminal (console), GitHub Codepaces, Azure DevOps, or GitHub.
 
-As an alternative, you can use the __Azure Governance Visualizer accelerator__ (see next section) accelerator to deploy the Azure Governance Visualizer per code.
+As an alternative, you can use the __Azure Governance Visualizer accelerator__ (see next section) to deploy the Azure Governance Visualizer per code.
 
 ### Azure Governance Visualizer accelerator
 
