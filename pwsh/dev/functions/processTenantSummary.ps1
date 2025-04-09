@@ -2546,7 +2546,7 @@ extensions: [{ name: 'sort' }]
 "@)
             $htmlSUMMARYALZPolicyAssignmentsChecker = $script:ALZPolicyAssignmentsDifferences.GetEnumerator() | ForEach-Object {
                 $key = $_.Key
-                $matchingManagementGroupReference = ($script:ALZArchetypeMgIdReference.GetEnumerator() | Where-Object { $_.Value.Variable -eq $key }).Key
+                $matchingManagementGroupReference = ($script:ALZArchetypeMgIdReference.GetEnumerator() | Where-Object { $_.Value -eq $key }).Key
                 $managementGroupExists = $true
                 $ALZArchetypeDefinitionPayload = ''
                 if ($key -match 'notProvided') {
