@@ -5736,8 +5736,12 @@ function processALZPolicyAssignmentsChecker {
                 if ($null -ne $item.Value.Variable -and (Test-ALZManagementGroupIds $ALZManagementGroupsIds[$item.Value.Variable])) {
                     $key = $item.Value.Variable
                 }
-                else {
+                elseif (Test-ALZManagementGroupIds $ALZManagementGroupsIds[$item.Value.Default]) {
                     $key = $item.Value.Default
+                }
+                else {
+                    $mg = $item.Value.Default
+                    $key = "$mg-notProvided"
                 }
                 $currentALZPolicyAssignments[$key] = @()
             }
