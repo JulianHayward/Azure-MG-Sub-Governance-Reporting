@@ -88,9 +88,10 @@ function dataCollectionAdvisorScores {
     )
 
     $currentTask = "Getting Advisor Scores for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Advisor/advisorScore?api-version=2020-07-01-preview"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Advisor/advisorScore?api-version=2023-01-01"
     $method = 'GET'
-    $advisorScoreResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -skipOnErrorCode 404
+    #fix https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/278
+    $advisorScoreResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -skipOnErrorCode 404, 500
 
     if ($advisorScoreResult -eq 'SubScriptionNotRegistered' -or $advisorScoreResult -eq 'DisallowedProvider') {
     }
@@ -1727,13 +1728,19 @@ function dataCollectionASCSecureScoreSub {
         $currentTask = "Getting Microsoft Defender for Cloud Secure Score for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/securescores?api-version=2020-01-01"
         $method = 'GET'
-        $subASCSecureScoreResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+        #fix https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/276
+        $subASCSecureScoreResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -skipOnErrorCode 431
 
-        if ($subASCSecureScoreResult -ne 'DisallowedProvider') {
-            $subASCSecureScoreResultASCScore = ($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }))
-            if ($subASCSecureScoreResultASCScore.count -gt 0) {
-                $secureScorePercentageRounded = [math]::Round(($subASCSecureScoreResultASCScore.properties.score.current / $subASCSecureScoreResultASCScore.properties.score.max * 100), 2)
-                $subscriptionASCSecureScore = "$($secureScorePercentageRounded)% ($($subASCSecureScoreResultASCScore.properties.score.current) of $($subASCSecureScoreResultASCScore.properties.score.max) points)"
+        if ($subASCSecureScoreResult) {
+            if ($subASCSecureScoreResult -ne 'DisallowedProvider') {
+                $subASCSecureScoreResultASCScore = ($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }))
+                if ($subASCSecureScoreResultASCScore.count -gt 0) {
+                    $secureScorePercentageRounded = [math]::Round(($subASCSecureScoreResultASCScore.properties.score.current / $subASCSecureScoreResultASCScore.properties.score.max * 100), 2)
+                    $subscriptionASCSecureScore = "$($secureScorePercentageRounded)% ($($subASCSecureScoreResultASCScore.properties.score.current) of $($subASCSecureScoreResultASCScore.properties.score.max) points)"
+                }
+                else {
+                    $subscriptionASCSecureScore = 'n/a'
+                }
             }
             else {
                 $subscriptionASCSecureScore = 'n/a'

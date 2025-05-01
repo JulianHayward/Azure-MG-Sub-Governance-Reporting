@@ -84,22 +84,16 @@ The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Gov
 
 ## Release history
 
-**Changes** (2024-November-01 / 6.6.1 Patch)
+**Changes** (2025-May-01 / 6.6.3 Patch)
 
-- HTML fix filters __TenantSummary__ PolicyAssignment, __ScopeInsights__ PolicySetAssignments
-- use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.2.4 (Handle 'subscription not registered' `/providers/Microsoft.Security/settings`)
-
-**Changes** (2024-October-26 / 6.6.0 Minor)
-
-- Microsoft Defender for Cloud Coverage (Tenant Summary and CSV export). Example html:
-![MicrosoftDefenderForCloudCoverage_preview](img/MicrosoftDefenderForCloudCoverage_preview.png)
-- CostOptimization add `microsoft.network/privateendpoints` for intent=cost savings
-- extend ResourcesAll.csv output with sku and kind information
-- update [API reference](#api-reference) '/subscriptions/`subscriptionId`/resources' use API version 2024-03-01 (previous 2023-07-01)
-
-**Changes** (2024-October-9 / 6.5.5 Patch)
-
-- introduce a new optional [parameter](#parameters) `-SubscriptionIdWhitelist`, which defines the subscriptions that must match in order to be processed.
+- [issue53](https://github.com/Azure/Azure-Governance-Visualizer/issues/53)
+  - fix -> Get Default Management Group; flag as 'unknown.', if principal has no permissions to get default Management Group (non root MG read)
+  - update API-version `2020-02-01` to `2023-04-01` for '/providers/Microsoft.Management/managementGroups/`tenantId`/settings' 
+- [issue278](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/278) 
+  - fix -> Getting Advisor Scores for Subscription; skip on error-code `500` `(error: 'AdvisorScore::List()'`
+  - update API-version `2020-07-01-preview` to `2023-01-01` for '/subscriptions/`subscriptionId`/providers/Microsoft.Advisor/advisorScore'
+- [issue276](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/276) 
+  - fix -> Getting Microsoft Defender for Cloud Secure Score for Subscription; skip on error-code `431 (RequestHeaderFieldsTooLarge)` 
 
 [Full release history](history.md)
 
@@ -588,12 +582,12 @@ Azure Governance Visualizer polls the following APIs
 | ARM      | 2020-01-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/microsoft.insights/diagnosticSettings                   |
 | ARM      | 2019-10-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.PolicyInsights/policyStates/latest/summarize  |
 | ARM      | 2020-05-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`                                                                   |
-| ARM      | 2020-02-01         | /providers/Microsoft.Management/managementGroups/`tenantId`/settings                                                                   |
+| ARM      | 2023-04-01         | /providers/Microsoft.Management/managementGroups/`tenantId`/settings                                                                   |
 | ARM      | 2020-05-01         | /providers/Microsoft.Management/managementGroups                                                                                       |
 | ARM      | 2022-10-01         | /providers/Microsoft.ResourceGraph/resources                                                                                           |
 | ARM      | 2021-05-01         | /`resourceId`/providers/Microsoft.Insights/metrics                                                                                     |
 | ARM      | 2020-01-01         | /subscriptions/`subscriptionId`/locations                                                                                              |
-| ARM      | 2020-07-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Advisor/advisorScore                                                               |
+| ARM      | 2023-01-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Advisor/advisorScore                                                               |
 | ARM      | 2016-09-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/locks                                                                |
 | ARM      | 2021-06-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyAssignments                                                    |
 | ARM      | 2021-06-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyDefinitions                                                    |

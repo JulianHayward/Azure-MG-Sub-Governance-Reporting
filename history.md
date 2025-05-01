@@ -4,6 +4,17 @@
 
 ### Azure Governance Visualizer version 6
 
+**Changes** (2025-May-01 / 6.6.3 Patch)
+
+- [issue53](https://github.com/Azure/Azure-Governance-Visualizer/issues/53)
+  - fix -> Get Default Management Group; flag as 'unknown.', if principal has no permissions to get default Management Group (non root MG read)
+  - update API-version `2020-02-01` to `2023-04-01` for '/providers/Microsoft.Management/managementGroups/`tenantId`/settings' 
+- [issue278](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/278) 
+  - fix -> Getting Advisor Scores for Subscription; skip on error-code `500` `(error: 'AdvisorScore::List()'`
+  - update API-version `2020-07-01-preview` to `2023-01-01` for '/subscriptions/`subscriptionId`/providers/Microsoft.Advisor/advisorScore'
+- [issue276](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/276) 
+  - fix -> Getting Microsoft Defender for Cloud Secure Score for Subscription; skip on error-code `431 (RequestHeaderFieldsTooLarge)` 
+
 **Changes** (2024-November-01 / 6.6.1 Patch)
 
 - HTML fix filters __TenantSummary__ PolicyAssignment, __ScopeInsights__ PolicySetAssignments
