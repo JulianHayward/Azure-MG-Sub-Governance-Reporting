@@ -174,7 +174,7 @@
 
 .Parameter ALZManagementGroupsIds
     'Azure Landing Zones (ALZ) Management groups Ids'. This is the list of Ids of the ALZ management groups hierarchy.
-    This is required if ALZPolicyAssignmentsChecker is enabled.
+    This is required if ALZPolicyAssignmentsChecker is enabled. If a management group Id is not provided, the default Id will be checked
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ALZPolicyAssignmentsChecker -ALZManagementGroupsIds @{
         root           = '<Intermediary root management group Id>'
         platform       = '<Platform management group Id>'
