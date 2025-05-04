@@ -406,14 +406,17 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.7.0',
+    $ProductVersion = '6.6.3',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
 
     # <--- AzAPICall related parameters #consult the AzAPICall GitHub repository for details aka.ms/AzAPICall
     [string]
-    $AzAPICallVersion = '1.2.5',
+    [ValidateSet('AzAPICall', 'AzAPICallBeta')]$AzAPICallModuleName = 'AzAPICall',
+
+    [string]
+    $AzAPICallVersion = '1.2.4',
 
     [switch]
     $DebugAzAPICall,
@@ -3872,21 +3875,30 @@ function getDefaultManagementGroup {
     $currentTask = 'Get Default Management Group'
     Write-Host $currentTask
     #https://learn.microsoft.com/azure/governance/management-groups/how-to/protect-resource-hierarchy#setting---default-management-group
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($azAPICallConf['checkContext'].Tenant.Id)/settings?api-version=2020-02-01"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($azAPICallConf['checkContext'].Tenant.Id)/settings?api-version=2023-04-01"
     $method = 'GET'
-    $settingsMG = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
+    #fix https://github.com/Azure/Azure-Governance-Visualizer/issues/53
+    $settingsMG = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -skipOnErrorCode 403
 
-    if (($settingsMG).count -gt 0) {
-        Write-Host " default ManagementGroup Id: $($settingsMG.properties.defaultManagementGroup)"
-        $script:defaultManagementGroupId = $settingsMG.properties.defaultManagementGroup
-        Write-Host " requireAuthorizationForGroupCreation: $($settingsMG.properties.requireAuthorizationForGroupCreation)"
-        $script:requireAuthorizationForGroupCreation = $settingsMG.properties.requireAuthorizationForGroupCreation
+    if ($settingsMG) {
+        if (($settingsMG).count -gt 0) {
+            Write-Host " default ManagementGroup Id: $($settingsMG.properties.defaultManagementGroup)"
+            $script:defaultManagementGroupId = $settingsMG.properties.defaultManagementGroup
+            Write-Host " requireAuthorizationForGroupCreation: $($settingsMG.properties.requireAuthorizationForGroupCreation)"
+            $script:requireAuthorizationForGroupCreation = $settingsMG.properties.requireAuthorizationForGroupCreation
+        }
+        else {
+            Write-Host " default ManagementGroup: $(($azAPICallConf['checkContext']).Tenant.Id) (Tenant Root)"
+            $script:defaultManagementGroupId = ($azAPICallConf['checkContext']).Tenant.Id
+            $script:requireAuthorizationForGroupCreation = $false
+        }
     }
     else {
-        Write-Host " default ManagementGroup: $(($azAPICallConf['checkContext']).Tenant.Id) (Tenant Root)"
-        $script:defaultManagementGroupId = ($azAPICallConf['checkContext']).Tenant.Id
-        $script:requireAuthorizationForGroupCreation = $false
+        Write-Host " default ManagementGroup: could not be determined, flagging default ManagementGroup as 'unknown.'"
+        $script:defaultManagementGroupId = 'unknown.'
+        $script:requireAuthorizationForGroupCreation = 'unknown.'
     }
+
 }
 function getEntities {
     Write-Host 'Entities'
@@ -31323,9 +31335,10 @@ function dataCollectionAdvisorScores {
     )
 
     $currentTask = "Getting Advisor Scores for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Advisor/advisorScore?api-version=2020-07-01-preview"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Advisor/advisorScore?api-version=2023-01-01"
     $method = 'GET'
-    $advisorScoreResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -skipOnErrorCode 404
+    #fix https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/278
+    $advisorScoreResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -skipOnErrorCode 404, 500
 
     if ($advisorScoreResult -eq 'SubScriptionNotRegistered' -or $advisorScoreResult -eq 'DisallowedProvider') {
     }
@@ -32962,13 +32975,19 @@ function dataCollectionASCSecureScoreSub {
         $currentTask = "Getting Microsoft Defender for Cloud Secure Score for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/securescores?api-version=2020-01-01"
         $method = 'GET'
-        $subASCSecureScoreResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection'
+        #fix https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/276
+        $subASCSecureScoreResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -caller 'CustomDataCollection' -skipOnErrorCode 431
 
-        if ($subASCSecureScoreResult -ne 'DisallowedProvider') {
-            $subASCSecureScoreResultASCScore = ($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }))
-            if ($subASCSecureScoreResultASCScore.count -gt 0) {
-                $secureScorePercentageRounded = [math]::Round(($subASCSecureScoreResultASCScore.properties.score.current / $subASCSecureScoreResultASCScore.properties.score.max * 100), 2)
-                $subscriptionASCSecureScore = "$($secureScorePercentageRounded)% ($($subASCSecureScoreResultASCScore.properties.score.current) of $($subASCSecureScoreResultASCScore.properties.score.max) points)"
+        if ($subASCSecureScoreResult) {
+            if ($subASCSecureScoreResult -ne 'DisallowedProvider') {
+                $subASCSecureScoreResultASCScore = ($subASCSecureScoreResult.where({ $_.name -eq 'ascScore' }))
+                if ($subASCSecureScoreResultASCScore.count -gt 0) {
+                    $secureScorePercentageRounded = [math]::Round(($subASCSecureScoreResultASCScore.properties.score.current / $subASCSecureScoreResultASCScore.properties.score.max * 100), 2)
+                    $subscriptionASCSecureScore = "$($secureScorePercentageRounded)% ($($subASCSecureScoreResultASCScore.properties.score.current) of $($subASCSecureScoreResultASCScore.properties.score.max) points)"
+                }
+                else {
+                    $subscriptionASCSecureScore = 'n/a'
+                }
             }
             else {
                 $subscriptionASCSecureScore = 'n/a'
@@ -35849,7 +35868,7 @@ if ($DoPSRule) {
 #region verifyModules3rd
 $modules = [System.Collections.ArrayList]@()
 $null = $modules.Add([PSCustomObject]@{
-        ModuleName         = 'AzAPICall'
+        ModuleName         = $AzAPICallModuleName
         ModuleVersion      = $AzAPICallVersion
         ModuleProductName  = 'AzAPICall'
         ModulePathPipeline = 'AzAPICallModule'

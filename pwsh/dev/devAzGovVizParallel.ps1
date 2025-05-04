@@ -406,14 +406,17 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.7.0',
+    $ProductVersion = '6.6.3',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
 
     # <--- AzAPICall related parameters #consult the AzAPICall GitHub repository for details aka.ms/AzAPICall
     [string]
-    $AzAPICallVersion = '1.2.5',
+    [ValidateSet('AzAPICall', 'AzAPICallBeta')]$AzAPICallModuleName = 'AzAPICall',
+
+    [string]
+    $AzAPICallVersion = '1.2.4',
 
     [switch]
     $DebugAzAPICall,
@@ -839,7 +842,7 @@ if ($DoPSRule) {
 #region verifyModules3rd
 $modules = [System.Collections.ArrayList]@()
 $null = $modules.Add([PSCustomObject]@{
-        ModuleName         = 'AzAPICall'
+        ModuleName         = $AzAPICallModuleName
         ModuleVersion      = $AzAPICallVersion
         ModuleProductName  = 'AzAPICall'
         ModulePathPipeline = 'AzAPICallModule'

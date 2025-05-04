@@ -1,4 +1,4 @@
-# Azure Governance Visualizer v6_major_20230717_1
+# Azure Governance Visualizer v6_major_20250501_1
 # First things first:
 # 1. Mandatory: In the AzGovViz.variables.yml file set needed variables 'ServiceConnection' and 'ManagementGroupId
 # 2. Mandatory: Check line 20
@@ -9,7 +9,7 @@ trigger: none
 pr: none
 
 variables:
-  - template: ./AzGovViz.variables.yml
+  - template: 'AzGovViz.variables.yml'
 
 schedules:
 - cron: "0 0,12 * * *"
@@ -18,17 +18,6 @@ schedules:
   branches:
     include:
     - master #CHECK branch 'master' is applicable? - delete me :)
-
-#Running AzOps? Run Azure Governance Visualizer after 'AzOps - Push' ..
-#AzOps accelerator https://github.com/Azure/AzOps-Accelerator
-#resources:
-#  pipelines:
-#    - pipeline: 'Push'
-#      source: 'AzOps - Push'
-#      trigger:
-#        branches:
-#          include:
-#            - master #CHECK branch 'master' is applicable? - delete me :)
 
 jobs:
 - job: AzureGovernanceVisualizer
