@@ -96,6 +96,9 @@ Azure Architecture Center (Landing zones): [Azure Governance Visualizer deployme
   - update API-version `2020-07-01-preview` to `2023-01-01` for '/subscriptions/`subscriptionId`/providers/Microsoft.Advisor/advisorScore'
 - [issue276](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/276) 
   - fix -> Getting Microsoft Defender for Cloud Secure Score for Subscription; skip on error-code `431 (RequestHeaderFieldsTooLarge)` 
+- New feature "ALZ Policy Assignments Checker" - This new view, will compare the current deployed ALZ hierarchy with the ALZ archetypes definitions and point out the missing policy assignments. It will also reference the missing policy assignments' payloads and [AzAdvertizer](https://www.azadvertizer.net/) links.
+  - New switch-parameter `-ALZPolicyAssignmentsChecker` - Execute the ALZPolicyAssignmentsChecker feature
+  - New Parameter `-ALZManagementGroupsIds` - Provide the Management Group Ids of the deployed ALZ hierarchy (more details: [Parameters](#parameters))
 
 [Full release history](history.md)
 
