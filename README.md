@@ -14,7 +14,7 @@ Further, CSV exports with enriched information per capability will be generated 
 
 The technical requirements as well as the required permissions are minimal.
 
-You can run the script either for your tenant root management group or any other management group.
+You can run the script either for your tenant root Management Group or any other Management Group.
 
 ## Mission
 
@@ -31,69 +31,66 @@ Azure Governance Visualizer is intended to help you to get a holistic overview o
 
 ## Table of contents
 
-- [Azure Governance Visualizer aka AzGovViz](#azure-governance-visualizer-aka-azgovviz)
-  - [Mission](#mission)
-  - [Table of contents](#table-of-contents)
-  - [Azure Governance Visualizer @ Microsoft CAF](#azure-governance-visualizer--microsoft-caf)
-    - [Microsoft Cloud Adoption Framework (CAF)](#microsoft-cloud-adoption-framework-caf)
-    - [Azure Governance Visualizer accelerator](#azure-governance-visualizer-accelerator)
-  - [:rocket: Azure Governance Visualizer deployment guide](#rocket-azure-governance-visualizer-deployment-guide)
-  - [Release history](#release-history)
-  - [Demo](#demo)
-  - [Media](#media)
-    - [Presentations](#presentations)
-  - [Features](#features)
-  - [Screenshots](#screenshots)
-  - [Outputs](#outputs)
-  - [Trust](#trust)
-  - [Technical documentation](#technical-documentation)
-    - [Permissions overview](#permissions-overview)
-    - [Required permissions in Azure](#required-permissions-in-azure)
-    - [Required permissions in Microsoft Entra ID](#required-permissions-in-microsoft-entra-id)
-    - [PowerShell](#powershell)
-    - [Parameters](#parameters)
-    - [API reference](#api-reference)
-  - [Integrate with AzOps](#integrate-with-azops)
-  - [Integrate PSRule for Azure](#integrate-psrule-for-azure)
-  - [Stats](#stats)
-    - [How / What?](#how--what)
-  - [Security](#security)
-  - [Known issues](#known-issues)
-  - [Facts](#facts)
-  - [Contribution](#contribution)
-  - [AzAdvertizer](#azadvertizer)
-  - [AzADServicePrincipalInsights](#azadserviceprincipalinsights)
-  - [Closing Note](#closing-note)
+* [Azure Governance Visualizer aka AzGovViz](#azure-governance-visualizer-aka-azgovviz)
+  * [Mission](#mission)
+  * [Table of contents](#table-of-contents)
+  * [Azure Governance Visualizer @ Microsoft CAF](#azure-governance-visualizer--microsoft-caf)
+    * [Microsoft Cloud Adoption Framework (CAF)](#microsoft-cloud-adoption-framework-caf)
+  * [:rocket: Azure Governance Visualizer deployment guide](#rocket-azure-governance-visualizer-deployment-guide)
+    * [Azure Governance Visualizer accelerator](#azure-governance-visualizer-accelerator)
+  * [Release history](#release-history)
+  * [Demo](#demo)
+  * [Media](#media)
+    * [Presentations](#presentations)
+  * [Features](#features)
+  * [Screenshots](#screenshots)
+  * [Outputs](#outputs)
+  * [Trust](#trust)
+  * [Technical documentation](#technical-documentation)
+    * [Permissions overview](#permissions-overview)
+    * [Required permissions in Azure](#required-permissions-in-azure)
+    * [Required permissions in Microsoft Entra ID](#required-permissions-in-microsoft-entra-id)
+    * [PowerShell](#powershell)
+    * [Parameters](#parameters)
+    * [API reference](#api-reference)
+  * [Integrate with AzOps](#integrate-with-azops)
+  * [Integrate PSRule for Azure](#integrate-psrule-for-azure)
+  * [Stats](#stats)
+    * [How / What?](#how--what)
+  * [Security](#security)
+  * [Known issues](#known-issues)
+  * [Facts](#facts)
+  * [Contribution](#contribution)
+  * [AzAdvertizer](#azadvertizer)
+  * [AzADServicePrincipalInsights](#azadserviceprincipalinsights)
+  * [Closing Note](#closing-note)
 
 ## Azure Governance Visualizer @ Microsoft CAF
 
 ### Microsoft Cloud Adoption Framework (CAF)
 
 - Listed as [tool](https://learn.microsoft.com/azure/cloud-adoption-framework/resources/tools-templates#govern) for the Govern discipline in the Microsoft Cloud Adoption Framework.
-- Included in the Cloud Adoption Framework's [Strategy-Plan-Ready-Governance](https://azuredevopsdemogenerator.azurewebsites.net/?name=strategyplan) Azure DevOps Demo Generator template.
+- Microsoft Cloud Adoption Framework [non-microsoft-tooling](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/landing-zone/design-area/governance#non-microsoft-tooling)
 
 ## :rocket: Azure Governance Visualizer deployment guide
 
 The instructions to deploy the Azure Governance Visualizer is found in the **[Azure Governance Visualizer (AzGovViz) deployment guide](setup.md)**. Follow those instructions to run AzGovViz from your terminal (console), GitHub Codepaces, Azure DevOps, or GitHub.
 
-As an alternative, you can use the [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) to deploy the Azure Governance Visualizer per code.
+As an alternative, you can use the __Azure Governance Visualizer accelerator__ (see next section) to deploy the Azure Governance Visualizer per code.
 
 ### Azure Governance Visualizer accelerator
 
 The [Azure Governance Visualizer accelerator](https://github.com/Azure/Azure-Governance-Visualizer-Accelerator) provides an easy and fast deployment process that automates the creation and publishing of AzGovViz to an Azure Web Application and provides automation to configuring the pre-requisites for AzGovViz.
 
+Azure Architecture Center (Landing zones): [Azure Governance Visualizer deployment guidance](https://learn.microsoft.com/en-us/azure/architecture/landing-zones/azure-governance-visualizer-accelerator)
+
 ## Release history
 
-**Changes** (2025-May-01 / 6.6.3 Patch)
+**Changes** (2025-May-19 / 6.7.0 Minor)
 
-- [issue53](https://github.com/Azure/Azure-Governance-Visualizer/issues/53)
-  - fix -> Get Default Management Group; flag as 'unknown.', if principal has no permissions to get default Management Group (non root MG read)
-  - update API-version `2020-02-01` to `2023-04-01` for '/providers/Microsoft.Management/managementGroups/`tenantId`/settings' 
-- [issue278](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/278) 
-  - fix -> Getting Advisor Scores for Subscription; skip on error-code `500` `(error: 'AdvisorScore::List()'`
-  - update API-version `2020-07-01-preview` to `2023-01-01` for '/subscriptions/`subscriptionId`/providers/Microsoft.Advisor/advisorScore'
-- [issue276](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/276) 
-  - fix -> Getting Microsoft Defender for Cloud Secure Score for Subscription; skip on error-code `431 (RequestHeaderFieldsTooLarge)` 
+- New feature "ALZ Policy Assignments Checker" - This new view, will compare the current deployed ALZ hierarchy with the ALZ archetypes definitions and point out the missing policy assignments. It will also reference the missing policy assignments' payloads and [AzAdvertizer](https://www.azadvertizer.net/) links.
+  - New switch-parameter `-ALZPolicyAssignmentsChecker` - Execute the ALZPolicyAssignmentsChecker feature
+  - New Parameter `-ALZManagementGroupsIds` - Provide the Management Group Ids of the deployed ALZ hierarchy (more details: [Parameters](#parameters))
 
 [Full release history](history.md)
 
@@ -118,8 +115,8 @@ Short presentation on Azure Governance Visualizer: [download](slides/AzGovViz_in
 
 ## Features
 
-- **Hierarchy of Azure management groups**
-  - Builds a visual hierarchy of your management group setup including counts on linked Azure subscriptions, Azure Policy assignments, scoped policy/set definitions and role assignments per management group
+- **Hierarchy of Azure Management Groups**
+  - Builds a visual hierarchy of your Management Group setup including counts on linked Azure subscriptions, Azure Policy assignments, scoped policy/set definitions and role assignments per Management Group
 - **Azure Policy**
   - Custom policy definitions
     - Scope information
@@ -141,12 +138,12 @@ Short presentation on Azure Governance Visualizer: [download](slides/AzGovViz_in
   - Custom PolicySet definitions using deprecated built-in policy definitions
   - Policy assignments of deprecated built-in policy definition
   - Policy exemptions
-    - Lists all exemptions (scopes: management groups, subscriptions, resource groups, and resources)
+    - Lists all exemptions (scopes: Management Groups, subscriptions, resource groups, and resources)
     - Enrich information on exemption scope
     - Summary on expired exemptions
   - Policy assignments orphaned
-    - Policy assignments's policy definition does not exist / likely management group scoped Policy definition - management group deleted
-  - Policy assignments throughout the entirety of scopes (management groups, subscriptions, and resource groups)
+    - Policy assignments's policy definition does not exist / likely Management Group scoped Policy definition - Management Group deleted
+  - Policy assignments throughout the entirety of scopes (Management Groups, subscriptions, and resource groups)
     - Core information on policy assignments
       - NonCompliance message on policy assignment for a PolicySet will only show the default non-compliance message
     - Advanced/enriched information on policy assignments
@@ -160,6 +157,7 @@ Short presentation on Azure Governance Visualizer: [download](slides/AzGovViz_in
       - Parameters used
   - Azure landing zone (ALZ) policy version checker for policy and set definitions. Azure Governance Visualizer will clone the Azure landing zone GitHub repository and collect the Azure landing zone policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ policy version checker results will be displayed in the **TenantSummary** and a CSV export `*_ALZPolicyVersionChecker.csv` will be provided.
   - Policy Remediation - list all remediatable policies including relevant information such as assignment and definition data
+  - Azure landing zone (ALZ) policy assignments checker for policy and set definitions. Azure Governance Visualizer will clone the Azure landing zone library GitHub repository and collect the Azure landing zone policy and set assignments. The ALZ data will be compared with the data from your tenant so that you see the missing assignments for ALZ policy and set definitions that should be assigned for ALZ Management Groups plus a list of ALZ policy and set definitions that are missing in your tenant. The ALZ policy assignment checker results will be displayed in the **TenantSummary**.
 - **Azure role-based access control (RBAC)**
   - Custom role definitions
     - List assignable scopes
@@ -172,7 +170,7 @@ Short presentation on Azure Governance Visualizer: [download](slides/AzGovViz_in
     - List of role assignments that matches the following criteria:
       - Role definition was deleted although and assignment existed
       - Role assignment's target identity (User, Group, ServicePrincipal) was deleted
-  - Role assignments throughout the entirety of scopes (management groups, subscriptions, resource groups, and resources)
+  - Role assignments throughout the entirety of scopes (Management Groups, subscriptions, resource groups, and resources)
     - Core information on role assignments
     - Advanced information on role assignments
       - Role assignment scope (at scope / inheritance)
@@ -185,7 +183,7 @@ Short presentation on Azure Governance Visualizer: [download](slides/AzGovViz_in
       - Determine if the role assignment is 'standing' or PIM (Privileged Identity Management) managed
       - Determine if the role assignment's role definition is capable to write role assignments
   - PIM (Privileged Identity Management) eligibility for role assignments
-    - Get a full report of all PIM eligible role assignments for management groups and subscriptions, including resolved user members of Microsoft Entra ID groups that have assigned eligibility
+    - Get a full report of all PIM eligible role assignments for Management Groups and subscriptions, including resolved user members of Microsoft Entra ID groups that have assigned eligibility
     - &#x1F4A1; Note: this feature requires you to execute as service principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
   - Role assignments ClassicAdministrators
   - Security & best practice analysis
@@ -198,10 +196,10 @@ Short presentation on Azure Governance Visualizer: [download](slides/AzGovViz_in
 - **Blueprints**
   - Blueprint scopes and assignments
   - Orphaned Blueprints
-- **Management groups**
-  - Management group count, level/depth, management group children, and sub children
-  - Hierarchy Settings | Default management group ID
-  - Hierarchy Settings | Require authorization for management group creation
+- **Management Groups**
+  - Management Group count, level/depth, Management Group children, and sub children
+  - Hierarchy Settings | Default Management Group ID
+  - Hierarchy Settings | Require authorization for Management Group creation
 - **Subscriptions, resources & Microsoft Defender**
   - Subscription insights
     - State
@@ -212,7 +210,7 @@ Short presentation on Azure Governance Visualizer: [download](slides/AzGovViz_in
     - Microsoft Defender for Cloud secure score
     - Microsoft Defender for Cloud email notifications configuration
     - Cost
-    - Management group path
+    - Management Group path
   - Tag name usage
     - Insights on usage of tag names on subscriptions, resource groups, and resources
   - Resources
@@ -250,8 +248,8 @@ Short presentation on Azure Governance Visualizer: [download](slides/AzGovViz_in
   - Virtual network peerings
   - Private endpoints
 - **Diagnostics**
-  - Management groups diagnostic settings report
-    - Management group, diagnostic setting name, target type (Log Analytics, Storage account, Event Hub), target resource ID, log category status
+  - Management Groups diagnostic settings report
+    - Management Group, diagnostic setting name, target type (Log Analytics, Storage account, Event Hub), target resource ID, log category status
   - Subscriptions diagnostic settings report
     - Subscription, diagnostic setting name, target type (Log Analytics, Storage account, Event Hub), target resource ID, log category status
   - Resources diagnostic capability report (1st party resource types only)
@@ -266,7 +264,7 @@ Short presentation on Azure Governance Visualizer: [download](slides/AzGovViz_in
   - Tenant approaching ARM limits:
     - Custom role definitions
     - PolicySet definitions
-  - Management groups approaching ARM limits:
+  - Management Groups approaching ARM limits:
     - Policy assignment limit
     - Policy / PolicySet definition scope limit
     - Role assignment limit
@@ -277,7 +275,7 @@ Short presentation on Azure Governance Visualizer: [download](slides/AzGovViz_in
     - Policy / PolicySet definition scope limit
     - Role assignment limit
 - **Microsoft Entra ID**
-  - Insights on those service principals where a role assignment exists (scopes: management group, subscription, resource group, and resource):
+  - Insights on those service principals where a role assignment exists (scopes: Management Group, subscription, resource group, and resource):
     - Type=ManagedIdentity
       - Core information on the service principal such as related IDs, use case information and role assignments
       - For user-managed identities the count of assignment to resources is reported
@@ -287,7 +285,7 @@ Short presentation on Azure Governance Visualizer: [download](slides/AzGovViz_in
       - Secrets and Certificates expiry information & warning
       - Report on external service principals
 - **Consumption**
-  - Aggregated consumption insights throughout the entirety of scopes (management groups, subscriptions)
+  - Aggregated consumption insights throughout the entirety of scopes (Management Groups, subscriptions)
 - **Change tracking**
   - Policy
     - Created/Updated policy and PolicySet definitions (system metadata 'createdOn, createdBy, updatedOn, updatedBy')
@@ -337,10 +335,10 @@ markdown in Azure DevOps Wiki as Code
   - for use with Azure DevOps Wiki using the [Mermaid](https://learn.microsoft.com/azure/devops/release-notes/2019/sprint-158-update#mermaid-diagram-support-in-wiki) plugin
 - JSON folder ([demo-output](https://github.com/JulianHayward/AzGovViz)) containing
 
-  - all policy and role assignments (Scopes: tenant, management groups, and subscriptions)
-  - all built-in and custom policy & policy set definitions (Scopes: management groups and subscriptions)
+  - all policy and role assignments (Scopes: tenant, Management Groups, and subscriptions)
+  - all built-in and custom policy & policy set definitions (Scopes: Management Groups and subscriptions)
   - all built-in and custom role definitions
-  - JSON file of management group hierarchy including all custom policy, policy set, and RBAC definitions, policy and role assignments and some more relevant information
+  - JSON file of Management Group hierarchy including all custom policy, policy set, and RBAC definitions, policy and role assignments and some more relevant information
   - Tenant tree including all policy and role assignments and all custom policy & policy set and role definitions
 
   ![JSONFolder](img/jsonfolderfull450.jpg)
@@ -376,7 +374,7 @@ These permissions are **mandatory** in each and every scenario!
 
 | Scenario | Permissions                                        |
 | :------- | :------------------------------------------------- |
-| ALL      | '**Reader**' role assignment on _management group_ |
+| ALL      | '**Reader**' role assignment on _Management Group_ |
 
 ### Required permissions in Microsoft Entra ID
 
@@ -549,6 +547,24 @@ Screenshot of Microsoft Graph permissions in the Microsoft Entra admin center
 - `-NoNetwork` - Do not execute Network analysis / Virtual Network and Virtual Network Peerings
   - `-NetworkSubnetIPAddressUsageCriticalPercentage` - Warning level when certain percentage of IP addresses is used (default = 90%)
 - `-TenantId4AzContext` - Define the Tenant Id to use for AzContext (default is to use the Tenant Id from the current context)
+- `-ALZPolicyAssignmentsChecker` - Execute the 'Azure Landing Zones (ALZ) Policy Assignments Checker' feature
+- `-ALZManagementGroupsIds` - if your Management Group (MG) structure deviates from the ALZ defaults, then you will need to map your MG structure to the default ALZ structure. If your MG structure does not deviate from the ALZ defaults then you do not need to define this parameter
+
+_example:_
+```
+@{
+  root           = '<Intermediary root Management Group Id>'
+  platform       = '<Platform Management Group Id>'
+  connectivity   = '<Connectivity Management Group Id>'
+  identity       = '<Identity Management Group Id>'
+  management     = '<Management Management Group Id>'
+  landing_zones  = '<Landing_zones Management Group Id>'
+  corp           = '<Corp Management Group Id>'
+  online         = '<Online Management Group Id>'
+  sandboxes      = '<Sandboxes Management Group Id>'
+  decommissioned = '<Decommissioned Management Group Id>'
+}
+```
 
 ### API reference
 
@@ -587,7 +603,7 @@ Azure Governance Visualizer polls the following APIs
 | ARM      | 2022-10-01         | /providers/Microsoft.ResourceGraph/resources                                                                                           |
 | ARM      | 2021-05-01         | /`resourceId`/providers/Microsoft.Insights/metrics                                                                                     |
 | ARM      | 2020-01-01         | /subscriptions/`subscriptionId`/locations                                                                                              |
-| ARM      | 2023-01-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Advisor/advisorScore                                                               |
+| ARM      | 2023-01-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Advisor/advisorScore                                                               |
 | ARM      | 2016-09-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/locks                                                                |
 | ARM      | 2021-06-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyAssignments                                                    |
 | ARM      | 2021-06-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyDefinitions                                                    |
@@ -610,7 +626,7 @@ Azure Governance Visualizer polls the following APIs
 | ARM      | 2024-01-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/pricings                                                                  |
 | ARM      | 2020-01-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securescores                                                              |
 | ARM      | 2020-01-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securityContacts                                                          |
-| ARM      | 2022-05-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/settings                                                          |
+| ARM      | 2022-05-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/settings                                                                  |
 | ARM      | 2019-10-01         | /subscriptions/`subscriptionId`/providers                                                                                              |
 | ARM      | 2021-04-01         | /subscriptions/`subscriptionId`/resourcegroups                                                                                         |
 | ARM      | 2024-03-01         | /subscriptions/`subscriptionId`/resources                                                                                              |
@@ -729,7 +745,7 @@ Thank you for your support!
 
 &#9995; **Take care**: Azure Governance Visualizer creates very detailed information about your Azure Governance setup. In your organization's best interest the **outputs should be protected from not authorized access!**
 
-&#9757; **Be aware**: Any _member_ user of the tenant can execute/run the script against the management group (and below) if the _member_ user has the Azure RBAC role 'Reader' assigned at management froup (this of course also applies for the root management group). More important: also _guest_ users can execute/run the script if your tenant is not hardened (and has the RBAC role 'Reader' assigned at management group) **Microsoft Entra Id | External Identities | External collaboration settings | Guest user access** [ref](https://learn.microsoft.com/entra/identity/users/users-restrict-guest-permissions)
+&#9757; **Be aware**: Any _member_ user of the tenant can execute/run the script against the Management Group (and below) if the _member_ user has the Azure RBAC role 'Reader' assigned at management froup (this of course also applies for the root Management Group). More important: also _guest_ users can execute/run the script if your tenant is not hardened (and has the RBAC role 'Reader' assigned at Management Group) **Microsoft Entra Id | External Identities | External collaboration settings | Guest user access** [ref](https://learn.microsoft.com/entra/identity/users/users-restrict-guest-permissions)
 
 🛡️ **Collaborate with the security team**: Azure Defender for Cloud may alert Azure Governance Visualizer resource queries as suspicious activity:
 
