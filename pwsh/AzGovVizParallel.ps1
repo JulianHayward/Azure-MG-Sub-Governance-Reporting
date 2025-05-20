@@ -406,7 +406,7 @@ Param
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.7.0',
+    $ProductVersion = '6.7.1',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -416,7 +416,7 @@ Param
     [ValidateSet('AzAPICall', 'AzAPICallBeta')]$AzAPICallModuleName = 'AzAPICall',
 
     [string]
-    $AzAPICallVersion = '1.2.4',
+    $AzAPICallVersion = '1.4.0',
 
     [switch]
     $DebugAzAPICall,

@@ -4,6 +4,10 @@
 
 ### Azure Governance Visualizer version 6
 
+**Changes** (2025-May-20 / 6.7.1 Patch)
+
+- use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.4.0 (previous 1.2.4). Handle token refresh for OIDC in Azure Devops and GitHub Actions
+
 **Changes** (2025-May-19 / 6.7.0 Minor)
 
 - New feature "ALZ Policy Assignments Checker" - This new view, will compare the current deployed ALZ hierarchy with the ALZ archetypes definitions and point out the missing policy assignments. It will also reference the missing policy assignments' payloads and [AzAdvertizer](https://www.azadvertizer.net/) links.
