@@ -86,6 +86,10 @@ Azure Architecture Center (Landing zones): [Azure Governance Visualizer deployme
 
 ## Release history
 
+**Changes** (2025-May-21 / 6.7.2 Patch)
+
+- use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.4.1 (previous 1.4.0). Handle token refresh for OIDC in Azure Devops and GitHub Actions fix
+
 **Changes** (2025-May-20 / 6.7.1 Patch)
 
 - use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.4.0 (previous 1.2.4). Handle token refresh for OIDC in Azure Devops and GitHub Actions
