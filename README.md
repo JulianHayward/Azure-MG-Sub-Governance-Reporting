@@ -566,7 +566,7 @@ _example:_
   landing_zones  = '<Landing_zones Management Group Id>'
   corp           = '<Corp Management Group Id>'
   online         = '<Online Management Group Id>'
-  sandboxes      = '<Sandboxes Management Group Id>'
+  sandbox      = '<Sandbox Management Group Id>'
   decommissioned = '<Decommissioned Management Group Id>'
 }
 ```

@@ -348,7 +348,7 @@ variables:
   # ALZ Management Group Ids for the Azure Landing Zones (ALZ) Policy Assignments Checker
   - name: ALZManagementGroupsIds
     # Hashtable | example:
-    value: '@{"root"= "alz-root";"platform"="alz-platform";"connectivity"="alz-connectivity";"identity"="alz-identity";"management"="alz-management";"landing_zones"="alz-landing-zones";"corp"="alz-corp";"online"="alz-online";"sandboxes"="alz-sandboxes";"decommissioned"="alz-decommissioned"}'
+    value: '@{"root"= "alz-root";"platform"="alz-platform";"connectivity"="alz-connectivity";"identity"="alz-identity";"management"="alz-management";"landing_zones"="alz-landing-zones";"corp"="alz-corp";"online"="alz-online";"sandbox"="alz-sandbox";"decommissioned"="alz-decommissioned"}'
 
 # Create a dedicated DefinitionInsights HTML file
   - name: NoDefinitionInsightsDedicatedHTML
