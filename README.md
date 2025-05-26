@@ -117,6 +117,7 @@ More [demo output](https://github.com/JulianHayward/AzGovViz)
 - Microsoft Dev Radio (YouTube) [Get visibility into your environment with Azure Governance Visualizer](https://www.youtube.com/watch?v=hZXvF5oypLE)
 - Jack Tracey (Cloud Solution Architect Microsoft) [Azure Governance Visualizer With Azure DevOps](https://jacktracey.co.uk/azgovviz-with-azure-devops/)
 - SCHUTTEN.CLOUD [Automate Pertinent Governance Insight with Azure Governance Visualizer](https://schutten.cloud/post/azure-governance-visualizer/)
+- DEVOPS masterminds [Indispensable Azure Tools: Azure Governance Visualizer (AzGovViz) for Governance Excellence](https://devopsmasterminds.com/technical-blog-posts-devops-masterminds/indispensable-azure-tools-azure-governance-visualizer-azgovviz-for-governance-excellence/)
 
 ### Presentations
 
