@@ -207,6 +207,7 @@
 
     $cnter = 0
     $htmlDefinitionInsightshlp = $null
+    $htPWAPolicy = $htPolicyWithAssignments.policy
     $htmlDefinitionInsightshlp = foreach ($policy in (($htCacheDefinitionsPolicy).Values | Sort-Object @{Expression = { $_.DisplayName } }, @{Expression = { $_.PolicyDefinitionId } })) {
 
         $cnter++
@@ -219,9 +220,10 @@
         $assignmentsCount = 0
         $assignmentsDetailed = 'n/a'
 
-        if (($htPolicyWithAssignments).policy.($policy.PolicyDefinitionId)) {
+        $policyWithAssignmentsEntry = $htPWAPolicy[$policy.PolicyDefinitionId]
+        if ($policyWithAssignmentsEntry) {
             $hasAssignments = 'true'
-            $assignments = ($htPolicyWithAssignments).policy.($policy.PolicyDefinitionId).Assignments
+            $assignments = $policyWithAssignmentsEntry.Assignments
             $assignmentsCount = $assignments.Count
 
             if ($assignmentsCount -gt 0) {
@@ -249,7 +251,7 @@
                     "'INVALID RoleDefId!' ($($roleDefIdOnly))"
                 }
                 else {
-                    $roleDefHlp = ($htCacheDefinitionsRole).($roleDefIdOnly)
+                    $roleDefHlp = ($htCacheDefinitionsRole)[$roleDefIdOnly]
                     "'$($roleDefHlp.Name)' ($($roleDefHlp.Id))"
                 }
             }
@@ -261,17 +263,18 @@
             if ([string]::IsNullOrEmpty($policy.ScopeId)) {
                 Write-Host "unexpected IsNullOrEmpty - processing: $($policy | ConvertTo-Json -Depth 99)"
             }
-            $scopeDetails = "$($policy.ScopeId) ($($htEntities.($policy.ScopeId).DisplayName))"
+            $scopeDetails = "$($policy.ScopeId) ($($htEntities[$policy.ScopeId].DisplayName))"
         }
 
         $usedInPolicySet = 'false'
         $usedInPolicySetCount = 0
         $usedInPolicySets = 'n/a'
 
-        if ($htPoliciesUsedInPolicySets.($policy.PolicyDefinitionId)) {
+        $policyUsedInPolicySetsEntry = $htPoliciesUsedInPolicySets[$policy.PolicyDefinitionId]
+        if ($policyUsedInPolicySetsEntry) {
             $usedInPolicySet = 'true'
-            $usedInPolicySetCount = ($htPoliciesUsedInPolicySets.($policy.PolicyDefinitionId).policySet).Count
-            $usedInPolicySets = ($htPoliciesUsedInPolicySets.($policy.PolicyDefinitionId).policySet | Sort-Object) -join "$CsvDelimiterOpposite "
+            $usedInPolicySetCount = ($policyUsedInPolicySetsEntry.policySet).Count
+            $usedInPolicySets = ($policyUsedInPolicySetsEntry.policySet | Sort-Object) -join "$CsvDelimiterOpposite "
         }
 
         $json = $($policy.Json | ConvertTo-Json -Depth 99)
@@ -534,14 +537,16 @@ tf.init();}}
 <tbody>
 "@)
     $htmlDefinitionInsightshlp = $null
+    $htPWAPolicySet = $htPolicyWithAssignments.policySet
     $htmlDefinitionInsightshlp = foreach ($policySet in ($tenantAllPolicySets | Sort-Object @{Expression = { $_.DisplayName } }, @{Expression = { $_.PolicyDefinitionId } })) {
         $hasAssignments = 'false'
         $assignmentsCount = 0
         $assignmentsDetailed = 'n/a'
 
-        if (($htPolicyWithAssignments).policySet.($policySet.PolicyDefinitionId)) {
+        $policySetWithAssignmentsEntry = $htPWAPolicySet[$policySet.PolicyDefinitionId]
+        if ($policySetWithAssignmentsEntry) {
             $hasAssignments = 'true'
-            $assignments = ($htPolicyWithAssignments).policySet.($policySet.PolicyDefinitionId).Assignments
+            $assignments = $policySetWithAssignmentsEntry.Assignments
             $assignmentsCount = ($assignments | Measure-Object).Count
 
             if ($assignmentsCount -gt 0) {
@@ -561,7 +566,7 @@ tf.init();}}
 
         $scopeDetails = 'n/a'
         if ($policySet.ScopeId -ne 'n/a') {
-            $scopeDetails = "$($policySet.ScopeId) ($($htEntities.($policySet.ScopeId).DisplayName))"
+            $scopeDetails = "$($policySet.ScopeId) ($($htEntities[$policySet.ScopeId].DisplayName))"
         }
         $json = $($policySet.Json | ConvertTo-Json -Depth 99)
         $guid = ([System.BitConverter]::ToString($SHA256.ComputeHash($utf8.GetBytes($policySet.PolicyDefinitionId)))) -replace '-'
@@ -829,9 +834,10 @@ tf.init();}}
         $hasAssignments = 'false'
         $assignmentsCount = 0
         $assignmentsDetailed = 'n/a'
-        if (($htRoleWithAssignments).($role.Id)) {
+        $roleWithAssignmentsEntry = $htRoleWithAssignments[$role.Id]
+        if ($roleWithAssignmentsEntry) {
             $hasAssignments = 'true'
-            $assignments = ($htRoleWithAssignments).($role.Id).Assignments
+            $assignments = $roleWithAssignmentsEntry.Assignments
             $assignmentsCount = ($assignments).Count
             if ($assignmentsCount -gt 0) {
                 $arrayAssignmentDetails = @()

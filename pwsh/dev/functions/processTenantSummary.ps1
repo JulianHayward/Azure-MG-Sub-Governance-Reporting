@@ -19,30 +19,33 @@
     $htOrphanedSPMI = @{}
     foreach ($roleAssignmentIdUnique in $roleAssignmentsUniqueById) {
 
-        $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId) = @{}
+        $htRoleAssignmentRelatedPolicyAssignmentsEntry = @{}
+        $htRoleAssignmentRelatedPolicyAssignments[$roleAssignmentIdUnique.RoleAssignmentId] = $htRoleAssignmentRelatedPolicyAssignmentsEntry
 
-        if ($htManagedIdentityForPolicyAssignment.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId)) {
-            $hlpPolicyAssignmentId = ($htManagedIdentityForPolicyAssignment.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId).policyAssignmentId).ToLower()
-            if (-not $htCacheAssignmentsPolicy.($hlpPolicyAssignmentId)) {
+        $hlpManagedIdentityForPolicyAssignment = $htManagedIdentityForPolicyAssignment[$roleAssignmentIdUnique.RoleAssignmentIdentityObjectId]
+        if ($hlpManagedIdentityForPolicyAssignment) {
+            $hlpPolicyAssignmentId = ($hlpManagedIdentityForPolicyAssignment.policyAssignmentId).ToLower()
+            $hlpCacheAssignmentsPolicy = $htCacheAssignmentsPolicy[$hlpPolicyAssignmentId]
+            if (-not $hlpCacheAssignmentsPolicy) {
                 if ($ManagementGroupId -eq $azAPICallConf['checkContext'].Tenant.Id) {
                     if ($azAPICallConf['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
-                        if (-not ($htCacheAssignmentsPolicyOnResourceGroupsAndResources).($hlpPolicyAssignmentId)) {
+                        if (-not $htCacheAssignmentsPolicyOnResourceGroupsAndResources[$hlpPolicyAssignmentId]) {
                             Write-Host "   !Relict detected: SP MI: $($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId) - PolicyAssignmentId: $hlpPolicyAssignmentId"
-                            if (-not $htOrphanedSPMI.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId)) {
-                                $htOrphanedSPMI.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId) = @{}
+                            if (-not $htOrphanedSPMI[$roleAssignmentIdUnique.RoleAssignmentIdentityObjectId]) {
+                                $htOrphanedSPMI[$roleAssignmentIdUnique.RoleAssignmentIdentityObjectId] = @{}
                             }
                         }
                     }
                     else {
                         Write-Host "   !Relict detected: SP MI: $($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId) - PolicyAssignmentId: $hlpPolicyAssignmentId"
-                        if (-not $htOrphanedSPMI.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId)) {
-                            $htOrphanedSPMI.($roleAssignmentIdUnique.RoleAssignmentIdentityObjectId) = @{}
+                        if (-not $htOrphanedSPMI[$roleAssignmentIdUnique.RoleAssignmentIdentityObjectId]) {
+                            $htOrphanedSPMI[$roleAssignmentIdUnique.RoleAssignmentIdentityObjectId] = @{}
                         }
                     }
                 }
             }
             else {
-                $temp0000000000 = $htCacheAssignmentsPolicy.($hlpPolicyAssignmentId)
+                $temp0000000000 = $hlpCacheAssignmentsPolicy
                 $policyAssignmentId = ($temp0000000000.Assignment.id).Tolower()
                 $policyDefinitionId = ($temp0000000000.Assignment.properties.policyDefinitionId).Tolower()
 
@@ -51,41 +54,43 @@
                 if ($policyDefinitionId -like '/providers/Microsoft.Authorization/policy*') {
                     #policy
                     if ($policyDefinitionId -like '/providers/Microsoft.Authorization/policyDefinitions/*') {
-                        $LinkOrNotLinkToAzAdvertizer = ($htCacheDefinitionsPolicy).($policyDefinitionId).LinkToAzAdvertizer
-                        $policyDisplayName = ($htCacheDefinitionsPolicy).($policyDefinitionId).DisplayName
+                        $hlpCacheDefinitionsPolicy = $htCacheDefinitionsPolicy[$policyDefinitionId]
+                        $LinkOrNotLinkToAzAdvertizer = $hlpCacheDefinitionsPolicy.LinkToAzAdvertizer
+                        $policyDisplayName = $hlpCacheDefinitionsPolicy.DisplayName
                     }
                     #policySet
                     if ($policyDefinitionId -like '/providers/Microsoft.Authorization/policySetDefinitions/*') {
-                        $LinkOrNotLinkToAzAdvertizer = ($htCacheDefinitionsPolicySet).($policyDefinitionId).LinkToAzAdvertizer
-                        $policyDisplayName = ($htCacheDefinitionsPolicySet).($policyDefinitionId).DisplayName
+                        $hlpCacheDefinitionsPolicySet = $htCacheDefinitionsPolicySet[$policyDefinitionId]
+                        $LinkOrNotLinkToAzAdvertizer = $hlpCacheDefinitionsPolicySet.LinkToAzAdvertizer
+                        $policyDisplayName = $hlpCacheDefinitionsPolicySet.DisplayName
                     }
                 }
                 else {
                     #policy
                     if ($policyDefinitionId -like '*/providers/Microsoft.Authorization/policyDefinitions/*') {
-                        $policyDisplayName = ($htCacheDefinitionsPolicy).($policyDefinitionId).DisplayName
+                        $policyDisplayName = $htCacheDefinitionsPolicy[$policyDefinitionId].DisplayName
 
                     }
                     #policySet
                     if ($policyDefinitionId -like '*/providers/Microsoft.Authorization/policySetDefinitions/*') {
-                        $policyDisplayName = ($htCacheDefinitionsPolicySet).($policyDefinitionId).DisplayName
+                        $policyDisplayName = $htCacheDefinitionsPolicySet[$policyDefinitionId].DisplayName
                     }
 
                     $LinkOrNotLinkToAzAdvertizer = "<b>$($policyDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</b>"
                 }
-                $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignment = "$($policyAssignmentId) ($LinkOrNotLinkToAzAdvertizer)"
-                $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignmentClear = "$($policyAssignmentId) ($policyDisplayName)"
+                $htRoleAssignmentRelatedPolicyAssignmentsEntry.relatedPolicyAssignment = "$($policyAssignmentId) ($LinkOrNotLinkToAzAdvertizer)"
+                $htRoleAssignmentRelatedPolicyAssignmentsEntry.relatedPolicyAssignmentClear = "$($policyAssignmentId) ($policyDisplayName)"
             }
         }
         else {
-            $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignment = 'none'
-            $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).relatedPolicyAssignmentClear = 'none'
+            $htRoleAssignmentRelatedPolicyAssignmentsEntry.relatedPolicyAssignment = 'none'
+            $htRoleAssignmentRelatedPolicyAssignmentsEntry.relatedPolicyAssignmentClear = 'none'
         }
 
         if ($roleAssignmentIdUnique.RoleIsCustom -eq 'FALSE') {
-            $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).roleType = 'Builtin'
-            $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).roleWithWithoutLinkToAzAdvertizer = ($htCacheDefinitionsRole).($roleAssignmentIdUnique.RoleDefinitionId).LinkToAzAdvertizer
-            $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).roleClear = $roleAssignmentIdUnique.RoleDefinitionName
+            $htRoleAssignmentRelatedPolicyAssignmentsEntry.roleType = 'Builtin'
+            $htRoleAssignmentRelatedPolicyAssignmentsEntry.roleWithWithoutLinkToAzAdvertizer = $htCacheDefinitionsRole[$roleAssignmentIdUnique.RoleDefinitionId].LinkToAzAdvertizer
+            $htRoleAssignmentRelatedPolicyAssignmentsEntry.roleClear = $roleAssignmentIdUnique.RoleDefinitionName
         }
         else {
 
@@ -96,9 +101,9 @@
                 $roleType = 'Custom'
             }
 
-            $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).roleType = $roleType
-            $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).roleWithWithoutLinkToAzAdvertizer = $roleAssignmentIdUnique.RoleDefinitionName
-            $htRoleAssignmentRelatedPolicyAssignments.($roleAssignmentIdUnique.RoleAssignmentId).roleClear = $roleAssignmentIdUnique.RoleDefinitionName
+            $htRoleAssignmentRelatedPolicyAssignmentsEntry.roleType = $roleType
+            $htRoleAssignmentRelatedPolicyAssignmentsEntry.roleWithWithoutLinkToAzAdvertizer = $roleAssignmentIdUnique.RoleDefinitionName
+            $htRoleAssignmentRelatedPolicyAssignmentsEntry.roleClear = $roleAssignmentIdUnique.RoleDefinitionName
         }
     }
     $endRelatedPolicyAssignmentsAll = Get-Date
@@ -116,6 +121,7 @@
             Write-Host "   $cnter of $roleAssignmentsallCount RoleAssignments processed; $((New-TimeSpan -Start $startRoleAssignmentsAllPre -End $etappeRoleAssignmentsAll).TotalSeconds) seconds"
         }
         $scope = $null
+        $scopeTenOrMgOrSubOrRGOrRes = $null
 
         if ($rbac.RoleAssignmentPIM -eq 'true') {
             $pim = $true
@@ -130,7 +136,9 @@
             $pimSlotEnd = ''
         }
 
-        if ($rbac.RoleAssignmentId -like '/providers/Microsoft.Management/managementGroups/*') {
+        $rbacRoleAssignmentId = $rbac.RoleAssignmentId
+
+        if ($rbacRoleAssignmentId.StartsWith('/providers/Microsoft.Management/managementGroups/', [System.StringComparison]::OrdinalIgnoreCase)) {
             $scopeTenOrMgOrSubOrRGOrRes = 'Mg'
             if (-not [String]::IsNullOrEmpty($rbac.SubscriptionId)) {
                 $scope = "inherited $($rbac.RoleAssignmentScopeName)"
@@ -145,29 +153,29 @@
             }
         }
 
-        if ($rbac.RoleAssignmentId -like '/subscriptions/*') {
+        if ($rbacRoleAssignmentId.StartsWith('/subscriptions/', [System.StringComparison]::OrdinalIgnoreCase)) {
             $scope = 'thisScope Sub'
             $scopeTenOrMgOrSubOrRGOrRes = 'Sub'
         }
 
-        if ($rbac.RoleAssignmentId -like '/subscriptions/*/resourcegroups/*') {
+        if ($rbacRoleAssignmentId -like '/subscriptions/*/resourcegroups/*') {
             $scope = 'thisScope Sub RG'
             $scopeTenOrMgOrSubOrRGOrRes = 'RG'
         }
 
-        if ($rbac.RoleAssignmentId -like '/subscriptions/*/resourcegroups/*/providers/*/providers/*') {
+        if ($rbacRoleAssignmentId -like '/subscriptions/*/resourcegroups/*/providers/*/providers/*') {
             $scope = 'thisScope Sub RG Res'
             $scopeTenOrMgOrSubOrRGOrRes = 'Res'
         }
 
-        if ($rbac.RoleAssignmentId -like '/providers/Microsoft.Authorization/roleAssignments/*') {
+        if ($rbacRoleAssignmentId.StartsWith('/providers/Microsoft.Authorization/roleAssignments/', [System.StringComparison]::OrdinalIgnoreCase)) {
             $scope = 'inherited Tenant'
             $scopeTenOrMgOrSubOrRGOrRes = 'Ten'
         }
 
         $objectTypeUserType = ''
         if ($rbac.RoleAssignmentIdentityObjectType -eq 'User') {
-            if ($htUserTypesGuest.($rbac.RoleAssignmentIdentityObjectId)) {
+            if ($htUserTypesGuest[$rbac.RoleAssignmentIdentityObjectId]) {
                 $objectTypeUserType = 'Guest'
             }
             else {
@@ -182,12 +190,12 @@
             $roleManageData = 'false'
         }
 
-        $hlpRoleAssignmentRelatedPolicyAssignments = $htRoleAssignmentRelatedPolicyAssignments.($rbac.RoleAssignmentId)
+        $hlpRoleAssignmentRelatedPolicyAssignments = $htRoleAssignmentRelatedPolicyAssignments[$rbac.RoleAssignmentId]
 
         if (-not $NoAADGroupsResolveMembers) {
             if ($rbac.RoleAssignmentIdentityObjectType -eq 'Group') {
 
-                $grpHlpr = $htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId)
+                $grpHlpr = $htAADGroupsDetails[$rbac.RoleAssignmentIdentityObjectId]
                 $null = $script:rbacAll.Add([PSCustomObject]@{
                         Level                                = $rbac.Level
                         RoleAssignmentId                     = $rbac.RoleAssignmentId
@@ -232,9 +240,9 @@
 
                 if ($grpHlpr.MembersAllCount -gt 0) {
 
-                    if ($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount -le $AADGroupMembersLimit) {
+                    if ($grpHlpr.MembersAllCount -le $AADGroupMembersLimit) {
 
-                        foreach ($groupmember in $htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAll) {
+                        foreach ($groupmember in $grpHlpr.MembersAll) {
                             if ($groupmember.'@odata.type' -eq '#microsoft.graph.user') {
                                 if ($azAPICallConf['htParameters'].DoNotShowRoleAssignmentsUserData -eq $true) {
                                     $grpMemberDisplayName = 'scrubbed'
@@ -248,7 +256,7 @@
                                 $grpMemberType = 'User'
                                 $grpMemberUserType = ''
 
-                                if ($htUserTypesGuest.($grpMemberId)) {
+                                if ($htUserTypesGuest[$grpMemberId]) {
                                     $grpMemberUserType = 'Guest'
                                 }
                                 else {
@@ -271,7 +279,7 @@
                                 $grpMemberId = $groupmember.Id
                                 $grpMemberType = 'ServicePrincipal'
                                 $grpMemberUserType = ''
-                                $identityType = $htServicePrincipals.($grpMemberId).spTypeConcatinated
+                                $identityType = $htServicePrincipals[$grpMemberId].spTypeConcatinated
                                 $identityTypeFull = "$identityType"
                             }
 
@@ -348,9 +356,9 @@
                                 AssignmentType                       = 'indirect'
                                 AssignmentInheritFrom                = "$($rbac.RoleAssignmentIdentityDisplayname) ($($rbac.RoleAssignmentIdentityObjectId))"
                                 GroupMembersCount                    = "$($grpHlpr.MembersAllCount) (Usr: $($grpHlpr.MembersUsersCount)$($CsvDelimiterOpposite) Grp: $($grpHlpr.MembersGroupsCount)$($CsvDelimiterOpposite) SP: $($grpHlpr.MembersServicePrincipalsCount))"
-                                ObjectDisplayName                    = "Azure Governance Visualizer:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
-                                ObjectSignInName                     = "Azure Governance Visualizer:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
-                                ObjectId                             = "Azure Governance Visualizer:TooManyMembers ($($htAADGroupsDetails.($rbac.RoleAssignmentIdentityObjectId).MembersAllCount))"
+                                ObjectDisplayName                    = "Azure Governance Visualizer:TooManyMembers ($($grpHlpr.MembersAllCount))"
+                                ObjectSignInName                     = "Azure Governance Visualizer:TooManyMembers ($($grpHlpr.MembersAllCount))"
+                                ObjectId                             = "Azure Governance Visualizer:TooManyMembers ($($grpHlpr.MembersAllCount))"
                                 ObjectType                           = 'unresolved'
                                 RbacRelatedPolicyAssignment          = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignment
                                 RbacRelatedPolicyAssignmentClear     = $hlpRoleAssignmentRelatedPolicyAssignments.relatedPolicyAssignmentClear
@@ -365,7 +373,7 @@
             else {
 
                 if ($rbac.RoleAssignmentIdentityObjectType -eq 'ServicePrincipal') {
-                    $identityType = $htServicePrincipals.($rbac.RoleAssignmentIdentityObjectId).spTypeConcatinated
+                    $identityType = $htServicePrincipals[$rbac.RoleAssignmentIdentityObjectId].spTypeConcatinated
                     $identityTypeFull = $identityType
                 }
                 elseif ($rbac.RoleAssignmentIdentityObjectType -eq 'Unknown') {
@@ -422,7 +430,7 @@
         else {
 
             if ($rbac.RoleAssignmentIdentityObjectType -eq 'ServicePrincipal') {
-                $identityType = $htServicePrincipals.($rbac.RoleAssignmentIdentityObjectId).spTypeConcatinated
+                $identityType = $htServicePrincipals[$rbac.RoleAssignmentIdentityObjectId].spTypeConcatinated
                 $identityTypeFull = $identityType
             }
             elseif ($rbac.RoleAssignmentIdentityObjectType -eq 'Unknown') {
@@ -527,8 +535,8 @@
 
             if (-not $NoAADGroupsResolveMembers) {
                 if ($PIMEligible.IdentityType -eq 'Group') {
-                    if ($htAADGroupsDetails.($PIMEligible.IdentityObjectId)) {
-                        foreach ($groupMemberUser in $htAADGroupsDetails.($PIMEligible.IdentityObjectId).MembersUsers) {
+                    if ($htAADGroupsDetails[$PIMEligible.IdentityObjectId]) {
+                        foreach ($groupMemberUser in $htAADGroupsDetails[$PIMEligible.IdentityObjectId].MembersUsers) {
                             #$tfCountCnt++
                             $null = $PIMEligibleEnriched.Add([PSCustomObject]@{
                                     Scope                            = $PIMEligible.ScopeType
@@ -580,7 +588,7 @@
                     $scope = "thisScope $($PIMEligibleRoleAssignment.Scope)"
                 }
 
-                if (-not [string]::IsNullOrEmpty($htCacheDefinitionsRole.($PIMEligibleRoleAssignment.RoleId).RoleDataActions) -or -not [string]::IsNullOrEmpty($htCacheDefinitionsRole.($PIMEligibleRoleAssignment.RoleId).RoleNotDataActions)) {
+                if (-not [string]::IsNullOrEmpty($htCacheDefinitionsRole[$PIMEligibleRoleAssignment.RoleId].RoleDataActions) -or -not [string]::IsNullOrEmpty($htCacheDefinitionsRole[$PIMEligibleRoleAssignment.RoleId].RoleNotDataActions)) {
                     $roleManageData = 'true'
                 }
                 else {
@@ -588,7 +596,7 @@
                 }
 
                 $roleCanDoRoleAssignments = $false
-                if ($htCacheDefinitionsRole.($PIMEligibleRoleAssignment.RoleId).RoleCanDoRoleAssignments) {
+                if ($htCacheDefinitionsRole[$PIMEligibleRoleAssignment.RoleId].RoleCanDoRoleAssignments) {
                     $roleCanDoRoleAssignments = 'true'
                 }
 
@@ -601,8 +609,8 @@
                         RoleAssignmentPIMAssignmentSlotEnd   = $PIMEligibleRoleAssignment.PIMEligibilityEndDateTime
                         CreatedBy                            = ''
                         CreatedOn                            = ''
-                        UpdatedBy                            = $rbac.RoleAssignmentUpdatedBy
-                        UpdatedOn                            = $rbac.RoleAssignmentUpdatedOn
+                        UpdatedBy                            = ''
+                        UpdatedOn                            = ''
                         MgId                                 = $PIMEligibleRoleAssignment.ManagementGroupId
                         MgName                               = $PIMEligibleRoleAssignment.ManagementGroupDisplayName
                         MgParentId                           = '' #check
@@ -644,27 +652,35 @@
     #prep prepUnresoledIdentities
     #region identitiesThatCreatedRoleAssignmentsButDontHaveARoleAssignmentThemselve
     $script:htIdentitiesWithRoleAssignmentsUnique = @{}
-    $identitiesWithRoleAssignmentsUnique = $rbacAll.where( { $_.ObjectType -ne 'Unknown' } ) | Sort-Object -Property ObjectId -Unique | Select-Object ObjectType, ObjectDisplayName, ObjectSignInName, ObjectId
-    foreach ($identityWithRoleAssignment in $identitiesWithRoleAssignmentsUnique | Sort-Object -Property objectType) {
+    foreach ($rbacUnique in $rbacAll) {
 
-        if (-not $htIdentitiesWithRoleAssignmentsUnique.($identityWithRoleAssignment.ObjectId)) {
-            $script:htIdentitiesWithRoleAssignmentsUnique.($identityWithRoleAssignment.ObjectId) = @{}
+        if ($rbacUnique.ObjectType -eq 'Unknown') {
+            continue
+        }
+        $objectId = $rbacUnique.ObjectId
+        if ($htIdentitiesWithRoleAssignmentsUnique[$objectId]) {
+            continue
+        }
 
-            $arr = @()
-            $ht = [ordered]@{}
-            $identityWithRoleAssignment.psobject.properties | ForEach-Object {
-                if ($_.Value) {
-                    $value = $_.Value
-                }
-                else {
-                    $value = 'n/a'
-                }
-                $arr += "$($_.Name): $value"
-                $ht.($_.Name) = $value
+        #direct field access on the 4 known properties (no PSCustomObject allocation, no psobject.properties reflection, no pipeline, no array +=)
+        $valObjectType = if ($rbacUnique.ObjectType) { $rbacUnique.ObjectType } else { 'n/a' }
+        $valObjectDisplayName = if ($rbacUnique.ObjectDisplayName) { $rbacUnique.ObjectDisplayName } else { 'n/a' }
+        $valObjectSignInName = if ($rbacUnique.ObjectSignInName) { $rbacUnique.ObjectSignInName } else { 'n/a' }
+        $valObjectId = if ($objectId) { $objectId } else { 'n/a' }
+
+        $script:htIdentitiesWithRoleAssignmentsUnique.($objectId) = @{
+            details     = @(
+                "ObjectType: $valObjectType"
+                "ObjectDisplayName: $valObjectDisplayName"
+                "ObjectSignInName: $valObjectSignInName"
+                "ObjectId: $valObjectId"
+            ) -join "$CsvDelimiterOpposite "
+            detailsJson = [ordered]@{
+                ObjectType        = $valObjectType
+                ObjectDisplayName = $valObjectDisplayName
+                ObjectSignInName  = $valObjectSignInName
+                ObjectId          = $valObjectId
             }
-
-            $script:htIdentitiesWithRoleAssignmentsUnique.($identityWithRoleAssignment.ObjectId).details = $arr -join "$CsvDelimiterOpposite "
-            $script:htIdentitiesWithRoleAssignmentsUnique.($identityWithRoleAssignment.ObjectId).detailsJson = $ht
         }
     }
     #endregion identitiesThatCreatedRoleAssignmentsButDontHaveARoleAssignmentThemselve
@@ -672,31 +688,47 @@
     #enrich rbacAll with createdBy and UpdatedBy identity information
     #region enrichrbacAll
     $htNonResolvedIdentities = @{}
+    #collect rows needing later fixup during this pass to avoid a second full O(N) .where() scan over $rbacAll
+    $rowsNeedingFixup = [System.Collections.Generic.List[object]]::new()
     foreach ($rbac in $rbacAll) {
+        $cbNeedsFixup = $true
         $createdBy = $rbac.createdBy
         if (-not [string]::IsNullOrEmpty($createdBy)) {
-            if ($htIdentitiesWithRoleAssignmentsUnique.($createdBy)) {
-                $createdBy = $htIdentitiesWithRoleAssignmentsUnique.($createdBy).details
-                $rbac.CreatedBy = $createdBy
+            $resolvedCreatedBy = $htIdentitiesWithRoleAssignmentsUnique[$createdBy]
+            if ($resolvedCreatedBy) {
+                $rbac.CreatedBy = $resolvedCreatedBy.details
+                $cbNeedsFixup = $false
             }
             else {
-                if (-not $htNonResolvedIdentities.($rbac.createdBy)) {
-                    $htNonResolvedIdentities.($rbac.createdBy) = @{}
+                if (-not $htNonResolvedIdentities[$createdBy]) {
+                    $htNonResolvedIdentities[$createdBy] = @{}
+                }
+                if ($createdBy -like 'ObjectType*') {
+                    $cbNeedsFixup = $false
                 }
             }
         }
 
+        $ubNeedsFixup = $true
         $updatedBy = $rbac.updatedBy
         if (-not [string]::IsNullOrEmpty($updatedBy)) {
-            if ($htIdentitiesWithRoleAssignmentsUnique.($updatedBy)) {
-                $updatedBy = $htIdentitiesWithRoleAssignmentsUnique.($updatedBy).details
-                $rbac.UpdatedBy = $updatedBy
+            $resolvedUpdatedBy = $htIdentitiesWithRoleAssignmentsUnique[$updatedBy]
+            if ($resolvedUpdatedBy) {
+                $rbac.UpdatedBy = $resolvedUpdatedBy.details
+                $ubNeedsFixup = $false
             }
             else {
-                if (-not $htNonResolvedIdentities.($rbac.updatedBy)) {
-                    $htNonResolvedIdentities.($rbac.updatedBy) = @{}
+                if (-not $htNonResolvedIdentities[$updatedBy]) {
+                    $htNonResolvedIdentities[$updatedBy] = @{}
+                }
+                if ($updatedBy -like 'ObjectType*') {
+                    $ubNeedsFixup = $false
                 }
             }
+        }
+
+        if ($cbNeedsFixup -or $ubNeedsFixup) {
+            $rowsNeedingFixup.Add($rbac)
         }
     }
     #endregion enrichrbacAll
@@ -744,7 +776,7 @@
 
                         foreach ($resolvedIdentity in $resolvedIdentities) {
 
-                            if (-not $htResolvedIdentities.($resolvedIdentity.id)) {
+                            if (-not $htResolvedIdentities[$resolvedIdentity.id]) {
 
                                 $script:htResolvedIdentities.($resolvedIdentity.id) = @{}
                                 if ($resolvedIdentity.'@odata.type' -eq '#microsoft.graph.servicePrincipal' -or $resolvedIdentity.'@odata.type' -eq '#microsoft.graph.user') {
@@ -803,7 +835,7 @@
                                     }
 
                                     if ($resolvedIdentity.'@odata.type' -eq '#microsoft.graph.user') {
-                                        if ($htParamteters.DoNotShowRoleAssignmentsUserData) {
+                                        if ($azAPICallConf['htParameters'].DoNotShowRoleAssignmentsUserData) {
                                             $hlpObjectDisplayName = 'scrubbed'
                                             $hlpObjectSigninName = 'scrubbed'
                                         }
@@ -822,7 +854,7 @@
                                         $script:htResolvedIdentities.($resolvedIdentity.id).custObjectType = $custObjectType
                                         $script:htResolvedIdentities.($resolvedIdentity.id).obj = $resolvedIdentity
                                     }
-                                    if (-not $htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id)) {
+                                    if (-not $htIdentitiesWithRoleAssignmentsUnique[$resolvedIdentity.id]) {
                                         $script:htIdentitiesWithRoleAssignmentsUnique.($resolvedIdentity.id) = @{
                                             details     = $custObjectType
                                             detailsJson = $ht
@@ -841,41 +873,37 @@
                 resolveIdentitiesRBAC -currentTask '    resolveObjectbyId RoleAssignment'
             }
 
-            foreach ($rbac in $rbacAll.where( { $_.CreatedBy -notlike 'ObjectType*' -or $_.UpdatedBy -notlike 'ObjectType*' })) {
-                if ($rbac.CreatedBy -notlike 'ObjectType*') {
-                    if ($htResolvedIdentities.($rbac.CreatedBy)) {
-                        $rbac.CreatedBy = $htResolvedIdentities.($rbac.CreatedBy).custObjectType
+            foreach ($rbac in $rowsNeedingFixup) {
+                $cb = $rbac.CreatedBy
+                if ($cb -notlike 'ObjectType*') {
+                    $resolvedCb = $htResolvedIdentities[$cb]
+                    if ($resolvedCb) {
+                        $rbac.CreatedBy = $resolvedCb.custObjectType
+                    }
+                    elseif ($rbac.RoleAssignmentPIMAssignmentType -eq 'Eligible') {
+                        $rbac.CreatedBy = ''
+                    }
+                    elseif ([string]::IsNullOrEmpty($cb)) {
+                        $rbac.CreatedBy = 'IsNullOrEmpty'
                     }
                     else {
-                        if ($rbac.RoleAssignmentPIMAssignmentType -eq 'Eligible') {
-                            $rbac.CreatedBy = ''
-                        }
-                        else {
-                            if ([string]::IsNullOrEmpty($rbac.CreatedBy)) {
-                                $rbac.CreatedBy = 'IsNullOrEmpty'
-                            }
-                            else {
-                                $rbac.CreatedBy = "$($rbac.CreatedBy)"
-                            }
-                        }
+                        $rbac.CreatedBy = "$cb"
                     }
                 }
-                if ($rbac.UpdatedBy -notlike 'ObjectType*') {
-                    if ($htResolvedIdentities.($rbac.UpdatedBy)) {
-                        $rbac.UpdatedBy = $htResolvedIdentities.($rbac.UpdatedBy).custObjectType
+                $ub = $rbac.UpdatedBy
+                if ($ub -notlike 'ObjectType*') {
+                    $resolvedUb = $htResolvedIdentities[$ub]
+                    if ($resolvedUb) {
+                        $rbac.UpdatedBy = $resolvedUb.custObjectType
+                    }
+                    elseif ($rbac.RoleAssignmentPIMAssignmentType -eq 'Eligible') {
+                        $rbac.UpdatedBy = ''
+                    }
+                    elseif ([string]::IsNullOrEmpty($ub)) {
+                        $rbac.UpdatedBy = 'IsNullOrEmpty'
                     }
                     else {
-                        if ($rbac.RoleAssignmentPIMAssignmentType -eq 'Eligible') {
-                            $rbac.UpdatedBy = ''
-                        }
-                        else {
-                            if ([string]::IsNullOrEmpty($rbac.UpdatedBy)) {
-                                $rbac.UpdatedBy = 'IsNullOrEmpty'
-                            }
-                            else {
-                                $rbac.UpdatedBy = "$($rbac.UpdatedBy)"
-                            }
-                        }
+                        $rbac.UpdatedBy = "$ub"
                     }
                 }
             }
@@ -886,8 +914,24 @@
     #endregion nonResolvedIdentities
 
     $startRBACAllGrouping = Get-Date
-    $script:rbacAllGroupedBySubscription = $rbacAll | Group-Object -Property SubscriptionId
-    $script:rbacAllGroupedByManagementGroup = $rbacAll | Group-Object -Property MgId
+    $script:rbacAllGroupedBySubscription = @{}
+    $script:rbacAllGroupedByManagementGroup = @{}
+    foreach ($rbacEntry in $rbacAll) {
+        $rbacEntrySubscriptionId = $rbacEntry.SubscriptionId
+        if (-not [string]::IsNullOrEmpty($rbacEntrySubscriptionId)) {
+            if (-not $rbacAllGroupedBySubscription.ContainsKey($rbacEntrySubscriptionId)) {
+                $script:rbacAllGroupedBySubscription[$rbacEntrySubscriptionId] = [System.Collections.Generic.List[object]]::new()
+            }
+            $rbacAllGroupedBySubscription[$rbacEntrySubscriptionId].Add($rbacEntry)
+        }
+        $rbacEntryMgId = $rbacEntry.MgId
+        if (-not [string]::IsNullOrEmpty($rbacEntryMgId)) {
+            if (-not $rbacAllGroupedByManagementGroup.ContainsKey($rbacEntryMgId)) {
+                $script:rbacAllGroupedByManagementGroup[$rbacEntryMgId] = [System.Collections.Generic.List[object]]::new()
+            }
+            $rbacAllGroupedByManagementGroup[$rbacEntryMgId].Add($rbacEntry)
+        }
+    }
     $endRBACAllGrouping = Get-Date
     Write-Host "   RBACAll Grouping duration: $((New-TimeSpan -Start $startRBACAllGrouping -End $endRBACAllGrouping).TotalMinutes) minutes ($((New-TimeSpan -Start $startRBACAllGrouping -End $endRBACAllGrouping).TotalSeconds) seconds)"
     $endCreateRBACAll = Get-Date
@@ -914,8 +958,9 @@
 
         #uniqueAssignments
         $policyUniqueAssignments = $null
-        if ($htPolicyWithAssignmentsBase.($tenantPolicy.PolicyDefinitionId)) {
-            $policyUniqueAssignments = $htPolicyWithAssignmentsBase.($tenantPolicy.PolicyDefinitionId).Assignments | Sort-Object
+        $hlpPolicyWithAssignmentsBase = $htPolicyWithAssignmentsBase[$tenantPolicy.PolicyDefinitionId]
+        if ($hlpPolicyWithAssignmentsBase) {
+            $policyUniqueAssignments = $hlpPolicyWithAssignmentsBase.Assignments | Sort-Object
             $policyUniqueAssignmentsCount = ($policyUniqueAssignments).count
         }
         else {
@@ -936,8 +981,8 @@
         $usedInPolicySet = 0
         $usedInPolicySet4CSV = ''
         $usedInPolicySetCount = 0
-        if (($htPoliciesUsedInPolicySets).($tenantPolicy.PolicyDefinitionId)) {
-            $hlpPolicySetUsed = ($htPoliciesUsedInPolicySets).($tenantPolicy.PolicyDefinitionId)
+        $hlpPolicySetUsed = $htPoliciesUsedInPolicySets[$tenantPolicy.PolicyDefinitionId]
+        if ($hlpPolicySetUsed) {
             $usedInPolicySet4JSON = $hlpPolicySetUsed.PolicySetIdOnly | Sort-Object
             $usedInPolicySet = "$(($hlpPolicySetUsed.PolicySet | Sort-Object) -join "$CsvDelimiterOpposite ")"
             $usedInPolicySet4CSV = "$(($hlpPolicySetUsed.PolicySet4CSV | Sort-Object) -join "$CsvDelimiterOpposite ")"
@@ -959,16 +1004,17 @@
             $policyRoleDefinitionsArray = @()
             $policyRoleDefinitionsArray = foreach ($roleDefinitionId in $tenantPolicy.RoleDefinitionIds | Sort-Object) {
                 $roleDefinitionIdGuid = $roledefinitionId -replace '.*/'
-                if (($htCacheDefinitionsRole).($roleDefinitionIdGuid).LinkToAzAdvertizer) {
-                    ($htCacheDefinitionsRole).($roleDefinitionIdGuid).LinkToAzAdvertizer
+                $hlpRoleDefinition = $htCacheDefinitionsRole[$roleDefinitionIdGuid]
+                if ($hlpRoleDefinition.LinkToAzAdvertizer) {
+                    $hlpRoleDefinition.LinkToAzAdvertizer
                 }
                 else {
-                    ($htCacheDefinitionsRole).($roleDefinitionIdGuid).Name -replace '<', '&lt;' -replace '>', '&gt;'
+                    $hlpRoleDefinition.Name -replace '<', '&lt;' -replace '>', '&gt;'
                 }
             }
             $policyRoleDefinitionsClearArray = @()
             $policyRoleDefinitionsClearArray = foreach ($roleDefinitionId in $tenantPolicy.RoleDefinitionIds | Sort-Object) {
-                ($htCacheDefinitionsRole).($roleDefinitionIdGuid).Name
+                $htCacheDefinitionsRole[$roleDefinitionIdGuid].Name
             }
             $policyRoleDefinitions = $policyRoleDefinitionsArray -join "$CsvDelimiterOpposite "
             $policyRoleDefinitionsClear = $policyRoleDefinitionsClearArray -join "$CsvDelimiterOpposite "
@@ -1000,9 +1046,9 @@
                 $createdBy = $tenantPolicy.Json.properties.metadata.createdBy
                 $createdByJson = $createdBy
                 if ($createdBy -ne 'n/a') {
-                    if ($htIdentitiesWithRoleAssignmentsUnique.($createdBy)) {
-                        $createdByJson = $htIdentitiesWithRoleAssignmentsUnique.($createdBy).detailsJson
-                        $createdBy = $htIdentitiesWithRoleAssignmentsUnique.($createdBy).details
+                    if ($htIdentitiesWithRoleAssignmentsUnique[$createdBy]) {
+                        $createdByJson = $htIdentitiesWithRoleAssignmentsUnique[$createdBy].detailsJson
+                        $createdBy = $htIdentitiesWithRoleAssignmentsUnique[$createdBy].details
 
                     }
                 }
@@ -1014,9 +1060,9 @@
                 $updatedBy = $tenantPolicy.Json.properties.metadata.updatedBy
                 $updatedByJson = $updatedBy
                 if ($updatedBy -ne 'n/a') {
-                    if ($htIdentitiesWithRoleAssignmentsUnique.($updatedBy)) {
-                        $updatedByJson = $htIdentitiesWithRoleAssignmentsUnique.($updatedBy).detailsJson
-                        $updatedBy = $htIdentitiesWithRoleAssignmentsUnique.($updatedBy).details
+                    if ($htIdentitiesWithRoleAssignmentsUnique[$updatedBy]) {
+                        $updatedByJson = $htIdentitiesWithRoleAssignmentsUnique[$updatedBy].detailsJson
+                        $updatedBy = $htIdentitiesWithRoleAssignmentsUnique[$updatedBy].details
 
                     }
                 }
@@ -1449,7 +1495,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         $arrayCustomPoliciesOrphanedFinal = [System.Collections.ArrayList]@()
         foreach ($customPolicyOrphaned in $customPoliciesOrphaned) {
             if ($customPolicyOrphaned.Id) {
-                if (-not $htPoliciesUsedInPolicySets.($customPolicyOrphaned.Id)) {
+                if (-not $htPoliciesUsedInPolicySets[$customPolicyOrphaned.Id]) {
                     $null = $arrayCustomPoliciesOrphanedFinal.Add($customPolicyOrphaned)
                 }
             }
@@ -1582,7 +1628,7 @@ extensions: [{ name: 'sort' }]
 
         $arrayCustomPoliciesOrphanedFinal = [System.Collections.ArrayList]@()
         foreach ($customPolicyOrphanedInScopeArray in $customPoliciesOrphanedInScopeArray) {
-            if (-not $htPoliciesUsedInPolicySets.($customPolicyOrphanedInScopeArray.Id)) {
+            if (-not $htPoliciesUsedInPolicySets[$customPolicyOrphanedInScopeArray.Id]) {
                 $null = $arrayCustomPoliciesOrphanedFinal.Add($customPolicyOrphanedInScopeArray)
             }
         }
@@ -1683,9 +1729,11 @@ extensions: [{ name: 'sort' }]
     $script:customPolicySetsDetailed = [System.Collections.ArrayList]@()
     $script:tenantPolicySetsDetailed = [System.Collections.ArrayList]@()
     $custompolicySetsInScopeArray = [System.Collections.ArrayList]@()
+    #lookup hashtable so the per-policySet loop below can do O(1) lookups instead of an O(n^2) .where() scan over $policyPolicySetBaseQueryUniqueAssignments
+    $htPolicyPolicySetBaseQueryUniqueAssignmentsGroupedByPolicyDefinitionId = $policyPolicySetBaseQueryUniqueAssignments | Group-Object -Property PolicyDefinitionId -AsHashTable -AsString
     foreach ($tenantPolicySet in ($tenantAllPolicySets)) {
 
-        $policySetUniqueAssignments = $policyPolicySetBaseQueryUniqueAssignments.where( { $_.PolicyDefinitionId -eq $tenantPolicySet.Id }).PolicyAssignmentId
+        $policySetUniqueAssignments = $htPolicyPolicySetBaseQueryUniqueAssignmentsGroupedByPolicyDefinitionId[$tenantPolicySet.Id].PolicyAssignmentId
         $policySetUniqueAssignmentsArray = [System.Collections.ArrayList]@()
         foreach ($policySetUniqueAssignment in $policySetUniqueAssignments) {
             $null = $policySetUniqueAssignmentsArray.Add($policySetUniqueAssignment)
@@ -1706,7 +1754,7 @@ extensions: [{ name: 'sort' }]
         $policySetPoliciesStaticArrayIdOnlyCSV = [System.Collections.ArrayList]@()
         $policySetPoliciesCustomArrayIdOnlyCSV = [System.Collections.ArrayList]@()
         foreach ($policyPolicySet in $tenantPolicySet.PolicySetPolicyIds) {
-            $hlpPolicyDef = ($htCacheDefinitionsPolicy).($policyPolicySet)
+            $hlpPolicyDef = $htCacheDefinitionsPolicy[$policyPolicySet]
 
             if ($hlpPolicyDef.Type -eq 'Builtin' -or $hlpPolicyDef.Type -eq 'Static') {
                 $null = $policySetPoliciesArray.Add("$($hlpPolicyDef.LinkToAzAdvertizer) ($policyPolicySet)")
@@ -1803,9 +1851,9 @@ extensions: [{ name: 'sort' }]
             if ($tenantPolicySet.Json.properties.metadata.createdBy) {
                 $createdBy = $tenantPolicySet.Json.properties.metadata.createdBy
                 $createdByJson = $createdBy
-                if ($htIdentitiesWithRoleAssignmentsUnique.($createdBy)) {
-                    $createdByJson = $htIdentitiesWithRoleAssignmentsUnique.($createdBy).detailsJson
-                    $createdBy = $htIdentitiesWithRoleAssignmentsUnique.($createdBy).details
+                if ($htIdentitiesWithRoleAssignmentsUnique[$createdBy]) {
+                    $createdByJson = $htIdentitiesWithRoleAssignmentsUnique[$createdBy].detailsJson
+                    $createdBy = $htIdentitiesWithRoleAssignmentsUnique[$createdBy].details
                 }
             }
             if ($tenantPolicySet.Json.properties.metadata.updatedOn) {
@@ -1814,9 +1862,9 @@ extensions: [{ name: 'sort' }]
             if ($tenantPolicySet.Json.properties.metadata.updatedBy) {
                 $updatedBy = $tenantPolicySet.Json.properties.metadata.updatedBy
                 $updatedByJson = $updatedBy
-                if ($htIdentitiesWithRoleAssignmentsUnique.($updatedBy)) {
-                    $updatedByJson = $htIdentitiesWithRoleAssignmentsUnique.($updatedBy).detailsJson
-                    $updatedBy = $htIdentitiesWithRoleAssignmentsUnique.($updatedBy).details
+                if ($htIdentitiesWithRoleAssignmentsUnique[$updatedBy]) {
+                    $updatedByJson = $htIdentitiesWithRoleAssignmentsUnique[$updatedBy].detailsJson
+                    $updatedBy = $htIdentitiesWithRoleAssignmentsUnique[$updatedBy].details
 
                 }
             }
@@ -2439,7 +2487,7 @@ extensions: [{ name: 'sort' }]
         $htmlSUMMARYPolicyCustomBuiltInParity = foreach ($entry in $arrayCustomBuiltInPolicyParity | Sort-Object -Property CustomPolicyId) {
             $arrayBuiltinsRef = @()
             foreach ($builtInPolicyId in $entry.BuiltInPolicyId) {
-                $arrayBuiltinsRef += "<a class=`"externallink`" rel=`"noopener`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$($builtInPolicyId -replace '.*/').html`" target=`"_blank`">$($htCacheDefinitionsPolicy.($builtInPolicyId).DisplayName) <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a> ($($builtInPolicyId -replace '.*/'))"
+                $arrayBuiltinsRef += "<a class=`"externallink`" rel=`"noopener`" href=`"https://www.azadvertizer.net/azpolicyadvertizer/$($builtInPolicyId -replace '.*/').html`" target=`"_blank`">$($htCacheDefinitionsPolicy[$builtInPolicyId].DisplayName) <i class=`"fa fa-external-link`" aria-hidden=`"true`"></i></a> ($($builtInPolicyId -replace '.*/'))"
             }
             $builtInPolicyAzA = $arrayBuiltinsRef -join ', '
             @"
@@ -2907,7 +2955,7 @@ extensions: [{ name: 'sort' }]
     if ($customPolicySetsCount -gt 0) {
         foreach ($polSetDef in $tenantCustomPolicySets) {
             foreach ($polsetPolDefId in $polSetDef.PolicySetPolicyIds) {
-                $hlpDeprecatedPolicySet = (($htCacheDefinitionsPolicy).($polsetPolDefId))
+                $hlpDeprecatedPolicySet = ($htCacheDefinitionsPolicy[$polsetPolDefId])
                 if ($hlpDeprecatedPolicySet.Type -eq 'BuiltIn') {
                     if ($hlpDeprecatedPolicySet.Deprecated -eq $true -or ($hlpDeprecatedPolicySet.DisplayName).StartsWith('[Deprecated]', 'CurrentCultureIgnoreCase')) {
                         $null = $policySetsDeprecated.Add([PSCustomObject]@{
@@ -3031,9 +3079,10 @@ extensions: [{ name: 'sort' }]
         $hlpAssignmentDeprecatedPolicy = $policyAssignmentAll.Assignment
         $hlpPolicyDefinitionId = ($hlpAssignmentDeprecatedPolicy.properties.policyDefinitionId).ToLower()
         #policySet
-        if ($($htCacheDefinitionsPolicySet).(($hlpPolicyDefinitionId))) {
-            foreach ($polsetPolDefId in $($htCacheDefinitionsPolicySet).(($hlpPolicyDefinitionId)).PolicySetPolicyIds) {
-                $hlpDeprecatedAssignment = (($htCacheDefinitionsPolicy).(($polsetPolDefId)))
+        $hlpDeprecatedPolicySet = $htCacheDefinitionsPolicySet[$hlpPolicyDefinitionId]
+        if ($hlpDeprecatedPolicySet) {
+            foreach ($polsetPolDefId in $hlpDeprecatedPolicySet.PolicySetPolicyIds) {
+                $hlpDeprecatedAssignment = $htCacheDefinitionsPolicy[$polsetPolDefId]
                 if ($hlpDeprecatedAssignment.type -eq 'BuiltIn') {
                     if ($hlpDeprecatedAssignment.Deprecated -eq $true) {
                         $null = $policyAssignmentsDeprecated.Add([PSCustomObject]@{
@@ -3041,8 +3090,8 @@ extensions: [{ name: 'sort' }]
                                 PolicyAssignmentId          = ($hlpAssignmentDeprecatedPolicy.id).Tolower()
                                 PolicyDisplayName           = $hlpDeprecatedAssignment.DisplayName
                                 PolicyId                    = $hlpDeprecatedAssignment.Id
-                                PolicySetDisplayName        = ($htCacheDefinitionsPolicySet).(($hlpPolicyDefinitionId)).DisplayName
-                                PolicySetId                 = ($htCacheDefinitionsPolicySet).(($hlpPolicyDefinitionId)).PolicyDefinitionId
+                                PolicySetDisplayName        = $hlpDeprecatedPolicySet.DisplayName
+                                PolicySetId                 = $hlpDeprecatedPolicySet.PolicyDefinitionId
                                 PolicyType                  = 'PolicySet'
                                 DeprecatedProperty          = $hlpDeprecatedAssignment.Deprecated
                             })
@@ -3052,7 +3101,7 @@ extensions: [{ name: 'sort' }]
         }
 
         #Policy
-        $hlpDeprecatedAssignmentPol = ($htCacheDefinitionsPolicy).(($hlpPolicyDefinitionId))
+        $hlpDeprecatedAssignmentPol = $htCacheDefinitionsPolicy[$hlpPolicyDefinitionId]
         if ($hlpDeprecatedAssignmentPol) {
             if ($hlpDeprecatedAssignmentPol.type -eq 'BuiltIn') {
                 if ($hlpDeprecatedAssignmentPol.Deprecated -eq $true) {
@@ -3182,7 +3231,7 @@ extensions: [{ name: 'sort' }]
         $tfCount = $policyExemptionsCount
         $htmlTableId = 'TenantSummary_policyExemptions'
 
-        $expiredExemptionsCount = ($htPolicyAssignmentExemptions.Keys.where({ $htPolicyAssignmentExemptions.($_).exemption.properties.expiresOn -and $htPolicyAssignmentExemptions.($_).exemption.properties.expiresOn -lt (Get-Date).ToUniversalTime() }) | Measure-Object).count
+        $expiredExemptionsCount = ($htPolicyAssignmentExemptions.Keys.where({ $htPolicyAssignmentExemptions[$_].exemption.properties.expiresOn -and $htPolicyAssignmentExemptions[$_].exemption.properties.expiresOn -lt (Get-Date).ToUniversalTime() }) | Measure-Object).count
 
         [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_policyExemptions"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($policyExemptionsCount) Policy exemptions | Expired: $($expiredExemptionsCount)</span>
@@ -3242,7 +3291,7 @@ extensions: [{ name: 'sort' }]
                     6 {
                         $exemptionScope = 'Sub'
                         $subId = $splitExemptionId[2]
-                        $subdetails = $htSubDetails.($subId).details
+                        $subdetails = $htSubDetails[$subId].details
                         $mgId = $subdetails.MgId
                         $mgName = $subdetails.MgName
                         $subName = $subdetails.Subscription
@@ -3254,7 +3303,7 @@ extensions: [{ name: 'sort' }]
                     8 {
                         $exemptionScope = 'RG'
                         $subId = $splitExemptionId[2]
-                        $subdetails = $htSubDetails.($subId).details
+                        $subdetails = $htSubDetails[$subId].details
                         $mgId = $subdetails.MgId
                         $mgName = $subdetails.MgName
                         $subName = $subdetails.Subscription
@@ -3266,7 +3315,7 @@ extensions: [{ name: 'sort' }]
                     12 {
                         $exemptionScope = 'Res'
                         $subId = $splitExemptionId[2]
-                        $subdetails = $htSubDetails.($subId).details
+                        $subdetails = $htSubDetails[$subId].details
                         $mgId = $subdetails.MgId
                         $mgName = $subdetails.MgName
                         $subName = $subdetails.Subscription
@@ -3278,7 +3327,7 @@ extensions: [{ name: 'sort' }]
             else {
                 $exemptionScope = 'MG'
                 $mgId = $splitExemptionId[4]
-                $mgdetails = $htMgDetails.($mgId).details
+                $mgdetails = $htMgDetails[$mgId].details
                 $mgName = $mgdetails.MgName
                 $subId = ''
                 $subName = ''
@@ -3593,10 +3642,10 @@ extensions: [{ name: 'sort' }]
     Write-Host '   processing PolicyAssignmentsRoleAssignmentMapping'
     $script:htPolicyAssignmentRoleAssignmentMapping = @{}
     foreach ($roleassignmentId in ($htCacheAssignmentsRole).keys | Sort-Object) {
-        $roleAssignment = ($htCacheAssignmentsRole).($roleassignmentId).Assignment
+        $roleAssignment = $htCacheAssignmentsRole[$roleassignmentId].Assignment
 
-        if ($htManagedIdentityForPolicyAssignment.($roleAssignment.ObjectId)) {
-            $mi = $htManagedIdentityForPolicyAssignment.($roleAssignment.ObjectId)
+        if ($htManagedIdentityForPolicyAssignment[$roleAssignment.ObjectId]) {
+            $mi = $htManagedIdentityForPolicyAssignment[$roleAssignment.ObjectId]
 
             #this
             if (-not $htPolicyAssignmentRoleAssignmentMapping.(($mi.policyAssignmentId).ToLower())) {
@@ -3605,7 +3654,7 @@ extensions: [{ name: 'sort' }]
                 }
             }
 
-            if (($htCacheDefinitionsRole).($roleAssignment.RoleDefinitionId).IsCustom) {
+            if ($htCacheDefinitionsRole[$roleAssignment.RoleDefinitionId].IsCustom) {
                 $roleDefinitionType = 'custom'
             }
             else {
@@ -3635,10 +3684,10 @@ extensions: [{ name: 'sort' }]
 
     if ($azAPICallConf['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
         foreach ($roleassignmentId in ($htCacheAssignmentsRBACOnResourceGroupsAndResources).keys | Sort-Object) {
-            $roleAssignment = ($htCacheAssignmentsRBACOnResourceGroupsAndResources).($roleassignmentId)
+            $roleAssignment = $htCacheAssignmentsRBACOnResourceGroupsAndResources[$roleassignmentId]
 
-            if ($htManagedIdentityForPolicyAssignment.($roleAssignment.ObjectId)) {
-                $mi = $htManagedIdentityForPolicyAssignment.($roleAssignment.ObjectId)
+            if ($htManagedIdentityForPolicyAssignment[$roleAssignment.ObjectId]) {
+                $mi = $htManagedIdentityForPolicyAssignment[$roleAssignment.ObjectId]
 
                 #this
                 if (-not $htPolicyAssignmentRoleAssignmentMapping.(($mi.policyAssignmentId).ToLower())) {
@@ -3647,7 +3696,7 @@ extensions: [{ name: 'sort' }]
                     }
                 }
 
-                if (($htCacheDefinitionsRole).($roleAssignment.RoleDefinitionId).IsCustom) {
+                if ($htCacheDefinitionsRole[$roleAssignment.RoleDefinitionId].IsCustom) {
                     $roleDefinitionType = 'custom'
                 }
                 else {
@@ -3686,13 +3735,25 @@ extensions: [{ name: 'sort' }]
     $htPolicyAssignmentRelatedRoleAssignments = @{}
     $htPolicyAssignmentRelatedExemptions = @{}
 
+    #build an index of exemptions keyed by policyAssignmentId once (was an O(N*M) rescan of all exemptions per unique assignment)
+    $htExemptionsByPolicyAssignmentId = @{}
+    foreach ($exemptionId in $htPolicyAssignmentExemptions.keys) {
+        $exemptionPolicyAssignmentId = $htPolicyAssignmentExemptions[$exemptionId].exemption.properties.policyAssignmentId
+        if (-not [string]::IsNullOrEmpty($exemptionPolicyAssignmentId)) {
+            if (-not $htExemptionsByPolicyAssignmentId.ContainsKey($exemptionPolicyAssignmentId)) {
+                $htExemptionsByPolicyAssignmentId[$exemptionPolicyAssignmentId] = [System.Collections.ArrayList]@()
+            }
+            $null = $htExemptionsByPolicyAssignmentId[$exemptionPolicyAssignmentId].Add($htPolicyAssignmentExemptions[$exemptionId].exemption)
+        }
+    }
+
     foreach ($policyAssignmentIdUnique in $policyBaseQueryUniqueAssignments) {
 
         #region relatedRoleAssignments
         $relatedRoleAssignmentsArray = [System.Collections.ArrayList]@()
         $relatedRoleAssignmentsArrayClear = [System.Collections.ArrayList]@()
         if ($htPolicyAssignmentRoleAssignmentMappingCount -gt 0) {
-            $policyAssignmentMapping = $htPolicyAssignmentRoleAssignmentMapping.($policyAssignmentIdUnique.PolicyAssignmentId)
+            $policyAssignmentMapping = $htPolicyAssignmentRoleAssignmentMapping[$policyAssignmentIdUnique.PolicyAssignmentId]
             if ($null -ne $policyAssignmentMapping) {
                 foreach ($entry in $policyAssignmentMapping.roleassignments) {
                     if ($entry.roleDefinitionType -eq 'builtin') {
@@ -3707,8 +3768,8 @@ extensions: [{ name: 'sort' }]
         }
 
         # if ($htPolicyAssignmentRoleAssignmentMappingCount -gt 0) {
-        #     if ($htPolicyAssignmentRoleAssignmentMapping.($policyAssignmentIdUnique.PolicyAssignmentId)) {
-        #         foreach ($entry in $htPolicyAssignmentRoleAssignmentMapping.($policyAssignmentIdUnique.PolicyAssignmentId).roleassignments) {
+        #     if ($htPolicyAssignmentRoleAssignmentMapping[$policyAssignmentIdUnique.PolicyAssignmentId]) {
+        #         foreach ($entry in $htPolicyAssignmentRoleAssignmentMapping[$policyAssignmentIdUnique.PolicyAssignmentId].roleassignments) {
         #             if ($entry.roleDefinitionType -eq 'builtin') {
         #                 $null = $relatedRoleAssignmentsArray.Add("<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($entry.roleDefinitionId).html`" target=`"_blank`" rel=`"noopener`">$($entry.roleDefinitionName)</a> ($($entry.roleAssignmentId))")
         #             }
@@ -3720,19 +3781,19 @@ extensions: [{ name: 'sort' }]
         #     }
         # }
 
-        $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentIdUnique.PolicyAssignmentId) = @{}
+        $htPolicyAssignmentRelatedRoleAssignments[$policyAssignmentIdUnique.PolicyAssignmentId] = @{}
         if (($relatedRoleAssignmentsArray).count -gt 0) {
-            # $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentIdUnique.PolicyAssignmentId).relatedRoleAssignments = ($relatedRoleAssignmentsArray | Sort-Object) -join "$CsvDelimiterOpposite "
-            # $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentIdUnique.PolicyAssignmentId).relatedRoleAssignmentsClear = ($relatedRoleAssignmentsArrayClear | Sort-Object) -join "$CsvDelimiterOpposite "
-            $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentIdUnique.PolicyAssignmentId) = @{
+            # $htPolicyAssignmentRelatedRoleAssignments[$policyAssignmentIdUnique.PolicyAssignmentId].relatedRoleAssignments = ($relatedRoleAssignmentsArray | Sort-Object) -join "$CsvDelimiterOpposite "
+            # $htPolicyAssignmentRelatedRoleAssignments[$policyAssignmentIdUnique.PolicyAssignmentId].relatedRoleAssignmentsClear = ($relatedRoleAssignmentsArrayClear | Sort-Object) -join "$CsvDelimiterOpposite "
+            $htPolicyAssignmentRelatedRoleAssignments[$policyAssignmentIdUnique.PolicyAssignmentId] = @{
                 relatedRoleAssignments      = ($relatedRoleAssignmentsArray | Sort-Object) -join "$CsvDelimiterOpposite "
                 relatedRoleAssignmentsClear = ($relatedRoleAssignmentsArrayClear | Sort-Object) -join "$CsvDelimiterOpposite "
             }
         }
         else {
-            # $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentIdUnique.PolicyAssignmentId).relatedRoleAssignments = 'none'
-            # $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentIdUnique.PolicyAssignmentId).relatedRoleAssignmentsClear = 'none'
-            $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentIdUnique.PolicyAssignmentId) = @{
+            # $htPolicyAssignmentRelatedRoleAssignments[$policyAssignmentIdUnique.PolicyAssignmentId].relatedRoleAssignments = 'none'
+            # $htPolicyAssignmentRelatedRoleAssignments[$policyAssignmentIdUnique.PolicyAssignmentId].relatedRoleAssignmentsClear = 'none'
+            $htPolicyAssignmentRelatedRoleAssignments[$policyAssignmentIdUnique.PolicyAssignmentId] = @{
                 relatedRoleAssignments      = 'none'
                 relatedRoleAssignmentsClear = 'none'
             }
@@ -3740,14 +3801,9 @@ extensions: [{ name: 'sort' }]
         #endregion relatedRoleAssignments
 
         #region exemptions
-        $arrayExemptions = [System.Collections.ArrayList]@()
-        foreach ($exemptionId in $htPolicyAssignmentExemptions.keys) {
-            if ($htPolicyAssignmentExemptions.($exemptionId).exemption.properties.policyAssignmentId -eq $policyAssignmentIdUnique.PolicyAssignmentId) {
-                $null = $arrayExemptions.Add($htPolicyAssignmentExemptions.($exemptionId).exemption)
-            }
-        }
-        if ($arrayExemptions.Count -gt 0) {
-            $htPolicyAssignmentRelatedExemptions.($policyAssignmentIdUnique.PolicyAssignmentId) = @{
+        $arrayExemptions = $htExemptionsByPolicyAssignmentId[$policyAssignmentIdUnique.PolicyAssignmentId]
+        if ($null -ne $arrayExemptions -and $arrayExemptions.Count -gt 0) {
+            $htPolicyAssignmentRelatedExemptions[$policyAssignmentIdUnique.PolicyAssignmentId] = @{
                 exemptionsCount = $arrayExemptions.Count
                 exemptions      = $arrayExemptions
             }
@@ -3769,6 +3825,10 @@ extensions: [{ name: 'sort' }]
             Write-Host "    $cnter of $allPolicyAssignments PolicyAssignments processed: $((New-TimeSpan -Start $startSummaryPolicyAssignmentsAll -End $etappeSummaryPolicyAssignmentsAll).TotalSeconds) seconds"
         }
 
+        $policyAssignmentIdAll = $policyAssignmentAll.PolicyAssignmentId
+        $policyAssignmentAllSubscriptionId = $policyAssignmentAll.SubscriptionId
+        $policyAssignmentAllMgId = $policyAssignmentAll.MgId
+
         #region AzAdvertizerLinkOrNot
         if ($policyAssignmentAll.PolicyType -eq 'builtin') {
             if ($policyAssignmentAll.PolicyVariant -eq 'Policy') {
@@ -3788,12 +3848,12 @@ extensions: [{ name: 'sort' }]
         if (($policyAssignmentAll.PolicyAssignmentNotScopes).count -gt 0) {
             foreach ($policyAssignmentNotScope in $policyAssignmentAll.PolicyAssignmentNotScopes) {
                 if (-not [String]::IsNullOrEmpty($policyAssignmentAll.subscriptionId)) {
-                    if ($htSubscriptionsMgPath.($policyAssignmentAll.subscriptionId).path -contains ($($policyAssignmentNotScope -replace '/subscriptions/' -replace '/providers/Microsoft.Management/managementGroups/'))) {
+                    if ($htSubscriptionsMgPath[$policyAssignmentAll.subscriptionId].path -contains ($($policyAssignmentNotScope -replace '/subscriptions/' -replace '/providers/Microsoft.Management/managementGroups/'))) {
                         $excludedScope = 'true'
                     }
                 }
                 else {
-                    if ($htManagementGroupsMgPath.($policyAssignmentAll.MgId).path -contains ($($policyAssignmentNotScope -replace '/providers/Microsoft.Management/managementGroups/'))) {
+                    if ($htManagementGroupsMgPath[$policyAssignmentAll.MgId].path -contains ($($policyAssignmentNotScope -replace '/providers/Microsoft.Management/managementGroups/'))) {
                         $excludedScope = 'true'
                     }
                 }
@@ -3803,17 +3863,17 @@ extensions: [{ name: 'sort' }]
 
         #region exemptions
         $exemptionScope = 'false'
-        if ($htPolicyAssignmentRelatedExemptions.($policyAssignmentAll.PolicyAssignmentId)) {
-            foreach ($exemption in $htPolicyAssignmentRelatedExemptions.($policyAssignmentAll.PolicyAssignmentId).exemptions) {
+        if ($htPolicyAssignmentRelatedExemptions[$policyAssignmentIdAll]) {
+            foreach ($exemption in $htPolicyAssignmentRelatedExemptions[$policyAssignmentIdAll].exemptions) {
                 if ($exemption.properties.expiresOn) {
                     if ($exemption.properties.expiresOn -gt (Get-Date).ToUniversalTime()) {
                         if (-not [String]::IsNullOrEmpty($policyAssignmentAll.subscriptionId)) {
-                            if ($htSubscriptionsMgPath.($policyAssignmentAll.subscriptionId).path -contains ($(($exemption.Id -split '/providers/Microsoft.Authorization/policyExemptions/')[0] -replace '/subscriptions/' -replace '/providers/Microsoft.Management/managementGroups/'))) {
+                            if ($htSubscriptionsMgPath[$policyAssignmentAll.subscriptionId].path -contains ($(($exemption.Id -split '/providers/Microsoft.Authorization/policyExemptions/')[0] -replace '/subscriptions/' -replace '/providers/Microsoft.Management/managementGroups/'))) {
                                 $exemptionScope = 'true'
                             }
                         }
                         else {
-                            if ($htManagementGroupsMgPath.($policyAssignmentAll.MgId).path -contains ($(($exemption.Id -split '/providers/Microsoft.Authorization/policyExemptions/')[0] -replace '/subscriptions/' -replace '/providers/Microsoft.Management/managementGroups/'))) {
+                            if ($htManagementGroupsMgPath[$policyAssignmentAll.MgId].path -contains ($(($exemption.Id -split '/providers/Microsoft.Authorization/policyExemptions/')[0] -replace '/subscriptions/' -replace '/providers/Microsoft.Management/managementGroups/'))) {
                                 $exemptionScope = 'true'
                             }
                         }
@@ -3825,12 +3885,12 @@ extensions: [{ name: 'sort' }]
                 else {
                     #same code as above / function?
                     if (-not [String]::IsNullOrEmpty($policyAssignmentAll.subscriptionId)) {
-                        if ($htSubscriptionsMgPath.($policyAssignmentAll.subscriptionId).path -contains ($(($exemption.Id -split '/providers/Microsoft.Authorization/policyExemptions/')[0] -replace '/subscriptions/' -replace '/providers/Microsoft.Management/managementGroups/'))) {
+                        if ($htSubscriptionsMgPath[$policyAssignmentAll.subscriptionId].path -contains ($(($exemption.Id -split '/providers/Microsoft.Authorization/policyExemptions/')[0] -replace '/subscriptions/' -replace '/providers/Microsoft.Management/managementGroups/'))) {
                             $exemptionScope = 'true'
                         }
                     }
                     else {
-                        if ($htManagementGroupsMgPath.($policyAssignmentAll.MgId).path -contains ($(($exemption.Id -split '/providers/Microsoft.Authorization/policyExemptions/')[0] -replace '/subscriptions/' -replace '/providers/Microsoft.Management/managementGroups/'))) {
+                        if ($htManagementGroupsMgPath[$policyAssignmentAll.MgId].path -contains ($(($exemption.Id -split '/providers/Microsoft.Authorization/policyExemptions/')[0] -replace '/subscriptions/' -replace '/providers/Microsoft.Management/managementGroups/'))) {
                             $exemptionScope = 'true'
                         }
                     }
@@ -3840,12 +3900,12 @@ extensions: [{ name: 'sort' }]
         #endregion exemptions
 
         #region inheritance
-        if ($policyAssignmentAll.PolicyAssignmentId -like '/providers/Microsoft.Management/managementGroups/*') {
-            if (-not [String]::IsNullOrEmpty($policyAssignmentAll.SubscriptionId)) {
+        if ($policyAssignmentIdAll -like '/providers/Microsoft.Management/managementGroups/*') {
+            if (-not [String]::IsNullOrEmpty($policyAssignmentAllSubscriptionId)) {
                 $scope = "inherited $($policyAssignmentAll.PolicyAssignmentScope -replace '.*/')"
             }
             else {
-                if (($policyAssignmentAll.PolicyAssignmentScope -replace '.*/') -eq $policyAssignmentAll.MgId) {
+                if (($policyAssignmentAll.PolicyAssignmentScope -replace '.*/') -eq $policyAssignmentAllMgId) {
                     $scope = 'thisScope Mg'
                 }
                 else {
@@ -3854,11 +3914,11 @@ extensions: [{ name: 'sort' }]
             }
         }
 
-        if ($policyAssignmentAll.PolicyAssignmentId -like '/subscriptions/*' -and $policyAssignmentAll.PolicyAssignmentId -notlike '/subscriptions/*/resourcegroups/*') {
+        if ($policyAssignmentIdAll -like '/subscriptions/*' -and $policyAssignmentIdAll -notlike '/subscriptions/*/resourcegroups/*') {
             $scope = 'thisScope Sub'
         }
 
-        if ($policyAssignmentAll.PolicyAssignmentId -like '/subscriptions/*/resourcegroups/*') {
+        if ($policyAssignmentIdAll -like '/subscriptions/*/resourcegroups/*') {
             $scope = 'thisScope Sub RG'
         }
         #endregion inheritance
@@ -3888,7 +3948,7 @@ extensions: [{ name: 'sort' }]
         #endregion effect
 
         #region mgOrSubOrRG
-        if ([String]::IsNullOrEmpty($policyAssignmentAll.SubscriptionId)) {
+        if ([String]::IsNullOrEmpty($policyAssignmentAllSubscriptionId)) {
             $mgOrSubOrRG = 'Mg'
         }
         else {
@@ -3914,8 +3974,8 @@ extensions: [{ name: 'sort' }]
         #createdBy
         if ($policyAssignmentAll.PolicyAssignmentCreatedBy) {
             $createdBy = $policyAssignmentAll.PolicyAssignmentCreatedBy
-            if ($htIdentitiesWithRoleAssignmentsUnique.($createdBy)) {
-                $createdBy = $htIdentitiesWithRoleAssignmentsUnique.($createdBy).details
+            if ($htIdentitiesWithRoleAssignmentsUnique[$createdBy]) {
+                $createdBy = $htIdentitiesWithRoleAssignmentsUnique[$createdBy].details
             }
         }
         else {
@@ -3925,8 +3985,8 @@ extensions: [{ name: 'sort' }]
         #UpdatedBy
         if ($policyAssignmentAll.PolicyAssignmentUpdatedBy) {
             $updatedBy = $policyAssignmentAll.PolicyAssignmentUpdatedBy
-            if ($htIdentitiesWithRoleAssignmentsUnique.($updatedBy)) {
-                $updatedBy = $htIdentitiesWithRoleAssignmentsUnique.($updatedBy).details
+            if ($htIdentitiesWithRoleAssignmentsUnique[$updatedBy]) {
+                $updatedBy = $htIdentitiesWithRoleAssignmentsUnique[$updatedBy].details
             }
         }
         else {
@@ -3945,13 +4005,13 @@ extensions: [{ name: 'sort' }]
 
         #region
         $policyAssignmentMI = ''
-        if ($htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentAll.PolicyAssignmentId)) {
-            $hlp = $htPolicyAssignmentRelatedRoleAssignments.($policyAssignmentAll.PolicyAssignmentId)
+        if ($htPolicyAssignmentRelatedRoleAssignments[$policyAssignmentIdAll]) {
+            $hlp = $htPolicyAssignmentRelatedRoleAssignments[$policyAssignmentIdAll]
             $relatedRoleAssignments = $hlp.relatedRoleAssignments
             $relatedRoleAssignmentsClear = $hlp.relatedRoleAssignmentsClear
-            $hlperVar = "$($policyAssignmentAll.PolicyAssignmentId -replace '.*/')_$($policyAssignmentAll.PolicyAssignmentId)"
-            if ($htManagedIdentityDisplayName.($hlperVar)) {
-                $hlp = $htManagedIdentityDisplayName.($hlperVar)
+            $hlperVar = "$($policyAssignmentIdAll -replace '.*/')_$($policyAssignmentIdAll)"
+            if ($htManagedIdentityDisplayName[$hlperVar]) {
+                $hlp = $htManagedIdentityDisplayName[$hlperVar]
                 $policyAssignmentMI = "$($hlp.displayname) (SPObjId: $($hlp.id))"
             }
         }
@@ -3959,11 +4019,11 @@ extensions: [{ name: 'sort' }]
 
         if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
             #region policyCompliance
-            $policyAssignmentIdToLower = ($policyAssignmentAll.policyAssignmentId).ToLower()
+            $policyAssignmentIdToLower = ($policyAssignmentIdAll).ToLower()
 
             #mg
-            if ([String]::IsNullOrEmpty($policyAssignmentAll.subscriptionId)) {
-                if (($htCachePolicyComplianceResponseTooLargeMG).($policyAssignmentAll.MgId)) {
+            if ([String]::IsNullOrEmpty($policyAssignmentAllSubscriptionId)) {
+                if ($htCachePolicyComplianceResponseTooLargeMG[$policyAssignmentAllMgId]) {
                     $NonCompliantPolicies = 'skipped'
                     $CompliantPolicies = 'skipped'
                     $NonCompliantResources = 'skipped'
@@ -3971,7 +4031,7 @@ extensions: [{ name: 'sort' }]
                     $ConflictingResources = 'skipped'
                 }
                 else {
-                    $compliance = ($htCachePolicyComplianceMG).($policyAssignmentAll.MgId).($policyAssignmentIdToLower)
+                    $compliance = $htCachePolicyComplianceMG[$policyAssignmentAllMgId].($policyAssignmentIdToLower)
                     $NonCompliantPolicies = $compliance.NonCompliantPolicies
                     $CompliantPolicies = $compliance.CompliantPolicies
                     $NonCompliantResources = $compliance.NonCompliantResources
@@ -3997,8 +4057,8 @@ extensions: [{ name: 'sort' }]
             }
 
             #sub/rg
-            if (-not [String]::IsNullOrEmpty($policyAssignmentAll.subscriptionId)) {
-                if (($htCachePolicyComplianceResponseTooLargeSUB).($policyAssignmentAll.SubscriptionId)) {
+            if (-not [String]::IsNullOrEmpty($policyAssignmentAllSubscriptionId)) {
+                if ($htCachePolicyComplianceResponseTooLargeSUB[$policyAssignmentAllSubscriptionId]) {
                     $NonCompliantPolicies = 'skipped'
                     $CompliantPolicies = 'skipped'
                     $NonCompliantResources = 'skipped'
@@ -4006,7 +4066,7 @@ extensions: [{ name: 'sort' }]
                     $ConflictingResources = 'skipped'
                 }
                 else {
-                    $compliance = ($htCachePolicyComplianceSUB).($policyAssignmentAll.SubscriptionId).($policyAssignmentIdToLower)
+                    $compliance = $htCachePolicyComplianceSUB[$policyAssignmentAllSubscriptionId].($policyAssignmentIdToLower)
                     $NonCompliantPolicies = $compliance.NonCompliantPolicies
                     $CompliantPolicies = $compliance.CompliantPolicies
                     $NonCompliantResources = $compliance.NonCompliantResources
@@ -4132,13 +4192,13 @@ extensions: [{ name: 'sort' }]
 
     $htNonResolvedIdentitiesPolicy = @{}
     foreach ($createdByNotResolvedEntry in $createdByNotResolved) {
-        if (-not $htNonResolvedIdentitiesPolicy.($createdByNotResolvedEntry)) {
-            $htNonResolvedIdentitiesPolicy.($createdByNotResolvedEntry) = @{}
+        if (-not $htNonResolvedIdentitiesPolicy[$createdByNotResolvedEntry]) {
+            $htNonResolvedIdentitiesPolicy[$createdByNotResolvedEntry] = @{}
         }
     }
     foreach ($updatedByNotResolvedEntry in $updatedByNotResolved) {
-        if (-not $htNonResolvedIdentitiesPolicy.($updatedByNotResolvedEntry)) {
-            $htNonResolvedIdentitiesPolicy.($updatedByNotResolvedEntry) = @{}
+        if (-not $htNonResolvedIdentitiesPolicy[$updatedByNotResolvedEntry]) {
+            $htNonResolvedIdentitiesPolicy[$updatedByNotResolvedEntry] = @{}
         }
     }
 
@@ -4181,7 +4241,7 @@ extensions: [{ name: 'sort' }]
                     Write-Host "     $resolvedIdentitiesCount identities resolved"
                     if ($resolvedIdentitiesCount -gt 0) {
                         foreach ($resolvedIdentity in $resolvedIdentities) {
-                            if (-not $htResolvedIdentitiesPolicy.($resolvedIdentity.id)) {
+                            if (-not $htResolvedIdentitiesPolicy[$resolvedIdentity.id]) {
                                 $script:htResolvedIdentitiesPolicy.($resolvedIdentity.id) = @{}
                                 if ($resolvedIdentity.'@odata.type' -eq '#microsoft.graph.servicePrincipal') {
                                     if ($resolvedIdentity.servicePrincipalType -eq 'ManagedIdentity') {
@@ -4244,14 +4304,14 @@ extensions: [{ name: 'sort' }]
             }
 
             foreach ($policyAssignment in $script:arrayPolicyAssignmentsEnriched.where( { -not [string]::IsNullOrEmpty($_.CreatedBy) -and $_.CreatedBy -notlike 'ObjectType*' })) {
-                if ($htResolvedIdentitiesPolicy.($policyAssignment.CreatedBy)) {
-                    $policyAssignment.CreatedBy = $htResolvedIdentitiesPolicy.($policyAssignment.CreatedBy).custObjectType
+                if ($htResolvedIdentitiesPolicy[$policyAssignment.CreatedBy]) {
+                    $policyAssignment.CreatedBy = $htResolvedIdentitiesPolicy[$policyAssignment.CreatedBy].custObjectType
                 }
             }
 
             foreach ($policyAssignment in $script:arrayPolicyAssignmentsEnriched.where( { -not [string]::IsNullOrEmpty($_.UpdatedBy) -and $_.UpdatedBy -notlike 'ObjectType*' })) {
-                if ($htResolvedIdentitiesPolicy.($policyAssignment.UpdatedBy)) {
-                    $policyAssignment.UpdatedBy = $htResolvedIdentitiesPolicy.($policyAssignment.UpdatedBy).custObjectType
+                if ($htResolvedIdentitiesPolicy[$policyAssignment.UpdatedBy]) {
+                    $policyAssignment.UpdatedBy = $htResolvedIdentitiesPolicy[$policyAssignment.UpdatedBy].custObjectType
                 }
             }
         }
@@ -4263,6 +4323,15 @@ extensions: [{ name: 'sort' }]
 
     $script:arrayPolicyAssignmentsEnrichedGroupedBySubscription = $arrayPolicyAssignmentsEnriched | Group-Object -Property subscriptionId
     $script:arrayPolicyAssignmentsEnrichedGroupedByManagementGroup = $arrayPolicyAssignmentsEnriched | Group-Object -Property MgId
+    #build lookup hashtables so ScopeInsights (called per scope) can do O(1) lookups instead of O(scopes*n) .where() scans
+    $script:htArrayPolicyAssignmentsEnrichedGroupedBySubscription = @{}
+    foreach ($grpEntry in $script:arrayPolicyAssignmentsEnrichedGroupedBySubscription) {
+        $script:htArrayPolicyAssignmentsEnrichedGroupedBySubscription[$grpEntry.Name] = $grpEntry
+    }
+    $script:htArrayPolicyAssignmentsEnrichedGroupedByManagementGroup = @{}
+    foreach ($grpEntry in $script:arrayPolicyAssignmentsEnrichedGroupedByManagementGroup) {
+        $script:htArrayPolicyAssignmentsEnrichedGroupedByManagementGroup[$grpEntry.Name] = $grpEntry
+    }
 
     #region policyAssignmentsAllHTML
     Write-Host '   processing SummaryPolicyAssignmentsAllHTML'
@@ -4791,7 +4860,7 @@ extensions: [{ name: 'sort' }]
 "@)
         $htmlSUMMARYtenanttotalcustomroles = $null
         $htmlSUMMARYtenanttotalcustomroles = foreach ($tenantCustomRole in $tenantCustomRoles | Sort-Object @{Expression = { $_.Name } }, @{Expression = { $_.Id } }) {
-            $cachedTenantCustomRole = ($htCacheDefinitionsRole).($tenantCustomRole.Id)
+            $cachedTenantCustomRole = $htCacheDefinitionsRole[$tenantCustomRole.Id]
             if (-not [string]::IsNullOrEmpty($cachedTenantCustomRole.DataActions) -or -not [string]::IsNullOrEmpty($cachedTenantCustomRole.NotDataActions)) {
                 $roleManageData = 'true'
             }
@@ -4801,8 +4870,8 @@ extensions: [{ name: 'sort' }]
 
             if (-not [string]::IsNullOrEmpty($cachedTenantCustomRole.Json.properties.createdBy)) {
                 $createdBy = $cachedTenantCustomRole.Json.properties.createdBy
-                if ($htIdentitiesWithRoleAssignmentsUnique.($createdBy)) {
-                    $createdBy = $htIdentitiesWithRoleAssignmentsUnique.($createdBy).details
+                if ($htIdentitiesWithRoleAssignmentsUnique[$createdBy]) {
+                    $createdBy = $htIdentitiesWithRoleAssignmentsUnique[$createdBy].details
                 }
             }
             else {
@@ -4820,8 +4889,8 @@ extensions: [{ name: 'sort' }]
                 $updatedOnFormated = $updatedOn
                 if (-not [string]::IsNullOrEmpty($cachedTenantCustomRole.Json.properties.updatedBy)) {
                     $updatedByRemoveNoiseOrNot = $cachedTenantCustomRole.Json.properties.updatedBy
-                    if ($htIdentitiesWithRoleAssignmentsUnique.($updatedByRemoveNoiseOrNot)) {
-                        $updatedByRemoveNoiseOrNot = $htIdentitiesWithRoleAssignmentsUnique.($updatedByRemoveNoiseOrNot).details
+                    if ($htIdentitiesWithRoleAssignmentsUnique[$updatedByRemoveNoiseOrNot]) {
+                        $updatedByRemoveNoiseOrNot = $htIdentitiesWithRoleAssignmentsUnique[$updatedByRemoveNoiseOrNot].details
                     }
                 }
                 else {
@@ -5042,7 +5111,7 @@ extensions: [{ name: 'sort' }]
                         if ($mgs.MgId -notcontains ($roleAssignableScopeMg)) {
                             #assignableScope outside of the ManagementGroupId Scope
                             $roleIsUsed = $true
-                            Continue
+                            continue
                         }
                     }
                 }
@@ -5162,6 +5231,9 @@ extensions: [{ name: 'sort' }]
     Write-Host '  processing TenantSummary RoleAssignments orphaned'
     $roleAssignmentsOrphanedAll = ($rbacBaseQuery.where( { $_.RoleAssignmentIdentityObjectType -eq 'Unknown' })) | Sort-Object -Property RoleAssignmentId
     $roleAssignmentsOrphanedUnique = $roleAssignmentsOrphanedAll | Sort-Object -Property RoleAssignmentId -Unique
+    #lookup hashtable so the per-assignment loop below can do O(1) lookups instead of an O(n^2) .where() scan
+    $htRoleAssignmentsOrphanedAllGrouped = @{}
+    foreach ($grpEntry in ($roleAssignmentsOrphanedAll | Group-Object -Property RoleAssignmentId)) { $htRoleAssignmentsOrphanedAllGrouped[$grpEntry.Name] = $grpEntry }
 
     if (($roleAssignmentsOrphanedUnique).count -gt 0) {
         $tfCount = ($roleAssignmentsOrphanedUnique).count
@@ -5182,21 +5254,21 @@ extensions: [{ name: 'sort' }]
 </thead>
 <tbody>
 "@)
-        $htmlSUMMARYOrphanedRoleAssignments = $null
+        $htmlSUMMARYOrphanedRoleAssignments = [System.Text.StringBuilder]::new()
         foreach ($roleAssignmentOrphanedUnique in $roleAssignmentsOrphanedUnique) {
-            $hlpRoleAssignmentsAll = $roleAssignmentsOrphanedAll.where( { $_.RoleAssignmentId -eq $roleAssignmentOrphanedUnique.RoleAssignmentId })
+            $hlpRoleAssignmentsAll = $htRoleAssignmentsOrphanedAllGrouped[$roleAssignmentOrphanedUnique.RoleAssignmentId].Group
             $impactedMgs = $hlpRoleAssignmentsAll.where( { [String]::IsNullOrEmpty($_.SubscriptionId) }) | Sort-Object -Property MgId
             $impactedSubs = $hlpRoleAssignmentsAll.where( { -not [String]::IsNullOrEmpty($_.SubscriptionId) }) | Sort-Object -Property SubscriptionId
-            $htmlSUMMARYOrphanedRoleAssignments += @"
+            [void]$htmlSUMMARYOrphanedRoleAssignments.Append(@"
 <tr>
 <td>$($roleAssignmentOrphanedUnique.RoleAssignmentId)</td>
 <td>$($roleAssignmentOrphanedUnique.RoleDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($roleAssignmentOrphanedUnique.RoleDefinitionId)</td>
 <td>Mg: $(($impactedMgs).count); Sub: $(($impactedSubs).count)</td>
 </tr>
-"@
+"@)
         }
-        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYOrphanedRoleAssignments)
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYOrphanedRoleAssignments.ToString())
         [void]$htmlTenantSummary.AppendLine(@"
             </tbody>
         </table>
@@ -5262,15 +5334,15 @@ extensions: [{ name: 'sort' }]
     if ($azAPICallConf['htParameters'].LargeTenant -or $azAPICallConf['htParameters'].RBACAtScopeOnly) {
         $rbacAllAtScope = ($rbacAll.where( { ((-not [string]::IsNullOrEmpty($_.SubscriptionId) -and $_.scope -notlike 'inherited *')) -or ([string]::IsNullOrEmpty($_.SubscriptionId)) }))
         $rbacAllCount = $rbacAllAtScope.Count
-        $rbacAllUniqueCount = ($rbacAllAtScope.where({ $_.roleAssignmentId }).RoleAssignmentId | Sort-Object -Unique).count
+        $rbacAllUniqueCount = [System.Collections.Generic.HashSet[string]]::new([string[]]@($rbacAllAtScope.where({ $_.roleAssignmentId }).RoleAssignmentId), [System.StringComparer]::OrdinalIgnoreCase).Count
     }
     else {
         $rbacAllCount = $rbacAll.Count
-        $rbacAllUniqueCount = ($rbacAll.where({ $_.roleAssignmentId }).RoleAssignmentId | Sort-Object -Unique).count
+        $rbacAllUniqueCount = [System.Collections.Generic.HashSet[string]]::new([string[]]@($rbacAll.where({ $_.roleAssignmentId }).RoleAssignmentId), [System.StringComparer]::OrdinalIgnoreCase).Count
     }
 
     if ($rbacAllCount -gt 0) {
-        $uniqueRoleAssignmentsCount = ($rbacAll.RoleAssignmentId | Sort-Object -Unique).count
+        $uniqueRoleAssignmentsCount = [System.Collections.Generic.HashSet[string]]::new([string[]]@($rbacAll.RoleAssignmentId), [System.StringComparer]::OrdinalIgnoreCase).Count
         $tfCount = $rbacAllCount
 
         if (-not $NoCsvExport) {
@@ -5278,20 +5350,31 @@ extensions: [{ name: 'sort' }]
 
             $csvFilename = "$($filename)_RoleAssignments"
             Write-Host "   Exporting RoleAssignments CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
+            #explicit property list (full rbacAll schema minus Role and RbacRelatedPolicyAssignment, in definition order) is faster than Select-Object -ExcludeProperty and yields byte-identical output
+            $rbacCsvKeepProps = @(
+                'Level', 'RoleAssignmentId', 'RoleAssignmentPIMRelated', 'RoleAssignmentPIMAssignmentType',
+                'RoleAssignmentPIMAssignmentSlotStart', 'RoleAssignmentPIMAssignmentSlotEnd', 'CreatedBy', 'CreatedOn',
+                'UpdatedBy', 'UpdatedOn', 'MgId', 'MgName', 'MgParentId', 'MgParentName', 'SubscriptionId',
+                'SubscriptionName', 'Scope', 'ScopeTenOrMgOrSubOrRGOrRes', 'RoleAssignmentScopeName',
+                'RoleAssignmentScopeRG', 'RoleAssignmentScopeRes', 'RoleClear', 'RoleId', 'RoleType', 'RoleDataRelated',
+                'AssignmentType', 'AssignmentInheritFrom', 'GroupMembersCount', 'ObjectDisplayName', 'ObjectSignInName',
+                'ObjectId', 'ObjectType', 'RbacRelatedPolicyAssignmentClear', 'RoleSecurityCustomRoleOwner',
+                'RoleSecurityOwnerAssignmentSP', 'RoleCanDoRoleAssignments'
+            )
             if ($CsvExportUseQuotesAsNeeded) {
                 if ($azAPICallConf['htParameters'].LargeTenant -or $azAPICallConf['htParameters'].RBACAtScopeOnly) {
-                    $rbacAllAtScope | Sort-Object -Property Level, RoleAssignmentId, MgId, SubscriptionId, RoleClear, ObjectId | Select-Object -ExcludeProperty Role, RbacRelatedPolicyAssignment | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
+                    $rbacAllAtScope | Sort-Object -Property Level, RoleAssignmentId, MgId, SubscriptionId, RoleClear, ObjectId | Select-Object -Property $rbacCsvKeepProps | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
                 }
                 else {
-                    $rbacAll | Sort-Object -Property Level, RoleAssignmentId, MgId, SubscriptionId, RoleClear, ObjectId | Select-Object -ExcludeProperty Role, RbacRelatedPolicyAssignment | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
+                    $rbacAll | Sort-Object -Property Level, RoleAssignmentId, MgId, SubscriptionId, RoleClear, ObjectId | Select-Object -Property $rbacCsvKeepProps | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
                 }
             }
             else {
                 if ($azAPICallConf['htParameters'].LargeTenant -or $azAPICallConf['htParameters'].RBACAtScopeOnly) {
-                    $rbacAllAtScope | Sort-Object -Property Level, RoleAssignmentId, MgId, SubscriptionId, RoleClear, ObjectId | Select-Object -ExcludeProperty Role, RbacRelatedPolicyAssignment | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                    $rbacAllAtScope | Sort-Object -Property Level, RoleAssignmentId, MgId, SubscriptionId, RoleClear, ObjectId | Select-Object -Property $rbacCsvKeepProps | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
                 }
                 else {
-                    $rbacAll | Sort-Object -Property Level, RoleAssignmentId, MgId, SubscriptionId, RoleClear, ObjectId | Select-Object -ExcludeProperty Role, RbacRelatedPolicyAssignment | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                    $rbacAll | Sort-Object -Property Level, RoleAssignmentId, MgId, SubscriptionId, RoleClear, ObjectId | Select-Object -Property $rbacCsvKeepProps | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
                 }
             }
 
@@ -5319,7 +5402,7 @@ extensions: [{ name: 'sort' }]
             #all
             $roleAssignmentsInfo += "All: $($rbacAllUniqueCount)"
             #static
-            $roleAssignmentsInfo += "Standing: $((($rbacAll.where({ $_.RoleAssignmentPIMRelated -eq $false })).roleAssignmentId | Sort-Object -Unique).count)"
+            $roleAssignmentsInfo += "Standing: $([System.Collections.Generic.HashSet[string]]::new([string[]]@(($rbacAll.where({ $_.RoleAssignmentPIMRelated -eq $false })).roleAssignmentId), [System.StringComparer]::OrdinalIgnoreCase).Count)"
             #PIM
             foreach ($pimAssignmentInfo in ($rbacAll.where({ $_.RoleAssignmentPIMRelated -and $_.Scope -notlike 'inherited*' })) | Group-Object -Property RoleAssignmentPIMAssignmentType) {
                 $roleAssignmentsInfo += "PIM-$($pimAssignmentInfo.Name): $($pimAssignmentInfo.Count)"
@@ -5745,6 +5828,9 @@ extensions: [{ name: 'sort' }]
     #region SUMMARYSecurityCustomRoles
     Write-Host '  processing TenantSummary Custom Roles security (owner permissions)'
     $customRolesOwnerAll = ($rbacBaseQuery.where( { $_.RoleSecurityCustomRoleOwner -eq 1 })) | Sort-Object -Property RoleDefinitionId
+    #lookup hashtable so the per-customRole loop below can do O(1) lookups instead of O(customRoles*n) .where() scans
+    $htCustomRolesOwnerAllGrouped = @{}
+    foreach ($grpEntry in ($customRolesOwnerAll | Group-Object -Property RoleDefinitionId)) { $htCustomRolesOwnerAllGrouped[$grpEntry.Name] = $grpEntry }
     $customRolesOwnerHtAll = $tenantCustomRoles.where( { $_.Actions -eq '*' -and ($_.NotActions).length -eq 0 })
     if (($customRolesOwnerHtAll).count -gt 0) {
         $tfCount = ($customRolesOwnerHtAll).count
@@ -5765,12 +5851,12 @@ extensions: [{ name: 'sort' }]
 </thead>
 <tbody>
 "@)
-        $htmlSUMMARYSecurityCustomRoles = $null
+        $htmlSUMMARYSecurityCustomRoles = [System.Text.StringBuilder]::new()
         foreach ($customRole in ($customRolesOwnerHtAll | Sort-Object -Property Name, Id)) {
-            $customRoleOwnersAllAssignmentsCount = ((($customRolesOwnerAll.where( { $_.RoleDefinitionId -eq $customRole.Id })).RoleAssignmentId | Sort-Object -Unique)).count
+            $customRoleOwnersAllAssignmentsCount = ((($htCustomRolesOwnerAllGrouped[$customRole.Id].Group).RoleAssignmentId | Sort-Object -Unique)).count
             if ($customRoleOwnersAllAssignmentsCount -gt 0) {
                 $customRoleRoleAssignmentsArray = [System.Collections.ArrayList]@()
-                $customRoleRoleAssignmentIds = ($customRolesOwnerAll.where( { $_.RoleDefinitionId -eq $customRole.Id })).RoleAssignmentId | Sort-Object -Unique
+                $customRoleRoleAssignmentIds = ($htCustomRolesOwnerAllGrouped[$customRole.Id].Group).RoleAssignmentId | Sort-Object -Unique
                 foreach ($customRoleRoleAssignmentId in $customRoleRoleAssignmentIds) {
                     $null = $customRoleRoleAssignmentsArray.Add($customRoleRoleAssignmentId)
                 }
@@ -5779,16 +5865,16 @@ extensions: [{ name: 'sort' }]
             else {
                 $customRoleRoleAssignmentsOutput = "$customRoleOwnersAllAssignmentsCount"
             }
-            $htmlSUMMARYSecurityCustomRoles += @"
+            [void]$htmlSUMMARYSecurityCustomRoles.Append(@"
 <tr>
 <td>$($customRole.Name -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($customRole.Id)</td>
 <td>$($customRoleRoleAssignmentsOutput)</td>
 <td>$(($customRole.AssignableScopes).count) ($($customRole.AssignableScopes -join "$CsvDelimiterOpposite "))</td>
 </tr>
-"@
+"@)
         }
-        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYSecurityCustomRoles)
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYSecurityCustomRoles.ToString())
         [void]$htmlTenantSummary.AppendLine(@"
             </tbody>
         </table>
@@ -5853,12 +5939,12 @@ extensions: [{ name: 'sort' }]
         $roleAssignments4RolesCanDoRoleAssignments = (($rbacBaseQuery | Sort-Object -Property RoleAssignmentId -Unique).where( { $_.RoleCanDoRoleAssignments -eq $true })) | Select-Object RoleAssignmentId, RoleDefinitionId
         $htRoleAssignments4RolesCanDoRoleAssignments = @{}
         foreach ($roleAssignment4RolesCanDoRoleAssignments in $roleAssignments4RolesCanDoRoleAssignments) {
-            if (-not $htRoleAssignments4RolesCanDoRoleAssignments.($roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId)) {
-                $htRoleAssignments4RolesCanDoRoleAssignments.($roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId) = @{
+            if (-not $htRoleAssignments4RolesCanDoRoleAssignments[$roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId]) {
+                $htRoleAssignments4RolesCanDoRoleAssignments[$roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId] = @{
                     roleAssignments = [System.Collections.ArrayList]@()
                 }
             }
-            $null = $htRoleAssignments4RolesCanDoRoleAssignments.($roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId).roleAssignments.Add($roleAssignment4RolesCanDoRoleAssignments.RoleAssignmentId)
+            $null = $htRoleAssignments4RolesCanDoRoleAssignments[$roleAssignment4RolesCanDoRoleAssignments.RoleDefinitionId].roleAssignments.Add($roleAssignment4RolesCanDoRoleAssignments.RoleAssignmentId)
         }
 
         $tfCount = $tenantAllRolesCanDoRoleAssignmentsCount
@@ -5880,7 +5966,7 @@ extensions: [{ name: 'sort' }]
 </thead>
 <tbody>
 "@)
-        $htmlSUMMARYSecurityRolesCanDoRoleAssignments = $null
+        $htmlSUMMARYSecurityRolesCanDoRoleAssignments = [System.Text.StringBuilder]::new()
         foreach ($role in ($tenantAllRolesCanDoRoleAssignments | Sort-Object -Property Name)) {
             if ($role.IsCustom) {
                 $roleType = 'Custom'
@@ -5891,14 +5977,14 @@ extensions: [{ name: 'sort' }]
                 $roleAssignableScopes = ''
             }
 
-            if ($htRoleAssignments4RolesCanDoRoleAssignments.($role.Id).roleAssignments.Count -gt 0) {
-                $roleAssignments = "$($htRoleAssignments4RolesCanDoRoleAssignments.($role.Id).roleAssignments.Count) ($($htRoleAssignments4RolesCanDoRoleAssignments.($role.Id).roleAssignments -join ', '))"
+            if ($htRoleAssignments4RolesCanDoRoleAssignments[$role.Id].roleAssignments.Count -gt 0) {
+                $roleAssignments = "$($htRoleAssignments4RolesCanDoRoleAssignments[$role.Id].roleAssignments.Count) ($($htRoleAssignments4RolesCanDoRoleAssignments[$role.Id].roleAssignments -join ', '))"
             }
             else {
                 $roleAssignments = 0
             }
 
-            $htmlSUMMARYSecurityRolesCanDoRoleAssignments += @"
+            [void]$htmlSUMMARYSecurityRolesCanDoRoleAssignments.Append(@"
 <tr>
 <td>$($role.Name -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td>$($role.Id)</td>
@@ -5906,9 +5992,9 @@ extensions: [{ name: 'sort' }]
 <td>$($roleAssignments)</td>
 <td>$($roleAssignableScopes)</td>
 </tr>
-"@
+"@)
         }
-        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYSecurityRolesCanDoRoleAssignments)
+        [void]$htmlTenantSummary.AppendLine($htmlSUMMARYSecurityRolesCanDoRoleAssignments.ToString())
         [void]$htmlTenantSummary.AppendLine(@"
             </tbody>
         </table>
@@ -5972,6 +6058,9 @@ extensions: [{ name: 'sort' }]
     Write-Host '  processing TenantSummary RoleAssignments security (owner SP)'
     $roleAssignmentsOwnerAssignmentSPAll = ($rbacBaseQuery.where( { $_.RoleSecurityOwnerAssignmentSP -eq 1 })) | Sort-Object -Property RoleAssignmentId
     $roleAssignmentsOwnerAssignmentSP = $roleAssignmentsOwnerAssignmentSPAll | Sort-Object -Property RoleAssignmentId -Unique
+    #lookup hashtable so the per-assignment loop below can do O(1) lookups instead of an O(n^2) .where() scan
+    $htRoleAssignmentsOwnerAssignmentSPAllGrouped = @{}
+    foreach ($grpEntry in ($roleAssignmentsOwnerAssignmentSPAll | Group-Object -Property RoleAssignmentId)) { $htRoleAssignmentsOwnerAssignmentSPAllGrouped[$grpEntry.Name] = $grpEntry }
     if (($roleAssignmentsOwnerAssignmentSP).count -gt 0) {
         $tfCount = ($roleAssignmentsOwnerAssignmentSP).count
         $htmlTableId = 'TenantSummary_roleAssignmentsOwnerAssignmentSP'
@@ -5994,7 +6083,7 @@ extensions: [{ name: 'sort' }]
 "@)
         $htmlSUMMARYSecurityOwnerAssignmentSP = $null
         $htmlSUMMARYSecurityOwnerAssignmentSP = foreach ($roleAssignmentOwnerAssignmentSP in ($roleAssignmentsOwnerAssignmentSP)) {
-            $hlpRoleAssignmentsAll = $roleAssignmentsOwnerAssignmentSPAll.where( { $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentSP.RoleAssignmentId })
+            $hlpRoleAssignmentsAll = $htRoleAssignmentsOwnerAssignmentSPAllGrouped[$roleAssignmentOwnerAssignmentSP.RoleAssignmentId].Group
             $impactedMgs = $hlpRoleAssignmentsAll.where( { [String]::IsNullOrEmpty($_.SubscriptionId) })
             $impactedSubs = $hlpRoleAssignmentsAll.where( { -not [String]::IsNullOrEmpty($_.SubscriptionId) })
             $servicePrincipal = $roleAssignmentsOwnerAssignmentSP.where( { $_.RoleAssignmentId -eq $roleAssignmentOwnerAssignmentSP.RoleAssignmentId }) | Get-Unique
@@ -6074,6 +6163,9 @@ extensions: [{ name: 'sort' }]
 
     $roleAssignmentsOwnerAssignmentNotGroup = $rbacBaseQueryArrayListNotGroupOwner | Sort-Object -Property RoleAssignmentId -Unique
     $roleAssignmentsOwnerAssignmentNotGroupGrouped = ($rbacBaseQueryArrayListNotGroupOwner | Group-Object -Property roleassignmentId)
+    #lookup hashtable so the per-assignment loop below can do O(1) lookups instead of an O(n^2) .where() scan
+    $htRoleAssignmentsOwnerAssignmentNotGroupGrouped = @{}
+    foreach ($grpEntry in $roleAssignmentsOwnerAssignmentNotGroupGrouped) { $htRoleAssignmentsOwnerAssignmentNotGroupGrouped[$grpEntry.Name] = $grpEntry }
 
     if (($roleAssignmentsOwnerAssignmentNotGroup).count -gt 0) {
         $tfCount = ($roleAssignmentsOwnerAssignmentNotGroup).count
@@ -6100,7 +6192,7 @@ extensions: [{ name: 'sort' }]
 "@)
         $htmlSUMMARYSecurityOwnerAssignmentNotGroup = $null
         $htmlSUMMARYSecurityOwnerAssignmentNotGroup = foreach ($roleAssignmentOwnerAssignmentNotGroup in ($roleAssignmentsOwnerAssignmentNotGroup)) {
-            $impactedMgSubBaseQuery = $roleAssignmentsOwnerAssignmentNotGroupGrouped.where( { $_.Name -eq $roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentId })
+            $impactedMgSubBaseQuery = $htRoleAssignmentsOwnerAssignmentNotGroupGrouped[$roleAssignmentOwnerAssignmentNotGroup.RoleAssignmentId]
             $impactedMgs = $impactedMgSubBaseQuery.Group.where( { [String]::IsNullOrEmpty($_.SubscriptionId) })
             $impactedSubs = $impactedMgSubBaseQuery.Group.where( { -not [String]::IsNullOrEmpty($_.SubscriptionId) })
             @"
@@ -6186,6 +6278,9 @@ extensions: [{ name: 'sort' }]
     Write-Host '  processing TenantSummary RoleAssignments security (userAccessAdministrator notGroup)'
     $roleAssignmentsUserAccessAdministratorAssignmentNotGroup = $rbacBaseQueryArrayListNotGroupUserAccessAdministrator | Sort-Object -Property RoleAssignmentId -Unique
     $roleAssignmentsUserAccessAdministratorAssignmentNotGroupGrouped = ($rbacBaseQueryArrayListNotGroupUserAccessAdministrator | Group-Object -Property roleassignmentId)
+    #lookup hashtable so the per-assignment loop below can do O(1) lookups instead of an O(n^2) .where() scan
+    $htRoleAssignmentsUserAccessAdministratorAssignmentNotGroupGrouped = @{}
+    foreach ($grpEntry in $roleAssignmentsUserAccessAdministratorAssignmentNotGroupGrouped) { $htRoleAssignmentsUserAccessAdministratorAssignmentNotGroupGrouped[$grpEntry.Name] = $grpEntry }
 
     if (($roleAssignmentsUserAccessAdministratorAssignmentNotGroup).count -gt 0) {
         $tfCount = ($roleAssignmentsUserAccessAdministratorAssignmentNotGroup).count
@@ -6212,7 +6307,7 @@ extensions: [{ name: 'sort' }]
 "@)
         $htmlSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup = $null
         $htmlSUMMARYSecurityUserAccessAdministratorAssignmentNotGroup = foreach ($roleAssignmentUserAccessAdministratorAssignmentNotGroup in ($roleAssignmentsUserAccessAdministratorAssignmentNotGroup)) {
-            $impactedMgSubBaseQuery = $roleAssignmentsUserAccessAdministratorAssignmentNotGroupGrouped.where( { $_.Name -eq $roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentId })
+            $impactedMgSubBaseQuery = $htRoleAssignmentsUserAccessAdministratorAssignmentNotGroupGrouped[$roleAssignmentUserAccessAdministratorAssignmentNotGroup.RoleAssignmentId]
             $impactedMgs = $impactedMgSubBaseQuery.Group.where( { [String]::IsNullOrEmpty($_.SubscriptionId) })
             $impactedSubs = $impactedMgSubBaseQuery.Group.where( { -not [String]::IsNullOrEmpty($_.SubscriptionId) })
             @"
@@ -6767,7 +6862,7 @@ extensions: [{ name: 'sort' }]
         $cnter = 0
         $htmlSUMMARYManagementGroups = foreach ($summaryManagementGroup in $summaryManagementGroups) {
 
-            $mgPath = $htManagementGroupsMgPath.($summaryManagementGroup.mgId).pathDelimited
+            $mgPath = $htManagementGroupsMgPath[$summaryManagementGroup.mgId].pathDelimited
 
             if ($summaryManagementGroup.mgid -eq $mgSubPathTopMg -and ($azAPICallConf['checkContext']).Tenant.Id -ne $ManagementGroupId) {
                 $pathhlper = "$($mgPath)"
@@ -6783,9 +6878,9 @@ extensions: [{ name: 'sort' }]
                 if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
                     if ($allConsumptionDataCount -gt 0) {
                         $arrayTotalCostSummaryMgSummary = @()
-                        if ($htManagementGroupsCost.($summaryManagementGroup.mgid)) {
-                            foreach ($currency in $htManagementGroupsCost.($summaryManagementGroup.mgid).currencies) {
-                                $hlper = $htManagementGroupsCost.($summaryManagementGroup.mgid)
+                        if ($htManagementGroupsCost[$summaryManagementGroup.mgid]) {
+                            foreach ($currency in $htManagementGroupsCost[$summaryManagementGroup.mgid].currencies) {
+                                $hlper = $htManagementGroupsCost[$summaryManagementGroup.mgid]
                                 $totalCost = $hlper."mgTotalCost_$($currency)"
                                 if ([math]::Round($totalCost, 2) -eq 0) {
                                     $totalCost = $totalCost.ToString('0.0000')
@@ -6812,20 +6907,20 @@ extensions: [{ name: 'sort' }]
                 #childrenMgInfo
                 $mgAllChildMgs = [System.Collections.ArrayList]@()
                 foreach ($entry in $htManagementGroupsMgPath.keys) {
-                    if (($htManagementGroupsMgPath.($entry).path) -contains $($summaryManagementGroup.mgid)) {
+                    if (($htManagementGroupsMgPath[$entry].path) -contains $($summaryManagementGroup.mgid)) {
                         $null = $mgAllChildMgs.Add($entry)
                     }
                 }
                 $mgAllChildMgsCountTotal = (($mgAllChildMgs).Count - 1)
-                $mgAllChildMgsCountDirect = $htMgDetails.($summaryManagementGroup.mgid).mgChildrenCount
+                $mgAllChildMgsCountDirect = $htMgDetails[$summaryManagementGroup.mgid].mgChildrenCount
 
                 $mgAllChildSubscriptions = [System.Collections.ArrayList]@()
                 $mgDirectChildSubscriptions = [System.Collections.ArrayList]@()
                 foreach ($entry in $htSubscriptionsMgPath.keys) {
-                    if (($htSubscriptionsMgPath.($entry).path) -contains $($summaryManagementGroup.mgid)) {
+                    if (($htSubscriptionsMgPath[$entry].path) -contains $($summaryManagementGroup.mgid)) {
                         $null = $mgAllChildSubscriptions.Add($entry)
                     }
-                    if (($htSubscriptionsMgPath.($entry).parent) -eq $($summaryManagementGroup.mgid)) {
+                    if (($htSubscriptionsMgPath[$entry].parent) -eq $($summaryManagementGroup.mgid)) {
                         $null = $mgDirectChildSubscriptions.Add($entry)
                     }
                 }
@@ -6833,12 +6928,12 @@ extensions: [{ name: 'sort' }]
                 $mgAllChildSubscriptionsCountTotal = (($mgAllChildSubscriptions).Count)
                 $mgAllChildSubscriptionsCountDirect = (($mgDirectChildSubscriptions).Count)
 
-                if ($htMgASCSecureScore.($summaryManagementGroup.mgId).SecureScore) {
-                    if ([string]::IsNullOrEmpty($htMgASCSecureScore.($summaryManagementGroup.mgId).SecureScore) -or [string]::IsNullOrWhiteSpace($htMgASCSecureScore.($summaryManagementGroup.mgId).SecureScore)) {
+                if ($htMgASCSecureScore[$summaryManagementGroup.mgId].SecureScore) {
+                    if ([string]::IsNullOrEmpty($htMgASCSecureScore[$summaryManagementGroup.mgId].SecureScore) -or [string]::IsNullOrWhiteSpace($htMgASCSecureScore[$summaryManagementGroup.mgId].SecureScore)) {
                         $mgSecureScore = 'n/a'
                     }
                     else {
-                        $mgSecureScore = $htMgASCSecureScore.($summaryManagementGroup.mgId).SecureScore
+                        $mgSecureScore = $htMgASCSecureScore[$summaryManagementGroup.mgId].SecureScore
                     }
                 }
                 else {
@@ -6982,6 +7077,9 @@ extensions: [{ name: 'sort' }]
     $summarySubscriptionsCount = ($summarySubscriptions).Count
 
     $arrayPIMEligibleGroupedBySubscription = $arrayPIMEligible.where({ $_.ScopeType -eq 'Sub' }) | Group-Object -Property ScopeId
+    #lookup hashtable so the per-subscription loop below can do O(1) lookups instead of an O(subs^2) .where() scan
+    $htArrayPIMEligibleGroupedBySubscription = @{}
+    foreach ($grpEntry in $arrayPIMEligibleGroupedBySubscription) { $htArrayPIMEligibleGroupedBySubscription[$grpEntry.Name] = $grpEntry }
 
     if ($summarySubscriptionsCount -gt 0) {
 
@@ -6990,10 +7088,10 @@ extensions: [{ name: 'sort' }]
         if ($advisorScoreCategories.Count -gt 0) {
             $arrayAdvisorScoresGroupedBySubscriptionId = $arrayAdvisorScores | Group-Object -Property subscriptionId
             foreach ($subEntry in $arrayAdvisorScoresGroupedBySubscriptionId) {
-                $htAdvisorScoresSubscriptions.($subEntry.Name) = @{}
+                $htAdvisorScoresSubscriptions[$subEntry.Name] = @{}
                 foreach ($possibleCategory in $advisorScoreCategories) {
                     if ($subEntry.Group.category -eq $possibleCategory) {
-                        $htAdvisorScoresSubscriptions.($subEntry.Name).($possibleCategory) = $subEntry.Group.where({ $_.category -eq $possibleCategory }).score
+                        $htAdvisorScoresSubscriptions[$subEntry.Name].($possibleCategory) = $subEntry.Group.where({ $_.category -eq $possibleCategory }).score
                     }
                 }
             }
@@ -7065,21 +7163,21 @@ extensions: [{ name: 'sort' }]
         $subscriptionDetails4CSVExport = [System.Collections.ArrayList]@()
         $htmlSUMMARYSubs = $null
         $htmlSUMMARYSubs = foreach ($summarySubscription in $summarySubscriptions) {
-            $subPath = $htSubscriptionsMgPath.($summarySubscription.subscriptionId).ParentNameChainDelimited
+            $subPath = $htSubscriptionsMgPath[$summarySubscription.subscriptionId].ParentNameChainDelimited
             $subscriptionTagsArray = [System.Collections.ArrayList]@()
-            foreach ($tag in ($htSubscriptionTags).($summarySubscription.subscriptionId).keys) {
+            foreach ($tag in $htSubscriptionTags[$summarySubscription.subscriptionId].keys) {
                 $null = $subscriptionTagsArray.Add("'$($tag)':'$(($htSubscriptionTags).$($summarySubscription.subscriptionId).$tag)'")
             }
 
             if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
-                if ($htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId)) {
-                    if ([math]::Round($htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId).TotalCost, 2) -eq 0) {
-                        $totalCost = $htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId).TotalCost.ToString('0.0000')
+                if ($htAzureConsumptionSubscriptions[$summarySubscription.subscriptionId]) {
+                    if ([math]::Round($htAzureConsumptionSubscriptions[$summarySubscription.subscriptionId].TotalCost, 2) -eq 0) {
+                        $totalCost = $htAzureConsumptionSubscriptions[$summarySubscription.subscriptionId].TotalCost.ToString('0.0000')
                     }
                     else {
-                        $totalCost = (([math]::Round($htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId).TotalCost, 2))).ToString('0.00')
+                        $totalCost = (([math]::Round($htAzureConsumptionSubscriptions[$summarySubscription.subscriptionId].TotalCost, 2))).ToString('0.00')
                     }
-                    $currency = $htAzureConsumptionSubscriptions.($summarySubscription.subscriptionId).Currency
+                    $currency = $htAzureConsumptionSubscriptions[$summarySubscription.subscriptionId].Currency
                 }
                 else {
                     $totalCost = '0'
@@ -7091,8 +7189,8 @@ extensions: [{ name: 'sort' }]
                 $currency = 'n/a'
             }
 
-            if ($htDefenderEmailContacts.($summarySubscription.subscriptionId)) {
-                $hlpDefenderEmailContacts = $htDefenderEmailContacts.($summarySubscription.subscriptionId)
+            if ($htDefenderEmailContacts[$summarySubscription.subscriptionId]) {
+                $hlpDefenderEmailContacts = $htDefenderEmailContacts[$summarySubscription.subscriptionId]
                 $MDfCEmailNotificationsState = $hlpDefenderEmailContacts.alertNotificationsState
                 $MDfCEmailNotificationsSeverity = $hlpDefenderEmailContacts.alertNotificationsminimalSeverity
                 $MDfCEmailNotificationsRoles = $hlpDefenderEmailContacts.roles
@@ -7106,7 +7204,7 @@ extensions: [{ name: 'sort' }]
             }
 
             #rbac assignments owner and userAccountAdministrator
-            $rbacAtScopeForThisSubscription = ($rbacAllGroupedBySubscription.where( { $_.name -eq $summarySubscription.subscriptionId } )).group
+            $rbacAtScopeForThisSubscription = $rbacAllGroupedBySubscription[$summarySubscription.subscriptionId]
 
             $rbacOwnersAtScopeForThisSubscription = ($rbacAtScopeForThisSubscription.where({ $_.Scope -eq 'thisScope Sub' -and $_.RoleId -eq '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' }))
             $rbacOwnersAtScopeForThisSubscriptionDirectCount = ($rbacOwnersAtScopeForThisSubscription.where( { $_.AssignmentType -eq 'direct' } )).Count
@@ -7120,7 +7218,7 @@ extensions: [{ name: 'sort' }]
             $pimEligibleOwnersAtScopeForThisSubscriptionCount = ''
             $pimEligibleUAAsAtScopeForThisSubscriptionCount = ''
             if (-not $NoPIMEligibility) {
-                $pimEligibleAtScopeForThisSubscription = ($arrayPIMEligibleGroupedBySubscription.where( { $_.name -eq $summarySubscription.subscriptionId } )).group
+                $pimEligibleAtScopeForThisSubscription = $htArrayPIMEligibleGroupedBySubscription[$summarySubscription.subscriptionId].group
                 $pimEligibleOwnersAtScopeForThisSubscriptionCount = ($pimEligibleAtScopeForThisSubscription.where( { $_.RoleIdGuid -eq '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' } )).Count
                 $pimEligibleUAAsAtScopeForThisSubscriptionCount = ($pimEligibleAtScopeForThisSubscription.where( { $_.RoleIdGuid -eq '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9' } )).Count
             }
@@ -7131,7 +7229,7 @@ extensions: [{ name: 'sort' }]
 <td>$($summarySubscription.subscription -replace '<', '&lt;' -replace '>', '&gt;')</td>
 <td><span class="valignMiddle"><a class="internallink" href="#table_$($summarySubscription.MgId)">$($summarySubscription.subscriptionId)</a></span></td>
 <td>$($summarySubscription.SubscriptionQuotaId)</td>
-<td>$($htSubscriptionsRoleAssignmentLimit.($summarySubscription.subscriptionId))</td>
+<td>$($htSubscriptionsRoleAssignmentLimit[$summarySubscription.subscriptionId])</td>
 <td>$(($subscriptionTagsArray | Sort-Object) -join "$CsvDelimiterOpposite ")</td>
 <td>$($rbacOwnersAtScopeForThisSubscriptionDirectCount)</td>
 <td>$($rbacOwnersAtScopeForThisSubscriptionInDirectCount)</td>
@@ -7150,7 +7248,7 @@ extensions: [{ name: 'sort' }]
             $htColl.SubscriptionId = $summarySubscription.subscriptionId
             $htColl.QuotaId = $summarySubscription.SubscriptionQuotaId
             $htColl.ManagementGroupPath = $subPath
-            $htColl.RoleAssignmentLimit = $htSubscriptionsRoleAssignmentLimit.($summarySubscription.subscriptionId)
+            $htColl.RoleAssignmentLimit = $htSubscriptionsRoleAssignmentLimit[$summarySubscription.subscriptionId]
             $htColl.Tags = ($subscriptionTagsArray | Sort-Object) -join "$CsvDelimiterOpposite "
             $htColl.'Owner(atScope)Direct' = $rbacOwnersAtScopeForThisSubscriptionDirectCount
             $htColl.'Owner(atScope)Indirect' = $rbacOwnersAtScopeForThisSubscriptionInDirectCount
@@ -7165,22 +7263,22 @@ extensions: [{ name: 'sort' }]
             $htColl.MDfCEmailNotificationsEmails = $MDfCEmailNotificationsEmails
 
             foreach ($possibleCategory in $advisorScoreCategories) {
-                if ($htAdvisorScoresSubscriptions.($summarySubscription.subscriptionId).($possibleCategory)) {
+                if ($htAdvisorScoresSubscriptions[$summarySubscription.subscriptionId].($possibleCategory)) {
                     @"
-        <td>$([math]::Round(($htAdvisorScoresSubscriptions.($summarySubscription.subscriptionId).($possibleCategory)), 2))</td>
+        <td>$([math]::Round(($htAdvisorScoresSubscriptions[$summarySubscription.subscriptionId].($possibleCategory)), 2))</td>
 "@
                     if ($possibleCategory -eq 'Advisor') {
-                        $htColl.("$($possibleCategory)Score") = $htAdvisorScoresSubscriptions.($summarySubscription.subscriptionId).($possibleCategory)
+                        $htColl.("$($possibleCategory)Score") = $htAdvisorScoresSubscriptions[$summarySubscription.subscriptionId].($possibleCategory)
                     }
                     else {
-                        $htColl.("Advisor$($possibleCategory)Score") = $htAdvisorScoresSubscriptions.($summarySubscription.subscriptionId).($possibleCategory)
+                        $htColl.("Advisor$($possibleCategory)Score") = $htAdvisorScoresSubscriptions[$summarySubscription.subscriptionId].($possibleCategory)
                     }
                 }
                 else {
                     @'
         <td>n/a</td>
 '@
-                    $htColl.($possibleCategory) = 'n/a'
+                    $htColl[$possibleCategory] = 'n/a'
                 }
             }
 
@@ -8097,10 +8195,10 @@ extensions: [{ name: 'sort' }]
             $grped = (($htResourceProvidersAll).values.Providers) | Sort-Object -Property namespace, registrationState | Group-Object namespace
             $htResProvSummary = @{}
             foreach ($grp in $grped) {
-                $htResProvSummary.($grp.name) = @{}
+                $htResProvSummary[$grp.name] = @{}
                 $regstates = ($grp.group | Sort-Object -Property registrationState -Unique).registrationstate
                 foreach ($regstate in $regstates) {
-                    $htResProvSummary.($grp.name).$regstate = (($grp.group).where( { $_.registrationstate -eq $regstate }) | Measure-Object).count
+                    $htResProvSummary[$grp.name].$regstate = (($grp.group).where( { $_.registrationstate -eq $regstate }) | Measure-Object).count
                 }
             }
             $providerSummary = [System.Collections.ArrayList]@()
@@ -8284,8 +8382,8 @@ extensions: [{ name: 'sort' }]
 
                 $arrayResourceProvidersDetailedForCSVExport = [System.Collections.ArrayList]@()
                 $htmlSUMMARYSubResourceProvidersDetailed = foreach ($subscriptionResProv in (($htResourceProvidersAll).Keys | Sort-Object)) {
-                    $subscriptionResProvDetails = $htSubscriptionsMgPath.($subscriptionResProv)
-                    foreach ($provider in ($htResourceProvidersAll).($subscriptionResProv).Providers | Sort-Object @{Expression = { $_.namespace } }) {
+                    $subscriptionResProvDetails = $htSubscriptionsMgPath[$subscriptionResProv]
+                    foreach ($provider in $htResourceProvidersAll[$subscriptionResProv].Providers | Sort-Object @{Expression = { $_.namespace } }) {
                         $cnter++
                         if ($cnter % 1000 -eq 0) {
                             $etappeResProvDetailed = Get-Date
@@ -8512,14 +8610,14 @@ extensions: [{ name: 'sort' }]
     if (($htResourceLocks.keys | Measure-Object).Count -gt 0) {
         $htmlTableId = 'TenantSummary_ResourceLocks'
 
-        $subscriptionLocksCannotDeleteCount = ($htResourceLocks.Keys.where( { $htResourceLocks.($_).SubscriptionLocksCannotDeleteCount -gt 0 } )).Count
-        $subscriptionLocksReadOnlyCount = ($htResourceLocks.Keys.where( { $htResourceLocks.($_).SubscriptionLocksReadOnlyCount -gt 0 } )).Count
+        $subscriptionLocksCannotDeleteCount = ($htResourceLocks.Keys.where( { $htResourceLocks[$_].SubscriptionLocksCannotDeleteCount -gt 0 } )).Count
+        $subscriptionLocksReadOnlyCount = ($htResourceLocks.Keys.where( { $htResourceLocks[$_].SubscriptionLocksReadOnlyCount -gt 0 } )).Count
 
-        $resourceGroupsLocksCannotDeleteCount = ($htResourceLocks.Keys.where( { $htResourceLocks.($_).ResourceGroupsLocksCannotDeleteCount -gt 0 } )).Count
-        $resourceGroupsLocksReadOnlyCount = ($htResourceLocks.Keys.where({ $htResourceLocks.($_).ResourceGroupsLocksReadOnlyCount -gt 0 } )).Count
+        $resourceGroupsLocksCannotDeleteCount = ($htResourceLocks.Keys.where( { $htResourceLocks[$_].ResourceGroupsLocksCannotDeleteCount -gt 0 } )).Count
+        $resourceGroupsLocksReadOnlyCount = ($htResourceLocks.Keys.where({ $htResourceLocks[$_].ResourceGroupsLocksReadOnlyCount -gt 0 } )).Count
 
-        $resourcesLocksCannotDeleteCount = ($htResourceLocks.Keys.where( { $htResourceLocks.($_).ResourcesLocksCannotDeleteCount -gt 0 } )).Count
-        $resourcesLocksReadOnlyCount = ($htResourceLocks.Keys.where( { $htResourceLocks.($_).ResourcesLocksReadOnlyCount -gt 0 } )).Count
+        $resourcesLocksCannotDeleteCount = ($htResourceLocks.Keys.where( { $htResourceLocks[$_].ResourcesLocksCannotDeleteCount -gt 0 } )).Count
+        $resourcesLocksReadOnlyCount = ($htResourceLocks.Keys.where( { $htResourceLocks[$_].ResourcesLocksReadOnlyCount -gt 0 } )).Count
 
         [void]$htmlTenantSummary.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_ResourceLocks"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Locks</span></button>
@@ -9061,7 +9159,7 @@ tf.init();}}
             $script:htResourcesAssignedUserAssignedIdentities = @{}
             foreach ($entry in $arrayUserAssignedIdentities4Resources) {
                 #UserAssignedIdentities
-                if (-not $htUserAssignedIdentitiesAssignedResources.($entry.miPrincipalId)) {
+                if (-not $htUserAssignedIdentitiesAssignedResources[$entry.miPrincipalId]) {
                     $script:htUserAssignedIdentitiesAssignedResources.($entry.miPrincipalId) = @{
                         ResourcesCount = 1
                     }
@@ -9128,7 +9226,7 @@ tf.init();}}
                         <td class="breakwordall">$($miResEntry.miResourceId)</td>
                         <td>$($miResEntry.miPrincipalId)</td>
                         <td>$($miResEntry.miClientId)</td>
-                        <td>$($htUserAssignedIdentitiesAssignedResources.($miResEntry.miPrincipalId).ResourcesCount)</td>
+                        <td>$($htUserAssignedIdentitiesAssignedResources[$miResEntry.miPrincipalId].ResourcesCount)</td>
                         <td>$($miResEntry.miCrossSubscription)</td>
                         <td>$($miResEntry.resourceName)</td>
                         <td class="breakwordall">$($miResEntry.resourceType)</td>
@@ -9151,7 +9249,7 @@ tf.init();}}
                             MIResourceId          = $miResEntry.miResourceId
                             MIAADSPObjectId       = $miResEntry.miPrincipalId
                             MIAADSPApplicationId  = $miResEntry.miClientId
-                            MICountResAssignments = $htUserAssignedIdentitiesAssignedResources.($miResEntry.miPrincipalId).ResourcesCount
+                            MICountResAssignments = $htUserAssignedIdentitiesAssignedResources[$miResEntry.miPrincipalId].ResourcesCount
                             MICrossSubscription   = $miResEntry.miCrossSubscription
                             ResName               = $miResEntry.resourceName
                             ResType               = $miResEntry.resourceType
@@ -11198,8 +11296,8 @@ extensions: [{ name: 'sort' }]
                                 $roleDefinitionIdsArray = [System.Collections.ArrayList]@()
                                 foreach ($roleDefinitionId in ($policy).Json.properties.policyrule.then.details.roleDefinitionIds) {
                                     $roleDefinitionIdGuid = $roleDefinitionId -replace '.*/'
-                                    if (($htCacheDefinitionsRole).($roleDefinitionIdGuid)) {
-                                        $null = $roleDefinitionIdsArray.Add("<b>$(($htCacheDefinitionsRole).($roleDefinitionIdGuid).Name)</b> ($($roleDefinitionIdGuid))")
+                                    if ($htCacheDefinitionsRole[$roleDefinitionIdGuid]) {
+                                        $null = $roleDefinitionIdsArray.Add("<b>$($htCacheDefinitionsRole[$roleDefinitionIdGuid].Name)</b> ($($roleDefinitionIdGuid))")
                                     }
                                     else {
                                         Write-Host "  DiagnosticsLifeCycle: unknown RoleDefinition '$roleDefinitionId'"
@@ -11985,7 +12083,7 @@ extensions: [{ name: 'sort' }]
 "@)
         $htmlSUMMARYSubsapproachingLimitsResourceGroups = $null
         $htmlSUMMARYSubsapproachingLimitsResourceGroups = foreach ($subscriptionApproachingLimitFromResourceGroupsAll in $subscriptionsApproachingLimitFromResourceGroupsAll) {
-            $subscriptionData = $htSubDetails.($subscriptionApproachingLimitFromResourceGroupsAll.subscriptionId).details
+            $subscriptionData = $htSubDetails[$subscriptionApproachingLimitFromResourceGroupsAll.subscriptionId].details
             @"
 <tr>
 <td><span class="valignMiddle">$($subscriptionData.subscription -replace '<', '&lt;' -replace '>', '&gt;')</span></td>
@@ -12706,7 +12804,7 @@ tf.init();}}
         $htmlSUMMARYAADSPManagedIdentities = $null
         $htmlSUMMARYAADSPManagedIdentities = foreach ($serviceprincipalMI in $servicePrincipalsOfTypeManagedIdentity | Sort-Object) {
 
-            $serviceprincipalMIDetailed = $htServicePrincipals.($serviceprincipalMI)
+            $serviceprincipalMIDetailed = $htServicePrincipals[$serviceprincipalMI]
             $miRoleAssignments = 'n/a'
             $miType = 'unknown'
             $userMiAssignedToResourcesCount = ''
@@ -12715,8 +12813,8 @@ tf.init();}}
                     $splitAltName = $altName.split('=')
                     if ($splitAltName[1] -eq 'true') {
                         $miType = 'User assigned'
-                        if ($htUserAssignedIdentitiesAssignedResources.($serviceprincipalMI)) {
-                            $userMiAssignedToResourcesCount = $htUserAssignedIdentitiesAssignedResources.($serviceprincipalMI).ResourcesCount
+                        if ($htUserAssignedIdentitiesAssignedResources[$serviceprincipalMI]) {
+                            $userMiAssignedToResourcesCount = $htUserAssignedIdentitiesAssignedResources[$serviceprincipalMI].ResourcesCount
                         }
                     }
                     if ($splitAltName[1] -eq 'false') {
@@ -12736,39 +12834,39 @@ tf.init();}}
             if ($miResourceType -eq 'Microsoft.Authorization/policyAssignments') {
                 $policyAssignmentId = $miAlternativeName.ToLower()
                 if ($policyAssignmentId -like '/providers/Microsoft.Management/managementGroups/*') {
-                    if (-not ($htCacheAssignmentsPolicy).($policyAssignmentId)) {
+                    if (-not $htCacheAssignmentsPolicy[$policyAssignmentId]) {
                         $assignmentInfo = 'n/a'
                     }
                     else {
-                        $assignmentInfo = ($htCacheAssignmentsPolicy).($policyAssignmentId).Assignment
+                        $assignmentInfo = $htCacheAssignmentsPolicy[$policyAssignmentId].Assignment
                     }
                 }
                 else {
                     #sub
                     if (((($policyAssignmentId).Split('/') | Measure-Object).Count - 1) -eq 6) {
-                        if (-not ($htCacheAssignmentsPolicy).($policyAssignmentId)) {
+                        if (-not $htCacheAssignmentsPolicy[$policyAssignmentId]) {
                             $assignmentInfo = 'n/a'
                         }
                         else {
-                            $assignmentInfo = ($htCacheAssignmentsPolicy).($policyAssignmentId).Assignment
+                            $assignmentInfo = $htCacheAssignmentsPolicy[$policyAssignmentId].Assignment
                         }
                     }
                     else {
                         #rg
                         if ($azAPICallConf['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
-                            if (-not ($htCacheAssignmentsPolicyOnResourceGroupsAndResources).($policyAssignmentId)) {
+                            if (-not $htCacheAssignmentsPolicyOnResourceGroupsAndResources[$policyAssignmentId]) {
                                 $assignmentInfo = 'n/a'
                             }
                             else {
-                                $assignmentInfo = ($htCacheAssignmentsPolicyOnResourceGroupsAndResources).($policyAssignmentId)
+                                $assignmentInfo = $htCacheAssignmentsPolicyOnResourceGroupsAndResources[$policyAssignmentId]
                             }
                         }
                         else {
-                            if (-not ($htCacheAssignmentsPolicy).($policyAssignmentId)) {
+                            if (-not $htCacheAssignmentsPolicy[$policyAssignmentId]) {
                                 $assignmentInfo = 'n/a'
                             }
                             else {
-                                $assignmentInfo = ($htCacheAssignmentsPolicy).($policyAssignmentId).Assignment
+                                $assignmentInfo = $htCacheAssignmentsPolicy[$policyAssignmentId].Assignment
                             }
                         }
                     }
@@ -12793,16 +12891,16 @@ tf.init();}}
                             $policyAssignmentspolicyDefinitionIdGuid = $policyAssignmentsPolicyDefinitionId -replace '.*/'
 
                             if ($policyAssignmentsPolicyVariant4ht -eq 'policy') {
-                                if (($htCacheDefinitionsPolicy).($policyAssignmentsPolicyDefinitionId)) {
-                                    $definitionInfo = ($htCacheDefinitionsPolicy).($policyAssignmentsPolicyDefinitionId)
+                                if ($htCacheDefinitionsPolicy[$policyAssignmentsPolicyDefinitionId]) {
+                                    $definitionInfo = $htCacheDefinitionsPolicy[$policyAssignmentsPolicyDefinitionId]
                                 }
                                 else {
                                     $definitionInfo = 'unknown'
                                 }
                             }
                             if ($policyAssignmentsPolicyVariant4ht -eq 'policySet') {
-                                if (($htCacheDefinitionsPolicySet).($policyAssignmentsPolicyDefinitionId)) {
-                                    $definitionInfo = ($htCacheDefinitionsPolicySet).($policyAssignmentsPolicyDefinitionId)
+                                if ($htCacheDefinitionsPolicySet[$policyAssignmentsPolicyDefinitionId]) {
+                                    $definitionInfo = $htCacheDefinitionsPolicySet[$policyAssignmentsPolicyDefinitionId]
                                 }
                                 else {
                                     $definitionInfo = 'unknown'
@@ -12815,16 +12913,16 @@ tf.init();}}
                             $policyAssignmentspolicyDefinitionIdGuid = $policyAssignmentsPolicyDefinitionId -replace '.*/'
 
                             if ($policyAssignmentsPolicyVariant4ht -eq 'policy') {
-                                if (($htCacheDefinitionsPolicy).($policyAssignmentsPolicyDefinitionId)) {
-                                    $definitionInfo = ($htCacheDefinitionsPolicy).($policyAssignmentsPolicyDefinitionId)
+                                if ($htCacheDefinitionsPolicy[$policyAssignmentsPolicyDefinitionId]) {
+                                    $definitionInfo = $htCacheDefinitionsPolicy[$policyAssignmentsPolicyDefinitionId]
                                 }
                                 else {
                                     $definitionInfo = 'unknown'
                                 }
                             }
                             if ($policyAssignmentsPolicyVariant4ht -eq 'policySet') {
-                                if (($htCacheDefinitionsPolicySet).($policyAssignmentsPolicyDefinitionId)) {
-                                    $definitionInfo = ($htCacheDefinitionsPolicySet).($policyAssignmentsPolicyDefinitionId)
+                                if ($htCacheDefinitionsPolicySet[$policyAssignmentsPolicyDefinitionId]) {
+                                    $definitionInfo = $htCacheDefinitionsPolicySet[$policyAssignmentsPolicyDefinitionId]
                                 }
                                 else {
                                     $definitionInfo = 'unknown'
@@ -12846,16 +12944,16 @@ tf.init();}}
                         $policyAssignmentspolicyDefinitionIdGuid = $policyAssignmentsPolicyDefinitionId -replace '.*/'
 
                         if ($policyAssignmentsPolicyVariant4ht -eq 'policy') {
-                            if (($htCacheDefinitionsPolicy).($policyAssignmentsPolicyDefinitionId)) {
-                                $definitionInfo = ($htCacheDefinitionsPolicy).($policyAssignmentsPolicyDefinitionId)
+                            if ($htCacheDefinitionsPolicy[$policyAssignmentsPolicyDefinitionId]) {
+                                $definitionInfo = $htCacheDefinitionsPolicy[$policyAssignmentsPolicyDefinitionId]
                             }
                             else {
                                 $definitionInfo = 'unknown'
                             }
                         }
                         if ($policyAssignmentsPolicyVariant4ht -eq 'policySet') {
-                            if (($htCacheDefinitionsPolicySet).($policyAssignmentsPolicyDefinitionId)) {
-                                $definitionInfo = ($htCacheDefinitionsPolicySet).($policyAssignmentsPolicyDefinitionId)
+                            if ($htCacheDefinitionsPolicySet[$policyAssignmentsPolicyDefinitionId]) {
+                                $definitionInfo = $htCacheDefinitionsPolicySet[$policyAssignmentsPolicyDefinitionId]
                             }
                             else {
                                 $definitionInfo = 'unknown'
@@ -12884,14 +12982,14 @@ tf.init();}}
                 $policyAssignmentMoreInfo = 'n/a'
             }
 
-            if ($htRoleAssignmentsForServicePrincipals.($serviceprincipalMI)) {
+            if ($htRoleAssignmentsForServicePrincipals[$serviceprincipalMI]) {
 
                 $arrayMiRoleAssignments = @()
-                $helperMiRoleAssignments = $htRoleAssignmentsForServicePrincipals.($serviceprincipalMI).RoleAssignments
+                $helperMiRoleAssignments = $htRoleAssignmentsForServicePrincipals[$serviceprincipalMI].RoleAssignments
 
                 foreach ($roleAssignment in $helperMiRoleAssignments) {
                     if ($roleAssignment.RoleIsCustom -eq 'False') {
-                        $arrayMiRoleAssignments += "$(($htCacheDefinitionsRole).($roleAssignment.roleDefinitionId).LinkToAzAdvertizer) ($($roleAssignment.roleassignmentId))"
+                        $arrayMiRoleAssignments += "$($htCacheDefinitionsRole[$roleAssignment.roleDefinitionId].LinkToAzAdvertizer) ($($roleAssignment.roleassignmentId))"
                     }
                     else {
                         $arrayMiRoleAssignments += "<b>$($roleAssignment.roleDefinitionName -replace '<', '&lt;' -replace '>', '&gt;')</b>; $($roleAssignment.roleDefinitionId) ($($roleAssignment.roleassignmentId))"
@@ -12903,7 +13001,7 @@ tf.init();}}
             $orphanedMI = ''
             if ($miResourceType -eq 'Microsoft.Authorization/policyAssignments') {
                 $orphanedMI = 'false'
-                if ($htOrphanedSPMI.($serviceprincipalMI)) {
+                if ($htOrphanedSPMI[$serviceprincipalMI]) {
                     $orphanedMI = 'true'
                 }
             }
@@ -13003,9 +13101,9 @@ tf.init();}}
             $tfCount = $servicePrincipalsOfTypeApplicationCount
             $htmlTableId = 'TenantSummary_AADSPCredExpiry'
 
-            $servicePrincipalsOfTypeApplicationSecretsExpiring = $servicePrincipalsOfTypeApplication.where( { $htAppDetails.($_).appPasswordCredentialsGracePeriodExpiryCount -gt 0 } )
+            $servicePrincipalsOfTypeApplicationSecretsExpiring = $servicePrincipalsOfTypeApplication.where( { $htAppDetails[$_].appPasswordCredentialsGracePeriodExpiryCount -gt 0 } )
             $servicePrincipalsOfTypeApplicationSecretsExpiringCount = ($servicePrincipalsOfTypeApplicationSecretsExpiring).Count
-            $servicePrincipalsOfTypeApplicationCertificatesExpiring = $servicePrincipalsOfTypeApplication.where( { $htAppDetails.($_).appKeyCredentialsGracePeriodExpiryCount -gt 0 } )
+            $servicePrincipalsOfTypeApplicationCertificatesExpiring = $servicePrincipalsOfTypeApplication.where( { $htAppDetails[$_].appKeyCredentialsGracePeriodExpiryCount -gt 0 } )
             $servicePrincipalsOfTypeApplicationCertificatesExpiringCount = ($servicePrincipalsOfTypeApplicationCertificatesExpiring).Count
             if ($servicePrincipalsOfTypeApplicationSecretsExpiringCount -gt 0 -or $servicePrincipalsOfTypeApplicationCertificatesExpiringCount -gt 0) {
                 $warningOrNot = "<i class=`"padlx fa fa-exclamation-triangle yellow`" aria-hidden=`"true`"></i>"
@@ -13175,14 +13273,14 @@ tf.init();}}
     $htRoleAssignmentsForServicePrincipalsRgRes = @{}
     $roleAssignmentsForServicePrincipalsRgRes = (((($htCacheAssignmentsRBACOnResourceGroupsAndResources).values).where( { $_.ObjectType -eq 'ServicePrincipal' })) | Sort-Object -Property RoleAssignmentId -Unique)
     foreach ($spWithRoleAssignment in $roleAssignmentsForServicePrincipalsRgRes | Group-Object -Property ObjectId) {
-        if (-not $htRoleAssignmentsForServicePrincipalsRgRes.($spWithRoleAssignment.Name)) {
-            $htRoleAssignmentsForServicePrincipalsRgRes.($spWithRoleAssignment.Name) = @{
+        if (-not $htRoleAssignmentsForServicePrincipalsRgRes[$spWithRoleAssignment.Name]) {
+            $htRoleAssignmentsForServicePrincipalsRgRes[$spWithRoleAssignment.Name] = @{
                 RoleAssignments = $spWithRoleAssignment.group
             }
         }
     }
 
-    $appsWithOtherOrgId = $htServicePrincipals.Keys.where( { $htServicePrincipals.($_).servicePrincipalType -eq 'Application' -and $htServicePrincipals.($_).appOwnerOrganizationId -ne $azAPICallConf['checkContext'].Tenant.Id } )
+    $appsWithOtherOrgId = $htServicePrincipals.Keys.where( { $htServicePrincipals[$_].servicePrincipalType -eq 'Application' -and $htServicePrincipals[$_].appOwnerOrganizationId -ne $azAPICallConf['checkContext'].Tenant.Id } )
     $appsWithOtherOrgIdCount = ($appsWithOtherOrgId).Count
 
     if ($appsWithOtherOrgIdCount -gt 0) {
@@ -13214,13 +13312,13 @@ tf.init();}}
         $htmlSUMMARYAADSPExternal = $null
         $htmlSUMMARYAADSPExternal = foreach ($serviceprincipalApp in $appsWithOtherOrgId | Sort-Object) {
             $arrayRoleAssignments4ExternalApp = [System.Collections.ArrayList]@()
-            $roleAssignmentsMgSub = $htRoleAssignmentsForServicePrincipals.($serviceprincipalApp).RoleAssignments
+            $roleAssignmentsMgSub = $htRoleAssignmentsForServicePrincipals[$serviceprincipalApp].RoleAssignments
             $roleAssignmentsMgSubCount = ($roleAssignmentsMgSub).Count
             $roleAssignments4ExternalApp = 'n/a'
             if ($roleAssignmentsMgSubCount -gt 0) {
                 $roleAssignments4ExternalApp = $roleAssignmentsMgSubCount
             }
-            $roleAssignmentsRgRes = $htRoleAssignmentsForServicePrincipalsRgRes.($serviceprincipalApp).RoleAssignments
+            $roleAssignmentsRgRes = $htRoleAssignmentsForServicePrincipalsRgRes[$serviceprincipalApp].RoleAssignments
             $roleAssignmentsRgResCount = ($roleAssignmentsRgRes).Count
             if ($roleAssignmentsRgResCount -gt 0) {
                 foreach ($roleAssignmentRgRes in $roleAssignmentsRgRes) {
@@ -13233,10 +13331,10 @@ tf.init();}}
 
             @"
 <tr>
-<td>$($htServicePrincipals.($serviceprincipalApp).appId)</td>
-<td>$($htServicePrincipals.($serviceprincipalApp).displayName)</td>
-<td>$($htServicePrincipals.($serviceprincipalApp).id)</td>
-<td>$($htServicePrincipals.($serviceprincipalApp).appOwnerOrganizationId)</td>
+<td>$($htServicePrincipals[$serviceprincipalApp].appId)</td>
+<td>$($htServicePrincipals[$serviceprincipalApp].displayName)</td>
+<td>$($htServicePrincipals[$serviceprincipalApp].id)</td>
+<td>$($htServicePrincipals[$serviceprincipalApp].appOwnerOrganizationId)</td>
 <td>$roleAssignments4ExternalApp</td>
 </tr>
 "@
@@ -14253,8 +14351,8 @@ tf.init();}}
         $htmlSUMMARYChangeTrackingCustomRoles = $null
         $htmlSUMMARYChangeTrackingCustomRoles = foreach ($entry in $customRoleDefinitionsCreatedOrUpdated | Sort-Object @{Expression = { $_.Json.properties.createdOn } }, @{Expression = { $_.Json.properties.updatedOn } } -Descending) {
             $createdBy = $entry.Json.properties.createdBy
-            if ($htIdentitiesWithRoleAssignmentsUnique.($createdBy)) {
-                $createdBy = $htIdentitiesWithRoleAssignmentsUnique.($createdBy).details
+            if ($htIdentitiesWithRoleAssignmentsUnique[$createdBy]) {
+                $createdBy = $htIdentitiesWithRoleAssignmentsUnique[$createdBy].details
             }
 
             $createdOn = $entry.Json.properties.createdOn
@@ -14275,8 +14373,8 @@ tf.init();}}
                 }
                 $updatedOnFormated = $updatedOn
                 $updatedByRemoveNoiseOrNot = $entry.Json.properties.updatedBy
-                if ($htIdentitiesWithRoleAssignmentsUnique.($updatedByRemoveNoiseOrNot)) {
-                    $updatedByRemoveNoiseOrNot = $htIdentitiesWithRoleAssignmentsUnique.($updatedByRemoveNoiseOrNot).details
+                if ($htIdentitiesWithRoleAssignmentsUnique[$updatedByRemoveNoiseOrNot]) {
+                    $updatedByRemoveNoiseOrNot = $htIdentitiesWithRoleAssignmentsUnique[$updatedByRemoveNoiseOrNot].details
                 }
             }
 

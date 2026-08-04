@@ -12,14 +12,14 @@
         #Resources
         $mgAllChildSubscriptions = [System.Collections.ArrayList]@()
         $mgAllChildSubscriptions = foreach ($entry in $htSubscriptionsMgPath.keys) {
-            if (($htSubscriptionsMgPath.($entry).ParentNameChain) -contains $mgchild) {
+            if (($htSubscriptionsMgPath[$entry].ParentNameChain) -contains $mgchild) {
                 $entry
             }
         }
         if ($azAPICallConf['htParameters'].NoResources -eq $false) {
             $resourcesAllChildSubscriptions = [System.Collections.ArrayList]@()
             foreach ($mgAllChildSubscription in $mgAllChildSubscriptions) {
-                foreach ($resource in ($resourcesAllGroupedBySubcriptionId.where( { $_.name -eq $mgAllChildSubscription } )).group | Sort-Object -Property type, location) {
+                foreach ($resource in $resourcesAllGroupedBySubcriptionIdHt.($mgAllChildSubscription) | Sort-Object -Property type, location) {
                     $null = $resourcesAllChildSubscriptions.Add($resource)
                 }
 
@@ -43,22 +43,22 @@
         #childrenMgInfo
         $mgAllChildMgs = [System.Collections.ArrayList]@()
         $mgAllChildMgs = foreach ($entry in $htManagementGroupsMgPath.keys) {
-            if (($htManagementGroupsMgPath.($entry).path) -contains $mgchild) {
+            if (($htManagementGroupsMgPath[$entry].path) -contains $mgchild) {
                 $entry
             }
         }
 
-        $arrayPolicyAssignmentsEnrichedForThisManagementGroup = ($arrayPolicyAssignmentsEnrichedGroupedByManagementGroup.where( { $_.name -eq $mgChild } )).group
+        $arrayPolicyAssignmentsEnrichedForThisManagementGroup = $htArrayPolicyAssignmentsEnrichedGroupedByManagementGroup[$mgChild].group
         $arrayPolicyAssignmentsEnrichedForThisManagementGroupGroupedByPolicyVariant = $arrayPolicyAssignmentsEnrichedForThisManagementGroup | Group-Object -Property PolicyVariant
         $arrayPolicyAssignmentsEnrichedForThisManagementGroupVariantPolicy = ($arrayPolicyAssignmentsEnrichedForThisManagementGroupGroupedByPolicyVariant.where( { $_.name -eq 'Policy' } )).group
         $arrayPolicyAssignmentsEnrichedForThisManagementGroupVariantPolicySet = ($arrayPolicyAssignmentsEnrichedForThisManagementGroupGroupedByPolicyVariant.where( { $_.name -eq 'PolicySet' } )).group
 
         if ($azAPICallConf['htParameters'].NoMDfCSecureScore -eq $false) {
-            if ([string]::IsNullOrEmpty(($htMgASCSecureScore).($mgChild).SecureScore) -or [string]::IsNullOrWhiteSpace(($htMgASCSecureScore).($mgChild).SecureScore)) {
+            if ([string]::IsNullOrEmpty($htMgASCSecureScore[$mgChild].SecureScore) -or [string]::IsNullOrWhiteSpace($htMgASCSecureScore[$mgChild].SecureScore)) {
                 $managementGroupASCPoints = 'n/a'
             }
             else {
-                $managementGroupASCPoints = ($htMgASCSecureScore).($mgChild).SecureScore
+                $managementGroupASCPoints = $htMgASCSecureScore[$mgChild].SecureScore
             }
         }
         else {
@@ -79,8 +79,8 @@
         $blueprintsScoped = $blueprintReleatedQuery.where( { $_.BlueprintScoped -eq "/subscriptions/$subscriptionId" -and [String]::IsNullOrEmpty($_.BlueprintAssignmentId) } )
         $blueprintsScopedCount = ($blueprintsScoped).count
         #SubscriptionDetails
-        $subPath = $htSubscriptionsMgPath.($subscriptionId).pathDelimited
-        $subscriptionDetailsReleatedQuery = $htSubDetails.($subscriptionId).details
+        $subPath = $htSubscriptionsMgPath[$subscriptionId].pathDelimited
+        $subscriptionDetailsReleatedQuery = $htSubDetails[$subscriptionId].details
         $subscriptionState = ($subscriptionDetailsReleatedQuery).SubscriptionState
         $subscriptionQuotaId = ($subscriptionDetailsReleatedQuery).SubscriptionQuotaId
         $subscriptionResourceGroupsCount = ($resourceGroupsAll.where( { $_.subscriptionId -eq $subscriptionId } )).count_
@@ -92,7 +92,7 @@
         if ($azAPICallConf['htParameters'].NoResources -eq $false) {
             #Resources
             $resourcesSubscription = [System.Collections.ArrayList]@()
-            foreach ($resource in ($resourcesAllGroupedBySubcriptionId.where( { $_.name -eq $subscriptionId } )).group | Sort-Object -Property type, location) {
+            foreach ($resource in $resourcesAllGroupedBySubcriptionIdHt.($subscriptionId) | Sort-Object -Property type, location) {
                 $null = $resourcesSubscription.Add($resource)
             }
 
@@ -102,18 +102,19 @@
             $resourcesSubscriptionLocationCount = (($resourcesSubscription | Sort-Object -Property location -Unique)).count
         }
 
-        $arrayPolicyAssignmentsEnrichedForThisSubscription = ($arrayPolicyAssignmentsEnrichedGroupedBySubscription.where( { $_.name -eq $subscriptionId } )).group
+        $arrayPolicyAssignmentsEnrichedForThisSubscription = $htArrayPolicyAssignmentsEnrichedGroupedBySubscription[$subscriptionId].group
         $arrayPolicyAssignmentsEnrichedForThisSubscriptionGroupedByPolicyVariant = $arrayPolicyAssignmentsEnrichedForThisSubscription | Group-Object -Property PolicyVariant
         $arrayPolicyAssignmentsEnrichedForThisSubscriptionVariantPolicy = ($arrayPolicyAssignmentsEnrichedForThisSubscriptionGroupedByPolicyVariant.where( { $_.name -eq 'Policy' } )).group
         $arrayPolicyAssignmentsEnrichedForThisSubscriptionVariantPolicySet = ($arrayPolicyAssignmentsEnrichedForThisSubscriptionGroupedByPolicyVariant.where( { $_.name -eq 'PolicySet' } )).group
 
         $arrayDefenderPlansSubscription = $defenderPlansGroupedBySub.where( { $_.Name -like "*$($subscriptionId)*" } )
 
-        $arrayUserAssignedIdentities4ResourcesSubscription = $arrayUserAssignedIdentities4Resources.where( { $_.resourceSubscriptionId -eq $subscriptionId -or $_.miSubscriptionId -eq $subscriptionId } )
+        $arrayUserAssignedIdentities4ResourcesSubscription = $htArrayUserAssignedIdentities4ResourcesBySub[$subscriptionId]
+        if (-not $arrayUserAssignedIdentities4ResourcesSubscription) { $arrayUserAssignedIdentities4ResourcesSubscription = @() }
         $arrayUserAssignedIdentities4ResourcesSubscriptionCount = $arrayUserAssignedIdentities4ResourcesSubscription.Count
 
         if ($subFeaturesGroupedBySubscription) {
-            $subscriptionFeatures = $subFeaturesGroupedBySubscription.where({ $_.name -eq $subscriptionId })
+            $subscriptionFeatures = $htSubFeaturesGroupedBySubscription[$subscriptionId]
         }
 
         $cssClass = 'subDetailsTable'
@@ -125,8 +126,8 @@
 
     if ($mgOrSub -eq 'sub') {
 
-        if ($htDefenderEmailContacts.($subscriptionDetailsReleatedQuery.subscriptionId)) {
-            $hlpDefenderEmailContacts = $htDefenderEmailContacts.($subscriptionDetailsReleatedQuery.subscriptionId)
+        if ($htDefenderEmailContacts[$subscriptionDetailsReleatedQuery.subscriptionId]) {
+            $hlpDefenderEmailContacts = $htDefenderEmailContacts[$subscriptionDetailsReleatedQuery.subscriptionId]
             $MDfCEmailNotificationsState = $hlpDefenderEmailContacts.alertNotificationsState
             $MDfCEmailNotificationsSeverity = $hlpDefenderEmailContacts.alertNotificationsminimalSeverity
             $MDfCEmailNotificationsRoles = $hlpDefenderEmailContacts.roles
@@ -336,18 +337,21 @@ tf.init();}}
 <tbody>
 '@)
             $htmlScopeInsightsDiagnosticsSub = $null
-            $htmlScopeInsightsDiagnosticsSub = foreach ($entry in ($htDiagnosticSettingsMgSub).sub.($subscriptionId).keys | Sort-Object) {
-                foreach ($diagset in ($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.keys | Sort-Object) {
+            $htDiagnosticSettingsSub = ($htDiagnosticSettingsMgSub).sub.($subscriptionId)
+            $htmlScopeInsightsDiagnosticsSub = foreach ($entry in $htDiagnosticSettingsSub.keys | Sort-Object) {
+                $htDiagnosticSettingsSubEntry = $htDiagnosticSettingsSub.$entry
+                foreach ($diagset in $htDiagnosticSettingsSubEntry.keys | Sort-Object) {
+                    $diagsetObj = $htDiagnosticSettingsSubEntry.$diagset
                     @"
 <tr>
-<td>$(($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.$diagset.DiagnosticSettingName)</td>
-<td>$(($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.$diagset.DiagnosticTargetType)</td>
-<td>$(($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.$diagset.DiagnosticTargetId)</td>
+<td>$($diagsetObj.DiagnosticSettingName)</td>
+<td>$($diagsetObj.DiagnosticTargetType)</td>
+<td>$($diagsetObj.DiagnosticTargetId)</td>
 "@
                     foreach ($logCategory in $diagnosticSettingsSubCategories) {
-                        if (($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.$diagset.DiagnosticCategoriesHt.($logCategory)) {
+                        if ($diagsetObj.DiagnosticCategoriesHt.($logCategory)) {
                             @"
-<td>$(($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.$diagset.DiagnosticCategoriesHt.($logCategory))</td>
+<td>$($diagsetObj.DiagnosticCategoriesHt.($logCategory))</td>
 "@
                         }
                         else {
@@ -471,7 +475,7 @@ tf.init();}}
 <tbody>
 "@)
             $htmlScopeInsightsTags = $null
-            $htmlScopeInsightsTags = foreach ($tag in (($htSubscriptionTags).($subscriptionId)).keys | Sort-Object) {
+            $htmlScopeInsightsTags = foreach ($tag in ($htSubscriptionTags[$subscriptionId]).keys | Sort-Object) {
                 @"
 <tr>
 <td>$tag</td>
@@ -541,12 +545,12 @@ extensions: [{ name: 'sort' }]
         #TagNameUsage
         #region ScopeInsightsTagNameUsage
         $arrayTagListSubscription = [System.Collections.ArrayList]@()
-        foreach ($tagScope in $htSubscriptionTagList.($subscriptionId).keys) {
-            foreach ($tagScopeTagName in $htSubscriptionTagList.($subscriptionId).$tagScope.keys) {
+        foreach ($tagScope in $htSubscriptionTagList[$subscriptionId].keys) {
+            foreach ($tagScopeTagName in $htSubscriptionTagList[$subscriptionId].$tagScope.keys) {
                 $null = $arrayTagListSubscription.Add([PSCustomObject]@{
                         Scope    = $tagScope
                         TagName  = ($tagScopeTagName)
-                        TagCount = $htSubscriptionTagList.($subscriptionId).($tagScope).($tagScopeTagName)
+                        TagCount = $htSubscriptionTagList[$subscriptionId].($tagScope).($tagScopeTagName)
                     })
             }
         }
@@ -650,15 +654,15 @@ extensions: [{ name: 'sort' }]
         #region ScopeInsightsConsumptionSub
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
 
-            if ($htAzureConsumptionSubscriptions.($subscriptionId).ConsumptionData) {
-                $consumptionData = $htAzureConsumptionSubscriptions.($subscriptionId).ConsumptionData
+            if ($htAzureConsumptionSubscriptions[$subscriptionId].ConsumptionData) {
+                $consumptionData = $htAzureConsumptionSubscriptions[$subscriptionId].ConsumptionData
 
                 $arrayTotalCostSummarySub = @()
                 $arrayConsumptionData = [System.Collections.ArrayList]@()
 
                 $totalCost = 0
 
-                $currency = $htAzureConsumptionSubscriptions.($subscriptionId).Currency
+                $currency = $htAzureConsumptionSubscriptions[$subscriptionId].Currency
                 $consumedServiceCount = ($consumptionData.ResourceType | Sort-Object -Unique | Measure-Object).Count
                 $resourceCount = ($consumptionData.ResourceId | Sort-Object -Unique | Measure-Object).Count
                 $subConsumptionDataGrouped = $consumptionData | Group-Object -Property ResourceType, ChargeType, MeterCategory
@@ -682,7 +686,7 @@ extensions: [{ name: 'sort' }]
                             ConsumedServiceCurrency      = $currency
                         })
 
-                    $totalCost = $htAzureConsumptionSubscriptions.($subscriptionId).TotalCost
+                    $totalCost = $htAzureConsumptionSubscriptions[$subscriptionId].TotalCost
 
                 }
                 if ([math]::Round($totalCost, 2) -eq 0) {
@@ -820,8 +824,8 @@ tf.init();}}
         #region ScopeInsightsResourceProvidersDetailed
         if ($azAPICallConf['htParameters'].NoResourceProvidersAtAll -eq $false) {
             if ($azAPICallConf['htParameters'].NoResourceProvidersDetailed -eq $false) {
-                if (($htResourceProvidersAll).($subscriptionId)) {
-                    $tfCount = ($htResourceProvidersAll).($subscriptionId).Providers.Count
+                if ($htResourceProvidersAll[$subscriptionId]) {
+                    $tfCount = $htResourceProvidersAll[$subscriptionId].Providers.Count
                     $htmlTableId = "ScopeInsights_ResourceProvider_$($subscriptionId -replace '-','_')"
                     $randomFunctionName = "func_$htmlTableId"
                     [void]$htmlScopeInsights.AppendLine(@"
@@ -838,7 +842,7 @@ tf.init();}}
 <tbody>
 "@)
                     $htmlScopeInsightsResourceProvidersDetailed = $null
-                    $htmlScopeInsightsResourceProvidersDetailed = foreach ($provider in ($htResourceProvidersAll).($subscriptionId).Providers) {
+                    $htmlScopeInsightsResourceProvidersDetailed = foreach ($provider in $htResourceProvidersAll[$subscriptionId].Providers) {
                         @"
 <tr>
 <td>$($provider.namespace)</td>
@@ -997,17 +1001,17 @@ extensions: [{ name: 'sort' }]
 
         #ResourceLocks
         #region ScopeInsightsResourceLocks
-        if ($htResourceLocks.($subscriptionId)) {
+        if ($htResourceLocks[$subscriptionId]) {
             $tfCount = 6
             $htmlTableId = "ScopeInsights_ResourceLocks_$($subscriptionId -replace '-','_')"
             $randomFunctionName = "func_$htmlTableId"
 
-            $subscriptionLocksCannotDeleteCount = $htResourceLocks.($subscriptionId).SubscriptionLocksCannotDeleteCount
-            $subscriptionLocksReadOnlyCount = $htResourceLocks.($subscriptionId).SubscriptionLocksReadOnlyCount
-            $resourceGroupsLocksCannotDeleteCount = $htResourceLocks.($subscriptionId).ResourceGroupsLocksCannotDeleteCount
-            $resourceGroupsLocksReadOnlyCount = $htResourceLocks.($subscriptionId).ResourceGroupsLocksReadOnlyCount
-            $resourcesLocksCannotDeleteCount = $htResourceLocks.($subscriptionId).ResourcesLocksCannotDeleteCount
-            $resourcesLocksReadOnlyCount = $htResourceLocks.($subscriptionId).ResourcesLocksReadOnlyCount
+            $subscriptionLocksCannotDeleteCount = $htResourceLocks[$subscriptionId].SubscriptionLocksCannotDeleteCount
+            $subscriptionLocksReadOnlyCount = $htResourceLocks[$subscriptionId].SubscriptionLocksReadOnlyCount
+            $resourceGroupsLocksCannotDeleteCount = $htResourceLocks[$subscriptionId].ResourceGroupsLocksCannotDeleteCount
+            $resourceGroupsLocksReadOnlyCount = $htResourceLocks[$subscriptionId].ResourceGroupsLocksReadOnlyCount
+            $resourcesLocksCannotDeleteCount = $htResourceLocks[$subscriptionId].ResourcesLocksCannotDeleteCount
+            $resourcesLocksReadOnlyCount = $htResourceLocks[$subscriptionId].ResourcesLocksReadOnlyCount
 
             [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
@@ -1131,18 +1135,21 @@ extensions: [{ name: 'sort' }]
 <tbody>
 '@)
             $htmlScopeInsightsDiagnosticsMg = $null
-            $htmlScopeInsightsDiagnosticsMg = foreach ($entry in ($htDiagnosticSettingsMgSub).mg.($mgChild).keys | Sort-Object) {
-                foreach ($diagset in ($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.keys | Sort-Object) {
+            $htDiagnosticSettingsMg = ($htDiagnosticSettingsMgSub).mg.($mgChild)
+            $htmlScopeInsightsDiagnosticsMg = foreach ($entry in $htDiagnosticSettingsMg.keys | Sort-Object) {
+                $htDiagnosticSettingsMgEntry = $htDiagnosticSettingsMg.$entry
+                foreach ($diagset in $htDiagnosticSettingsMgEntry.keys | Sort-Object) {
+                    $diagsetObj = $htDiagnosticSettingsMgEntry.$diagset
                     @"
 <tr>
-<td>$(($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.$diagset.DiagnosticSettingName)</td>
-<td>$(($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.$diagset.DiagnosticTargetType)</td>
-<td>$(($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.$diagset.DiagnosticTargetId)</td>
+<td>$($diagsetObj.DiagnosticSettingName)</td>
+<td>$($diagsetObj.DiagnosticTargetType)</td>
+<td>$($diagsetObj.DiagnosticTargetId)</td>
 "@
                     foreach ($logCategory in $diagnosticSettingsMgCategories) {
-                        if (($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.$diagset.DiagnosticCategoriesHt.($logCategory)) {
+                        if ($diagsetObj.DiagnosticCategoriesHt.($logCategory)) {
                             @"
-<td>$(($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.$diagset.DiagnosticCategoriesHt.($logCategory))</td>
+<td>$($diagsetObj.DiagnosticCategoriesHt.($logCategory))</td>
 "@
                         }
                         else {
@@ -1250,7 +1257,7 @@ extensions: [{ name: 'sort' }]
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
             if ($allConsumptionDataCount -gt 0) {
 
-                $consumptionData = $htManagementGroupsCost.($mgchild).consumptionDataSubscriptions
+                $consumptionData = $htManagementGroupsCost[$mgchild].consumptionDataSubscriptions
                 if (($consumptionData | Measure-Object).Count -gt 0) {
                     $arrayTotalCostSummaryMg = @()
                     $arrayConsumptionData = [System.Collections.ArrayList]@()
@@ -1599,7 +1606,7 @@ extensions: [{ name: 'sort' }]
     if ($azAPICallConf['htParameters'].NoResources -eq $false) {
         #region ScopeInsightsCAFResourceNamingALL
         if ($mgOrSub -eq 'sub') {
-            $resourcesIdsAllCAFNamingRelevantThisSubscription = $resourcesIdsAllCAFNamingRelevantGroupedBySubscription.where({ $_.Name -eq $subscriptionId })
+            $resourcesIdsAllCAFNamingRelevantThisSubscription = $htResourcesIdsAllCAFNamingRelevantGroupedBySubscription[$subscriptionId]
             if ($resourcesIdsAllCAFNamingRelevantThisSubscription) {
                 $resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByType = $resourcesIdsAllCAFNamingRelevantThisSubscription.Group | Group-Object -Property type
                 $resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByTypeCount = ($resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByType | Measure-Object).Count
@@ -1739,7 +1746,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     #region ScopeInsightsOrphanedResources
     if ($mgOrSub -eq 'sub') {
         if ($arrayOrphanedResourcesGroupedBySubscription) {
-            $orphanedResourcesThisSubscription = $arrayOrphanedResourcesGroupedBySubscription.where({ $_.Name -eq $subscriptionId })
+            $orphanedResourcesThisSubscription = $htArrayOrphanedResourcesGroupedBySubscription[$subscriptionId]
             if ($orphanedResourcesThisSubscription) {
                 $orphanedResourcesThisSubscriptionCount = $orphanedResourcesThisSubscription.Group.count
 
@@ -1893,12 +1900,26 @@ extensions: [{ name: 'sort' }]
         #resourcesDiagnosticsCapable
         #region ScopeInsightsDiagnosticsCapable
         if ($mgOrSub -eq 'mg') {
+            if ($null -eq $script:resourceTypesDiagnosticsArrayGroupedByType) {
+                $script:resourceTypesDiagnosticsArrayGroupedByType = @{}
+                foreach ($resourceTypeDiagnostics in $resourceTypesDiagnosticsArray) {
+                    $script:resourceTypesDiagnosticsArrayGroupedByType[$resourceTypeDiagnostics.ResourceType] = $resourceTypeDiagnostics
+                }
+            }
+            #sum resource counts per type in a single pass instead of re-scanning the whole collection per unique type
+            $resourcesAllChildSubscriptionsGroupedByType = @{}
+            foreach ($resourceAllChildSubscription in $resourcesAllChildSubscriptions) {
+                $resourceAllChildSubscriptionType = $resourceAllChildSubscription.type
+                if (-not $resourcesAllChildSubscriptionsGroupedByType.ContainsKey($resourceAllChildSubscriptionType)) {
+                    $resourcesAllChildSubscriptionsGroupedByType[$resourceAllChildSubscriptionType] = 0
+                }
+                $resourcesAllChildSubscriptionsGroupedByType[$resourceAllChildSubscriptionType] += $resourceAllChildSubscription.count_
+            }
             $resourceTypesUnique = ($resourcesAllChildSubscriptions | Select-Object type -Unique).type
             $resourceTypesSummarizedArray = [System.Collections.ArrayList]@()
             foreach ($resourceTypeUnique in $resourceTypesUnique) {
-                $resourcesTypeCountTotal = 0
-                ($resourcesAllChildSubscriptions.where( { $_.type -eq $resourceTypeUnique } )).count_ | ForEach-Object { $resourcesTypeCountTotal += $_ }
-                $dataFromResourceTypesDiagnosticsArray = $resourceTypesDiagnosticsArray.where( { $_.ResourceType -eq $resourceTypeUnique } )
+                $resourcesTypeCountTotal = $resourcesAllChildSubscriptionsGroupedByType[$resourceTypeUnique]
+                $dataFromResourceTypesDiagnosticsArray = $resourceTypesDiagnosticsArrayGroupedByType[$resourceTypeUnique]
                 if ($dataFromResourceTypesDiagnosticsArray.Metrics -eq $true -or $dataFromResourceTypesDiagnosticsArray.Logs -eq $true) {
                     $resourceDiagnosticscapable = $true
                 }
@@ -2020,12 +2041,26 @@ extensions: [{ name: 'sort' }]
         }
 
         if ($mgOrSub -eq 'sub') {
+            if ($null -eq $script:resourceTypesDiagnosticsArrayGroupedByType) {
+                $script:resourceTypesDiagnosticsArrayGroupedByType = @{}
+                foreach ($resourceTypeDiagnostics in $resourceTypesDiagnosticsArray) {
+                    $script:resourceTypesDiagnosticsArrayGroupedByType[$resourceTypeDiagnostics.ResourceType] = $resourceTypeDiagnostics
+                }
+            }
+            #sum resource counts per type in a single pass instead of re-scanning the whole collection per unique type
+            $resourcesSubscriptionGroupedByType = @{}
+            foreach ($resourceSubscription in $resourcesSubscription) {
+                $resourceSubscriptionType = $resourceSubscription.type
+                if (-not $resourcesSubscriptionGroupedByType.ContainsKey($resourceSubscriptionType)) {
+                    $resourcesSubscriptionGroupedByType[$resourceSubscriptionType] = 0
+                }
+                $resourcesSubscriptionGroupedByType[$resourceSubscriptionType] += $resourceSubscription.count_
+            }
             $resourceTypesUnique = ($resourcesSubscription | Select-Object type -Unique).type
             $resourceTypesSummarizedArray = [System.Collections.ArrayList]@()
             foreach ($resourceTypeUnique in $resourceTypesUnique) {
-                $resourcesTypeCountTotal = 0
-                ($resourcesSubscription.where( { $_.type -eq $resourceTypeUnique } )).count_ | ForEach-Object { $resourcesTypeCountTotal += $_ }
-                $dataFromResourceTypesDiagnosticsArray = $resourceTypesDiagnosticsArray.where( { $_.ResourceType -eq $resourceTypeUnique } )
+                $resourcesTypeCountTotal = $resourcesSubscriptionGroupedByType[$resourceTypeUnique]
+                $dataFromResourceTypesDiagnosticsArray = $resourceTypesDiagnosticsArrayGroupedByType[$resourceTypeUnique]
                 if ($dataFromResourceTypesDiagnosticsArray.Metrics -eq $true -or $dataFromResourceTypesDiagnosticsArray.Logs -eq $true) {
                     $resourceDiagnosticscapable = $true
                 }
@@ -2200,7 +2235,7 @@ extensions: [{ name: 'sort' }]
     <td class="breakwordall">$($miResEntry.miResourceId)</td>
     <td>$($miResEntry.miPrincipalId)</td>
     <td>$($miResEntry.miClientId)</td>
-    <td>$($htUserAssignedIdentitiesAssignedResources.($miResEntry.miPrincipalId).ResourcesCount)</td>
+    <td>$($htUserAssignedIdentitiesAssignedResources[$miResEntry.miPrincipalId].ResourcesCount)</td>
     <td>$($miResEntry.miCrossSubscription)</td>
     <td>$($miResEntry.resourceName)</td>
     <td class="breakwordall">$($miResEntry.resourceType)</td>
@@ -2303,7 +2338,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                 $allPSRuleResultsUnderThisMg = [system.collections.ArrayList]@()
                 foreach ($mg in $grpPSRuleManagementGroups) {
                     $mgNameIdHlper = $mg.name -replace '.*/'
-                    if ($htManagementGroupsMgPath.($mgNameIdHlper).path -contains $mgchild) {
+                    if ($htManagementGroupsMgPath[$mgNameIdHlper].path -contains $mgchild) {
                         $allPSRuleResultsUnderThisMg.AddRange($mg.Group)
                     }
                 }
@@ -2430,7 +2465,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             }
 
             if ($mgOrSub -eq 'sub') {
-                $grpThisSubscription = $grpPSRuleSubscriptions.where({ $_.Name -eq $subscriptionId })
+                $grpThisSubscription = $htGrpPSRuleSubscriptions[$subscriptionId]
                 $grpThisSubscriptionGrouped = $grpThisSubscription.Group | Group-Object -Property resourceType, pillar, category, severity, rule, result
 
                 if ($grpThisSubscriptionGrouped) {
@@ -2573,16 +2608,18 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             if ([String]::IsNullOrEmpty($policyAssignment.subscriptionId)) {
                 $null = $policiesAssigned.Add($policyAssignment)
                 $policiesCount++
-                if ($policyAssignment.PolicyType -eq 'BuiltIn') {
+                $policyType = $policyAssignment.PolicyType
+                $inheritance = $policyAssignment.Inheritance
+                if ($policyType -eq 'BuiltIn') {
                     $policiesCountBuiltin++
                 }
-                if ($policyAssignment.PolicyType -eq 'Custom') {
+                if ($policyType -eq 'Custom') {
                     $policiesCountCustom++
                 }
-                if ($policyAssignment.Inheritance -like 'this*') {
+                if ($inheritance -like 'this*') {
                     $policiesAssignedAtScope++
                 }
-                if ($policyAssignment.Inheritance -notlike 'this*') {
+                if ($inheritance -notlike 'this*') {
                     $policiesInherited++
                 }
             }
@@ -2601,16 +2638,18 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         foreach ($policyAssignment in $arrayPolicyAssignmentsEnrichedForThisSubscriptionVariantPolicy) {
             $null = $policiesAssigned.Add($policyAssignment)
             $policiesCount++
-            if ($policyAssignment.PolicyType -eq 'BuiltIn') {
+            $policyType = $policyAssignment.PolicyType
+            $inheritance = $policyAssignment.Inheritance
+            if ($policyType -eq 'BuiltIn') {
                 $policiesCountBuiltin++
             }
-            if ($policyAssignment.PolicyType -eq 'Custom') {
+            if ($policyType -eq 'Custom') {
                 $policiesCountCustom++
             }
-            if ($policyAssignment.Inheritance -like 'this*') {
+            if ($inheritance -like 'this*') {
                 $policiesAssignedAtScope++
             }
-            if ($policyAssignment.Inheritance -notlike 'this*') {
+            if ($inheritance -notlike 'this*') {
                 $policiesInherited++
             }
         }
@@ -2833,16 +2872,18 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             if ([String]::IsNullOrEmpty($policySetAssignment.subscriptionId)) {
                 $null = $policySetsAssigned.Add($policySetAssignment)
                 $policySetsCount++
-                if ($policySetAssignment.PolicyType -eq 'BuiltIn') {
+                $policySetType = $policySetAssignment.PolicyType
+                $policySetInheritance = $policySetAssignment.Inheritance
+                if ($policySetType -eq 'BuiltIn') {
                     $policySetsCountBuiltin++
                 }
-                if ($policySetAssignment.PolicyType -eq 'Custom') {
+                if ($policySetType -eq 'Custom') {
                     $policySetsCountCustom++
                 }
-                if ($policySetAssignment.Inheritance -like 'this*') {
+                if ($policySetInheritance -like 'this*') {
                     $policySetsAssignedAtScope++
                 }
-                if ($policySetAssignment.Inheritance -notlike 'this*') {
+                if ($policySetInheritance -notlike 'this*') {
                     $policySetsInherited++
                 }
             }
@@ -2861,16 +2902,18 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         foreach ($policySetAssignment in $arrayPolicyAssignmentsEnrichedForThisSubscriptionVariantPolicySet) {
             $null = $policySetsAssigned.Add($policySetAssignment)
             $policySetsCount++
-            if ($policySetAssignment.PolicyType -eq 'BuiltIn') {
+            $policySetType = $policySetAssignment.PolicyType
+            $policySetInheritance = $policySetAssignment.Inheritance
+            if ($policySetType -eq 'BuiltIn') {
                 $policySetsCountBuiltin++
             }
-            if ($policySetAssignment.PolicyType -eq 'Custom') {
+            if ($policySetType -eq 'Custom') {
                 $policySetsCountCustom++
             }
-            if ($policySetAssignment.Inheritance -like 'this*') {
+            if ($policySetInheritance -like 'this*') {
                 $policySetsAssignedAtScope++
             }
-            if ($policySetAssignment.Inheritance -notlike 'this*') {
+            if ($policySetInheritance -notlike 'this*') {
                 $policySetsInherited++
             }
         }
@@ -3081,10 +3124,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     }
     else {
         if ($mgOrSub -eq 'mg') {
-            $scopePolicyAssignmentsLimit = $policyPolicyBaseQueryScopeInsights.where( { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.MgId -eq $mgChild } )
+            $scopePolicyAssignmentsLimit = $htPolicyPolicyBaseQueryScopeInsightsByManagementGroup[$mgChild]
         }
         if ($mgOrSub -eq 'sub') {
-            $scopePolicyAssignmentsLimit = $policyPolicyBaseQueryScopeInsights.where( { $_.SubscriptionId -eq $subscriptionId } )
+            $scopePolicyAssignmentsLimit = $htPolicyPolicyBaseQueryScopeInsightsBySubscription[$subscriptionId]
         }
 
         if ($scopePolicyAssignmentsLimit.PolicyAndPolicySetAssignmentAtScopeCount -gt (($limit) * $LimitCriticalPercentage / 100)) {
@@ -3603,7 +3646,7 @@ extensions: [{ name: 'sort' }]
         $roleAssignmentsRelatedToPolicyCount = 0
         $roleSecurityFindingCustomRoleOwner = 0
         $roleSecurityFindingOwnerAssignmentSP = 0
-        $rbacForThisManagementGroup = ($rbacAllGroupedByManagementGroup.where( { $_.name -eq $mgChild } )).group
+        $rbacForThisManagementGroup = $rbacAllGroupedByManagementGroup[$mgChild]
         foreach ($roleAssignment in $rbacForThisManagementGroup) {
             if ([String]::IsNullOrEmpty($roleAssignment.subscriptionId)) {
                 $null = $rolesAssigned.Add($roleAssignment)
@@ -3611,16 +3654,17 @@ extensions: [{ name: 'sort' }]
                 if ($roleAssignment.Scope -notlike 'this*') {
                     $rolesAssignedInheritedCount++
                 }
-                if ($roleAssignment.ObjectType -like 'User*') {
+                $objectType = $roleAssignment.ObjectType
+                if ($objectType -like 'User*') {
                     $rolesAssignedUser++
                 }
-                if ($roleAssignment.ObjectType -eq 'Group') {
+                if ($objectType -eq 'Group') {
                     $rolesAssignedGroup++
                 }
-                if ($roleAssignment.ObjectType -like 'SP*') {
+                if ($objectType -like 'SP*') {
                     $rolesAssignedServicePrincipal++
                 }
-                if ($roleAssignment.ObjectType -eq 'Unknown') {
+                if ($objectType -eq 'Unknown') {
                     $rolesAssignedUnknown++
                 }
                 if ($roleAssignment.RbacRelatedPolicyAssignment -ne 'none') {
@@ -3638,7 +3682,7 @@ extensions: [{ name: 'sort' }]
     if ($mgOrSub -eq 'sub') {
         $SIDivContentClass = 'contentSISub'
         $htmlTableIdentifier = $subscriptionId
-        $LimitRoleAssignmentsScope = $htSubscriptionsRoleAssignmentLimit.($subscriptionId)
+        $LimitRoleAssignmentsScope = $htSubscriptionsRoleAssignmentLimit[$subscriptionId]
 
         $rolesAssigned = [System.Collections.ArrayList]@()
         $rolesAssignedCount = 0
@@ -3650,7 +3694,7 @@ extensions: [{ name: 'sort' }]
         $roleAssignmentsRelatedToPolicyCount = 0
         $roleSecurityFindingCustomRoleOwner = 0
         $roleSecurityFindingOwnerAssignmentSP = 0
-        $rbacForThisSubscription = ($rbacAllGroupedBySubscription.where( { $_.name -eq $subscriptionId } )).group
+        $rbacForThisSubscription = $rbacAllGroupedBySubscription[$subscriptionId]
         $rolesAssigned = foreach ($roleAssignment in $rbacForThisSubscription) {
 
             $roleAssignment
@@ -3658,16 +3702,17 @@ extensions: [{ name: 'sort' }]
             if ($roleAssignment.Scope -notlike 'this*') {
                 $rolesAssignedInheritedCount++
             }
-            if ($roleAssignment.ObjectType -like 'User*') {
+            $objectType = $roleAssignment.ObjectType
+            if ($objectType -like 'User*') {
                 $rolesAssignedUser++
             }
-            if ($roleAssignment.ObjectType -eq 'Group') {
+            if ($objectType -eq 'Group') {
                 $rolesAssignedGroup++
             }
-            if ($roleAssignment.ObjectType -like 'SP*') {
+            if ($objectType -like 'SP*') {
                 $rolesAssignedServicePrincipal++
             }
-            if ($roleAssignment.ObjectType -eq 'Unknown') {
+            if ($objectType -eq 'Unknown') {
                 $rolesAssignedUnknown++
             }
             if ($roleAssignment.RbacRelatedPolicyAssignment -ne 'none') {

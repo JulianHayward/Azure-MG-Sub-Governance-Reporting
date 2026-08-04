@@ -11,16 +11,16 @@
 
     $MgIds = ($optimizedTableForPathQuery) | Select-Object -Property level, MgId, MgName, mgParentId, mgParentName | Sort-Object -Property level, MgId -Unique
     $grpScopePolicyDefinitionsCustom = (($htCacheDefinitionsPolicy).values).where( { $_.Type -eq 'Custom' }) | Group-Object ScopeMgSub
-    $grpMgScopePolicyDefinitionsCustom = ($grpScopePolicyDefinitionsCustom.where( { $_.Name -eq 'Mg' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId)
-    $grpSubScopePolicyDefinitionsCustom = ($grpScopePolicyDefinitionsCustom.where( { $_.Name -eq 'Sub' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId)
+    $grpMgScopePolicyDefinitionsCustom = ($grpScopePolicyDefinitionsCustom.where( { $_.Name -eq 'Mg' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId -AsHashTable -AsString)
+    $grpSubScopePolicyDefinitionsCustom = ($grpScopePolicyDefinitionsCustom.where( { $_.Name -eq 'Sub' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId -AsHashTable -AsString)
 
     $grpScopePolicySetDefinitionsCustom = (($htCacheDefinitionsPolicySet).values).where( { $_.Type -eq 'Custom' }) | Group-Object ScopeMgSub
-    $grpMgScopePolicySetDefinitionsCustom = $grpScopePolicySetDefinitionsCustom.where( { $_.Name -eq 'Mg' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId
-    $grpSubScopePolicySetDefinitionsCustom = $grpScopePolicySetDefinitionsCustom.where( { $_.Name -eq 'Sub' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId
+    $grpMgScopePolicySetDefinitionsCustom = $grpScopePolicySetDefinitionsCustom.where( { $_.Name -eq 'Mg' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId -AsHashTable -AsString
+    $grpSubScopePolicySetDefinitionsCustom = $grpScopePolicySetDefinitionsCustom.where( { $_.Name -eq 'Sub' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId -AsHashTable -AsString
 
     $grpScopePolicyAssignments = ($htCacheAssignmentsPolicy).values | Group-Object -Property AssignmentScopeMgSubRg
-    $grpMgScopePolicyAssignments = $grpScopePolicyAssignments.where( { $_.Name -eq 'Mg' }).Group | Sort-Object @{Expression = { $_.Assignment.Id } } | Group-Object -Property AssignmentScopeId
-    $grpSubScopePolicyAssignments = $grpScopePolicyAssignments.where( { $_.Name -eq 'Sub' }).Group | Sort-Object @{Expression = { $_.Assignment.Id } } | Group-Object -Property AssignmentScopeId
+    $grpMgScopePolicyAssignments = $grpScopePolicyAssignments.where( { $_.Name -eq 'Mg' }).Group | Sort-Object @{Expression = { $_.Assignment.Id } } | Group-Object -Property AssignmentScopeId -AsHashTable -AsString
+    $grpSubScopePolicyAssignments = $grpScopePolicyAssignments.where( { $_.Name -eq 'Sub' }).Group | Sort-Object @{Expression = { $_.Assignment.Id } } | Group-Object -Property AssignmentScopeId -AsHashTable -AsString
 
     if (-not $azAPICallConf['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
         if (-not $JsonExportExcludeResourceGroups) {
@@ -28,14 +28,14 @@
             $htSubRGPolicyAssignments = @{}
             foreach ($rgpa in $grpRGScopePolicyAssignments) {
                 $subId = ($rgpa.Name).split('/')[0]
-                if (-not $htSubRGPolicyAssignments.($subId)) {
-                    $htSubRGPolicyAssignments.($subId) = @{}
+                if (-not $htSubRGPolicyAssignments[$subId]) {
+                    $htSubRGPolicyAssignments[$subId] = @{}
                 }
-                if (-not $htSubRGPolicyAssignments.($subId).PolicyAssignments) {
-                    $htSubRGPolicyAssignments.($subId).PolicyAssignments = [System.Collections.ArrayList]@()
+                if (-not $htSubRGPolicyAssignments[$subId].PolicyAssignments) {
+                    $htSubRGPolicyAssignments[$subId].PolicyAssignments = [System.Collections.ArrayList]@()
                 }
                 foreach ($rgpafg in $rgpa.group) {
-                    $null = $htSubRGPolicyAssignments.($subId).PolicyAssignments.Add($rgpafg)
+                    $null = $htSubRGPolicyAssignments[$subId].PolicyAssignments.Add($rgpafg)
                 }
             }
         }
@@ -43,8 +43,8 @@
 
     $grpScopeRoleAssignments = ($htCacheAssignmentsRole).values | Group-Object -Property AssignmentScopeTenMgSubRgRes
     $grpTenantScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq 'Tenant' }).Group | Group-Object -Property AssignmentScopeId
-    $grpMgScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq 'Mg' }).Group | Sort-Object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId
-    $grpSubScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq 'Sub' }).Group | Sort-Object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId
+    $grpMgScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq 'Mg' }).Group | Sort-Object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId -AsHashTable -AsString
+    $grpSubScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq 'Sub' }).Group | Sort-Object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId -AsHashTable -AsString
 
     if (-not $azAPICallConf['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
         if (-not $JsonExportExcludeResourceGroups) {
@@ -52,14 +52,14 @@
             $htSubRGRoleAssignments = @{}
             foreach ($rgra in $grpRGScopeRoleAssignments) {
                 $subId = ($rgra.Name).split('/')[0]
-                if (-not $htSubRGRoleAssignments.($subId)) {
-                    $htSubRGRoleAssignments.($subId) = @{}
+                if (-not $htSubRGRoleAssignments[$subId]) {
+                    $htSubRGRoleAssignments[$subId] = @{}
                 }
-                if (-not $htSubRGRoleAssignments.($subId).RoleAssignments) {
-                    $htSubRGRoleAssignments.($subId).RoleAssignments = [System.Collections.ArrayList]@()
+                if (-not $htSubRGRoleAssignments[$subId].RoleAssignments) {
+                    $htSubRGRoleAssignments[$subId].RoleAssignments = [System.Collections.ArrayList]@()
                 }
                 foreach ($rgrafg in $rgra.group) {
-                    $null = $htSubRGRoleAssignments.($subId).RoleAssignments.Add($rgrafg)
+                    $null = $htSubRGRoleAssignments[$subId].RoleAssignments.Add($rgrafg)
                 }
             }
 
@@ -72,24 +72,28 @@
                         $raSplit = ($resra.Assignment.RoleAssignmentId).split('/')
                         $splitSubId = $raSplit[2]
                         $splitRg = $raSplit[4]
-                        if (-not $htSubResRoleAssignments.($splitSubId)) {
-                            $htSubResRoleAssignments.($splitSubId) = @{}
+                        $htSubResRoleAssignmentsSubNode = $htSubResRoleAssignments[$splitSubId]
+                        if (-not $htSubResRoleAssignmentsSubNode) {
+                            $htSubResRoleAssignmentsSubNode = @{}
+                            $htSubResRoleAssignments[$splitSubId] = $htSubResRoleAssignmentsSubNode
                         }
-                        if (-not $htSubResRoleAssignments.($splitSubId).($splitRg)) {
-                            $htSubResRoleAssignments.($splitSubId).($splitRg) = @{}
-
+                        $htSubResRoleAssignmentsRgNode = $htSubResRoleAssignmentsSubNode.($splitRg)
+                        if (-not $htSubResRoleAssignmentsRgNode) {
+                            $htSubResRoleAssignmentsRgNode = @{}
+                            $htSubResRoleAssignmentsSubNode.($splitRg) = $htSubResRoleAssignmentsRgNode
                         }
 
                         $resourceName = $resra.AssignmentScopeId.split('/')[2]
-                        if (-not $htSubResRoleAssignments.($splitSubId).($splitRg).("$($resra.ResourceType)_$($resourceName)")) {
-                            $htSubResRoleAssignments.($splitSubId).($splitRg).("$($resra.ResourceType)_$($resourceName)") = @{}
-
+                        $resKey = "$($resra.ResourceType)_$($resourceName)"
+                        $htSubResRoleAssignmentsResNode = $htSubResRoleAssignmentsRgNode.($resKey)
+                        if (-not $htSubResRoleAssignmentsResNode) {
+                            $htSubResRoleAssignmentsResNode = @{}
+                            $htSubResRoleAssignmentsRgNode.($resKey) = $htSubResRoleAssignmentsResNode
                         }
-                        if (-not $htSubResRoleAssignments.($splitSubId).($splitRg).("$($resra.ResourceType)_$($resourceName)").RoleAssignments) {
-                            $htSubResRoleAssignments.($splitSubId).($splitRg).("$($resra.ResourceType)_$($resourceName)").RoleAssignments = [ordered]@{}
-
+                        if (-not $htSubResRoleAssignmentsResNode.RoleAssignments) {
+                            $htSubResRoleAssignmentsResNode.RoleAssignments = [ordered]@{}
                         }
-                        ($htSubResRoleAssignments.($splitSubId).($splitRg).("$($resra.ResourceType)_$($resourceName)").RoleAssignments.($resra.Assignment.RoleAssignmentId)) = $resra.Assignment
+                        $htSubResRoleAssignmentsResNode.RoleAssignments.($resra.Assignment.RoleAssignmentId) = $resra.Assignment
                     }
                 }
             }
@@ -100,119 +104,119 @@
     $bluePrintsAssignmentsAtScope = ($htCacheAssignmentsBlueprint).keys | Sort-Object
     $bluePrintDefinitions = ($htCacheDefinitionsBlueprint).Keys | Sort-Object
     $subscriptions = ($optimizedTableForPathQuery.where( { -not [string]::IsNullOrEmpty($_.subscriptionId) })) | Select-Object mgId, Subscription* | Sort-Object -Property subscriptionId -Unique
+    $subscriptionsGroupedByMgId = $subscriptions | Group-Object -Property MgId -AsHashTable -AsString
     foreach ($mg in $MgIds) {
 
-        $htJSON.ManagementGroups.($mg.MgId) = [ordered]@{}
-        $htJSON.ManagementGroups.($mg.MgId).MgId = $mg.MgId
-        $htJSON.ManagementGroups.($mg.MgId).MgName = $mg.MgName
-        $htJSON.ManagementGroups.($mg.MgId).mgParentId = $mg.mgParentId
-        $htJSON.ManagementGroups.($mg.MgId).mgParentName = $mg.mgParentName
-        $htJSON.ManagementGroups.($mg.MgId).level = $mg.level
-        $htJSON.ManagementGroups.($mg.MgId).PolicyDefinitionsCustom = [ordered]@{}
-        $htJSON.ManagementGroups.($mg.MgId).PolicySetDefinitionsCustom = [ordered]@{}
-        $htJSON.ManagementGroups.($mg.MgId).BlueprintDefinitions = [ordered]@{}
-        $htJSON.ManagementGroups.($mg.MgId).PolicyAssignments = [ordered]@{}
-        $htJSON.ManagementGroups.($mg.MgId).RoleAssignments = [ordered]@{}
-        $htJSON.ManagementGroups.($mg.MgId).DiagnosticSettings = [ordered]@{}
-        $htJSON.ManagementGroups.($mg.MgId).Subscriptions = [ordered]@{}
+        $htJSONMg = [ordered]@{}
+        $htJSON.ManagementGroups[$mg.MgId] = $htJSONMg
+        $htJSONMg.MgId = $mg.MgId
+        $htJSONMg.MgName = $mg.MgName
+        $htJSONMg.mgParentId = $mg.mgParentId
+        $htJSONMg.mgParentName = $mg.mgParentName
+        $htJSONMg.level = $mg.level
+        $htJSONMg.PolicyDefinitionsCustom = [ordered]@{}
+        $htJSONMg.PolicySetDefinitionsCustom = [ordered]@{}
+        $htJSONMg.BlueprintDefinitions = [ordered]@{}
+        $htJSONMg.PolicyAssignments = [ordered]@{}
+        $htJSONMg.RoleAssignments = [ordered]@{}
+        $htJSONMg.DiagnosticSettings = [ordered]@{}
+        $htJSONMg.Subscriptions = [ordered]@{}
 
-        foreach ($PolDef in (($grpMgScopePolicyDefinitionsCustom).where( { $_.Name -eq $mg.MgId })).group) {
-            $htJSON.ManagementGroups.($mg.MgId).PolicyDefinitionsCustom.($PolDef.Id) = [ordered]@{}
-            $htJSON.ManagementGroups.($mg.MgId).PolicyDefinitionsCustom.($PolDef.Id) = $PolDef.Json
+        foreach ($PolDef in $grpMgScopePolicyDefinitionsCustom[$mg.MgId]) {
+            $htJSONMg.PolicyDefinitionsCustom.($PolDef.Id) = $PolDef.Json
         }
 
-        foreach ($PolSetDef in (($grpMgScopePolicySetDefinitionsCustom).where( { $_.Name -eq $mg.MgId })).group) {
-            $htJSON.ManagementGroups.($mg.MgId).PolicySetDefinitionsCustom.($PolSetDef.Id) = [ordered]@{}
-            $htJSON.ManagementGroups.($mg.MgId).PolicySetDefinitionsCustom.($PolSetDef.Id) = $PolSetDef.Json
+        foreach ($PolSetDef in $grpMgScopePolicySetDefinitionsCustom[$mg.MgId]) {
+            $htJSONMg.PolicySetDefinitionsCustom.($PolSetDef.Id) = $PolSetDef.Json
         }
 
-        foreach ($PolAssignment in ($grpMgScopePolicyAssignments).where( { $_.Name -eq $mg.MgId }).group) {
-            $htJSON.ManagementGroups.($mg.MgId).PolicyAssignments.($PolAssignment.Assignment.id) = [ordered]@{}
-            $htJSON.ManagementGroups.($mg.MgId).PolicyAssignments.($PolAssignment.Assignment.id) = $PolAssignment.Assignment
+        foreach ($PolAssignment in $grpMgScopePolicyAssignments[$mg.MgId]) {
+            $htJSONMg.PolicyAssignments.($PolAssignment.Assignment.id) = $PolAssignment.Assignment
         }
 
-        foreach ($RoleAssignment in ($grpMgScopeRoleAssignments).where( { $_.Name -eq $mg.MgId }).group) {
-            $htJSON.ManagementGroups.($mg.MgId).RoleAssignments.($RoleAssignment.Assignment.RoleAssignmentId) = [ordered]@{}
-            $htJSON.ManagementGroups.($mg.MgId).RoleAssignments.($RoleAssignment.Assignment.RoleAssignmentId) = $RoleAssignment.Assignment
+        foreach ($RoleAssignment in $grpMgScopeRoleAssignments[$mg.MgId]) {
+            $htJSONMg.RoleAssignments.($RoleAssignment.Assignment.RoleAssignmentId) = $RoleAssignment.Assignment
         }
 
         foreach ($BlueprintDefinition in ($bluePrintDefinitions).where( { $_ -like "/providers/Microsoft.Management/managementGroups/$($mg.MgId)/*" })) {
-            $htJSON.ManagementGroups.($mg.MgId).BlueprintDefinitions.($BlueprintDefinition) = [ordered]@{}
-            $htJSON.ManagementGroups.($mg.MgId).BlueprintDefinitions.($BlueprintDefinition) = $BlueprintDefinition
+            $htJSONMg.BlueprintDefinitions.($BlueprintDefinition) = $BlueprintDefinition
         }
 
-        if (($htDiagnosticSettingsMgSub).mg.($mg.MgId)) {
-            foreach ($entry in ($htDiagnosticSettingsMgSub).mg.($mg.MgId).keys | Sort-Object) {
-                $htJSON.ManagementGroups.($mg.MgId).DiagnosticSettings.($entry) = [ordered]@{}
-                foreach ($diagset in ($htDiagnosticSettingsMgSub).mg.($mg.MgId).$entry.keys | Sort-Object) {
-                    $htJSON.ManagementGroups.($mg.MgId).DiagnosticSettings.($entry).Name = (($htDiagnosticSettingsMgSub).mg.($mg.MgId).$entry.$diagset.DiagnosticSettingName)
-                    $htJSON.ManagementGroups.($mg.MgId).DiagnosticSettings.($entry).Type = (($htDiagnosticSettingsMgSub).mg.($mg.MgId).$entry.$diagset.DiagnosticTargetType)
-                    $htJSON.ManagementGroups.($mg.MgId).DiagnosticSettings.($entry).TargetId = (($htDiagnosticSettingsMgSub).mg.($mg.MgId).$entry.$diagset.DiagnosticTargetId)
-                    $htJSON.ManagementGroups.($mg.MgId).DiagnosticSettings.($entry).Settings = (($htDiagnosticSettingsMgSub).mg.($mg.MgId).$entry.$diagset.DiagnosticCategories)
+        $htDiagnosticSettingsMgScope = ($htDiagnosticSettingsMgSub).mg.($mg.MgId)
+        if ($htDiagnosticSettingsMgScope) {
+            foreach ($entry in $htDiagnosticSettingsMgScope.keys | Sort-Object) {
+                $htJSONMgDiagnosticSetting = [ordered]@{}
+                $htJSONMg.DiagnosticSettings.($entry) = $htJSONMgDiagnosticSetting
+                $htDiagnosticSettingsMgScopeEntry = $htDiagnosticSettingsMgScope.$entry
+                foreach ($diagset in $htDiagnosticSettingsMgScopeEntry.keys | Sort-Object) {
+                    $htDiagnosticSettingsMgScopeEntryDiagset = $htDiagnosticSettingsMgScopeEntry.$diagset
+                    $htJSONMgDiagnosticSetting.Name = ($htDiagnosticSettingsMgScopeEntryDiagset.DiagnosticSettingName)
+                    $htJSONMgDiagnosticSetting.Type = ($htDiagnosticSettingsMgScopeEntryDiagset.DiagnosticTargetType)
+                    $htJSONMgDiagnosticSetting.TargetId = ($htDiagnosticSettingsMgScopeEntryDiagset.DiagnosticTargetId)
+                    $htJSONMgDiagnosticSetting.Settings = ($htDiagnosticSettingsMgScopeEntryDiagset.DiagnosticCategories)
                 }
             }
         }
 
-        foreach ($subscription in $subscriptions) {
+        foreach ($subscription in $subscriptionsGroupedByMgId.($mg.MgId)) {
             if ($subscription.MgId -eq $mg.MgId) {
 
-                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId) = [ordered]@{}
-                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).SubscriptionName = [ordered]@{}
-                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).SubscriptionQuotaId = [ordered]@{}
-                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).SubscriptionState = [ordered]@{}
-                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).SubscriptionTags = [ordered]@{}
-                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).SubscriptionName = $subscription.Subscription
-                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).SubscriptionQuotaId = $subscription.SubscriptionQuotaId
-                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).SubscriptionState = $subscription.SubscriptionState
-                if ($htSubscriptionTags.($subscription.SubscriptionId)) {
-                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).SubscriptionTags = $htSubscriptionTags.($subscription.SubscriptionId).getEnumerator() | Sort-Object Key -CaseSensitive
+                $htJSONSub = [ordered]@{}
+                $htJSONMg.Subscriptions[$subscription.subscriptionId] = $htJSONSub
+                $htJSONSub.SubscriptionName = [ordered]@{}
+                $htJSONSub.SubscriptionQuotaId = [ordered]@{}
+                $htJSONSub.SubscriptionState = [ordered]@{}
+                $htJSONSub.SubscriptionTags = [ordered]@{}
+                $htJSONSub.SubscriptionName = $subscription.Subscription
+                $htJSONSub.SubscriptionQuotaId = $subscription.SubscriptionQuotaId
+                $htJSONSub.SubscriptionState = $subscription.SubscriptionState
+                if ($htSubscriptionTags[$subscription.SubscriptionId]) {
+                    $htJSONSub.SubscriptionTags = $htSubscriptionTags[$subscription.SubscriptionId].getEnumerator() | Sort-Object Key -CaseSensitive
                 }
-                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).PolicyDefinitionsCustom = [ordered]@{}
-                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).PolicySetDefinitionsCustom = [ordered]@{}
-                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).BlueprintDefinitions = [ordered]@{}
-                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).PolicyAssignments = [ordered]@{}
-                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).RoleAssignments = [ordered]@{}
-                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).BlueprintAssignments = [ordered]@{}
-                $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).DiagnosticSettings = [ordered]@{}
+                $htJSONSub.PolicyDefinitionsCustom = [ordered]@{}
+                $htJSONSub.PolicySetDefinitionsCustom = [ordered]@{}
+                $htJSONSub.BlueprintDefinitions = [ordered]@{}
+                $htJSONSub.PolicyAssignments = [ordered]@{}
+                $htJSONSub.RoleAssignments = [ordered]@{}
+                $htJSONSub.BlueprintAssignments = [ordered]@{}
+                $htJSONSub.DiagnosticSettings = [ordered]@{}
 
-                foreach ($PolDef in (($grpSubScopePolicyDefinitionsCustom).where( { $_.Name -eq $subscription.subscriptionId })).group) {
-                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).PolicyDefinitionsCustom.($PolDef.Id) = [ordered]@{}
-                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).PolicyDefinitionsCustom.($PolDef.Id) = $PolDef.Json
-                }
-
-                foreach ($PolSetDef in (($grpSubScopePolicySetDefinitionsCustom).where( { $_.Name -eq $subscription.subscriptionId })).group) {
-                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).PolicySetDefinitionsCustom.($PolSetDef.Id) = [ordered]@{}
-                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).PolicySetDefinitionsCustom.($PolSetDef.Id) = $PolSetDef.Json
+                foreach ($PolDef in $grpSubScopePolicyDefinitionsCustom[$subscription.subscriptionId]) {
+                    $htJSONSub.PolicyDefinitionsCustom.($PolDef.Id) = $PolDef.Json
                 }
 
-                foreach ($PolAssignment in ($grpSubScopePolicyAssignments).where( { $_.Name -eq $subscription.subscriptionId }).group) {
-                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).PolicyAssignments.($PolAssignment.Assignment.id) = [ordered]@{}
-                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).PolicyAssignments.($PolAssignment.Assignment.id) = $PolAssignment.Assignment
+                foreach ($PolSetDef in $grpSubScopePolicySetDefinitionsCustom[$subscription.subscriptionId]) {
+                    $htJSONSub.PolicySetDefinitionsCustom.($PolSetDef.Id) = $PolSetDef.Json
                 }
 
-                foreach ($RoleAssignment in ($grpSubScopeRoleAssignments).where( { $_.Name -eq $subscription.subscriptionId }).group) {
-                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).RoleAssignments.($RoleAssignment.Assignment.RoleAssignmentId) = [ordered]@{}
-                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).RoleAssignments.($RoleAssignment.Assignment.RoleAssignmentId) = $RoleAssignment.Assignment
+                foreach ($PolAssignment in $grpSubScopePolicyAssignments[$subscription.subscriptionId]) {
+                    $htJSONSub.PolicyAssignments.($PolAssignment.Assignment.id) = $PolAssignment.Assignment
+                }
+
+                foreach ($RoleAssignment in $grpSubScopeRoleAssignments[$subscription.subscriptionId]) {
+                    $htJSONSub.RoleAssignments.($RoleAssignment.Assignment.RoleAssignmentId) = $RoleAssignment.Assignment
                 }
 
                 foreach ($BlueprintDefinition in ($bluePrintDefinitions).where( { $_ -like "/subscriptions/$($subscription.subscriptionId)/*" })) {
-                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).BlueprintDefinitions.($BlueprintDefinition) = [ordered]@{}
-                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).BlueprintDefinitions.($BlueprintDefinition) = $BlueprintDefinition
+                    $htJSONSub.BlueprintDefinitions.($BlueprintDefinition) = $BlueprintDefinition
                 }
 
                 foreach ($BlueprintsAssignment in ($blueprintsAssignmentsAtScope).where( { $_ -like "/subscriptions/$($subscription.subscriptionId)/*" })) {
-                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).BlueprintAssignments.($BlueprintsAssignment) = [ordered]@{}
-                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).BlueprintAssignments.($BlueprintsAssignment) = $BlueprintsAssignment
+                    $htJSONSub.BlueprintAssignments.($BlueprintsAssignment) = $BlueprintsAssignment
                 }
 
-                if (($htDiagnosticSettingsMgSub).sub.($subscription.subscriptionId)) {
-                    foreach ($entry in ($htDiagnosticSettingsMgSub).sub.($subscription.subscriptionId).keys | Sort-Object) {
-                        $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).DiagnosticSettings.($entry) = [ordered]@{}
-                        foreach ($diagset in ($htDiagnosticSettingsMgSub).sub.($subscription.subscriptionId).$entry.keys | Sort-Object) {
-                            $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).DiagnosticSettings.($entry).Name = (($htDiagnosticSettingsMgSub).sub.($subscription.subscriptionId).$entry.$diagset.DiagnosticSettingName)
-                            $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).DiagnosticSettings.($entry).Type = (($htDiagnosticSettingsMgSub).sub.($subscription.subscriptionId).$entry.$diagset.DiagnosticTargetType)
-                            $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).DiagnosticSettings.($entry).TargetId = (($htDiagnosticSettingsMgSub).sub.($subscription.subscriptionId).$entry.$diagset.DiagnosticTargetId)
-                            $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).DiagnosticSettings.($entry).Settings = (($htDiagnosticSettingsMgSub).sub.($subscription.subscriptionId).$entry.$diagset.DiagnosticCategories)
+                $htDiagnosticSettingsSubScope = ($htDiagnosticSettingsMgSub).sub.($subscription.subscriptionId)
+                if ($htDiagnosticSettingsSubScope) {
+                    foreach ($entry in $htDiagnosticSettingsSubScope.keys | Sort-Object) {
+                        $htJSONSubDiagnosticSetting = [ordered]@{}
+                        $htJSONSub.DiagnosticSettings.($entry) = $htJSONSubDiagnosticSetting
+                        $htDiagnosticSettingsSubScopeEntry = $htDiagnosticSettingsSubScope.$entry
+                        foreach ($diagset in $htDiagnosticSettingsSubScopeEntry.keys | Sort-Object) {
+                            $htDiagnosticSettingsSubScopeEntryDiagset = $htDiagnosticSettingsSubScopeEntry.$diagset
+                            $htJSONSubDiagnosticSetting.Name = ($htDiagnosticSettingsSubScopeEntryDiagset.DiagnosticSettingName)
+                            $htJSONSubDiagnosticSetting.Type = ($htDiagnosticSettingsSubScopeEntryDiagset.DiagnosticTargetType)
+                            $htJSONSubDiagnosticSetting.TargetId = ($htDiagnosticSettingsSubScopeEntryDiagset.DiagnosticTargetId)
+                            $htJSONSubDiagnosticSetting.Settings = ($htDiagnosticSettingsSubScopeEntryDiagset.DiagnosticCategories)
                         }
                     }
                 }
@@ -225,8 +229,8 @@
                             $htTemp.ResourceGroups = @{}
                         }
 
-                        if ($htSubRGPolicyAssignments.($subscription.subscriptionId)) {
-                            foreach ($rgpa in $htSubRGPolicyAssignments.($subscription.subscriptionId).PolicyAssignments) {
+                        if ($htSubRGPolicyAssignments[$subscription.subscriptionId]) {
+                            foreach ($rgpa in $htSubRGPolicyAssignments[$subscription.subscriptionId].PolicyAssignments) {
                                 $rgName = ($rgpa.AssignmentScopeId).split('/')[1]
                                 if (-not $htTemp.ResourceGroups.($rgName)) {
                                     $htTemp.ResourceGroups.($rgName) = [ordered]@{}
@@ -248,8 +252,8 @@
                         if (-not $htTemp.ResourceGroups) {
                             $htTemp.ResourceGroups = @{}
                         }
-                        if ($htSubRGRoleAssignments.($subscription.subscriptionId)) {
-                            foreach ($rgra in $htSubRGRoleAssignments.($subscription.subscriptionId).RoleAssignments) {
+                        if ($htSubRGRoleAssignments[$subscription.subscriptionId]) {
+                            foreach ($rgra in $htSubRGRoleAssignments[$subscription.subscriptionId].RoleAssignments) {
                                 $rgName = ($rgra.AssignmentScopeId).split('/')[1]
                                 if (-not $htTemp.ResourceGroups.($rgName)) {
                                     $htTemp.ResourceGroups.($rgName) = [ordered]@{}
@@ -265,23 +269,23 @@
                             if (-not $htTemp.ResourceGroups) {
                                 $htTemp.ResourceGroups = @{}
                             }
-                            if ($htSubResRoleAssignments.($subscription.subscriptionId)) {
-                                foreach ($rg in $htSubResRoleAssignments.($subscription.subscriptionId).keys) {
-                                    foreach ($res in $htSubResRoleAssignments.($subscription.subscriptionId).($rg).Keys | Sort-Object) {
+                            $htSubResRoleAssignmentsSub = $htSubResRoleAssignments[$subscription.subscriptionId]
+                            if ($htSubResRoleAssignmentsSub) {
+                                foreach ($rg in $htSubResRoleAssignmentsSub.keys) {
+                                    $htSubResRoleAssignmentsSubRg = $htSubResRoleAssignmentsSub.($rg)
+                                    foreach ($res in $htSubResRoleAssignmentsSubRg.Keys | Sort-Object) {
                                         $rgName = ($resra.AssignmentScopeId).split('/')[1]
                                         if (-not $htTemp.ResourceGroups.($rg)) {
                                             $htTemp.ResourceGroups.($rg) = [ordered]@{}
                                         }
-                                        if (-not $htTemp.ResourceGroups.($rg).Resources) {
-                                            $htTemp.ResourceGroups.($rg).Resources = [ordered]@{}
+                                        $htTempResourceGroupsRg = $htTemp.ResourceGroups.($rg)
+                                        if (-not $htTempResourceGroupsRg.Resources) {
+                                            $htTempResourceGroupsRg.Resources = [ordered]@{}
                                         }
-                                        if (-not $htTemp.ResourceGroups.($rg).Resources.($res)) {
-                                            $htTemp.ResourceGroups.($rg).Resources.($res) = [ordered]@{}
+                                        if (-not $htTempResourceGroupsRg.Resources.($res)) {
+                                            $htTempResourceGroupsRg.Resources.($res) = [ordered]@{}
                                         }
-                                        if (-not $htTemp.ResourceGroups.($rg).Resources.($res).RoleAssignments) {
-                                            $htTemp.ResourceGroups.($rg).Resources.($res).RoleAssignments = [ordered]@{}
-                                        }
-                                        $htTemp.ResourceGroups.($rg).Resources.($res).RoleAssignments = $htSubResRoleAssignments.($subscription.subscriptionId).($rg).($res).RoleAssignments
+                                        $htTempResourceGroupsRg.Resources.($res).RoleAssignments = $htSubResRoleAssignmentsSubRg.($res).RoleAssignments
                                     }
                                 }
                             }
@@ -294,7 +298,7 @@
                     foreach ($key in ($htTemp.ResourceGroups.keys | Sort-Object)) {
                         $sortedHt.($key) = $htTemp.ResourceGroups.($key)
                     }
-                    $htJSON.ManagementGroups.($mg.MgId).Subscriptions.($subscription.subscriptionId).ResourceGroups = $sortedHt
+                    $htJSONSub.ResourceGroups = $sortedHt
                     $htTemp = $null
                     $sortedHt = $null
                 }
@@ -359,15 +363,15 @@
     }
 
     if (($htCacheDefinitionsRole).Keys.Count -gt 0) {
-        foreach ($roleDefinition in ($htCacheDefinitionsRole).Keys.where( { ($htCacheDefinitionsRole).($_).IsCustom }) | Sort-Object) {
-            $htJSON.RoleDefinitions.($roleDefinition) = ($htCacheDefinitionsRole).($roleDefinition).Json.properties
-            $jsonConverted = ($htCacheDefinitionsRole).($roleDefinition).Json.properties | ConvertTo-Json -Depth 99
-            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionCustom)$($DirectorySeparatorChar)$(removeInvalidFileNameChars ($htCacheDefinitionsRole).($roleDefinition).Name) ($(($htCacheDefinitionsRole).($roleDefinition).Id)).json" -Encoding utf8
+        foreach ($roleDefinition in ($htCacheDefinitionsRole).Keys.where( { $htCacheDefinitionsRole[$_].IsCustom }) | Sort-Object) {
+            $htJSON.RoleDefinitions.($roleDefinition) = $htCacheDefinitionsRole[$roleDefinition].Json.properties
+            $jsonConverted = $htCacheDefinitionsRole[$roleDefinition].Json.properties | ConvertTo-Json -Depth 99
+            $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionCustom)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $htCacheDefinitionsRole[$roleDefinition].Name) ($($htCacheDefinitionsRole[$roleDefinition].Id)).json"
 
             #if a custom role has multiple assignable scopes, the definition id may vary depending which scope AzGovViz retrieved the definition from, therefore for better change tracking we pack assignablescopes, sort them and use the first entry as id
 
-            if (($htCacheDefinitionsRole).($roleDefinition).Json.properties.assignableScopes.Count -gt 1) {
-                $jsonAdjustment4Tracking = (($htCacheDefinitionsRole).($roleDefinition).Json).psobject.copy()
+            if ($htCacheDefinitionsRole[$roleDefinition].Json.properties.assignableScopes.Count -gt 1) {
+                $jsonAdjustment4Tracking = ($htCacheDefinitionsRole[$roleDefinition].Json).psobject.copy()
                 $arrayAssignableScopes = [System.Collections.ArrayList]@()
                 foreach ($assignableScope in $jsonAdjustment4Tracking.properties.assignableScopes) {
                     if ($assignableScope -like '/subscriptions/*') {
@@ -381,15 +385,15 @@
                 $jsonConvertedTracking = $jsonAdjustment4Tracking | ConvertTo-Json -Depth 99
             }
             else {
-                $jsonConvertedTracking = ($htCacheDefinitionsRole).($roleDefinition).Json | ConvertTo-Json -Depth 99
+                $jsonConvertedTracking = $htCacheDefinitionsRole[$roleDefinition].Json | ConvertTo-Json -Depth 99
             }
-            $jsonConvertedTracking | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionCustomTracking)$($DirectorySeparatorChar)$(($htCacheDefinitionsRole).($roleDefinition).Id).json" -Encoding utf8
+            $jsonConvertedTracking | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionCustomTracking)$($DirectorySeparatorChar)$($htCacheDefinitionsRole[$roleDefinition].Id).json"
         }
-        foreach ($roleDefinition in ($htCacheDefinitionsRole).Keys.where( { -not ($htCacheDefinitionsRole).($_).IsCustom })) {
-            $jsonConverted = ($htCacheDefinitionsRole).($roleDefinition).Json.properties | ConvertTo-Json -Depth 99
-            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionBuiltIn)$($DirectorySeparatorChar)$(removeInvalidFileNameChars ($htCacheDefinitionsRole).($roleDefinition).Name ) ($(($htCacheDefinitionsRole).($roleDefinition).Id)).json" -Encoding utf8
-            $jsonConvertedTracking = ($htCacheDefinitionsRole).($roleDefinition).Json | ConvertTo-Json -Depth 99
-            $jsonConvertedTracking | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionBuiltInTracking)$($DirectorySeparatorChar)$(($htCacheDefinitionsRole).($roleDefinition).Id).json" -Encoding utf8
+        foreach ($roleDefinition in ($htCacheDefinitionsRole).Keys.where( { -not $htCacheDefinitionsRole[$_].IsCustom })) {
+            $jsonConverted = $htCacheDefinitionsRole[$roleDefinition].Json.properties | ConvertTo-Json -Depth 99
+            $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionBuiltIn)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $htCacheDefinitionsRole[$roleDefinition].Name ) ($($htCacheDefinitionsRole[$roleDefinition].Id)).json"
+            $jsonConvertedTracking = $htCacheDefinitionsRole[$roleDefinition].Json | ConvertTo-Json -Depth 99
+            $jsonConvertedTracking | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathRoleDefinitionBuiltInTracking)$($DirectorySeparatorChar)$($htCacheDefinitionsRole[$roleDefinition].Id).json"
         }
     }
 
@@ -406,11 +410,11 @@
         $null = New-Item -Name "$($pathPolicyDefinitionBuiltInTracking)" -ItemType directory -Path $outputPath
     }
     if (($htCacheDefinitionsPolicy).Keys.Count -gt 0) {
-        foreach ($policyDefinition in ($htCacheDefinitionsPolicy).Keys.where( { ($htCacheDefinitionsPolicy).($_).Type -eq 'BuiltIn' })) {
-            $jsonConverted = ($htCacheDefinitionsPolicy).($policyDefinition).Json.properties | ConvertTo-Json -Depth 99
-            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicyDefinitionBuiltIn)$($DirectorySeparatorChar)$(removeInvalidFileNameChars ($htCacheDefinitionsPolicy).($policyDefinition).displayName) ($(($htCacheDefinitionsPolicy).($policyDefinition).Json.name)).json" -Encoding utf8
-            $jsonConvertedTracking = ($htCacheDefinitionsPolicy).($policyDefinition).Json | ConvertTo-Json -Depth 99
-            $jsonConvertedTracking | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicyDefinitionBuiltInTracking)$($DirectorySeparatorChar)$(($htCacheDefinitionsPolicy).($policyDefinition).Json.name).json" -Encoding utf8
+        foreach ($policyDefinition in ($htCacheDefinitionsPolicy).Keys.where( { $htCacheDefinitionsPolicy[$_].Type -eq 'BuiltIn' })) {
+            $jsonConverted = $htCacheDefinitionsPolicy[$policyDefinition].Json.properties | ConvertTo-Json -Depth 99
+            $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicyDefinitionBuiltIn)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $htCacheDefinitionsPolicy[$policyDefinition].displayName) ($($htCacheDefinitionsPolicy[$policyDefinition].Json.name)).json"
+            $jsonConvertedTracking = $htCacheDefinitionsPolicy[$policyDefinition].Json | ConvertTo-Json -Depth 99
+            $jsonConvertedTracking | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicyDefinitionBuiltInTracking)$($DirectorySeparatorChar)$($htCacheDefinitionsPolicy[$policyDefinition].Json.name).json"
         }
     }
 
@@ -427,11 +431,11 @@
         $null = New-Item -Name "$($pathPolicySetDefinitionBuiltInTracking)" -ItemType directory -Path $outputPath
     }
     if (($htCacheDefinitionsPolicySet).Keys.Count -gt 0) {
-        foreach ($policySetDefinition in ($htCacheDefinitionsPolicySet).Keys.where( { ($htCacheDefinitionsPolicySet).($_).Type -eq 'BuiltIn' })) {
-            $jsonConverted = ($htCacheDefinitionsPolicySet).($policySetDefinition).Json.properties | ConvertTo-Json -Depth 99
-            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicySetDefinitionBuiltIn)$($DirectorySeparatorChar)$(removeInvalidFileNameChars ($htCacheDefinitionsPolicySet).($policySetDefinition).displayName) ($(($htCacheDefinitionsPolicySet).($policySetDefinition).Json.name)).json" -Encoding utf8
-            $jsonConverted = ($htCacheDefinitionsPolicySet).($policySetDefinition).Json | ConvertTo-Json -Depth 99
-            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicySetDefinitionBuiltInTracking)$($DirectorySeparatorChar)$(($htCacheDefinitionsPolicySet).($policySetDefinition).Json.name).json" -Encoding utf8
+        foreach ($policySetDefinition in ($htCacheDefinitionsPolicySet).Keys.where( { $htCacheDefinitionsPolicySet[$_].Type -eq 'BuiltIn' })) {
+            $jsonConverted = $htCacheDefinitionsPolicySet[$policySetDefinition].Json.properties | ConvertTo-Json -Depth 99
+            $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicySetDefinitionBuiltIn)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $htCacheDefinitionsPolicySet[$policySetDefinition].displayName) ($($htCacheDefinitionsPolicySet[$policySetDefinition].Json.name)).json"
+            $jsonConverted = $htCacheDefinitionsPolicySet[$policySetDefinition].Json | ConvertTo-Json -Depth 99
+            $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathPolicySetDefinitionBuiltInTracking)$($DirectorySeparatorChar)$($htCacheDefinitionsPolicySet[$policySetDefinition].Json.name).json"
         }
     }
 
@@ -460,18 +464,18 @@
             $pim = ''
         }
         $jsonConverted = ($RoleAssignment.Assignment | Select-Object -ExcludeProperty PIM) | ConvertTo-Json -Depth 99
-        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)Tenant$($DirectorySeparatorChar)ra_$($RoleAssignment.Assignment.ObjectType)_$($pim)$($RoleAssignment.Assignment.RoleAssignmentId -replace '.*/').json" -Encoding utf8
+        $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)Tenant$($DirectorySeparatorChar)ra_$($RoleAssignment.Assignment.ObjectType)_$($pim)$($RoleAssignment.Assignment.RoleAssignmentId -replace '.*/').json"
         $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)RoleAssignments$($DirectorySeparatorChar)Tenant"
         if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
             $null = New-Item -Name $path -ItemType directory -Path $outputPath
         }
-        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($RoleAssignment.Assignment.ObjectType)_$($pim)$($RoleAssignment.Assignment.RoleAssignmentId -replace '.*/').json" -Encoding utf8
+        $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($RoleAssignment.Assignment.ObjectType)_$($pim)$($RoleAssignment.Assignment.RoleAssignmentId -replace '.*/').json"
 
         $pathTracking = "$($JSONPath)$($DirectorySeparatorChar)Assignments_tracking$($DirectorySeparatorChar)RoleAssignments$($DirectorySeparatorChar)Tenant"
         if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)")) {
             $null = New-Item -Name $pathTracking -ItemType directory -Path $outputPath
         }
-        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$($RoleAssignment.Assignment.ObjectType)_$($pim)$($RoleAssignment.Assignment.RoleAssignmentId -replace '.*/').json" -Encoding utf8
+        $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$($RoleAssignment.Assignment.ObjectType)_$($pim)$($RoleAssignment.Assignment.RoleAssignmentId -replace '.*/').json"
     }
 
     $htTree.'Tenant'.'ManagementGroups' = [ordered] @{}

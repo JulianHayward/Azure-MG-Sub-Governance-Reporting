@@ -1,7 +1,7 @@
 ﻿#region functions4DataCollection
 
 function dataCollectionMGSecureScore {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$Id
     )
 
@@ -19,7 +19,7 @@ function dataCollectionMGSecureScore {
 $funcDataCollectionMGSecureScore = $function:dataCollectionMGSecureScore.ToString()
 
 function dataCollectionDefenderPlans {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $ChildMgMgPath,
@@ -80,7 +80,7 @@ $funcDataCollectionDefenderPlans = $function:dataCollectionDefenderPlans.ToStrin
 
 
 function dataCollectionAdvisorScores {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $ChildMgMgPath,
@@ -126,7 +126,7 @@ function dataCollectionAdvisorScores {
 $funcDataCollectionAdvisorScores = $function:dataCollectionAdvisorScores.ToString()
 
 function dataCollectionDefenderEmailContacts {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $SubscriptionQuotaId
@@ -223,7 +223,7 @@ function dataCollectionDefenderEmailContacts {
 $funcDataCollectionDefenderEmailContacts = $function:dataCollectionDefenderEmailContacts.ToString()
 
 function dataCollectionVNets {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $SubscriptionQuotaId
@@ -249,7 +249,7 @@ function dataCollectionVNets {
 $funcDataCollectionVNets = $function:dataCollectionVNets.ToString()
 
 function dataCollectionPrivateEndpoints {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $SubscriptionQuotaId
@@ -271,7 +271,7 @@ function dataCollectionPrivateEndpoints {
 $funcDataCollectionPrivateEndpoints = $function:dataCollectionPrivateEndpoints.ToString()
 
 function dataCollectionDiagnosticsSub {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $ChildMgMgPath,
@@ -369,7 +369,7 @@ function dataCollectionDiagnosticsSub {
 $funcDataCollectionDiagnosticsSub = $function:dataCollectionDiagnosticsSub.ToString()
 
 function dataCollectionDiagnosticsMG {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName
     )
@@ -474,7 +474,7 @@ function dataCollectionDiagnosticsMG {
 $funcDataCollectionDiagnosticsMG = $function:dataCollectionDiagnosticsMG.ToString()
 
 function dataCollectionStorageAccounts {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $ChildMgMgPath,
@@ -518,7 +518,7 @@ function dataCollectionStorageAccounts {
 $funcDataCollectionStorageAccounts = $function:dataCollectionStorageAccounts.ToString()
 
 function dataCollectionResources {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $ChildMgMgPath,
@@ -1389,7 +1389,7 @@ function dataCollectionResources {
 $funcDataCollectionResources = $function:dataCollectionResources.ToString()
 
 function dataCollectionResourceGroups {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $subscriptionQuotaId
@@ -1443,7 +1443,7 @@ function dataCollectionResourceGroups {
 $funcDataCollectionResourceGroups = $function:dataCollectionResourceGroups.ToString()
 
 function dataCollectionResourceProviders {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayname,
         $subscriptionQuotaId
@@ -1460,7 +1460,7 @@ function dataCollectionResourceProviders {
 $funcDataCollectionResourceProviders = $function:dataCollectionResourceProviders.ToString()
 
 function dataCollectionFeatures {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayname,
         [object]$MgParentNameChain,
@@ -1488,7 +1488,7 @@ function dataCollectionFeatures {
 $funcDataCollectionFeatures = $function:dataCollectionFeatures.ToString()
 
 function dataCollectionResourceLocks {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayname,
         $subscriptionQuotaId
@@ -1585,7 +1585,7 @@ function dataCollectionResourceLocks {
 $funcDataCollectionResourceLocks = $function:dataCollectionResourceLocks.ToString()
 
 function dataCollectionTags {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $subscriptionQuotaId
@@ -1648,7 +1648,7 @@ function dataCollectionTags {
 $funcDataCollectionTags = $function:dataCollectionTags.ToString()
 
 function dataCollectionPolicyComplianceStates {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$TargetMgOrSub,
         [string]$scopeId,
         [string]$scopeDisplayName,
@@ -1718,7 +1718,7 @@ function dataCollectionPolicyComplianceStates {
 $funcDataCollectionPolicyComplianceStates = $function:dataCollectionPolicyComplianceStates.ToString()
 
 function dataCollectionASCSecureScoreSub {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $subscriptionQuotaId
@@ -1759,7 +1759,7 @@ function dataCollectionASCSecureScoreSub {
 $funcDataCollectionASCSecureScoreSub = $function:dataCollectionASCSecureScoreSub.ToString()
 
 function dataCollectionBluePrintDefinitionsMG {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $hierarchyLevel,
@@ -1812,7 +1812,7 @@ function dataCollectionBluePrintDefinitionsMG {
 $funcDataCollectionBluePrintDefinitionsMG = $function:dataCollectionBluePrintDefinitionsMG.ToString()
 
 function dataCollectionBluePrintDefinitionsSub {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $hierarchyLevel,
@@ -1839,7 +1839,7 @@ function dataCollectionBluePrintDefinitionsSub {
             foreach ($blueprint in $scopeBlueprintDefinitionResult) {
 
                 if (-not $($htCacheDefinitionsBlueprint).($blueprint.Id)) {
-                ($script:htCacheDefinitionsBlueprint).($blueprint.Id) = @{}
+                    ($script:htCacheDefinitionsBlueprint).($blueprint.Id) = @{}
                 }
 
                 $blueprintName = $blueprint.name
@@ -1881,7 +1881,7 @@ function dataCollectionBluePrintDefinitionsSub {
 $funcDataCollectionBluePrintDefinitionsSub = $function:dataCollectionBluePrintDefinitionsSub.ToString()
 
 function dataCollectionBluePrintAssignmentsSub {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $hierarchyLevel,
@@ -1909,7 +1909,7 @@ function dataCollectionBluePrintAssignmentsSub {
 
                 if (-not ($htCacheAssignmentsBlueprint).($subscriptionBlueprintAssignment.Id)) {
                     #($script:htCacheAssignmentsBlueprint).($subscriptionBlueprintAssignment.Id) = @{}
-                ($script:htCacheAssignmentsBlueprint).($subscriptionBlueprintAssignment.Id) = $subscriptionBlueprintAssignment
+                    ($script:htCacheAssignmentsBlueprint).($subscriptionBlueprintAssignment.Id) = $subscriptionBlueprintAssignment
                 }
 
                 if (($subscriptionBlueprintAssignment.properties.blueprintId) -like '/subscriptions/*') {
@@ -1980,7 +1980,7 @@ function dataCollectionBluePrintAssignmentsSub {
 $funcDataCollectionBluePrintAssignmentsSub = $function:dataCollectionBluePrintAssignmentsSub.ToString()
 
 function dataCollectionPolicyExemptions {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$TargetMgOrSub,
         [string]$scopeId,
         [string]$scopeDisplayName,
@@ -2011,7 +2011,7 @@ function dataCollectionPolicyExemptions {
 $funcDataCollectionPolicyExemptions = $function:dataCollectionPolicyExemptions.ToString()
 
 function dataCollectionPolicyDefinitions {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$TargetMgOrSub,
         [string]$scopeId,
         [string]$scopeDisplayName,
@@ -2270,7 +2270,7 @@ function dataCollectionPolicyDefinitions {
 $funcDataCollectionPolicyDefinitions = $function:dataCollectionPolicyDefinitions.ToString()
 
 function dataCollectionPolicySetDefinitions {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$TargetMgOrSub,
         [string]$scopeId,
         [string]$scopeDisplayName,
@@ -2503,7 +2503,7 @@ function dataCollectionPolicySetDefinitions {
 $funcDataCollectionPolicySetDefinitions = $function:dataCollectionPolicySetDefinitions.ToString()
 
 function dataCollectionPolicyAssignmentsMG {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $hierarchyLevel,
@@ -2578,7 +2578,7 @@ function dataCollectionPolicyAssignmentsMG {
         }
         #endregion namingValidation
 
-        if ($L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policyDefinitions/' -OR $L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policySetDefinitions/') {
+        if ($L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policyDefinitions/' -or $L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policySetDefinitions/') {
 
             #policy
             if ($L0mgmtGroupPolicyAssignment.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policyDefinitions/') {
@@ -2637,7 +2637,7 @@ function dataCollectionPolicyAssignmentsMG {
                         foreach ($tmpPolicyDefinitionId in ($($htCacheDefinitionsPolicy).Keys | Sort-Object)) {
                             Write-Host $tmpPolicyDefinitionId
                         }
-                        Throw 'Error - Azure Governance Visualizer: check the last console output for details'
+                        throw 'Error - Azure Governance Visualizer: check the last console output for details'
                     }
                 }
                 #policyDefinition Scope does not exist
@@ -2940,7 +2940,7 @@ function dataCollectionPolicyAssignmentsMG {
 $funcDataCollectionPolicyAssignmentsMG = $function:dataCollectionPolicyAssignmentsMG.ToString()
 
 function dataCollectionPolicyAssignmentsSub {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $hierarchyLevel,
@@ -3026,7 +3026,7 @@ function dataCollectionPolicyAssignmentsSub {
         }
         #endregion namingValidation
 
-        if ($L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policyDefinitions/' -OR $L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policySetDefinitions/') {
+        if ($L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policyDefinitions/' -or $L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policySetDefinitions/') {
 
             #policy
             if ($L1mgmtGroupSubPolicyAssignment.properties.policyDefinitionId -match '/providers/Microsoft.Authorization/policyDefinitions/') {
@@ -3137,7 +3137,7 @@ function dataCollectionPolicyAssignmentsSub {
                         4 {
                             $PolicyAssignmentScopeMgSubRg = 'Rg'
                         }
-                        Default {
+                        default {
                             $PolicyAssignmentScopeMgSubRg = 'unknown'
                         }
                     }
@@ -3353,7 +3353,7 @@ function dataCollectionPolicyAssignmentsSub {
                         4 {
                             $PolicyAssignmentScopeMgSubRg = 'Rg'
                         }
-                        Default {
+                        default {
                             $PolicyAssignmentScopeMgSubRg = 'unknown'
                         }
                     }
@@ -3485,7 +3485,7 @@ function dataCollectionPolicyAssignmentsSub {
 $funcDataCollectionPolicyAssignmentsSub = $function:dataCollectionPolicyAssignmentsSub.ToString()
 
 function dataCollectionRoleDefinitions {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$TargetMgOrSub,
         [string]$scopeId,
         [string]$scopeDisplayName,
@@ -3562,7 +3562,7 @@ function dataCollectionRoleDefinitions {
 $funcDataCollectionRoleDefinitions = $function:dataCollectionRoleDefinitions.ToString()
 
 function dataCollectionRoleAssignmentsMG {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $hierarchyLevel,
@@ -3638,6 +3638,7 @@ function dataCollectionRoleAssignmentsMG {
     }
     foreach ($L0mgmtGroupRoleAssignment in $L0mgmtGroupRoleAssignments) {
         $roleAssignmentId = ($L0mgmtGroupRoleAssignment.id).ToLower()
+        $htPrincipalL0RA = $htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId)
 
         if ($htRoleAssignmentsPIM.($roleAssignmentId)) {
             $hlperPim = $htRoleAssignmentsPIM.($roleAssignmentId)
@@ -3692,12 +3693,12 @@ function dataCollectionRoleAssignmentsMG {
             $null = $arrayRoleAssignment.Add([PSCustomObject]@{
                     RoleAssignmentId   = $roleAssignmentId
                     Scope              = $L0mgmtGroupRoleAssignment.properties.scope
-                    DisplayName        = $htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).displayName
-                    SignInName         = $htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).signInName
+                    DisplayName        = $htPrincipalL0RA.displayName
+                    SignInName         = $htPrincipalL0RA.signInName
                     RoleDefinitionName = $roleDefinitionName
                     RoleDefinitionId   = $L0mgmtGroupRoleAssignment.properties.roleDefinitionId -replace '.*/'
                     ObjectId           = $L0mgmtGroupRoleAssignment.properties.principalId
-                    ObjectType         = $htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).type
+                    ObjectType         = $htPrincipalL0RA.type
                     PIM                = $pim
                 })
 
@@ -3715,40 +3716,40 @@ function dataCollectionRoleAssignmentsMG {
             ($script:htCacheAssignmentsRole).($roleAssignmentId) = $htTemp
         }
 
-        if (($htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).displayName).length -eq 0) {
+        if (($htPrincipalL0RA.displayName).length -eq 0) {
             $roleAssignmentIdentityDisplayname = 'n/a'
         }
         else {
-            if ($htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).type -eq 'User') {
+            if ($htPrincipalL0RA.type -eq 'User') {
                 if ($azAPICallConf['htParameters'].DoNotShowRoleAssignmentsUserData -eq $false) {
-                    $roleAssignmentIdentityDisplayname = $htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).displayName
+                    $roleAssignmentIdentityDisplayname = $htPrincipalL0RA.displayName
                 }
                 else {
                     $roleAssignmentIdentityDisplayname = 'scrubbed'
                 }
             }
             else {
-                $roleAssignmentIdentityDisplayname = $htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).displayName
+                $roleAssignmentIdentityDisplayname = $htPrincipalL0RA.displayName
             }
         }
-        if (-not $htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).signInName) {
+        if (-not $htPrincipalL0RA.signInName) {
             $roleAssignmentIdentitySignInName = 'n/a'
         }
         else {
-            if ($htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).type -eq 'User') {
+            if ($htPrincipalL0RA.type -eq 'User') {
                 if ($azAPICallConf['htParameters'].DoNotShowRoleAssignmentsUserData -eq $false) {
-                    $roleAssignmentIdentitySignInName = $htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).signInName
+                    $roleAssignmentIdentitySignInName = $htPrincipalL0RA.signInName
                 }
                 else {
                     $roleAssignmentIdentitySignInName = 'scrubbed'
                 }
             }
             else {
-                $roleAssignmentIdentitySignInName = $htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).signInName
+                $roleAssignmentIdentitySignInName = $htPrincipalL0RA.signInName
             }
         }
         $roleAssignmentIdentityObjectId = $L0mgmtGroupRoleAssignment.properties.principalId
-        $roleAssignmentIdentityObjectType = $htPrincipals.($L0mgmtGroupRoleAssignment.properties.principalId).type
+        $roleAssignmentIdentityObjectType = $htPrincipalL0RA.type
         $roleAssignmentScope = $L0mgmtGroupRoleAssignment.properties.scope
         $roleAssignmentScopeName = $roleAssignmentScope -replace '.*/'
         $roleAssignmentScopeType = 'MG'
@@ -3831,7 +3832,7 @@ function dataCollectionRoleAssignmentsMG {
 $funcDataCollectionRoleAssignmentsMG = $function:dataCollectionRoleAssignmentsMG.ToString()
 
 function dataCollectionRoleAssignmentsSub {
-    [CmdletBinding()]Param(
+    [CmdletBinding()]param(
         [string]$scopeId,
         [string]$scopeDisplayName,
         $hierarchyLevel,
@@ -3979,6 +3980,7 @@ function dataCollectionRoleAssignmentsSub {
     foreach ($L1mgmtGroupSubRoleAssignment in $assignmentsScope) {
 
         $roleAssignmentId = ($L1mgmtGroupSubRoleAssignment.id).ToLower()
+        $htPrincipalL1RA = $htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId)
         $roleDefinitionId = $L1mgmtGroupSubRoleAssignment.properties.roleDefinitionId
         $roleDefinitionIdGuid = $roleDefinitionId -replace '.*/'
 
@@ -3992,7 +3994,7 @@ function dataCollectionRoleAssignmentsSub {
         }
 
         $roleAssignmentIdentityObjectId = $L1mgmtGroupSubRoleAssignment.properties.principalId
-        $roleAssignmentIdentityObjectType = $htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).type
+        $roleAssignmentIdentityObjectType = $htPrincipalL1RA.type
         $roleAssignmentScope = $L1mgmtGroupSubRoleAssignment.properties.scope
         $roleAssignmentScopeName = $roleAssignmentScope -replace '.*/'
 
@@ -4041,12 +4043,12 @@ function dataCollectionRoleAssignmentsSub {
             $null = $arrayRoleAssignment.Add([PSCustomObject]@{
                     RoleAssignmentId   = $roleAssignmentId
                     Scope              = $L1mgmtGroupSubRoleAssignment.properties.scope
-                    DisplayName        = $htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).displayName
-                    SignInName         = $htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).signInName
+                    DisplayName        = $htPrincipalL1RA.displayName
+                    SignInName         = $htPrincipalL1RA.signInName
                     RoleDefinitionName = $roleDefinitionName
                     RoleDefinitionId   = $L1mgmtGroupSubRoleAssignment.properties.roleDefinitionId -replace '.*/'
                     ObjectId           = $L1mgmtGroupSubRoleAssignment.properties.principalId
-                    ObjectType         = $htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).type
+                    ObjectType         = $htPrincipalL1RA.type
                     PIM                = $pim
                 })
 
@@ -4068,36 +4070,36 @@ function dataCollectionRoleAssignmentsSub {
         }
 
 
-        if (($htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).displayName).length -eq 0) {
+        if (($htPrincipalL1RA.displayName).length -eq 0) {
             $roleAssignmentIdentityDisplayname = 'n/a'
         }
         else {
-            if ($htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).type -eq 'User') {
+            if ($htPrincipalL1RA.type -eq 'User') {
                 if ($azAPICallConf['htParameters'].DoNotShowRoleAssignmentsUserData -eq $false) {
-                    $roleAssignmentIdentityDisplayname = $htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).displayName
+                    $roleAssignmentIdentityDisplayname = $htPrincipalL1RA.displayName
                 }
                 else {
                     $roleAssignmentIdentityDisplayname = 'scrubbed'
                 }
             }
             else {
-                $roleAssignmentIdentityDisplayname = $htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).displayName
+                $roleAssignmentIdentityDisplayname = $htPrincipalL1RA.displayName
             }
         }
-        if (-not $htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).signInName) {
+        if (-not $htPrincipalL1RA.signInName) {
             $roleAssignmentIdentitySignInName = 'n/a'
         }
         else {
-            if ($htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).type -eq 'User') {
+            if ($htPrincipalL1RA.type -eq 'User') {
                 if ($azAPICallConf['htParameters'].DoNotShowRoleAssignmentsUserData -eq $false) {
-                    $roleAssignmentIdentitySignInName = $htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).signInName
+                    $roleAssignmentIdentitySignInName = $htPrincipalL1RA.signInName
                 }
                 else {
                     $roleAssignmentIdentitySignInName = 'scrubbed'
                 }
             }
             else {
-                $roleAssignmentIdentitySignInName = $htPrincipals.($L1mgmtGroupSubRoleAssignment.properties.principalId).signInName
+                $roleAssignmentIdentitySignInName = $htPrincipalL1RA.signInName
             }
         }
 

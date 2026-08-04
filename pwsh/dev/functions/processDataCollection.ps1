@@ -643,6 +643,11 @@
     if ($azAPICallConf['htParameters'].NoResources -eq $false) {
 
         $script:resourcesAllGroupedBySubcriptionId = $resourcesAll | Group-Object -Property subscriptionId
+        #hashtable index (subscriptionId -> group members) for O(1) lookup in ScopeInsights instead of repeated .where() scans
+        $script:resourcesAllGroupedBySubcriptionIdHt = @{}
+        foreach ($grpEntry in $resourcesAllGroupedBySubcriptionId) {
+            $script:resourcesAllGroupedBySubcriptionIdHt[$grpEntry.Name] = $grpEntry.Group
+        }
 
         $totaldurationSubResourcesAddArray = ($arraySubResourcesAddArrayDuration.DurationSec | Measure-Object -Sum).Sum
         Write-Host "Collecting custom data total duration writing the subResourcesArray: $totaldurationSubResourcesAddArray seconds"

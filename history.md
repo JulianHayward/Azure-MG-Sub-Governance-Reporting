@@ -4,6 +4,11 @@
 
 ### Azure Governance Visualizer version 6
 
+**Changes** (2026-Aug-04 / 6.7.4 Patch)
+
+- update parameter `ValidPolicyEffects` add 'auditAction'
+- performance updates PowerShell processing
+
 **Changes** (2026-May-18 / 6.7.3 Patch)
 
 - fix issue 294; retirement Classic Administrators

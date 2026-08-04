@@ -400,13 +400,13 @@
 #>
 
 [CmdletBinding()]
-Param
+param
 (
     [string]
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.7.3',
+    $ProductVersion = '6.7.4',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -691,7 +691,7 @@ Param
     $MSTenantIds = @('2f4a9838-26b7-47ee-be60-ccc1fdec5953', '33e01921-4d64-4f8c-a055-5bdaffd5e33d'),
 
     [array]
-    $ValidPolicyEffects = @('addToNetworkGroup', 'append', 'audit', 'auditIfNotExists', 'deny', 'denyAction', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting', 'mutate'),
+    $ValidPolicyEffects = @('addToNetworkGroup', 'append', 'audit', 'auditAction', 'auditIfNotExists', 'deny', 'denyAction', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting', 'mutate'),
 
     [hashtable]
     $APIMappingCloudEnvironment = @{
@@ -790,6 +790,7 @@ if ($ManagementGroupId -match ' ') {
 . ".\$($ScriptPath)\functions\buildTree.ps1"
 . ".\$($ScriptPath)\functions\buildJSON.ps1"
 . ".\$($ScriptPath)\functions\buildPolicyAllJSON.ps1"
+. ".\$($ScriptPath)\functions\writeJsonFile.ps1"
 . ".\$($ScriptPath)\functions\stats.ps1"
 #Region dataCollectionFunctions
 . ".\$($ScriptPath)\functions\dataCollection\dataCollectionFunctions.ps1"
@@ -1143,7 +1144,7 @@ if (-not $HierarchyMapOnly) {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
                 processALZPolicyVersionChecker
             }
-            Default {
+            default {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
                 Write-Host "Setting parameter -NoALZPolicyVersionChecker to 'true'"
                 $NoALZPolicyVersionChecker = $true
@@ -1342,7 +1343,7 @@ if (-not $HierarchyMapOnly) {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Assignments Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
                 processALZPolicyAssignmentsChecker
             }
-            Default {
+            default {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Assignments Checker' feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
                 Write-Host "Setting parameter -ALZPolicyAssignmentsChecker to 'false'"
                 $ALZPolicyAssignmentsChecker = $false
@@ -1378,43 +1379,27 @@ if (-not $HierarchyMapOnly) {
     $tenantAllPolicySetsCount = ($tenantAllPolicySets).count
     if ($tenantAllPolicySetsCount -gt 0) {
         foreach ($policySet in $tenantAllPolicySets) {
-            $PolicySetPolicyIds = $policySet.PolicySetPolicyIds
-            foreach ($PolicySetPolicyId in $PolicySetPolicyIds) {
-
-                if ($policySet.LinkToAzAdvertizer) {
-                    $hlperDisplayNameWithOrWithoutLinkToAzAdvertizer = "$($policySet.LinkToAzAdvertizer) ($($policySet.PolicyDefinitionId))"
+            $policySetPolicyDefinitionId = $policySet.PolicyDefinitionId
+            if ($policySet.LinkToAzAdvertizer) {
+                $hlperDisplayNameWithOrWithoutLinkToAzAdvertizer = "$($policySet.LinkToAzAdvertizer) ($policySetPolicyDefinitionId)"
+            }
+            else {
+                $hlperDisplayNameWithOrWithoutLinkToAzAdvertizer = "$($policySet.DisplayName) ($policySetPolicyDefinitionId)"
+            }
+            $hlper4CSVOutput = "$($policySet.DisplayName) ($policySetPolicyDefinitionId)"
+            foreach ($PolicySetPolicyId in $policySet.PolicySetPolicyIds) {
+                $htPoliciesUsedInPolicySetsEntry = $htPoliciesUsedInPolicySets[$PolicySetPolicyId]
+                if (-not $htPoliciesUsedInPolicySetsEntry) {
+                    $htPoliciesUsedInPolicySetsEntry = @{
+                        policySet       = [System.Collections.ArrayList]@()
+                        policySet4CSV   = [System.Collections.ArrayList]@()
+                        policySetIdOnly = [System.Collections.ArrayList]@()
+                    }
+                    $htPoliciesUsedInPolicySets[$PolicySetPolicyId] = $htPoliciesUsedInPolicySetsEntry
                 }
-                else {
-                    $hlperDisplayNameWithOrWithoutLinkToAzAdvertizer = "$($policySet.DisplayName) ($($policySet.PolicyDefinitionId))"
-                }
-                $hlper4CSVOutput = "$($policySet.DisplayName) ($($policySet.PolicyDefinitionId))"
-                if (-not $htPoliciesUsedInPolicySets.($PolicySetPolicyId)) {
-                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId) = @{}
-                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet = [array]$hlperDisplayNameWithOrWithoutLinkToAzAdvertizer
-                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV = [array]$hlper4CSVOutput
-                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly = [array]($policySet.PolicyDefinitionId)
-                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet = [System.Collections.ArrayList]@()
-                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet.Add($hlperDisplayNameWithOrWithoutLinkToAzAdvertizer)
-                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV = [System.Collections.ArrayList]@()
-                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV.Add($hlper4CSVOutput)
-                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly = [System.Collections.ArrayList]@()
-                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly.Add($policySet.PolicyDefinitionId)
-                }
-                else {
-                    # $array = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet
-                    # $array += $hlperDisplayNameWithOrWithoutLinkToAzAdvertizer
-                    # $arrayCSV = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV
-                    # $arrayCSV += $hlper4CSVOutput
-                    # $arrayIdOnly = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly
-                    # $arrayIdOnly += $policySet.PolicyDefinitionId
-                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet = $array
-                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV = $arrayCSV
-                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly = $arrayIdOnly
-
-                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet.Add($hlperDisplayNameWithOrWithoutLinkToAzAdvertizer)
-                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV.Add($hlper4CSVOutput)
-                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly.Add($policySet.PolicyDefinitionId)
-                }
+                $null = $htPoliciesUsedInPolicySetsEntry.policySet.Add($hlperDisplayNameWithOrWithoutLinkToAzAdvertizer)
+                $null = $htPoliciesUsedInPolicySetsEntry.policySet4CSV.Add($hlper4CSVOutput)
+                $null = $htPoliciesUsedInPolicySetsEntry.policySetIdOnly.Add($policySetPolicyDefinitionId)
             }
         }
     }
@@ -1434,6 +1419,17 @@ if (-not $HierarchyMapOnly) {
     $policyBaseQuerySubscriptions = $policyBaseQuery.where({ -not [String]::IsNullOrEmpty($_.SubscriptionId) } )
     $policyBaseQueryManagementGroups = $policyBaseQuery.where({ [String]::IsNullOrEmpty($_.SubscriptionId) } )
     $policyPolicyBaseQueryScopeInsights = ($policyBaseQuery | Select-Object Mg*, Subscription*, PolicyAssignmentAtScopeCount, PolicySetAssignmentAtScopeCount, PolicyAndPolicySetAssignmentAtScopeCount, PolicyAssignmentLimit -Unique)
+    #lookup hashtables so ScopeInsights (called per scope) can do O(1) lookups instead of per-scope .where() scans (rows are unique per scope)
+    $script:htPolicyPolicyBaseQueryScopeInsightsBySubscription = @{}
+    $script:htPolicyPolicyBaseQueryScopeInsightsByManagementGroup = @{}
+    foreach ($psiEntry in $policyPolicyBaseQueryScopeInsights) {
+        if ([String]::IsNullOrEmpty($psiEntry.SubscriptionId)) {
+            $script:htPolicyPolicyBaseQueryScopeInsightsByManagementGroup[$psiEntry.MgId] = $psiEntry
+        }
+        else {
+            $script:htPolicyPolicyBaseQueryScopeInsightsBySubscription[$psiEntry.SubscriptionId] = $psiEntry
+        }
+    }
     $policyBaseQueryUniqueAssignments = $policyBaseQuery | Sort-Object -Property PolicyAssignmentId -Unique | Select-Object -Property Policy*
     $policyAssignmentsOrphaned = $policyBaseQuery.where({ $_.PolicyAvailability -eq 'na' } ) | Sort-Object -Property PolicyAssignmentId -Unique
     $policyAssignmentsOrphanedCount = $policyAssignmentsOrphaned.Count
@@ -1442,14 +1438,14 @@ if (-not $HierarchyMapOnly) {
     $htPolicyWithAssignmentsBase = @{}
     foreach ($policyAssignment in $policyBaseQueryUniqueAssignments) {
         if ($policyAssignment.PolicyVariant -eq 'Policy') {
-            if (-not $htPolicyWithAssignmentsBase.($policyAssignment.PolicyDefinitionId)) {
-                $htPolicyWithAssignmentsBase.($policyAssignment.PolicyDefinitionId) = @{}
-                $htPolicyWithAssignmentsBase.($policyAssignment.PolicyDefinitionId).Assignments = [array]$policyAssignment.PolicyAssignmentId
+            if (-not $htPolicyWithAssignmentsBase[$policyAssignment.PolicyDefinitionId]) {
+                $htPolicyWithAssignmentsBase[$policyAssignment.PolicyDefinitionId] = @{}
+                $htPolicyWithAssignmentsBase[$policyAssignment.PolicyDefinitionId].Assignments = [array]$policyAssignment.PolicyAssignmentId
             }
             else {
-                $usedInAssignments = $htPolicyWithAssignmentsBase.($policyAssignment.PolicyDefinitionId).Assignments
+                $usedInAssignments = $htPolicyWithAssignmentsBase[$policyAssignment.PolicyDefinitionId].Assignments
                 $usedInAssignments += $policyAssignment.PolicyAssignmentId
-                $htPolicyWithAssignmentsBase.($policyAssignment.PolicyDefinitionId).Assignments = $usedInAssignments
+                $htPolicyWithAssignmentsBase[$policyAssignment.PolicyDefinitionId].Assignments = $usedInAssignments
             }
         }
     }
@@ -1472,25 +1468,25 @@ if (-not $HierarchyMapOnly) {
     $startRoleDefinitionsUsedInPolicyDefinitions = Get-Date
     $htRoleDefinitionIdsUsedInPolicy = @{}
     foreach ($policyDefinitionId in $htCacheDefinitionsPolicy.Keys) {
-        if (-not [string]::IsNullOrWhiteSpace($htCacheDefinitionsPolicy.($policyDefinitionId).Json.properties.policyRule.then.details.roleDefinitionIds)) {
-            foreach ($roledefinitionId in $htCacheDefinitionsPolicy.($policyDefinitionId).Json.properties.policyRule.then.details.roleDefinitionIds) {
+        if (-not [string]::IsNullOrWhiteSpace($htCacheDefinitionsPolicy[$policyDefinitionId].Json.properties.policyRule.then.details.roleDefinitionIds)) {
+            foreach ($roledefinitionId in $htCacheDefinitionsPolicy[$policyDefinitionId].Json.properties.policyRule.then.details.roleDefinitionIds) {
                 if (-not [string]::IsNullOrWhitespace($roledefinitionId)) {
                     $roleDefinitionIdGuid = $roledefinitionId -replace '.*/'
-                    if (-not $htCacheDefinitionsRole.($roleDefinitionIdGuid)) {
+                    if (-not $htCacheDefinitionsRole[$roleDefinitionIdGuid]) {
                         Write-Host "Finding: policyDefinitionId '$($policyDefinitionId)' has unknown roleDefinitionId '$roledefinitionId' in policyRule.then.details.roleDefinitionIds" -ForegroundColor DarkRed
                     }
                     else {
-                        if (-not $htRoleDefinitionIdsUsedInPolicy.($roleDefinitionIdGuid)) {
-                            $htRoleDefinitionIdsUsedInPolicy.($roleDefinitionIdGuid) = [System.Collections.ArrayList]@()
+                        if (-not $htRoleDefinitionIdsUsedInPolicy[$roleDefinitionIdGuid]) {
+                            $htRoleDefinitionIdsUsedInPolicy[$roleDefinitionIdGuid] = [System.Collections.ArrayList]@()
                         }
                         try {
-                            $null = $htRoleDefinitionIdsUsedInPolicy.($roleDefinitionIdGuid).Add($policyDefinitionId)
+                            $null = $htRoleDefinitionIdsUsedInPolicy[$roleDefinitionIdGuid].Add($policyDefinitionId)
                         }
                         catch {
                             Write-Host "policyDefinitionId '$($policyDefinitionId)' JSON:"
-                            $htCacheDefinitionsPolicy.($policyDefinitionId).Json | ConvertTo-Json -Depth 99
+                            $htCacheDefinitionsPolicy[$policyDefinitionId].Json | ConvertTo-Json -Depth 99
                             Write-Host '--->'
-                            Throw "Failed: `$policyDefinitionId: '$($policyDefinitionId)' trying to add `$roledefinitionId: '$roledefinitionId' from policyRule.then.details.roleDefinitionIds to `$htRoleDefinitionIdsUsedInPolicy.(`$roledefinitionId).UsedInPolicies"
+                            throw "Failed: `$policyDefinitionId: '$($policyDefinitionId)' trying to add `$roledefinitionId: '$roledefinitionId' from policyRule.then.details.roleDefinitionIds to `$htRoleDefinitionIdsUsedInPolicy.(`$roledefinitionId).UsedInPolicies"
                         }
                     }
                 }
@@ -1509,14 +1505,14 @@ if (-not $HierarchyMapOnly) {
     $startPolicyCustomBuiltInParity = Get-Date
     foreach ($customPolicy in $tenantCustomPolicies) {
         $policyRuleHash = getPolicyHash -json ($customPolicy.Json.properties.policyRule | ConvertTo-Json -Depth 99)
-        if ($htHashesBuiltInPolicy.($policyRuleHash)) {
+        if ($htHashesBuiltInPolicy[$policyRuleHash]) {
             $null = $arrayCustomBuiltInPolicyParity.Add([PSCustomObject]@{
                     CustomPolicyName        = $customPolicy.Name
                     CustomPolicyDisplayName = $customPolicy.DisplayName
                     CustomPolicyCategory    = $customPolicy.Category
                     CustomPolicyId          = $customPolicy.Id
-                    MatchBuiltinPolicyCount = $htHashesBuiltInPolicy.($policyRuleHash).Policies.Count
-                    BuiltInPolicyId         = ($htHashesBuiltInPolicy.($policyRuleHash).Policies | Sort-Object) -join "$CsvDelimiterOpposite "
+                    MatchBuiltinPolicyCount = $htHashesBuiltInPolicy[$policyRuleHash].Policies.Count
+                    BuiltInPolicyId         = ($htHashesBuiltInPolicy[$policyRuleHash].Policies | Sort-Object) -join "$CsvDelimiterOpposite "
                 })
         }
     }
@@ -1552,9 +1548,9 @@ if (-not $HierarchyMapOnly) {
     $roleAssignmentsForServicePrincipals = (($roleAssignmentsUniqueById.where({ $_.RoleAssignmentIdentityObjectType -eq 'ServicePrincipal' })))
     $htRoleAssignmentsForServicePrincipals = @{}
     foreach ($spWithRoleAssignment in $roleAssignmentsForServicePrincipals | Group-Object -Property RoleAssignmentIdentityObjectId) {
-        if (-not $htRoleAssignmentsForServicePrincipals.($spWithRoleAssignment.Name)) {
-            $htRoleAssignmentsForServicePrincipals.($spWithRoleAssignment.Name) = @{}
-            $htRoleAssignmentsForServicePrincipals.($spWithRoleAssignment.Name).RoleAssignments = $spWithRoleAssignment.group
+        if (-not $htRoleAssignmentsForServicePrincipals[$spWithRoleAssignment.Name]) {
+            $htRoleAssignmentsForServicePrincipals[$spWithRoleAssignment.Name] = @{}
+            $htRoleAssignmentsForServicePrincipals[$spWithRoleAssignment.Name].RoleAssignments = $spWithRoleAssignment.group
         }
     }
 
@@ -1562,14 +1558,14 @@ if (-not $HierarchyMapOnly) {
     $htPoliciesWithAssignmentOnRgRes = @{}
     foreach ($policyAssignmentRgRes in ($htCacheAssignmentsPolicyOnResourceGroupsAndResources).values | Sort-Object -Property id -Unique) {
         $hlperPolDefId = (($policyAssignmentRgRes.properties.policyDefinitionId).ToLower())
-        if (-not $htPoliciesWithAssignmentOnRgRes.($hlperPolDefId)) {
+        if (-not $htPoliciesWithAssignmentOnRgRes[$hlperPolDefId]) {
             $pscustomObj = [System.Collections.ArrayList]@()
             $null = $pscustomObj.Add([PSCustomObject]@{
                     PolicyAssignmentId          = ($policyAssignmentRgRes.Id).ToLower()
                     PolicyAssignmentDisplayName = $policyAssignmentRgRes.properties.displayName
                 })
-            $htPoliciesWithAssignmentOnRgRes.($hlperPolDefId) = @{}
-            $htPoliciesWithAssignmentOnRgRes.($hlperPolDefId).Assignments = [array](($pscustomObj))
+            $htPoliciesWithAssignmentOnRgRes[$hlperPolDefId] = @{}
+            $htPoliciesWithAssignmentOnRgRes[$hlperPolDefId].Assignments = [array](($pscustomObj))
         }
         else {
             $pscustomObj = [System.Collections.ArrayList]@()
@@ -1578,9 +1574,9 @@ if (-not $HierarchyMapOnly) {
                     PolicyAssignmentDisplayName = $policyAssignmentRgRes.properties.displayName
                 })
             $array = @()
-            $array += $htPoliciesWithAssignmentOnRgRes.($hlperPolDefId).Assignments
+            $array += $htPoliciesWithAssignmentOnRgRes[$hlperPolDefId].Assignments
             $array += (($pscustomObj))
-            $htPoliciesWithAssignmentOnRgRes.($hlperPolDefId).Assignments = $array
+            $htPoliciesWithAssignmentOnRgRes[$hlperPolDefId].Assignments = $array
         }
     }
     #endregion assignmentRgRes
@@ -1613,36 +1609,43 @@ if (-not $HierarchyMapOnly) {
     $diagnosticSettingsMgGrouped = $diagnosticSettingsMg | Group-Object -Property ScopeId
     $diagnosticSettingsMgManagementGroupsCount = ($diagnosticSettingsMgGrouped | Measure-Object).Count
 
+    $htDiagnosticSettingsMg = ($htDiagnosticSettingsMgSub).mg
     foreach ($entry in $diagnosticSettingsMgGrouped) {
         $dsgrouped = $entry.group | Group-Object -Property DiagnosticSettingName
 
+        $entryNode = $htDiagnosticSettingsMg.($entry.Name)
+        if (-not $entryNode) {
+            $entryNode = @{}
+            $htDiagnosticSettingsMg.($entry.Name) = $entryNode
+        }
         foreach ($ds in $dsgrouped) {
             $targetTypegrouped = $ds.group | Group-Object -Property DiagnosticTargetType
+            $dsNode = $entryNode.($ds.Name)
+            if (-not $dsNode) {
+                $dsNode = @{}
+                $entryNode.($ds.Name) = $dsNode
+            }
             foreach ($tt in $targetTypegrouped) {
-                if (-not ($htDiagnosticSettingsMgSub).mg.($entry.Name)) {
-                ($htDiagnosticSettingsMgSub).mg.($entry.Name) = @{}
-                }
-                if (-not ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name)) {
-                ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name) = @{}
-                }
-                if (-not ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name).($tt.Name)) {
-                ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name).($tt.Name) = $tt.group
+                if (-not $dsNode.($tt.Name)) {
+                    $dsNode.($tt.Name) = $tt.group
                 }
             }
         }
     }
 
     foreach ($mg in $htManagementGroupsMgPath.Values) {
-        foreach ($mgWithDiag in ($htDiagnosticSettingsMgSub).mg.keys) {
+        foreach ($mgWithDiag in $htDiagnosticSettingsMg.keys) {
             if ($mg.ParentNameChain -contains $mgWithDiag) {
-                foreach ($diagSet in ($htDiagnosticSettingsMgSub).mg.($mgWithDiag).keys) {
-                    foreach ($tt in ($htDiagnosticSettingsMgSub).mg.($mgWithDiag).($diagset).keys) {
-                        foreach ($tid in ($htDiagnosticSettingsMgSub).mg.($mgWithDiag).($diagset).($tt)) {
+                $mgWithDiagNode = $htDiagnosticSettingsMg.($mgWithDiag)
+                foreach ($diagSet in $mgWithDiagNode.keys) {
+                    $diagSetNode = $mgWithDiagNode.($diagSet)
+                    foreach ($tt in $diagSetNode.keys) {
+                        foreach ($tid in $diagSetNode.($tt)) {
                             $null = $script:diagnosticSettingsMg.Add([PSCustomObject]@{
                                     Scope                     = 'Mg'
                                     ScopeName                 = $mg.displayName
                                     ScopeId                   = $mg.Id
-                                    ScopeMgPath               = $htManagementGroupsMgPath.($mg.Id).pathDelimited
+                                    ScopeMgPath               = $htManagementGroupsMgPath[$mg.Id].pathDelimited
                                     DiagnosticsInheritedOrnot = $true
                                     DiagnosticsInheritedFrom  = $mgWithDiag
                                     DiagnosticsPresent        = 'true'
@@ -1680,20 +1683,25 @@ if (-not $HierarchyMapOnly) {
     $diagnosticSettingsSubGrouped = $diagnosticSettingsSub | Group-Object -Property ScopeId
     $diagnosticSettingsSubSubscriptionsCount = ($diagnosticSettingsSubGrouped | Measure-Object).Count
 
+    $htDiagnosticSettingsSub = ($htDiagnosticSettingsMgSub).sub
     foreach ($entry in $diagnosticSettingsSubGrouped) {
         $dsgrouped = $entry.group | Group-Object -Property DiagnosticSettingName
 
+        $entryNode = $htDiagnosticSettingsSub.($entry.Name)
+        if (-not $entryNode) {
+            $entryNode = @{}
+            $htDiagnosticSettingsSub.($entry.Name) = $entryNode
+        }
         foreach ($ds in $dsgrouped) {
             $targetTypegrouped = $ds.group | Group-Object -Property DiagnosticTargetType
+            $dsNode = $entryNode.($ds.Name)
+            if (-not $dsNode) {
+                $dsNode = @{}
+                $entryNode.($ds.Name) = $dsNode
+            }
             foreach ($tt in $targetTypegrouped) {
-                if (-not ($htDiagnosticSettingsMgSub).sub.($entry.Name)) {
-                ($htDiagnosticSettingsMgSub).sub.($entry.Name) = @{}
-                }
-                if (-not ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name)) {
-                ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name) = @{}
-                }
-                if (-not ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name).($tt.Name)) {
-                ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name).($tt.Name) = $tt.group
+                if (-not $dsNode.($tt.Name)) {
+                    $dsNode.($tt.Name) = $tt.group
                 }
             }
         }
@@ -1755,12 +1763,16 @@ if (-not $HierarchyMapOnly) {
     }
 
     $totalRoleAssignmentsCount = (($htCacheAssignmentsRole).keys).count
-    $totalRoleAssignmentsCountTen = (($htCacheAssignmentsRole).keys.where({ ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq 'Tenant' } )).count
-    $totalRoleAssignmentsCountMG = (($htCacheAssignmentsRole).keys.where({ ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq 'MG' } )).count
-    $totalRoleAssignmentsCountSub = (($htCacheAssignmentsRole).keys.where({ ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq 'Sub' } )).count
+    $roleAssignmentScopeCounts = @{}
+    foreach ($roleAssignmentCacheEntry in ($htCacheAssignmentsRole).Values) {
+        $roleAssignmentScopeCounts[$roleAssignmentCacheEntry.AssignmentScopeTenMgSubRgRes]++
+    }
+    $totalRoleAssignmentsCountTen = [int]$roleAssignmentScopeCounts['Tenant']
+    $totalRoleAssignmentsCountMG = [int]$roleAssignmentScopeCounts['MG']
+    $totalRoleAssignmentsCountSub = [int]$roleAssignmentScopeCounts['Sub']
     if (-not $azAPICallConf['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
-        $totalRoleAssignmentsCountRG = (($htCacheAssignmentsRole).keys.where({ ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq 'RG' } )).count
-        $totalRoleAssignmentsCountRes = (($htCacheAssignmentsRole).keys.where({ ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq 'Res' } )).count
+        $totalRoleAssignmentsCountRG = [int]$roleAssignmentScopeCounts['RG']
+        $totalRoleAssignmentsCountRes = [int]$roleAssignmentScopeCounts['Res']
         $totalRoleAssignmentsResourceGroupsAndResourcesCount = $totalRoleAssignmentsCountRG + $totalRoleAssignmentsCountRes
     }
     else {
@@ -1768,7 +1780,7 @@ if (-not $HierarchyMapOnly) {
         $totalRoleAssignmentsCount = $totalRoleAssignmentsCount + $totalRoleAssignmentsResourceGroupsAndResourcesCount
     }
 
-    $totalRoleDefinitionsCustomCount = ((($htCacheDefinitionsRole).keys.where({ ($htCacheDefinitionsRole).($_).IsCustom -eq $True } ))).count
+    $totalRoleDefinitionsCustomCount = ((($htCacheDefinitionsRole).keys.where({ $htCacheDefinitionsRole[$_].IsCustom -eq $True } ))).count
     $totalBlueprintDefinitionsCount = ((($htCacheDefinitionsBlueprint).keys)).count
     $totalBlueprintAssignmentsCount = (($htCacheAssignmentsBlueprint).keys).count
     $totalResourceTypesCount = ($resourceTypesDiagnosticsArray).Count
@@ -1865,7 +1877,7 @@ if (-not $HierarchyMapOnly) {
 
     if ($htMgASCSecureScore.Keys.Count -gt 0) {
         foreach ($mgASCSecureScore in $htMgASCSecureScore.Keys) {
-            $htDailySummary."MDfCSecureScore_$($mgASCSecureScore)" = $htMgASCSecureScore.($mgASCSecureScore).SecureScore
+            $htDailySummary."MDfCSecureScore_$($mgASCSecureScore)" = $htMgASCSecureScore[$mgASCSecureScore].SecureScore
         }
     }
 
@@ -2281,7 +2293,7 @@ else {
     $policySetsMgScoped = ($htCacheDefinitionsPolicySet).values.where({ $_.ScopeMgSub -eq 'Mg' })
     $roleAssignmentsMg = (($htCacheAssignmentsRole).values.where({ $_.AssignmentScopeTenMgSubRgRes -eq 'Mg' }))
 
-    foreach ($parentMgId in $htManagementGroupsMgPath.($ManagementGroupId).ParentNameChain) {
+    foreach ($parentMgId in $htManagementGroupsMgPath[$ManagementGroupId].ParentNameChain) {
         if ($parentMgId -eq $defaultManagementGroupId) {
             $classdefaultMG = 'defaultMG'
         }
@@ -2429,7 +2441,7 @@ if (-not $HierarchyMapOnly) {
         foreach ($entry in $htDailySummary.keys | Sort-Object) {
             $null = $dailySummary4ExportToCSV.Add([PSCustomObject]@{
                     capability = $entry
-                    count      = $htDailySummary.($entry)
+                    count      = $htDailySummary[$entry]
                 })
         }
         Write-Host " Exporting DailySummary CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_DailySummary.csv'"
@@ -2477,15 +2489,46 @@ if (-not $HierarchyMapOnly) {
             if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
                 $grpPSRuleSubscriptions = $arrayPsRule | Group-Object -Property subscriptionId
                 $grpPSRuleManagementGroups = $arrayPsRule | Group-Object -Property mgPath
+                #lookup hashtable so ScopeInsights (called per scope) can do O(1) lookups instead of per-scope .where() scans
+                $script:htGrpPSRuleSubscriptions = @{}
+                foreach ($grpEntry in $grpPSRuleSubscriptions) {
+                    $script:htGrpPSRuleSubscriptions[$grpEntry.Name] = $grpEntry
+                }
             }
         }
         if ($arrayFeaturesAll.Count -gt 0) {
             $script:subFeaturesGroupedBySubscription = $arrayFeaturesAll | Group-Object -Property subscriptionId
+            #lookup hashtable so ScopeInsights (called per scope) can do O(1) lookups instead of per-scope .where() scans
+            $script:htSubFeaturesGroupedBySubscription = @{}
+            foreach ($grpEntry in $script:subFeaturesGroupedBySubscription) {
+                $script:htSubFeaturesGroupedBySubscription[$grpEntry.Name] = $grpEntry
+            }
+        }
+        #lookup hashtable for user assigned identities (matches either resourceSubscriptionId or miSubscriptionId); preserves source order per key
+        $script:htArrayUserAssignedIdentities4ResourcesBySub = @{}
+        foreach ($uamiEntry in $arrayUserAssignedIdentities4Resources) {
+            foreach ($uamiSubKey in (@($uamiEntry.resourceSubscriptionId, $uamiEntry.miSubscriptionId) | Select-Object -Unique)) {
+                if ([string]::IsNullOrEmpty($uamiSubKey)) { continue }
+                if (-not $script:htArrayUserAssignedIdentities4ResourcesBySub[$uamiSubKey]) {
+                    $script:htArrayUserAssignedIdentities4ResourcesBySub[$uamiSubKey] = [System.Collections.ArrayList]@()
+                }
+                $null = $script:htArrayUserAssignedIdentities4ResourcesBySub[$uamiSubKey].Add($uamiEntry)
+            }
         }
         if ($arrayOrphanedResourcesSlim.Count -gt 0) {
             $arrayOrphanedResourcesGroupedBySubscription = $arrayOrphanedResourcesSlim | Group-Object subscriptionId
+            #lookup hashtable so ScopeInsights (called per scope) can do O(1) lookups instead of per-scope .where() scans
+            $script:htArrayOrphanedResourcesGroupedBySubscription = @{}
+            foreach ($grpEntry in $arrayOrphanedResourcesGroupedBySubscription) {
+                $script:htArrayOrphanedResourcesGroupedBySubscription[$grpEntry.Name] = $grpEntry
+            }
         }
         $resourcesIdsAllCAFNamingRelevantGroupedBySubscription = $resourcesIdsAllCAFNamingRelevant | Group-Object -Property subscriptionId
+        #lookup hashtable so ScopeInsights (called per scope) can do O(1) lookups instead of per-scope .where() scans
+        $script:htResourcesIdsAllCAFNamingRelevantGroupedBySubscription = @{}
+        foreach ($grpEntry in $resourcesIdsAllCAFNamingRelevantGroupedBySubscription) {
+            $script:htResourcesIdsAllCAFNamingRelevantGroupedBySubscription[$grpEntry.Name] = $grpEntry
+        }
 
         processScopeInsights -mgChild $ManagementGroupId -mgChildOf $getMgParentId
         showMemoryUsage
