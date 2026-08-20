@@ -4,6 +4,10 @@
 
 ### Azure Governance Visualizer version 6
 
+**Changes** (2026-Aug-20 / 6.7.5 Patch)
+
+- fix issue 298; Role Assignments - foreign Principals (e.g. Partner Admins) - Identity Displayname and Identity Type were not resolved for foreign identities; the `directoryObjects/getByIds` request now includes `types` (`user`, `group`, `servicePrincipal`, `device`, `directoryObjectPartnerReference`) and foreign identities are resolved into a `Foreign <objectType>` type with their displayName
+
 **Changes** (2026-May-18 / 6.7.3 Patch)
 
 - fix issue 294; retirement Classic Administrators

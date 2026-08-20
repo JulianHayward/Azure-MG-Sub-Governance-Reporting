@@ -86,24 +86,13 @@ Azure Architecture Center (Landing zones): [Azure Governance Visualizer deployme
 
 ## Release history
 
+**Changes** (2026-Aug-20 / 6.7.5 Patch)
+
+- fix issue 298; Role Assignments - foreign Principals (e.g. Partner Admins) - Identity Displayname and Identity Type were not resolved for foreign identities; the `directoryObjects/getByIds` request now includes `types` (`user`, `group`, `servicePrincipal`, `device`, `directoryObjectPartnerReference`) and foreign identities are resolved into a `Foreign <objectType>` type with their displayName
+
 **Changes** (2026-May-18 / 6.7.3 Patch)
 
 - fix issue 294; retirement Classic Administrators
-
-**Changes** (2025-May-21 / 6.7.2 Patch)
-
-- use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.4.1 (previous 1.4.0). Handle token refresh for OIDC in Azure Devops and GitHub Actions fix
-
-**Changes** (2025-May-20 / 6.7.1 Patch)
-
-- use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.4.0 (previous 1.2.4). Handle token refresh for OIDC in Azure Devops and GitHub Actions
-
-**Changes** (2025-May-19 / 6.7.0 Minor)
-
-- New feature "ALZ Policy Assignments Checker" - This new view, will compare the current deployed ALZ hierarchy with the ALZ archetypes definitions and point out the missing policy assignments. It will also reference the missing policy assignments' payloads and [AzAdvertizer](https://www.azadvertizer.net/) links.
-  - New switch-parameter `-ALZPolicyAssignmentsChecker` - Execute the ALZPolicyAssignmentsChecker feature
-  - New Parameter `-ALZManagementGroupsIds` - Provide the Management Group Ids of the deployed ALZ hierarchy (more details: [Parameters](#parameters))
-  - [techcommunity blog post](https://techcommunity.microsoft.com/blog/azuregovernanceandmanagementblog/keep-your-azure-landing-zones-policy-assignments-up-to-date-with-azure-governanc/4292789)
 
 [Full release history](history.md)
 
