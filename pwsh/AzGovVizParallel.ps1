@@ -722,6 +722,34 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings 'true'
 
+#unhandled terminating errors end up here; the details are written to the information stream because the caller may not capture the error stream
+trap {
+    $errorRecord = $_
+    $errorInvocation = $errorRecord.InvocationInfo
+    Write-Host ''
+    Write-Host '--------------------'
+    Write-Host "Azure Governance Visualizer ($ProductVersion) failed" -ForegroundColor DarkRed
+    Write-Host "Message: $($errorRecord.Exception.Message)" -ForegroundColor DarkRed
+    Write-Host "Exception: $($errorRecord.Exception.GetType().FullName)" -ForegroundColor DarkRed
+    Write-Host "ErrorId: $($errorRecord.FullyQualifiedErrorId)" -ForegroundColor DarkRed
+    if ($errorInvocation) {
+        Write-Host "Script: $($errorInvocation.ScriptName)" -ForegroundColor DarkRed
+        Write-Host "Line: $($errorInvocation.ScriptLineNumber) Column: $($errorInvocation.OffsetInLine)" -ForegroundColor DarkRed
+        if (-not [string]::IsNullOrWhiteSpace($errorInvocation.Line)) {
+            Write-Host "Statement: $($errorInvocation.Line.Trim())" -ForegroundColor DarkRed
+        }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($errorRecord.ScriptStackTrace)) {
+        Write-Host 'ScriptStackTrace:' -ForegroundColor DarkRed
+        Write-Host $errorRecord.ScriptStackTrace -ForegroundColor DarkRed
+    }
+    Write-Host '--------------------'
+    if ($DoTranscript) {
+        try { $null = Stop-Transcript } catch { <# no transcript running #> }
+    }
+    break
+}
+
 #start
 $startAzGovViz = Get-Date
 $startTime = Get-Date -Format 'dd-MMM-yyyy HH:mm:ss'
@@ -19841,53 +19869,17 @@ extensions: [{ name: 'sort' }]
             }
 
             $htmlTableId = 'TenantSummary_roleAssignmentsAll'
-            $noteOrNot = ''
             [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsAll"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($rbacAllCount) Role assignment related entries (unique -> $($roleAssignmentsInfo -join ', '))</span>
+<button onclick="loadag$($htmlTableId)()" type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsAll"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($rbacAllCount) Role assignment related entries (unique -> $($roleAssignmentsInfo -join ', '))</span>
 </button>
 <div class="content TenantSummary">
-<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a><br>
-<span class="padlxx hintTableSize">*Depending on the number of rows and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a><br>
+<span class="padlxx hintTableSize">*The CSV download respects the filters and the column order applied in the grid</span>
+<div id="$htmlTableId" class="ag-theme-quartz" style="height:600px;width:100%;"></div>
+</div>
+<script>
+var rowData4$($htmlTableId) = [
 "@)
-
-
-            [void]$htmlTenantSummary.AppendLine(@"
-<table id= "$htmlTableId" class="summaryTable">
-<thead>
-<tr>
-<th>Scope</th>
-<th>Management Group Id</th>
-<th>Management Group Name</th>
-<th>SubscriptionId</th>
-<th>Subscription Name</th>
-<th>Assignment Scope</th>
-<th>Role</th>
-<th>Role Id</th>
-<th>Role Type</th>
-<th>Data</th>
-<th>Can do Role assignment</th>
-<th>Identity Displayname</th>
-<th>Identity SignInName</th>
-<th>Identity ObjectId</th>
-<th>Identity Type</th>
-<th>Applicability</th>
-<th>Applies through membership <abbr title="Note: the identity might not be a direct member of the group it could also be member of a nested group"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></th>
-<th>Group Details</th>
-<th class="uamiresaltbgc">PIM</th>
-<th class="uamiresaltbgc">PIM assignment type</th>
-<th class="uamiresaltbgc">PIM start</th>
-<th class="uamiresaltbgc">PIM end</th>
-<th>Role AssignmentId</th>
-<th>Related Policy Assignment $noteOrNot</th>
-<th>CreatedOn</th>
-<th>CreatedBy</th>
-</tr>
-</thead>
-<tbody>
-"@)
-            $cnter = 0
-            $roleAssignmentsAllCount = $rbacAllCount
-            $htmlSummaryRoleAssignmentsAll = $null
             $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
             $htmlTenantSummary = [System.Text.StringBuilder]::new()
 
@@ -19896,185 +19888,110 @@ extensions: [{ name: 'sort' }]
 
             $startSortRBACAll = Get-Date
             if ($azAPICallConf['htParameters'].LargeTenant -or $azAPICallConf['htParameters'].RBACAtScopeOnly) {
-                $rbacAllSorted = $rbacAllAtScope | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, Scope, Role, RoleId, ObjectId, RoleAssignmentId
+                $rbacAllSorted = @($rbacAllAtScope | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, Scope, Role, RoleId, ObjectId, RoleAssignmentId)
             }
             else {
-                $rbacAllSorted = $rbacAll | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, Scope, Role, RoleId, ObjectId, RoleAssignmentId
+                $rbacAllSorted = @($rbacAll | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, Scope, Role, RoleId, ObjectId, RoleAssignmentId)
             }
 
             $endSortRBACAll = Get-Date
             Write-Host "   Sort RBACAll duration: $((New-TimeSpan -Start $startSortRBACAll -End $endSortRBACAll).TotalMinutes) minutes ($((New-TimeSpan -Start $startSortRBACAll -End $endSortRBACAll).TotalSeconds) seconds)"
 
             $startCreateRBACAllHTMLForeach = Get-Date
-            $htmlSummaryRoleAssignmentsAll = [System.Text.StringBuilder]::new()
-            foreach ($roleAssignment in $rbacAllSorted) {
-                $cnter++
-                if ($cnter % 1000 -eq 0) {
-                    Write-Host "    create HTML $cnter of $rbacAllCount RoleAssignments processed"
-                    if ($cnter % 5000 -eq 0) {
-                        Write-Host '     appending..'
-                        $htmlSummaryRoleAssignmentsAll | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-                        $htmlSummaryRoleAssignmentsAll = [System.Text.StringBuilder]::new()
-                    }
+            #properties that feed the AG Grid; the '*Clear' properties are used for sorting/filtering/export, their html counterparts are used for rendering only
+            $rbacGridProperties = @(
+                'ScopeTenOrMgOrSubOrRGOrRes', 'MgId', 'MgName', 'SubscriptionId', 'SubscriptionName', 'Scope',
+                'Role', 'RoleClear', 'RoleId', 'RoleType', 'RoleDataRelated', 'RoleCanDoRoleAssignments',
+                'ObjectDisplayName', 'ObjectSignInName', 'ObjectId', 'ObjectType', 'AssignmentType',
+                'AssignmentInheritFrom', 'GroupMembersCount',
+                @{name = 'RoleAssignmentPIMRelated'; expression = { [string]$_.RoleAssignmentPIMRelated } },
+                'RoleAssignmentPIMAssignmentType', 'RoleAssignmentPIMAssignmentSlotStart', 'RoleAssignmentPIMAssignmentSlotEnd',
+                'RoleAssignmentId', 'RbacRelatedPolicyAssignment', 'RbacRelatedPolicyAssignmentClear', 'CreatedOn', 'CreatedBy'
+            )
+            $rbacGridBatchSize = 5000
+            for ($rbacGridBatchStart = 0; $rbacGridBatchStart -lt $rbacAllCount; $rbacGridBatchStart += $rbacGridBatchSize) {
+                $rbacGridBatchEnd = [math]::Min($rbacGridBatchStart + $rbacGridBatchSize, $rbacAllCount) - 1
+                $rbacGridBatchJson = $rbacAllSorted[$rbacGridBatchStart..$rbacGridBatchEnd] | Select-Object -Property $rbacGridProperties | ConvertTo-Json -Compress -AsArray -EscapeHandling EscapeHtml
+                $htmlSummaryRoleAssignmentsAll = [System.Text.StringBuilder]::new()
+                if ($rbacGridBatchStart -gt 0) {
+                    [void]$htmlSummaryRoleAssignmentsAll.Append(',')
                 }
-
-                if ($roleAssignment.RoleType -eq 'Custom') {
-                    $roleName = ($roleAssignment.Role -replace '<', '&lt;' -replace '>', '&gt;')
-                }
-                else {
-                    $roleName = $roleAssignment.Role
-                }
-
-                [void]$htmlSummaryRoleAssignmentsAll.AppendFormat(
-                    @'
-<tr>
-<td style="width:40px">{0}</td>
-<td>{1}</td>
-<td>{2}</td>
-<td>{3}</td>
-<td>{4}</td>
-<td>{5}</td>
-<td>{6}</td>
-<td>{7}</td>
-<td>{8}</td>
-<td>{9}</td>
-<td>{10}</td>
-<td class="breakwordall">{11}</td>
-<td class="breakwordall">{12}</td>
-<td class="breakwordall">{13}</td>
-<td style="width:76px" class="breakwordnone">{14}</td>
-<td>{15}</td>
-<td>{16}</td>
-<td>{17}</td>
-<td>{18}</td>
-<td>{19}</td>
-<td>{20}</td>
-<td>{21}</td>
-<td class="breakwordall">{22}</td>
-<td class="breakwordall">{23}</td>
-<td class="breakwordall">{24}</td>
-<td class="breakwordall">{25}</td>
-</tr>
-'@, $roleAssignment.ScopeTenOrMgOrSubOrRGOrRes,
-                    $roleAssignment.MgId,
-                    ($roleAssignment.MgName -replace '<', '&lt;' -replace '>', '&gt;'),
-                    $roleAssignment.SubscriptionId,
-                    $roleAssignment.SubscriptionName,
-                    $roleAssignment.Scope,
-                    $roleName,
-                    $roleAssignment.RoleId,
-                    $roleAssignment.RoleType,
-                    $roleAssignment.RoleDataRelated,
-                    $roleAssignment.RoleCanDoRoleAssignments,
-                    $roleAssignment.ObjectDisplayName,
-                    $roleAssignment.ObjectSignInName,
-                    $roleAssignment.ObjectId,
-                    $roleAssignment.ObjectType,
-                    $roleAssignment.AssignmentType,
-                    $roleAssignment.AssignmentInheritFrom,
-                    $roleAssignment.GroupMembersCount,
-                    $roleAssignment.RoleAssignmentPIMRelated,
-                    $roleAssignment.RoleAssignmentPIMAssignmentType,
-                    $roleAssignment.RoleAssignmentPIMAssignmentSlotStart,
-                    $roleAssignment.RoleAssignmentPIMAssignmentSlotEnd,
-                    $roleAssignment.RoleAssignmentId,
-                    ($roleAssignment.RbacRelatedPolicyAssignment),
-                    $roleAssignment.CreatedOn,
-                    $roleAssignment.CreatedBy
-                )
-
+                #strip the enclosing brackets of the batch, all batches together form one JS array
+                [void]$htmlSummaryRoleAssignmentsAll.Append($rbacGridBatchJson.Substring(1, $rbacGridBatchJson.Length - 2))
+                Write-Host "    create HTML $($rbacGridBatchEnd + 1) of $rbacAllCount RoleAssignments processed"
+                $htmlSummaryRoleAssignmentsAll | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+                $htmlSummaryRoleAssignmentsAll = $null #cleanup
             }
-            $start = Get-Date
-            [void]$htmlTenantSummary.AppendLine($htmlSummaryRoleAssignmentsAll)
-
-            $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-            $htmlSummaryRoleAssignmentsAll = $null #cleanup
-            $htmlTenantSummary = [System.Text.StringBuilder]::new()
-            $end = Get-Date
 
             $endCreateRBACAllHTMLForeach = Get-Date
             Write-Host "   CreateRBACAll HTML Foreach duration: $((New-TimeSpan -Start $startCreateRBACAllHTMLForeach -End $endCreateRBACAllHTMLForeach).TotalMinutes) minutes ($((New-TimeSpan -Start $startCreateRBACAllHTMLForeach -End $endCreateRBACAllHTMLForeach).TotalSeconds) seconds)"
 
             [void]$htmlTenantSummary.AppendLine(@"
-            </tbody>
-        </table>
-    </div>
-    <script>
-        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
-        window.helpertfConfig4$htmlTableId =1;
-        var tfConfig4$htmlTableId = {
-            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
-"@)
-            if ($tfCount -gt 10) {
-                $spectrum = "10, $tfCount"
-                if ($tfCount -gt 50) {
-                    $spectrum = "10, 25, 50, $tfCount"
-                }
-                if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, 100, $tfCount"
-                }
-                if ($tfCount -gt 500) {
-                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
-                }
-                if ($tfCount -gt 1000) {
-                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-                }
-                if ($tfCount -gt 2000) {
-                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-                }
-                if ($tfCount -gt 3000) {
-                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-                }
-                [void]$htmlTenantSummary.AppendLine(@"
-paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
-"@)
-            }
-            [void]$htmlTenantSummary.AppendLine(@"
-btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-            //linked_filters: true,
-            col_0: 'multiple',
-            col_8: 'select',
-            col_9: 'select',
-            col_10: 'select',
-            col_14: 'multiple',
-            col_15: 'select',
-            col_18: 'select',
-            col_19: 'select',
-            locale: 'en-US',
-            col_types: [
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'date',
-                'date',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'date',
-                'caseinsensitivestring'
-            ],
-            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', 'try owner||reader', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-            extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
-        };
-        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();}}
-    </script>
+];
+var gridOptions4$($htmlTableId) = {
+    rowData: rowData4$($htmlTableId),
+    columnDefs: [
+        { headerName: 'Scope', field: 'ScopeTenOrMgOrSubOrRGOrRes', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
+        { headerName: 'Management Group Id', field: 'MgId' },
+        { headerName: 'Management Group Name', field: 'MgName' },
+        { headerName: 'SubscriptionId', field: 'SubscriptionId' },
+        { headerName: 'Subscription Name', field: 'SubscriptionName' },
+        { headerName: 'Assignment Scope', field: 'Scope' },
+        { headerName: 'Role', field: 'RoleClear', cellRenderer: function (params) { return params.data.Role; } },
+        { headerName: 'Role Id', field: 'RoleId' },
+        { headerName: 'Role Type', field: 'RoleType', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
+        { headerName: 'Data', field: 'RoleDataRelated', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
+        { headerName: 'Can do Role assignment', field: 'RoleCanDoRoleAssignments', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
+        { headerName: 'Identity Displayname', field: 'ObjectDisplayName' },
+        { headerName: 'Identity SignInName', field: 'ObjectSignInName' },
+        { headerName: 'Identity ObjectId', field: 'ObjectId' },
+        { headerName: 'Identity Type', field: 'ObjectType', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
+        { headerName: 'Applicability', field: 'AssignmentType', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
+        { headerName: 'Applies through membership', field: 'AssignmentInheritFrom', headerTooltip: 'Note: the identity might not be a direct member of the group it could also be member of a nested group' },
+        { headerName: 'Group Details', field: 'GroupMembersCount' },
+        { headerName: 'PIM', field: 'RoleAssignmentPIMRelated', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
+        { headerName: 'PIM assignment type', field: 'RoleAssignmentPIMAssignmentType', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
+        { headerName: 'PIM start', field: 'RoleAssignmentPIMAssignmentSlotStart' },
+        { headerName: 'PIM end', field: 'RoleAssignmentPIMAssignmentSlotEnd' },
+        { headerName: 'Role AssignmentId', field: 'RoleAssignmentId' },
+        { headerName: 'Related Policy Assignment', field: 'RbacRelatedPolicyAssignmentClear', cellRenderer: function (params) { return params.data.RbacRelatedPolicyAssignment; } },
+        { headerName: 'CreatedOn', field: 'CreatedOn' },
+        { headerName: 'CreatedBy', field: 'CreatedBy' }
+    ],
+    defaultColDef: {
+        minWidth: 90,
+        maxWidth: 420,
+        sortable: true,
+        resizable: true,
+        filter: 'agTextColumnFilter',
+        floatingFilter: true,
+        //no truncation: columns are sized to their content, anything beyond maxWidth wraps
+        wrapText: true,
+        autoHeight: true,
+        wrapHeaderText: true,
+        autoHeaderHeight: true
+    },
+    autoSizeStrategy: { type: 'fitCellContents' },
+    pagination: true,
+    paginationPageSize: 100,
+    paginationPageSizeSelector: [10, 30, 50, 100, 250, 500, 1000],
+    enableCellTextSelection: true,
+    ensureDomOrder: true
+};
+function createag$($htmlTableId)() {
+    if (window.helperag$($htmlTableId) === 1) { return; }
+    window.helperag$($htmlTableId) = 1;
+    window.api4$($htmlTableId) = agGrid.createGrid(document.getElementById('$htmlTableId'), gridOptions4$($htmlTableId));
+}
+function loadag$($htmlTableId)() {
+    //deferred, the collapsible content is made visible by the click handler that runs after this one
+    setTimeout(createag$($htmlTableId), 0);
+}
+function exportag$($htmlTableId)(separator) {
+    createag$($htmlTableId)();
+    window.api4$($htmlTableId).exportDataAsCsv({ columnSeparator: separator, fileName: 'export_$($htmlTableId)_' + new Date().toLocaleDateString('en-CA') + '.csv' });
+}
+</script>
 "@)
 
         }
@@ -23577,6 +23494,9 @@ tf.init();}}
 '@)
     #endregion SUMMARYSubDefenderCoverage
 
+    #initialized unconditionally, consumers (e.g. SUMMARYAADSPManagedIdentities) run even if there are no UserAssigned Managed Identities assigned to resources
+    $script:htUserAssignedIdentitiesAssignedResources = @{}
+    $script:htResourcesAssignedUserAssignedIdentities = @{}
 
     if ($azAPICallConf['htParameters'].NoResources -eq $false) {
         #region SUMMARYSubUserAssignedIdentities4Resources
@@ -23587,8 +23507,6 @@ tf.init();}}
 
         if ($arrayUserAssignedIdentities4ResourcesCount -gt 0) {
 
-            $script:htUserAssignedIdentitiesAssignedResources = @{}
-            $script:htResourcesAssignedUserAssignedIdentities = @{}
             foreach ($entry in $arrayUserAssignedIdentities4Resources) {
                 #UserAssignedIdentities
                 if (-not $htUserAssignedIdentitiesAssignedResources[$entry.miPrincipalId]) {
@@ -31216,6 +31134,32 @@ function verifyModules3rd {
         Write-Host " Verify '$($module.ModuleName)' version '$moduleVersion' succeeded" -ForegroundColor Green
     }
 }
+function writeJsonFile {
+    #central helper for all JSON exports (buildJSON/buildTree) so encoding and write behavior are defined in one place
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory)]
+        [string]
+        $LiteralPath,
+
+        [Parameter(Mandatory, ValueFromPipeline)]
+        [AllowEmptyString()]
+        [AllowNull()]
+        $InputObject
+    )
+
+    begin {
+        $content = [System.Collections.Generic.List[string]]::new()
+    }
+
+    process {
+        $content.Add([string]$InputObject)
+    }
+
+    end {
+        Set-Content -LiteralPath $LiteralPath -Value $content -Encoding utf8 -Force
+    }
+}
 #region HTML
 function HierarchyMgHTML($mgChild) {
     $mgDetails = $htMgDetails.($mgChild).details
@@ -36871,6 +36815,97 @@ $html = @"
     <!--<script src="https://www.azadvertizer.net/azgovvizv4/tablefilter/tablefilter.js"></script>-->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tablefilter/0.7.3/tablefilter.js" integrity="sha512-HDzCUKAvjWV4XogiGFmF59gZGeNUd7X/peY+4zRQQRlqjwYngxA2haFABelr9AEhnnq65CPM/yIgdi2ffpXxcw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tablefilter/0.7.3/tf-1-2aa33b10e0e549020c12.min.js" integrity="sha512-KEstgdRK/uzfufHDzCmFIcjBN20mv8joRQdiQR71s0V+sP3j3mmgedDmK8i12INhG4wEWoDJHSKOpGxpAZ48qw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-grid.css" integrity="sha512-LtYrwl3RjIutCHf9yb6EG09zr4k2htQlyIeD2nJMld66jKYcfWF2RrgxEKZK7TkX9wTFz3/c0Bur1SY+S4Fv8A==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-theme-quartz.css" integrity="sha512-ISUqCKJU9IOqpwVnp8tlLooD0Tjj6DNW4tFi6KymnYiidM60i16F7l6J5aFZGmajxVVruN/dcB7WM3Pn+Qr45Q==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js" integrity="sha512-fD9MUUcwwAe0W4Qj+wis2c6GNIAIAgxkGiVNYa3ZZH+7uKdjPIU+VZ7wXffl4eLda4rVAIfxEqeO2Q0+4+w/Kw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+        /* azgovvizmain.css applies 'div { float: left }' globally which collapses the AG Grid layout */
+        .ag-theme-quartz,
+        .ag-theme-quartz div {
+            float: none;
+        }
+
+        /* match the typography of the report (.summary) */
+        .ag-theme-quartz {
+            --ag-font-family: "Segoe UI", "SegoeUI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            --ag-font-size: 10px;
+            --ag-row-height: 22px;
+            --ag-header-height: 26px;
+            --ag-list-item-height: 20px;
+            --ag-cell-horizontal-padding: 8px;
+        }
+
+        .ag-theme-quartz .agvSelectFloatingFilter {
+            width: 100%;
+            height: 20px;
+            font-family: inherit;
+            font-size: inherit;
+        }
+
+        /* wrapped cell content must start at the top of the row */
+        .ag-theme-quartz .ag-cell-wrap-text {
+            word-break: break-word;
+            line-height: 14px;
+            padding-top: 3px;
+            padding-bottom: 3px;
+        }
+    </style>
+    <script>
+    /* AG Grid Community has no set filter; this floating filter renders a <select> (like the TableFilter 'select' columns)
+       and drives the column's text filter with an 'equals' match. The options are the distinct values of the column. */
+    class agvSelectFloatingFilter {
+        init(params) {
+            this.params = params;
+            this.eGui = document.createElement('select');
+            this.eGui.className = 'ag-floating-filter-input agvSelectFloatingFilter';
+            this.eGui.addEventListener('change', () => {
+                const value = this.eGui.value;
+                this.params.parentFilterInstance((instance) => {
+                    if (value === '') {
+                        instance.onFloatingFilterChanged(null, null);
+                    }
+                    else {
+                        instance.onFloatingFilterChanged('equals', value);
+                    }
+                });
+            });
+            this.populate();
+            if (this.eGui.options.length <= 1) {
+                //the row data may not be available yet when the grid builds its floating filters
+                this.onFirstDataRendered = () => this.populate();
+                params.api.addEventListener('firstDataRendered', this.onFirstDataRendered);
+            }
+        }
+        populate() {
+            const colId = this.params.column.getColId();
+            const values = new Set();
+            this.params.api.forEachNode((node) => {
+                const value = node.data ? node.data[colId] : null;
+                if (value !== null && value !== undefined && value !== '') {
+                    values.add(String(value));
+                }
+            });
+            const selected = this.eGui.value;
+            this.eGui.replaceChildren(new Option('', ''));
+            Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })).forEach((value) => {
+                this.eGui.appendChild(new Option(value, value));
+            });
+            this.eGui.value = selected;
+        }
+        onParentModelChanged(parentModel) {
+            //keep the dropdown in sync when the filter is set or cleared elsewhere
+            this.eGui.value = (parentModel && parentModel.type === 'equals' && parentModel.filter != null) ? parentModel.filter : '';
+        }
+        getGui() {
+            return this.eGui;
+        }
+        destroy() {
+            if (this.onFirstDataRendered) {
+                this.params.api.removeEventListener('firstDataRendered', this.onFirstDataRendered);
+            }
+        }
+    }
+    </script>
     <link rel="stylesheet" href="https://www.azadvertizer.net/azgovvizv4/css/highlight-10.5.0.min.css">
     <!--<script src="https://www.azadvertizer.net/azgovvizv4/js/highlight-10.5.0.min.js"></script>-->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js" integrity="sha512-9GIHU4rPKUMvNOHFOer5Zm2zHnZOjayOO3lZpokhhCtgt8FNlNiW/bb7kl0R5ZXfCDVPcQ8S4oBdNs92p5Nm2w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>

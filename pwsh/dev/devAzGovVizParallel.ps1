@@ -722,6 +722,34 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings 'true'
 
+#unhandled terminating errors end up here; the details are written to the information stream because the caller may not capture the error stream
+trap {
+    $errorRecord = $_
+    $errorInvocation = $errorRecord.InvocationInfo
+    Write-Host ''
+    Write-Host '--------------------'
+    Write-Host "Azure Governance Visualizer ($ProductVersion) failed" -ForegroundColor DarkRed
+    Write-Host "Message: $($errorRecord.Exception.Message)" -ForegroundColor DarkRed
+    Write-Host "Exception: $($errorRecord.Exception.GetType().FullName)" -ForegroundColor DarkRed
+    Write-Host "ErrorId: $($errorRecord.FullyQualifiedErrorId)" -ForegroundColor DarkRed
+    if ($errorInvocation) {
+        Write-Host "Script: $($errorInvocation.ScriptName)" -ForegroundColor DarkRed
+        Write-Host "Line: $($errorInvocation.ScriptLineNumber) Column: $($errorInvocation.OffsetInLine)" -ForegroundColor DarkRed
+        if (-not [string]::IsNullOrWhiteSpace($errorInvocation.Line)) {
+            Write-Host "Statement: $($errorInvocation.Line.Trim())" -ForegroundColor DarkRed
+        }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($errorRecord.ScriptStackTrace)) {
+        Write-Host 'ScriptStackTrace:' -ForegroundColor DarkRed
+        Write-Host $errorRecord.ScriptStackTrace -ForegroundColor DarkRed
+    }
+    Write-Host '--------------------'
+    if ($DoTranscript) {
+        try { $null = Stop-Transcript } catch { <# no transcript running #> }
+    }
+    break
+}
+
 #start
 $startAzGovViz = Get-Date
 $startTime = Get-Date -Format 'dd-MMM-yyyy HH:mm:ss'
@@ -1916,6 +1944,97 @@ $html = @"
     <!--<script src="https://www.azadvertizer.net/azgovvizv4/tablefilter/tablefilter.js"></script>-->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tablefilter/0.7.3/tablefilter.js" integrity="sha512-HDzCUKAvjWV4XogiGFmF59gZGeNUd7X/peY+4zRQQRlqjwYngxA2haFABelr9AEhnnq65CPM/yIgdi2ffpXxcw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tablefilter/0.7.3/tf-1-2aa33b10e0e549020c12.min.js" integrity="sha512-KEstgdRK/uzfufHDzCmFIcjBN20mv8joRQdiQR71s0V+sP3j3mmgedDmK8i12INhG4wEWoDJHSKOpGxpAZ48qw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-grid.css" integrity="sha512-LtYrwl3RjIutCHf9yb6EG09zr4k2htQlyIeD2nJMld66jKYcfWF2RrgxEKZK7TkX9wTFz3/c0Bur1SY+S4Fv8A==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-theme-quartz.css" integrity="sha512-ISUqCKJU9IOqpwVnp8tlLooD0Tjj6DNW4tFi6KymnYiidM60i16F7l6J5aFZGmajxVVruN/dcB7WM3Pn+Qr45Q==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js" integrity="sha512-fD9MUUcwwAe0W4Qj+wis2c6GNIAIAgxkGiVNYa3ZZH+7uKdjPIU+VZ7wXffl4eLda4rVAIfxEqeO2Q0+4+w/Kw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+        /* azgovvizmain.css applies 'div { float: left }' globally which collapses the AG Grid layout */
+        .ag-theme-quartz,
+        .ag-theme-quartz div {
+            float: none;
+        }
+
+        /* match the typography of the report (.summary) */
+        .ag-theme-quartz {
+            --ag-font-family: "Segoe UI", "SegoeUI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            --ag-font-size: 10px;
+            --ag-row-height: 22px;
+            --ag-header-height: 26px;
+            --ag-list-item-height: 20px;
+            --ag-cell-horizontal-padding: 8px;
+        }
+
+        .ag-theme-quartz .agvSelectFloatingFilter {
+            width: 100%;
+            height: 20px;
+            font-family: inherit;
+            font-size: inherit;
+        }
+
+        /* wrapped cell content must start at the top of the row */
+        .ag-theme-quartz .ag-cell-wrap-text {
+            word-break: break-word;
+            line-height: 14px;
+            padding-top: 3px;
+            padding-bottom: 3px;
+        }
+    </style>
+    <script>
+    /* AG Grid Community has no set filter; this floating filter renders a <select> (like the TableFilter 'select' columns)
+       and drives the column's text filter with an 'equals' match. The options are the distinct values of the column. */
+    class agvSelectFloatingFilter {
+        init(params) {
+            this.params = params;
+            this.eGui = document.createElement('select');
+            this.eGui.className = 'ag-floating-filter-input agvSelectFloatingFilter';
+            this.eGui.addEventListener('change', () => {
+                const value = this.eGui.value;
+                this.params.parentFilterInstance((instance) => {
+                    if (value === '') {
+                        instance.onFloatingFilterChanged(null, null);
+                    }
+                    else {
+                        instance.onFloatingFilterChanged('equals', value);
+                    }
+                });
+            });
+            this.populate();
+            if (this.eGui.options.length <= 1) {
+                //the row data may not be available yet when the grid builds its floating filters
+                this.onFirstDataRendered = () => this.populate();
+                params.api.addEventListener('firstDataRendered', this.onFirstDataRendered);
+            }
+        }
+        populate() {
+            const colId = this.params.column.getColId();
+            const values = new Set();
+            this.params.api.forEachNode((node) => {
+                const value = node.data ? node.data[colId] : null;
+                if (value !== null && value !== undefined && value !== '') {
+                    values.add(String(value));
+                }
+            });
+            const selected = this.eGui.value;
+            this.eGui.replaceChildren(new Option('', ''));
+            Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })).forEach((value) => {
+                this.eGui.appendChild(new Option(value, value));
+            });
+            this.eGui.value = selected;
+        }
+        onParentModelChanged(parentModel) {
+            //keep the dropdown in sync when the filter is set or cleared elsewhere
+            this.eGui.value = (parentModel && parentModel.type === 'equals' && parentModel.filter != null) ? parentModel.filter : '';
+        }
+        getGui() {
+            return this.eGui;
+        }
+        destroy() {
+            if (this.onFirstDataRendered) {
+                this.params.api.removeEventListener('firstDataRendered', this.onFirstDataRendered);
+            }
+        }
+    }
+    </script>
     <link rel="stylesheet" href="https://www.azadvertizer.net/azgovvizv4/css/highlight-10.5.0.min.css">
     <!--<script src="https://www.azadvertizer.net/azgovvizv4/js/highlight-10.5.0.min.js"></script>-->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js" integrity="sha512-9GIHU4rPKUMvNOHFOer5Zm2zHnZOjayOO3lZpokhhCtgt8FNlNiW/bb7kl0R5ZXfCDVPcQ8S4oBdNs92p5Nm2w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
