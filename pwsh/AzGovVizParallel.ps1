@@ -142,7 +142,8 @@
     Single Scope Insights output per Subscription should not be created
 
 .PARAMETER HtmlTableRowsLimit
-    Although the parameter -LargeTenant was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
+    #obsolete
+    The parameter has no effect anymore. The large tables (Policy assignments, Role assignments, Resource Providers detailed) are rendered with AG Grid, which virtualizes rows and therefore no longer depends on a row limit.
 
 .PARAMETER ManagementGroupsOnly
     Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
@@ -341,7 +342,7 @@
     Will not create a single Scope Insights output per Subscription
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoSingleSubscriptionOutput
 
-    Although the parameter -LargeTenant was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
+    #obsolete - the parameter has no effect anymore (AG Grid virtualizes rows)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -HtmlTableRowsLimit 23077
 
     Define if data should be collected for Management Groups only (Subscription data such as e.g. Policy assignments etc. will not be collected)
@@ -514,7 +515,7 @@ param
     $DoTranscript,
 
     [int]
-    $HtmlTableRowsLimit = 20000, #HTML TenantSummary may become unresponsive depending on client device performance. A recommendation will be shown to use the CSV file instead of opening the TF table
+    $HtmlTableRowsLimit = 20000, #obsolete - kept for compatibility with existing pipelines, the parameter has no effect anymore
 
     [int]
     $ThrottleLimit = 10,
@@ -18801,17 +18802,32 @@ extensions: [{ name: 'sort' }]
         if (-not $NoCsvExport) {
             $csvFilename = "$($filename)_PolicyAssignments"
             Write-Host "    Exporting PolicyAssignments CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
+            #explicit property list (full enriched schema minus PolicyName and RelatedRoleAssignments, in definition order) is faster than Select-Object -ExcludeProperty and yields byte-identical output
+            $policyAssignmentsCsvKeepProps = [System.Collections.Generic.List[string]]@(
+                'Level', 'MgId', 'MgName', 'MgParentId', 'MgParentName', 'subscriptionId', 'subscriptionName',
+                'PolicyAssignmentId', 'PolicyAssignmentScopeName', 'PolicyAssignmentDisplayName', 'PolicyAssignmentDescription',
+                'PolicyAssignmentEnforcementMode', 'PolicyAssignmentNonComplianceMessages', 'PolicyAssignmentNotScopes',
+                'PolicyAssignmentParameters', 'PolicyAssignmentMI', 'AssignedBy', 'CreatedOn', 'CreatedBy', 'UpdatedOn',
+                'UpdatedBy', 'Effect', 'PolicyNameClear', 'PolicyAvailability', 'PolicyDescription', 'PolicyId',
+                'PolicyVariant', 'PolicyType', 'PolicyIsALZ', 'PolicyCategory', 'Inheritance', 'ExcludedScope',
+                'RelatedRoleAssignmentsClear', 'mgOrSubOrRG'
+            )
+            if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
+                $policyAssignmentsCsvKeepProps.AddRange([string[]]@('NonCompliantPolicies', 'CompliantPolicies', 'NonCompliantResources', 'CompliantResources', 'ConflictingResources'))
+            }
+            $policyAssignmentsCsvKeepProps.Add('ExemptionScope')
             if ($CsvExportUseQuotesAsNeeded) {
-                $arrayPolicyAssignmentsEnriched | Sort-Object -Property Level, MgId, SubscriptionId, PolicyAssignmentId | Select-Object -ExcludeProperty PolicyName, RelatedRoleAssignments | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
+                $arrayPolicyAssignmentsEnriched | Sort-Object -Property Level, MgId, SubscriptionId, PolicyAssignmentId | Select-Object -Property $policyAssignmentsCsvKeepProps | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation -UseQuotes AsNeeded
             }
             else {
-                $arrayPolicyAssignmentsEnriched | Sort-Object -Property Level, MgId, SubscriptionId, PolicyAssignmentId | Select-Object -ExcludeProperty PolicyName, RelatedRoleAssignments | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                $arrayPolicyAssignmentsEnriched | Sort-Object -Property Level, MgId, SubscriptionId, PolicyAssignmentId | Select-Object -Property $policyAssignmentsCsvKeepProps | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter "$csvDelimiter" -NoTypeInformation
             }
         }
 
-        $policyAssignmentsUniqueCount = ($arrayPolicyAssignmentsEnriched | Sort-Object -Property PolicyAssignmentId -Unique).count
+        $policyAssignmentsUniqueCount = [System.Collections.Generic.HashSet[string]]::new([string[]]@($arrayPolicyAssignmentsEnriched.where({ $_.PolicyAssignmentId }).PolicyAssignmentId), [System.StringComparer]::OrdinalIgnoreCase).Count
         if ($azAPICallConf['htParameters'].LargeTenant -or $azAPICallConf['htParameters'].PolicyAtScopeOnly) {
-            $policyAssignmentsCount = $policyAssignmentsUniqueCount
+            $policyAssignmentsAtScope = @($arrayPolicyAssignmentsEnriched.where({ $_.Inheritance -notlike 'inherited *' -or $_.MgParentId -eq "'upperScopes'" }))
+            $policyAssignmentsCount = $policyAssignmentsAtScope.Count
             $tfCount = $policyAssignmentsCount
         }
         else {
@@ -18819,294 +18835,254 @@ extensions: [{ name: 'sort' }]
             $tfCount = $policyAssignmentsCount
         }
 
-        if ($tfCount -gt $HtmlTableRowsLimit) {
-            Write-Host "   !Skipping TenantSummary PolicyAssignments HTML processing as $tfCount lines is exceeding the critical rows limit of $HtmlTableRowsLimit" -ForegroundColor Yellow
-            [void]$htmlTenantSummary.AppendLine(@"
-            <button type="button" class="collapsible" id="buttonTenantSummary_policyAssignmentsAll_largeDataSet">
-                <i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($policyAssignmentsCount) Policy assignments ($policyAssignmentsUniqueCount unique)</span>
-            </button>
-            <div class="content TenantSummary padlxx">
-                <i class="fa fa-exclamation-triangle orange" aria-hidden="true"></i><span style="color:#ff0000"> Output of $tfCount lines would exceed the html rows limit of $HtmlTableRowsLimit (html file potentially would become unresponsive). Work with the CSV file <i>$($csvFilename).csv</i> | Note: the CSV file will only exist if you did NOT use parameter <i>-NoCsvExport</i></span><br>
-                <span style="color:#ff0000">You can adjust the html row limit by using parameter <i>-HtmlTableRowsLimit</i></span><br>
-                <span style="color:#ff0000">You can reduce the number of lines by using parameter <i>-LargeTenant</i> and/or <i>-DoNotIncludeResourceGroupsAndResourcesOnRBAC</i></span><br>
-                <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">Azure Governance Visualizer docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
-            </div>
-"@)
-        }
-        else {
-
             $htmlTableId = 'TenantSummary_policyAssignmentsAll'
-            $noteOrNot = ''
 
             [void]$htmlTenantSummary.AppendLine(@"
-        <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_policyAssignmentsAll"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($policyAssignmentsCount) Policy assignments ($policyAssignmentsUniqueCount unique)</span></button>
+<button onclick="loadag$($htmlTableId)()" type="button" class="collapsible" id="buttonTenantSummary_policyAssignmentsAll"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($policyAssignmentsCount) Policy assignments ($policyAssignmentsUniqueCount unique)</span>
+</button>
 <div class="content TenantSummary">
-<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a><br>
-<span class="padlxx hintTableSize">*Depending on the number of rows and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
-<table id= "$htmlTableId" class="summaryTable">
-<thead>
-<tr>
-<th>Scope</th>
-<th>Management Group Id</th>
-<th>Management Group Name</th>
-<th>SubscriptionId</th>
-<th>Subscription Name</th>
-<th>Inheritance</th>
-<th>ScopeExcluded</th>
-<th>Exemption applies</th>
-<th>Policy/Set DisplayName</th>
-<th>Policy/Set Description</th>
-<th>Policy/SetId</th>
-<th>Policy/Set</th>
-<th>Type</th>
-<th>Category</th>
-<th>ALZ</th>
-<th>Effect</th>
-<th>Parameters</th>
-<th>Enforcement</th>
-<th>NonCompliance Message</th>
-"@)
-
-            if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
-                [void]$htmlTenantSummary.AppendLine(@'
-<th>Policies NonCmplnt</th>
-<th>Policies Compliant</th>
-<th>Resources NonCmplnt</th>
-<th>Resources Compliant</th>
-<th>Resources Conflicting</th>
-'@)
-            }
-
-            [void]$htmlTenantSummary.AppendLine(@"
-<th>Role/Assignment $noteOrNot</th>
-<th>Managed Identity</th>
-<th>Assignment DisplayName</th>
-<th>Assignment Description</th>
-<th>AssignmentId</th>
-<th>AssignedBy</th>
-<th>CreatedOn</th>
-<th>CreatedBy</th>
-<th>UpdatedOn</th>
-<th>UpdatedBy</th>
-</tr>
-</thead>
-<tbody>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableId)(); return false;">Pop out grid</a><br>
+<span class="padlxx hintTableSize">*The CSV download respects the filters and the column order applied in the grid</span>
+<div id="$htmlTableId" class="ag-theme-quartz" style="height:600px;width:100%;"></div>
+</div>
+<script>
+var rowData4$($htmlTableId) = {rows:[
 "@)
 
             $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
             $htmlTenantSummary = [System.Text.StringBuilder]::new()
-            $htmlSummaryPolicyAssignmentsAll = $null
-            $startloop = Get-Date
 
-            $htmlSummaryPolicyAssignmentsAll = foreach ($policyAssignment in $arrayPolicyAssignmentsEnriched | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, PolicyAssignmentId) {
-                if ($azAPICallConf['htParameters'].LargeTenant -or $azAPICallConf['htParameters'].PolicyAtScopeOnly) {
-                    if ($policyAssignment.Inheritance -like 'inherited *' -and $policyAssignment.MgParentId -ne "'upperScopes'") {
-                        continue
-                    }
+            $startSortPolicyAssignmentsAll = Get-Date
+            if ($azAPICallConf['htParameters'].LargeTenant -or $azAPICallConf['htParameters'].PolicyAtScopeOnly) {
+                $policyAssignmentsAllSorted = @($policyAssignmentsAtScope | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, PolicyAssignmentId)
+            }
+            else {
+                $policyAssignmentsAllSorted = @($arrayPolicyAssignmentsEnriched | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, PolicyAssignmentId)
+            }
+            $endSortPolicyAssignmentsAll = Get-Date
+            Write-Host "    Sort PolicyAssignmentsAll duration: $((New-TimeSpan -Start $startSortPolicyAssignmentsAll -End $endSortPolicyAssignmentsAll).TotalSeconds) seconds"
+
+            #columns feeding the AG Grid; a column that defines an 'htmlProperty' renders that property, sorting/filtering/export use 'property'
+            $policyAssignmentsGridColumnDefinitions = @(
+                @{ header = 'Scope'; property = 'mgOrSubOrRG'; filter = 'select' }
+                @{ header = 'Management Group Id'; property = 'MgId' }
+                @{ header = 'Management Group Name'; property = 'MgName' }
+                @{ header = 'SubscriptionId'; property = 'subscriptionId' }
+                @{ header = 'Subscription Name'; property = 'subscriptionName' }
+                @{ header = 'Inheritance'; property = 'Inheritance' }
+                @{ header = 'ScopeExcluded'; property = 'ExcludedScope'; filter = 'select' }
+                @{ header = 'Exemption applies'; property = 'ExemptionScope'; filter = 'select' }
+                @{ header = 'Policy/Set DisplayName'; property = 'PolicyNameClear'; htmlProperty = 'PolicyName' }
+                @{ header = 'Policy/Set Description'; property = 'PolicyDescription'; hide = $true }
+                @{ header = 'Policy/SetId'; property = 'PolicyId' }
+                @{ header = 'Policy/Set'; property = 'PolicyVariant'; filter = 'select' }
+                @{ header = 'Type'; property = 'PolicyType'; filter = 'select' }
+                @{ header = 'Category'; property = 'PolicyCategory' }
+                @{ header = 'ALZ'; property = 'PolicyIsALZ'; filter = 'select' }
+                @{ header = 'Effect'; property = 'Effect'; filter = 'select' }
+                @{ header = 'Parameters'; property = 'PolicyAssignmentParameters' }
+                @{ header = 'Enforcement'; property = 'PolicyAssignmentEnforcementMode'; filter = 'select' }
+                @{ header = 'NonCompliance Message'; property = 'PolicyAssignmentNonComplianceMessages' }
+            )
+
+            if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
+                $policyAssignmentsGridColumnDefinitions += @(
+                    @{ header = 'Policies NonCmplnt'; property = 'NonCompliantPolicies'; filter = 'number' }
+                    @{ header = 'Policies Compliant'; property = 'CompliantPolicies'; filter = 'number' }
+                    @{ header = 'Resources NonCmplnt'; property = 'NonCompliantResources'; filter = 'number' }
+                    @{ header = 'Resources Compliant'; property = 'CompliantResources'; filter = 'number' }
+                    @{ header = 'Resources Conflicting'; property = 'ConflictingResources'; filter = 'number' }
+                )
+            }
+
+            $policyAssignmentsGridColumnDefinitions += @(
+                @{ header = 'Role/Assignment'; property = 'RelatedRoleAssignmentsClear'; htmlProperty = 'RelatedRoleAssignments' }
+                @{ header = 'Managed Identity'; property = 'PolicyAssignmentMI' }
+                @{ header = 'Assignment DisplayName'; property = 'PolicyAssignmentDisplayName'; hide = $true }
+                @{ header = 'Assignment Description'; property = 'PolicyAssignmentDescription'; hide = $true }
+                @{ header = 'AssignmentId'; property = 'PolicyAssignmentId' }
+                @{ header = 'AssignedBy'; property = 'AssignedBy' }
+                @{ header = 'CreatedOn'; property = 'CreatedOn'; filter = 'date' }
+                @{ header = 'CreatedBy'; property = 'CreatedBy' }
+                @{ header = 'UpdatedOn'; property = 'UpdatedOn'; filter = 'date' }
+                @{ header = 'UpdatedBy'; property = 'UpdatedBy' }
+            )
+
+            $policyAssignmentsGridColumns = [System.Collections.Generic.List[string]]::new()
+            foreach ($policyAssignmentsGridColumnDefinition in $policyAssignmentsGridColumnDefinitions) {
+                if ($policyAssignmentsGridColumnDefinition.htmlProperty) {
+                    $policyAssignmentsGridColumns.Add($policyAssignmentsGridColumnDefinition.htmlProperty)
                 }
-                if ($policyAssignment.PolicyType -eq 'Custom') {
-                    $policyName = ($policyAssignment.PolicyName -replace '<', '&lt;' -replace '>', '&gt;')
+                $policyAssignmentsGridColumns.Add($policyAssignmentsGridColumnDefinition.property)
+            }
+            $policyAssignmentsGridColumnCount = $policyAssignmentsGridColumns.Count
+            #the html of a custom Policy displayname is not built by the report, it must not end up unescaped in the grid
+            $policyAssignmentsGridPolicyNameIndex = $policyAssignmentsGridColumns.IndexOf('PolicyName')
+
+            $policyAssignmentsGridColumnDefsJs = foreach ($policyAssignmentsGridColumnDefinition in $policyAssignmentsGridColumnDefinitions) {
+                $policyAssignmentsGridValueIndex = $policyAssignmentsGridColumns.IndexOf($policyAssignmentsGridColumnDefinition.property)
+                $policyAssignmentsGridColumnDefParts = [System.Collections.Generic.List[string]]::new()
+                $policyAssignmentsGridColumnDefParts.Add("headerName: '$($policyAssignmentsGridColumnDefinition.header)'")
+                $policyAssignmentsGridColumnDefParts.Add("colId: '$($policyAssignmentsGridColumnDefinition.property)'")
+                if ($policyAssignmentsGridColumnDefinition.filter -eq 'number') {
+                    $policyAssignmentsGridColumnDefParts.Add("valueGetter: agvColumnNumberValueGetter(agvRowData, $policyAssignmentsGridValueIndex)")
+                    $policyAssignmentsGridColumnDefParts.Add("cellRenderer: agvColumnTextRenderer(agvRowData, $policyAssignmentsGridValueIndex, agvHighlighter)")
+                    $policyAssignmentsGridColumnDefParts.Add("cellDataType: 'number'")
+                    $policyAssignmentsGridColumnDefParts.Add("filter: 'agNumberColumnFilter'")
                 }
                 else {
-                    $policyName = $policyAssignment.PolicyName
+                    $policyAssignmentsGridColumnDefParts.Add("valueGetter: agvColumnValueGetter(agvRowData, $policyAssignmentsGridValueIndex)")
                 }
-                @"
-<tr>
-<td>$($policyAssignment.mgOrSubOrRG)</td>
-<td>$($policyAssignment.MgId)</td>
-<td>$($policyAssignment.MgName -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td>$($policyAssignment.SubscriptionId)</td>
-<td>$($policyAssignment.SubscriptionName)</td>
-<td>$($policyAssignment.Inheritance)</td>
-<td>$($policyAssignment.ExcludedScope)</td>
-<td>$($policyAssignment.ExemptionScope)</td>
-<td>$($policyName)</td>
-<td>$($policyAssignment.PolicyDescription -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td class="breakwordall">$($policyAssignment.PolicyId -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td>$($policyAssignment.PolicyVariant)</td>
-<td>$($policyAssignment.PolicyType)</td>
-<td>$($policyAssignment.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td>$($policyAssignment.PolicyIsALZ)</td>
-<td>$($policyAssignment.Effect)</td>
-<td>$($policyAssignment.PolicyAssignmentParameters)</td>
-<td>$($policyAssignment.PolicyAssignmentEnforcementMode)</td>
-<td>$($policyAssignment.PolicyAssignmentNonComplianceMessages -replace '<', '&lt;' -replace '>', '&gt;')</td>
-"@
-
-                if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
-                    @"
-<td>$($policyAssignment.NonCompliantPolicies)</td>
-<td>$($policyAssignment.CompliantPolicies)</td>
-<td>$($policyAssignment.NonCompliantResources)</td>
-<td>$($policyAssignment.CompliantResources)</td>
-<td>$($policyAssignment.ConflictingResources)</td>
-"@
+                if ($policyAssignmentsGridColumnDefinition.htmlProperty) {
+                    $policyAssignmentsGridColumnDefParts.Add("cellRenderer: agvColumnHtmlRenderer(agvRowData, $($policyAssignmentsGridColumns.IndexOf($policyAssignmentsGridColumnDefinition.htmlProperty)), agvHighlighter)")
                 }
-
-                @"
-<td class="breakwordall">$($policyAssignment.RelatedRoleAssignments)</td>
-<td>$($policyAssignment.PolicyAssignmentMI)</td>
-<td class="breakwordall">$($policyAssignment.PolicyAssignmentDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td class="breakwordall">$($policyAssignment.PolicyAssignmentDescription -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td class="breakwordall">$($policyAssignment.PolicyAssignmentId -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td>$($policyAssignment.AssignedBy)</td>
-<td>$($policyAssignment.CreatedOn)</td>
-<td>$($policyAssignment.CreatedBy)</td>
-<td>$($policyAssignment.UpdatedOn)</td>
-<td>$($policyAssignment.UpdatedBy)</td>
-</tr>
-"@
+                if ($policyAssignmentsGridColumnDefinition.filter -eq 'select') {
+                    $policyAssignmentsGridColumnDefParts.Add('floatingFilterComponent: agvSelectFloatingFilter')
+                    $policyAssignmentsGridColumnDefParts.Add("floatingFilterComponentParams: { values: agvRowData.dictionaries[$policyAssignmentsGridValueIndex] }")
+                    $policyAssignmentsGridColumnDefParts.Add('suppressFloatingFilterButton: true')
+                }
+                if ($policyAssignmentsGridColumnDefinition.filter -eq 'date') {
+                    $policyAssignmentsGridColumnDefParts.Add("filter: 'agDateColumnFilter'")
+                    $policyAssignmentsGridColumnDefParts.Add('filterParams: agvDateFilterParams')
+                    $policyAssignmentsGridColumnDefParts.Add('comparator: agvDateSortComparator')
+                }
+                if ($policyAssignmentsGridColumnDefinition.hide) {
+                    $policyAssignmentsGridColumnDefParts.Add('hide: true')
+                }
+                "        { $($policyAssignmentsGridColumnDefParts -join ', ') }"
             }
+            $policyAssignmentsGridColumnDefsJs = $policyAssignmentsGridColumnDefsJs -join ",$([System.Environment]::NewLine)"
+
+            $startloop = Get-Date
+            #per column dictionary of distinct values, a row then only holds the integer indexes into those dictionaries
+            $policyAssignmentsGridDictionaries = New-Object 'System.Collections.Generic.List[string][]' $policyAssignmentsGridColumnCount
+            $policyAssignmentsGridMaps = New-Object 'System.Collections.Generic.Dictionary[string,int][]' $policyAssignmentsGridColumnCount
+            for ($policyAssignmentsGridColumn = 0; $policyAssignmentsGridColumn -lt $policyAssignmentsGridColumnCount; $policyAssignmentsGridColumn++) {
+                $policyAssignmentsGridDictionaries[$policyAssignmentsGridColumn] = [System.Collections.Generic.List[string]]::new()
+                $policyAssignmentsGridMaps[$policyAssignmentsGridColumn] = [System.Collections.Generic.Dictionary[string, int]]::new([System.StringComparer]::Ordinal)
+            }
+
+            $policyAssignmentsGridBatchSize = 5000
+            $policyAssignmentsGridFirstRow = $true
+            for ($policyAssignmentsGridBatchStart = 0; $policyAssignmentsGridBatchStart -lt $policyAssignmentsCount; $policyAssignmentsGridBatchStart += $policyAssignmentsGridBatchSize) {
+                $policyAssignmentsGridBatchEnd = [math]::Min($policyAssignmentsGridBatchStart + $policyAssignmentsGridBatchSize, $policyAssignmentsCount) - 1
+                $htmlSummaryPolicyAssignmentsAll = [System.Text.StringBuilder]::new()
+                for ($policyAssignmentsGridRow = $policyAssignmentsGridBatchStart; $policyAssignmentsGridRow -le $policyAssignmentsGridBatchEnd; $policyAssignmentsGridRow++) {
+                    $policyAssignmentsGridEntry = $policyAssignmentsAllSorted[$policyAssignmentsGridRow]
+                    if ($policyAssignmentsGridFirstRow) { $policyAssignmentsGridFirstRow = $false } else { [void]$htmlSummaryPolicyAssignmentsAll.Append(',') }
+                    [void]$htmlSummaryPolicyAssignmentsAll.Append('[')
+                    for ($policyAssignmentsGridColumn = 0; $policyAssignmentsGridColumn -lt $policyAssignmentsGridColumnCount; $policyAssignmentsGridColumn++) {
+                        $policyAssignmentsGridRawValue = $policyAssignmentsGridEntry.($policyAssignmentsGridColumns[$policyAssignmentsGridColumn])
+                        if ($policyAssignmentsGridColumn -eq $policyAssignmentsGridPolicyNameIndex -and $policyAssignmentsGridEntry.PolicyType -eq 'Custom') {
+                            $policyAssignmentsGridValue = [string]$policyAssignmentsGridRawValue -replace '<', '&lt;' -replace '>', '&gt;'
+                        }
+                        elseif ($policyAssignmentsGridRawValue -is [bool]) {
+                            $policyAssignmentsGridValue = if ($policyAssignmentsGridRawValue) { 'true' } else { 'false' }
+                        }
+                        else {
+                            $policyAssignmentsGridValue = [string]$policyAssignmentsGridRawValue
+                        }
+                        $policyAssignmentsGridDictionaryIndex = 0
+                        if (-not $policyAssignmentsGridMaps[$policyAssignmentsGridColumn].TryGetValue($policyAssignmentsGridValue, [ref]$policyAssignmentsGridDictionaryIndex)) {
+                            $policyAssignmentsGridDictionaryIndex = $policyAssignmentsGridDictionaries[$policyAssignmentsGridColumn].Count
+                            $policyAssignmentsGridMaps[$policyAssignmentsGridColumn][$policyAssignmentsGridValue] = $policyAssignmentsGridDictionaryIndex
+                            $policyAssignmentsGridDictionaries[$policyAssignmentsGridColumn].Add($policyAssignmentsGridValue)
+                        }
+                        if ($policyAssignmentsGridColumn -gt 0) { [void]$htmlSummaryPolicyAssignmentsAll.Append(',') }
+                        [void]$htmlSummaryPolicyAssignmentsAll.Append($policyAssignmentsGridDictionaryIndex)
+                    }
+                    [void]$htmlSummaryPolicyAssignmentsAll.Append(']')
+                }
+                Write-Host "    create HTML $($policyAssignmentsGridBatchEnd + 1) of $policyAssignmentsCount PolicyAssignments processed"
+                $htmlSummaryPolicyAssignmentsAll | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+                $htmlSummaryPolicyAssignmentsAll = $null #cleanup
+            }
+
+            #the dictionaries hold every string of the data set, EscapeHtml keeps '<' out of the enclosing script element
+            $policyAssignmentsGridDictionariesArray = New-Object 'object[]' $policyAssignmentsGridColumnCount
+            for ($policyAssignmentsGridColumn = 0; $policyAssignmentsGridColumn -lt $policyAssignmentsGridColumnCount; $policyAssignmentsGridColumn++) {
+                $policyAssignmentsGridDictionariesArray[$policyAssignmentsGridColumn] = $policyAssignmentsGridDictionaries[$policyAssignmentsGridColumn].ToArray()
+            }
+            $policyAssignmentsGridDictionariesJson = ConvertTo-Json -InputObject $policyAssignmentsGridDictionariesArray -Compress -Depth 3 -EscapeHandling EscapeHtml
+            $policyAssignmentsGridColumnsJson = ConvertTo-Json -InputObject $policyAssignmentsGridColumns.ToArray() -Compress -EscapeHandling EscapeHtml
+            $policyAssignmentsGridDictionaries = $null #cleanup
+            $policyAssignmentsGridMaps = $null #cleanup
+            $policyAssignmentsGridDictionariesArray = $null #cleanup
 
             $endloop = Get-Date
             Write-Host "    html foreach loop duration: $((New-TimeSpan -Start $startloop -End $endloop).TotalSeconds) seconds"
 
-            $start = Get-Date
-            [void]$htmlTenantSummary.AppendLine($htmlSummaryPolicyAssignmentsAll)
-            $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-            $htmlTenantSummary = [System.Text.StringBuilder]::new()
-            $end = Get-Date
-            Write-Host "    html append file duration: $((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds"
-
             [void]$htmlTenantSummary.AppendLine(@"
-            </tbody>
-        </table>
-    </div>
-    <script>
-        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
-        window.helpertfConfig4$htmlTableId =1;
-        var tfConfig4$htmlTableId = {
-        base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
-"@)
-            if ($tfCount -gt 10) {
-                $spectrum = "10, $tfCount"
-                if ($tfCount -gt 50) {
-                    $spectrum = "10, 25, 50, $tfCount"
-                }
-                if ($tfCount -gt 100) {
-                    $spectrum = "10, 30, 50, 100, $tfCount"
-                }
-                if ($tfCount -gt 500) {
-                    $spectrum = "10, 30, 50, 100, 250, $tfCount"
-                }
-                if ($tfCount -gt 1000) {
-                    $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-                }
-                if ($tfCount -gt 2000) {
-                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-                }
-                if ($tfCount -gt 3000) {
-                    $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-                }
-                [void]$htmlTenantSummary.AppendLine(@"
-        paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
-"@)
-            }
-            [void]$htmlTenantSummary.AppendLine(@'
-            btn_reset: true,
-            highlight_keywords: true,
-            alternate_rows: true,
-            auto_filter: {
-                delay: 1100
-            },
-            no_results_message: true,
-            linked_filters: true,
-            col_0: 'select',
-            col_6: 'select',
-            col_7: 'select',
-            col_11: 'select',
-            col_12: 'select',
-            col_14: 'select',
-            col_15: 'select',
-            col_17: 'select',
-            locale: 'en-US',
-            col_types: [
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-'@)
-
-            if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
-                [void]$htmlTenantSummary.AppendLine(@'
-                'number',
-                'number',
-                'number',
-                'number',
-                'number',
-'@)
-            }
-
-            [void]$htmlTenantSummary.AppendLine(@'
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'date',
-                'caseinsensitivestring',
-                'date',
-                'caseinsensitivestring'
-            ],
-'@)
-
-            if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
-                [void]$htmlTenantSummary.AppendLine(@'
-            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-'@)
-            }
-            else {
-                [void]$htmlTenantSummary.AppendLine(@'
-            watermark: ['', '', '', 'try [nonempty]', '', 'thisScope', '', '', '', '', '', '', '','', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-'@)
-            }
-
-            [void]$htmlTenantSummary.AppendLine(@'
-            extensions: [
-                {
-                    name: 'colsVisibility',
-'@)
-
-            if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
-                [void]$htmlTenantSummary.AppendLine(@'
-                    at_start: [9, 26, 27],
-'@)
-            }
-            else {
-                [void]$htmlTenantSummary.AppendLine(@'
-                    at_start: [9, 21, 22],
-'@)
-            }
-
-            [void]$htmlTenantSummary.AppendLine(@"
-                    text: 'Columns: ',
-                    enable_tick_all: true
-                },
-                { name: 'sort'
-                }
-            ]
-        };
-        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();}}
-    </script>
-"@)
+],
+dictionaries: $($policyAssignmentsGridDictionariesJson),
+columns: $($policyAssignmentsGridColumnsJson)
+};
+</script>
+<script id="agvGridDef4$($htmlTableId)">
+//factory, so that the pop out window can build the very same grid in its own document
+function agvGridOptions4$($htmlTableId)(agvHighlighter, agvRowData, agvGridElement) {
+    //the column index passed to the getters/renderers must match the column order of the emitted rowData
+    return {
+    rowData: agvRowData.rows,
+    columnDefs: [
+$($policyAssignmentsGridColumnDefsJs)
+    ],
+    defaultColDef: {
+        minWidth: 90,
+        maxWidth: 420,
+        sortable: true,
+        resizable: true,
+        //every value is a string, without this AG Grid would infer the type from the data and e.g. render 'true'/'false' as a checkbox
+        cellDataType: 'text',
+        filter: 'agTextColumnFilter',
+        floatingFilter: true,
+        //no truncation: columns are sized to their content, anything beyond maxWidth wraps
+        wrapText: true,
+        autoHeight: true,
+        wrapHeaderText: true,
+        autoHeaderHeight: true,
+        //renders the plain cell value html encoded and wraps the text filter matches in <mark>
+        cellRenderer: function (params) { return agvHighlighter.text(params.value, params.column.getColId()); }
+    },
+    autoSizeStrategy: { type: 'fitCellContents' },
+    pagination: true,
+    paginationPageSize: 100,
+    paginationPageSizeSelector: [10, 30, 50, 100, 250, 500, 1000],
+    enableCellTextSelection: true,
+    ensureDomOrder: true,
+    onFirstDataRendered: function (event) {
+        agvAddResetFiltersButton(event.api, agvGridElement);
+    },
+    onFilterChanged: function (event) {
+        var changed = agvHighlighter.update(event.api.getFilterModel());
+        if (changed.length) {
+            //refresh all rows of the changed columns so that the marks are also updated off screen
+            event.api.refreshCells({ columns: changed, force: true });
         }
+    }
+    };
+}
+</script>
+<script>
+function createag$($htmlTableId)() {
+    if (window.helperag$($htmlTableId) === 1) { return; }
+    window.helperag$($htmlTableId) = 1;
+    var element = document.getElementById('$htmlTableId');
+    window.api4$($htmlTableId) = agGrid.createGrid(element, agvGridOptions4$($htmlTableId)(agvCreateHighlighter(), rowData4$($htmlTableId), element));
+}
+function loadag$($htmlTableId)() {
+    //deferred, the collapsible content is made visible by the click handler that runs after this one
+    setTimeout(createag$($htmlTableId), 0);
+}
+function exportag$($htmlTableId)(separator) {
+    createag$($htmlTableId)();
+    window.api4$($htmlTableId).exportDataAsCsv({ columnSeparator: separator, fileName: 'export_$($htmlTableId)_' + new Date().toLocaleDateString('en-CA') + '.csv' });
+}
+function popoutag$($htmlTableId)() {
+    agvPopoutGrid('Azure Governance Visualizer - Policy assignments', 'agvGridDef4$($htmlTableId)', 'agvGridOptions4$($htmlTableId)', 'rowData4$($htmlTableId)');
+}
+</script>
+"@)
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
@@ -19802,7 +19778,6 @@ extensions: [{ name: 'sort' }]
     }
 
     if ($rbacAllCount -gt 0) {
-        $uniqueRoleAssignmentsCount = [System.Collections.Generic.HashSet[string]]::new([string[]]@($rbacAll.RoleAssignmentId), [System.StringComparer]::OrdinalIgnoreCase).Count
         $tfCount = $rbacAllCount
 
         if (-not $NoCsvExport) {
@@ -19841,22 +19816,6 @@ extensions: [{ name: 'sort' }]
             $endCreateRBACAllCSV = Get-Date
             Write-Host "   CreateRBACAll CSV duration: $((New-TimeSpan -Start $startCreateRBACAllCSV -End $endCreateRBACAllCSV).TotalMinutes) minutes ($((New-TimeSpan -Start $startCreateRBACAllCSV -End $endCreateRBACAllCSV).TotalSeconds) seconds)"
         }
-
-        if ($tfCount -gt $HtmlTableRowsLimit) {
-            Write-Host "   !Skipping TenantSummary RoleAssignments HTML processing as $tfCount lines is exceeding the critical rows limit of $HtmlTableRowsLimit" -ForegroundColor Yellow
-            [void]$htmlTenantSummary.AppendLine(@"
-            <button type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsAll_largeDataSet">
-                <i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($rbacAllCount) Role assignments ($uniqueRoleAssignmentsCount unique)</span>
-            </button>
-            <div class="content TenantSummary padlxx">
-                <i class="fa fa-exclamation-triangle orange" aria-hidden="true"></i><span style="color:#ff0000"> Output of $tfCount lines would exceed the html rows limit of $HtmlTableRowsLimit (html file potentially would become unresponsive). Work with the CSV file <i>$($csvFilename).csv</i> | Note: the CSV file will only exist if you did NOT use parameter <i>-NoCsvExport</i></span><br>
-                <span style="color:#ff0000">You can adjust the html row limit by using parameter <i>-HtmlTableRowsLimit</i></span><br>
-                <span style="color:#ff0000">You can reduce the number of lines by using parameter <i>-LargeTenant</i> and/or <i>-DoNotIncludeResourceGroupsAndResourcesOnRBAC</i></span><br>
-                <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">Azure Governance Visualizer docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
-            </div>
-"@)
-        }
-        else {
 
             $roleAssignmentsInfo = @()
             #all
@@ -20060,8 +20019,6 @@ function popoutag$($htmlTableId)() {
 }
 </script>
 "@)
-
-        }
     }
     else {
         [void]$htmlTenantSummary.AppendLine(@"
@@ -22769,42 +22726,44 @@ extensions: [{ name: 'sort' }]
             $resourceProvidersAllCount = (($htResourceProvidersAll).Keys).count
             if ($resourceProvidersAllCount -gt 0) {
                 $tfCount = ($htResourceProvidersAll).values.Providers.Count
-                if ($tfCount -lt $HtmlTableRowsLimit) {
-                    $htmlTableId = 'TenantSummary_SubResourceProvidersDetailed'
-                    [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible" id="buttonTenantSummary_SubResourceProvidersDetailed"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
+                $csvFilename = "$($filename)_ResourceProviders"
+                $htmlTableId = 'TenantSummary_SubResourceProvidersDetailed'
+                [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadag$($htmlTableId)()" type="button" class="collapsible" id="buttonTenantSummary_SubResourceProvidersDetailed"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($tfCount) Resource Providers Detailed</span></button>
 <div class="content TenantSummary">
-<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
-<table id="$htmlTableId" class="summaryTable">
-<thead>
-<tr>
-<th>Subscription</th>
-<th>SubscriptionId</th>
-<th>Subscription MG path
-<th>Provider</th>
-<th>State</th>
-</tr>
-</thead>
-<tbody>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableId)(); return false;">Pop out grid</a><br>
+<span class="padlxx hintTableSize">*The CSV download respects the filters and the column order applied in the grid</span>
+<div id="$htmlTableId" class="ag-theme-quartz" style="height:600px;width:100%;"></div>
+</div>
+<script>
+var rowData4$($htmlTableId) = {rows:[
 "@)
+                $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+                $htmlTenantSummary = [System.Text.StringBuilder]::new()
 
-                }
-                else {
-                    Write-Host "   !Skipping TenantSummary ResourceProvidersDetailed HTML processing as $tfCount lines is exceeding the critical rows limit of $HtmlTableRowsLimit" -ForegroundColor Yellow
-                }
                 $cnter = 0
                 $startResProvDetailed = Get-Date
-                $htmlSUMMARYSubResourceProvidersDetailed = $null
-
                 $arrayResourceProvidersDetailedForCSVExport = [System.Collections.ArrayList]@()
-                $htmlSUMMARYSubResourceProvidersDetailed = foreach ($subscriptionResProv in (($htResourceProvidersAll).Keys | Sort-Object)) {
+
+                #columns feeding the AG Grid; the column order defines the index used by the valueGetters in the grid definition below - keep both in sync
+                $resourceProvidersGridColumns = @('Subscription', 'SubscriptionId', 'SubscriptionMGpath', 'Provider', 'State')
+                $resourceProvidersGridColumnCount = $resourceProvidersGridColumns.Count
+                #per column dictionary of distinct values, a row then only holds the integer indexes into those dictionaries
+                $resourceProvidersGridDictionaries = New-Object 'System.Collections.Generic.List[string][]' $resourceProvidersGridColumnCount
+                $resourceProvidersGridMaps = New-Object 'System.Collections.Generic.Dictionary[string,int][]' $resourceProvidersGridColumnCount
+                for ($resourceProvidersGridColumn = 0; $resourceProvidersGridColumn -lt $resourceProvidersGridColumnCount; $resourceProvidersGridColumn++) {
+                    $resourceProvidersGridDictionaries[$resourceProvidersGridColumn] = [System.Collections.Generic.List[string]]::new()
+                    $resourceProvidersGridMaps[$resourceProvidersGridColumn] = [System.Collections.Generic.Dictionary[string, int]]::new([System.StringComparer]::Ordinal)
+                }
+
+                $resourceProvidersGridBatchSize = 5000
+                $resourceProvidersGridRowsInBatch = 0
+                $resourceProvidersGridFirstRow = $true
+                $htmlSUMMARYSubResourceProvidersDetailed = [System.Text.StringBuilder]::new()
+                foreach ($subscriptionResProv in (($htResourceProvidersAll).Keys | Sort-Object)) {
                     $subscriptionResProvDetails = $htSubscriptionsMgPath[$subscriptionResProv]
                     foreach ($provider in $htResourceProvidersAll[$subscriptionResProv].Providers | Sort-Object @{Expression = { $_.namespace } }) {
                         $cnter++
-                        if ($cnter % 1000 -eq 0) {
-                            $etappeResProvDetailed = Get-Date
-                            Write-Host "   $cnter ResProv processed; $((New-TimeSpan -Start $startResProvDetailed -End $etappeResProvDetailed).TotalSeconds) seconds"
-                        }
 
                         #array for exportCSV
                         if (-not $NoCsvExport) {
@@ -22817,91 +22776,138 @@ extensions: [{ name: 'sort' }]
                                 })
                         }
 
-                        @"
-<tr>
-<td>$($subscriptionResProvDetails.DisplayName)</td>
-<td>$($subscriptionResProv)</td>
-<td>$($subscriptionResProvDetails.pathDelimited)</td>
-<td>$($provider.namespace)</td>
-<td>$($provider.registrationState)</td>
-</tr>
-"@
+                        $resourceProvidersGridRowValues = @(
+                            [string]$subscriptionResProvDetails.DisplayName
+                            [string]$subscriptionResProv
+                            [string]$subscriptionResProvDetails.pathDelimited
+                            [string]$provider.namespace
+                            [string]$provider.registrationState
+                        )
+                        if ($resourceProvidersGridFirstRow) { $resourceProvidersGridFirstRow = $false } else { [void]$htmlSUMMARYSubResourceProvidersDetailed.Append(',') }
+                        [void]$htmlSUMMARYSubResourceProvidersDetailed.Append('[')
+                        for ($resourceProvidersGridColumn = 0; $resourceProvidersGridColumn -lt $resourceProvidersGridColumnCount; $resourceProvidersGridColumn++) {
+                            $resourceProvidersGridValue = $resourceProvidersGridRowValues[$resourceProvidersGridColumn]
+                            $resourceProvidersGridDictionaryIndex = 0
+                            if (-not $resourceProvidersGridMaps[$resourceProvidersGridColumn].TryGetValue($resourceProvidersGridValue, [ref]$resourceProvidersGridDictionaryIndex)) {
+                                $resourceProvidersGridDictionaryIndex = $resourceProvidersGridDictionaries[$resourceProvidersGridColumn].Count
+                                $resourceProvidersGridMaps[$resourceProvidersGridColumn][$resourceProvidersGridValue] = $resourceProvidersGridDictionaryIndex
+                                $resourceProvidersGridDictionaries[$resourceProvidersGridColumn].Add($resourceProvidersGridValue)
+                            }
+                            if ($resourceProvidersGridColumn -gt 0) { [void]$htmlSUMMARYSubResourceProvidersDetailed.Append(',') }
+                            [void]$htmlSUMMARYSubResourceProvidersDetailed.Append($resourceProvidersGridDictionaryIndex)
+                        }
+                        [void]$htmlSUMMARYSubResourceProvidersDetailed.Append(']')
+
+                        $resourceProvidersGridRowsInBatch++
+                        if ($resourceProvidersGridRowsInBatch -ge $resourceProvidersGridBatchSize) {
+                            Write-Host "    create HTML $cnter of $tfCount ResourceProviders processed"
+                            $htmlSUMMARYSubResourceProvidersDetailed | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+                            $htmlSUMMARYSubResourceProvidersDetailed = [System.Text.StringBuilder]::new()
+                            $resourceProvidersGridRowsInBatch = 0
+                        }
                     }
                 }
 
                 #region exportCSV
                 if (-not $NoCsvExport) {
-                    $csvFilename = "$($filename)_ResourceProviders"
                     Write-Host "   Exporting ResourceProviders CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
                     $arrayResourceProvidersDetailedForCSVExport | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
                     $arrayResourceProvidersDetailedForCSVExport = $null
                 }
                 #endregion exportCSV
 
-                if ($tfCount -lt $HtmlTableRowsLimit) {
-                    [void]$htmlTenantSummary.AppendLine($htmlSUMMARYSubResourceProvidersDetailed)
-                    [void]$htmlTenantSummary.AppendLine(@"
-            </tbody>
-        </table>
-    </div>
-    <script>
-        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
-            window.helpertfConfig4$htmlTableId =1;
-            var tfConfig4$htmlTableId = {
-            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
+                if ($resourceProvidersGridRowsInBatch -gt 0) {
+                    Write-Host "    create HTML $cnter of $tfCount ResourceProviders processed"
+                    $htmlSUMMARYSubResourceProvidersDetailed | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+                }
+                $htmlSUMMARYSubResourceProvidersDetailed = $null #cleanup
 
-"@)
-                    if ($tfCount -gt 10) {
-                        $spectrum = "10, $tfCount"
-                        if ($tfCount -gt 50) {
-                            $spectrum = "10, 25, 50, $tfCount"
-                        }
-                        if ($tfCount -gt 100) {
-                            $spectrum = "10, 30, 50, 100, $tfCount"
-                        }
-                        if ($tfCount -gt 500) {
-                            $spectrum = "10, 30, 50, 100, 250, $tfCount"
-                        }
-                        if ($tfCount -gt 1000) {
-                            $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-                        }
-                        if ($tfCount -gt 2000) {
-                            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-                        }
-                        if ($tfCount -gt 3000) {
-                            $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-                        }
-                        [void]$htmlTenantSummary.AppendLine(@"
-paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
-"@)
-                    }
-                    [void]$htmlTenantSummary.AppendLine(@"
-btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-            col_4: 'select',
-            col_types: [
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring'
-            ],
-extensions: [{ name: 'sort' }]
-        };
-        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();}}
-    </script>
-"@)
+                #the dictionaries hold every string of the data set, EscapeHtml keeps '<' out of the enclosing script element
+                $resourceProvidersGridDictionariesArray = New-Object 'object[]' $resourceProvidersGridColumnCount
+                for ($resourceProvidersGridColumn = 0; $resourceProvidersGridColumn -lt $resourceProvidersGridColumnCount; $resourceProvidersGridColumn++) {
+                    $resourceProvidersGridDictionariesArray[$resourceProvidersGridColumn] = $resourceProvidersGridDictionaries[$resourceProvidersGridColumn].ToArray()
                 }
-                else {
-                    [void]$htmlTenantSummary.AppendLine(@"
-            <button type="button" class="collapsible" id="buttonTenantSummary_SubResourceProvidersDetailed"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">Resource Providers Detailed</span></button>
-                <div class="content TenantSummary padlxx">
-                    <i class="fa fa-exclamation-triangle orange" aria-hidden="true"></i><span style="color:#ff0000"> Output of $tfCount lines would exceed the html rows limit of $HtmlTableRowsLimit (html file potentially would become unresponsive). Work with the CSV file <i>$($csvFilename).csv</i> | Note: the CSV file will only exist if you did NOT use parameter <i>-NoCsvExport</i></span><br>
-                    <span style="color:#ff0000">You can adjust the html row limit by using parameter <i>-HtmlTableRowsLimit</i></span><br>
-                    <span style="color:#ff0000">Check the parameters documentation</span> <a class="externallink" href="https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting#parameters" target="_blank" rel="noopener">Azure Governance Visualizer docs <i class="fa fa-external-link" aria-hidden="true"></i></a>
-                </div>
+                $resourceProvidersGridDictionariesJson = ConvertTo-Json -InputObject $resourceProvidersGridDictionariesArray -Compress -Depth 3 -EscapeHandling EscapeHtml
+                $resourceProvidersGridColumnsJson = ConvertTo-Json -InputObject $resourceProvidersGridColumns -Compress -EscapeHandling EscapeHtml
+                $resourceProvidersGridDictionaries = $null #cleanup
+                $resourceProvidersGridMaps = $null #cleanup
+                $resourceProvidersGridDictionariesArray = $null #cleanup
+
+                [void]$htmlTenantSummary.AppendLine(@"
+],
+dictionaries: $($resourceProvidersGridDictionariesJson),
+columns: $($resourceProvidersGridColumnsJson)
+};
+</script>
+<script id="agvGridDef4$($htmlTableId)">
+//factory, so that the pop out window can build the very same grid in its own document
+function agvGridOptions4$($htmlTableId)(agvHighlighter, agvRowData, agvGridElement) {
+    //the column index passed to the getters/renderers must match the column order of the emitted rowData
+    return {
+    rowData: agvRowData.rows,
+    columnDefs: [
+        { headerName: 'Subscription', colId: 'Subscription', valueGetter: agvColumnValueGetter(agvRowData, 0) },
+        { headerName: 'SubscriptionId', colId: 'SubscriptionId', valueGetter: agvColumnValueGetter(agvRowData, 1) },
+        { headerName: 'Subscription MG path', colId: 'SubscriptionMGpath', valueGetter: agvColumnValueGetter(agvRowData, 2) },
+        { headerName: 'Provider', colId: 'Provider', valueGetter: agvColumnValueGetter(agvRowData, 3) },
+        { headerName: 'State', colId: 'State', valueGetter: agvColumnValueGetter(agvRowData, 4), floatingFilterComponent: agvSelectFloatingFilter, floatingFilterComponentParams: { values: agvRowData.dictionaries[4] }, suppressFloatingFilterButton: true }
+    ],
+    defaultColDef: {
+        minWidth: 90,
+        maxWidth: 420,
+        sortable: true,
+        resizable: true,
+        //every value is a string, without this AG Grid would infer the type from the data and e.g. render 'true'/'false' as a checkbox
+        cellDataType: 'text',
+        filter: 'agTextColumnFilter',
+        floatingFilter: true,
+        //no truncation: columns are sized to their content, anything beyond maxWidth wraps
+        wrapText: true,
+        autoHeight: true,
+        wrapHeaderText: true,
+        autoHeaderHeight: true,
+        //renders the plain cell value html encoded and wraps the text filter matches in <mark>
+        cellRenderer: function (params) { return agvHighlighter.text(params.value, params.column.getColId()); }
+    },
+    autoSizeStrategy: { type: 'fitCellContents' },
+    pagination: true,
+    paginationPageSize: 100,
+    paginationPageSizeSelector: [10, 30, 50, 100, 250, 500, 1000],
+    enableCellTextSelection: true,
+    ensureDomOrder: true,
+    onFirstDataRendered: function (event) {
+        agvAddResetFiltersButton(event.api, agvGridElement);
+    },
+    onFilterChanged: function (event) {
+        var changed = agvHighlighter.update(event.api.getFilterModel());
+        if (changed.length) {
+            //refresh all rows of the changed columns so that the marks are also updated off screen
+            event.api.refreshCells({ columns: changed, force: true });
+        }
+    }
+    };
+}
+</script>
+<script>
+function createag$($htmlTableId)() {
+    if (window.helperag$($htmlTableId) === 1) { return; }
+    window.helperag$($htmlTableId) = 1;
+    var element = document.getElementById('$htmlTableId');
+    window.api4$($htmlTableId) = agGrid.createGrid(element, agvGridOptions4$($htmlTableId)(agvCreateHighlighter(), rowData4$($htmlTableId), element));
+}
+function loadag$($htmlTableId)() {
+    //deferred, the collapsible content is made visible by the click handler that runs after this one
+    setTimeout(createag$($htmlTableId), 0);
+}
+function exportag$($htmlTableId)(separator) {
+    createag$($htmlTableId)();
+    window.api4$($htmlTableId).exportDataAsCsv({ columnSeparator: separator, fileName: 'export_$($htmlTableId)_' + new Date().toLocaleDateString('en-CA') + '.csv' });
+}
+function popoutag$($htmlTableId)() {
+    agvPopoutGrid('Azure Governance Visualizer - Resource Providers Detailed', 'agvGridDef4$($htmlTableId)', 'agvGridOptions4$($htmlTableId)', 'rowData4$($htmlTableId)');
+}
+</script>
 "@)
-                }
             }
             else {
                 [void]$htmlTenantSummary.AppendLine(@"
@@ -36948,6 +36954,26 @@ $agGridSupportScript = @'
         var dictionary = encoded.dictionaries[columnIndex];
         return function (params) {
             return highlighter.html(dictionary[params.data[columnIndex]], params.column.getColId());
+        };
+    }
+
+    //numeric column; values that are no numbers (e.g. 'skipped') do not participate in sorting and number filtering
+    function agvColumnNumberValueGetter(encoded, columnIndex) {
+        var dictionary = encoded.dictionaries[columnIndex];
+        return function (params) {
+            if (!params.data) { return undefined; }
+            var value = dictionary[params.data[columnIndex]];
+            if (value === null || value === undefined || value === '') { return null; }
+            var number = Number(value);
+            return isNaN(number) ? null : number;
+        };
+    }
+
+    //renders the dictionary value of a column instead of the cell value, keeps non numeric values of number columns visible
+    function agvColumnTextRenderer(encoded, columnIndex, highlighter) {
+        var dictionary = encoded.dictionaries[columnIndex];
+        return function (params) {
+            return highlighter.text(dictionary[params.data[columnIndex]], params.column.getColId());
         };
     }
 

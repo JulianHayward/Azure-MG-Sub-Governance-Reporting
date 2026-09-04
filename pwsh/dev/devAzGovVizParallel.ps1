@@ -142,7 +142,8 @@
     Single Scope Insights output per Subscription should not be created
 
 .PARAMETER HtmlTableRowsLimit
-    Although the parameter -LargeTenant was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
+    #obsolete
+    The parameter has no effect anymore. The large tables (Policy assignments, Role assignments, Resource Providers detailed) are rendered with AG Grid, which virtualizes rows and therefore no longer depends on a row limit.
 
 .PARAMETER ManagementGroupsOnly
     Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
@@ -341,7 +342,7 @@
     Will not create a single Scope Insights output per Subscription
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoSingleSubscriptionOutput
 
-    Although the parameter -LargeTenant was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
+    #obsolete - the parameter has no effect anymore (AG Grid virtualizes rows)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -HtmlTableRowsLimit 23077
 
     Define if data should be collected for Management Groups only (Subscription data such as e.g. Policy assignments etc. will not be collected)
@@ -514,7 +515,7 @@ param
     $DoTranscript,
 
     [int]
-    $HtmlTableRowsLimit = 20000, #HTML TenantSummary may become unresponsive depending on client device performance. A recommendation will be shown to use the CSV file instead of opening the TF table
+    $HtmlTableRowsLimit = 20000, #obsolete - kept for compatibility with existing pipelines, the parameter has no effect anymore
 
     [int]
     $ThrottleLimit = 10,
@@ -2010,6 +2011,26 @@ $agGridSupportScript = @'
         var dictionary = encoded.dictionaries[columnIndex];
         return function (params) {
             return highlighter.html(dictionary[params.data[columnIndex]], params.column.getColId());
+        };
+    }
+
+    //numeric column; values that are no numbers (e.g. 'skipped') do not participate in sorting and number filtering
+    function agvColumnNumberValueGetter(encoded, columnIndex) {
+        var dictionary = encoded.dictionaries[columnIndex];
+        return function (params) {
+            if (!params.data) { return undefined; }
+            var value = dictionary[params.data[columnIndex]];
+            if (value === null || value === undefined || value === '') { return null; }
+            var number = Number(value);
+            return isNaN(number) ? null : number;
+        };
+    }
+
+    //renders the dictionary value of a column instead of the cell value, keeps non numeric values of number columns visible
+    function agvColumnTextRenderer(encoded, columnIndex, highlighter) {
+        var dictionary = encoded.dictionaries[columnIndex];
+        return function (params) {
+            return highlighter.text(dictionary[params.data[columnIndex]], params.column.getColId());
         };
     }
 

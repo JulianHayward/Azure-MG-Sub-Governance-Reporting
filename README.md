@@ -524,7 +524,7 @@ Screenshot of Microsoft Graph permissions in the Microsoft Entra admin center
 - `-JsonExportExcludeResourceGroups` - JSON Export will not include ResourceGroups (Policy & Role assignments)
 - `-JsonExportExcludeResources`- JSON Export will not include Resources (Role assignments)
 - `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big. Using this parameter the following parameters will be set: `-PolicyAtScopeOnly`, `-RBACAtScopeOnly`, `-NoResourceProvidersAtAll`, `-NoScopeInsights`
-- `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
+- `-HtmlTableRowsLimit` - **obsolete** - the parameter has no effect anymore. The large tables are rendered with AG Grid, which virtualizes rows and therefore no longer depends on a row limit. The parameter is kept so that existing pipelines do not break.
 - `-AADGroupMembersLimit` - Defines the limit (default=500) of Microsoft Entra group members; For Microsoft Entra ID groups that have more members than the defined limit group members will not be resolved
 - `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability, resource type stats, UserAssigned Identities assigned to Resources is excluded (featured for large tenants)
 - `-StatsOptOut` - Opt out sending [stats](#stats)
