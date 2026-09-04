@@ -59,7 +59,8 @@ function dataCollectionDefenderPlans {
     }
 
     $currentTask = "Getting Microsoft Defender for Cloud settings for Subscription: '$($scopeDisplayName)' ('$scopeId') [quotaId:'$SubscriptionQuotaId']"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/settings?api-version=2022-05-01"
+    $securitySettingsAPIVersion = $azAPICallConf['htParameters'].APIMappingCloudEnvironment.securitySettings.($azAPICallConf['htParameters'].azureCloudEnvironment)
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($scopeId)/providers/Microsoft.Security/settings?api-version=$($securitySettingsAPIVersion)"
     $method = 'GET'
     $securitySettingsResult = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
 

@@ -711,6 +711,11 @@ param
             AzureUSGovernment = '2023-01-01'
             AzureChinaCloud   = '2023-01-01'
         }
+        securitySettings    = @{
+            AzureCloud        = '2022-05-01'
+            AzureUSGovernment = '2022-05-01'
+            AzureChinaCloud   = '2021-06-01'
+        }
     },
 
     [array]
