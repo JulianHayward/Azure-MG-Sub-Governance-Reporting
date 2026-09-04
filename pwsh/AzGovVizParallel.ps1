@@ -29898,7 +29898,8 @@ function ResolveObjectIds {
             $method = 'POST'
             $body = @"
         {
-            "ids":[$($objectsToProcess)]
+            "ids":[$($objectsToProcess)],
+            "types":["user","group","servicePrincipal","device","directoryObjectPartnerReference"]
         }
 "@
             $resolveObjectIds = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -body $body -currentTask $currentTask
@@ -29925,6 +29926,14 @@ function ResolveObjectIds {
                                 type        = 'Group'
                                 id          = $identity.id
                                 displayName = $identity.displayName
+                            })
+                    }
+                    if ($identity.'@odata.type' -eq '#microsoft.graph.directoryObjectPartnerReference') {
+                        $null = $arrayIdentityObject.Add([PSCustomObject]@{
+                                type                    = "Foreign $($identity.objectType)"
+                                id                      = $identity.id
+                                displayName             = $identity.displayName
+                                externalPartnerTenantId = $identity.externalPartnerTenantId
                             })
                     }
                     if ($identity.'@odata.type' -eq '#microsoft.graph.servicePrincipal') {

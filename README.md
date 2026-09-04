@@ -88,8 +88,12 @@ Azure Architecture Center (Landing zones): [Azure Governance Visualizer deployme
 
 **Changes** (2026-Aug-04 / 6.7.4 Patch)
 
+- fix issue 298; Role Assignments - foreign Principals (e.g. Partner Admins) - Identity Displayname and Identity Type were not resolved for foreign identities; the `directoryObjects/getByIds` request now includes `types` (`user`, `group`, `servicePrincipal`, `device`, `directoryObjectPartnerReference`) and foreign identities are resolved into a `Foreign <objectType>` type with their displayName
+- use environment-aware API version for Microsoft Defender for Cloud security settings (`Microsoft.Security/settings`); new `securitySettings` entry in parameter `APIMappingCloudEnvironment` (AzureChinaCloud requires `2021-06-01`)
 - update parameter `ValidPolicyEffects` add 'auditAction'
 - performance updates PowerShell processing
+- the large tables (Policy assignments, Role assignments, Resource Providers detailed) are rendered with [AG Grid](https://www.ag-grid.com/) - row virtualization, per column filters, CSV export respecting the applied filters/column order and 'Pop out grid'
+- parameter `-HtmlTableRowsLimit` is obsolete - it has no effect anymore (AG Grid virtualizes rows); the parameter is kept so that existing pipelines do not break
 
 **Changes** (2026-May-18 / 6.7.3 Patch)
 
