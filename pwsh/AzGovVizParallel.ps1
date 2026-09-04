@@ -19873,12 +19873,12 @@ extensions: [{ name: 'sort' }]
 <button onclick="loadag$($htmlTableId)()" type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsAll"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($rbacAllCount) Role assignment related entries (unique -> $($roleAssignmentsInfo -join ', '))</span>
 </button>
 <div class="content TenantSummary">
-<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a><br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableId)(); return false;">Pop out grid</a><br>
 <span class="padlxx hintTableSize">*The CSV download respects the filters and the column order applied in the grid</span>
 <div id="$htmlTableId" class="ag-theme-quartz" style="height:600px;width:100%;"></div>
 </div>
 <script>
-var rowData4$($htmlTableId) = [
+var rowData4$($htmlTableId) = {rows:[
 "@)
             $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
             $htmlTenantSummary = [System.Text.StringBuilder]::new()
@@ -19898,90 +19898,154 @@ var rowData4$($htmlTableId) = [
             Write-Host "   Sort RBACAll duration: $((New-TimeSpan -Start $startSortRBACAll -End $endSortRBACAll).TotalMinutes) minutes ($((New-TimeSpan -Start $startSortRBACAll -End $endSortRBACAll).TotalSeconds) seconds)"
 
             $startCreateRBACAllHTMLForeach = Get-Date
-            #properties that feed the AG Grid; the '*Clear' properties are used for sorting/filtering/export, their html counterparts are used for rendering only
-            $rbacGridProperties = @(
+            #columns feeding the AG Grid; the '*Clear' columns are used for sorting/filtering/export, their html counterparts are used for rendering only
+            #the column order defines the index used by the valueGetters in the grid definition below - keep both in sync
+            $rbacGridColumns = @(
                 'ScopeTenOrMgOrSubOrRGOrRes', 'MgId', 'MgName', 'SubscriptionId', 'SubscriptionName', 'Scope',
                 'Role', 'RoleClear', 'RoleId', 'RoleType', 'RoleDataRelated', 'RoleCanDoRoleAssignments',
                 'ObjectDisplayName', 'ObjectSignInName', 'ObjectId', 'ObjectType', 'AssignmentType',
-                'AssignmentInheritFrom', 'GroupMembersCount',
-                @{name = 'RoleAssignmentPIMRelated'; expression = { [string]$_.RoleAssignmentPIMRelated } },
+                'AssignmentInheritFrom', 'GroupMembersCount', 'RoleAssignmentPIMRelated',
                 'RoleAssignmentPIMAssignmentType', 'RoleAssignmentPIMAssignmentSlotStart', 'RoleAssignmentPIMAssignmentSlotEnd',
                 'RoleAssignmentId', 'RbacRelatedPolicyAssignment', 'RbacRelatedPolicyAssignmentClear', 'CreatedOn', 'CreatedBy'
             )
+            $rbacGridColumnCount = $rbacGridColumns.Count
+            $rbacGridCanDoIndex = $rbacGridColumns.IndexOf('RoleCanDoRoleAssignments')
+            #per column dictionary of distinct values, a row then only holds the integer indexes into those dictionaries
+            $rbacGridDictionaries = New-Object 'System.Collections.Generic.List[string][]' $rbacGridColumnCount
+            $rbacGridMaps = New-Object 'System.Collections.Generic.Dictionary[string,int][]' $rbacGridColumnCount
+            for ($rbacGridColumn = 0; $rbacGridColumn -lt $rbacGridColumnCount; $rbacGridColumn++) {
+                $rbacGridDictionaries[$rbacGridColumn] = [System.Collections.Generic.List[string]]::new()
+                $rbacGridMaps[$rbacGridColumn] = [System.Collections.Generic.Dictionary[string, int]]::new([System.StringComparer]::Ordinal)
+            }
+
             $rbacGridBatchSize = 5000
+            $rbacGridFirstRow = $true
             for ($rbacGridBatchStart = 0; $rbacGridBatchStart -lt $rbacAllCount; $rbacGridBatchStart += $rbacGridBatchSize) {
                 $rbacGridBatchEnd = [math]::Min($rbacGridBatchStart + $rbacGridBatchSize, $rbacAllCount) - 1
-                $rbacGridBatchJson = $rbacAllSorted[$rbacGridBatchStart..$rbacGridBatchEnd] | Select-Object -Property $rbacGridProperties | ConvertTo-Json -Compress -AsArray -EscapeHandling EscapeHtml
                 $htmlSummaryRoleAssignmentsAll = [System.Text.StringBuilder]::new()
-                if ($rbacGridBatchStart -gt 0) {
-                    [void]$htmlSummaryRoleAssignmentsAll.Append(',')
+                for ($rbacGridRow = $rbacGridBatchStart; $rbacGridRow -le $rbacGridBatchEnd; $rbacGridRow++) {
+                    $rbacGridEntry = $rbacAllSorted[$rbacGridRow]
+                    if ($rbacGridFirstRow) { $rbacGridFirstRow = $false } else { [void]$htmlSummaryRoleAssignmentsAll.Append(',') }
+                    [void]$htmlSummaryRoleAssignmentsAll.Append('[')
+                    for ($rbacGridColumn = 0; $rbacGridColumn -lt $rbacGridColumnCount; $rbacGridColumn++) {
+                        if ($rbacGridColumn -eq $rbacGridCanDoIndex) {
+                            $rbacGridValue = if ($rbacGridEntry.RoleCanDoRoleAssignments -eq $true) { 'true' } else { 'false' }
+                        }
+                        else {
+                            $rbacGridValue = [string]$rbacGridEntry.($rbacGridColumns[$rbacGridColumn])
+                        }
+                        $rbacGridValueIndex = 0
+                        if (-not $rbacGridMaps[$rbacGridColumn].TryGetValue($rbacGridValue, [ref]$rbacGridValueIndex)) {
+                            $rbacGridValueIndex = $rbacGridDictionaries[$rbacGridColumn].Count
+                            $rbacGridMaps[$rbacGridColumn][$rbacGridValue] = $rbacGridValueIndex
+                            $rbacGridDictionaries[$rbacGridColumn].Add($rbacGridValue)
+                        }
+                        if ($rbacGridColumn -gt 0) { [void]$htmlSummaryRoleAssignmentsAll.Append(',') }
+                        [void]$htmlSummaryRoleAssignmentsAll.Append($rbacGridValueIndex)
+                    }
+                    [void]$htmlSummaryRoleAssignmentsAll.Append(']')
                 }
-                #strip the enclosing brackets of the batch, all batches together form one JS array
-                [void]$htmlSummaryRoleAssignmentsAll.Append($rbacGridBatchJson.Substring(1, $rbacGridBatchJson.Length - 2))
                 Write-Host "    create HTML $($rbacGridBatchEnd + 1) of $rbacAllCount RoleAssignments processed"
                 $htmlSummaryRoleAssignmentsAll | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
                 $htmlSummaryRoleAssignmentsAll = $null #cleanup
             }
 
+            #the dictionaries hold every string of the data set, EscapeHtml keeps '<' out of the enclosing script element
+            $rbacGridDictionariesArray = New-Object 'object[]' $rbacGridColumnCount
+            for ($rbacGridColumn = 0; $rbacGridColumn -lt $rbacGridColumnCount; $rbacGridColumn++) {
+                $rbacGridDictionariesArray[$rbacGridColumn] = $rbacGridDictionaries[$rbacGridColumn].ToArray()
+            }
+            $rbacGridDictionariesJson = ConvertTo-Json -InputObject $rbacGridDictionariesArray -Compress -Depth 3 -EscapeHandling EscapeHtml
+            $rbacGridColumnsJson = ConvertTo-Json -InputObject $rbacGridColumns -Compress -EscapeHandling EscapeHtml
+            $rbacGridDictionaries = $null #cleanup
+            $rbacGridMaps = $null #cleanup
+            $rbacGridDictionariesArray = $null #cleanup
+
             $endCreateRBACAllHTMLForeach = Get-Date
             Write-Host "   CreateRBACAll HTML Foreach duration: $((New-TimeSpan -Start $startCreateRBACAllHTMLForeach -End $endCreateRBACAllHTMLForeach).TotalMinutes) minutes ($((New-TimeSpan -Start $startCreateRBACAllHTMLForeach -End $endCreateRBACAllHTMLForeach).TotalSeconds) seconds)"
 
             [void]$htmlTenantSummary.AppendLine(@"
-];
-var gridOptions4$($htmlTableId) = {
-    rowData: rowData4$($htmlTableId),
+],
+dictionaries: $($rbacGridDictionariesJson),
+columns: $($rbacGridColumnsJson)
+};
+</script>
+<script id="agvGridDef4$($htmlTableId)">
+//factory, so that the pop out window can build the very same grid in its own document
+function agvGridOptions4$($htmlTableId)(agvHighlighter, agvRowData, agvGridElement) {
+    //the column index passed to the getters/renderers must match the column order of the emitted rowData
+    return {
+    rowData: agvRowData.rows,
     columnDefs: [
-        { headerName: 'Scope', field: 'ScopeTenOrMgOrSubOrRGOrRes', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
-        { headerName: 'Management Group Id', field: 'MgId' },
-        { headerName: 'Management Group Name', field: 'MgName' },
-        { headerName: 'SubscriptionId', field: 'SubscriptionId' },
-        { headerName: 'Subscription Name', field: 'SubscriptionName' },
-        { headerName: 'Assignment Scope', field: 'Scope' },
-        { headerName: 'Role', field: 'RoleClear', cellRenderer: function (params) { return params.data.Role; } },
-        { headerName: 'Role Id', field: 'RoleId' },
-        { headerName: 'Role Type', field: 'RoleType', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
-        { headerName: 'Data', field: 'RoleDataRelated', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
-        { headerName: 'Can do Role assignment', field: 'RoleCanDoRoleAssignments', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
-        { headerName: 'Identity Displayname', field: 'ObjectDisplayName' },
-        { headerName: 'Identity SignInName', field: 'ObjectSignInName' },
-        { headerName: 'Identity ObjectId', field: 'ObjectId' },
-        { headerName: 'Identity Type', field: 'ObjectType', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
-        { headerName: 'Applicability', field: 'AssignmentType', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
-        { headerName: 'Applies through membership', field: 'AssignmentInheritFrom', headerTooltip: 'Note: the identity might not be a direct member of the group it could also be member of a nested group' },
-        { headerName: 'Group Details', field: 'GroupMembersCount' },
-        { headerName: 'PIM', field: 'RoleAssignmentPIMRelated', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
-        { headerName: 'PIM assignment type', field: 'RoleAssignmentPIMAssignmentType', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
-        { headerName: 'PIM start', field: 'RoleAssignmentPIMAssignmentSlotStart' },
-        { headerName: 'PIM end', field: 'RoleAssignmentPIMAssignmentSlotEnd' },
-        { headerName: 'Role AssignmentId', field: 'RoleAssignmentId' },
-        { headerName: 'Related Policy Assignment', field: 'RbacRelatedPolicyAssignmentClear', cellRenderer: function (params) { return params.data.RbacRelatedPolicyAssignment; } },
-        { headerName: 'CreatedOn', field: 'CreatedOn' },
-        { headerName: 'CreatedBy', field: 'CreatedBy' }
+        { headerName: 'Scope', colId: 'ScopeTenOrMgOrSubOrRGOrRes', valueGetter: agvColumnValueGetter(agvRowData, 0), floatingFilterComponent: agvSelectFloatingFilter, floatingFilterComponentParams: { values: agvRowData.dictionaries[0] }, suppressFloatingFilterButton: true },
+        { headerName: 'Management Group Id', colId: 'MgId', valueGetter: agvColumnValueGetter(agvRowData, 1) },
+        { headerName: 'Management Group Name', colId: 'MgName', valueGetter: agvColumnValueGetter(agvRowData, 2) },
+        { headerName: 'SubscriptionId', colId: 'SubscriptionId', valueGetter: agvColumnValueGetter(agvRowData, 3) },
+        { headerName: 'Subscription Name', colId: 'SubscriptionName', valueGetter: agvColumnValueGetter(agvRowData, 4) },
+        { headerName: 'Assignment Scope', colId: 'Scope', valueGetter: agvColumnValueGetter(agvRowData, 5) },
+        { headerName: 'Role', colId: 'RoleClear', valueGetter: agvColumnValueGetter(agvRowData, 7), cellRenderer: agvColumnHtmlRenderer(agvRowData, 6, agvHighlighter) },
+        { headerName: 'Role Id', colId: 'RoleId', valueGetter: agvColumnValueGetter(agvRowData, 8) },
+        { headerName: 'Role Type', colId: 'RoleType', valueGetter: agvColumnValueGetter(agvRowData, 9), floatingFilterComponent: agvSelectFloatingFilter, floatingFilterComponentParams: { values: agvRowData.dictionaries[9] }, suppressFloatingFilterButton: true },
+        { headerName: 'Data', colId: 'RoleDataRelated', valueGetter: agvColumnValueGetter(agvRowData, 10), floatingFilterComponent: agvSelectFloatingFilter, floatingFilterComponentParams: { values: agvRowData.dictionaries[10] }, suppressFloatingFilterButton: true },
+        { headerName: 'Can do Role assignment', colId: 'RoleCanDoRoleAssignments', valueGetter: agvColumnValueGetter(agvRowData, 11), floatingFilterComponent: agvSelectFloatingFilter, floatingFilterComponentParams: { values: agvRowData.dictionaries[11] }, suppressFloatingFilterButton: true },
+        { headerName: 'Identity Displayname', colId: 'ObjectDisplayName', valueGetter: agvColumnValueGetter(agvRowData, 12) },
+        { headerName: 'Identity SignInName', colId: 'ObjectSignInName', valueGetter: agvColumnValueGetter(agvRowData, 13) },
+        { headerName: 'Identity ObjectId', colId: 'ObjectId', valueGetter: agvColumnValueGetter(agvRowData, 14) },
+        { headerName: 'Identity Type', colId: 'ObjectType', valueGetter: agvColumnValueGetter(agvRowData, 15), floatingFilterComponent: agvSelectFloatingFilter, floatingFilterComponentParams: { values: agvRowData.dictionaries[15] }, suppressFloatingFilterButton: true },
+        { headerName: 'Applicability', colId: 'AssignmentType', valueGetter: agvColumnValueGetter(agvRowData, 16), floatingFilterComponent: agvSelectFloatingFilter, floatingFilterComponentParams: { values: agvRowData.dictionaries[16] }, suppressFloatingFilterButton: true },
+        { headerName: 'Applies through membership', colId: 'AssignmentInheritFrom', valueGetter: agvColumnValueGetter(agvRowData, 17), headerTooltip: 'Note: the identity might not be a direct member of the group it could also be member of a nested group' },
+        { headerName: 'Group Details', colId: 'GroupMembersCount', valueGetter: agvColumnValueGetter(agvRowData, 18) },
+        { headerName: 'PIM', colId: 'RoleAssignmentPIMRelated', valueGetter: agvColumnValueGetter(agvRowData, 19), floatingFilterComponent: agvSelectFloatingFilter, floatingFilterComponentParams: { values: agvRowData.dictionaries[19] }, suppressFloatingFilterButton: true },
+        { headerName: 'PIM assignment type', colId: 'RoleAssignmentPIMAssignmentType', valueGetter: agvColumnValueGetter(agvRowData, 20), floatingFilterComponent: agvSelectFloatingFilter, floatingFilterComponentParams: { values: agvRowData.dictionaries[20] }, suppressFloatingFilterButton: true },
+        { headerName: 'PIM start', colId: 'RoleAssignmentPIMAssignmentSlotStart', valueGetter: agvColumnValueGetter(agvRowData, 21) },
+        { headerName: 'PIM end', colId: 'RoleAssignmentPIMAssignmentSlotEnd', valueGetter: agvColumnValueGetter(agvRowData, 22) },
+        { headerName: 'Role AssignmentId', colId: 'RoleAssignmentId', valueGetter: agvColumnValueGetter(agvRowData, 23) },
+        { headerName: 'Related Policy Assignment', colId: 'RbacRelatedPolicyAssignmentClear', valueGetter: agvColumnValueGetter(agvRowData, 25), cellRenderer: agvColumnHtmlRenderer(agvRowData, 24, agvHighlighter) },
+        { headerName: 'CreatedOn', colId: 'CreatedOn', valueGetter: agvColumnValueGetter(agvRowData, 26), filter: 'agDateColumnFilter', filterParams: agvDateFilterParams, comparator: agvDateSortComparator },
+        { headerName: 'CreatedBy', colId: 'CreatedBy', valueGetter: agvColumnValueGetter(agvRowData, 27) }
     ],
     defaultColDef: {
         minWidth: 90,
         maxWidth: 420,
         sortable: true,
         resizable: true,
+        //every value is a string, without this AG Grid would infer the type from the data and e.g. render 'true'/'false' as a checkbox
+        cellDataType: 'text',
         filter: 'agTextColumnFilter',
         floatingFilter: true,
         //no truncation: columns are sized to their content, anything beyond maxWidth wraps
         wrapText: true,
         autoHeight: true,
         wrapHeaderText: true,
-        autoHeaderHeight: true
+        autoHeaderHeight: true,
+        //renders the plain cell value html encoded and wraps the text filter matches in <mark>
+        cellRenderer: function (params) { return agvHighlighter.text(params.value, params.column.getColId()); }
     },
     autoSizeStrategy: { type: 'fitCellContents' },
     pagination: true,
     paginationPageSize: 100,
     paginationPageSizeSelector: [10, 30, 50, 100, 250, 500, 1000],
     enableCellTextSelection: true,
-    ensureDomOrder: true
-};
+    ensureDomOrder: true,
+    onFirstDataRendered: function (event) {
+        agvAddResetFiltersButton(event.api, agvGridElement);
+    },
+    onFilterChanged: function (event) {
+        var changed = agvHighlighter.update(event.api.getFilterModel());
+        if (changed.length) {
+            //refresh all rows of the changed columns so that the marks are also updated off screen
+            event.api.refreshCells({ columns: changed, force: true });
+        }
+    }
+    };
+}
+</script>
+<script>
 function createag$($htmlTableId)() {
     if (window.helperag$($htmlTableId) === 1) { return; }
     window.helperag$($htmlTableId) = 1;
-    window.api4$($htmlTableId) = agGrid.createGrid(document.getElementById('$htmlTableId'), gridOptions4$($htmlTableId));
+    var element = document.getElementById('$htmlTableId');
+    window.api4$($htmlTableId) = agGrid.createGrid(element, agvGridOptions4$($htmlTableId)(agvCreateHighlighter(), rowData4$($htmlTableId), element));
 }
 function loadag$($htmlTableId)() {
     //deferred, the collapsible content is made visible by the click handler that runs after this one
@@ -19990,6 +20054,9 @@ function loadag$($htmlTableId)() {
 function exportag$($htmlTableId)(separator) {
     createag$($htmlTableId)();
     window.api4$($htmlTableId).exportDataAsCsv({ columnSeparator: separator, fileName: 'export_$($htmlTableId)_' + new Date().toLocaleDateString('en-CA') + '.csv' });
+}
+function popoutag$($htmlTableId)() {
+    agvPopoutGrid('Azure Governance Visualizer - Role assignments', 'agvGridDef4$($htmlTableId)', 'agvGridOptions4$($htmlTableId)', 'rowData4$($htmlTableId)');
 }
 </script>
 "@)
@@ -36786,6 +36853,295 @@ if (-not $HierarchyMapOnly) {
     #endregion summarizeDataCollectionResults
 }
 
+#shared AG Grid helpers (filter match highlighting, date filter/sort); single quoted here-string so the JavaScript does not need PowerShell escaping
+$agGridSupportScript = @'
+    /* ---------- text filter match highlighting ----------
+       Every text filter condition of a column gets its own color slot and its matches are wrapped
+       in <mark class="filter-match fm-N"> by the column cell renderers. */
+    var agvFilterHighlightPalette = [
+        { bg: '#FFF59D', fg: '#B71C1C' },
+        { bg: '#BBDEFB', fg: '#0D3B66' },
+        { bg: '#C8E6C9', fg: '#1B5E20' },
+        { bg: '#FFE0B2', fg: '#5D2E00' },
+        { bg: '#F8BBD0', fg: '#880E4F' },
+        { bg: '#B2EBF2', fg: '#004D40' },
+        { bg: '#E1BEE7', fg: '#4A148C' },
+        { bg: '#E0E0E0', fg: '#212121' }
+    ];
+
+    function agvEscapeRegex(text) {
+        return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function agvEscapeHtml(text) {
+        return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function agvTagRanges(text) {
+        var ranges = [];
+        var re = /<[^>]*>/g;
+        var m;
+        while ((m = re.exec(text)) !== null) {
+            ranges.push([m.index, m.index + m[0].length]);
+        }
+        return ranges;
+    }
+
+    function agvOverlapsTag(ranges, start, end) {
+        for (var i = 0; i < ranges.length; i++) {
+            if (start < ranges[i][1] && end > ranges[i][0]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function agvBuildHighlighted(text, entry, isHtml) {
+        var emit = function (chunk) { return isHtml ? chunk : agvEscapeHtml(chunk); };
+        if (!entry || !entry.slots.length) {
+            return emit(text);
+        }
+        //matches must not land inside the markup produced by a cell renderer
+        var tagRanges = isHtml ? agvTagRanges(text) : null;
+        var matches = [];
+        for (var i = 0; i < entry.slots.length; i++) {
+            var re = entry.slots[i].re;
+            re.lastIndex = 0;
+            var m;
+            while ((m = re.exec(text)) !== null) {
+                if (m[0].length === 0) { re.lastIndex++; continue; }
+                var start = m.index;
+                var end = m.index + m[0].length;
+                if (tagRanges && agvOverlapsTag(tagRanges, start, end)) { continue; }
+                matches.push({ start: start, end: end, idx: entry.slots[i].idx, order: i });
+            }
+        }
+        if (!matches.length) {
+            return emit(text);
+        }
+        //earliest position wins, ties are resolved by condition order so colors stay stable
+        matches.sort(function (a, b) { return a.start - b.start || a.order - b.order; });
+        var out = '';
+        var pos = 0;
+        for (var k = 0; k < matches.length; k++) {
+            var match = matches[k];
+            if (match.start < pos) { continue; }
+            out += emit(text.slice(pos, match.start));
+            out += '<mark class="filter-match fm-' + match.idx + '">' + emit(text.slice(match.start, match.end)) + '</mark>';
+            pos = match.end;
+        }
+        out += emit(text.slice(pos));
+        return out;
+    }
+
+    /* Dictionary encoded row data: a row is an array of integers, each one an index into the dictionary of its column.
+       This keeps the payload small and avoids materializing one object per row. */
+    function agvColumnValueGetter(encoded, columnIndex) {
+        var dictionary = encoded.dictionaries[columnIndex];
+        return function (params) {
+            return params.data ? dictionary[params.data[columnIndex]] : undefined;
+        };
+    }
+
+    //renders an html column (the sortable/filterable plain text lives in a separate column)
+    function agvColumnHtmlRenderer(encoded, columnIndex, highlighter) {
+        var dictionary = encoded.dictionaries[columnIndex];
+        return function (params) {
+            return highlighter.html(dictionary[params.data[columnIndex]], params.column.getColId());
+        };
+    }
+
+    function agvCreateHighlighter() {
+        var byField = Object.create(null);
+
+        function collectTerm(condition, out) {
+            if (!condition) { return; }
+            var type = condition.type;
+            //negative and blank conditions have nothing to highlight
+            if (type === 'notEqual' || type === 'notContains' || type === 'blank' || type === 'notBlank') { return; }
+            if (condition.filter === null || condition.filter === undefined || condition.filter === '') { return; }
+            out.push(String(condition.filter));
+        }
+
+        function extractTerms(entry) {
+            var out = [];
+            if (!entry) { return out; }
+            if (entry.conditions && entry.conditions.length) {
+                for (var i = 0; i < entry.conditions.length; i++) {
+                    var tmp = [];
+                    collectTerm(entry.conditions[i], tmp);
+                    if (tmp.length) { out.push(tmp[0]); }
+                }
+                return out;
+            }
+            collectTerm(entry, out);
+            return out;
+        }
+
+        return {
+            //returns the fields whose terms changed so that only those columns need to be refreshed
+            update: function (model) {
+                var changed = [];
+                var seen = Object.create(null);
+                if (model) {
+                    for (var field in model) {
+                        seen[field] = true;
+                        var terms = extractTerms(model[field]);
+                        var sig = terms.join('\u0001');
+                        var prev = byField[field];
+                        if (prev && prev.sig === sig) { continue; }
+                        if (!terms.length) {
+                            if (prev) {
+                                byField[field] = null;
+                                changed.push(field);
+                            }
+                            continue;
+                        }
+                        var slots = [];
+                        for (var ti = 0; ti < terms.length; ti++) {
+                            slots.push({ re: new RegExp(agvEscapeRegex(terms[ti]), 'ig'), idx: ti % agvFilterHighlightPalette.length });
+                        }
+                        byField[field] = { sig: sig, slots: slots };
+                        changed.push(field);
+                    }
+                }
+                for (var prevField in byField) {
+                    if (seen[prevField] || !byField[prevField]) { continue; }
+                    byField[prevField] = null;
+                    changed.push(prevField);
+                }
+                return changed;
+            },
+            //plain cell value, the result is html encoded
+            text: function (value, field) {
+                return agvBuildHighlighted((value === null || value === undefined) ? '' : String(value), byField[field], false);
+            },
+            //cell value that already is an html fragment
+            html: function (value, field) {
+                return agvBuildHighlighted((value === null || value === undefined) ? '' : String(value), byField[field], true);
+            }
+        };
+    }
+
+    (function injectAgvHighlightStyles() {
+        if (document.getElementById('agv-filter-match-style')) { return; }
+        var rules = ['mark.filter-match { font-weight: bold; padding: 0; border-radius: 2px; }'];
+        for (var i = 0; i < agvFilterHighlightPalette.length; i++) {
+            rules.push('mark.filter-match.fm-' + i + ' { background-color: ' + agvFilterHighlightPalette[i].bg + '; color: ' + agvFilterHighlightPalette[i].fg + '; }');
+        }
+        var style = document.createElement('style');
+        style.id = 'agv-filter-match-style';
+        style.textContent = rules.join('\n');
+        document.head.appendChild(style);
+    })();
+
+    /* ---------- date column support ----------
+       Date values are rendered by the report as invariant culture strings ('MM/dd/yyyy HH:mm:ss'). */
+    function agvParseGridDate(value) {
+        if (value === null || value === undefined || value === '') { return null; }
+        var m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/.exec(String(value));
+        if (m) {
+            return new Date(Number(m[3]), Number(m[1]) - 1, Number(m[2]), Number(m[4] || 0), Number(m[5] || 0), Number(m[6] || 0));
+        }
+        var parsed = new Date(String(value));
+        return isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    var agvDateFilterParams = {
+        browserDatePicker: true,
+        comparator: function (filterLocalDateAtMidnight, cellValue) {
+            var cellDate = agvParseGridDate(cellValue);
+            if (cellDate === null) { return -1; }
+            var cellMidnight = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
+            if (cellMidnight < filterLocalDateAtMidnight) { return -1; }
+            if (cellMidnight > filterLocalDateAtMidnight) { return 1; }
+            return 0;
+        }
+    };
+
+    function agvDateSortComparator(valueA, valueB) {
+        var dateA = agvParseGridDate(valueA);
+        var dateB = agvParseGridDate(valueB);
+        if (dateA === null && dateB === null) { return 0; }
+        if (dateA === null) { return -1; }
+        if (dateB === null) { return 1; }
+        return dateA.getTime() - dateB.getTime();
+    }
+
+    /* ---------- toolbar actions ---------- */
+    /* AG Grid Community has no status bar, so the reset button is placed into the paging panel. */
+    function agvAddResetFiltersButton(api, rootElement) {
+        var panel = rootElement.querySelector('.ag-paging-panel');
+        if (!panel || panel.querySelector('.agvResetFiltersButton')) { return; }
+        var button = rootElement.ownerDocument.createElement('button');
+        button.type = 'button';
+        button.className = 'agvResetFiltersButton';
+        button.title = 'Clear all column filters';
+        button.addEventListener('click', function () { api.setFilterModel(null); });
+        var sync = function () {
+            var model = api.getFilterModel();
+            var count = model ? Object.keys(model).length : 0;
+            button.disabled = count === 0;
+            button.textContent = count === 0 ? 'Reset filters' : 'Reset filters (' + count + ')';
+        };
+        api.addEventListener('filterChanged', sync);
+        sync();
+        panel.insertBefore(button, panel.firstChild);
+    }
+
+    var agvPopoutWatchers = Object.create(null);
+
+    /* Opens the grid on its own in a new window. The window is a standalone document that reuses the
+       AG Grid assets and the grid definition of this report; only the row data is read from the opener. */
+    function agvPopoutGrid(title, gridDefScriptId, optionsFactoryName, rowDataName) {
+        var popout = window.open('', 'agvPopout_' + gridDefScriptId, 'width=1600,height=900,resizable=yes,scrollbars=yes');
+        if (!popout) {
+            alert('The browser blocked the pop out window - please allow pop ups for this page.');
+            return;
+        }
+
+        var render = function () {
+            var assets = '';
+            document.querySelectorAll('link[href*="ag-grid"], script[src*="ag-grid"]').forEach(function (element) {
+                assets += element.outerHTML;
+            });
+            ['agvAgGridStyle', 'agvAgGridSelectFilter', 'agvAgGridSupport', gridDefScriptId].forEach(function (id) {
+                var element = document.getElementById(id);
+                if (element) { assets += element.outerHTML; }
+            });
+            var bootstrap = 'var agvEl = document.getElementById("agvPopoutGrid");'
+                + ' agGrid.createGrid(agvEl, ' + optionsFactoryName + '(agvCreateHighlighter(), window.opener.' + rowDataName + ', agvEl));';
+            var doc = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>' + agvEscapeHtml(title) + '</title>'
+                + assets
+                + '<style>html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; } #agvPopoutGrid { height: 100%; width: 100%; }</style>'
+                + '</head><body><div id="agvPopoutGrid" class="ag-theme-quartz"></div>'
+                + '<script>' + bootstrap + '<\/script></body></html>';
+            popout.document.open();
+            popout.document.write(doc);
+            popout.document.close();
+        };
+
+        render();
+        popout.focus();
+
+        //the pop out content is written by this document, so a reload of the pop out would leave it empty
+        if (agvPopoutWatchers[gridDefScriptId]) { clearInterval(agvPopoutWatchers[gridDefScriptId]); }
+        agvPopoutWatchers[gridDefScriptId] = setInterval(function () {
+            try {
+                if (popout.closed) {
+                    clearInterval(agvPopoutWatchers[gridDefScriptId]);
+                    delete agvPopoutWatchers[gridDefScriptId];
+                    return;
+                }
+                if (popout.document.readyState === 'complete' && !popout.document.getElementById('agvPopoutGrid')) {
+                    render();
+                }
+            }
+            catch (e) { /* the pop out is navigating, retry on the next tick */ }
+        }, 500);
+    }
+'@
+
 $html = @"
 <!doctype html>
 <html lang="en">
@@ -36818,7 +37174,7 @@ $html = @"
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-grid.css" integrity="sha512-LtYrwl3RjIutCHf9yb6EG09zr4k2htQlyIeD2nJMld66jKYcfWF2RrgxEKZK7TkX9wTFz3/c0Bur1SY+S4Fv8A==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-theme-quartz.css" integrity="sha512-ISUqCKJU9IOqpwVnp8tlLooD0Tjj6DNW4tFi6KymnYiidM60i16F7l6J5aFZGmajxVVruN/dcB7WM3Pn+Qr45Q==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js" integrity="sha512-fD9MUUcwwAe0W4Qj+wis2c6GNIAIAgxkGiVNYa3ZZH+7uKdjPIU+VZ7wXffl4eLda4rVAIfxEqeO2Q0+4+w/Kw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <style>
+    <style id="agvAgGridStyle">
         /* azgovvizmain.css applies 'div { float: left }' globally which collapses the AG Grid layout */
         .ag-theme-quartz,
         .ag-theme-quartz div {
@@ -36842,6 +37198,30 @@ $html = @"
             font-size: inherit;
         }
 
+        /* sits in the paging panel, 'margin-right: auto' keeps the paging controls on the right */
+        .ag-theme-quartz .agvResetFiltersButton {
+            float: none;
+            margin-right: auto;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: 16px;
+            padding: 2px 8px;
+            cursor: pointer;
+            color: inherit;
+            background-color: #ffffff;
+            border: 1px solid #babfc7;
+            border-radius: 4px;
+        }
+
+        .ag-theme-quartz .agvResetFiltersButton:hover:not(:disabled) {
+            background-color: #f1f1f1;
+        }
+
+        .ag-theme-quartz .agvResetFiltersButton:disabled {
+            opacity: 0.45;
+            cursor: default;
+        }
+
         /* wrapped cell content must start at the top of the row */
         .ag-theme-quartz .ag-cell-wrap-text {
             word-break: break-word;
@@ -36849,8 +37229,24 @@ $html = @"
             padding-top: 3px;
             padding-bottom: 3px;
         }
+
+        /* azgovvizmain.css styles every hovered <span> like a link; AG Grid renders cell and header
+           text in spans, so cell values must not be turned into link lookalikes.
+           The selector is more specific than the one in azgovvizmain.css but does not use !important,
+           so inline colors set by cell renderers still win. */
+        .ag-theme-quartz .ag-root-wrapper span:hover {
+            font-weight: inherit;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        /* real links keep the link affordance */
+        .ag-theme-quartz .ag-root-wrapper a:hover,
+        .ag-theme-quartz .ag-root-wrapper a:hover span {
+            text-decoration: underline;
+        }
     </style>
-    <script>
+    <script id="agvAgGridSelectFilter">
     /* AG Grid Community has no set filter; this floating filter renders a <select> (like the TableFilter 'select' columns)
        and drives the column's text filter with an 'equals' match. The options are the distinct values of the column. */
     class agvSelectFloatingFilter {
@@ -36870,21 +37266,28 @@ $html = @"
                 });
             });
             this.populate();
-            if (this.eGui.options.length <= 1) {
+            if (!this.params.values && this.eGui.options.length <= 1) {
                 //the row data may not be available yet when the grid builds its floating filters
                 this.onFirstDataRendered = () => this.populate();
                 params.api.addEventListener('firstDataRendered', this.onFirstDataRendered);
             }
         }
         populate() {
-            const colId = this.params.column.getColId();
             const values = new Set();
-            this.params.api.forEachNode((node) => {
-                const value = node.data ? node.data[colId] : null;
-                if (value !== null && value !== undefined && value !== '') {
-                    values.add(String(value));
-                }
-            });
+            if (this.params.values) {
+                //dictionary encoded column, the dictionary already is the set of distinct values
+                this.params.values.forEach((value) => values.add(String(value)));
+            }
+            else {
+                const colId = this.params.column.getColId();
+                this.params.api.forEachNode((node) => {
+                    const value = node.data ? node.data[colId] : null;
+                    if (value !== null && value !== undefined) {
+                        values.add(String(value));
+                    }
+                });
+            }
+            values.delete('');
             const selected = this.eGui.value;
             this.eGui.replaceChildren(new Option('', ''));
             Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })).forEach((value) => {
@@ -36905,6 +37308,9 @@ $html = @"
             }
         }
     }
+    </script>
+    <script id="agvAgGridSupport">
+$agGridSupportScript
     </script>
     <link rel="stylesheet" href="https://www.azadvertizer.net/azgovvizv4/css/highlight-10.5.0.min.css">
     <!--<script src="https://www.azadvertizer.net/azgovvizv4/js/highlight-10.5.0.min.js"></script>-->

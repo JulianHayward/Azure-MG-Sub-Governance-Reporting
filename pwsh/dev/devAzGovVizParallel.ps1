@@ -1915,6 +1915,295 @@ if (-not $HierarchyMapOnly) {
     #endregion summarizeDataCollectionResults
 }
 
+#shared AG Grid helpers (filter match highlighting, date filter/sort); single quoted here-string so the JavaScript does not need PowerShell escaping
+$agGridSupportScript = @'
+    /* ---------- text filter match highlighting ----------
+       Every text filter condition of a column gets its own color slot and its matches are wrapped
+       in <mark class="filter-match fm-N"> by the column cell renderers. */
+    var agvFilterHighlightPalette = [
+        { bg: '#FFF59D', fg: '#B71C1C' },
+        { bg: '#BBDEFB', fg: '#0D3B66' },
+        { bg: '#C8E6C9', fg: '#1B5E20' },
+        { bg: '#FFE0B2', fg: '#5D2E00' },
+        { bg: '#F8BBD0', fg: '#880E4F' },
+        { bg: '#B2EBF2', fg: '#004D40' },
+        { bg: '#E1BEE7', fg: '#4A148C' },
+        { bg: '#E0E0E0', fg: '#212121' }
+    ];
+
+    function agvEscapeRegex(text) {
+        return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function agvEscapeHtml(text) {
+        return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function agvTagRanges(text) {
+        var ranges = [];
+        var re = /<[^>]*>/g;
+        var m;
+        while ((m = re.exec(text)) !== null) {
+            ranges.push([m.index, m.index + m[0].length]);
+        }
+        return ranges;
+    }
+
+    function agvOverlapsTag(ranges, start, end) {
+        for (var i = 0; i < ranges.length; i++) {
+            if (start < ranges[i][1] && end > ranges[i][0]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function agvBuildHighlighted(text, entry, isHtml) {
+        var emit = function (chunk) { return isHtml ? chunk : agvEscapeHtml(chunk); };
+        if (!entry || !entry.slots.length) {
+            return emit(text);
+        }
+        //matches must not land inside the markup produced by a cell renderer
+        var tagRanges = isHtml ? agvTagRanges(text) : null;
+        var matches = [];
+        for (var i = 0; i < entry.slots.length; i++) {
+            var re = entry.slots[i].re;
+            re.lastIndex = 0;
+            var m;
+            while ((m = re.exec(text)) !== null) {
+                if (m[0].length === 0) { re.lastIndex++; continue; }
+                var start = m.index;
+                var end = m.index + m[0].length;
+                if (tagRanges && agvOverlapsTag(tagRanges, start, end)) { continue; }
+                matches.push({ start: start, end: end, idx: entry.slots[i].idx, order: i });
+            }
+        }
+        if (!matches.length) {
+            return emit(text);
+        }
+        //earliest position wins, ties are resolved by condition order so colors stay stable
+        matches.sort(function (a, b) { return a.start - b.start || a.order - b.order; });
+        var out = '';
+        var pos = 0;
+        for (var k = 0; k < matches.length; k++) {
+            var match = matches[k];
+            if (match.start < pos) { continue; }
+            out += emit(text.slice(pos, match.start));
+            out += '<mark class="filter-match fm-' + match.idx + '">' + emit(text.slice(match.start, match.end)) + '</mark>';
+            pos = match.end;
+        }
+        out += emit(text.slice(pos));
+        return out;
+    }
+
+    /* Dictionary encoded row data: a row is an array of integers, each one an index into the dictionary of its column.
+       This keeps the payload small and avoids materializing one object per row. */
+    function agvColumnValueGetter(encoded, columnIndex) {
+        var dictionary = encoded.dictionaries[columnIndex];
+        return function (params) {
+            return params.data ? dictionary[params.data[columnIndex]] : undefined;
+        };
+    }
+
+    //renders an html column (the sortable/filterable plain text lives in a separate column)
+    function agvColumnHtmlRenderer(encoded, columnIndex, highlighter) {
+        var dictionary = encoded.dictionaries[columnIndex];
+        return function (params) {
+            return highlighter.html(dictionary[params.data[columnIndex]], params.column.getColId());
+        };
+    }
+
+    function agvCreateHighlighter() {
+        var byField = Object.create(null);
+
+        function collectTerm(condition, out) {
+            if (!condition) { return; }
+            var type = condition.type;
+            //negative and blank conditions have nothing to highlight
+            if (type === 'notEqual' || type === 'notContains' || type === 'blank' || type === 'notBlank') { return; }
+            if (condition.filter === null || condition.filter === undefined || condition.filter === '') { return; }
+            out.push(String(condition.filter));
+        }
+
+        function extractTerms(entry) {
+            var out = [];
+            if (!entry) { return out; }
+            if (entry.conditions && entry.conditions.length) {
+                for (var i = 0; i < entry.conditions.length; i++) {
+                    var tmp = [];
+                    collectTerm(entry.conditions[i], tmp);
+                    if (tmp.length) { out.push(tmp[0]); }
+                }
+                return out;
+            }
+            collectTerm(entry, out);
+            return out;
+        }
+
+        return {
+            //returns the fields whose terms changed so that only those columns need to be refreshed
+            update: function (model) {
+                var changed = [];
+                var seen = Object.create(null);
+                if (model) {
+                    for (var field in model) {
+                        seen[field] = true;
+                        var terms = extractTerms(model[field]);
+                        var sig = terms.join('\u0001');
+                        var prev = byField[field];
+                        if (prev && prev.sig === sig) { continue; }
+                        if (!terms.length) {
+                            if (prev) {
+                                byField[field] = null;
+                                changed.push(field);
+                            }
+                            continue;
+                        }
+                        var slots = [];
+                        for (var ti = 0; ti < terms.length; ti++) {
+                            slots.push({ re: new RegExp(agvEscapeRegex(terms[ti]), 'ig'), idx: ti % agvFilterHighlightPalette.length });
+                        }
+                        byField[field] = { sig: sig, slots: slots };
+                        changed.push(field);
+                    }
+                }
+                for (var prevField in byField) {
+                    if (seen[prevField] || !byField[prevField]) { continue; }
+                    byField[prevField] = null;
+                    changed.push(prevField);
+                }
+                return changed;
+            },
+            //plain cell value, the result is html encoded
+            text: function (value, field) {
+                return agvBuildHighlighted((value === null || value === undefined) ? '' : String(value), byField[field], false);
+            },
+            //cell value that already is an html fragment
+            html: function (value, field) {
+                return agvBuildHighlighted((value === null || value === undefined) ? '' : String(value), byField[field], true);
+            }
+        };
+    }
+
+    (function injectAgvHighlightStyles() {
+        if (document.getElementById('agv-filter-match-style')) { return; }
+        var rules = ['mark.filter-match { font-weight: bold; padding: 0; border-radius: 2px; }'];
+        for (var i = 0; i < agvFilterHighlightPalette.length; i++) {
+            rules.push('mark.filter-match.fm-' + i + ' { background-color: ' + agvFilterHighlightPalette[i].bg + '; color: ' + agvFilterHighlightPalette[i].fg + '; }');
+        }
+        var style = document.createElement('style');
+        style.id = 'agv-filter-match-style';
+        style.textContent = rules.join('\n');
+        document.head.appendChild(style);
+    })();
+
+    /* ---------- date column support ----------
+       Date values are rendered by the report as invariant culture strings ('MM/dd/yyyy HH:mm:ss'). */
+    function agvParseGridDate(value) {
+        if (value === null || value === undefined || value === '') { return null; }
+        var m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/.exec(String(value));
+        if (m) {
+            return new Date(Number(m[3]), Number(m[1]) - 1, Number(m[2]), Number(m[4] || 0), Number(m[5] || 0), Number(m[6] || 0));
+        }
+        var parsed = new Date(String(value));
+        return isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    var agvDateFilterParams = {
+        browserDatePicker: true,
+        comparator: function (filterLocalDateAtMidnight, cellValue) {
+            var cellDate = agvParseGridDate(cellValue);
+            if (cellDate === null) { return -1; }
+            var cellMidnight = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
+            if (cellMidnight < filterLocalDateAtMidnight) { return -1; }
+            if (cellMidnight > filterLocalDateAtMidnight) { return 1; }
+            return 0;
+        }
+    };
+
+    function agvDateSortComparator(valueA, valueB) {
+        var dateA = agvParseGridDate(valueA);
+        var dateB = agvParseGridDate(valueB);
+        if (dateA === null && dateB === null) { return 0; }
+        if (dateA === null) { return -1; }
+        if (dateB === null) { return 1; }
+        return dateA.getTime() - dateB.getTime();
+    }
+
+    /* ---------- toolbar actions ---------- */
+    /* AG Grid Community has no status bar, so the reset button is placed into the paging panel. */
+    function agvAddResetFiltersButton(api, rootElement) {
+        var panel = rootElement.querySelector('.ag-paging-panel');
+        if (!panel || panel.querySelector('.agvResetFiltersButton')) { return; }
+        var button = rootElement.ownerDocument.createElement('button');
+        button.type = 'button';
+        button.className = 'agvResetFiltersButton';
+        button.title = 'Clear all column filters';
+        button.addEventListener('click', function () { api.setFilterModel(null); });
+        var sync = function () {
+            var model = api.getFilterModel();
+            var count = model ? Object.keys(model).length : 0;
+            button.disabled = count === 0;
+            button.textContent = count === 0 ? 'Reset filters' : 'Reset filters (' + count + ')';
+        };
+        api.addEventListener('filterChanged', sync);
+        sync();
+        panel.insertBefore(button, panel.firstChild);
+    }
+
+    var agvPopoutWatchers = Object.create(null);
+
+    /* Opens the grid on its own in a new window. The window is a standalone document that reuses the
+       AG Grid assets and the grid definition of this report; only the row data is read from the opener. */
+    function agvPopoutGrid(title, gridDefScriptId, optionsFactoryName, rowDataName) {
+        var popout = window.open('', 'agvPopout_' + gridDefScriptId, 'width=1600,height=900,resizable=yes,scrollbars=yes');
+        if (!popout) {
+            alert('The browser blocked the pop out window - please allow pop ups for this page.');
+            return;
+        }
+
+        var render = function () {
+            var assets = '';
+            document.querySelectorAll('link[href*="ag-grid"], script[src*="ag-grid"]').forEach(function (element) {
+                assets += element.outerHTML;
+            });
+            ['agvAgGridStyle', 'agvAgGridSelectFilter', 'agvAgGridSupport', gridDefScriptId].forEach(function (id) {
+                var element = document.getElementById(id);
+                if (element) { assets += element.outerHTML; }
+            });
+            var bootstrap = 'var agvEl = document.getElementById("agvPopoutGrid");'
+                + ' agGrid.createGrid(agvEl, ' + optionsFactoryName + '(agvCreateHighlighter(), window.opener.' + rowDataName + ', agvEl));';
+            var doc = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>' + agvEscapeHtml(title) + '</title>'
+                + assets
+                + '<style>html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; } #agvPopoutGrid { height: 100%; width: 100%; }</style>'
+                + '</head><body><div id="agvPopoutGrid" class="ag-theme-quartz"></div>'
+                + '<script>' + bootstrap + '<\/script></body></html>';
+            popout.document.open();
+            popout.document.write(doc);
+            popout.document.close();
+        };
+
+        render();
+        popout.focus();
+
+        //the pop out content is written by this document, so a reload of the pop out would leave it empty
+        if (agvPopoutWatchers[gridDefScriptId]) { clearInterval(agvPopoutWatchers[gridDefScriptId]); }
+        agvPopoutWatchers[gridDefScriptId] = setInterval(function () {
+            try {
+                if (popout.closed) {
+                    clearInterval(agvPopoutWatchers[gridDefScriptId]);
+                    delete agvPopoutWatchers[gridDefScriptId];
+                    return;
+                }
+                if (popout.document.readyState === 'complete' && !popout.document.getElementById('agvPopoutGrid')) {
+                    render();
+                }
+            }
+            catch (e) { /* the pop out is navigating, retry on the next tick */ }
+        }, 500);
+    }
+'@
+
 $html = @"
 <!doctype html>
 <html lang="en">
@@ -1947,7 +2236,7 @@ $html = @"
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-grid.css" integrity="sha512-LtYrwl3RjIutCHf9yb6EG09zr4k2htQlyIeD2nJMld66jKYcfWF2RrgxEKZK7TkX9wTFz3/c0Bur1SY+S4Fv8A==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-theme-quartz.css" integrity="sha512-ISUqCKJU9IOqpwVnp8tlLooD0Tjj6DNW4tFi6KymnYiidM60i16F7l6J5aFZGmajxVVruN/dcB7WM3Pn+Qr45Q==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js" integrity="sha512-fD9MUUcwwAe0W4Qj+wis2c6GNIAIAgxkGiVNYa3ZZH+7uKdjPIU+VZ7wXffl4eLda4rVAIfxEqeO2Q0+4+w/Kw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <style>
+    <style id="agvAgGridStyle">
         /* azgovvizmain.css applies 'div { float: left }' globally which collapses the AG Grid layout */
         .ag-theme-quartz,
         .ag-theme-quartz div {
@@ -1971,6 +2260,30 @@ $html = @"
             font-size: inherit;
         }
 
+        /* sits in the paging panel, 'margin-right: auto' keeps the paging controls on the right */
+        .ag-theme-quartz .agvResetFiltersButton {
+            float: none;
+            margin-right: auto;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: 16px;
+            padding: 2px 8px;
+            cursor: pointer;
+            color: inherit;
+            background-color: #ffffff;
+            border: 1px solid #babfc7;
+            border-radius: 4px;
+        }
+
+        .ag-theme-quartz .agvResetFiltersButton:hover:not(:disabled) {
+            background-color: #f1f1f1;
+        }
+
+        .ag-theme-quartz .agvResetFiltersButton:disabled {
+            opacity: 0.45;
+            cursor: default;
+        }
+
         /* wrapped cell content must start at the top of the row */
         .ag-theme-quartz .ag-cell-wrap-text {
             word-break: break-word;
@@ -1978,8 +2291,24 @@ $html = @"
             padding-top: 3px;
             padding-bottom: 3px;
         }
+
+        /* azgovvizmain.css styles every hovered <span> like a link; AG Grid renders cell and header
+           text in spans, so cell values must not be turned into link lookalikes.
+           The selector is more specific than the one in azgovvizmain.css but does not use !important,
+           so inline colors set by cell renderers still win. */
+        .ag-theme-quartz .ag-root-wrapper span:hover {
+            font-weight: inherit;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        /* real links keep the link affordance */
+        .ag-theme-quartz .ag-root-wrapper a:hover,
+        .ag-theme-quartz .ag-root-wrapper a:hover span {
+            text-decoration: underline;
+        }
     </style>
-    <script>
+    <script id="agvAgGridSelectFilter">
     /* AG Grid Community has no set filter; this floating filter renders a <select> (like the TableFilter 'select' columns)
        and drives the column's text filter with an 'equals' match. The options are the distinct values of the column. */
     class agvSelectFloatingFilter {
@@ -1999,21 +2328,28 @@ $html = @"
                 });
             });
             this.populate();
-            if (this.eGui.options.length <= 1) {
+            if (!this.params.values && this.eGui.options.length <= 1) {
                 //the row data may not be available yet when the grid builds its floating filters
                 this.onFirstDataRendered = () => this.populate();
                 params.api.addEventListener('firstDataRendered', this.onFirstDataRendered);
             }
         }
         populate() {
-            const colId = this.params.column.getColId();
             const values = new Set();
-            this.params.api.forEachNode((node) => {
-                const value = node.data ? node.data[colId] : null;
-                if (value !== null && value !== undefined && value !== '') {
-                    values.add(String(value));
-                }
-            });
+            if (this.params.values) {
+                //dictionary encoded column, the dictionary already is the set of distinct values
+                this.params.values.forEach((value) => values.add(String(value)));
+            }
+            else {
+                const colId = this.params.column.getColId();
+                this.params.api.forEachNode((node) => {
+                    const value = node.data ? node.data[colId] : null;
+                    if (value !== null && value !== undefined) {
+                        values.add(String(value));
+                    }
+                });
+            }
+            values.delete('');
             const selected = this.eGui.value;
             this.eGui.replaceChildren(new Option('', ''));
             Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })).forEach((value) => {
@@ -2034,6 +2370,9 @@ $html = @"
             }
         }
     }
+    </script>
+    <script id="agvAgGridSupport">
+$agGridSupportScript
     </script>
     <link rel="stylesheet" href="https://www.azadvertizer.net/azgovvizv4/css/highlight-10.5.0.min.css">
     <!--<script src="https://www.azadvertizer.net/azgovvizv4/js/highlight-10.5.0.min.js"></script>-->

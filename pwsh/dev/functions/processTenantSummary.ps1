@@ -5413,12 +5413,12 @@ extensions: [{ name: 'sort' }]
 <button onclick="loadag$($htmlTableId)()" type="button" class="collapsible" id="buttonTenantSummary_roleAssignmentsAll"><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$($rbacAllCount) Role assignment related entries (unique -> $($roleAssignmentsInfo -join ', '))</span>
 </button>
 <div class="content TenantSummary">
-<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a><br>
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableId)(); return false;">Pop out grid</a><br>
 <span class="padlxx hintTableSize">*The CSV download respects the filters and the column order applied in the grid</span>
 <div id="$htmlTableId" class="ag-theme-quartz" style="height:600px;width:100%;"></div>
 </div>
 <script>
-var rowData4$($htmlTableId) = [
+var rowData4$($htmlTableId) = {rows:[
 "@)
             $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
             $htmlTenantSummary = [System.Text.StringBuilder]::new()
@@ -5438,90 +5438,154 @@ var rowData4$($htmlTableId) = [
             Write-Host "   Sort RBACAll duration: $((New-TimeSpan -Start $startSortRBACAll -End $endSortRBACAll).TotalMinutes) minutes ($((New-TimeSpan -Start $startSortRBACAll -End $endSortRBACAll).TotalSeconds) seconds)"
 
             $startCreateRBACAllHTMLForeach = Get-Date
-            #properties that feed the AG Grid; the '*Clear' properties are used for sorting/filtering/export, their html counterparts are used for rendering only
-            $rbacGridProperties = @(
+            #columns feeding the AG Grid; the '*Clear' columns are used for sorting/filtering/export, their html counterparts are used for rendering only
+            #the column order defines the index used by the valueGetters in the grid definition below - keep both in sync
+            $rbacGridColumns = @(
                 'ScopeTenOrMgOrSubOrRGOrRes', 'MgId', 'MgName', 'SubscriptionId', 'SubscriptionName', 'Scope',
                 'Role', 'RoleClear', 'RoleId', 'RoleType', 'RoleDataRelated', 'RoleCanDoRoleAssignments',
                 'ObjectDisplayName', 'ObjectSignInName', 'ObjectId', 'ObjectType', 'AssignmentType',
-                'AssignmentInheritFrom', 'GroupMembersCount',
-                @{name = 'RoleAssignmentPIMRelated'; expression = { [string]$_.RoleAssignmentPIMRelated } },
+                'AssignmentInheritFrom', 'GroupMembersCount', 'RoleAssignmentPIMRelated',
                 'RoleAssignmentPIMAssignmentType', 'RoleAssignmentPIMAssignmentSlotStart', 'RoleAssignmentPIMAssignmentSlotEnd',
                 'RoleAssignmentId', 'RbacRelatedPolicyAssignment', 'RbacRelatedPolicyAssignmentClear', 'CreatedOn', 'CreatedBy'
             )
+            $rbacGridColumnCount = $rbacGridColumns.Count
+            $rbacGridCanDoIndex = $rbacGridColumns.IndexOf('RoleCanDoRoleAssignments')
+            #per column dictionary of distinct values, a row then only holds the integer indexes into those dictionaries
+            $rbacGridDictionaries = New-Object 'System.Collections.Generic.List[string][]' $rbacGridColumnCount
+            $rbacGridMaps = New-Object 'System.Collections.Generic.Dictionary[string,int][]' $rbacGridColumnCount
+            for ($rbacGridColumn = 0; $rbacGridColumn -lt $rbacGridColumnCount; $rbacGridColumn++) {
+                $rbacGridDictionaries[$rbacGridColumn] = [System.Collections.Generic.List[string]]::new()
+                $rbacGridMaps[$rbacGridColumn] = [System.Collections.Generic.Dictionary[string, int]]::new([System.StringComparer]::Ordinal)
+            }
+
             $rbacGridBatchSize = 5000
+            $rbacGridFirstRow = $true
             for ($rbacGridBatchStart = 0; $rbacGridBatchStart -lt $rbacAllCount; $rbacGridBatchStart += $rbacGridBatchSize) {
                 $rbacGridBatchEnd = [math]::Min($rbacGridBatchStart + $rbacGridBatchSize, $rbacAllCount) - 1
-                $rbacGridBatchJson = $rbacAllSorted[$rbacGridBatchStart..$rbacGridBatchEnd] | Select-Object -Property $rbacGridProperties | ConvertTo-Json -Compress -AsArray -EscapeHandling EscapeHtml
                 $htmlSummaryRoleAssignmentsAll = [System.Text.StringBuilder]::new()
-                if ($rbacGridBatchStart -gt 0) {
-                    [void]$htmlSummaryRoleAssignmentsAll.Append(',')
+                for ($rbacGridRow = $rbacGridBatchStart; $rbacGridRow -le $rbacGridBatchEnd; $rbacGridRow++) {
+                    $rbacGridEntry = $rbacAllSorted[$rbacGridRow]
+                    if ($rbacGridFirstRow) { $rbacGridFirstRow = $false } else { [void]$htmlSummaryRoleAssignmentsAll.Append(',') }
+                    [void]$htmlSummaryRoleAssignmentsAll.Append('[')
+                    for ($rbacGridColumn = 0; $rbacGridColumn -lt $rbacGridColumnCount; $rbacGridColumn++) {
+                        if ($rbacGridColumn -eq $rbacGridCanDoIndex) {
+                            $rbacGridValue = if ($rbacGridEntry.RoleCanDoRoleAssignments -eq $true) { 'true' } else { 'false' }
+                        }
+                        else {
+                            $rbacGridValue = [string]$rbacGridEntry.($rbacGridColumns[$rbacGridColumn])
+                        }
+                        $rbacGridValueIndex = 0
+                        if (-not $rbacGridMaps[$rbacGridColumn].TryGetValue($rbacGridValue, [ref]$rbacGridValueIndex)) {
+                            $rbacGridValueIndex = $rbacGridDictionaries[$rbacGridColumn].Count
+                            $rbacGridMaps[$rbacGridColumn][$rbacGridValue] = $rbacGridValueIndex
+                            $rbacGridDictionaries[$rbacGridColumn].Add($rbacGridValue)
+                        }
+                        if ($rbacGridColumn -gt 0) { [void]$htmlSummaryRoleAssignmentsAll.Append(',') }
+                        [void]$htmlSummaryRoleAssignmentsAll.Append($rbacGridValueIndex)
+                    }
+                    [void]$htmlSummaryRoleAssignmentsAll.Append(']')
                 }
-                #strip the enclosing brackets of the batch, all batches together form one JS array
-                [void]$htmlSummaryRoleAssignmentsAll.Append($rbacGridBatchJson.Substring(1, $rbacGridBatchJson.Length - 2))
                 Write-Host "    create HTML $($rbacGridBatchEnd + 1) of $rbacAllCount RoleAssignments processed"
                 $htmlSummaryRoleAssignmentsAll | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
                 $htmlSummaryRoleAssignmentsAll = $null #cleanup
             }
 
+            #the dictionaries hold every string of the data set, EscapeHtml keeps '<' out of the enclosing script element
+            $rbacGridDictionariesArray = New-Object 'object[]' $rbacGridColumnCount
+            for ($rbacGridColumn = 0; $rbacGridColumn -lt $rbacGridColumnCount; $rbacGridColumn++) {
+                $rbacGridDictionariesArray[$rbacGridColumn] = $rbacGridDictionaries[$rbacGridColumn].ToArray()
+            }
+            $rbacGridDictionariesJson = ConvertTo-Json -InputObject $rbacGridDictionariesArray -Compress -Depth 3 -EscapeHandling EscapeHtml
+            $rbacGridColumnsJson = ConvertTo-Json -InputObject $rbacGridColumns -Compress -EscapeHandling EscapeHtml
+            $rbacGridDictionaries = $null #cleanup
+            $rbacGridMaps = $null #cleanup
+            $rbacGridDictionariesArray = $null #cleanup
+
             $endCreateRBACAllHTMLForeach = Get-Date
             Write-Host "   CreateRBACAll HTML Foreach duration: $((New-TimeSpan -Start $startCreateRBACAllHTMLForeach -End $endCreateRBACAllHTMLForeach).TotalMinutes) minutes ($((New-TimeSpan -Start $startCreateRBACAllHTMLForeach -End $endCreateRBACAllHTMLForeach).TotalSeconds) seconds)"
 
             [void]$htmlTenantSummary.AppendLine(@"
-];
-var gridOptions4$($htmlTableId) = {
-    rowData: rowData4$($htmlTableId),
+],
+dictionaries: $($rbacGridDictionariesJson),
+columns: $($rbacGridColumnsJson)
+};
+</script>
+<script id="agvGridDef4$($htmlTableId)">
+//factory, so that the pop out window can build the very same grid in its own document
+function agvGridOptions4$($htmlTableId)(agvHighlighter, agvRowData, agvGridElement) {
+    //the column index passed to the getters/renderers must match the column order of the emitted rowData
+    return {
+    rowData: agvRowData.rows,
     columnDefs: [
-        { headerName: 'Scope', field: 'ScopeTenOrMgOrSubOrRGOrRes', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
-        { headerName: 'Management Group Id', field: 'MgId' },
-        { headerName: 'Management Group Name', field: 'MgName' },
-        { headerName: 'SubscriptionId', field: 'SubscriptionId' },
-        { headerName: 'Subscription Name', field: 'SubscriptionName' },
-        { headerName: 'Assignment Scope', field: 'Scope' },
-        { headerName: 'Role', field: 'RoleClear', cellRenderer: function (params) { return params.data.Role; } },
-        { headerName: 'Role Id', field: 'RoleId' },
-        { headerName: 'Role Type', field: 'RoleType', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
-        { headerName: 'Data', field: 'RoleDataRelated', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
-        { headerName: 'Can do Role assignment', field: 'RoleCanDoRoleAssignments', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
-        { headerName: 'Identity Displayname', field: 'ObjectDisplayName' },
-        { headerName: 'Identity SignInName', field: 'ObjectSignInName' },
-        { headerName: 'Identity ObjectId', field: 'ObjectId' },
-        { headerName: 'Identity Type', field: 'ObjectType', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
-        { headerName: 'Applicability', field: 'AssignmentType', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
-        { headerName: 'Applies through membership', field: 'AssignmentInheritFrom', headerTooltip: 'Note: the identity might not be a direct member of the group it could also be member of a nested group' },
-        { headerName: 'Group Details', field: 'GroupMembersCount' },
-        { headerName: 'PIM', field: 'RoleAssignmentPIMRelated', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
-        { headerName: 'PIM assignment type', field: 'RoleAssignmentPIMAssignmentType', floatingFilterComponent: agvSelectFloatingFilter, suppressFloatingFilterButton: true },
-        { headerName: 'PIM start', field: 'RoleAssignmentPIMAssignmentSlotStart' },
-        { headerName: 'PIM end', field: 'RoleAssignmentPIMAssignmentSlotEnd' },
-        { headerName: 'Role AssignmentId', field: 'RoleAssignmentId' },
-        { headerName: 'Related Policy Assignment', field: 'RbacRelatedPolicyAssignmentClear', cellRenderer: function (params) { return params.data.RbacRelatedPolicyAssignment; } },
-        { headerName: 'CreatedOn', field: 'CreatedOn' },
-        { headerName: 'CreatedBy', field: 'CreatedBy' }
+        { headerName: 'Scope', colId: 'ScopeTenOrMgOrSubOrRGOrRes', valueGetter: agvColumnValueGetter(agvRowData, 0), floatingFilterComponent: agvSelectFloatingFilter, floatingFilterComponentParams: { values: agvRowData.dictionaries[0] }, suppressFloatingFilterButton: true },
+        { headerName: 'Management Group Id', colId: 'MgId', valueGetter: agvColumnValueGetter(agvRowData, 1) },
+        { headerName: 'Management Group Name', colId: 'MgName', valueGetter: agvColumnValueGetter(agvRowData, 2) },
+        { headerName: 'SubscriptionId', colId: 'SubscriptionId', valueGetter: agvColumnValueGetter(agvRowData, 3) },
+        { headerName: 'Subscription Name', colId: 'SubscriptionName', valueGetter: agvColumnValueGetter(agvRowData, 4) },
+        { headerName: 'Assignment Scope', colId: 'Scope', valueGetter: agvColumnValueGetter(agvRowData, 5) },
+        { headerName: 'Role', colId: 'RoleClear', valueGetter: agvColumnValueGetter(agvRowData, 7), cellRenderer: agvColumnHtmlRenderer(agvRowData, 6, agvHighlighter) },
+        { headerName: 'Role Id', colId: 'RoleId', valueGetter: agvColumnValueGetter(agvRowData, 8) },
+        { headerName: 'Role Type', colId: 'RoleType', valueGetter: agvColumnValueGetter(agvRowData, 9), floatingFilterComponent: agvSelectFloatingFilter, floatingFilterComponentParams: { values: agvRowData.dictionaries[9] }, suppressFloatingFilterButton: true },
+        { headerName: 'Data', colId: 'RoleDataRelated', valueGetter: agvColumnValueGetter(agvRowData, 10), floatingFilterComponent: agvSelectFloatingFilter, floatingFilterComponentParams: { values: agvRowData.dictionaries[10] }, suppressFloatingFilterButton: true },
+        { headerName: 'Can do Role assignment', colId: 'RoleCanDoRoleAssignments', valueGetter: agvColumnValueGetter(agvRowData, 11), floatingFilterComponent: agvSelectFloatingFilter, floatingFilterComponentParams: { values: agvRowData.dictionaries[11] }, suppressFloatingFilterButton: true },
+        { headerName: 'Identity Displayname', colId: 'ObjectDisplayName', valueGetter: agvColumnValueGetter(agvRowData, 12) },
+        { headerName: 'Identity SignInName', colId: 'ObjectSignInName', valueGetter: agvColumnValueGetter(agvRowData, 13) },
+        { headerName: 'Identity ObjectId', colId: 'ObjectId', valueGetter: agvColumnValueGetter(agvRowData, 14) },
+        { headerName: 'Identity Type', colId: 'ObjectType', valueGetter: agvColumnValueGetter(agvRowData, 15), floatingFilterComponent: agvSelectFloatingFilter, floatingFilterComponentParams: { values: agvRowData.dictionaries[15] }, suppressFloatingFilterButton: true },
+        { headerName: 'Applicability', colId: 'AssignmentType', valueGetter: agvColumnValueGetter(agvRowData, 16), floatingFilterComponent: agvSelectFloatingFilter, floatingFilterComponentParams: { values: agvRowData.dictionaries[16] }, suppressFloatingFilterButton: true },
+        { headerName: 'Applies through membership', colId: 'AssignmentInheritFrom', valueGetter: agvColumnValueGetter(agvRowData, 17), headerTooltip: 'Note: the identity might not be a direct member of the group it could also be member of a nested group' },
+        { headerName: 'Group Details', colId: 'GroupMembersCount', valueGetter: agvColumnValueGetter(agvRowData, 18) },
+        { headerName: 'PIM', colId: 'RoleAssignmentPIMRelated', valueGetter: agvColumnValueGetter(agvRowData, 19), floatingFilterComponent: agvSelectFloatingFilter, floatingFilterComponentParams: { values: agvRowData.dictionaries[19] }, suppressFloatingFilterButton: true },
+        { headerName: 'PIM assignment type', colId: 'RoleAssignmentPIMAssignmentType', valueGetter: agvColumnValueGetter(agvRowData, 20), floatingFilterComponent: agvSelectFloatingFilter, floatingFilterComponentParams: { values: agvRowData.dictionaries[20] }, suppressFloatingFilterButton: true },
+        { headerName: 'PIM start', colId: 'RoleAssignmentPIMAssignmentSlotStart', valueGetter: agvColumnValueGetter(agvRowData, 21) },
+        { headerName: 'PIM end', colId: 'RoleAssignmentPIMAssignmentSlotEnd', valueGetter: agvColumnValueGetter(agvRowData, 22) },
+        { headerName: 'Role AssignmentId', colId: 'RoleAssignmentId', valueGetter: agvColumnValueGetter(agvRowData, 23) },
+        { headerName: 'Related Policy Assignment', colId: 'RbacRelatedPolicyAssignmentClear', valueGetter: agvColumnValueGetter(agvRowData, 25), cellRenderer: agvColumnHtmlRenderer(agvRowData, 24, agvHighlighter) },
+        { headerName: 'CreatedOn', colId: 'CreatedOn', valueGetter: agvColumnValueGetter(agvRowData, 26), filter: 'agDateColumnFilter', filterParams: agvDateFilterParams, comparator: agvDateSortComparator },
+        { headerName: 'CreatedBy', colId: 'CreatedBy', valueGetter: agvColumnValueGetter(agvRowData, 27) }
     ],
     defaultColDef: {
         minWidth: 90,
         maxWidth: 420,
         sortable: true,
         resizable: true,
+        //every value is a string, without this AG Grid would infer the type from the data and e.g. render 'true'/'false' as a checkbox
+        cellDataType: 'text',
         filter: 'agTextColumnFilter',
         floatingFilter: true,
         //no truncation: columns are sized to their content, anything beyond maxWidth wraps
         wrapText: true,
         autoHeight: true,
         wrapHeaderText: true,
-        autoHeaderHeight: true
+        autoHeaderHeight: true,
+        //renders the plain cell value html encoded and wraps the text filter matches in <mark>
+        cellRenderer: function (params) { return agvHighlighter.text(params.value, params.column.getColId()); }
     },
     autoSizeStrategy: { type: 'fitCellContents' },
     pagination: true,
     paginationPageSize: 100,
     paginationPageSizeSelector: [10, 30, 50, 100, 250, 500, 1000],
     enableCellTextSelection: true,
-    ensureDomOrder: true
-};
+    ensureDomOrder: true,
+    onFirstDataRendered: function (event) {
+        agvAddResetFiltersButton(event.api, agvGridElement);
+    },
+    onFilterChanged: function (event) {
+        var changed = agvHighlighter.update(event.api.getFilterModel());
+        if (changed.length) {
+            //refresh all rows of the changed columns so that the marks are also updated off screen
+            event.api.refreshCells({ columns: changed, force: true });
+        }
+    }
+    };
+}
+</script>
+<script>
 function createag$($htmlTableId)() {
     if (window.helperag$($htmlTableId) === 1) { return; }
     window.helperag$($htmlTableId) = 1;
-    window.api4$($htmlTableId) = agGrid.createGrid(document.getElementById('$htmlTableId'), gridOptions4$($htmlTableId));
+    var element = document.getElementById('$htmlTableId');
+    window.api4$($htmlTableId) = agGrid.createGrid(element, agvGridOptions4$($htmlTableId)(agvCreateHighlighter(), rowData4$($htmlTableId), element));
 }
 function loadag$($htmlTableId)() {
     //deferred, the collapsible content is made visible by the click handler that runs after this one
@@ -5530,6 +5594,9 @@ function loadag$($htmlTableId)() {
 function exportag$($htmlTableId)(separator) {
     createag$($htmlTableId)();
     window.api4$($htmlTableId).exportDataAsCsv({ columnSeparator: separator, fileName: 'export_$($htmlTableId)_' + new Date().toLocaleDateString('en-CA') + '.csv' });
+}
+function popoutag$($htmlTableId)() {
+    agvPopoutGrid('Azure Governance Visualizer - Role assignments', 'agvGridDef4$($htmlTableId)', 'agvGridOptions4$($htmlTableId)', 'rowData4$($htmlTableId)');
 }
 </script>
 "@)
