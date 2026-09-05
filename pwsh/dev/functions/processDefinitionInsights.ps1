@@ -1036,20 +1036,18 @@ tf.init();}}
     }
     else {
         Write-Host "   Creating dedicated DefinitionInsights HTML ($($outputPath)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html)"
-        $htmlDefinitionInsightsDedicated = $null
-        $htmlDefinitionInsightsDedicated += $htmlDefinitionInsightsDedicatedStart
-        $htmlDefinitionInsightsDedicated += $htmlDefinitionInsights
-        $htmlDefinitionInsightsDedicated += $htmlDefinitionInsightsDedicatedEnd
-        #$htmlDefinitionInsights = $null
-        $htmlDefinitionInsightsDedicated | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html" -Encoding utf8 -Force
-        #$script:htmlDefinitionInsightsDedicated = $null
+        #the builder holds the whole DefinitionInsights html, concatenating the parts would multiply that in memory
+        $htmlDefinitionInsightsDedicatedPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html"
+        $htmlDefinitionInsightsDedicatedStart | Set-Content -Path $htmlDefinitionInsightsDedicatedPath -Encoding utf8 -Force
+        $htmlDefinitionInsights | Add-Content -Path $htmlDefinitionInsightsDedicatedPath -Encoding utf8 -Force
+        $htmlDefinitionInsights = $null
+        $htmlDefinitionInsightsDedicatedEnd | Add-Content -Path $htmlDefinitionInsightsDedicatedPath -Encoding utf8 -Force
 
         $htmlDefinitionInsightsNo = @"
         <span>DefinitionInsights has been saved to dedicated HTML file '<i>$($outputPathGiven)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html</i>' (parameter -NoDefinitionInsightsDedicatedHTML = $($NoDefinitionInsightsDedicatedHTML))</span><br>
         Open <a class="externallink" href="$($fileName)_DefinitionInsights.html" target="blank">DefinitionInsights <i class="fa fa-external-link" aria-hidden="true"></i></a>
 "@
         $script:html += $htmlDefinitionInsightsNo
-        #$htmlDefinitionInsightsNo = $null
         $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
         $script:html = $null
     }

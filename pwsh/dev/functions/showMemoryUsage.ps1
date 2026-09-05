@@ -1,29 +1,29 @@
 ﻿function showMemoryUsage {
 
-    function makeDouble {
-        [CmdletBinding()]
-        Param
-        (
-            [Parameter(Mandatory = $true)]$MemoryUsed
-        )
-
-        try {
-            $memoryUsedDouble = [double]($memoryUsed -replace ',', '.')
-        }
-        catch {
-            $memoryUsedDouble = [string]$MemoryUsed
-        }
-        return $memoryUsedDouble
-    }
-
     function getMemoryUsage {
         if ($IsLinux) {
-            $memoryUsed = 100 - (free | grep Mem | awk '{print $4/$2 * 100.0}')
-            makeDouble $memoryUsed
+            $memInfo = @{}
+            foreach ($memInfoLine in [System.IO.File]::ReadAllLines('/proc/meminfo')) {
+                $memInfoLineSplitted = $memInfoLine.Split(':')
+                if ($memInfoLineSplitted.Count -eq 2) {
+                    $memInfo[$memInfoLineSplitted[0]] = [double]($memInfoLineSplitted[1].Trim() -replace ' kB$')
+                }
+            }
+            $memoryTotal = $memInfo['MemTotal']
+            if (-not $memoryTotal) {
+                return 'n/a'
+            }
+            #'MemAvailable' accounts for the reclaimable page cache, 'MemFree' would report the files written by the report as used memory
+            $memoryAvailable = $memInfo['MemAvailable']
+            if ($null -eq $memoryAvailable) {
+                #kernels before 3.14 do not report 'MemAvailable'
+                $memoryAvailable = $memInfo['MemFree'] + $memInfo['Buffers'] + $memInfo['Cached']
+            }
+            return 100 - ($memoryAvailable / $memoryTotal * 100)
         }
         if ($IsWindows) {
-            $memoryUsed = (Get-CimInstance win32_operatingsystem | ForEach-Object { '{0:N2}' -f ((($_.TotalVisibleMemorySize - $_.FreePhysicalMemory) * 100) / $_.TotalVisibleMemorySize) })
-            makeDouble $memoryUsed
+            $operatingSystem = Get-CimInstance win32_operatingsystem
+            return 100 - ($operatingSystem.FreePhysicalMemory / $operatingSystem.TotalVisibleMemorySize * 100)
         }
     }
     $memoryUsed = getMemoryUsage
@@ -35,6 +35,8 @@
             $PSMemoryBefore = [System.GC]::GetTotalMemory($false)
             Write-Host " PS memory used before GC: $($PSMemoryBefore /1MB)MB ($PSMemoryBefore)"
             $startGC = Get-Date
+            #the report churns large strings, without compaction the freed Large Object Heap stays fragmented
+            [System.Runtime.GCSettings]::LargeObjectHeapCompactionMode = [System.Runtime.GCLargeObjectHeapCompactionMode]::CompactOnce
             $PSMemoryAfter = [System.GC]::GetTotalMemory($true)
             $endGC = Get-Date
             $PSMemoryDiff = $PSMemoryBefore - $PSMemoryAfter

@@ -781,6 +781,7 @@ if ($ManagementGroupId -match ' ') {
 . ".\$($ScriptPath)\functions\processStorageAccountAnalysis.ps1"
 . ".\$($ScriptPath)\functions\processALZPolicyVersionChecker.ps1"
 . ".\$($ScriptPath)\functions\processALZPolicyAssignmentsChecker.ps1"
+. ".\$($ScriptPath)\functions\processPolicyLinter.ps1"
 . ".\$($ScriptPath)\functions\getPIMEligible.ps1"
 . ".\$($ScriptPath)\functions\testGuid.ps1"
 . ".\$($ScriptPath)\functions\apiCallTracking.ps1"
@@ -1161,6 +1162,13 @@ if (-not $HierarchyMapOnly) {
     $arrayCustomBuiltInPolicyParity = [System.Collections.ArrayList]@()
     $arrayRemediatable = [System.Collections.ArrayList]@()
     $ALZPolicyAssignmentsDifferences = @{}
+    $arrayPolicyLinterFindings = [System.Collections.ArrayList]@()
+    $policyLinterStatus = @{
+        executed            = $false
+        reason              = 'not executed'
+        recommendation      = ''
+        policiesLintedCount = 0
+    }
 }
 
 if (-not $HierarchyMapOnly) {
@@ -1562,6 +1570,8 @@ if (-not $HierarchyMapOnly) {
     }
     $endPolicyCustomBuiltInParity = Get-Date
     Write-Host " Policy custom/built-In parity check duration: $((New-TimeSpan -Start $startPolicyCustomBuiltInParity -End $endPolicyCustomBuiltInParity).TotalMinutes) minutes ($((New-TimeSpan -Start $startPolicyCustomBuiltInParity -End $endPolicyCustomBuiltInParity).TotalSeconds) seconds)"
+
+    processPolicyLinter
     #endregion create array Policy definitions
 
     #region create array PolicySet definitions
@@ -2000,6 +2010,24 @@ $agGridSupportScript = @'
         }
         out += emit(text.slice(pos));
         return out;
+    }
+
+    /* The dictionaries repeat the same markup (e.g. the AzAdvertizer link) for thousands of values, the emitter
+       therefore replaces those fragments with a single private use character indexing into 'fragments'. */
+    function agvExpandDictionaries(encoded) {
+        var fragments = encoded.fragments;
+        if (!fragments || !fragments.length) { return encoded; }
+        var expand = function (token) {
+            var index = token.charCodeAt(0) - 0xE000;
+            return index < fragments.length ? fragments[index] : token;
+        };
+        for (var columnIndex = 0; columnIndex < encoded.dictionaries.length; columnIndex++) {
+            var dictionary = encoded.dictionaries[columnIndex];
+            for (var valueIndex = 0; valueIndex < dictionary.length; valueIndex++) {
+                dictionary[valueIndex] = dictionary[valueIndex].replace(/[\uE000-\uE0FF]/g, expand);
+            }
+        }
+        return encoded;
     }
 
     /* Dictionary encoded row data: a row is an array of integers, each one an index into the dictionary of its column.
@@ -2869,7 +2897,11 @@ else {
 $starthierarchyMap = Get-Date
 Write-Host ' Building HierarchyMap'
 
+#the map is emitted by a recursion over all Management Groups, a plain string would be copied on every single append
+$script:htmlHierarchyMap = [System.Text.StringBuilder]::new()
 HierarchyMgHTML -mgChild $ManagementGroupId
+$html += $script:htmlHierarchyMap.ToString()
+$script:htmlHierarchyMap = $null
 showMemoryUsage
 
 $endhierarchyMap = Get-Date

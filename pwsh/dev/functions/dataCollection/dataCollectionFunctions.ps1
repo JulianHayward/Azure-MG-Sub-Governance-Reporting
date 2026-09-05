@@ -377,7 +377,7 @@ function dataCollectionDiagnosticsMG {
 
     $mgPath = $htManagementGroupsMgPath.($scopeId).pathDelimited
     $currentTask = "Getting Diagnostic Settings for Management Group: '$($scopeDisplayName)' ('$($scopeId)')"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($mgdetail.Name)/providers/microsoft.insights/diagnosticSettings?api-version=2020-01-01-preview"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($scopeId)/providers/microsoft.insights/diagnosticSettings?api-version=2020-01-01-preview"
     $method = 'GET'
     $getDiagnosticSettingsMg = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask
 

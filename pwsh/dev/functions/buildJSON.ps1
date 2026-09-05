@@ -491,9 +491,13 @@
     buildTree -mgId $ManagementGroupId -json $json -prnt "$($JSONPath)$($DirectorySeparatorChar)Tenant"
 
     $htTree.'Tenant'.'CustomRoleDefinitions' = $htJSON.RoleDefinitions
+    #the tree references what is still needed, holding the parallel structure through the serialize doubles the peak
+    $htJSON = $null
 
     Write-Host " Exporting Tenant JSON '$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)$($fileName).json'"
     $htTree | ConvertTo-Json -Depth 99 | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)$($fileName).json" -Encoding utf8 -Force
+    $htTree = $null
+    $json = $null
 
     $endBuildJSON = Get-Date
     Write-Host " Building JSON duration: $((New-TimeSpan -Start $startBuildJSON -End $endBuildJSON).TotalSeconds) seconds"

@@ -41,67 +41,67 @@ function HierarchyMgHTML($mgChild) {
     if ($htMgAtScopeRoleAssignments.($mgId)) {
         $mgIdRoleAssignmentCount = $htMgAtScopeRoleAssignments.($mgId).AssignmentsCount
     }
-    $script:html += @"
+    [void]$script:htmlHierarchyMap.Append(@"
                     <li $liId $liclass>
                         <a $class href="#table_$mgId" id="hierarchy_$mgId">
                             <div class="main">
 
                                 <div class="extraInfo">
                                     <div class="extraInfoContent">
-"@
+"@)
     if ($mgPolicyAssignmentCount -gt 0 -or $mgPolicyPolicySetScopedCount -gt 0) {
         if ($mgPolicyAssignmentCount -gt 0 -and $mgPolicyPolicySetScopedCount -gt 0) {
-            $script:html += @"
+            [void]$script:htmlHierarchyMap.Append(@"
                                         <div class="extraInfoPolicyAss1">
                                             <abbr class="abbrTree" title="$($mgPolicyAssignmentCount) Policy assignments">$($mgPolicyAssignmentCount)</abbr>
                                         </div>
                                         <div class="extraInfoPolicyScoped1">
                                             <abbr class="abbrTree" title="$($mgPolicyPolicySetScopedCount) Policy/PolicySet definitions scoped">$($mgPolicyPolicySetScopedCount)</abbr>
                                         </div>
-"@
+"@)
         }
         else {
             if ($mgPolicyAssignmentCount -gt 0) {
-                $script:html += @"
+                [void]$script:htmlHierarchyMap.Append(@"
                                             <div class="extraInfoPolicyAss0">
                                                 <abbr class="abbrTree" title="$($mgPolicyAssignmentCount) Policy assignments">$($mgPolicyAssignmentCount)</abbr>
                                             </div>
-"@
+"@)
             }
             if ($mgPolicyPolicySetScopedCount -gt 0) {
-                $script:html += @"
+                [void]$script:htmlHierarchyMap.Append(@"
                                             <div class="extraInfoPolicyScoped0">
                                                 <abbr class="abbrTree" title="$($mgPolicyPolicySetScopedCount) Policy/PolicySet definitions scoped">$($mgPolicyPolicySetScopedCount)</abbr>
                                             </div>
-"@
+"@)
             }
         }
     }
     else {
-        $script:html += @'
+        [void]$script:htmlHierarchyMap.Append(@'
     <div class="extraInfoPlchldr"></div>
-'@
+'@)
     }
-    $script:html += @'
+    [void]$script:htmlHierarchyMap.Append(@'
                                             </div>
                                             <div class="treeMgLogo">
                                                 <img class="imgTreeLogo" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-11-Management-Groups.svg">
                                             </div>
                                             <div class="extraInfoContent">
-'@
+'@)
     if ($mgIdRoleAssignmentCount -gt 0) {
-        $script:html += @"
+        [void]$script:htmlHierarchyMap.Append(@"
                                             <div class="extraInfoRoleAss">
                                                 <abbr class="abbrTree" title="$($mgIdRoleAssignmentCount) Role assignments">$($mgIdRoleAssignmentCount)</abbr>
                                             </div>
-"@
+"@)
     }
     else {
-        $script:html += @'
+        [void]$script:htmlHierarchyMap.Append(@'
     <div class="extraInfoPlchldr"></div>
-'@
+'@)
     }
-    $script:html += @"
+    [void]$script:htmlHierarchyMap.Append(@"
                                     </div>
                                 </div>
 
@@ -109,26 +109,26 @@ function HierarchyMgHTML($mgChild) {
                                 </div>
                             </div>
                         </a>
-"@
+"@)
     $childMgs = $htMgDetails.($mgId).mgChildren
     if (($childMgs).count -gt 0) {
-        $script:html += @'
+        [void]$script:htmlHierarchyMap.Append(@'
                 <ul>
-'@
+'@)
         foreach ($childMg in $childMgs) {
             HierarchyMgHTML -mgChild $childMg
         }
         HierarchySubForMgHTML -mgChild $mgId
-        $script:html += @'
+        [void]$script:htmlHierarchyMap.Append(@'
                 </ul>
             </li>
-'@
+'@)
     }
     else {
         HierarchySubForMgUlHTML -mgChild $mgId
-        $script:html += @'
+        [void]$script:htmlHierarchyMap.Append(@'
             </li>
-'@
+'@)
     }
 }
 
@@ -140,19 +140,19 @@ function HierarchySubForMgHTML($mgChild) {
     Write-Host "  Building HierarchyMap for MG '$mgChild', $($subscriptionsCnt) Subscriptions"
     if ($subscriptionsCnt -gt 0 -or $subscriptionsOutOfScopelinkedCnt -gt 0) {
         if ($subscriptionsCnt -gt 0 -and $subscriptionsOutOfScopelinkedCnt -gt 0) {
-            $script:html += @"
+            [void]$script:htmlHierarchyMap.Append(@"
             <li><a href="#table_$mgChild"><div class="hierarchyTreeSubs" id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg">$(($subscriptions).count)x <img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions_excluded_r.svg">$(($subscriptionsOutOfScopelinked).count)x</div></a></li>
-"@
+"@)
         }
         if ($subscriptionsCnt -gt 0 -and $subscriptionsOutOfScopelinkedCnt -eq 0) {
-            $script:html += @"
+            [void]$script:htmlHierarchyMap.Append(@"
             <li><a href="#table_$mgChild"><div class="hierarchyTreeSubs" id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> $(($subscriptions).count)x</div></a></li>
-"@
+"@)
         }
         if ($subscriptionsCnt -eq 0 -and $subscriptionsOutOfScopelinkedCnt -gt 0) {
-            $script:html += @"
+            [void]$script:htmlHierarchyMap.Append(@"
             <li><a href="#table_$mgChild"><div class="hierarchyTreeSubs" id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions_excluded_r.svg">$(($subscriptionsOutOfScopelinked).count)x</div></a></li>
-"@
+"@)
         }
     }
 }
@@ -165,19 +165,19 @@ function HierarchySubForMgUlHTML($mgChild) {
     Write-Host "  Building HierarchyMap for MG '$mgChild', $($subscriptionsCnt) Subscriptions"
     if ($subscriptionsCnt -gt 0 -or $subscriptionsOutOfScopelinkedCnt -gt 0) {
         if ($subscriptionsCnt -gt 0 -and $subscriptionsOutOfScopelinkedCnt -gt 0) {
-            $script:html += @"
+            [void]$script:htmlHierarchyMap.Append(@"
             <ul><li><a href="#table_$mgChild"><div class="hierarchyTreeSubs" id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> $(($subscriptions).count)x <img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions_excluded_r.svg">$(($subscriptionsOutOfScopelinked).count)x</div></a></li></ul>
-"@
+"@)
         }
         if ($subscriptionsCnt -gt 0 -and $subscriptionsOutOfScopelinkedCnt -eq 0) {
-            $script:html += @"
+            [void]$script:htmlHierarchyMap.Append(@"
             <ul><li><a href="#table_$mgChild"><div class="hierarchyTreeSubs" id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions.svg"> $(($subscriptions).count)x</div></a></li></ul>
-"@
+"@)
         }
         if ($subscriptionsCnt -eq 0 -and $subscriptionsOutOfScopelinkedCnt -gt 0) {
-            $script:html += @"
+            [void]$script:htmlHierarchyMap.Append(@"
             <ul><li><a href="#table_$mgChild"><div class="hierarchyTreeSubs" id="hierarchySub_$mgChild"><img class="imgSubTree" src="https://www.azadvertizer.net/azgovvizv4/icon/Icon-general-2-Subscriptions_excluded_r.svg">$(($subscriptionsOutOfScopelinked).count)x</div></a></li></ul>
-"@
+"@)
         }
     }
 }

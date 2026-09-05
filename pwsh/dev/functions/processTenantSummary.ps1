@@ -1474,7 +1474,67 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
     }
     $endCustPolLoop = Get-Date
     Write-Host "   Custom Policy processing duration: $((New-TimeSpan -Start $startCustPolLoop -End $endCustPolLoop).TotalMinutes) minutes ($((New-TimeSpan -Start $startCustPolLoop -End $endCustPolLoop).TotalSeconds) seconds)"
+    $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+    $htmlTenantSummary = [System.Text.StringBuilder]::new()
     #endregion SUMMARYcustompolicies
+
+    #region SUMMARYPolicyLinter
+    $startPolicyLinterSummary = Get-Date
+    Write-Host '  processing TenantSummary Policy Linter'
+    $policyLinterFindingsCount = $arrayPolicyLinterFindings.Count
+
+    if (-not $policyLinterStatus.executed) {
+        $policyLinterSkipReason = $policyLinterStatus.reason
+        if ($policyLinterStatus.recommendation) {
+            $policyLinterSkipReason = "$($policyLinterSkipReason) - install it with '$($policyLinterStatus.recommendation)'"
+        }
+        [void]$htmlTenantSummary.AppendLine(@"
+                <p><i class="padlx fa fa-ban" aria-hidden="true"></i> Policy Linter not executed ($($policyLinterSkipReason -replace '<', '&lt;' -replace '>', '&gt;'))</p>
+"@)
+    }
+    elseif ($policyLinterFindingsCount -eq 0) {
+        [void]$htmlTenantSummary.AppendLine(@"
+                <p><i class="padlx fa fa-check-circle blue" aria-hidden="true"></i> Policy Linter: no findings for $($policyLinterStatus.policiesLintedCount) Custom Policy definitions ($scopeNamingSummary)</p>
+"@)
+    }
+    else {
+        $policyLinterPoliciesAffectedCount = ($arrayPolicyLinterFindings.PolicyDefinitionId | Sort-Object -Unique).Count
+        $policyLinterSeverityRank = @{ 'Error' = 0; 'Warning' = 1; 'Informational' = 2 }
+        $policyLinterSeverityRankScript = { $rank = $policyLinterSeverityRank[[string]$_.Severity]; if ($null -eq $rank) { 3 } else { $rank } }
+        $policyLinterSeverityGrouped = $arrayPolicyLinterFindings | Group-Object -Property Severity
+        $policyLinterSeveritySummary = (($policyLinterSeverityGrouped | Sort-Object @{Expression = { $rank = $policyLinterSeverityRank[[string]$_.Name]; if ($null -eq $rank) { 3 } else { $rank } } }).ForEach({ "$($_.Count) $($_.Name)" })) -join "$CsvDelimiterOpposite "
+
+        $htmlTableId = 'TenantSummary_policyLinter'
+
+        #columns feeding the AG Grid; a column that defines an 'htmlProperty' renders that property, sorting/filtering/export use 'property'
+        $policyLinterGridColumnDefinitions = @(
+            @{ header = 'Severity'; property = 'Severity'; filter = 'select' }
+            @{ header = 'Rule'; property = 'Rule'; filter = 'select' }
+            @{ header = 'Rule category'; property = 'RuleCategory'; filter = 'select' }
+            @{ header = 'Description'; property = 'Description' }
+            @{ header = 'Policy DisplayName'; property = 'PolicyDisplayName' }
+            @{ header = 'Policy Name'; property = 'PolicyDefinitionName' }
+            @{ header = 'PolicyId'; property = 'PolicyDefinitionId' }
+            @{ header = 'Scope'; property = 'Scope'; filter = 'select' }
+            @{ header = 'Scope Id'; property = 'ScopeId' }
+            @{ header = 'JSON path'; property = 'JsonPath' }
+            @{ header = 'Line'; property = 'Line'; filter = 'number' }
+        )
+
+        [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadag$($htmlTableId)()" type="button" class="collapsible" id="buttonTenantSummary_policyLinter"><i class="padlx fa fa-exclamation-triangle yellow" aria-hidden="true"></i> <span class="valignMiddle">$policyLinterFindingsCount Policy Linter findings ($policyLinterSeveritySummary) for $policyLinterPoliciesAffectedCount of $($policyLinterStatus.policiesLintedCount) Custom Policy definitions ($scopeNamingSummary)</span> <abbr title="Findings reported by the Azure Policy Linter (Microsoft.Azure.Policy.PolicyLinter.Cli)"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableId)(); return false;">Pop out grid</a><br>
+<span class="hintTableSize">*The CSV download respects the filters and the column order applied in the grid</span>
+"@)
+        [void]$htmlTenantSummary.AppendLine((buildAgGridScript -HtmlTableId $htmlTableId -PopoutTitle 'Azure Governance Visualizer - Policy Linter findings' -ColumnDefinitions $policyLinterGridColumnDefinitions -Rows @($arrayPolicyLinterFindings | Sort-Object $policyLinterSeverityRankScript, @{Expression = { $_.PolicyDisplayName } }, @{Expression = { $_.Rule } })))
+        [void]$htmlTenantSummary.AppendLine('</div>')
+    }
+    $endPolicyLinterSummary = Get-Date
+    Write-Host "   Policy Linter processing duration: $((New-TimeSpan -Start $startPolicyLinterSummary -End $endPolicyLinterSummary).TotalSeconds) seconds"
+    $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+    $htmlTenantSummary = [System.Text.StringBuilder]::new()
+    #endregion SUMMARYPolicyLinter
 
     $startcustpolorph = Get-Date
     #region SUMMARYCustomPoliciesOrphandedTenantRoot
@@ -4321,15 +4381,13 @@ extensions: [{ name: 'sort' }]
     Write-Host "    UnresolvedIdentities (createdBy/updatedBy) duration: $((New-TimeSpan -Start $startUnResolvedIdentitiesCreatedByUpdatedByPolicy -End $endUnResolvedIdentitiesCreatedByUpdatedByPolicy).TotalMinutes) minutes ($((New-TimeSpan -Start $startUnResolvedIdentitiesCreatedByUpdatedByPolicy -End $endUnResolvedIdentitiesCreatedByUpdatedByPolicy).TotalSeconds) seconds)"
     #endregion PolicyAssignmentsAllResolveIdentities
 
-    $script:arrayPolicyAssignmentsEnrichedGroupedBySubscription = $arrayPolicyAssignmentsEnriched | Group-Object -Property subscriptionId
-    $script:arrayPolicyAssignmentsEnrichedGroupedByManagementGroup = $arrayPolicyAssignmentsEnriched | Group-Object -Property MgId
-    #build lookup hashtables so ScopeInsights (called per scope) can do O(1) lookups instead of O(scopes*n) .where() scans
+    #lookup hashtables so ScopeInsights (called per scope) can do O(1) lookups instead of O(scopes*n) .where() scans
     $script:htArrayPolicyAssignmentsEnrichedGroupedBySubscription = @{}
-    foreach ($grpEntry in $script:arrayPolicyAssignmentsEnrichedGroupedBySubscription) {
+    foreach ($grpEntry in ($arrayPolicyAssignmentsEnriched | Group-Object -Property subscriptionId)) {
         $script:htArrayPolicyAssignmentsEnrichedGroupedBySubscription[$grpEntry.Name] = $grpEntry
     }
     $script:htArrayPolicyAssignmentsEnrichedGroupedByManagementGroup = @{}
-    foreach ($grpEntry in $script:arrayPolicyAssignmentsEnrichedGroupedByManagementGroup) {
+    foreach ($grpEntry in ($arrayPolicyAssignmentsEnriched | Group-Object -Property MgId)) {
         $script:htArrayPolicyAssignmentsEnrichedGroupedByManagementGroup[$grpEntry.Name] = $grpEntry
     }
 
@@ -4385,7 +4443,7 @@ extensions: [{ name: 'sort' }]
 <div id="$htmlTableId" class="ag-theme-quartz" style="height:600px;width:100%;"></div>
 </div>
 <script>
-var rowData4$($htmlTableId) = {rows:[
+var rowData4$($htmlTableId) = agvExpandDictionaries({rows:[
 "@)
 
             $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
@@ -4542,8 +4600,11 @@ var rowData4$($htmlTableId) = {rows:[
             for ($policyAssignmentsGridColumn = 0; $policyAssignmentsGridColumn -lt $policyAssignmentsGridColumnCount; $policyAssignmentsGridColumn++) {
                 $policyAssignmentsGridDictionariesArray[$policyAssignmentsGridColumn] = $policyAssignmentsGridDictionaries[$policyAssignmentsGridColumn].ToArray()
             }
-            $policyAssignmentsGridDictionariesJson = ConvertTo-Json -InputObject $policyAssignmentsGridDictionariesArray -Compress -Depth 3 -EscapeHandling EscapeHtml
+            $policyAssignmentsGridCompressed = compressGridDictionaries -Dictionaries $policyAssignmentsGridDictionariesArray
+            $policyAssignmentsGridDictionariesJson = ConvertTo-Json -InputObject $policyAssignmentsGridCompressed.dictionaries -Compress -Depth 3 -EscapeHandling EscapeHtml
+            $policyAssignmentsGridFragmentsJson = ConvertTo-Json -InputObject $policyAssignmentsGridCompressed.fragments -Compress -EscapeHandling EscapeHtml
             $policyAssignmentsGridColumnsJson = ConvertTo-Json -InputObject $policyAssignmentsGridColumns.ToArray() -Compress -EscapeHandling EscapeHtml
+            $policyAssignmentsGridCompressed = $null #cleanup
             $policyAssignmentsGridDictionaries = $null #cleanup
             $policyAssignmentsGridMaps = $null #cleanup
             $policyAssignmentsGridDictionariesArray = $null #cleanup
@@ -4554,8 +4615,9 @@ var rowData4$($htmlTableId) = {rows:[
             [void]$htmlTenantSummary.AppendLine(@"
 ],
 dictionaries: $($policyAssignmentsGridDictionariesJson),
+fragments: $($policyAssignmentsGridFragmentsJson),
 columns: $($policyAssignmentsGridColumnsJson)
-};
+});
 </script>
 <script id="agvGridDef4$($htmlTableId)">
 //factory, so that the pop out window can build the very same grid in its own document
@@ -5376,7 +5438,7 @@ extensions: [{ name: 'sort' }]
 <div id="$htmlTableId" class="ag-theme-quartz" style="height:600px;width:100%;"></div>
 </div>
 <script>
-var rowData4$($htmlTableId) = {rows:[
+var rowData4$($htmlTableId) = agvExpandDictionaries({rows:[
 "@)
             $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
             $htmlTenantSummary = [System.Text.StringBuilder]::new()
@@ -5453,8 +5515,11 @@ var rowData4$($htmlTableId) = {rows:[
             for ($rbacGridColumn = 0; $rbacGridColumn -lt $rbacGridColumnCount; $rbacGridColumn++) {
                 $rbacGridDictionariesArray[$rbacGridColumn] = $rbacGridDictionaries[$rbacGridColumn].ToArray()
             }
-            $rbacGridDictionariesJson = ConvertTo-Json -InputObject $rbacGridDictionariesArray -Compress -Depth 3 -EscapeHandling EscapeHtml
+            $rbacGridCompressed = compressGridDictionaries -Dictionaries $rbacGridDictionariesArray
+            $rbacGridDictionariesJson = ConvertTo-Json -InputObject $rbacGridCompressed.dictionaries -Compress -Depth 3 -EscapeHandling EscapeHtml
+            $rbacGridFragmentsJson = ConvertTo-Json -InputObject $rbacGridCompressed.fragments -Compress -EscapeHandling EscapeHtml
             $rbacGridColumnsJson = ConvertTo-Json -InputObject $rbacGridColumns -Compress -EscapeHandling EscapeHtml
+            $rbacGridCompressed = $null #cleanup
             $rbacGridDictionaries = $null #cleanup
             $rbacGridMaps = $null #cleanup
             $rbacGridDictionariesArray = $null #cleanup
@@ -5465,8 +5530,9 @@ var rowData4$($htmlTableId) = {rows:[
             [void]$htmlTenantSummary.AppendLine(@"
 ],
 dictionaries: $($rbacGridDictionariesJson),
+fragments: $($rbacGridFragmentsJson),
 columns: $($rbacGridColumnsJson)
-};
+});
 </script>
 <script id="agvGridDef4$($htmlTableId)">
 //factory, so that the pop out window can build the very same grid in its own document
@@ -8457,6 +8523,8 @@ function popoutag$($htmlTableId)() {
             Write-Host "   RP detailed processing duration: $((New-TimeSpan -Start $startsumRPDetailed -End $endsumRPDetailed).TotalMinutes) minutes ($((New-TimeSpan -Start $startsumRPDetailed -End $endsumRPDetailed).TotalSeconds) seconds)"
         }
     }
+    $htmlTenantSummary | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+    $htmlTenantSummary = [System.Text.StringBuilder]::new()
     #endregion SUMMARYSubResourceProvidersDetailed
 
     #region SUMMARYSubFeatures

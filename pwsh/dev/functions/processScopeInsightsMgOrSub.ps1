@@ -2656,194 +2656,57 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
     }
 
     if (($policiesAssigned).count -gt 0) {
-        $tfCount = ($policiesAssigned).count
         $htmlTableId = "ScopeInsights_PolicyAssignments_$($htmlTableIdentifier -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
-        $randomFunctionName = "func_$htmlTableId"
-        $noteOrNot = ''
+
+        #columns feeding the AG Grid; a column that defines an 'htmlProperty' renders that property, sorting/filtering/export use 'property'
+        $scopeInsightsPolicyAssignmentsGridColumnDefinitions = [System.Collections.Generic.List[object]]@(
+            @{ header = 'Inheritance'; property = 'Inheritance' }
+            @{ header = 'ScopeExcluded'; property = 'ExcludedScope'; filter = 'select' }
+            @{ header = 'Exemption applies'; property = 'ExemptionScope'; filter = 'select' }
+            @{ header = 'Policy DisplayName'; property = 'PolicyNameClear'; htmlProperty = 'PolicyName'; htmlValueScript = {
+                    param($policyAssignment)
+                    #the html of a custom Policy displayname is not built by the report, it must not end up unescaped in the grid
+                    if ($policyAssignment.PolicyType -eq 'Custom') { [string]$policyAssignment.PolicyName -replace '<', '&lt;' -replace '>', '&gt;' } else { [string]$policyAssignment.PolicyName }
+                }
+            }
+            @{ header = 'PolicyId'; property = 'PolicyId' }
+            @{ header = 'Type'; property = 'PolicyType'; filter = 'select' }
+            @{ header = 'Category'; property = 'PolicyCategory' }
+            @{ header = 'ALZ'; property = 'PolicyIsALZ'; filter = 'select' }
+            @{ header = 'Effect'; property = 'Effect'; filter = 'select' }
+            @{ header = 'Parameters'; property = 'PolicyAssignmentParameters' }
+            @{ header = 'Enforcement'; property = 'PolicyAssignmentEnforcementMode'; filter = 'select' }
+            @{ header = 'NonCompliance Message'; property = 'PolicyAssignmentNonComplianceMessages' }
+        )
+        if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
+            $scopeInsightsPolicyAssignmentsGridColumnDefinitions.AddRange([object[]]@(
+                    @{ header = 'Policies NonCmplnt'; property = 'NonCompliantPolicies'; filter = 'number' }
+                    @{ header = 'Policies Compliant'; property = 'CompliantPolicies'; filter = 'number' }
+                    @{ header = 'Resources NonCmplnt'; property = 'NonCompliantResources'; filter = 'number' }
+                    @{ header = 'Resources Compliant'; property = 'CompliantResources'; filter = 'number' }
+                    @{ header = 'Resources Conflicting'; property = 'ConflictingResources'; filter = 'number' }
+                ))
+        }
+        $scopeInsightsPolicyAssignmentsGridColumnDefinitions.AddRange([object[]]@(
+                @{ header = 'Role/Assignment'; property = 'RelatedRoleAssignmentsClear'; htmlProperty = 'RelatedRoleAssignments' }
+                @{ header = 'Managed Identity'; property = 'PolicyAssignmentMI' }
+                @{ header = 'Assignment DisplayName'; property = 'PolicyAssignmentDisplayName' }
+                @{ header = 'AssignmentId'; property = 'PolicyAssignmentId' }
+                @{ header = 'AssignedBy'; property = 'AssignedBy' }
+                @{ header = 'CreatedOn'; property = 'CreatedOn'; filter = 'date' }
+                @{ header = 'CreatedBy'; property = 'CreatedBy' }
+                @{ header = 'UpdatedOn'; property = 'UpdatedOn'; filter = 'date' }
+                @{ header = 'UpdatedBy'; property = 'UpdatedBy' }
+            ))
+
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$policiesCount Policy assignments ($policiesAssignedAtScope at scope, $policiesInherited inherited) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom)</span></button>
+<button onclick="loadag$($htmlTableId)()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$policiesCount Policy assignments ($policiesAssignedAtScope at scope, $policiesInherited inherited) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom)</span></button>
 <div class="content $SIDivContentClass">
-&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a><br>
-&nbsp;&nbsp;<span class="hintTableSize">*Depending on the number of rows and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
-<table id="$htmlTableId" class="$cssClass">
-<thead>
-<tr>
-<th>Inheritance</th>
-<th>ScopeExcluded</th>
-<th>Exemption applies</th>
-<th>Policy DisplayName</th>
-<th>PolicyId</th>
-<th>Type</th>
-<th>Category</th>
-<th>ALZ</th>
-<th>Effect</th>
-<th>Parameters</th>
-<th>Enforcement</th>
-<th>NonCompliance Message</th>
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableId)(); return false;">Pop out grid</a><br>
+&nbsp;&nbsp;<span class="hintTableSize">*The CSV download respects the filters and the column order applied in the grid</span>
 "@)
-
-        if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
-
-            [void]$htmlScopeInsights.AppendLine(@'
-<th>Policies NonCmplnt</th>
-<th>Policies Compliant</th>
-<th>Resources NonCmplnt</th>
-<th>Resources Compliant</th>
-<th>Resources Conflicting</th>
-'@)
-        }
-
-        [void]$htmlScopeInsights.AppendLine(@"
-<th>Role/Assignment $noteOrNot</th>
-<th>Managed Identity</th>
-<th>Assignment DisplayName</th>
-<th>AssignmentId</th>
-<th>AssignedBy</th>
-<th>CreatedOn</th>
-<th>CreatedBy</th>
-<th>UpdatedOn</th>
-<th>UpdatedBy</th>
-</tr>
-</thead>
-<tbody>
-"@)
-        $htmlScopeInsightsPolicyAssignments = $null
-        $htmlScopeInsightsPolicyAssignments = foreach ($policyAssignment in $policiesAssigned | Sort-Object @{Expression = { $_.Level } }, @{Expression = { $_.MgName } }, @{Expression = { $_.MgId } }, @{Expression = { $_.SubscriptionName } }, @{Expression = { $_.SubscriptionId } }, @{Expression = { $_.PolicyAssignmentId } }) {
-
-            if ($policyAssignment.PolicyType -eq 'Custom') {
-                $policyName = ($policyAssignment.PolicyName -replace '<', '&lt;' -replace '>', '&gt;')
-            }
-            else {
-                $policyName = $policyAssignment.PolicyName
-            }
-            @"
-<tr>
-<td>$($policyAssignment.Inheritance)</td>
-<td>$($policyAssignment.ExcludedScope)</td>
-<td>$($policyAssignment.ExemptionScope)</td>
-<td class="breakwordall">$($policyName)</td>
-<td class="breakwordall">$($policyAssignment.PolicyId)</td>
-<td>$($policyAssignment.PolicyType)</td>
-<td>$($policyAssignment.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td>$($policyAssignment.PolicyIsALZ)</td>
-<td>$($policyAssignment.Effect)</td>
-<td>$($policyAssignment.PolicyAssignmentParameters)</td>
-<td>$($policyAssignment.PolicyAssignmentEnforcementMode)</td>
-<td>$($policyAssignment.PolicyAssignmentNonComplianceMessages)</td>
-"@
-
-            if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
-                @"
-<td>$($policyAssignment.NonCompliantPolicies)</td>
-<td>$($policyAssignment.CompliantPolicies)</td>
-<td>$($policyAssignment.NonCompliantResources)</td>
-<td>$($policyAssignment.CompliantResources)</td>
-<td>$($policyAssignment.ConflictingResources)</td>
-"@
-            }
-
-            @"
-<td class="breakwordall">$($policyAssignment.RelatedRoleAssignments)</td>
-<td>$($policyAssignment.PolicyAssignmentMI)</td>
-<td class="breakwordall">$($policyAssignment.PolicyAssignmentDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td class="breakwordall">$($policyAssignment.PolicyAssignmentId -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td>$($policyAssignment.AssignedBy)</td>
-<td>$($policyAssignment.CreatedOn)</td>
-<td>$($policyAssignment.CreatedBy)</td>
-<td>$($policyAssignment.UpdatedOn)</td>
-<td>$($policyAssignment.UpdatedBy)</td>
-</tr>
-"@
-        }
-        [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsPolicyAssignments)
-        [void]$htmlScopeInsights.AppendLine(@"
-            </tbody>
-        </table>
-    </div>
-    <script>
-        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
-            window.helpertfConfig4$htmlTableId =1;
-            var tfConfig4$htmlTableId = {
-            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
-"@)
-        if ($tfCount -gt 10) {
-            $spectrum = "10, $tfCount"
-            if ($tfCount -gt 50) {
-                $spectrum = "10, 25, 50, $tfCount"
-            }
-            if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, 100, $tfCount"
-            }
-            if ($tfCount -gt 500) {
-                $spectrum = "10, 30, 50, 100, 250, $tfCount"
-            }
-            if ($tfCount -gt 1000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-            }
-            if ($tfCount -gt 2000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-            }
-            if ($tfCount -gt 3000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-            }
-            [void]$htmlScopeInsights.AppendLine(@"
-paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
-"@)
-        }
-        [void]$htmlScopeInsights.AppendLine(@'
-btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-            linked_filters: true,
-            col_1: 'select',
-            col_2: 'select',
-            col_5: 'select',
-            col_7: 'select',
-            col_8: 'select',
-            col_10: 'select',
-            locale: 'en-US',
-            col_types: [
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-'@)
-
-        if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
-
-            [void]$htmlScopeInsights.AppendLine(@'
-
-                'number',
-                'number',
-                'number',
-                'number',
-                'number',
-'@)
-        }
-        [void]$htmlScopeInsights.AppendLine(@"
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'date',
-                'caseinsensitivestring',
-                'date',
-                'caseinsensitivestring'
-            ],
-            watermark: ['try: thisScope'],
-            extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
-        };
-        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();}}
-    </script>
-"@)
+        [void]$htmlScopeInsights.AppendLine((buildAgGridScript -HtmlTableId $htmlTableId -PopoutTitle "Azure Governance Visualizer - Policy assignments - $htmlTableIdentifier" -ColumnDefinitions $scopeInsightsPolicyAssignmentsGridColumnDefinitions -Rows @($policiesAssigned | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, PolicyAssignmentId)))
+        [void]$htmlScopeInsights.AppendLine('</div>')
     }
     else {
         [void]$htmlScopeInsights.AppendLine(@"
@@ -2920,180 +2783,55 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     }
 
     if (($policySetsAssigned).count -gt 0) {
-        $tfCount = ($policiesAssigned).count
         $htmlTableId = "ScopeInsights_PolicySetAssignments_$($htmlTableIdentifier -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
-        $randomFunctionName = "func_$htmlTableId"
-        $noteOrNot = ''
+
+        #columns feeding the AG Grid; a column that defines an 'htmlProperty' renders that property, sorting/filtering/export use 'property'
+        $scopeInsightsPolicySetAssignmentsGridColumnDefinitions = [System.Collections.Generic.List[object]]@(
+            @{ header = 'Inheritance'; property = 'Inheritance' }
+            @{ header = 'ScopeExcluded'; property = 'ExcludedScope'; filter = 'select' }
+            @{ header = 'PolicySet DisplayName'; property = 'PolicyNameClear'; htmlProperty = 'PolicyName'; htmlValueScript = {
+                    param($policySetAssignment)
+                    #the html of a custom PolicySet displayname is not built by the report, it must not end up unescaped in the grid
+                    if ($policySetAssignment.PolicyType -eq 'Custom') { [string]$policySetAssignment.PolicyName -replace '<', '&lt;' -replace '>', '&gt;' } else { [string]$policySetAssignment.PolicyName }
+                }
+            }
+            @{ header = 'PolicySetId'; property = 'PolicyId' }
+            @{ header = 'Type'; property = 'PolicyType'; filter = 'select' }
+            @{ header = 'Category'; property = 'PolicyCategory' }
+            @{ header = 'ALZ'; property = 'PolicyIsALZ'; filter = 'select' }
+            @{ header = 'Parameters'; property = 'PolicyAssignmentParameters' }
+            @{ header = 'Enforcement'; property = 'PolicyAssignmentEnforcementMode'; filter = 'select' }
+            @{ header = 'NonCompliance Message'; property = 'PolicyAssignmentNonComplianceMessages' }
+        )
+        if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
+            $scopeInsightsPolicySetAssignmentsGridColumnDefinitions.AddRange([object[]]@(
+                    @{ header = 'Policies NonCmplnt'; property = 'NonCompliantPolicies'; filter = 'number' }
+                    @{ header = 'Policies Compliant'; property = 'CompliantPolicies'; filter = 'number' }
+                    @{ header = 'Resources NonCmplnt'; property = 'NonCompliantResources'; filter = 'number' }
+                    @{ header = 'Resources Compliant'; property = 'CompliantResources'; filter = 'number' }
+                    @{ header = 'Resources Conflicting'; property = 'ConflictingResources'; filter = 'number' }
+                ))
+        }
+        $scopeInsightsPolicySetAssignmentsGridColumnDefinitions.AddRange([object[]]@(
+                @{ header = 'Role/Assignment'; property = 'RelatedRoleAssignmentsClear'; htmlProperty = 'RelatedRoleAssignments' }
+                @{ header = 'Managed Identity'; property = 'PolicyAssignmentMI' }
+                @{ header = 'Assignment DisplayName'; property = 'PolicyAssignmentDisplayName' }
+                @{ header = 'AssignmentId'; property = 'PolicyAssignmentId' }
+                @{ header = 'AssignedBy'; property = 'AssignedBy' }
+                @{ header = 'CreatedOn'; property = 'CreatedOn'; filter = 'date' }
+                @{ header = 'CreatedBy'; property = 'CreatedBy' }
+                @{ header = 'UpdatedOn'; property = 'UpdatedOn'; filter = 'date' }
+                @{ header = 'UpdatedBy'; property = 'UpdatedBy' }
+            ))
+
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$policySetsCount PolicySet assignments ($policySetsAssignedAtScope at scope, $policySetsInherited inherited) (Builtin: $policySetsCountBuiltin | Custom: $policySetsCountCustom)</span></button>
+<button onclick="loadag$($htmlTableId)()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$policySetsCount PolicySet assignments ($policySetsAssignedAtScope at scope, $policySetsInherited inherited) (Builtin: $policySetsCountBuiltin | Custom: $policySetsCountCustom)</span></button>
 <div class="content $SIDivContentClass">
-&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
-<table id="$htmlTableId" class="$cssClass">
-<thead>
-<tr>
-<th>Inheritance</th>
-<th>ScopeExcluded</th>
-<th>PolicySet DisplayName</th>
-<th>PolicySetId</th>
-<th>Type</th>
-<th>Category</th>
-<th>ALZ</th>
-<th>Parameters</th>
-<th>Enforcement</th>
-<th>NonCompliance Message</th>
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableId)(); return false;">Pop out grid</a><br>
+&nbsp;&nbsp;<span class="hintTableSize">*The CSV download respects the filters and the column order applied in the grid</span>
 "@)
-
-        if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
-
-            [void]$htmlScopeInsights.AppendLine(@'
-<th>Policies NonCmplnt</th>
-<th>Policies Compliant</th>
-<th>Resources NonCmplnt</th>
-<th>Resources Compliant</th>
-<th>Resources Conflicting</th>
-'@)
-        }
-
-        [void]$htmlScopeInsights.AppendLine(@"
-<th>Role/Assignment $noteOrNot</th>
-<th>Managed Identity</th>
-<th>Assignment DisplayName</th>
-<th>AssignmentId</th>
-<th>AssignedBy</th>
-<th>CreatedOn</th>
-<th>CreatedBy</th>
-<th>UpdatedOn</th>
-<th>UpdatedBy</th>
-</tr>
-</thead>
-<tbody>
-"@)
-        $htmlScopeInsightsPolicySetAssignments = $null
-        $htmlScopeInsightsPolicySetAssignments = foreach ($policyAssignment in $policySetsAssigned | Sort-Object -Property Level, PolicyAssignmentId) {
-            if ($policyAssignment.PolicyType -eq 'Custom') {
-                $policyName = ($policyAssignment.PolicyName -replace '<', '&lt;' -replace '>', '&gt;')
-            }
-            else {
-                $policyName = $policyAssignment.PolicyName
-            }
-            @"
-<tr>
-<td>$($policyAssignment.Inheritance)</td>
-<td>$($policyAssignment.ExcludedScope)</td>
-<td class="breakwordall">$($policyName)</td>
-<td class="breakwordall">$($policyAssignment.PolicyId)</td>
-<td>$($policyAssignment.PolicyType)</td>
-<td>$($policyAssignment.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td>$($policyAssignment.PolicyIsALZ)</td>
-<td>$($policyAssignment.PolicyAssignmentParameters)</td>
-<td>$($policyAssignment.PolicyAssignmentEnforcementMode)</td>
-<td>$($policyAssignment.PolicyAssignmentNonComplianceMessages)</td>
-"@
-            if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
-                @"
-<td>$($policyAssignment.NonCompliantPolicies)</td>
-<td>$($policyAssignment.CompliantPolicies)</td>
-<td>$($policyAssignment.NonCompliantResources)</td>
-<td>$($policyAssignment.CompliantResources)</td>
-<td>$($policyAssignment.ConflictingResources)</td>
-"@
-            }
-            @"
-<td class="breakwordall">$($policyAssignment.RelatedRoleAssignments)</td>
-<td>$($policyAssignment.PolicyAssignmentMI)</td>
-<td class="breakwordall">$($policyAssignment.PolicyAssignmentDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td class="breakwordall">$($policyAssignment.PolicyAssignmentId -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td>$($policyAssignment.AssignedBy)</td>
-<td>$($policyAssignment.CreatedOn)</td>
-<td>$($policyAssignment.CreatedBy)</td>
-<td>$($policyAssignment.UpdatedOn)</td>
-<td>$($policyAssignment.UpdatedBy)</td>
-</tr>
-"@
-        }
-        [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsPolicySetAssignments)
-        [void]$htmlScopeInsights.AppendLine(@"
-            </tbody>
-        </table>
-    </div>
-    <script>
-        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
-            window.helpertfConfig4$htmlTableId =1;
-            var tfConfig4$htmlTableId = {
-            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
-"@)
-        if ($tfCount -gt 10) {
-            $spectrum = "10, $tfCount"
-            if ($tfCount -gt 50) {
-                $spectrum = "10, 25, 50, $tfCount"
-            }
-            if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, 100, $tfCount"
-            }
-            if ($tfCount -gt 500) {
-                $spectrum = "10, 30, 50, 100, 250, $tfCount"
-            }
-            if ($tfCount -gt 1000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-            }
-            if ($tfCount -gt 2000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-            }
-            if ($tfCount -gt 3000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-            }
-            [void]$htmlScopeInsights.AppendLine(@"
-paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
-"@)
-        }
-        [void]$htmlScopeInsights.AppendLine(@'
-btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-            linked_filters: true,
-            col_1: 'select',
-            col_4: 'select',
-            col_6: 'select',
-            col_8: 'select',
-            locale: 'en-US',
-            col_types: [
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-'@)
-
-        if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
-            [void]$htmlScopeInsights.AppendLine(@'
-                'number',
-                'number',
-                'number',
-                'number',
-                'number',
-'@)
-        }
-        [void]$htmlScopeInsights.AppendLine(@"
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'date',
-                'caseinsensitivestring',
-                'date',
-                'caseinsensitivestring'
-            ],
-            watermark: ['try: thisScope'],
-            extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
-        };
-        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();}}
-    </script>
-"@)
+        [void]$htmlScopeInsights.AppendLine((buildAgGridScript -HtmlTableId $htmlTableId -PopoutTitle "Azure Governance Visualizer - PolicySet assignments - $htmlTableIdentifier" -ColumnDefinitions $scopeInsightsPolicySetAssignmentsGridColumnDefinitions -Rows @($policySetsAssigned | Sort-Object -Property Level, PolicyAssignmentId)))
+        [void]$htmlScopeInsights.AppendLine('</div>')
     }
     else {
         [void]$htmlScopeInsights.AppendLine(@"
@@ -3730,133 +3468,37 @@ extensions: [{ name: 'sort' }]
     $rolesAssignedAtScopeCount = $rolesAssignedCount - $rolesAssignedInheritedCount
 
     if (($rolesAssigned).count -gt 0) {
-        $tfCount = ($rolesAssigned).count
         $htmlTableId = "ScopeInsights_RoleAssignments_$($htmlTableIdentifier -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
-        $randomFunctionName = "func_$htmlTableId"
-        $noteOrNot = ''
+
+        #columns feeding the AG Grid; a column that defines an 'htmlProperty' renders that property, sorting/filtering/export use 'property'
+        $scopeInsightsRoleAssignmentsGridColumnDefinitions = @(
+            @{ header = 'Scope'; property = 'Scope' }
+            @{ header = 'Role'; property = 'RoleClear'; htmlProperty = 'Role' }
+            @{ header = 'Role Id'; property = 'RoleId' }
+            @{ header = 'Role Type'; property = 'RoleType'; filter = 'select' }
+            @{ header = 'Data'; property = 'RoleDataRelated'; filter = 'select' }
+            @{ header = 'Can do Role assignment'; property = 'RoleCanDoRoleAssignments'; filter = 'select' }
+            @{ header = 'Identity Displayname'; property = 'ObjectDisplayName' }
+            @{ header = 'Identity SignInName'; property = 'ObjectSignInName' }
+            @{ header = 'Identity ObjectId'; property = 'ObjectId' }
+            @{ header = 'Identity Type'; property = 'ObjectType'; filter = 'select' }
+            @{ header = 'Applicability'; property = 'AssignmentType'; filter = 'select' }
+            @{ header = 'Applies through membership'; property = 'AssignmentInheritFrom' }
+            @{ header = 'Group Details'; property = 'GroupMembersCount' }
+            @{ header = 'Role AssignmentId'; property = 'RoleAssignmentId' }
+            @{ header = 'Related Policy Assignment'; property = 'RbacRelatedPolicyAssignmentClear'; htmlProperty = 'RbacRelatedPolicyAssignment' }
+            @{ header = 'CreatedOn'; property = 'CreatedOn'; filter = 'date' }
+            @{ header = 'CreatedBy'; property = 'CreatedBy' }
+        )
+
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$rolesAssignedCount Role assignments ($rolesAssignedInheritedCount inherited) (User: $rolesAssignedUser | Group: $rolesAssignedGroup | ServicePrincipal: $rolesAssignedServicePrincipal | Orphaned: $rolesAssignedUnknown) ($($roleSecurityFindingCustomRoleOwnerImg)CustomRoleOwner: $roleSecurityFindingCustomRoleOwner, $($RoleSecurityFindingOwnerAssignmentSPImg)OwnerAssignmentSP: $roleSecurityFindingOwnerAssignmentSP) (Policy related: $roleAssignmentsRelatedToPolicyCount) | Limit: ($rolesAssignedAtScopeCount/$LimitRoleAssignmentsScope)</span></button>
+<button onclick="loadag$($htmlTableId)()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$rolesAssignedCount Role assignments ($rolesAssignedInheritedCount inherited) (User: $rolesAssignedUser | Group: $rolesAssignedGroup | ServicePrincipal: $rolesAssignedServicePrincipal | Orphaned: $rolesAssignedUnknown) ($($roleSecurityFindingCustomRoleOwnerImg)CustomRoleOwner: $roleSecurityFindingCustomRoleOwner, $($RoleSecurityFindingOwnerAssignmentSPImg)OwnerAssignmentSP: $roleSecurityFindingOwnerAssignmentSP) (Policy related: $roleAssignmentsRelatedToPolicyCount) | Limit: ($rolesAssignedAtScopeCount/$LimitRoleAssignmentsScope)</span></button>
 <div class="content $SIDivContentClass">
-&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a><br>
-&nbsp;&nbsp;<span class="hintTableSize">*Depending on the number of rows and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
-<table id="$htmlTableId" class="$cssClass">
-<thead>
-<tr>
-<th>Scope</th>
-<th>Role</th>
-<th>RoleId</th>
-<th>Role Type</th>
-<th>Data</th>
-<th>Can do Role assignment</th>
-<th>Identity Displayname</th>
-<th>Identity SignInName</th>
-<th>Identity ObjectId</th>
-<th>Identity Type</th>
-<th>Applicability</th>
-<th>Applies through membership <abbr title="Note: the identity might not be a direct member of the group it could also be member of a nested group"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></th>
-<th>Group Details</th>
-<th>Role AssignmentId</th>
-<th>Related Policy Assignment $noteOrNot</th>
-<th>CreatedOn</th>
-<th>CreatedBy</th>
-</tr>
-</thead>
-<tbody>
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableId)(); return false;">Pop out grid</a><br>
+&nbsp;&nbsp;<span class="hintTableSize">*The CSV download respects the filters and the column order applied in the grid</span>
 "@)
-        $htmlScopeInsightsRoleAssignments = $null
-        $htmlScopeInsightsRoleAssignments = foreach ($roleAssignment in ($rolesAssigned | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, Scope, Role, RoleId, ObjectId, RoleAssignmentId)) {
-            @"
-<tr>
-<td>$($roleAssignment.Scope)</td>
-<td>$($roleAssignment.Role)</td>
-<td>$($roleAssignment.RoleId)</td>
-<td>$($roleAssignment.RoleType)</td>
-<td>$($roleAssignment.RoleDataRelated)</td>
-<td>$($roleAssignment.RoleCanDoRoleAssignments)</td>
-<td class="breakwordall">$($roleAssignment.ObjectDisplayName)</td>
-<td class="breakwordall">$($roleAssignment.ObjectSignInName)</td>
-<td class="breakwordall">$($roleAssignment.ObjectId)</td>
-<td style="width:76px" class="breakwordnone">$($roleAssignment.ObjectType)</td>
-<td>$($roleAssignment.AssignmentType)</td>
-<td>$($roleAssignment.AssignmentInheritFrom)</td>
-<td>$($roleAssignment.GroupMembersCount)</td>
-<td class="breakwordall">$($roleAssignment.RoleAssignmentId)</td>
-<td class="breakwordall">$($roleAssignment.rbacRelatedPolicyAssignment)</td>
-<td>$($roleAssignment.CreatedOn)</td>
-<td>$($roleAssignment.CreatedBy)</td>
-</tr>
-"@
-        }
-        [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsRoleAssignments)
-        [void]$htmlScopeInsights.AppendLine(@"
-            </tbody>
-        </table>
-    </div>
-    <script>
-        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
-            window.helpertfConfig4$htmlTableId =1;
-            var tfConfig4$htmlTableId = {
-            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
-"@)
-        if ($tfCount -gt 10) {
-            $spectrum = "10, $tfCount"
-            if ($tfCount -gt 50) {
-                $spectrum = "10, 25, 50, $tfCount"
-            }
-            if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, 100, $tfCount"
-            }
-            if ($tfCount -gt 500) {
-                $spectrum = "10, 30, 50, 100, 250, $tfCount"
-            }
-            if ($tfCount -gt 1000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-            }
-            if ($tfCount -gt 2000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-            }
-            if ($tfCount -gt 3000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-            }
-            [void]$htmlScopeInsights.AppendLine(@"
-paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
-"@)
-        }
-        [void]$htmlScopeInsights.AppendLine(@"
-btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-            linked_filters: true,
-            col_3: 'select',
-            col_4: 'select',
-            col_5: 'select',
-            col_9: 'multiple',
-            col_10: 'select',
-            locale: 'en-US',
-            col_types: [
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'date',
-                'caseinsensitivestring'
-            ],
-            watermark: ['', 'try owner||reader', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-            extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
-        };
-        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();}}
-    </script>
-"@)
+        [void]$htmlScopeInsights.AppendLine((buildAgGridScript -HtmlTableId $htmlTableId -PopoutTitle "Azure Governance Visualizer - Role assignments - $htmlTableIdentifier" -ColumnDefinitions $scopeInsightsRoleAssignmentsGridColumnDefinitions -Rows @($rolesAssigned | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, Scope, Role, RoleId, ObjectId, RoleAssignmentId)))
+        [void]$htmlScopeInsights.AppendLine('</div>')
     }
     else {
         [void]$htmlScopeInsights.AppendLine(@"
@@ -3872,29 +3514,26 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 
 
     if (-not $NoScopeInsights) {
-        $script:html += $htmlScopeInsights
+        #$script:html is a plain string, letting it accumulate means every append copies the whole buffer
+        $htmlFilePath = "$($outputPath)$($DirectorySeparatorChar)$($fileName).html"
+        if ($script:html) {
+            $script:html | Add-Content -Path $htmlFilePath -Encoding utf8 -Force
+            $script:html = $null
+        }
+        $htmlScopeInsights | Add-Content -Path $htmlFilePath -Encoding utf8 -Force
     }
 
     if (-not $NoSingleSubscriptionOutput) {
         if ($mgOrSub -eq 'sub') {
-            $htmlThisSubSingleOutput = $htmlSubscriptionOnlyStart
-            $htmlThisSubSingleOutput += $htmlScopeInsights
-            $htmlThisSubSingleOutput += $htmlSubscriptionOnlyEnd
-            $htmlThisSubSingleOutput | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($HTMLPath)$($DirectorySeparatorChar)$($fileName)_$($subscriptionId).html" -Encoding utf8 -Force
-            $htmlThisSubSingleOutput = $null
-        }
-    }
-
-    if (-not $NoScopeInsights) {
-        if ($scopescnter % 50 -eq 0) {
-            $script:scopescnter = 0
-            $addContentDurationInSeconds = (Measure-Command { $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force }).TotalSeconds
-            Write-Host "   append file duration: $addContentDurationInSeconds seconds"
-            $script:html = $null
+            $htmlThisSubSingleOutputPath = "$($outputPath)$($DirectorySeparatorChar)$($HTMLPath)$($DirectorySeparatorChar)$($fileName)_$($subscriptionId).html"
+            $htmlSubscriptionOnlyStart | Set-Content -Path $htmlThisSubSingleOutputPath -Encoding utf8 -Force
+            $htmlScopeInsights | Add-Content -Path $htmlThisSubSingleOutputPath -Encoding utf8 -Force
+            $htmlSubscriptionOnlyEnd | Add-Content -Path $htmlThisSubSingleOutputPath -Encoding utf8 -Force
         }
     }
 
     if ($scopescnter % 50 -eq 0) {
+        $script:scopescnter = 0
         showMemoryUsage
     }
 
