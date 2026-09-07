@@ -1270,17 +1270,18 @@ function buildJSON {
     $htJSON.ManagementGroups = [ordered]@{}
 
     $MgIds = ($optimizedTableForPathQuery) | Select-Object -Property level, MgId, MgName, mgParentId, mgParentName | Sort-Object -Property level, MgId -Unique
+    #Group-Object -AsHashTable returns $null if the pipeline input is empty
     $grpScopePolicyDefinitionsCustom = (($htCacheDefinitionsPolicy).values).where( { $_.Type -eq 'Custom' }) | Group-Object ScopeMgSub
-    $grpMgScopePolicyDefinitionsCustom = ($grpScopePolicyDefinitionsCustom.where( { $_.Name -eq 'Mg' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId -AsHashTable -AsString)
-    $grpSubScopePolicyDefinitionsCustom = ($grpScopePolicyDefinitionsCustom.where( { $_.Name -eq 'Sub' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId -AsHashTable -AsString)
+    $grpMgScopePolicyDefinitionsCustom = ($grpScopePolicyDefinitionsCustom.where( { $_.Name -eq 'Mg' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId -AsHashTable -AsString) ?? @{}
+    $grpSubScopePolicyDefinitionsCustom = ($grpScopePolicyDefinitionsCustom.where( { $_.Name -eq 'Sub' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId -AsHashTable -AsString) ?? @{}
 
     $grpScopePolicySetDefinitionsCustom = (($htCacheDefinitionsPolicySet).values).where( { $_.Type -eq 'Custom' }) | Group-Object ScopeMgSub
-    $grpMgScopePolicySetDefinitionsCustom = $grpScopePolicySetDefinitionsCustom.where( { $_.Name -eq 'Mg' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId -AsHashTable -AsString
-    $grpSubScopePolicySetDefinitionsCustom = $grpScopePolicySetDefinitionsCustom.where( { $_.Name -eq 'Sub' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId -AsHashTable -AsString
+    $grpMgScopePolicySetDefinitionsCustom = ($grpScopePolicySetDefinitionsCustom.where( { $_.Name -eq 'Mg' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId -AsHashTable -AsString) ?? @{}
+    $grpSubScopePolicySetDefinitionsCustom = ($grpScopePolicySetDefinitionsCustom.where( { $_.Name -eq 'Sub' }).Group | Sort-Object -Property PolicyDefinitionId | Group-Object ScopeId -AsHashTable -AsString) ?? @{}
 
     $grpScopePolicyAssignments = ($htCacheAssignmentsPolicy).values | Group-Object -Property AssignmentScopeMgSubRg
-    $grpMgScopePolicyAssignments = $grpScopePolicyAssignments.where( { $_.Name -eq 'Mg' }).Group | Sort-Object @{Expression = { $_.Assignment.Id } } | Group-Object -Property AssignmentScopeId -AsHashTable -AsString
-    $grpSubScopePolicyAssignments = $grpScopePolicyAssignments.where( { $_.Name -eq 'Sub' }).Group | Sort-Object @{Expression = { $_.Assignment.Id } } | Group-Object -Property AssignmentScopeId -AsHashTable -AsString
+    $grpMgScopePolicyAssignments = ($grpScopePolicyAssignments.where( { $_.Name -eq 'Mg' }).Group | Sort-Object @{Expression = { $_.Assignment.Id } } | Group-Object -Property AssignmentScopeId -AsHashTable -AsString) ?? @{}
+    $grpSubScopePolicyAssignments = ($grpScopePolicyAssignments.where( { $_.Name -eq 'Sub' }).Group | Sort-Object @{Expression = { $_.Assignment.Id } } | Group-Object -Property AssignmentScopeId -AsHashTable -AsString) ?? @{}
 
     if (-not $azAPICallConf['htParameters'].DoNotIncludeResourceGroupsOnPolicy) {
         if (-not $JsonExportExcludeResourceGroups) {
@@ -1303,8 +1304,8 @@ function buildJSON {
 
     $grpScopeRoleAssignments = ($htCacheAssignmentsRole).values | Group-Object -Property AssignmentScopeTenMgSubRgRes
     $grpTenantScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq 'Tenant' }).Group | Group-Object -Property AssignmentScopeId
-    $grpMgScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq 'Mg' }).Group | Sort-Object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId -AsHashTable -AsString
-    $grpSubScopeRoleAssignments = $grpScopeRoleAssignments.where( { $_.Name -eq 'Sub' }).Group | Sort-Object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId -AsHashTable -AsString
+    $grpMgScopeRoleAssignments = ($grpScopeRoleAssignments.where( { $_.Name -eq 'Mg' }).Group | Sort-Object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId -AsHashTable -AsString) ?? @{}
+    $grpSubScopeRoleAssignments = ($grpScopeRoleAssignments.where( { $_.Name -eq 'Sub' }).Group | Sort-Object @{Expression = { $_.Assignment.RoleAssignmentId } } | Group-Object -Property AssignmentScopeId -AsHashTable -AsString) ?? @{}
 
     if (-not $azAPICallConf['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
         if (-not $JsonExportExcludeResourceGroups) {
@@ -1364,7 +1365,7 @@ function buildJSON {
     $bluePrintsAssignmentsAtScope = ($htCacheAssignmentsBlueprint).keys | Sort-Object
     $bluePrintDefinitions = ($htCacheDefinitionsBlueprint).Keys | Sort-Object
     $subscriptions = ($optimizedTableForPathQuery.where( { -not [string]::IsNullOrEmpty($_.subscriptionId) })) | Select-Object mgId, Subscription* | Sort-Object -Property subscriptionId -Unique
-    $subscriptionsGroupedByMgId = $subscriptions | Group-Object -Property MgId -AsHashTable -AsString
+    $subscriptionsGroupedByMgId = ($subscriptions | Group-Object -Property MgId -AsHashTable -AsString) ?? @{}
     foreach ($mg in $MgIds) {
 
         $htJSONMg = [ordered]@{}
@@ -10258,8 +10259,8 @@ function processPolicyLinter {
             if (-not $linterCommand) {
                 Write-Host " 'policylinter' not available - skipping 'Azure Policy Linter'" -ForegroundColor Yellow
                 $script:policyLinterStatus.reason = "'policylinter' is not available"
-                $script:policyLinterStatus.recommendation = 'dotnet tool install --global Microsoft.Azure.Policy.PolicyLinter.Cli'
-                Write-Host " Recommendation: install it with 'dotnet tool install --global Microsoft.Azure.Policy.PolicyLinter.Cli'" -ForegroundColor Yellow
+                $script:policyLinterStatus.recommendation = 'dotnet tool install --global Microsoft.Azure.Policy.PolicyLinter.Cli <a href="https://github.com/Azure/azure-policy-linter" target="_blank">Azure-Policy-Linter</a>'
+                Write-Host " Recommendation: install it with 'dotnet tool install --global Microsoft.Azure.Policy.PolicyLinter.Cli' see https://github.com/Azure/azure-policy-linter" -ForegroundColor Yellow
                 return
             }
             $linterPath = $linterCommand.Source
@@ -16387,7 +16388,8 @@ extensions: [{ name: 'sort' }]
     $script:tenantPolicySetsDetailed = [System.Collections.ArrayList]@()
     $custompolicySetsInScopeArray = [System.Collections.ArrayList]@()
     #lookup hashtable so the per-policySet loop below can do O(1) lookups instead of an O(n^2) .where() scan over $policyPolicySetBaseQueryUniqueAssignments
-    $htPolicyPolicySetBaseQueryUniqueAssignmentsGroupedByPolicyDefinitionId = $policyPolicySetBaseQueryUniqueAssignments | Group-Object -Property PolicyDefinitionId -AsHashTable -AsString
+    #Group-Object -AsHashTable returns $null if the pipeline input is empty
+    $htPolicyPolicySetBaseQueryUniqueAssignmentsGroupedByPolicyDefinitionId = ($policyPolicySetBaseQueryUniqueAssignments | Group-Object -Property PolicyDefinitionId -AsHashTable -AsString) ?? @{}
     foreach ($tenantPolicySet in ($tenantAllPolicySets)) {
 
         $policySetUniqueAssignments = $htPolicyPolicySetBaseQueryUniqueAssignmentsGroupedByPolicyDefinitionId[$tenantPolicySet.Id].PolicyAssignmentId

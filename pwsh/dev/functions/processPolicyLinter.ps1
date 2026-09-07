@@ -54,8 +54,8 @@
             if (-not $linterCommand) {
                 Write-Host " 'policylinter' not available - skipping 'Azure Policy Linter'" -ForegroundColor Yellow
                 $script:policyLinterStatus.reason = "'policylinter' is not available"
-                $script:policyLinterStatus.recommendation = 'dotnet tool install --global Microsoft.Azure.Policy.PolicyLinter.Cli'
-                Write-Host " Recommendation: install it with 'dotnet tool install --global Microsoft.Azure.Policy.PolicyLinter.Cli'" -ForegroundColor Yellow
+                $script:policyLinterStatus.recommendation = 'dotnet tool install --global Microsoft.Azure.Policy.PolicyLinter.Cli <a href="https://github.com/Azure/azure-policy-linter" target="_blank">Azure-Policy-Linter</a>'
+                Write-Host " Recommendation: install it with 'dotnet tool install --global Microsoft.Azure.Policy.PolicyLinter.Cli' see https://github.com/Azure/azure-policy-linter" -ForegroundColor Yellow
                 return
             }
             $linterPath = $linterCommand.Source
