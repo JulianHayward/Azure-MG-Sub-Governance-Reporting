@@ -1389,6 +1389,73 @@ function dataCollectionResources {
 }
 $funcDataCollectionResources = $function:dataCollectionResources.ToString()
 
+function dataCollectionModelDeployments {
+    [CmdletBinding()]param(
+        [string]$scopeId,
+        [string]$scopeDisplayName,
+        [string]$ChildMgMgPath,
+        [string]$subscriptionQuotaId
+    )
+
+    $relevantCognitiveServicesKinds = @('OpenAI', 'AzureOpenAI', 'AIServices')
+    $apiVersion = '2024-10-01'
+    $currentTask = "Getting Cognitive Services accounts for Subscription: '$scopeDisplayName' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$scopeId/providers/Microsoft.CognitiveServices/accounts?api-version=$apiVersion"
+    $accounts = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method 'GET' -currentTask $currentTask -caller 'ModelDeploymentInsights' -unhandledErrorAction Continue
+
+    foreach ($account in @($accounts).where({ $_.kind -in $relevantCognitiveServicesKinds })) {
+        $resourceGroup = ($account.id -split '/')[4]
+        $null = $script:arrayModelDeploymentAccounts.Add([PSCustomObject]@{
+                AccountId           = $account.id
+                AccountName         = $account.name
+                AccountKind         = $account.kind
+                AccountSku          = $account.sku.name
+                AccountSkuTier      = $account.sku.tier
+                Location            = $account.location
+                PublicNetworkAccess = $account.properties.publicNetworkAccess
+                AccountCreatedTime  = $account.properties.dateCreated
+                SubscriptionId      = $scopeId
+                SubscriptionName    = $scopeDisplayName
+                MgPath              = $ChildMgMgPath
+                ResourceGroup       = $resourceGroup
+            })
+
+        $currentTask = "Getting model deployments for Cognitive Services account '$($account.name)' ('$scopeId')"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($account.id)/deployments?api-version=$apiVersion"
+        $deployments = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method 'GET' -currentTask $currentTask -caller 'ModelDeploymentInsights' -unhandledErrorAction Continue
+
+        foreach ($deployment in @($deployments)) {
+            $null = $script:arrayModelDeployments.Add([PSCustomObject]@{
+                    DeploymentId        = $deployment.id
+                    DeploymentName      = $deployment.name
+                    DeploymentState     = if ($deployment.properties.deploymentState) { $deployment.properties.deploymentState } else { $deployment.properties.provisioningState }
+                    VersionUpgradeOption = $deployment.properties.versionUpgradeOption
+                    ModelFormat         = $deployment.properties.model.format
+                    ModelName           = $deployment.properties.model.name
+                    ModelVersion        = $deployment.properties.model.version
+                    DeploymentSku       = $deployment.sku.name
+                    DeploymentSkuTier   = $deployment.sku.tier
+                    DeploymentCapacity  = $deployment.sku.capacity
+                    DeploymentCapabilities = $deployment.properties.capabilities | ConvertTo-Json -Compress -Depth 10
+                    DeploymentRateLimits   = $deployment.properties.rateLimits | ConvertTo-Json -Compress -Depth 10
+                    AccountId           = $account.id
+                    AccountName         = $account.name
+                    AccountKind         = $account.kind
+                    AccountSku          = $account.sku.name
+                    AccountSkuTier      = $account.sku.tier
+                    Location            = $account.location
+                    PublicNetworkAccess = $account.properties.publicNetworkAccess
+                    AccountCreatedTime  = $account.properties.dateCreated
+                    SubscriptionId      = $scopeId
+                    SubscriptionName    = $scopeDisplayName
+                    MgPath              = $ChildMgMgPath
+                    ResourceGroup       = $resourceGroup
+                })
+        }
+    }
+}
+$funcDataCollectionModelDeployments = $function:dataCollectionModelDeployments.ToString()
+
 function dataCollectionResourceGroups {
     [CmdletBinding()]param(
         [string]$scopeId,

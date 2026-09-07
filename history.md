@@ -6,12 +6,15 @@
 
 **Changes** (2026-Aug-04 / 6.7.4 Patch)
 
+- new feature "Azure Policy Linter" - custom Policy definitions are analyzed with the [Azure Policy Linter](https://github.com/Azure/azure-policy-linter); findings (severity, rule, description, JSON path and line) are reported in TenantSummary and exported to `*_PolicyLinter.csv`. In Azure DevOps / GitHub Actions the linter (`Microsoft.Azure.Policy.PolicyLinter.Cli`) is installed on the fly, on other hosts an installed `policylinter` is used - if the linter is not available the feature is skipped and the report states why
+- new feature "Model Deployment Insights" for Azure OpenAI and Azure AI Services (Foundry) model deployments including usage metrics; TenantSummary and each management group and subscription scope in ScopeInsights provide an aggregated model view and a detailed model by Cognitive Services account view, plus CSV export `*_ModelDeploymentInsights.csv`. Collection runs by default and can be skipped with `-NoFoundryModelDeployments`, the metrics time range is defined with `-FoundryModelDeploymentsDays` (default=7)
+- the large tables (Policy assignments, Role assignments, Resource Providers detailed) are rendered with [AG Grid](https://www.ag-grid.com/) - row virtualization, per column filters, CSV export respecting the applied filters/column order and 'Pop out grid'
+- parameter `-HtmlTableRowsLimit` is obsolete - it has no effect anymore (AG Grid virtualizes rows); the parameter is kept so that existing pipelines do not break
+- PIM Eligible assignments are collected from ARM (`roleEligibilityScheduleInstances`) instead of the Microsoft Graph beta `privilegedAccess/azureResources` endpoints; scopes no longer need to be 'PIM onboarded' and tenants without a Microsoft Entra ID P2 license no longer fail the run - the report is created without PIM eligibility data
 - fix issue 298; Role Assignments - foreign Principals (e.g. Partner Admins) - Identity Displayname and Identity Type were not resolved for foreign identities; the `directoryObjects/getByIds` request now includes `types` (`user`, `group`, `servicePrincipal`, `device`, `directoryObjectPartnerReference`) and foreign identities are resolved into a `Foreign <objectType>` type with their displayName
 - use environment-aware API version for Microsoft Defender for Cloud security settings (`Microsoft.Security/settings`); new `securitySettings` entry in parameter `APIMappingCloudEnvironment` (AzureChinaCloud requires `2021-06-01`)
 - update parameter `ValidPolicyEffects` add 'auditAction'
-- performance updates PowerShell processing
-- the large tables (Policy assignments, Role assignments, Resource Providers detailed) are rendered with [AG Grid](https://www.ag-grid.com/) - row virtualization, per column filters, CSV export respecting the applied filters/column order and 'Pop out grid'
-- parameter `-HtmlTableRowsLimit` is obsolete - it has no effect anymore (AG Grid virtualizes rows); the parameter is kept so that existing pipelines do not break
+- performance and memory optimizations for the PowerShell processing and the HTML/JSON creation, resulting in a faster run and a smaller HTML output
 
 **Changes** (2026-May-18 / 6.7.3 Patch)
 

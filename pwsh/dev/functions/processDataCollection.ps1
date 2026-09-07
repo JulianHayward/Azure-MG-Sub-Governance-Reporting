@@ -301,6 +301,8 @@
             #Array&HTs
             $newTable = $using:newTable
             $storageAccounts = $using:storageAccounts
+            $arrayModelDeploymentAccounts = $using:arrayModelDeploymentAccounts
+            $arrayModelDeployments = $using:arrayModelDeployments
             $resourcesAll = $using:resourcesAll
             $resourcesIdsAll = $using:resourcesIdsAll
             $resourceGroupsAll = $using:resourceGroupsAll
@@ -375,6 +377,7 @@
             $function:dataCollectionDefenderPlans = $using:funcDataCollectionDefenderPlans
             $function:dataCollectionDiagnosticsSub = $using:funcDataCollectionDiagnosticsSub
             $function:dataCollectionResources = $using:funcDataCollectionResources
+            $function:dataCollectionModelDeployments = $using:funcDataCollectionModelDeployments
             $function:dataCollectionStorageAccounts = $using:funcDataCollectionStorageAccounts
             $function:dataCollectionResourceGroups = $using:funcDataCollectionResourceGroups
             $function:dataCollectionResourceProviders = $using:funcDataCollectionResourceProviders
@@ -480,6 +483,10 @@
                                 ChildMgParentNameChainDelimited = $childMgParentNameChainDelimited
                             }
                             DataCollectionStorageAccounts @baseParameters @dataCollectionStorageAccountsParameters
+                        }
+
+                        if (-not $azAPICallConf['htParameters'].NoFoundryModelDeployments) {
+                            DataCollectionModelDeployments @baseParameters -ChildMgMgPath $childMgMgPath
                         }
 
                         if ($azAPICallConf['htParameters'].NoResources -eq $false) {

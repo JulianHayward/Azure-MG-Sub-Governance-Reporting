@@ -1485,11 +1485,13 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 
     if (-not $policyLinterStatus.executed) {
         $policyLinterSkipReason = $policyLinterStatus.reason
+        $policyLinterSkipLink = ''
         if ($policyLinterStatus.recommendation) {
             $policyLinterSkipReason = "$($policyLinterSkipReason) - install it with '$($policyLinterStatus.recommendation)'"
+            $policyLinterSkipLink = ' <a class="externallink" href="https://github.com/Azure/azure-policy-linter" target="_blank" rel="noopener">Azure Policy Linter <i class="fa fa-external-link" aria-hidden="true"></i></a>'
         }
         [void]$htmlTenantSummary.AppendLine(@"
-                <p><i class="padlx fa fa-ban" aria-hidden="true"></i> Policy Linter not executed ($($policyLinterSkipReason -replace '<', '&lt;' -replace '>', '&gt;'))</p>
+                <p><i class="padlx fa fa-ban" aria-hidden="true"></i> Policy Linter not executed ($($policyLinterSkipReason -replace '<', '&lt;' -replace '>', '&gt;'))$($policyLinterSkipLink)</p>
 "@)
     }
     elseif ($policyLinterFindingsCount -eq 0) {
@@ -9549,6 +9551,131 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         }
         #endregion SUMMARYPSRule
     }
+
+    #region SUMMARYModelDeploymentInsights
+    if (-not $azAPICallConf['htParameters'].NoFoundryModelDeployments) {
+        $startModelDeploymentInsights = Get-Date
+        Write-Host '  processing TenantSummary Model Deployment Insights'
+
+        if ($arrayModelDeploymentInsights.Count -eq 0) {
+            [void]$htmlTenantSummary.AppendLine('<p><i class="padlx fa fa-ban" aria-hidden="true"></i> 0 Foundry models</p>')
+        }
+        else {
+            $modelSummary = [System.Collections.ArrayList]@()
+            $modelGroups = $arrayModelDeploymentInsights | Group-Object -Property ModelFormat, ModelName, ModelVersion
+            foreach ($modelGroup in $modelGroups) {
+                $firstDeployment = $modelGroup.Group | Select-Object -First 1
+                $null = $modelSummary.Add([PSCustomObject]@{
+                        ModelFormat          = $firstDeployment.ModelFormat
+                        ModelName            = $firstDeployment.ModelName
+                        ModelVersion         = $firstDeployment.ModelVersion
+                        Deployments          = $modelGroup.Count
+                        Accounts             = ($modelGroup.Group.AccountId | Sort-Object -Unique).Count
+                        Subscriptions        = ($modelGroup.Group.SubscriptionId | Sort-Object -Unique).Count
+                        Requests             = ($modelGroup.Group.Requests | Measure-Object -Sum).Sum
+                        ProcessedPromptTokens = ($modelGroup.Group.ProcessedPromptTokens | Measure-Object -Sum).Sum
+                        GeneratedTokens       = ($modelGroup.Group.GeneratedTokens | Measure-Object -Sum).Sum
+                        CacheReadInputTokens  = ($modelGroup.Group.CacheReadInputTokens | Measure-Object -Sum).Sum
+                        Requests429           = ($modelGroup.Group.Requests429 | Measure-Object -Sum).Sum
+                        Requests5xx           = ($modelGroup.Group.Requests5xx | Measure-Object -Sum).Sum
+                    })
+            }
+
+            $modelAccountDetails = [System.Collections.ArrayList]@()
+            foreach ($modelAccountGroup in ($arrayModelDeploymentInsights | Group-Object -Property ModelFormat, ModelName, ModelVersion, AccountId)) {
+                $firstDeployment = $modelAccountGroup.Group | Select-Object -First 1
+                $null = $modelAccountDetails.Add([PSCustomObject]@{
+                        ModelFormat           = $firstDeployment.ModelFormat
+                        ModelName             = $firstDeployment.ModelName
+                        ModelVersion          = $firstDeployment.ModelVersion
+                        AccountName           = $firstDeployment.AccountName
+                        AccountKind           = $firstDeployment.AccountKind
+                        AccountSku            = $firstDeployment.AccountSku
+                        SubscriptionName      = $firstDeployment.SubscriptionName
+                        ResourceGroup         = $firstDeployment.ResourceGroup
+                        MgPath                = $firstDeployment.MgPath
+                        Location              = $firstDeployment.Location
+                        PublicNetworkAccess   = $firstDeployment.PublicNetworkAccess
+                        Deployments           = $modelAccountGroup.Count
+                        DeploymentNames       = ($modelAccountGroup.Group.DeploymentName | Sort-Object -Unique) -join ', '
+                        DeploymentSkus        = ($modelAccountGroup.Group.DeploymentSku | Sort-Object -Unique) -join ', '
+                        DeploymentCapacity    = ($modelAccountGroup.Group.DeploymentCapacity | Measure-Object -Sum).Sum
+                        DeploymentStates      = ($modelAccountGroup.Group.DeploymentState | Sort-Object -Unique) -join ', '
+                        Requests              = ($modelAccountGroup.Group.Requests | Measure-Object -Sum).Sum
+                        ProcessedPromptTokens = ($modelAccountGroup.Group.ProcessedPromptTokens | Measure-Object -Sum).Sum
+                        GeneratedTokens       = ($modelAccountGroup.Group.GeneratedTokens | Measure-Object -Sum).Sum
+                        CacheReadInputTokens  = ($modelAccountGroup.Group.CacheReadInputTokens | Measure-Object -Sum).Sum
+                        Requests429           = ($modelAccountGroup.Group.Requests429 | Measure-Object -Sum).Sum
+                        Requests5xx           = ($modelAccountGroup.Group.Requests5xx | Measure-Object -Sum).Sum
+                        MetricsStatus         = ($modelAccountGroup.Group.MetricsStatus | Sort-Object -Unique) -join ', '
+                    })
+            }
+
+            $htmlTableId = 'TenantSummary_ModelDeploymentInsights'
+            $modelSummaryColumns = @(
+                @{ header = 'Model format'; property = 'ModelFormat'; filter = 'select' }
+                @{ header = 'Model'; property = 'ModelName'; filter = 'select' }
+                @{ header = 'Version'; property = 'ModelVersion'; filter = 'select' }
+                @{ header = 'Deployments'; property = 'Deployments'; filter = 'number' }
+                @{ header = 'Accounts'; property = 'Accounts'; filter = 'number' }
+                @{ header = 'Subscriptions'; property = 'Subscriptions'; filter = 'number' }
+                @{ header = 'Requests'; property = 'Requests'; filter = 'number' }
+                @{ header = 'Input tokens'; property = 'ProcessedPromptTokens'; filter = 'number' }
+                @{ header = 'Output tokens'; property = 'GeneratedTokens'; filter = 'number' }
+                @{ header = 'Cache-read input tokens'; property = 'CacheReadInputTokens'; filter = 'number' }
+                @{ header = 'HTTP 429'; property = 'Requests429'; filter = 'number' }
+                @{ header = 'HTTP 5xx'; property = 'Requests5xx'; filter = 'number' }
+            )
+            $modelAccountColumns = @(
+                @{ header = 'Model format'; property = 'ModelFormat'; filter = 'select' }
+                @{ header = 'Model'; property = 'ModelName'; filter = 'select' }
+                @{ header = 'Version'; property = 'ModelVersion'; filter = 'select' }
+                @{ header = 'Cognitive Services account'; property = 'AccountName'; filter = 'select' }
+                @{ header = 'Account kind'; property = 'AccountKind'; filter = 'select' }
+                @{ header = 'Account SKU'; property = 'AccountSku'; filter = 'select' }
+                @{ header = 'Subscription'; property = 'SubscriptionName'; filter = 'select' }
+                @{ header = 'Resource group'; property = 'ResourceGroup'; filter = 'select' }
+                @{ header = 'MG path'; property = 'MgPath' }
+                @{ header = 'Location'; property = 'Location'; filter = 'select' }
+                @{ header = 'Public network access'; property = 'PublicNetworkAccess'; filter = 'select' }
+                @{ header = 'Deployments'; property = 'Deployments'; filter = 'number' }
+                @{ header = 'Deployment names'; property = 'DeploymentNames' }
+                @{ header = 'Deployment SKUs'; property = 'DeploymentSkus'; filter = 'select' }
+                @{ header = 'Total capacity'; property = 'DeploymentCapacity'; filter = 'number' }
+                @{ header = 'Deployment states'; property = 'DeploymentStates'; filter = 'select' }
+                @{ header = 'Requests'; property = 'Requests'; filter = 'number' }
+                @{ header = 'Input tokens'; property = 'ProcessedPromptTokens'; filter = 'number' }
+                @{ header = 'Output tokens'; property = 'GeneratedTokens'; filter = 'number' }
+                @{ header = 'Cache-read input tokens'; property = 'CacheReadInputTokens'; filter = 'number' }
+                @{ header = 'HTTP 429'; property = 'Requests429'; filter = 'number' }
+                @{ header = 'HTTP 5xx'; property = 'Requests5xx'; filter = 'number' }
+                @{ header = 'Metrics status'; property = 'MetricsStatus'; filter = 'select' }
+            )
+
+            $htmlTableIdAccounts = "$($htmlTableId)_Accounts"
+
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadag$($htmlTableId)()" type="button" class="collapsible" id="buttonTenantSummary_ModelDeploymentInsights"><i class="padlx fa fa-cubes" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$($modelSummary.Count) Foundry models ($($arrayModelDeploymentInsights.Count) deployments, $($azAPICallConf['htParameters'].FoundryModelDeploymentsDays) day metrics)</span></button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableId)(); return false;">Pop out grid</a><br>
+<span class="padlxx hintTableSize">*The CSV download respects the filters and the column order applied in the grid</span>
+"@)
+            [void]$htmlTenantSummary.AppendLine((buildAgGridScript -HtmlTableId $htmlTableId -PopoutTitle 'Azure Governance Visualizer - Foundry models' -ColumnDefinitions $modelSummaryColumns -Rows @($modelSummary | Sort-Object ModelName, ModelVersion)))
+            [void]$htmlTenantSummary.AppendLine('</div>')
+
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadag$($htmlTableIdAccounts)()" type="button" class="collapsible" id="buttonTenantSummary_ModelDeploymentInsightsAccounts"><i class="padlx fa fa-cubes" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$($modelAccountDetails.Count) Foundry model / Cognitive Services account combinations</span></button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableIdAccounts)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableIdAccounts)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableIdAccounts)(); return false;">Pop out grid</a><br>
+<span class="padlxx hintTableSize">*The CSV download respects the filters and the column order applied in the grid</span>
+"@)
+            [void]$htmlTenantSummary.AppendLine((buildAgGridScript -HtmlTableId $htmlTableIdAccounts -PopoutTitle 'Azure Governance Visualizer - Foundry model and Cognitive Services account details' -ColumnDefinitions $modelAccountColumns -Rows @($modelAccountDetails | Sort-Object ModelName, ModelVersion, SubscriptionName, AccountName)))
+            [void]$htmlTenantSummary.AppendLine('</div>')
+        }
+
+        Write-Host "   Model Deployment Insights processing duration: $((New-TimeSpan -Start $startModelDeploymentInsights -End (Get-Date)).TotalSeconds) seconds"
+    }
+    #endregion SUMMARYModelDeploymentInsights
 
     #region SUMMARYStorageAccountAnalysis
     if ($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis -eq $false) {

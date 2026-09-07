@@ -54,7 +54,7 @@
             if (-not $linterCommand) {
                 Write-Host " 'policylinter' not available - skipping 'Azure Policy Linter'" -ForegroundColor Yellow
                 $script:policyLinterStatus.reason = "'policylinter' is not available"
-                $script:policyLinterStatus.recommendation = 'dotnet tool install --global Microsoft.Azure.Policy.PolicyLinter.Cli <a href="https://github.com/Azure/azure-policy-linter" target="_blank">Azure-Policy-Linter</a>'
+                $script:policyLinterStatus.recommendation = 'dotnet tool install --global Microsoft.Azure.Policy.PolicyLinter.Cli'
                 Write-Host " Recommendation: install it with 'dotnet tool install --global Microsoft.Azure.Policy.PolicyLinter.Cli' see https://github.com/Azure/azure-policy-linter" -ForegroundColor Yellow
                 return
             }
@@ -178,7 +178,10 @@
                 }
                 if (-not $NoCsvExport) {
                     Write-Host " Exporting PolicyLinter CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyLinter.csv'"
-                    $arrayPolicyLinterFindings | Sort-Object -Property PolicyDefinitionId, Severity, Rule | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyLinter.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                    #sort across all columns; Sort-Object is not stable, so anything less than a total order lets unchanged findings shuffle between runs
+                    $arrayPolicyLinterFindings |
+                        Sort-Object -Property PolicyDefinitionId, Severity, Rule, RuleId, RuleCategory, Line, JsonPath, Description, PolicyDefinitionName, PolicyDisplayName, PolicyCategory, ScopeId, Scope |
+                        Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyLinter.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
                 }
             }
             else {

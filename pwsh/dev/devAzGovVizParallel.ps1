@@ -206,6 +206,15 @@
     If the Storage Account Access Analysis feature is executed with this parameter you can define the Storage Account (resource) tags that should be added to the CSV output
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
 
+.PARAMETER NoFoundryModelDeployments
+    Azure OpenAI and Azure AI Services model deployments and usage metrics are collected by default for TenantSummary, ScopeInsights and CSV export. Use this parameter to skip the feature.
+    Requires Microsoft.CognitiveServices/accounts/deployments/read and Microsoft.Insights/metrics/read permissions.
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoFoundryModelDeployments
+
+.PARAMETER FoundryModelDeploymentsDays
+    Number of trailing days included in Model Deployment Insights metrics (default=7, range=1-30).
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -FoundryModelDeploymentsDays 14
+
 .PARAMETER NoNetwork
     Network analysis / Virtual Network, Subnets, Virtual Network Peerings and Private Endpoints
     If you do not want to execute this feature then use this parameter
@@ -384,6 +393,9 @@
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoStorageAccountAccessAnalysis
     Additionally you can define Subscription and/or Storage Account Tag names that should be added to the CSV output per Storage Account
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> --StorageAccountAccessAnalysisSubscriptionTags @('Responsible', 'TeamEmail') -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
+
+    Execute Model Deployment Insights using a trailing 14-day metrics window
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -FoundryModelDeploymentsDays 14
 
     Define if Network analysis / Virtual Network and Virtual Network Peerings should not be executed
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoNetwork
@@ -635,6 +647,13 @@ param
     $StorageAccountAccessAnalysisStorageAccountTags = @('undefined'),
 
     [switch]
+    $NoFoundryModelDeployments,
+
+    [ValidateRange(1, 30)]
+    [int]
+    $FoundryModelDeploymentsDays = 7,
+
+    [switch]
     $GitHubActionsOIDC,
 
     [switch]
@@ -779,6 +798,7 @@ if ($ManagementGroupId -match ' ') {
 . ".\$($ScriptPath)\functions\processPrivateEndpoints.ps1"
 . ".\$($ScriptPath)\functions\processNetwork.ps1"
 . ".\$($ScriptPath)\functions\processStorageAccountAnalysis.ps1"
+. ".\$($ScriptPath)\functions\processModelDeploymentInsights.ps1"
 . ".\$($ScriptPath)\functions\processALZPolicyVersionChecker.ps1"
 . ".\$($ScriptPath)\functions\processALZPolicyAssignmentsChecker.ps1"
 . ".\$($ScriptPath)\functions\processPolicyLinter.ps1"
@@ -1132,6 +1152,9 @@ if (-not $HierarchyMapOnly) {
     $htDoARMRoleAssignmentScheduleInstances.Do = $true
     $storageAccounts = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayStorageAccountAnalysisResults = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayModelDeploymentAccounts = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayModelDeployments = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayModelDeploymentInsights = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htDefenderEmailContacts = [System.Collections.Hashtable]::Synchronized(@{})
     $arrayVNets = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayPrivateEndPoints = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
@@ -1284,6 +1307,11 @@ if (-not $HierarchyMapOnly) {
     $startDataCollection = Get-Date
 
     processDataCollection -mgId $ManagementGroupId
+
+    if (-not $azAPICallConf['htParameters'].NoFoundryModelDeployments -and -not $ManagementGroupsOnly) {
+        processModelDeploymentInsights
+        showMemoryUsage
+    }
 
     if (-not $ManagementGroupsOnly) {
         exportResourceLocks
@@ -3001,6 +3029,12 @@ if (-not $HierarchyMapOnly) {
             $script:htSubFeaturesGroupedBySubscription = @{}
             foreach ($grpEntry in $script:subFeaturesGroupedBySubscription) {
                 $script:htSubFeaturesGroupedBySubscription[$grpEntry.Name] = $grpEntry
+            }
+        }
+        if (-not $azAPICallConf['htParameters'].NoFoundryModelDeployments) {
+            $script:htModelDeploymentInsightsBySubscription = @{}
+            foreach ($grpEntry in ($arrayModelDeploymentInsights | Group-Object -Property SubscriptionId)) {
+                $script:htModelDeploymentInsightsBySubscription[$grpEntry.Name] = $grpEntry.Group
             }
         }
         #lookup hashtable for user assigned identities (matches either resourceSubscriptionId or miSubscriptionId); preserves source order per key

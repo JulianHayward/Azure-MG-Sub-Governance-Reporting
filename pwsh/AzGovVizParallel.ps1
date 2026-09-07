@@ -206,6 +206,15 @@
     If the Storage Account Access Analysis feature is executed with this parameter you can define the Storage Account (resource) tags that should be added to the CSV output
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
 
+.PARAMETER NoFoundryModelDeployments
+    Azure OpenAI and Azure AI Services model deployments and usage metrics are collected by default for TenantSummary, ScopeInsights and CSV export. Use this parameter to skip the feature.
+    Requires Microsoft.CognitiveServices/accounts/deployments/read and Microsoft.Insights/metrics/read permissions.
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoFoundryModelDeployments
+
+.PARAMETER FoundryModelDeploymentsDays
+    Number of trailing days included in Model Deployment Insights metrics (default=7, range=1-30).
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -FoundryModelDeploymentsDays 14
+
 .PARAMETER NoNetwork
     Network analysis / Virtual Network, Subnets, Virtual Network Peerings and Private Endpoints
     If you do not want to execute this feature then use this parameter
@@ -384,6 +393,9 @@
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoStorageAccountAccessAnalysis
     Additionally you can define Subscription and/or Storage Account Tag names that should be added to the CSV output per Storage Account
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> --StorageAccountAccessAnalysisSubscriptionTags @('Responsible', 'TeamEmail') -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
+
+    Execute Model Deployment Insights using a trailing 14-day metrics window
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -FoundryModelDeploymentsDays 14
 
     Define if Network analysis / Virtual Network and Virtual Network Peerings should not be executed
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoNetwork
@@ -635,6 +647,13 @@ param
     $StorageAccountAccessAnalysisStorageAccountTags = @('undefined'),
 
     [switch]
+    $NoFoundryModelDeployments,
+
+    [ValidateRange(1, 30)]
+    [int]
+    $FoundryModelDeploymentsDays = 7,
+
+    [switch]
     $GitHubActionsOIDC,
 
     [switch]
@@ -809,6 +828,8 @@ function addHtParameters {
         ALZPolicyAssignmentsChecker                  = [bool]$ALZPolicyAssignmentsChecker
         ALZManagementGroupsIds                       = $ALZManagementGroupsIds
         NoStorageAccountAccessAnalysis               = [bool]$NoStorageAccountAccessAnalysis
+        NoFoundryModelDeployments                    = [bool]$NoFoundryModelDeployments
+        FoundryModelDeploymentsDays                  = $FoundryModelDeploymentsDays
         GitHubActionsOIDC                            = [bool]$GitHubActionsOIDC
         NoNetwork                                    = [bool]$NoNetwork
         ThrottleLimit                                = $ThrottleLimit
@@ -7346,6 +7367,8 @@ function processDataCollection {
             #Array&HTs
             $newTable = $using:newTable
             $storageAccounts = $using:storageAccounts
+            $arrayModelDeploymentAccounts = $using:arrayModelDeploymentAccounts
+            $arrayModelDeployments = $using:arrayModelDeployments
             $resourcesAll = $using:resourcesAll
             $resourcesIdsAll = $using:resourcesIdsAll
             $resourceGroupsAll = $using:resourceGroupsAll
@@ -7420,6 +7443,7 @@ function processDataCollection {
             $function:dataCollectionDefenderPlans = $using:funcDataCollectionDefenderPlans
             $function:dataCollectionDiagnosticsSub = $using:funcDataCollectionDiagnosticsSub
             $function:dataCollectionResources = $using:funcDataCollectionResources
+            $function:dataCollectionModelDeployments = $using:funcDataCollectionModelDeployments
             $function:dataCollectionStorageAccounts = $using:funcDataCollectionStorageAccounts
             $function:dataCollectionResourceGroups = $using:funcDataCollectionResourceGroups
             $function:dataCollectionResourceProviders = $using:funcDataCollectionResourceProviders
@@ -7525,6 +7549,10 @@ function processDataCollection {
                                 ChildMgParentNameChainDelimited = $childMgParentNameChainDelimited
                             }
                             DataCollectionStorageAccounts @baseParameters @dataCollectionStorageAccountsParameters
+                        }
+
+                        if (-not $azAPICallConf['htParameters'].NoFoundryModelDeployments) {
+                            DataCollectionModelDeployments @baseParameters -ChildMgMgPath $childMgMgPath
                         }
 
                         if ($azAPICallConf['htParameters'].NoResources -eq $false) {
@@ -9820,6 +9848,132 @@ function processMDfCCoverage {
     $end = Get-Date
     Write-Host "    Defender Coverage processing duration: $((New-TimeSpan -Start $start -End $end).TotalMinutes) minutes ($((New-TimeSpan -Start $start -End $end).TotalSeconds) seconds)"
 }
+function processModelDeploymentInsights {
+    $start = Get-Date
+    $deploymentCount = $arrayModelDeployments.Count
+    Write-Host "Processing Model Deployment Insights for $deploymentCount deployments"
+
+    if ($deploymentCount -eq 0) {
+        return
+    }
+
+    $metricsEnd = (Get-Date).ToUniversalTime()
+    $metricsStart = $metricsEnd.AddDays(-$FoundryModelDeploymentsDays)
+    $timespan = '{0}/{1}' -f $metricsStart.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'"), $metricsEnd.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'")
+    $batchSize = [math]::Ceiling($deploymentCount / $ThrottleLimit)
+    $counterBatch = [PSCustomObject]@{ Value = 0 }
+    $deploymentBatches = $arrayModelDeployments | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
+
+    $deploymentBatches | ForEach-Object -Parallel {
+        $azAPICallConf = $using:azAPICallConf
+        $arrayModelDeploymentInsights = $using:arrayModelDeploymentInsights
+        $timespan = $using:timespan
+        $metricsStart = $using:metricsStart
+        $metricsEnd = $using:metricsEnd
+
+        foreach ($deployment in $_.Group) {
+            $encodedDeploymentName = [uri]::EscapeDataString($deployment.DeploymentName)
+            $filter = "ModelDeploymentName%20eq%20%27$encodedDeploymentName%27%20and%20StatusCode%20eq%20%27*%27"
+            $metricNames = 'AzureOpenAIRequests,ProcessedPromptTokens,GeneratedTokens,cacheReadInputTokens'
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($deployment.AccountId)/providers/microsoft.Insights/metrics?api-version=2024-02-01&interval=FULL&aggregation=total&validatedimensions=false&metricNamespace=microsoft.cognitiveservices%2Faccounts&timespan=$timespan&`$filter=$filter&metricnames=$metricNames"
+            $currentTask = "Getting metrics for model deployment '$($deployment.DeploymentName)' in account '$($deployment.AccountName)'"
+            $metricResponse = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method 'GET' -currentTask $currentTask -caller 'ModelDeploymentInsights' -unhandledErrorAction Continue
+
+            $metricStatus = 'Succeeded'
+            $totals = @{}
+            $statusCodeTotals = @{}
+            if ($metricResponse -is [string]) {
+                $metricStatus = $metricResponse
+            }
+            elseif (@($metricResponse).Count -eq 0) {
+                $metricStatus = 'NoData'
+            }
+            else {
+                foreach ($metric in @($metricResponse)) {
+                    $metricName = [string]$metric.name.value
+                    $metricTotal = 0.0
+                    foreach ($series in @($metric.timeseries)) {
+                        $seriesTotal = 0.0
+                        foreach ($dataPoint in @($series.data)) {
+                            if ($null -ne $dataPoint.total) {
+                                $seriesTotal += [double]$dataPoint.total
+                            }
+                        }
+                        $metricTotal += $seriesTotal
+
+                        if ($metricName -eq 'AzureOpenAIRequests') {
+                            $statusMetadata = $series.metadatavalues | Where-Object { $_.name.value -ieq 'StatusCode' } | Select-Object -First 1
+                            if ($null -ne $statusMetadata) {
+                                $statusCode = [string]$statusMetadata.value
+                                if (-not $statusCodeTotals.ContainsKey($statusCode)) {
+                                    $statusCodeTotals[$statusCode] = 0.0
+                                }
+                                $statusCodeTotals[$statusCode] += $seriesTotal
+                            }
+                        }
+                    }
+                    $totals[$metricName] = $metricTotal
+                }
+            }
+
+            $requests2xx = ($statusCodeTotals.GetEnumerator() | Where-Object { $_.Key -match '^2\d\d$' } | Measure-Object -Property Value -Sum).Sum
+            $requests4xx = ($statusCodeTotals.GetEnumerator() | Where-Object { $_.Key -match '^4\d\d$' } | Measure-Object -Property Value -Sum).Sum
+            $requests5xx = ($statusCodeTotals.GetEnumerator() | Where-Object { $_.Key -match '^5\d\d$' } | Measure-Object -Property Value -Sum).Sum
+
+            $null = $arrayModelDeploymentInsights.Add([PSCustomObject]@{
+                    MgPath                = $deployment.MgPath
+                    SubscriptionId        = $deployment.SubscriptionId
+                    SubscriptionName      = $deployment.SubscriptionName
+                    ResourceGroup         = $deployment.ResourceGroup
+                    AccountId             = $deployment.AccountId
+                    AccountName           = $deployment.AccountName
+                    AccountKind           = $deployment.AccountKind
+                    AccountSku            = $deployment.AccountSku
+                    AccountSkuTier        = $deployment.AccountSkuTier
+                    AccountCreatedTime    = $deployment.AccountCreatedTime
+                    Location              = $deployment.Location
+                    PublicNetworkAccess   = $deployment.PublicNetworkAccess
+                    DeploymentId          = $deployment.DeploymentId
+                    DeploymentName        = $deployment.DeploymentName
+                    DeploymentState       = $deployment.DeploymentState
+                    DeploymentSku         = $deployment.DeploymentSku
+                    DeploymentSkuTier     = $deployment.DeploymentSkuTier
+                    DeploymentCapacity    = $deployment.DeploymentCapacity
+                    DeploymentCapabilities = $deployment.DeploymentCapabilities
+                    DeploymentRateLimits   = $deployment.DeploymentRateLimits
+                    VersionUpgradeOption  = $deployment.VersionUpgradeOption
+                    ModelFormat           = $deployment.ModelFormat
+                    ModelName             = $deployment.ModelName
+                    ModelVersion          = $deployment.ModelVersion
+                    MetricsStartUtc        = $metricsStart
+                    MetricsEndUtc          = $metricsEnd
+                    MetricsStatus          = $metricStatus
+                    Requests               = $totals.AzureOpenAIRequests
+                    ProcessedPromptTokens  = $totals.ProcessedPromptTokens
+                    GeneratedTokens        = $totals.GeneratedTokens
+                    CacheReadInputTokens   = $totals.cacheReadInputTokens
+                    Requests2xx            = if ($null -eq $requests2xx) { 0 } else { $requests2xx }
+                    Requests200            = if ($statusCodeTotals.ContainsKey('200')) { $statusCodeTotals['200'] } else { 0 }
+                    Requests4xx            = if ($null -eq $requests4xx) { 0 } else { $requests4xx }
+                    Requests400            = if ($statusCodeTotals.ContainsKey('400')) { $statusCodeTotals['400'] } else { 0 }
+                    Requests429            = if ($statusCodeTotals.ContainsKey('429')) { $statusCodeTotals['429'] } else { 0 }
+                    Requests5xx            = if ($null -eq $requests5xx) { 0 } else { $requests5xx }
+                    StatusCodes            = $statusCodeTotals | ConvertTo-Json -Compress
+                })
+        }
+    } -ThrottleLimit $ThrottleLimit
+
+    if (-not $NoCsvExport -and $arrayModelDeploymentInsights.Count -gt 0) {
+        $modelDeploymentInsightsCsvPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ModelDeploymentInsights.csv"
+        Write-Host "Exporting Model Deployment Insights CSV '$modelDeploymentInsightsCsvPath'"
+        $arrayModelDeploymentInsights |
+            Sort-Object -Property ModelName, ModelVersion, SubscriptionName, AccountName, DeploymentName |
+            Export-Csv -Path $modelDeploymentInsightsCsvPath -Delimiter $csvDelimiter -NoTypeInformation
+    }
+
+    apiCallTracking -stage 'Model Deployment Insights' -spacing ' '
+    Write-Host "Processing Model Deployment Insights duration: $((New-TimeSpan -Start $start -End (Get-Date)).TotalSeconds) seconds"
+}
 function processNetwork {
     $start = Get-Date
     Write-Host "Processing Network enrichment ($($arrayVNets.Count) Virtual Networks)"
@@ -10338,7 +10492,7 @@ function processPolicyLinter {
             if (-not $linterCommand) {
                 Write-Host " 'policylinter' not available - skipping 'Azure Policy Linter'" -ForegroundColor Yellow
                 $script:policyLinterStatus.reason = "'policylinter' is not available"
-                $script:policyLinterStatus.recommendation = 'dotnet tool install --global Microsoft.Azure.Policy.PolicyLinter.Cli <a href="https://github.com/Azure/azure-policy-linter" target="_blank">Azure-Policy-Linter</a>'
+                $script:policyLinterStatus.recommendation = 'dotnet tool install --global Microsoft.Azure.Policy.PolicyLinter.Cli'
                 Write-Host " Recommendation: install it with 'dotnet tool install --global Microsoft.Azure.Policy.PolicyLinter.Cli' see https://github.com/Azure/azure-policy-linter" -ForegroundColor Yellow
                 return
             }
@@ -10462,7 +10616,10 @@ function processPolicyLinter {
                 }
                 if (-not $NoCsvExport) {
                     Write-Host " Exporting PolicyLinter CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyLinter.csv'"
-                    $arrayPolicyLinterFindings | Sort-Object -Property PolicyDefinitionId, Severity, Rule | Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyLinter.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
+                    #sort across all columns; Sort-Object is not stable, so anything less than a total order lets unchanged findings shuffle between runs
+                    $arrayPolicyLinterFindings |
+                        Sort-Object -Property PolicyDefinitionId, Severity, Rule, RuleId, RuleCategory, Line, JsonPath, Description, PolicyDefinitionName, PolicyDisplayName, PolicyCategory, ScopeId, Scope |
+                        Export-Csv -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyLinter.csv" -Delimiter "$csvDelimiter" -NoTypeInformation
                 }
             }
             else {
@@ -12189,6 +12346,146 @@ tf.init();}}
 
     }
     #endregion ScopeInsightsManagementGroups
+
+    #region ScopeInsightsModelDeploymentInsights
+    if (-not $azAPICallConf['htParameters'].NoFoundryModelDeployments) {
+        $scopeModelDeployments = [System.Collections.ArrayList]@()
+        if ($mgOrSub -eq 'sub') {
+            #a scope without deployments has no hashtable entry; @($null) would enumerate one null element
+            foreach ($deployment in @($htModelDeploymentInsightsBySubscription[$subscriptionId]).where({ $null -ne $_ })) {
+                $null = $scopeModelDeployments.Add($deployment)
+            }
+        }
+        else {
+            foreach ($scopeSubscriptionId in $mgAllChildSubscriptions) {
+                foreach ($deployment in @($htModelDeploymentInsightsBySubscription[$scopeSubscriptionId]).where({ $null -ne $_ })) {
+                    $null = $scopeModelDeployments.Add($deployment)
+                }
+            }
+        }
+
+        if ($scopeModelDeployments.Count -gt 0) {
+            $scopeModelSummary = [System.Collections.ArrayList]@()
+            foreach ($modelGroup in ($scopeModelDeployments | Group-Object -Property ModelFormat, ModelName, ModelVersion)) {
+                $firstDeployment = $modelGroup.Group | Select-Object -First 1
+                $null = $scopeModelSummary.Add([PSCustomObject]@{
+                        ModelFormat           = $firstDeployment.ModelFormat
+                        ModelName             = $firstDeployment.ModelName
+                        ModelVersion          = $firstDeployment.ModelVersion
+                        Deployments           = $modelGroup.Count
+                        Accounts              = ($modelGroup.Group.AccountId | Sort-Object -Unique).Count
+                        Subscriptions         = ($modelGroup.Group.SubscriptionId | Sort-Object -Unique).Count
+                        Requests              = ($modelGroup.Group.Requests | Measure-Object -Sum).Sum
+                        ProcessedPromptTokens = ($modelGroup.Group.ProcessedPromptTokens | Measure-Object -Sum).Sum
+                        GeneratedTokens       = ($modelGroup.Group.GeneratedTokens | Measure-Object -Sum).Sum
+                        CacheReadInputTokens  = ($modelGroup.Group.CacheReadInputTokens | Measure-Object -Sum).Sum
+                        Requests429           = ($modelGroup.Group.Requests429 | Measure-Object -Sum).Sum
+                        Requests5xx           = ($modelGroup.Group.Requests5xx | Measure-Object -Sum).Sum
+                    })
+            }
+
+            $scopeModelAccountDetails = [System.Collections.ArrayList]@()
+            foreach ($modelAccountGroup in ($scopeModelDeployments | Group-Object -Property ModelFormat, ModelName, ModelVersion, AccountId)) {
+                $firstDeployment = $modelAccountGroup.Group | Select-Object -First 1
+                $null = $scopeModelAccountDetails.Add([PSCustomObject]@{
+                        ModelFormat           = $firstDeployment.ModelFormat
+                        ModelName             = $firstDeployment.ModelName
+                        ModelVersion          = $firstDeployment.ModelVersion
+                        AccountName           = $firstDeployment.AccountName
+                        AccountKind           = $firstDeployment.AccountKind
+                        AccountSku            = $firstDeployment.AccountSku
+                        SubscriptionName      = $firstDeployment.SubscriptionName
+                        ResourceGroup         = $firstDeployment.ResourceGroup
+                        Location              = $firstDeployment.Location
+                        PublicNetworkAccess   = $firstDeployment.PublicNetworkAccess
+                        Deployments           = $modelAccountGroup.Count
+                        DeploymentNames       = ($modelAccountGroup.Group.DeploymentName | Sort-Object -Unique) -join ', '
+                        DeploymentSkus        = ($modelAccountGroup.Group.DeploymentSku | Sort-Object -Unique) -join ', '
+                        DeploymentCapacity    = ($modelAccountGroup.Group.DeploymentCapacity | Measure-Object -Sum).Sum
+                        DeploymentStates      = ($modelAccountGroup.Group.DeploymentState | Sort-Object -Unique) -join ', '
+                        Requests              = ($modelAccountGroup.Group.Requests | Measure-Object -Sum).Sum
+                        ProcessedPromptTokens = ($modelAccountGroup.Group.ProcessedPromptTokens | Measure-Object -Sum).Sum
+                        GeneratedTokens       = ($modelAccountGroup.Group.GeneratedTokens | Measure-Object -Sum).Sum
+                        CacheReadInputTokens  = ($modelAccountGroup.Group.CacheReadInputTokens | Measure-Object -Sum).Sum
+                        Requests429           = ($modelAccountGroup.Group.Requests429 | Measure-Object -Sum).Sum
+                        Requests5xx           = ($modelAccountGroup.Group.Requests5xx | Measure-Object -Sum).Sum
+                        MetricsStatus         = ($modelAccountGroup.Group.MetricsStatus | Sort-Object -Unique) -join ', '
+                    })
+            }
+
+            $scopeIdForHtml = if ($mgOrSub -eq 'sub') { $subscriptionId } else { $mgChild }
+            $scopeContentClass = if ($mgOrSub -eq 'sub') { 'contentSISub' } else { 'contentSIMG' }
+            $htmlTableId = "ScopeInsights_ModelDeploymentInsights_$($scopeIdForHtml -replace '[^a-zA-Z0-9]', '_')"
+            $scopeModelColumns = @(
+                @{ header = 'Model format'; property = 'ModelFormat'; filter = 'select' }
+                @{ header = 'Model'; property = 'ModelName'; filter = 'select' }
+                @{ header = 'Version'; property = 'ModelVersion'; filter = 'select' }
+                @{ header = 'Deployments'; property = 'Deployments'; filter = 'number' }
+                @{ header = 'Accounts'; property = 'Accounts'; filter = 'number' }
+                @{ header = 'Subscriptions'; property = 'Subscriptions'; filter = 'number' }
+                @{ header = 'Requests'; property = 'Requests'; filter = 'number' }
+                @{ header = 'Input tokens'; property = 'ProcessedPromptTokens'; filter = 'number' }
+                @{ header = 'Output tokens'; property = 'GeneratedTokens'; filter = 'number' }
+                @{ header = 'Cache-read input tokens'; property = 'CacheReadInputTokens'; filter = 'number' }
+                @{ header = 'HTTP 429'; property = 'Requests429'; filter = 'number' }
+                @{ header = 'HTTP 5xx'; property = 'Requests5xx'; filter = 'number' }
+            )
+            $scopeModelAccountColumns = @(
+                @{ header = 'Model format'; property = 'ModelFormat'; filter = 'select' }
+                @{ header = 'Model'; property = 'ModelName'; filter = 'select' }
+                @{ header = 'Version'; property = 'ModelVersion'; filter = 'select' }
+                @{ header = 'Cognitive Services account'; property = 'AccountName'; filter = 'select' }
+                @{ header = 'Account kind'; property = 'AccountKind'; filter = 'select' }
+                @{ header = 'Account SKU'; property = 'AccountSku'; filter = 'select' }
+                @{ header = 'Subscription'; property = 'SubscriptionName'; filter = 'select' }
+                @{ header = 'Resource group'; property = 'ResourceGroup'; filter = 'select' }
+                @{ header = 'Location'; property = 'Location'; filter = 'select' }
+                @{ header = 'Public network access'; property = 'PublicNetworkAccess'; filter = 'select' }
+                @{ header = 'Deployments'; property = 'Deployments'; filter = 'number' }
+                @{ header = 'Deployment names'; property = 'DeploymentNames' }
+                @{ header = 'Deployment SKUs'; property = 'DeploymentSkus'; filter = 'select' }
+                @{ header = 'Total capacity'; property = 'DeploymentCapacity'; filter = 'number' }
+                @{ header = 'Deployment states'; property = 'DeploymentStates'; filter = 'select' }
+                @{ header = 'Requests'; property = 'Requests'; filter = 'number' }
+                @{ header = 'Input tokens'; property = 'ProcessedPromptTokens'; filter = 'number' }
+                @{ header = 'Output tokens'; property = 'GeneratedTokens'; filter = 'number' }
+                @{ header = 'Cache-read input tokens'; property = 'CacheReadInputTokens'; filter = 'number' }
+                @{ header = 'HTTP 429'; property = 'Requests429'; filter = 'number' }
+                @{ header = 'HTTP 5xx'; property = 'Requests5xx'; filter = 'number' }
+                @{ header = 'Metrics status'; property = 'MetricsStatus'; filter = 'select' }
+            )
+
+            $htmlTableIdAccounts = "$($htmlTableId)_Accounts"
+
+            [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadag$($htmlTableId)()" type="button" class="collapsible"><i class="fa fa-cubes" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$($scopeModelSummary.Count) Foundry models ($($scopeModelDeployments.Count) deployments)</span></button>
+<div class="content $scopeContentClass">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableId)(); return false;">Pop out grid</a><br>
+"@)
+            [void]$htmlScopeInsights.AppendLine((buildAgGridScript -HtmlTableId $htmlTableId -PopoutTitle "Azure Governance Visualizer - Foundry models - $scopeIdForHtml" -ColumnDefinitions $scopeModelColumns -Rows @($scopeModelSummary | Sort-Object ModelName, ModelVersion)))
+            [void]$htmlScopeInsights.AppendLine('</div>')
+
+            [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadag$($htmlTableIdAccounts)()" type="button" class="collapsible"><i class="fa fa-cubes" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$($scopeModelAccountDetails.Count) Foundry model / Cognitive Services account combinations</span></button>
+<div class="content $scopeContentClass">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableIdAccounts)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableIdAccounts)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableIdAccounts)(); return false;">Pop out grid</a><br>
+"@)
+            [void]$htmlScopeInsights.AppendLine((buildAgGridScript -HtmlTableId $htmlTableIdAccounts -PopoutTitle "Azure Governance Visualizer - Foundry model and Cognitive Services account details - $scopeIdForHtml" -ColumnDefinitions $scopeModelAccountColumns -Rows @($scopeModelAccountDetails | Sort-Object ModelName, ModelVersion, SubscriptionName, AccountName)))
+            [void]$htmlScopeInsights.AppendLine(@'
+</div>
+</td></tr>
+<tr><td class="detailstd">
+'@)
+        }
+        else {
+            [void]$htmlScopeInsights.AppendLine(@'
+<i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">0 Foundry models</span>
+</td></tr>
+<tr><td class="detailstd">
+'@)
+        }
+    }
+    #endregion ScopeInsightsModelDeploymentInsights
 
     #ScopeInsightsResources
     if ($azAPICallConf['htParameters'].NoResources -eq $false) {
@@ -16161,11 +16458,13 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
 
     if (-not $policyLinterStatus.executed) {
         $policyLinterSkipReason = $policyLinterStatus.reason
+        $policyLinterSkipLink = ''
         if ($policyLinterStatus.recommendation) {
             $policyLinterSkipReason = "$($policyLinterSkipReason) - install it with '$($policyLinterStatus.recommendation)'"
+            $policyLinterSkipLink = ' <a class="externallink" href="https://github.com/Azure/azure-policy-linter" target="_blank" rel="noopener">Azure Policy Linter <i class="fa fa-external-link" aria-hidden="true"></i></a>'
         }
         [void]$htmlTenantSummary.AppendLine(@"
-                <p><i class="padlx fa fa-ban" aria-hidden="true"></i> Policy Linter not executed ($($policyLinterSkipReason -replace '<', '&lt;' -replace '>', '&gt;'))</p>
+                <p><i class="padlx fa fa-ban" aria-hidden="true"></i> Policy Linter not executed ($($policyLinterSkipReason -replace '<', '&lt;' -replace '>', '&gt;'))$($policyLinterSkipLink)</p>
 "@)
     }
     elseif ($policyLinterFindingsCount -eq 0) {
@@ -24226,6 +24525,131 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         #endregion SUMMARYPSRule
     }
 
+    #region SUMMARYModelDeploymentInsights
+    if (-not $azAPICallConf['htParameters'].NoFoundryModelDeployments) {
+        $startModelDeploymentInsights = Get-Date
+        Write-Host '  processing TenantSummary Model Deployment Insights'
+
+        if ($arrayModelDeploymentInsights.Count -eq 0) {
+            [void]$htmlTenantSummary.AppendLine('<p><i class="padlx fa fa-ban" aria-hidden="true"></i> 0 Foundry models</p>')
+        }
+        else {
+            $modelSummary = [System.Collections.ArrayList]@()
+            $modelGroups = $arrayModelDeploymentInsights | Group-Object -Property ModelFormat, ModelName, ModelVersion
+            foreach ($modelGroup in $modelGroups) {
+                $firstDeployment = $modelGroup.Group | Select-Object -First 1
+                $null = $modelSummary.Add([PSCustomObject]@{
+                        ModelFormat          = $firstDeployment.ModelFormat
+                        ModelName            = $firstDeployment.ModelName
+                        ModelVersion         = $firstDeployment.ModelVersion
+                        Deployments          = $modelGroup.Count
+                        Accounts             = ($modelGroup.Group.AccountId | Sort-Object -Unique).Count
+                        Subscriptions        = ($modelGroup.Group.SubscriptionId | Sort-Object -Unique).Count
+                        Requests             = ($modelGroup.Group.Requests | Measure-Object -Sum).Sum
+                        ProcessedPromptTokens = ($modelGroup.Group.ProcessedPromptTokens | Measure-Object -Sum).Sum
+                        GeneratedTokens       = ($modelGroup.Group.GeneratedTokens | Measure-Object -Sum).Sum
+                        CacheReadInputTokens  = ($modelGroup.Group.CacheReadInputTokens | Measure-Object -Sum).Sum
+                        Requests429           = ($modelGroup.Group.Requests429 | Measure-Object -Sum).Sum
+                        Requests5xx           = ($modelGroup.Group.Requests5xx | Measure-Object -Sum).Sum
+                    })
+            }
+
+            $modelAccountDetails = [System.Collections.ArrayList]@()
+            foreach ($modelAccountGroup in ($arrayModelDeploymentInsights | Group-Object -Property ModelFormat, ModelName, ModelVersion, AccountId)) {
+                $firstDeployment = $modelAccountGroup.Group | Select-Object -First 1
+                $null = $modelAccountDetails.Add([PSCustomObject]@{
+                        ModelFormat           = $firstDeployment.ModelFormat
+                        ModelName             = $firstDeployment.ModelName
+                        ModelVersion          = $firstDeployment.ModelVersion
+                        AccountName           = $firstDeployment.AccountName
+                        AccountKind           = $firstDeployment.AccountKind
+                        AccountSku            = $firstDeployment.AccountSku
+                        SubscriptionName      = $firstDeployment.SubscriptionName
+                        ResourceGroup         = $firstDeployment.ResourceGroup
+                        MgPath                = $firstDeployment.MgPath
+                        Location              = $firstDeployment.Location
+                        PublicNetworkAccess   = $firstDeployment.PublicNetworkAccess
+                        Deployments           = $modelAccountGroup.Count
+                        DeploymentNames       = ($modelAccountGroup.Group.DeploymentName | Sort-Object -Unique) -join ', '
+                        DeploymentSkus        = ($modelAccountGroup.Group.DeploymentSku | Sort-Object -Unique) -join ', '
+                        DeploymentCapacity    = ($modelAccountGroup.Group.DeploymentCapacity | Measure-Object -Sum).Sum
+                        DeploymentStates      = ($modelAccountGroup.Group.DeploymentState | Sort-Object -Unique) -join ', '
+                        Requests              = ($modelAccountGroup.Group.Requests | Measure-Object -Sum).Sum
+                        ProcessedPromptTokens = ($modelAccountGroup.Group.ProcessedPromptTokens | Measure-Object -Sum).Sum
+                        GeneratedTokens       = ($modelAccountGroup.Group.GeneratedTokens | Measure-Object -Sum).Sum
+                        CacheReadInputTokens  = ($modelAccountGroup.Group.CacheReadInputTokens | Measure-Object -Sum).Sum
+                        Requests429           = ($modelAccountGroup.Group.Requests429 | Measure-Object -Sum).Sum
+                        Requests5xx           = ($modelAccountGroup.Group.Requests5xx | Measure-Object -Sum).Sum
+                        MetricsStatus         = ($modelAccountGroup.Group.MetricsStatus | Sort-Object -Unique) -join ', '
+                    })
+            }
+
+            $htmlTableId = 'TenantSummary_ModelDeploymentInsights'
+            $modelSummaryColumns = @(
+                @{ header = 'Model format'; property = 'ModelFormat'; filter = 'select' }
+                @{ header = 'Model'; property = 'ModelName'; filter = 'select' }
+                @{ header = 'Version'; property = 'ModelVersion'; filter = 'select' }
+                @{ header = 'Deployments'; property = 'Deployments'; filter = 'number' }
+                @{ header = 'Accounts'; property = 'Accounts'; filter = 'number' }
+                @{ header = 'Subscriptions'; property = 'Subscriptions'; filter = 'number' }
+                @{ header = 'Requests'; property = 'Requests'; filter = 'number' }
+                @{ header = 'Input tokens'; property = 'ProcessedPromptTokens'; filter = 'number' }
+                @{ header = 'Output tokens'; property = 'GeneratedTokens'; filter = 'number' }
+                @{ header = 'Cache-read input tokens'; property = 'CacheReadInputTokens'; filter = 'number' }
+                @{ header = 'HTTP 429'; property = 'Requests429'; filter = 'number' }
+                @{ header = 'HTTP 5xx'; property = 'Requests5xx'; filter = 'number' }
+            )
+            $modelAccountColumns = @(
+                @{ header = 'Model format'; property = 'ModelFormat'; filter = 'select' }
+                @{ header = 'Model'; property = 'ModelName'; filter = 'select' }
+                @{ header = 'Version'; property = 'ModelVersion'; filter = 'select' }
+                @{ header = 'Cognitive Services account'; property = 'AccountName'; filter = 'select' }
+                @{ header = 'Account kind'; property = 'AccountKind'; filter = 'select' }
+                @{ header = 'Account SKU'; property = 'AccountSku'; filter = 'select' }
+                @{ header = 'Subscription'; property = 'SubscriptionName'; filter = 'select' }
+                @{ header = 'Resource group'; property = 'ResourceGroup'; filter = 'select' }
+                @{ header = 'MG path'; property = 'MgPath' }
+                @{ header = 'Location'; property = 'Location'; filter = 'select' }
+                @{ header = 'Public network access'; property = 'PublicNetworkAccess'; filter = 'select' }
+                @{ header = 'Deployments'; property = 'Deployments'; filter = 'number' }
+                @{ header = 'Deployment names'; property = 'DeploymentNames' }
+                @{ header = 'Deployment SKUs'; property = 'DeploymentSkus'; filter = 'select' }
+                @{ header = 'Total capacity'; property = 'DeploymentCapacity'; filter = 'number' }
+                @{ header = 'Deployment states'; property = 'DeploymentStates'; filter = 'select' }
+                @{ header = 'Requests'; property = 'Requests'; filter = 'number' }
+                @{ header = 'Input tokens'; property = 'ProcessedPromptTokens'; filter = 'number' }
+                @{ header = 'Output tokens'; property = 'GeneratedTokens'; filter = 'number' }
+                @{ header = 'Cache-read input tokens'; property = 'CacheReadInputTokens'; filter = 'number' }
+                @{ header = 'HTTP 429'; property = 'Requests429'; filter = 'number' }
+                @{ header = 'HTTP 5xx'; property = 'Requests5xx'; filter = 'number' }
+                @{ header = 'Metrics status'; property = 'MetricsStatus'; filter = 'select' }
+            )
+
+            $htmlTableIdAccounts = "$($htmlTableId)_Accounts"
+
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadag$($htmlTableId)()" type="button" class="collapsible" id="buttonTenantSummary_ModelDeploymentInsights"><i class="padlx fa fa-cubes" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$($modelSummary.Count) Foundry models ($($arrayModelDeploymentInsights.Count) deployments, $($azAPICallConf['htParameters'].FoundryModelDeploymentsDays) day metrics)</span></button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableId)(); return false;">Pop out grid</a><br>
+<span class="padlxx hintTableSize">*The CSV download respects the filters and the column order applied in the grid</span>
+"@)
+            [void]$htmlTenantSummary.AppendLine((buildAgGridScript -HtmlTableId $htmlTableId -PopoutTitle 'Azure Governance Visualizer - Foundry models' -ColumnDefinitions $modelSummaryColumns -Rows @($modelSummary | Sort-Object ModelName, ModelVersion)))
+            [void]$htmlTenantSummary.AppendLine('</div>')
+
+            [void]$htmlTenantSummary.AppendLine(@"
+<button onclick="loadag$($htmlTableIdAccounts)()" type="button" class="collapsible" id="buttonTenantSummary_ModelDeploymentInsightsAccounts"><i class="padlx fa fa-cubes" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$($modelAccountDetails.Count) Foundry model / Cognitive Services account combinations</span></button>
+<div class="content TenantSummary">
+<i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableIdAccounts)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableIdAccounts)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableIdAccounts)(); return false;">Pop out grid</a><br>
+<span class="padlxx hintTableSize">*The CSV download respects the filters and the column order applied in the grid</span>
+"@)
+            [void]$htmlTenantSummary.AppendLine((buildAgGridScript -HtmlTableId $htmlTableIdAccounts -PopoutTitle 'Azure Governance Visualizer - Foundry model and Cognitive Services account details' -ColumnDefinitions $modelAccountColumns -Rows @($modelAccountDetails | Sort-Object ModelName, ModelVersion, SubscriptionName, AccountName)))
+            [void]$htmlTenantSummary.AppendLine('</div>')
+        }
+
+        Write-Host "   Model Deployment Insights processing duration: $((New-TimeSpan -Start $startModelDeploymentInsights -End (Get-Date)).TotalSeconds) seconds"
+    }
+    #endregion SUMMARYModelDeploymentInsights
+
     #region SUMMARYStorageAccountAnalysis
     if ($azAPICallConf['htParameters'].NoStorageAccountAccessAnalysis -eq $false) {
         $startStorageAccountAnalysis = Get-Date
@@ -31360,14 +31784,26 @@ function validateAccess {
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.Authorization/roleEligibilityScheduleInstances?api-version=2020-10-01&`$filter=atScope()"
         $res = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -currentTask $currentTask -validateAccess
         if ($res -eq 'failed') {
-            Write-Host "ARM API 'Microsoft.Authorization/roleEligibilitySchedules/read' permission - check FAILED" -ForegroundColor DarkRed
-            Write-Host "PIM Eligibility reporting requires the permission 'Microsoft.Authorization/roleEligibilitySchedules/read' (contained in the 'Reader' Role) and a Microsoft Entra ID P2 license"
-            if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions -eq $true -or $azAPICallConf['htParameters'].accountType -ne 'User') {
-                Write-Host "Please consult the documentation: https://$($GithubRepository)#required-permissions-in-azure"
-                Throw 'Error - Azure Governance Visualizer: check the last console output for details'
+            #-validateAccess reports any 400 as 'failed'; only the roleAssignmentScheduleInstances endpoint surfaces the tenant license gate ('AadPremiumLicenseRequired') as such
+            $currentTask = 'Test ARM PIM (Microsoft Entra ID P2) license requirement'
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
+            $resPIMLicense = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -currentTask $currentTask -unhandledErrorAction 'ContinueQuiet'
+
+            if ($resPIMLicense -eq 'AadPremiumLicenseRequired') {
+                Write-Host 'PIM Eligibility reporting not available - the tenant needs to have a Microsoft Entra ID P2 or Microsoft Entra ID Governance license' -ForegroundColor Yellow
+                Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
+                $script:NoPIMEligibility = $true
             }
-            Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
-            $script:NoPIMEligibility = $true
+            else {
+                Write-Host "ARM API 'Microsoft.Authorization/roleEligibilitySchedules/read' permission - check FAILED" -ForegroundColor DarkRed
+                Write-Host "PIM Eligibility reporting requires the permission 'Microsoft.Authorization/roleEligibilitySchedules/read' (contained in the 'Reader' Role) and a Microsoft Entra ID P2 license"
+                if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions -eq $true -or $azAPICallConf['htParameters'].accountType -ne 'User') {
+                    Write-Host "Please consult the documentation: https://$($GithubRepository)#required-permissions-in-azure"
+                    Throw 'Error - Azure Governance Visualizer: check the last console output for details'
+                }
+                Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
+                $script:NoPIMEligibility = $true
+            }
         }
         else {
             Write-Host "ARM API 'Microsoft.Authorization/roleEligibilitySchedules/read' permission - check PASSED" -ForegroundColor Green
@@ -33307,6 +33743,73 @@ function dataCollectionResources {
     }
 }
 $funcDataCollectionResources = $function:dataCollectionResources.ToString()
+
+function dataCollectionModelDeployments {
+    [CmdletBinding()]param(
+        [string]$scopeId,
+        [string]$scopeDisplayName,
+        [string]$ChildMgMgPath,
+        [string]$subscriptionQuotaId
+    )
+
+    $relevantCognitiveServicesKinds = @('OpenAI', 'AzureOpenAI', 'AIServices')
+    $apiVersion = '2024-10-01'
+    $currentTask = "Getting Cognitive Services accounts for Subscription: '$scopeDisplayName' ('$scopeId') [quotaId:'$subscriptionQuotaId']"
+    $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$scopeId/providers/Microsoft.CognitiveServices/accounts?api-version=$apiVersion"
+    $accounts = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method 'GET' -currentTask $currentTask -caller 'ModelDeploymentInsights' -unhandledErrorAction Continue
+
+    foreach ($account in @($accounts).where({ $_.kind -in $relevantCognitiveServicesKinds })) {
+        $resourceGroup = ($account.id -split '/')[4]
+        $null = $script:arrayModelDeploymentAccounts.Add([PSCustomObject]@{
+                AccountId           = $account.id
+                AccountName         = $account.name
+                AccountKind         = $account.kind
+                AccountSku          = $account.sku.name
+                AccountSkuTier      = $account.sku.tier
+                Location            = $account.location
+                PublicNetworkAccess = $account.properties.publicNetworkAccess
+                AccountCreatedTime  = $account.properties.dateCreated
+                SubscriptionId      = $scopeId
+                SubscriptionName    = $scopeDisplayName
+                MgPath              = $ChildMgMgPath
+                ResourceGroup       = $resourceGroup
+            })
+
+        $currentTask = "Getting model deployments for Cognitive Services account '$($account.name)' ('$scopeId')"
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($account.id)/deployments?api-version=$apiVersion"
+        $deployments = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method 'GET' -currentTask $currentTask -caller 'ModelDeploymentInsights' -unhandledErrorAction Continue
+
+        foreach ($deployment in @($deployments)) {
+            $null = $script:arrayModelDeployments.Add([PSCustomObject]@{
+                    DeploymentId        = $deployment.id
+                    DeploymentName      = $deployment.name
+                    DeploymentState     = if ($deployment.properties.deploymentState) { $deployment.properties.deploymentState } else { $deployment.properties.provisioningState }
+                    VersionUpgradeOption = $deployment.properties.versionUpgradeOption
+                    ModelFormat         = $deployment.properties.model.format
+                    ModelName           = $deployment.properties.model.name
+                    ModelVersion        = $deployment.properties.model.version
+                    DeploymentSku       = $deployment.sku.name
+                    DeploymentSkuTier   = $deployment.sku.tier
+                    DeploymentCapacity  = $deployment.sku.capacity
+                    DeploymentCapabilities = $deployment.properties.capabilities | ConvertTo-Json -Compress -Depth 10
+                    DeploymentRateLimits   = $deployment.properties.rateLimits | ConvertTo-Json -Compress -Depth 10
+                    AccountId           = $account.id
+                    AccountName         = $account.name
+                    AccountKind         = $account.kind
+                    AccountSku          = $account.sku.name
+                    AccountSkuTier      = $account.sku.tier
+                    Location            = $account.location
+                    PublicNetworkAccess = $account.properties.publicNetworkAccess
+                    AccountCreatedTime  = $account.properties.dateCreated
+                    SubscriptionId      = $scopeId
+                    SubscriptionName    = $scopeDisplayName
+                    MgPath              = $ChildMgMgPath
+                    ResourceGroup       = $resourceGroup
+                })
+        }
+    }
+}
+$funcDataCollectionModelDeployments = $function:dataCollectionModelDeployments.ToString()
 
 function dataCollectionResourceGroups {
     [CmdletBinding()]param(
@@ -36406,6 +36909,9 @@ if (-not $HierarchyMapOnly) {
     $htDoARMRoleAssignmentScheduleInstances.Do = $true
     $storageAccounts = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayStorageAccountAnalysisResults = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayModelDeploymentAccounts = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayModelDeployments = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayModelDeploymentInsights = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htDefenderEmailContacts = [System.Collections.Hashtable]::Synchronized(@{})
     $arrayVNets = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayPrivateEndPoints = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
@@ -36558,6 +37064,11 @@ if (-not $HierarchyMapOnly) {
     $startDataCollection = Get-Date
 
     processDataCollection -mgId $ManagementGroupId
+
+    if (-not $azAPICallConf['htParameters'].NoFoundryModelDeployments -and -not $ManagementGroupsOnly) {
+        processModelDeploymentInsights
+        showMemoryUsage
+    }
 
     if (-not $ManagementGroupsOnly) {
         exportResourceLocks
@@ -38275,6 +38786,12 @@ if (-not $HierarchyMapOnly) {
             $script:htSubFeaturesGroupedBySubscription = @{}
             foreach ($grpEntry in $script:subFeaturesGroupedBySubscription) {
                 $script:htSubFeaturesGroupedBySubscription[$grpEntry.Name] = $grpEntry
+            }
+        }
+        if (-not $azAPICallConf['htParameters'].NoFoundryModelDeployments) {
+            $script:htModelDeploymentInsightsBySubscription = @{}
+            foreach ($grpEntry in ($arrayModelDeploymentInsights | Group-Object -Property SubscriptionId)) {
+                $script:htModelDeploymentInsightsBySubscription[$grpEntry.Name] = $grpEntry.Group
             }
         }
         #lookup hashtable for user assigned identities (matches either resourceSubscriptionId or miSubscriptionId); preserves source order per key

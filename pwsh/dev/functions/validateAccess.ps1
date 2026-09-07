@@ -147,14 +147,26 @@
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.Authorization/roleEligibilityScheduleInstances?api-version=2020-10-01&`$filter=atScope()"
         $res = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -currentTask $currentTask -validateAccess
         if ($res -eq 'failed') {
-            Write-Host "ARM API 'Microsoft.Authorization/roleEligibilitySchedules/read' permission - check FAILED" -ForegroundColor DarkRed
-            Write-Host "PIM Eligibility reporting requires the permission 'Microsoft.Authorization/roleEligibilitySchedules/read' (contained in the 'Reader' Role) and a Microsoft Entra ID P2 license"
-            if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions -eq $true -or $azAPICallConf['htParameters'].accountType -ne 'User') {
-                Write-Host "Please consult the documentation: https://$($GithubRepository)#required-permissions-in-azure"
-                Throw 'Error - Azure Governance Visualizer: check the last console output for details'
+            #-validateAccess reports any 400 as 'failed'; only the roleAssignmentScheduleInstances endpoint surfaces the tenant license gate ('AadPremiumLicenseRequired') as such
+            $currentTask = 'Test ARM PIM (Microsoft Entra ID P2) license requirement'
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
+            $resPIMLicense = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -currentTask $currentTask -unhandledErrorAction 'ContinueQuiet'
+
+            if ($resPIMLicense -eq 'AadPremiumLicenseRequired') {
+                Write-Host 'PIM Eligibility reporting not available - the tenant needs to have a Microsoft Entra ID P2 or Microsoft Entra ID Governance license' -ForegroundColor Yellow
+                Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
+                $script:NoPIMEligibility = $true
             }
-            Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
-            $script:NoPIMEligibility = $true
+            else {
+                Write-Host "ARM API 'Microsoft.Authorization/roleEligibilitySchedules/read' permission - check FAILED" -ForegroundColor DarkRed
+                Write-Host "PIM Eligibility reporting requires the permission 'Microsoft.Authorization/roleEligibilitySchedules/read' (contained in the 'Reader' Role) and a Microsoft Entra ID P2 license"
+                if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions -eq $true -or $azAPICallConf['htParameters'].accountType -ne 'User') {
+                    Write-Host "Please consult the documentation: https://$($GithubRepository)#required-permissions-in-azure"
+                    Throw 'Error - Azure Governance Visualizer: check the last console output for details'
+                }
+                Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
+                $script:NoPIMEligibility = $true
+            }
         }
         else {
             Write-Host "ARM API 'Microsoft.Authorization/roleEligibilitySchedules/read' permission - check PASSED" -ForegroundColor Green

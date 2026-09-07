@@ -1419,6 +1419,146 @@ tf.init();}}
     }
     #endregion ScopeInsightsManagementGroups
 
+    #region ScopeInsightsModelDeploymentInsights
+    if (-not $azAPICallConf['htParameters'].NoFoundryModelDeployments) {
+        $scopeModelDeployments = [System.Collections.ArrayList]@()
+        if ($mgOrSub -eq 'sub') {
+            #a scope without deployments has no hashtable entry; @($null) would enumerate one null element
+            foreach ($deployment in @($htModelDeploymentInsightsBySubscription[$subscriptionId]).where({ $null -ne $_ })) {
+                $null = $scopeModelDeployments.Add($deployment)
+            }
+        }
+        else {
+            foreach ($scopeSubscriptionId in $mgAllChildSubscriptions) {
+                foreach ($deployment in @($htModelDeploymentInsightsBySubscription[$scopeSubscriptionId]).where({ $null -ne $_ })) {
+                    $null = $scopeModelDeployments.Add($deployment)
+                }
+            }
+        }
+
+        if ($scopeModelDeployments.Count -gt 0) {
+            $scopeModelSummary = [System.Collections.ArrayList]@()
+            foreach ($modelGroup in ($scopeModelDeployments | Group-Object -Property ModelFormat, ModelName, ModelVersion)) {
+                $firstDeployment = $modelGroup.Group | Select-Object -First 1
+                $null = $scopeModelSummary.Add([PSCustomObject]@{
+                        ModelFormat           = $firstDeployment.ModelFormat
+                        ModelName             = $firstDeployment.ModelName
+                        ModelVersion          = $firstDeployment.ModelVersion
+                        Deployments           = $modelGroup.Count
+                        Accounts              = ($modelGroup.Group.AccountId | Sort-Object -Unique).Count
+                        Subscriptions         = ($modelGroup.Group.SubscriptionId | Sort-Object -Unique).Count
+                        Requests              = ($modelGroup.Group.Requests | Measure-Object -Sum).Sum
+                        ProcessedPromptTokens = ($modelGroup.Group.ProcessedPromptTokens | Measure-Object -Sum).Sum
+                        GeneratedTokens       = ($modelGroup.Group.GeneratedTokens | Measure-Object -Sum).Sum
+                        CacheReadInputTokens  = ($modelGroup.Group.CacheReadInputTokens | Measure-Object -Sum).Sum
+                        Requests429           = ($modelGroup.Group.Requests429 | Measure-Object -Sum).Sum
+                        Requests5xx           = ($modelGroup.Group.Requests5xx | Measure-Object -Sum).Sum
+                    })
+            }
+
+            $scopeModelAccountDetails = [System.Collections.ArrayList]@()
+            foreach ($modelAccountGroup in ($scopeModelDeployments | Group-Object -Property ModelFormat, ModelName, ModelVersion, AccountId)) {
+                $firstDeployment = $modelAccountGroup.Group | Select-Object -First 1
+                $null = $scopeModelAccountDetails.Add([PSCustomObject]@{
+                        ModelFormat           = $firstDeployment.ModelFormat
+                        ModelName             = $firstDeployment.ModelName
+                        ModelVersion          = $firstDeployment.ModelVersion
+                        AccountName           = $firstDeployment.AccountName
+                        AccountKind           = $firstDeployment.AccountKind
+                        AccountSku            = $firstDeployment.AccountSku
+                        SubscriptionName      = $firstDeployment.SubscriptionName
+                        ResourceGroup         = $firstDeployment.ResourceGroup
+                        Location              = $firstDeployment.Location
+                        PublicNetworkAccess   = $firstDeployment.PublicNetworkAccess
+                        Deployments           = $modelAccountGroup.Count
+                        DeploymentNames       = ($modelAccountGroup.Group.DeploymentName | Sort-Object -Unique) -join ', '
+                        DeploymentSkus        = ($modelAccountGroup.Group.DeploymentSku | Sort-Object -Unique) -join ', '
+                        DeploymentCapacity    = ($modelAccountGroup.Group.DeploymentCapacity | Measure-Object -Sum).Sum
+                        DeploymentStates      = ($modelAccountGroup.Group.DeploymentState | Sort-Object -Unique) -join ', '
+                        Requests              = ($modelAccountGroup.Group.Requests | Measure-Object -Sum).Sum
+                        ProcessedPromptTokens = ($modelAccountGroup.Group.ProcessedPromptTokens | Measure-Object -Sum).Sum
+                        GeneratedTokens       = ($modelAccountGroup.Group.GeneratedTokens | Measure-Object -Sum).Sum
+                        CacheReadInputTokens  = ($modelAccountGroup.Group.CacheReadInputTokens | Measure-Object -Sum).Sum
+                        Requests429           = ($modelAccountGroup.Group.Requests429 | Measure-Object -Sum).Sum
+                        Requests5xx           = ($modelAccountGroup.Group.Requests5xx | Measure-Object -Sum).Sum
+                        MetricsStatus         = ($modelAccountGroup.Group.MetricsStatus | Sort-Object -Unique) -join ', '
+                    })
+            }
+
+            $scopeIdForHtml = if ($mgOrSub -eq 'sub') { $subscriptionId } else { $mgChild }
+            $scopeContentClass = if ($mgOrSub -eq 'sub') { 'contentSISub' } else { 'contentSIMG' }
+            $htmlTableId = "ScopeInsights_ModelDeploymentInsights_$($scopeIdForHtml -replace '[^a-zA-Z0-9]', '_')"
+            $scopeModelColumns = @(
+                @{ header = 'Model format'; property = 'ModelFormat'; filter = 'select' }
+                @{ header = 'Model'; property = 'ModelName'; filter = 'select' }
+                @{ header = 'Version'; property = 'ModelVersion'; filter = 'select' }
+                @{ header = 'Deployments'; property = 'Deployments'; filter = 'number' }
+                @{ header = 'Accounts'; property = 'Accounts'; filter = 'number' }
+                @{ header = 'Subscriptions'; property = 'Subscriptions'; filter = 'number' }
+                @{ header = 'Requests'; property = 'Requests'; filter = 'number' }
+                @{ header = 'Input tokens'; property = 'ProcessedPromptTokens'; filter = 'number' }
+                @{ header = 'Output tokens'; property = 'GeneratedTokens'; filter = 'number' }
+                @{ header = 'Cache-read input tokens'; property = 'CacheReadInputTokens'; filter = 'number' }
+                @{ header = 'HTTP 429'; property = 'Requests429'; filter = 'number' }
+                @{ header = 'HTTP 5xx'; property = 'Requests5xx'; filter = 'number' }
+            )
+            $scopeModelAccountColumns = @(
+                @{ header = 'Model format'; property = 'ModelFormat'; filter = 'select' }
+                @{ header = 'Model'; property = 'ModelName'; filter = 'select' }
+                @{ header = 'Version'; property = 'ModelVersion'; filter = 'select' }
+                @{ header = 'Cognitive Services account'; property = 'AccountName'; filter = 'select' }
+                @{ header = 'Account kind'; property = 'AccountKind'; filter = 'select' }
+                @{ header = 'Account SKU'; property = 'AccountSku'; filter = 'select' }
+                @{ header = 'Subscription'; property = 'SubscriptionName'; filter = 'select' }
+                @{ header = 'Resource group'; property = 'ResourceGroup'; filter = 'select' }
+                @{ header = 'Location'; property = 'Location'; filter = 'select' }
+                @{ header = 'Public network access'; property = 'PublicNetworkAccess'; filter = 'select' }
+                @{ header = 'Deployments'; property = 'Deployments'; filter = 'number' }
+                @{ header = 'Deployment names'; property = 'DeploymentNames' }
+                @{ header = 'Deployment SKUs'; property = 'DeploymentSkus'; filter = 'select' }
+                @{ header = 'Total capacity'; property = 'DeploymentCapacity'; filter = 'number' }
+                @{ header = 'Deployment states'; property = 'DeploymentStates'; filter = 'select' }
+                @{ header = 'Requests'; property = 'Requests'; filter = 'number' }
+                @{ header = 'Input tokens'; property = 'ProcessedPromptTokens'; filter = 'number' }
+                @{ header = 'Output tokens'; property = 'GeneratedTokens'; filter = 'number' }
+                @{ header = 'Cache-read input tokens'; property = 'CacheReadInputTokens'; filter = 'number' }
+                @{ header = 'HTTP 429'; property = 'Requests429'; filter = 'number' }
+                @{ header = 'HTTP 5xx'; property = 'Requests5xx'; filter = 'number' }
+                @{ header = 'Metrics status'; property = 'MetricsStatus'; filter = 'select' }
+            )
+
+            $htmlTableIdAccounts = "$($htmlTableId)_Accounts"
+
+            [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadag$($htmlTableId)()" type="button" class="collapsible"><i class="fa fa-cubes" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$($scopeModelSummary.Count) Foundry models ($($scopeModelDeployments.Count) deployments)</span></button>
+<div class="content $scopeContentClass">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableId)(); return false;">Pop out grid</a><br>
+"@)
+            [void]$htmlScopeInsights.AppendLine((buildAgGridScript -HtmlTableId $htmlTableId -PopoutTitle "Azure Governance Visualizer - Foundry models - $scopeIdForHtml" -ColumnDefinitions $scopeModelColumns -Rows @($scopeModelSummary | Sort-Object ModelName, ModelVersion)))
+            [void]$htmlScopeInsights.AppendLine('</div>')
+
+            [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadag$($htmlTableIdAccounts)()" type="button" class="collapsible"><i class="fa fa-cubes" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$($scopeModelAccountDetails.Count) Foundry model / Cognitive Services account combinations</span></button>
+<div class="content $scopeContentClass">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableIdAccounts)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableIdAccounts)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableIdAccounts)(); return false;">Pop out grid</a><br>
+"@)
+            [void]$htmlScopeInsights.AppendLine((buildAgGridScript -HtmlTableId $htmlTableIdAccounts -PopoutTitle "Azure Governance Visualizer - Foundry model and Cognitive Services account details - $scopeIdForHtml" -ColumnDefinitions $scopeModelAccountColumns -Rows @($scopeModelAccountDetails | Sort-Object ModelName, ModelVersion, SubscriptionName, AccountName)))
+            [void]$htmlScopeInsights.AppendLine(@'
+</div>
+</td></tr>
+<tr><td class="detailstd">
+'@)
+        }
+        else {
+            [void]$htmlScopeInsights.AppendLine(@'
+<i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">0 Foundry models</span>
+</td></tr>
+<tr><td class="detailstd">
+'@)
+        }
+    }
+    #endregion ScopeInsightsModelDeploymentInsights
+
     #ScopeInsightsResources
     if ($azAPICallConf['htParameters'].NoResources -eq $false) {
         #resources
