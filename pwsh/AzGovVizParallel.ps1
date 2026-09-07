@@ -153,11 +153,11 @@
 
 .PARAMETER NoPIMEligibility
     Do not report on PIM (Privileged Identity Management) eligible Role assignments
-    Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+    Note: this feature requires the Azure permission `Microsoft.Authorization/roleEligibilitySchedules/read` (contained in the `Reader` Role) and a Microsoft Entra ID P2 license
 
 .PARAMETER PIMEligibilityIgnoreScope
     Ignore the current scope (ManagementGrouId) and get all PIM (Privileged Identity Management) eligible Role assignments
-    By default will only report for PIM Elibility for the scope (ManagementGroupId) that was provided. If you use the new switch parameter then PIM Eligibility for all onboarded scopes (Management Groups and Subscriptions) will be reported
+    By default will only report for PIM Elibility for the scope (ManagementGroupId) that was provided. If you use the new switch parameter then PIM Eligibility for all accessible scopes (Management Groups and Subscriptions) will be reported
 
 .PARAMETER NoPIMEligibilityIntegrationRoleAssignmentsAll
     Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
@@ -351,10 +351,10 @@
     Define Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ExcludedResourceTypesDiagnosticsCapable @('microsoft.web/certificates')
 
-    Define if report on PIM (Privileged Identity Management) eligible Role assignments should be created. Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+    Define if report on PIM (Privileged Identity Management) eligible Role assignments should be created. Note: this feature requires the Azure permission `Microsoft.Authorization/roleEligibilitySchedules/read` (contained in the `Reader` Role) and a Microsoft Entra ID P2 license
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibility
 
-    Define if the current scope (ManagementGroupId) should be ignored and therefore and get all PIM (Privileged Identity Management) eligible Role assignments. Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+    Define if the current scope (ManagementGroupId) should be ignored and therefore and get all PIM (Privileged Identity Management) eligible Role assignments. Note: this feature requires the Azure permission `Microsoft.Authorization/roleEligibilitySchedules/read` (contained in the `Reader` Role) and a Microsoft Entra ID P2 license
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -PIMEligibilityIgnoreScope
 
     Define if PIM Eligible assignments should not be integrated with RoleAssignmentsAll outputs (HTML, CSV)
@@ -1756,7 +1756,65 @@ function buildJSON {
     $htJSON = $null
 
     Write-Host " Exporting Tenant JSON '$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)$($fileName).json'"
-    $htTree | ConvertTo-Json -Depth 99 | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)$($fileName).json" -Encoding utf8 -Force
+
+    #the hierarchy is written node by node - a single ConvertTo-Json over the whole tree peaks at a multiple of the document size
+    function writeTreeNodeJson {
+        param(
+            [System.IO.StreamWriter]$streamWriter,
+            $node,
+            #indentation of the object's closing brace
+            [string]$indent
+        )
+        if ($node.Keys.Count -eq 0) {
+            $streamWriter.Write('{}')
+            return
+        }
+        $streamWriter.Write('{')
+        $propertyIndent = "$($indent)  "
+        $isFirstProperty = $true
+        foreach ($nodeKey in $node.Keys) {
+            if (-not $isFirstProperty) {
+                $streamWriter.Write(',')
+            }
+            $isFirstProperty = $false
+            $streamWriter.Write("`n$($propertyIndent)$($nodeKey | ConvertTo-Json): ")
+
+            if ($nodeKey -eq 'ManagementGroups') {
+                $childManagementGroups = $node[$nodeKey]
+                if ($childManagementGroups.Keys.Count -eq 0) {
+                    $streamWriter.Write('{}')
+                }
+                else {
+                    $streamWriter.Write('{')
+                    $isFirstChild = $true
+                    foreach ($childKey in $childManagementGroups.Keys) {
+                        if (-not $isFirstChild) {
+                            $streamWriter.Write(',')
+                        }
+                        $isFirstChild = $false
+                        $streamWriter.Write("`n$($propertyIndent)  $($childKey | ConvertTo-Json): ")
+                        writeTreeNodeJson -streamWriter $streamWriter -node $childManagementGroups[$childKey] -indent "$($propertyIndent)  "
+                    }
+                    $streamWriter.Write("`n$($propertyIndent)}")
+                }
+            }
+            else {
+                #every line but the first is shifted to the indentation the value has inside the document
+                $streamWriter.Write(((($node[$nodeKey] | ConvertTo-Json -Depth 99) -split '\r?\n') -join "`n$($propertyIndent)"))
+            }
+        }
+        $streamWriter.Write("`n$($indent)}")
+    }
+
+    $treeStreamWriter = [System.IO.StreamWriter]::new("$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)$($fileName).json", $false, [System.Text.UTF8Encoding]::new($false))
+    try {
+        $treeStreamWriter.Write("{`n  `"Tenant`": ")
+        writeTreeNodeJson -streamWriter $treeStreamWriter -node $htTree.Tenant -indent '  '
+        $treeStreamWriter.Write("`n}`n")
+    }
+    finally {
+        $treeStreamWriter.Dispose()
+    }
     $htTree = $null
     $json = $null
 
@@ -1936,58 +1994,96 @@ $markdownTable
 function buildPolicyAllJSON {
     Write-Host 'Creating PolicyAll JSON'
     $startPolicyAllJSON = Get-Date
-    $htPolicyAndPolicySet = [ordered]@{}
-    $htPolicyAndPolicySet.Policy = [ordered]@{}
-    $htPolicyAndPolicySet.PolicySet = [ordered]@{}
-    $htPolicyAndPolicySet.PolicyAssignment = [ordered]@{}
-    foreach ($policy in ($tenantPoliciesDetailed | Sort-Object -Property Type, ScopeMGLevel, PolicyDefinitionId)) {
-        $htPolicyAndPolicySet.Policy.($policy.PolicyDefinitionId.ToLower()) = [ordered]@{
-            PolicyType             = $policy.Type
-            ScopeMGLevel           = $policy.ScopeMGLevel
-            Scope                  = $policy.Scope
-            ScopeId                = $policy.scopeId
-            PolicyDisplayName      = $policy.PolicyDisplayName
-            PolicyDefinitionName   = $policy.PolicyDefinitionName
-            PolicyDefinitionId     = $policy.PolicyDefinitionId
-            PolicyEffect           = $policy.PolicyEffect
-            PolicyCategory         = $policy.PolicyCategory
-            UniqueAssignmentsCount = $policy.UniqueAssignmentsCount
-            UniqueAssignments      = $policy.UniqueAssignments
-            UsedInPolicySetsCount  = $policy.UsedInPolicySetsCount
-            UsedInPolicySets       = $policy.UsedInPolicySet4JSON
-            CreatedOn              = $policy.CreatedOn
-            CreatedBy              = $policy.CreatedByJson
-            UpdatedOn              = $policy.UpdatedOn
-            UpdatedBy              = $policy.UpdatedByJson
-            JSON                   = $policy.Json
+    $policyAllJsonPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyAll.json"
+    Write-Host " Exporting PolicyAll JSON '$($policyAllJsonPath)'"
+
+    #entries are serialized and streamed one at a time - collecting them all and running a single ConvertTo-Json over the result peaked at several GB and got the process OOM killed
+    $streamWriter = [System.IO.StreamWriter]::new($policyAllJsonPath, $false, [System.Text.UTF8Encoding]::new($false))
+    try {
+        $streamWriter.Write("{`n  `"Policy`": {")
+        $countPolicy = 0
+        foreach ($policy in ($tenantPoliciesDetailed | Sort-Object -Property Type, ScopeMGLevel, PolicyDefinitionId)) {
+            $policyEntry = [ordered]@{
+                PolicyType             = $policy.Type
+                ScopeMGLevel           = $policy.ScopeMGLevel
+                Scope                  = $policy.Scope
+                ScopeId                = $policy.scopeId
+                PolicyDisplayName      = $policy.PolicyDisplayName
+                PolicyDefinitionName   = $policy.PolicyDefinitionName
+                PolicyDefinitionId     = $policy.PolicyDefinitionId
+                PolicyEffect           = $policy.PolicyEffect
+                PolicyCategory         = $policy.PolicyCategory
+                UniqueAssignmentsCount = $policy.UniqueAssignmentsCount
+                UniqueAssignments      = $policy.UniqueAssignments
+                UsedInPolicySetsCount  = $policy.UsedInPolicySetsCount
+                UsedInPolicySets       = $policy.UsedInPolicySet4JSON
+                CreatedOn              = $policy.CreatedOn
+                CreatedBy              = $policy.CreatedByJson
+                UpdatedOn              = $policy.UpdatedOn
+                UpdatedBy              = $policy.UpdatedByJson
+                JSON                   = $policy.Json
+            }
+            if ($countPolicy -gt 0) {
+                $streamWriter.Write(',')
+            }
+            #every line but the first is shifted to the indentation the entry has inside the document
+            $streamWriter.Write("`n    $($policy.PolicyDefinitionId.ToLower() | ConvertTo-Json): $((($policyEntry | ConvertTo-Json -Depth 99) -split '\r?\n') -join "`n    ")")
+            $countPolicy++
         }
-    }
-    foreach ($policySet in ($tenantPolicySetsDetailed | Sort-Object -Property Type, ScopeMGLevel, PolicySetDefinitionId)) {
-        $htPolicyAndPolicySet.PolicySet.($policySet.PolicySetDefinitionId.ToLower()) = [ordered]@{
-            PolicySetType           = $policySet.Type
-            ScopeMGLevel            = $policySet.ScopeMGLevel
-            Scope                   = $policySet.Scope
-            ScopeId                 = $policySet.scopeId
-            PolicySetDisplayName    = $policySet.PolicySetDisplayName
-            PolicySetDefinitionName = $policySet.PolicySetDefinitionName
-            PolicySetDefinitionId   = $policySet.PolicySetDefinitionId
-            PolicySetCategory       = $policySet.PolicySetCategory
-            UniqueAssignmentsCount  = $policySet.UniqueAssignmentsCount
-            UniqueAssignments       = $policySet.UniqueAssignments
-            PoliciesUsedCount       = $policySet.PoliciesUsedCount
-            PoliciesUsed            = $policySet.PoliciesUsed4JSON
-            CreatedOn               = $policySet.CreatedOn
-            CreatedBy               = $policySet.CreatedByJson
-            UpdatedOn               = $policySet.UpdatedOn
-            UpdatedBy               = $policySet.UpdatedByJson
-            JSON                    = $policySet.Json
+        if ($countPolicy -gt 0) {
+            $streamWriter.Write("`n  ")
         }
+
+        $streamWriter.Write("},`n  `"PolicySet`": {")
+        $countPolicySet = 0
+        foreach ($policySet in ($tenantPolicySetsDetailed | Sort-Object -Property Type, ScopeMGLevel, PolicySetDefinitionId)) {
+            $policySetEntry = [ordered]@{
+                PolicySetType           = $policySet.Type
+                ScopeMGLevel            = $policySet.ScopeMGLevel
+                Scope                   = $policySet.Scope
+                ScopeId                 = $policySet.scopeId
+                PolicySetDisplayName    = $policySet.PolicySetDisplayName
+                PolicySetDefinitionName = $policySet.PolicySetDefinitionName
+                PolicySetDefinitionId   = $policySet.PolicySetDefinitionId
+                PolicySetCategory       = $policySet.PolicySetCategory
+                UniqueAssignmentsCount  = $policySet.UniqueAssignmentsCount
+                UniqueAssignments       = $policySet.UniqueAssignments
+                PoliciesUsedCount       = $policySet.PoliciesUsedCount
+                PoliciesUsed            = $policySet.PoliciesUsed4JSON
+                CreatedOn               = $policySet.CreatedOn
+                CreatedBy               = $policySet.CreatedByJson
+                UpdatedOn               = $policySet.UpdatedOn
+                UpdatedBy               = $policySet.UpdatedByJson
+                JSON                    = $policySet.Json
+            }
+            if ($countPolicySet -gt 0) {
+                $streamWriter.Write(',')
+            }
+            $streamWriter.Write("`n    $($policySet.PolicySetDefinitionId.ToLower() | ConvertTo-Json): $((($policySetEntry | ConvertTo-Json -Depth 99) -split '\r?\n') -join "`n    ")")
+            $countPolicySet++
+        }
+        if ($countPolicySet -gt 0) {
+            $streamWriter.Write("`n  ")
+        }
+
+        $streamWriter.Write("},`n  `"PolicyAssignment`": {")
+        $countPolicyAssignment = 0
+        foreach ($key in $htCacheAssignmentsPolicy.keys | Sort-Object) {
+            if ($countPolicyAssignment -gt 0) {
+                $streamWriter.Write(',')
+            }
+            $streamWriter.Write("`n    $($key.ToLower() | ConvertTo-Json): $((($htCacheAssignmentsPolicy.($key).Assignment | ConvertTo-Json -Depth 99) -split '\r?\n') -join "`n    ")")
+            $countPolicyAssignment++
+        }
+        if ($countPolicyAssignment -gt 0) {
+            $streamWriter.Write("`n  ")
+        }
+
+        $streamWriter.Write("}`n}`n")
     }
-    foreach ($key in $htCacheAssignmentsPolicy.keys | Sort-Object) {
-        $htPolicyAndPolicySet.PolicyAssignment.($key.ToLower()) = $htCacheAssignmentsPolicy.($key).Assignment
+    finally {
+        $streamWriter.Dispose()
     }
-    Write-Host " Exporting PolicyAll JSON '$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyAll.json'"
-    $htPolicyAndPolicySet | ConvertTo-Json -Depth 99 | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_PolicyAll.json" -Encoding utf8 -Force
 
     $endPolicyAllJSON = Get-Date
     Write-Host "Creating PolicyAll JSON duration: $((New-TimeSpan -Start $startPolicyAllJSON -End $endPolicyAllJSON).TotalSeconds) seconds"
@@ -5084,222 +5180,209 @@ resources
 function getPIMEligible {
     $start = Get-Date
 
-    $currentTask = 'Get PIM onboarded Subscriptions and Management Groups'
-    Write-Host $currentTask
-    $uriExt = "&`$expand=parent&`$filter=(type eq 'subscription' or type eq 'managementgroup')"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/privilegedAccess/azureResources/resources?`$select=id,displayName,type,externalId" + $uriExt
-    $res = AzAPICall -AzAPICallConfiguration $azapicallConf -uri $uri -currentTask $currentTask
-    if ($res.Count -gt 0) {
+    Write-Host 'Get PIM Eligible assignments'
 
-        $scopesToIterate = [System.Collections.ArrayList]@()
+    #the ARM API has no equivalent for the retired Graph 'PIM onboarded resources' list, therefore every in scope Management Group and Subscription is queried
+    $scopesToIterate = [System.Collections.ArrayList]@()
+    $scopeLimited = (-not $PIMEligibilityIgnoreScope -and ($azAPICallConf['checkContext']).Tenant.Id -ne $ManagementGroupId)
+
+    foreach ($mgId in $htManagementGroupsMgPath.Keys) {
+        if ($scopeLimited) {
+            #ancestors are included so that 'inherited from' can be reported
+            if ($htManagementGroupsMgPath.($ManagementGroupId).ParentNameChain -notcontains $mgId -and $htManagementGroupsMgPath.($mgId).path -notcontains $ManagementGroupId) {
+                continue
+            }
+        }
+        $null = $scopesToIterate.Add([PSCustomObject]@{
+                type     = 'managementgroup'
+                scopeId  = $mgId
+                armScope = "/providers/Microsoft.Management/managementGroups/$($mgId)"
+            })
+    }
+
+    $relevantSubscriptionIds = $subsToProcessInCustomDataCollection.subscriptionId
+
+    foreach ($subscriptionId in $htSubscriptionsMgPath.Keys) {
+        if ($scopeLimited) {
+            if ($htSubscriptionsMgPath.($subscriptionId).ParentNameChain -notcontains $ManagementGroupId) {
+                continue
+            }
+        }
         if (-not $PIMEligibilityIgnoreScope) {
-            if (($azAPICallConf['checkContext']).Tenant.Id -ne $ManagementGroupId) {
-                foreach ($entry in $res) {
-                    $entryIdGuid = $entry.externalId -replace '.*/'
-                    if ($entry.type -eq 'managementGroup') {
-                        if ($htManagementGroupsMgPath.($ManagementGroupId).ParentNameChain -contains ($entryIdGuid) -or $htManagementGroupsMgPath.($entryIdGuid).path -contains $ManagementGroupId) {
-                            $null = $scopesToIterate.Add($entry)
-                        }
+            if ($htOutOfScopeSubscriptions.($subscriptionId)) {
+                Write-Host "excluding subscription $($subscriptionId) (outOfScopeSubscription -> $($htOutOfScopeSubscriptions.($subscriptionId).outOfScopeReason)) (`$PIMEligibilityIgnoreScope=$PIMEligibilityIgnoreScope)"
+                continue
+            }
+        }
+        if ($subscriptionId -notin $relevantSubscriptionIds) {
+            continue
+        }
+        $null = $scopesToIterate.Add([PSCustomObject]@{
+                type     = 'subscription'
+                scopeId  = $subscriptionId
+                armScope = "/subscriptions/$($subscriptionId)"
+            })
+    }
+
+    $scopesToIterateGrouped = $scopesToIterate | Group-Object -Property type
+    foreach ($entry in $scopesToIterateGrouped) {
+        Write-Host " Processing $($entry.Count) $($entry.Name)s"
+    }
+
+    if ($scopesToIterate.Count -gt 0) {
+
+        $batchSize = [math]::ceiling($scopesToIterate.Count / $ThrottleLimit)
+        Write-Host "Optimal batch size: $($batchSize)"
+        $counterBatch = [PSCustomObject] @{ Value = 0 }
+        $scopesToIterateBatch = ($scopesToIterate) | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
+        Write-Host "Processing data in $($scopesToIterateBatch.Count) batches"
+
+        $scopesToIterateBatch | ForEach-Object -Parallel {
+            $azAPICallConf = $using:azAPICallConf
+            $arrayPIMEligible = $using:arrayPIMEligible
+            $htPrincipals = $using:htPrincipals
+            $htUserTypesGuest = $using:htUserTypesGuest
+            $htServicePrincipals = $using:htServicePrincipals
+            $htManagementGroupsMgPath = $using:htManagementGroupsMgPath
+            $htSubscriptionsMgPath = $using:htSubscriptionsMgPath
+            $function:resolveObjectIds = $using:funcResolveObjectIds
+            $function:testGuid = $using:funcTestGuid
+
+            foreach ($scope in $_.Group) {
+
+                $currentTask = "Get Eligible assignments for Scope $($scope.type): $($scope.scopeId)"
+                #atScope() returns the eligibilities effective at this scope (direct plus inherited from ancestors) and excludes those of child scopes
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($scope.armScope)/providers/Microsoft.Authorization/roleEligibilityScheduleInstances?api-version=2020-10-01&`$filter=atScope()"
+                $resx = AzAPICall -AzAPICallConfiguration $azapicallConf -currentTask $currentTask -uri $uri
+
+                if ($resx.Count -gt 0) {
+
+                    $users = $resx.where({ $_.properties.principalType -eq 'User' })
+                    if ($users.Count -gt 0) {
+                        ResolveObjectIds -objectIds $users.properties.principalId -showActivity
                     }
-                    if ($entry.type -eq 'subscription') {
-                        if ($htSubscriptionsMgPath.($entryIdGuid).ParentNameChain -contains $ManagementGroupId) {
-                            if ($htOutOfScopeSubscriptions.($entryIdGuid)) {
-                                Write-Host "excluding subscription $($entryIdGuid) (outOfScopeSubscription -> $($htOutOfScopeSubscriptions.($entryIdGuid).outOfScopeReason)) (`$PIMEligibilityIgnoreScope=$PIMEligibilityIgnoreScope)"
+
+                    foreach ($entry in $resx) {
+                        $entryProperties = $entry.properties
+                        $scopeId = $scope.scopeId
+                        if ($scope.type -eq 'managementgroup') {
+                            $ScopeType = 'MG'
+                            $ManagementGroupId = $scopeId
+                            $SubscriptionId = ''
+                            $SubscriptionDisplayName = ''
+                            if ($htManagementGroupsMgPath.($scopeId)) {
+                                $MgDetails = $htManagementGroupsMgPath.($scopeId)
+                                $ManagementGroupDisplayName = $MgDetails.DisplayName
+                                $ScopeDisplayName = $MgDetails.DisplayName
+                                $MgPath = $MgDetails.path
+                                $MgLevel = $MgDetails.level
                             }
                             else {
-                                $null = $scopesToIterate.Add($entry)
+                                $ManagementGroupDisplayName = 'notAccessible'
+                                $ScopeDisplayName = 'notAccessible'
+                                $MgPath = 'notAccessible'
+                                $MgLevel = 'notAccessible'
                             }
                         }
+                        if ($scope.type -eq 'subscription') {
+                            $ScopeType = 'Sub'
+                            $SubscriptionId = $scopeId
+                            if ($htSubscriptionsMgPath.($scopeId)) {
+                                $MgDetails = $htSubscriptionsMgPath.($scopeId)
+                                $SubscriptionDisplayName = $MgDetails.DisplayName
+                                $ScopeDisplayName = $MgDetails.DisplayName
+                                $MgPath = $MgDetails.path
+                                $MgLevel = $MgDetails.level
+                                $ManagementGroupId = $MgDetails.Parent
+                                $ManagementGroupDisplayName = $MgDetails.ParentName
+                            }
+                            else {
+                                $SubscriptionDisplayName = 'notAccessible'
+                                $ScopeDisplayName = 'notAccessible'
+                                $MgPath = 'notAccessible'
+                                $MgLevel = 'notAccessible'
+                            }
+                        }
+
+                        $PIMInheritedFromClear = ''
+                        $PIMInheritedFrom = ''
+                        if ($entryProperties.memberType -eq 'Inherited') {
+                            $inheritedFromScopeId = $entryProperties.expandedProperties.scope.id -replace '.*/'
+                            $PIMInheritedFromClear = $inheritedFromScopeId
+                            if ($htManagementGroupsMgPath.($inheritedFromScopeId)) {
+                                $inheritedFromDetails = $htManagementGroupsMgPath.($inheritedFromScopeId)
+                                $inheritedFromDisplayName = $inheritedFromDetails.DisplayName
+                                $inheritedFromLevel = $inheritedFromDetails.level
+                            }
+                            else {
+                                $inheritedFromDisplayName = 'notAccessible'
+                                $inheritedFromLevel = 'notAccessible'
+                            }
+                            if ($inheritedFromScopeId -eq $inheritedFromDisplayName) {
+                                $PIMInheritedFrom = "$($inheritedFromScopeId) [Level $($inheritedFromLevel)]"
+                            }
+                            else {
+                                $PIMInheritedFrom = "$($inheritedFromDisplayName) ($($inheritedFromScopeId)) [Level $($inheritedFromLevel)]"
+                            }
+                        }
+
+                        $identityDisplayName = $entryProperties.expandedProperties.principal.displayName
+                        $identityPrincipalName = $entryProperties.expandedProperties.principal.email
+                        if ($entryProperties.principalType -eq 'User') {
+                            if ($htPrincipals.($entryProperties.principalId)) {
+                                $userDetail = $htPrincipals.($entryProperties.principalId)
+                                $principalType = "$($userDetail.type) $($userDetail.userType)"
+                                #Microsoft Graph is authoritative for displayName and userPrincipalName
+                                $identityDisplayName = $userDetail.displayName
+                                $identityPrincipalName = $userDetail.signInName
+                            }
+                            else {
+                                $principalType = $entryProperties.principalType
+                            }
+                        }
+                        else {
+                            $principalType = $entryProperties.principalType
+                        }
+
+                        $roleType = 'undefined'
+                        if ($entryProperties.expandedProperties.roleDefinition.type -eq 'BuiltInRole') { $roleType = 'Builtin' }
+                        if ($entryProperties.expandedProperties.roleDefinition.type -eq 'CustomRole') { $roleType = 'Custom' }
+
+                        $null = $script:arrayPIMEligible.Add([PSCustomObject]@{
+                                ScopeType                  = $ScopeType
+                                ScopeId                    = $scopeId
+                                ScopeDisplayName           = $ScopeDisplayName
+                                ManagementGroupId          = $ManagementGroupId
+                                ManagementGroupDisplayName = $ManagementGroupDisplayName
+                                SubscriptionId             = $SubscriptionId
+                                SubscriptionDisplayName    = $SubscriptionDisplayName
+                                MgPath                     = $MgPath
+                                MgLevel                    = $MgLevel
+                                RoleId                     = $entryProperties.roleDefinitionId
+                                RoleIdGuid                 = $entryProperties.roleDefinitionId -replace '.*/'
+                                RoleType                   = $roleType
+                                RoleName                   = $entryProperties.expandedProperties.roleDefinition.displayName
+                                IdentityObjectId           = $entryProperties.principalId
+                                IdentityType               = $principalType
+                                IdentityDisplayName        = $identityDisplayName
+                                IdentityPrincipalName      = $identityPrincipalName
+                                PIMId                      = $entry.name
+                                PIMInheritance             = $entryProperties.memberType
+                                PIMInheritedFromClear      = $PIMInheritedFromClear
+                                PIMInheritedFrom           = $PIMInheritedFrom
+                                PIMStartDateTime           = $entryProperties.startDateTime
+                                PIMEndDateTime             = $entryProperties.endDateTime
+                            })
                     }
                 }
             }
-            else {
-                foreach ($entry in $res) {
-                    $entryIdGuid = $entry.externalId -replace '.*/'
-                    if ($htOutOfScopeSubscriptions.($entryIdGuid)) {
-                        Write-Host "excluding subscription $($entryIdGuid) (outOfScopeSubscription -> $($htOutOfScopeSubscriptions.($entryIdGuid).outOfScopeReason)) (`$PIMEligibilityIgnoreScope=$PIMEligibilityIgnoreScope)"
-                    }
-                    else {
-                        $null = $scopesToIterate.Add($entry)
-                    }
-                }
-            }
-        }
-        else {
-            foreach ($entry in $res) {
-                $null = $scopesToIterate.Add($entry)
-            }
-        }
 
-        $PIMOnboardedGrouped = $scopesToIterate | Group-Object -Property type
-        foreach ($entry in $PIMOnboardedGrouped) {
-            Write-Host " Found $($entry.Count) PIM onboarded $($entry.Name)s"
-        }
+        } -ThrottleLimit $ThrottleLimit
+    }
 
-        $htPIMEligibleDirect = [System.Collections.Hashtable]::Synchronized(@{})
-        $relevantSubscriptionIds = $subsToProcessInCustomDataCollection.subscriptionId
-
-        if ($scopesToIterate.Count -gt 0) {
-
-            $batchSize = [math]::ceiling($scopesToIterate.Count / $ThrottleLimit)
-            Write-Host "Optimal batch size: $($batchSize)"
-            $counterBatch = [PSCustomObject] @{ Value = 0 }
-            $scopesToIterateBatch = ($scopesToIterate) | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
-            Write-Host "Processing data in $($scopesToIterateBatch.Count) batches"
-
-            $scopesToIterateBatch | ForEach-Object -Parallel {
-                $scope = $_
-                $azAPICallConf = $using:azAPICallConf
-                $arrayPIMEligible = $using:arrayPIMEligible
-                $htPIMEligibleDirect = $using:htPIMEligibleDirect
-                $htPrincipals = $using:htPrincipals
-                $htUserTypesGuest = $using:htUserTypesGuest
-                $htServicePrincipals = $using:htServicePrincipals
-                $relevantSubscriptionIds = $using:relevantSubscriptionIds
-                $function:resolveObjectIds = $using:funcResolveObjectIds
-                $function:testGuid = $using:funcTestGuid
-
-                foreach ($scope in $_.Group) {
-                    if ($scope.type -eq 'managementgroup') { $htManagementGroupsMgPath = $using:htManagementGroupsMgPath }
-                    if ($scope.type -eq 'subscription') { $htSubscriptionsMgPath = $using:htSubscriptionsMgPath }
-
-                    $processThisScope = $true
-                    if ($scope.type -eq 'subscription') {
-                        if (($scope.externalId -replace '.*/') -notin $relevantSubscriptionIds) {
-                            Write-Host "  Non relevant subscriptionId '$(($scope.externalId -replace '.*/'))' /skipping this subscription as it is not contained in the 'Relevant Subscriptions' collection (needs investigation)" -ForegroundColor DarkRed
-                            $processThisScope = $false
-                        }
-                    }
-
-                    if ($processThisScope -eq $true) {
-                        $currentTask = "Get Eligible assignments for Scope $($scope.type): $($scope.externalId -replace '.*/')"
-                        $extUri = "?`$expand=linkedEligibleRoleAssignment,subject,roleDefinition(`$expand=resource)&`$count=true&`$filter=(roleDefinition/resource/id eq '$($scope.id)')+and+(assignmentState eq 'Eligible')&`$top=100"
-                        $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/privilegedAccess/azureResources/roleAssignments" + $extUri
-                        $resx = AzAPICall -AzAPICallConfiguration $azapicallConf -currentTask $currentTask -uri $uri
-
-                        if ($resx.Count -gt 0) {
-
-                            $users = $resx.where({ $_.subject.type -eq 'user' })
-                            if ($users.Count -gt 0) {
-                                ResolveObjectIds -objectIds $users.subject.id -showActivity
-                            }
-
-                            foreach ($entry in $resx) {
-                                $scopeId = $scope.externalId -replace '.*/'
-                                if ($scope.type -eq 'managementgroup') {
-                                    $ScopeType = 'MG'
-                                    $ManagementGroupId = $scopeId
-                                    $SubscriptionId = ''
-                                    $SubscriptionDisplayName = ''
-                                    if ($htManagementGroupsMgPath.($scopeId)) {
-                                        $MgDetails = $htManagementGroupsMgPath.($scopeId)
-                                        $ManagementGroupDisplayName = $MgDetails.DisplayName
-                                        $ScopeDisplayName = $MgDetails.DisplayName
-                                        $MgPath = $MgDetails.path
-                                        $MgLevel = $MgDetails.level
-                                    }
-                                    else {
-                                        $ManagementGroupDisplayName = 'notAccessible'
-                                        $ScopeDisplayName = 'notAccessible'
-                                        $MgPath = 'notAccessible'
-                                        $MgLevel = 'notAccessible'
-                                    }
-
-                                    if ($entry.memberType -eq 'direct') {
-                                        $script:htPIMEligibleDirect.($entry.id) = @{}
-                                        $script:htPIMEligibleDirect.($entry.id).clear = $scopeId
-                                        if ($scopeId -eq $ManagementGroupDisplayName) {
-                                            $script:htPIMEligibleDirect.($entry.id).enriched = "$($scopeId) [Level $($MgLevel)]"
-                                        }
-                                        else {
-                                            $script:htPIMEligibleDirect.($entry.id).enriched = "$($ManagementGroupDisplayName) ($($scopeId)) [Level $($MgLevel)]"
-                                        }
-                                    }
-                                }
-                                if ($scope.type -eq 'subscription') {
-                                    $ScopeType = 'Sub'
-                                    #$ManagementGroupId = ''
-                                    $SubscriptionId = $scopeId
-                                    if ($htSubscriptionsMgPath.($scopeId)) {
-                                        $MgDetails = $htSubscriptionsMgPath.($scopeId)
-                                        $SubscriptionDisplayName = $MgDetails.DisplayName
-                                        $ScopeDisplayName = $MgDetails.DisplayName
-                                        $MgPath = $MgDetails.path
-                                        $MgLevel = $MgDetails.level
-                                        $ManagementGroupId = $MgDetails.Parent
-                                        $ManagementGroupDisplayName = $MgDetails.ParentName
-                                    }
-                                    else {
-                                        $SubscriptionDisplayName = 'notAccessible'
-                                        $ScopeDisplayName = 'notAccessible'
-                                        $MgPath = 'notAccessible'
-                                        $MgLevel = 'notAccessible'
-                                    }
-                                    #$ManagementGroupDisplayName = ''
-
-                                }
-
-                                if ($entry.subject.type -eq 'user') {
-                                    if ($htPrincipals.($entry.subject.id)) {
-                                        $userDetail = $htPrincipals.($entry.subject.id)
-                                        $principalType = "$($userDetail.type) $($userDetail.userType)"
-                                    }
-                                    else {
-                                        $principalType = $entry.subject.type
-                                    }
-                                }
-                                else {
-                                    $principalType = $entry.subject.type
-                                }
-
-                                $roleType = 'undefined'
-                                if ($entry.roleDefinition.type -eq 'BuiltInRole') { $roleType = 'Builtin' }
-                                if ($entry.roleDefinition.type -eq 'CustomRole') { $roleType = 'Custom' }
-
-                                $null = $script:arrayPIMEligible.Add([PSCustomObject]@{
-                                        ScopeType                  = $ScopeType
-                                        ScopeId                    = $scopeId
-                                        ScopeDisplayName           = $ScopeDisplayName
-                                        ManagementGroupId          = $ManagementGroupId
-                                        ManagementGroupDisplayName = $ManagementGroupDisplayName
-                                        SubscriptionId             = $SubscriptionId
-                                        SubscriptionDisplayName    = $SubscriptionDisplayName
-                                        MgPath                     = $MgPath
-                                        MgLevel                    = $MgLevel
-                                        RoleId                     = $entry.roleDefinition.externalId
-                                        RoleIdGuid                 = $entry.roleDefinition.externalId -replace '.*/'
-                                        RoleType                   = $roleType
-                                        RoleName                   = $entry.roleDefinition.displayName
-                                        IdentityObjectId           = $entry.subject.id
-                                        IdentityType               = $principalType
-                                        IdentityDisplayName        = $entry.subject.displayName
-                                        IdentityPrincipalName      = $entry.subject.principalName
-                                        PIMId                      = $entry.id
-                                        PIMInheritance             = $entry.memberType
-                                        PIMInheritedFromClear      = ''
-                                        PIMInheritedFrom           = ''
-                                        PIMStartDateTime           = $entry.startDateTime
-                                        PIMEndDateTime             = $entry.endDateTime
-                                    })
-                            }
-                        }
-                    }
-                }
-
-            } -ThrottleLimit $ThrottleLimit
-        }
-
-        foreach ($entry in $arrayPIMEligible) {
-            if ($entry.PIMInheritance -eq 'inherited') {
-                $entry.PIMInheritedFromClear = $htPIMEligibleDirect.($entry.PIMId).clear
-                $entry.PIMInheritedFrom = $htPIMEligibleDirect.($entry.PIMId).enriched
-            }
-        }
-
-        $script:arrayPIMEligibleGrouped = $arrayPIMEligible | Group-Object -Property ScopeType
-        foreach ($entry in $arrayPIMEligibleGrouped) {
-            Write-Host " Found $($entry.Count) PIM Eligible assignments for $($entry.Name)s"
-        }
+    $script:arrayPIMEligibleGrouped = $arrayPIMEligible | Group-Object -Property ScopeType
+    foreach ($entry in $arrayPIMEligibleGrouped) {
+        Write-Host " Found $($entry.Count) PIM Eligible assignments for $($entry.Name)s"
     }
 
     $end = Get-Date
@@ -8344,6 +8427,15 @@ function processDefinitionInsights() {
     $SHA256 = New-Object -TypeName System.Security.Cryptography.SHA256CryptoServiceProvider
     $utf8 = New-Object -TypeName System.Text.UTF8Encoding
 
+    #the sections below are flushed to this file as they complete, so the builder never has to hold the whole document
+    if ($NoDefinitionInsightsDedicatedHTML) {
+        $definitionInsightsPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName).html"
+    }
+    else {
+        $definitionInsightsPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html"
+        $htmlDefinitionInsightsDedicatedStart | Set-Content -Path $definitionInsightsPath -Encoding utf8 -Force
+    }
+
     #region definitionInsightsAzurePolicy
     $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
     [void]$htmlDefinitionInsights.AppendLine( @'
@@ -8670,10 +8762,8 @@ function processDefinitionInsights() {
 "@
     }
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    if ($NoDefinitionInsightsDedicatedHTML) {
-        $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-        $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
-    }
+    $htmlDefinitionInsights | Add-Content -Path $definitionInsightsPath -Encoding utf8 -Force
+    $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
     [void]$htmlDefinitionInsights.AppendLine( @"
     </tbody>
 </table>
@@ -8956,10 +9046,8 @@ tf.init();}}
 "@
     }
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    if ($NoDefinitionInsightsDedicatedHTML) {
-        $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-        $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
-    }
+    $htmlDefinitionInsights | Add-Content -Path $definitionInsightsPath -Encoding utf8 -Force
+    $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
     [void]$htmlDefinitionInsights.AppendLine( @"
     </tbody>
 </table>
@@ -9262,10 +9350,8 @@ tf.init();}}
     #endregion exportCSV
 
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    if ($NoDefinitionInsightsDedicatedHTML) {
-        $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-        $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
-    }
+    $htmlDefinitionInsights | Add-Content -Path $definitionInsightsPath -Encoding utf8 -Force
+    $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
     [void]$htmlDefinitionInsights.AppendLine( @"
     </tbody>
 </table>
@@ -9366,30 +9452,23 @@ tf.init();}}
     #endregion definitionInsightsAzureRBAC
 
     Write-Host "   NoDefinitionInsightsDedicatedHTML: $NoDefinitionInsightsDedicatedHTML"
+    $htmlDefinitionInsights | Add-Content -Path $definitionInsightsPath -Encoding utf8 -Force
+    $htmlDefinitionInsights = $null
+
     if ($NoDefinitionInsightsDedicatedHTML) {
         Write-Host '   Appending DefinitionInsights to HTML'
-        $script:html += $htmlDefinitionInsights
-        $htmlDefinitionInsights = $null
-        $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-        $script:html = $null
     }
     else {
-        Write-Host "   Creating dedicated DefinitionInsights HTML ($($outputPath)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html)"
-        #the builder holds the whole DefinitionInsights html, concatenating the parts would multiply that in memory
-        $htmlDefinitionInsightsDedicatedPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html"
-        $htmlDefinitionInsightsDedicatedStart | Set-Content -Path $htmlDefinitionInsightsDedicatedPath -Encoding utf8 -Force
-        $htmlDefinitionInsights | Add-Content -Path $htmlDefinitionInsightsDedicatedPath -Encoding utf8 -Force
-        $htmlDefinitionInsights = $null
-        $htmlDefinitionInsightsDedicatedEnd | Add-Content -Path $htmlDefinitionInsightsDedicatedPath -Encoding utf8 -Force
+        Write-Host "   Creating dedicated DefinitionInsights HTML ($($definitionInsightsPath))"
+        $htmlDefinitionInsightsDedicatedEnd | Add-Content -Path $definitionInsightsPath -Encoding utf8 -Force
 
-        $htmlDefinitionInsightsNo = @"
+        $script:html += @"
         <span>DefinitionInsights has been saved to dedicated HTML file '<i>$($outputPathGiven)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html</i>' (parameter -NoDefinitionInsightsDedicatedHTML = $($NoDefinitionInsightsDedicatedHTML))</span><br>
         Open <a class="externallink" href="$($fileName)_DefinitionInsights.html" target="blank">DefinitionInsights <i class="fa fa-external-link" aria-hidden="true"></i></a>
 "@
-        $script:html += $htmlDefinitionInsightsNo
-        $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-        $script:html = $null
     }
+    $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+    $script:html = $null
 
 
     $endDefinitionInsights = Get-Date
@@ -15095,7 +15174,7 @@ function processTenantSummary() {
         #$tfCountCnt = 0
         foreach ($PIMEligible in $arrayPIMEligible) {
             #$tfCountCnt++
-            if ($PIMEligible.RoleType -eq 'BuiltInRole') {
+            if ($PIMEligible.RoleType -eq 'Builtin') {
                 $roleName = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($PIMEligible.RoleIdGuid).html`" target=`"_blank`" rel=`"noopener`">$($PIMEligible.RoleName)</a>"
             }
             else {
@@ -15185,7 +15264,7 @@ function processTenantSummary() {
                     $scope = "thisScope $($PIMEligibleRoleAssignment.Scope)"
                 }
 
-                if (-not [string]::IsNullOrEmpty($htCacheDefinitionsRole[$PIMEligibleRoleAssignment.RoleId].RoleDataActions) -or -not [string]::IsNullOrEmpty($htCacheDefinitionsRole[$PIMEligibleRoleAssignment.RoleId].RoleNotDataActions)) {
+                if (-not [string]::IsNullOrEmpty($htCacheDefinitionsRole[$PIMEligibleRoleAssignment.RoleIdGuid].RoleDataActions) -or -not [string]::IsNullOrEmpty($htCacheDefinitionsRole[$PIMEligibleRoleAssignment.RoleIdGuid].RoleNotDataActions)) {
                     $roleManageData = 'true'
                 }
                 else {
@@ -15193,7 +15272,7 @@ function processTenantSummary() {
                 }
 
                 $roleCanDoRoleAssignments = $false
-                if ($htCacheDefinitionsRole[$PIMEligibleRoleAssignment.RoleId].RoleCanDoRoleAssignments) {
+                if ($htCacheDefinitionsRole[$PIMEligibleRoleAssignment.RoleIdGuid].RoleCanDoRoleAssignments) {
                     $roleCanDoRoleAssignments = 'true'
                 }
 
@@ -20305,7 +20384,16 @@ function popoutag$($htmlTableId)() {
             if (-not $NoCsvExport) {
                 $csvFilename = "$($filename)_PIMEligibility"
                 Write-Host "   Exporting PIMEligibility CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-                $PIMEligibleEnrichedSorted | Select-Object -ExcludeProperty RoleClear | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
+                #'Role' carries the AzAdvertizer HTML link, the CSV gets the clear text from 'RoleClear' under the same column name
+                $pimCsvProps = @(
+                    'Scope', 'ScopeId', 'ScopeName', 'ManagementGroupId', 'ManagementGroupDisplayName', 'SubscriptionId',
+                    'SubscriptionDisplayName', 'MgPath', 'MgLevel', @{Name = 'Role'; Expression = { $_.RoleClear } },
+                    'RoleId', 'RoleIdGuid', 'RoleType', 'IdentityObjectId', 'IdentityDisplayName', 'IdentitySignInName',
+                    'IdentityType', 'IdentityApplicability', 'AppliesThrough', 'PIMEligibilityId', 'PIMEligibility',
+                    'PIMEligibilityInheritedFrom', 'PIMEligibilityInheritedFromClear', 'PIMEligibilityStartDateTime',
+                    'PIMEligibilityEndDateTime'
+                )
+                $PIMEligibleEnrichedSorted | Select-Object -Property $pimCsvProps | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
             }
 
             [void]$htmlTenantSummary.AppendLine($htmlSUMMARYPIMEligibility)
@@ -30810,6 +30898,10 @@ function setTranscript {
     Start-Transcript -Path "$($outputPath)$($DirectorySeparatorChar)$($fileNameTranscript)"
 }
 function showMemoryUsage {
+    param(
+        #use at phase boundaries where large objects were just dropped - nulling a reference alone does not return Large Object Heap memory
+        [switch]$collect
+    )
 
     function getMemoryUsage {
         if ($IsLinux) {
@@ -30837,28 +30929,44 @@ function showMemoryUsage {
             return 100 - ($operatingSystem.FreePhysicalMemory / $operatingSystem.TotalVisibleMemorySize * 100)
         }
     }
+
+    function invokeGarbageCollection {
+        $PSMemoryBefore = [System.GC]::GetTotalMemory($false)
+        $startGC = Get-Date
+        #the report churns large strings, without compaction the freed Large Object Heap stays fragmented
+        [System.Runtime.GCSettings]::LargeObjectHeapCompactionMode = [System.Runtime.GCLargeObjectHeapCompactionMode]::CompactOnce
+        $PSMemoryAfter = [System.GC]::GetTotalMemory($true)
+        return [PSCustomObject]@{
+            Before  = $PSMemoryBefore
+            After   = $PSMemoryAfter
+            Freed   = $PSMemoryBefore - $PSMemoryAfter
+            Seconds = (New-TimeSpan -Start $startGC -End (Get-Date)).TotalSeconds
+        }
+    }
+
     $memoryUsed = getMemoryUsage
 
     if ($memoryUsed -is [double]) {
         if ($memoryUsed -gt $CriticalMemoryUsage) {
             Write-Host "System memory utilization HIGH: $([math]::Round($memoryUsed))%" -ForegroundColor Magenta
             Write-Host 'Init garbage collection (GC)'
-            $PSMemoryBefore = [System.GC]::GetTotalMemory($false)
-            Write-Host " PS memory used before GC: $($PSMemoryBefore /1MB)MB ($PSMemoryBefore)"
-            $startGC = Get-Date
-            #the report churns large strings, without compaction the freed Large Object Heap stays fragmented
-            [System.Runtime.GCSettings]::LargeObjectHeapCompactionMode = [System.Runtime.GCLargeObjectHeapCompactionMode]::CompactOnce
-            $PSMemoryAfter = [System.GC]::GetTotalMemory($true)
-            $endGC = Get-Date
-            $PSMemoryDiff = $PSMemoryBefore - $PSMemoryAfter
-            Write-Host " PS memory used after GC: $($PSMemoryAfter /1MB)MB ($PSMemoryAfter)"
-            Write-Host " GC cleared $($PSMemoryDiff /1MB)MB ($PSMemoryDiff)" -ForegroundColor Green
-            Write-Host " GC duration: $((New-TimeSpan -Start $startGC -End $endGC).TotalSeconds) seconds"
+            $gc = invokeGarbageCollection
+            Write-Host " PS memory used before GC: $($gc.Before /1MB)MB ($($gc.Before))"
+            Write-Host " PS memory used after GC: $($gc.After /1MB)MB ($($gc.After))"
+            Write-Host " GC cleared $($gc.Freed /1MB)MB ($($gc.Freed))" -ForegroundColor Green
+            Write-Host " GC duration: $($gc.Seconds) seconds"
             Write-Host " System memory utilization after GC: $(getMemoryUsage)%"
         }
         else {
+            if ($collect) {
+                $gc = invokeGarbageCollection
+                $memoryUsed = getMemoryUsage
+                if ($ShowMemoryUsage) {
+                    Write-Host "GC cleared $([math]::Round($gc.Freed /1MB))MB in $([math]::Round($gc.Seconds, 2)) seconds" -ForegroundColor Green
+                }
+            }
             if ($ShowMemoryUsage) {
-                Write-Host "System memory utilization: $([math]::Round($memoryUsed))%"
+                Write-Host "System memory utilization: $([math]::Round($memoryUsed))% | PS memory: $([math]::Round([System.GC]::GetTotalMemory($false) /1MB))MB"
             }
         }
     }
@@ -31148,20 +31256,6 @@ function validateAccess {
         else {
             $permissionCheckResults += "MSGraph API 'ServicePrincipals Read' permission - check PASSED"
         }
-
-        if (-not $NoPIMEligibility) {
-            $currentTask = 'Test MSGraph PrivilegedAccess.Read.AzureResources permission'
-            $uriExt = "&`$expand=parent&`$filter=(type eq 'subscription' or type eq 'managementgroup')&`$top=1"
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/privilegedAccess/azureResources/resources?`$select=id,displayName,type,externalId" + $uriExt
-            $res = AzAPICall -AzAPICallConfiguration $azapicallConf -uri $uri -currentTask $currentTask -validateAccess
-            if ($res -eq 'failed') {
-                $permissionCheckResults += "MSGraph API 'PrivilegedAccess.Read.AzureResources' permission - check FAILED - if you cannot grant this permission or you do not have a Microsoft Entra ID P2 license, then use parameter -NoPIMEligibility"
-                $permissionsCheckFailed = $true
-            }
-            else {
-                $permissionCheckResults += "MSGraph API 'PrivilegedAccess.Read.AzureResources' permission - check PASSED"
-            }
-        }
     }
     #endregion validationAccess
 
@@ -31257,6 +31351,29 @@ function validateAccess {
         }
     }
     #endregion managementGroupHelper
+
+    #region validationAccessPIM
+    #reading PIM eligibility is an Azure RBAC permission, therefore this check applies to every accountType; it runs after the managementGroupHelper because it needs a resolved ManagementGroupId
+    if (-not $NoPIMEligibility) {
+        $currentTask = 'Test ARM roleEligibilitySchedules Read permission'
+        Write-Host $currentTask
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.Authorization/roleEligibilityScheduleInstances?api-version=2020-10-01&`$filter=atScope()"
+        $res = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -currentTask $currentTask -validateAccess
+        if ($res -eq 'failed') {
+            Write-Host "ARM API 'Microsoft.Authorization/roleEligibilitySchedules/read' permission - check FAILED" -ForegroundColor DarkRed
+            Write-Host "PIM Eligibility reporting requires the permission 'Microsoft.Authorization/roleEligibilitySchedules/read' (contained in the 'Reader' Role) and a Microsoft Entra ID P2 license"
+            if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions -eq $true -or $azAPICallConf['htParameters'].accountType -ne 'User') {
+                Write-Host "Please consult the documentation: https://$($GithubRepository)#required-permissions-in-azure"
+                Throw 'Error - Azure Governance Visualizer: check the last console output for details'
+            }
+            Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
+            $script:NoPIMEligibility = $true
+        }
+        else {
+            Write-Host "ARM API 'Microsoft.Authorization/roleEligibilitySchedules/read' permission - check PASSED" -ForegroundColor Green
+        }
+    }
+    #endregion validationAccessPIM
 
     if ($azAPICallConf['htParameters'].accountType -eq 'User') {
         validateLeastPrivilegeForUser
@@ -35389,7 +35506,8 @@ function dataCollectionRoleAssignmentsMG {
             }
         }
         else {
-            $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
+            #ARM nowadays returns roleAssignmentScheduleId == originRoleAssignmentId for every instance, so PIM managed assignments are identified by 'Activated' (activated eligibility) or by a set endDateTime (time bound assignments can only be created through PIM); the id comparison is kept as a fallback
+            $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { $_.properties.assignmentType -eq 'Activated' -or -not [string]::IsNullOrEmpty($_.properties.endDateTime) -or ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
             $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
             if ($roleAssignmentScheduleInstancesCount -gt 0) {
                 foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
@@ -35675,7 +35793,8 @@ function dataCollectionRoleAssignmentsSub {
             # }
         }
         else {
-            $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
+            #see the comment at the Management Group counterpart above
+            $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { $_.properties.assignmentType -eq 'Activated' -or -not [string]::IsNullOrEmpty($_.properties.endDateTime) -or ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
             $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
             if ($roleAssignmentScheduleInstancesCount -gt 0) {
                 foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
@@ -36146,23 +36265,6 @@ if (-not $HierarchyMapOnly) {
     }
     #endregion recommendPSRule
     #>
-
-    #region hintPIMEligibility
-    if ($azAPICallConf['htParameters'].accountType -eq 'User') {
-        if (-not $NoPIMEligibility) {
-            Write-Host ''
-            Write-Host ' * * * HINT: PIM (Privileged Identity Management) Eligibility reporting * * *' -ForegroundColor DarkBlue
-            Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
-            Write-Host "Executing principal accountType: '$($azAPICallConf['htParameters'].accountType)'"
-            Write-Host "PIM Eligibility reporting requires to execute the script as ServicePrincipal. API Permission 'PrivilegedAccess.Read.AzureResources' is required"
-            Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
-            $NoPIMEligibility = $true
-            Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
-            Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor DarkBlue
-            Pause
-        }
-    }
-    #endregion hintPIMEligibility
 }
 
 #region delimiterOpposite
@@ -38135,7 +38237,7 @@ if (-not $HierarchyMapOnly) {
     $html = $null
 
     processDefinitionInsights
-    showMemoryUsage
+    showMemoryUsage -collect
 
     $html += @'
     </div><!--definitionInsights-->
@@ -38303,11 +38405,21 @@ showMemoryUsage
 
 if (-not $azAPICallConf['htParameters'].NoJsonExport) {
     buildJSON
-    showMemoryUsage
+    showMemoryUsage -collect
 }
+
+#not referenced beyond this point - buildPolicyAllJSON only needs $tenantPoliciesDetailed, $tenantPolicySetsDetailed and $htCacheAssignmentsPolicy
+$htCacheDefinitionsPolicy = $null
+$htCacheDefinitionsPolicySet = $null
+$htCacheDefinitionsRole = $null
+$optimizedTableForPathQuery = $null
+$rbacAll = $null
+$newTable = $null
+showMemoryUsage
 
 if (-not $HierarchyMapOnly) {
     buildPolicyAllJSON
+    showMemoryUsage
 }
 
 #endregion createoutputs

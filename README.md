@@ -192,7 +192,7 @@ Short presentation on Azure Governance Visualizer: [download](slides/AzGovViz_in
       - Determine if the role assignment's role definition is capable to write role assignments
   - PIM (Privileged Identity Management) eligibility for role assignments
     - Get a full report of all PIM eligible role assignments for Management Groups and subscriptions, including resolved user members of Microsoft Entra ID groups that have assigned eligibility
-    - &#x1F4A1; Note: this feature requires you to execute as service principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+    - &#x1F4A1; Note: this feature requires the Azure permission `Microsoft.Authorization/roleEligibilitySchedules/read` (contained in the `Reader` Role) and a Microsoft Entra ID P2 license
   - Security & best practice analysis
     - Existence of custom role definition that reflect 'Owner' permissions
     - Report all role definitions that are capable to write role assignments, list all role assignments for those role definitions
@@ -383,6 +383,8 @@ These permissions are **mandatory** in each and every scenario!
 | :------- | :------------------------------------------------- |
 | ALL      | '**Reader**' role assignment on _Management Group_ |
 
+PIM (Privileged Identity Management) eligibility reporting additionally requires `Microsoft.Authorization/roleEligibilitySchedules/read` (contained in the '**Reader**' role) and a Microsoft Entra ID P2 license. It works for any account type (user, service principal, managed identity). If the requirements are not met, use the parameter `-NoPIMEligibility`.
+
 ### Required permissions in Microsoft Entra ID
 
 <table>
@@ -424,10 +426,6 @@ These permissions are **mandatory** in each and every scenario!
               <td>Get Microsoft Entra ID<br>SP/App</td>
               <td>Service principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>&#x1F4A1; <a href="https://learn.microsoft.com/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://learn.microsoft.com/graph/api/application-get#permissions" target="_blank">Get application</a></td>
             </tr>
-            <tr>
-              <td>Get PIM eligibility<br>SP/App</td>
-              <td>Service principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / PrivilegedAccess / PrivilegedAccess.Read.AzureResources<br>&#x1F4A1; <a href="https://learn.microsoft.com/graph/api/resources/privilegedaccess" target="_blank">Get privilegedAccess for Azure resources</a><br>If you cannot grant this permission then use parameter <i>-NoPIMEligibility</i></td>
-            </tr>
           </tbody>
         </table>
         Optional: Microsoft Entra ID role 'Directory readers' could be used instead of API permissions (more 'read' than required)
@@ -453,10 +451,6 @@ These permissions are **mandatory** in each and every scenario!
             <tr>
               <td>Get Microsoft Entra ID<br>SP/App</td>
               <td>Azure DevOps service connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>&#x1F4A1; <a href="https://learn.microsoft.com/graph/api/serviceprincipal-get#permissions" target="_blank">Get service principal</a>, <a href="https://learn.microsoft.com/graph/api/application-get#permissions" target="_blank">Get application</a></td>
-            </tr>
-            <tr>
-              <td>Get PIM eligibility<br>SP/App</td>
-              <td>Service principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / PrivilegedAccess / PrivilegedAccess.Read.AzureResources<br>&#x1F4A1; <a href="https://learn.microsoft.com/graph/api/resources/privilegedaccess" target="_blank">Get privilegedAccess for Azure resources</a><br>If you cannot grant this permission then use parameter <i>-NoPIMEligibility</i></td>
             </tr>
           </tbody>
         </table>
@@ -580,8 +574,6 @@ Azure Governance Visualizer polls the following APIs
 | Endpoint | API version        | API name                                                                                                                               |
 | -------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
 | MS Graph | beta               | /groups/`entraGroupId`/transitiveMembers                                                                                               |
-| MS Graph | beta               | /privilegedAccess/azureResources/resources                                                                                             |
-| MS Graph | beta               | /privilegedAccess/azureResources/roleAssignments                                                                                       |
 | MS Graph | v1.0               | /applications                                                                                                                          |
 | MS Graph | v1.0               | /directoryObjects/getByIds                                                                                                             |
 | MS Graph | v1.0               | /users                                                                                                                                 |
@@ -599,6 +591,7 @@ Azure Governance Visualizer polls the following APIs
 | ARM      | 2021-06-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policySetDefinitions            |
 | ARM      | 2015-07-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignments                 |
 | ARM      | 2020-10-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignmentScheduleInstances |
+| ARM      | 2020-10-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleEligibilityScheduleInstances |
 | ARM      | 2018-07-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleDefinitions                 |
 | ARM      | 2018-11-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Blueprint/blueprints                          |
 | ARM      | 2024-01-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.CostManagement/query                          |
@@ -620,6 +613,7 @@ Azure Governance Visualizer polls the following APIs
 | ARM      | 2020-10-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentScheduleInstances                                      |
 | ARM      | 2019-08-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics                                          |
 | ARM      | 2023-07-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleDefinitions                                                      |
+| ARM      | 2020-10-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleEligibilityScheduleInstances                                     |
 | ARM      | 2023-07-01-preview | /providers/Microsoft.Authorization/roleDefinitions                                                                                     |
 | ARM      | 2022-05-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprintAssignments                                                     |
 | ARM      | 2018-11-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprints                                                               |

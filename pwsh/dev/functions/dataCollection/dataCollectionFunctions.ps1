@@ -3587,7 +3587,8 @@ function dataCollectionRoleAssignmentsMG {
             }
         }
         else {
-            $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
+            #ARM nowadays returns roleAssignmentScheduleId == originRoleAssignmentId for every instance, so PIM managed assignments are identified by 'Activated' (activated eligibility) or by a set endDateTime (time bound assignments can only be created through PIM); the id comparison is kept as a fallback
+            $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { $_.properties.assignmentType -eq 'Activated' -or -not [string]::IsNullOrEmpty($_.properties.endDateTime) -or ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
             $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
             if ($roleAssignmentScheduleInstancesCount -gt 0) {
                 foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {
@@ -3873,7 +3874,8 @@ function dataCollectionRoleAssignmentsSub {
             # }
         }
         else {
-            $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
+            #see the comment at the Management Group counterpart above
+            $roleAssignmentScheduleInstances = ($roleAssignmentScheduleInstancesFromAPI.where( { $_.properties.assignmentType -eq 'Activated' -or -not [string]::IsNullOrEmpty($_.properties.endDateTime) -or ($_.properties.roleAssignmentScheduleId -replace '.*/') -ne ($_.properties.originRoleAssignmentId -replace '.*/') }))
             $roleAssignmentScheduleInstancesCount = $roleAssignmentScheduleInstances.Count
             if ($roleAssignmentScheduleInstancesCount -gt 0) {
                 foreach ($roleAssignmentScheduleInstance in $roleAssignmentScheduleInstances) {

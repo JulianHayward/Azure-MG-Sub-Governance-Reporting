@@ -498,7 +498,7 @@
         #$tfCountCnt = 0
         foreach ($PIMEligible in $arrayPIMEligible) {
             #$tfCountCnt++
-            if ($PIMEligible.RoleType -eq 'BuiltInRole') {
+            if ($PIMEligible.RoleType -eq 'Builtin') {
                 $roleName = "<a class=`"externallink`" href=`"https://www.azadvertizer.net/azrolesadvertizer/$($PIMEligible.RoleIdGuid).html`" target=`"_blank`" rel=`"noopener`">$($PIMEligible.RoleName)</a>"
             }
             else {
@@ -588,7 +588,7 @@
                     $scope = "thisScope $($PIMEligibleRoleAssignment.Scope)"
                 }
 
-                if (-not [string]::IsNullOrEmpty($htCacheDefinitionsRole[$PIMEligibleRoleAssignment.RoleId].RoleDataActions) -or -not [string]::IsNullOrEmpty($htCacheDefinitionsRole[$PIMEligibleRoleAssignment.RoleId].RoleNotDataActions)) {
+                if (-not [string]::IsNullOrEmpty($htCacheDefinitionsRole[$PIMEligibleRoleAssignment.RoleIdGuid].RoleDataActions) -or -not [string]::IsNullOrEmpty($htCacheDefinitionsRole[$PIMEligibleRoleAssignment.RoleIdGuid].RoleNotDataActions)) {
                     $roleManageData = 'true'
                 }
                 else {
@@ -596,7 +596,7 @@
                 }
 
                 $roleCanDoRoleAssignments = $false
-                if ($htCacheDefinitionsRole[$PIMEligibleRoleAssignment.RoleId].RoleCanDoRoleAssignments) {
+                if ($htCacheDefinitionsRole[$PIMEligibleRoleAssignment.RoleIdGuid].RoleCanDoRoleAssignments) {
                     $roleCanDoRoleAssignments = 'true'
                 }
 
@@ -5708,7 +5708,16 @@ function popoutag$($htmlTableId)() {
             if (-not $NoCsvExport) {
                 $csvFilename = "$($filename)_PIMEligibility"
                 Write-Host "   Exporting PIMEligibility CSV '$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv'"
-                $PIMEligibleEnrichedSorted | Select-Object -ExcludeProperty RoleClear | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
+                #'Role' carries the AzAdvertizer HTML link, the CSV gets the clear text from 'RoleClear' under the same column name
+                $pimCsvProps = @(
+                    'Scope', 'ScopeId', 'ScopeName', 'ManagementGroupId', 'ManagementGroupDisplayName', 'SubscriptionId',
+                    'SubscriptionDisplayName', 'MgPath', 'MgLevel', @{Name = 'Role'; Expression = { $_.RoleClear } },
+                    'RoleId', 'RoleIdGuid', 'RoleType', 'IdentityObjectId', 'IdentityDisplayName', 'IdentitySignInName',
+                    'IdentityType', 'IdentityApplicability', 'AppliesThrough', 'PIMEligibilityId', 'PIMEligibility',
+                    'PIMEligibilityInheritedFrom', 'PIMEligibilityInheritedFromClear', 'PIMEligibilityStartDateTime',
+                    'PIMEligibilityEndDateTime'
+                )
+                $PIMEligibleEnrichedSorted | Select-Object -Property $pimCsvProps | Export-Csv -Encoding utf8 -Path "$($outputPath)$($DirectorySeparatorChar)$($csvFilename).csv" -Delimiter $csvDelimiter -NoTypeInformation
             }
 
             [void]$htmlTenantSummary.AppendLine($htmlSUMMARYPIMEligibility)

@@ -138,7 +138,6 @@ The service principal created in the prior step is authorized for Azure resource
    - **Application / Application.Read.All**
    - **Group / Group.Read.All**
    - **User / User.Read.All**
-   - **PrivilegedAccess / PrivilegedAccess.Read.AzureResources**
 1. Click on 'Add a permissions'
 1. Back in the main '**API permissions**' menu you will find permissions with status 'Not granted for...'. Click on '**Grant admin consent for _TenantName_**' and confirm by click on '**Yes**'
    - Now you will find the permissions with status '**Granted for _TenantName_**'

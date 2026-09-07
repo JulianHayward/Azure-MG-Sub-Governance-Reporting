@@ -496,7 +496,65 @@
     $htJSON = $null
 
     Write-Host " Exporting Tenant JSON '$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)$($fileName).json'"
-    $htTree | ConvertTo-Json -Depth 99 | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)$($fileName).json" -Encoding utf8 -Force
+
+    #the hierarchy is written node by node - a single ConvertTo-Json over the whole tree peaks at a multiple of the document size
+    function writeTreeNodeJson {
+        param(
+            [System.IO.StreamWriter]$streamWriter,
+            $node,
+            #indentation of the object's closing brace
+            [string]$indent
+        )
+        if ($node.Keys.Count -eq 0) {
+            $streamWriter.Write('{}')
+            return
+        }
+        $streamWriter.Write('{')
+        $propertyIndent = "$($indent)  "
+        $isFirstProperty = $true
+        foreach ($nodeKey in $node.Keys) {
+            if (-not $isFirstProperty) {
+                $streamWriter.Write(',')
+            }
+            $isFirstProperty = $false
+            $streamWriter.Write("`n$($propertyIndent)$($nodeKey | ConvertTo-Json): ")
+
+            if ($nodeKey -eq 'ManagementGroups') {
+                $childManagementGroups = $node[$nodeKey]
+                if ($childManagementGroups.Keys.Count -eq 0) {
+                    $streamWriter.Write('{}')
+                }
+                else {
+                    $streamWriter.Write('{')
+                    $isFirstChild = $true
+                    foreach ($childKey in $childManagementGroups.Keys) {
+                        if (-not $isFirstChild) {
+                            $streamWriter.Write(',')
+                        }
+                        $isFirstChild = $false
+                        $streamWriter.Write("`n$($propertyIndent)  $($childKey | ConvertTo-Json): ")
+                        writeTreeNodeJson -streamWriter $streamWriter -node $childManagementGroups[$childKey] -indent "$($propertyIndent)  "
+                    }
+                    $streamWriter.Write("`n$($propertyIndent)}")
+                }
+            }
+            else {
+                #every line but the first is shifted to the indentation the value has inside the document
+                $streamWriter.Write(((($node[$nodeKey] | ConvertTo-Json -Depth 99) -split '\r?\n') -join "`n$($propertyIndent)"))
+            }
+        }
+        $streamWriter.Write("`n$($indent)}")
+    }
+
+    $treeStreamWriter = [System.IO.StreamWriter]::new("$($outputPath)$($DirectorySeparatorChar)$($JSONPath)$($DirectorySeparatorChar)$($fileName).json", $false, [System.Text.UTF8Encoding]::new($false))
+    try {
+        $treeStreamWriter.Write("{`n  `"Tenant`": ")
+        writeTreeNodeJson -streamWriter $treeStreamWriter -node $htTree.Tenant -indent '  '
+        $treeStreamWriter.Write("`n}`n")
+    }
+    finally {
+        $treeStreamWriter.Dispose()
+    }
     $htTree = $null
     $json = $null
 

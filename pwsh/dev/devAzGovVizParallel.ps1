@@ -153,11 +153,11 @@
 
 .PARAMETER NoPIMEligibility
     Do not report on PIM (Privileged Identity Management) eligible Role assignments
-    Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+    Note: this feature requires the Azure permission `Microsoft.Authorization/roleEligibilitySchedules/read` (contained in the `Reader` Role) and a Microsoft Entra ID P2 license
 
 .PARAMETER PIMEligibilityIgnoreScope
     Ignore the current scope (ManagementGrouId) and get all PIM (Privileged Identity Management) eligible Role assignments
-    By default will only report for PIM Elibility for the scope (ManagementGroupId) that was provided. If you use the new switch parameter then PIM Eligibility for all onboarded scopes (Management Groups and Subscriptions) will be reported
+    By default will only report for PIM Elibility for the scope (ManagementGroupId) that was provided. If you use the new switch parameter then PIM Eligibility for all accessible scopes (Management Groups and Subscriptions) will be reported
 
 .PARAMETER NoPIMEligibilityIntegrationRoleAssignmentsAll
     Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
@@ -351,10 +351,10 @@
     Define Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ExcludedResourceTypesDiagnosticsCapable @('microsoft.web/certificates')
 
-    Define if report on PIM (Privileged Identity Management) eligible Role assignments should be created. Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+    Define if report on PIM (Privileged Identity Management) eligible Role assignments should be created. Note: this feature requires the Azure permission `Microsoft.Authorization/roleEligibilitySchedules/read` (contained in the `Reader` Role) and a Microsoft Entra ID P2 license
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibility
 
-    Define if the current scope (ManagementGroupId) should be ignored and therefore and get all PIM (Privileged Identity Management) eligible Role assignments. Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+    Define if the current scope (ManagementGroupId) should be ignored and therefore and get all PIM (Privileged Identity Management) eligible Role assignments. Note: this feature requires the Azure permission `Microsoft.Authorization/roleEligibilitySchedules/read` (contained in the `Reader` Role) and a Microsoft Entra ID P2 license
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -PIMEligibilityIgnoreScope
 
     Define if PIM Eligible assignments should not be integrated with RoleAssignmentsAll outputs (HTML, CSV)
@@ -991,23 +991,6 @@ if (-not $HierarchyMapOnly) {
     }
     #endregion recommendPSRule
     #>
-
-    #region hintPIMEligibility
-    if ($azAPICallConf['htParameters'].accountType -eq 'User') {
-        if (-not $NoPIMEligibility) {
-            Write-Host ''
-            Write-Host ' * * * HINT: PIM (Privileged Identity Management) Eligibility reporting * * *' -ForegroundColor DarkBlue
-            Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
-            Write-Host "Executing principal accountType: '$($azAPICallConf['htParameters'].accountType)'"
-            Write-Host "PIM Eligibility reporting requires to execute the script as ServicePrincipal. API Permission 'PrivilegedAccess.Read.AzureResources' is required"
-            Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
-            $NoPIMEligibility = $true
-            Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
-            Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor DarkBlue
-            Pause
-        }
-    }
-    #endregion hintPIMEligibility
 }
 
 #region delimiterOpposite
@@ -2980,7 +2963,7 @@ if (-not $HierarchyMapOnly) {
     $html = $null
 
     processDefinitionInsights
-    showMemoryUsage
+    showMemoryUsage -collect
 
     $html += @'
     </div><!--definitionInsights-->
@@ -3148,11 +3131,21 @@ showMemoryUsage
 
 if (-not $azAPICallConf['htParameters'].NoJsonExport) {
     buildJSON
-    showMemoryUsage
+    showMemoryUsage -collect
 }
+
+#not referenced beyond this point - buildPolicyAllJSON only needs $tenantPoliciesDetailed, $tenantPolicySetsDetailed and $htCacheAssignmentsPolicy
+$htCacheDefinitionsPolicy = $null
+$htCacheDefinitionsPolicySet = $null
+$htCacheDefinitionsRole = $null
+$optimizedTableForPathQuery = $null
+$rbacAll = $null
+$newTable = $null
+showMemoryUsage
 
 if (-not $HierarchyMapOnly) {
     buildPolicyAllJSON
+    showMemoryUsage
 }
 
 #endregion createoutputs

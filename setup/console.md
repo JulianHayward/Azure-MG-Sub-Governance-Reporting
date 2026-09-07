@@ -39,7 +39,8 @@ You are planning on executing the script as a service principal instead of as yo
 - '**Application / Application.Read.All**'
 - '**Group / Group.Read.All**'
 - '**User / User.Read.All**'
-- '**PrivilegedAccess / PrivilegedAccess.Read.AzureResources**'
+
+> PIM (Privileged Identity Management) eligibility reporting no longer requires a Microsoft Graph permission. It uses the Azure Resource Manager API and requires `Microsoft.Authorization/roleEligibilitySchedules/read` (contained in the `Reader` Role) plus a Microsoft Entra ID P2 license.
 
 #### Assign Microsoft Graph permissions, if needed
 
@@ -58,7 +59,6 @@ You are planning on executing the script as a service principal instead of as yo
    - **Application / Application.Read.All**
    - **Group / Group.Read.All**
    - **User / User.Read.All**
-   - **PrivilegedAccess / PrivilegedAccess.Read.AzureResources**
 1. Click on 'Add a permissions'
 1. Back in the main '**API permissions**' menu you will find permissions with status 'Not granted for...'. Click on '**Grant admin consent for _TenantName_**' and confirm by click on '**Yes**'
    - Now you will find the permissions with status '**Granted for _TenantName_**'
