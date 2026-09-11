@@ -116,7 +116,7 @@
     if (-not $NoCsvExport -and $arrayModelDeploymentInsights.Count -gt 0) {
         $modelDeploymentInsightsCsvPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ModelDeploymentInsights.csv"
         Write-Host "Exporting Model Deployment Insights CSV '$modelDeploymentInsightsCsvPath'"
-        $arrayModelDeploymentInsights |
+        $arrayModelDeploymentInsights | Select-Object -ExcludeProperty MetricsStartUtc, MetricsEndUtc |
             Sort-Object -Property ModelName, ModelVersion, SubscriptionName, AccountName, DeploymentName |
             Export-Csv -Path $modelDeploymentInsightsCsvPath -Delimiter $csvDelimiter -NoTypeInformation
     }

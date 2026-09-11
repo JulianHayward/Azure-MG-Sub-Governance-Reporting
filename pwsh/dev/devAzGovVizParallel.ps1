@@ -429,7 +429,7 @@ param
     [ValidateSet('AzAPICall', 'AzAPICallBeta')]$AzAPICallModuleName = 'AzAPICall',
 
     [string]
-    $AzAPICallVersion = '1.4.1',
+    $AzAPICallVersion = '1.4.2',
 
     [switch]
     $DebugAzAPICall,

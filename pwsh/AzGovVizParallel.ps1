@@ -429,7 +429,7 @@ param
     [ValidateSet('AzAPICall', 'AzAPICallBeta')]$AzAPICallModuleName = 'AzAPICall',
 
     [string]
-    $AzAPICallVersion = '1.4.1',
+    $AzAPICallVersion = '1.4.2',
 
     [switch]
     $DebugAzAPICall,
@@ -9966,7 +9966,7 @@ function processModelDeploymentInsights {
     if (-not $NoCsvExport -and $arrayModelDeploymentInsights.Count -gt 0) {
         $modelDeploymentInsightsCsvPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_ModelDeploymentInsights.csv"
         Write-Host "Exporting Model Deployment Insights CSV '$modelDeploymentInsightsCsvPath'"
-        $arrayModelDeploymentInsights |
+        $arrayModelDeploymentInsights | Select-Object -ExcludeProperty MetricsStartUtc, MetricsEndUtc |
             Sort-Object -Property ModelName, ModelVersion, SubscriptionName, AccountName, DeploymentName |
             Export-Csv -Path $modelDeploymentInsightsCsvPath -Delimiter $csvDelimiter -NoTypeInformation
     }
@@ -15247,13 +15247,27 @@ function processTenantSummary() {
                                 $identityTypeFull = "$grpMemberType"
                             }
                             if ($groupmember.'@odata.type' -eq '#microsoft.graph.servicePrincipal') {
-                                $grpMemberDisplayName = $groupmember.appDisplayName
+
                                 $grpMemberSignInName = 'n/a'
                                 $grpMemberId = $groupmember.Id
                                 $grpMemberType = 'ServicePrincipal'
                                 $grpMemberUserType = ''
                                 $identityType = $htServicePrincipals[$grpMemberId].spTypeConcatinated
                                 $identityTypeFull = "$identityType"
+                                if ($identityType -like 'SP MI *'){
+                                    $grpMemberDisplayName = $groupmember.displayName
+                                }
+                                else {
+                                    $grpMemberDisplayName = $groupmember.appDisplayName
+                                }
+                            }
+                            if ($groupmember.'@odata.type' -eq '#microsoft.graph.directoryObjectPartnerReference') {
+                                $grpMemberDisplayName = $groupmember.displayName
+                                $grpMemberSignInName = 'n/a'
+                                $grpMemberId = $groupmember.Id
+                                $grpMemberType = 'directoryObjectPartnerReference'
+                                $grpMemberUserType = ''
+                                $identityTypeFull = "$grpMemberType"
                             }
 
                             $null = $script:rbacAll.Add([PSCustomObject]@{
@@ -15352,10 +15366,14 @@ function processTenantSummary() {
                 elseif ($rbac.RoleAssignmentIdentityObjectType -eq 'Unknown') {
                     $identityTypeFull = 'Unknown'
                 }
-                else {
+                elseif ($rbac.RoleAssignmentIdentityObjectType -eq 'User') {
                     #user
-                    $identityType = $rbac.RoleAssignmentIdentityObjectType
+                    $identityType = 'User'
                     $identityTypeFull = "$identityType $objectTypeUserType"
+                }
+                else {
+                    $identityType = $rbac.RoleAssignmentIdentityObjectType
+                    $identityTypeFull = "$identityType"
                 }
 
                 $null = $script:rbacAll.Add([PSCustomObject]@{
@@ -15412,10 +15430,14 @@ function processTenantSummary() {
             elseif ($rbac.RoleAssignmentIdentityObjectType -eq 'Group') {
                 $identityTypeFull = 'Group'
             }
-            else {
+            elseif ($rbac.RoleAssignmentIdentityObjectType -eq 'User') {
                 #user
-                $identityType = $rbac.RoleAssignmentIdentityObjectType
+                $identityType = 'User'
                 $identityTypeFull = "$identityType $objectTypeUserType"
+            }
+            else {
+                $identityType = $rbac.RoleAssignmentIdentityObjectType
+                $identityTypeFull = "$identityType"
             }
 
             #noaadgroupmemberresolve
@@ -24637,7 +24659,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             [void]$htmlTenantSummary.AppendLine('</div>')
 
             [void]$htmlTenantSummary.AppendLine(@"
-<button onclick="loadag$($htmlTableIdAccounts)()" type="button" class="collapsible" id="buttonTenantSummary_ModelDeploymentInsightsAccounts"><i class="padlx fa fa-cubes" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$($modelAccountDetails.Count) Foundry model / Cognitive Services account combinations</span></button>
+<button onclick="loadag$($htmlTableIdAccounts)()" type="button" class="collapsible" id="buttonTenantSummary_ModelDeploymentInsightsAccounts"><i class="padlx fa fa-cubes" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$($modelAccountDetails.Count) Foundry model / Cognitive Services account combinations ($($azAPICallConf['htParameters'].FoundryModelDeploymentsDays) day metrics)</span></button>
 <div class="content TenantSummary">
 <i class="padlxx fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableIdAccounts)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableIdAccounts)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableIdAccounts)(); return false;">Pop out grid</a><br>
 <span class="padlxx hintTableSize">*The CSV download respects the filters and the column order applied in the grid</span>
