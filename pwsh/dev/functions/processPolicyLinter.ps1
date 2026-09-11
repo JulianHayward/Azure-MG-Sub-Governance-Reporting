@@ -139,8 +139,11 @@
 
                     $htSeenFindings = @{}
                     foreach ($finding in $resultProperty.Value) {
+                        #some findings are prefixed with the temporary file the linter was handed - that path is meaningless in the report
+                        $findingDescription = $finding.description -replace "^Failed to read file '[^']*':\s*"
+
                         #the linter reports a finding per occurrence, the same rule hit on the same location is reported repeatedly
-                        $findingKey = "$($finding.ruleIdentifier)|$($finding.lineNumber)|$($finding.linePosition)|$($finding.path)|$($finding.description)"
+                        $findingKey = "$($finding.ruleIdentifier)|$($finding.lineNumber)|$($finding.linePosition)|$($finding.path)|$($findingDescription)"
                         if ($htSeenFindings[$findingKey]) {
                             continue
                         }
@@ -157,7 +160,7 @@
                                 Rule                 = $finding.title
                                 RuleId               = $finding.ruleIdentifier
                                 RuleCategory         = $finding.category
-                                Description          = $finding.description
+                                Description          = $findingDescription
                                 JsonPath             = $finding.path
                                 Line                 = $finding.lineNumber
                             })

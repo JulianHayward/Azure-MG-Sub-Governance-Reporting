@@ -79,7 +79,11 @@ resources
             query     = @"
 resources
 | where type has 'microsoft.compute/disks'
-| where isempty(managedBy) or properties.diskState =~ 'unattached' and not(name endswith '-ASRReplica' or name startswith 'ms-asr-' or name startswith 'asrseeddisk-')
+| extend diskState = tostring(properties.diskState)
+| where diskState !~ 'ActiveSAS'
+| where isempty(managedBy) or diskState =~ 'Unattached'
+| where not(name endswith '-ASRReplica' or name startswith 'ms-asr-' or name startswith 'asrseeddisk-')
+| where tags !contains 'ASR-ReplicaDisk' and tags !contains 'asrseeddisk' and tags !contains 'RSVaultBackup' and tags !contains 'kubernetes.io-created-for-pvc'
 | project type, subscriptionId, Resource=id, Intent='$intent'
 "@
             intent    = $intent
