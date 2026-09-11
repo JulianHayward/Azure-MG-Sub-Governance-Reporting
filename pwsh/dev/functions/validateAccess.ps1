@@ -43,20 +43,6 @@
         else {
             $permissionCheckResults += "MSGraph API 'ServicePrincipals Read' permission - check PASSED"
         }
-
-        if (-not $NoPIMEligibility) {
-            $currentTask = 'Test MSGraph PrivilegedAccess.Read.AzureResources permission'
-            $uriExt = "&`$expand=parent&`$filter=(type eq 'subscription' or type eq 'managementgroup')&`$top=1"
-            $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/privilegedAccess/azureResources/resources?`$select=id,displayName,type,externalId" + $uriExt
-            $res = AzAPICall -AzAPICallConfiguration $azapicallConf -uri $uri -currentTask $currentTask -validateAccess
-            if ($res -eq 'failed') {
-                $permissionCheckResults += "MSGraph API 'PrivilegedAccess.Read.AzureResources' permission - check FAILED - if you cannot grant this permission or you do not have a Microsoft Entra ID P2 license, then use parameter -NoPIMEligibility"
-                $permissionsCheckFailed = $true
-            }
-            else {
-                $permissionCheckResults += "MSGraph API 'PrivilegedAccess.Read.AzureResources' permission - check PASSED"
-            }
-        }
     }
     #endregion validationAccess
 
@@ -124,7 +110,7 @@
         Write-Host $currentTask
         $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)?api-version=2020-05-01"
         $method = 'GET'
-        $selectedManagementGroupId = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -validateAccess
+        $script:selectedManagementGroupId = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -validateAccess
 
         if ($selectedManagementGroupId -eq 'failed') {
             $permissionCheckResults += "RBAC 'Reader' permissions on Management Group '$($ManagementGroupId)' - check FAILED (use Id, not displayName)"
@@ -152,6 +138,41 @@
         }
     }
     #endregion managementGroupHelper
+
+    #region validationAccessPIM
+    #reading PIM eligibility is an Azure RBAC permission, therefore this check applies to every accountType; it runs after the managementGroupHelper because it needs a resolved ManagementGroupId
+    if (-not $NoPIMEligibility) {
+        $currentTask = 'Test ARM roleEligibilitySchedules Read permission'
+        Write-Host $currentTask
+        $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.Authorization/roleEligibilityScheduleInstances?api-version=2020-10-01&`$filter=atScope()"
+        $res = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -currentTask $currentTask -validateAccess
+        if ($res -eq 'failed') {
+            #-validateAccess reports any 400 as 'failed'; only the roleAssignmentScheduleInstances endpoint surfaces the tenant license gate ('AadPremiumLicenseRequired') as such
+            $currentTask = 'Test ARM PIM (Microsoft Entra ID P2) license requirement'
+            $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/$($ManagementGroupId)/providers/Microsoft.Authorization/roleAssignmentScheduleInstances?api-version=2020-10-01"
+            $resPIMLicense = AzAPICall -AzAPICallConfiguration $azAPICallConf -uri $uri -currentTask $currentTask -unhandledErrorAction 'ContinueQuiet'
+
+            if ($resPIMLicense -eq 'AadPremiumLicenseRequired') {
+                Write-Host 'PIM Eligibility reporting not available - the tenant needs to have a Microsoft Entra ID P2 or Microsoft Entra ID Governance license' -ForegroundColor Yellow
+                Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
+                $script:NoPIMEligibility = $true
+            }
+            else {
+                Write-Host "ARM API 'Microsoft.Authorization/roleEligibilitySchedules/read' permission - check FAILED" -ForegroundColor DarkRed
+                Write-Host "PIM Eligibility reporting requires the permission 'Microsoft.Authorization/roleEligibilitySchedules/read' (contained in the 'Reader' Role) and a Microsoft Entra ID P2 license"
+                if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions -eq $true -or $azAPICallConf['htParameters'].accountType -ne 'User') {
+                    Write-Host "Please consult the documentation: https://$($GithubRepository)#required-permissions-in-azure"
+                    Throw 'Error - Azure Governance Visualizer: check the last console output for details'
+                }
+                Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
+                $script:NoPIMEligibility = $true
+            }
+        }
+        else {
+            Write-Host "ARM API 'Microsoft.Authorization/roleEligibilitySchedules/read' permission - check PASSED" -ForegroundColor Green
+        }
+    }
+    #endregion validationAccessPIM
 
     if ($azAPICallConf['htParameters'].accountType -eq 'User') {
         validateLeastPrivilegeForUser

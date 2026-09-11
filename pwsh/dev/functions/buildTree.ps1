@@ -26,19 +26,19 @@
                     $displayName = removeInvalidFileNameChars $hlp.properties.displayName
                 }
                 $jsonConverted = $hlp.properties | ConvertTo-Json -Depth 99
-                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
+                $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json"
                 $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicyDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                     $null = New-Item -Name $path -ItemType directory -Path $outputPath
                 }
-                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
+                $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json"
 
                 $jsonConvertedTracking = $hlp | ConvertTo-Json -Depth 99
                 $pathTracking = "$($JSONPath)$($DirectorySeparatorChar)Definitions_tracking$($DirectorySeparatorChar)PolicyDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid)"
                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)")) {
                     $null = New-Item -Name $pathTracking -ItemType directory -Path $outputPath
                 }
-                $jsonConvertedTracking | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $hlp.name).json" -Encoding utf8
+                $jsonConvertedTracking | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $hlp.name).json"
             }
         }
         if ($mgCap -eq 'PolicySetDefinitionsCustom') {
@@ -52,19 +52,19 @@
                     $displayName = removeInvalidFileNameChars $hlp.properties.displayName
                 }
                 $jsonConverted = $hlp.properties | ConvertTo-Json -Depth 99
-                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
+                $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json"
                 $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicySetDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                     $null = New-Item -Name $path -ItemType directory -Path $outputPath
                 }
-                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
+                $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json"
 
                 $jsonConvertedTracking = $hlp | ConvertTo-Json -Depth 99
                 $pathTracking = "$($JSONPath)$($DirectorySeparatorChar)Definitions_tracking$($DirectorySeparatorChar)PolicySetDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid)"
                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)")) {
                     $null = New-Item -Name $pathTracking -ItemType directory -Path $outputPath
                 }
-                $jsonConvertedTracking | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $hlp.name).json" -Encoding utf8
+                $jsonConvertedTracking | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $hlp.name).json"
             }
         }
         if ($mgCap -eq 'PolicyAssignments') {
@@ -78,18 +78,18 @@
                     $displayName = removeInvalidFileNameChars $hlp.properties.displayName
                 }
                 $jsonConverted = $hlp | ConvertTo-Json -Depth 99
-                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
+                $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json"
                 $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($mgCap)$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                     $null = New-Item -Name $path -ItemType directory -Path $outputPath
                 }
-                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
+                $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json"
 
                 $pathTracking = "$($JSONPath)$($DirectorySeparatorChar)Assignments_tracking$($DirectorySeparatorChar)$($mgCap)$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid)"
                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)")) {
                     $null = New-Item -Name $pathTracking -ItemType directory -Path $outputPath
                 }
-                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $hlp.name).json" -Encoding utf8
+                $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $hlp.name).json"
             }
         }
         #marker
@@ -104,12 +104,12 @@
                     $pim = ''
                 }
                 $jsonConverted = ($hlp | Select-Object -ExcludeProperty PIM) | ConvertTo-Json -Depth 99
-                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json" -Encoding utf8
+                $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($prntx)$($DirectorySeparatorChar)$($mgCapShort)_$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json"
                 $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($mgCap)$($DirectorySeparatorChar)Mg$($DirectorySeparatorChar)$($mgNameValid) ($($mgDisplayNameValid))"
                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                     $null = New-Item -Name $path -ItemType directory -Path $outputPath
                 }
-                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json" -Encoding utf8
+                $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json"
             }
         }
 
@@ -130,19 +130,19 @@
                                 $displayName = removeInvalidFileNameChars $hlp.properties.displayName
                             }
                             $jsonConverted = $hlp.properties | ConvertTo-Json -Depth 99
-                            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
+                            $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json"
                             $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicyDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
                             if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                                 $null = New-Item -Name $path -ItemType directory -Path $outputPath
                             }
-                            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
+                            $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json"
 
                             $jsonConvertedTracking = $hlp | ConvertTo-Json -Depth 99
                             $pathTracking = "$($JSONPath)$($DirectorySeparatorChar)Definitions_tracking$($DirectorySeparatorChar)PolicyDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($sub)"
                             if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)")) {
                                 $null = New-Item -Name $pathTracking -ItemType directory -Path $outputPath
                             }
-                            $jsonConvertedTracking | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $hlp.name).json" -Encoding utf8
+                            $jsonConvertedTracking | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $hlp.name).json"
                         }
                     }
                     if ($subCap -eq 'PolicySetDefinitionsCustom') {
@@ -156,19 +156,19 @@
                                 $displayName = removeInvalidFileNameChars $hlp.properties.displayName
                             }
                             $jsonConverted = $hlp.properties | ConvertTo-Json -Depth 99
-                            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
+                            $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json"
                             $path = "$($JSONPath)$($DirectorySeparatorChar)Definitions$($DirectorySeparatorChar)PolicySetDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
                             if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                                 $null = New-Item -Name $path -ItemType directory -Path $outputPath
                             }
-                            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
+                            $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json"
 
                             $jsonConvertedTracking = $hlp | ConvertTo-Json -Depth 99
                             $pathTracking = "$($JSONPath)$($DirectorySeparatorChar)Definitions_tracking$($DirectorySeparatorChar)PolicySetDefinitions$($DirectorySeparatorChar)Custom$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($sub)"
                             if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)")) {
                                 $null = New-Item -Name $pathTracking -ItemType directory -Path $outputPath
                             }
-                            $jsonConvertedTracking | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $hlp.name).json" -Encoding utf8
+                            $jsonConvertedTracking | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($pathTracking)$($DirectorySeparatorChar)$(removeInvalidFileNameChars $hlp.name).json"
                         }
                     }
                     if ($subCap -eq 'PolicyAssignments') {
@@ -182,12 +182,12 @@
                                 $displayName = removeInvalidFileNameChars $hlp.properties.displayName
                             }
                             $jsonConverted = $hlp | ConvertTo-Json -Depth 99
-                            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
+                            $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json"
                             $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($subCap)$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
                             if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                                 $null = New-Item -Name $path -ItemType directory -Path $outputPath
                             }
-                            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json" -Encoding utf8
+                            $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($(removeInvalidFileNameChars $hlp.name)).json"
                         }
                     }
                     #marker
@@ -202,12 +202,12 @@
                                 $pim = ''
                             }
                             $jsonConverted = ($hlp | Select-Object -ExcludeProperty PIM) | ConvertTo-Json -Depth 99
-                            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($pim)$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace '.*/').json" -Encoding utf8
+                            $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($subCapShort)_$($pim)$($hlp.ObjectType)_$($hlp.RoleAssignmentId -replace '.*/').json"
                             $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)$($subCap)$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))"
                             if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                                 $null = New-Item -Name $path -ItemType directory -Path $outputPath
                             }
-                            $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json" -Encoding utf8
+                            $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json"
                         }
                     }
 
@@ -228,12 +228,12 @@
                                             $displayName = removeInvalidFileNameChars $hlp.properties.displayName
                                         }
                                         $jsonConverted = $hlp | ConvertTo-Json -Depth 99
-                                        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)pa_$($displayName) ($($hlp.name)).json" -Encoding utf8
+                                        $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)pa_$($displayName) ($($hlp.name)).json"
                                         $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)PolicyAssignments$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))$($DirectorySeparatorChar)$($rg)"
                                         if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                                             $null = New-Item -Name $path -ItemType directory -Path $outputPath
                                         }
-                                        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($hlp.name)).json" -Encoding utf8
+                                        $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($displayName) ($($hlp.name)).json"
                                     }
                                 }
                             }
@@ -258,12 +258,12 @@
                                             $pim = ''
                                         }
                                         $jsonConverted = ($hlp | Select-Object -ExcludeProperty PIM) | ConvertTo-Json -Depth 99
-                                        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)ra_$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json" -Encoding utf8
+                                        $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)ra_$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json"
                                         $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)RoleAssignments$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))$($DirectorySeparatorChar)$($rg)"
                                         if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                                             $null = New-Item -Name $path -ItemType directory -Path $outputPath
                                         }
-                                        $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json" -Encoding utf8
+                                        $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json"
                                     }
                                     #res
                                     if (-not $JsonExportExcludeResources) {
@@ -281,12 +281,12 @@
                                                     $pim = ''
                                                 }
                                                 $jsonConverted = ($hlp | Select-Object -ExcludeProperty PIM) | ConvertTo-Json -Depth 99
-                                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)$($DirectorySeparatorChar)ra_$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json" -Encoding utf8
+                                                $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($subFolderName)$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)$($DirectorySeparatorChar)ra_$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json"
                                                 $path = "$($JSONPath)$($DirectorySeparatorChar)Assignments$($DirectorySeparatorChar)RoleAssignments$($DirectorySeparatorChar)Sub$($DirectorySeparatorChar)$($subNameValid) ($($sub))$($DirectorySeparatorChar)$($rg)$($DirectorySeparatorChar)$($res)"
                                                 if (-not (Test-Path -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)")) {
                                                     $null = New-Item -Name $path -ItemType directory -Path $outputPath
                                                 }
-                                                $jsonConverted | Set-Content -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json" -Encoding utf8
+                                                $jsonConverted | writeJsonFile -LiteralPath "$($outputPath)$($DirectorySeparatorChar)$($path)$($DirectorySeparatorChar)$($hlp.ObjectType)_$($pim)$($hlp.RoleAssignmentId -replace '.*/').json"
                                             }
                                         }
                                     }

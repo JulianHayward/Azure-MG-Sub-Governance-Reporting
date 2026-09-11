@@ -353,18 +353,29 @@
 
                 #region IP address usage
                 #https://github.com/ElanShudnow/AzureCode/blob/242b923eada55fa795b930473a50dedf14bdc409/PowerShell/AzSubnetAvailability/AzSubnetAvailability.ps1
-                # Gets the mask from the IP configuration (I.e 10.0.0.0/24, turns to just "24")
 
+                #must be reset per subnet, else a subnet without an IPv4 prefix would inherit the previous subnet's values
+                $AddressPrefix = $null
+                $subnetNet = $null
+                $subnetNetOutput = $null
+                $regexIPv4Cidr = '^(([01]?\d?\d|2[0-4]\d|25[0-5])\.){3}([01]?\d?\d|2[0-4]\d|25[0-5])\/(\d{1}|[0-2]{1}\d{1}|3[0-2])$'
+
+                #ignore IPv6
                 if (-not [string]::IsNullOrWhiteSpace($subnet.properties.addressPrefix)) {
-                    $AddressPrefix = $subnet.properties.addressPrefix
-                    $subnetNet = $AddressPrefix -replace '/.*'
-                    $subnetNetOutput = $subnetNet
+                    if ($subnet.properties.addressPrefix -match $regexIPv4Cidr) {
+                        $AddressPrefix = $subnet.properties.addressPrefix
+                        $subnetNet = $AddressPrefix -replace '/.*'
+                        $subnetNetOutput = $subnetNet
+                    }
+                    else {
+                        $subnetNetOutput = "(ignoring IPv6 $($subnet.properties.addressPrefix))"
+                    }
                 }
 
                 #ignore IPv6
                 if (-not [string]::IsNullOrWhiteSpace($subnet.properties.addressPrefixes)) {
                     $arr = foreach ($entry in $subnet.properties.addressPrefixes) {
-                        if ($entry -match '^(([01]?\d?\d|2[0-4]\d|25[0-5])\.){3}([01]?\d?\d|2[0-4]\d|25[0-5])\/(\d{1}|[0-2]{1}\d{1}|3[0-2])$') {
+                        if ($entry -match $regexIPv4Cidr) {
                             $AddressPrefix = $entry
                             $AddressPrefix -replace '/.*'
                             $subnetNet = $AddressPrefix -replace '/.*'
@@ -376,53 +387,48 @@
                     $subnetNetOutput = $arr
                 }
 
-                $Mask = $AddressPrefix.substring($AddressPrefix.Length - 2, 2)
-
-                #Amount of available IP Addresses minus the 3 IPs that Azure consumes, minus net and broadcast
-                #https://learn.microsoft.com/azure/virtual-network/virtual-networks-faq#are-there-any-restrictions-on-using-ip-addresses-within-these-subnets
-                switch ($Mask) {
-                    '30' { $AvailableAddresses = [Math]::Pow(2, 2) - 5 }
-                    '29' { $AvailableAddresses = [Math]::Pow(2, 3) - 5 }
-                    '28' { $AvailableAddresses = [Math]::Pow(2, 4) - 5 }
-                    '27' { $AvailableAddresses = [Math]::Pow(2, 5) - 5 }
-                    '26' { $AvailableAddresses = [Math]::Pow(2, 6) - 5 }
-                    '25' { $AvailableAddresses = [Math]::Pow(2, 7) - 5 }
-                    '24' { $AvailableAddresses = [Math]::Pow(2, 8) - 5 }
-                    '23' { $AvailableAddresses = [Math]::Pow(2, 9) - 5 }
-                    '22' { $AvailableAddresses = [Math]::Pow(2, 10) - 5 }
-                    '21' { $AvailableAddresses = [Math]::Pow(2, 11) - 5 }
-                    '20' { $AvailableAddresses = [Math]::Pow(2, 12) - 5 }
-                    '19' { $AvailableAddresses = [Math]::Pow(2, 13) - 5 }
-                    '18' { $AvailableAddresses = [Math]::Pow(2, 14) - 5 }
-                    '17' { $AvailableAddresses = [Math]::Pow(2, 15) - 5 }
-                    '16' { $AvailableAddresses = [Math]::Pow(2, 16) - 5 }
-                    '15' { $AvailableAddresses = [Math]::Pow(2, 17) - 5 }
-                    '14' { $AvailableAddresses = [Math]::Pow(2, 18) - 5 }
-                    '13' { $AvailableAddresses = [Math]::Pow(2, 19) - 5 }
-                    '12' { $AvailableAddresses = [Math]::Pow(2, 20) - 5 }
-                    '11' { $AvailableAddresses = [Math]::Pow(2, 21) - 5 }
-                    '10' { $AvailableAddresses = [Math]::Pow(2, 22) - 5 }
-                    '9' { $AvailableAddresses = [Math]::Pow(2, 23) - 5 }
-                    '8' { $AvailableAddresses = [Math]::Pow(2, 24) - 5 }
+                if ($null -eq $AddressPrefix) {
+                    $subnetPrefix = 'n/a'
+                    $subnetmask = 'n/a'
+                    $Range = 'n/a'
+                    $IPsLeft = 'n/a'
+                    $usedIPAddressesPercent = 'n/a'
+                    $subnetIPAddressUsageCritical = $false
                 }
+                else {
+                    $subnetPrefix = $AddressPrefix -replace '.*/'
 
-                $IPsLeft = $AvailableAddresses - $subnet.properties.ipConfigurations.Count
-                $PercentIPsUsed = [math]::Round((($subnet.properties.ipConfigurations.Count / $AvailableAddresses) * 100), 1)
-                $subnetIPAddressUsageCritical = $false
-                if ($PercentIPsUsed -gt $NetworkSubnetIPAddressUsageCriticalPercentage) {
-                    $subnetIPAddressUsageCritical = $true
+                    #Amount of available IP Addresses minus the 3 IPs that Azure consumes, minus net and broadcast
+                    #https://learn.microsoft.com/azure/virtual-network/virtual-networks-faq#are-there-any-restrictions-on-using-ip-addresses-within-these-subnets
+                    $AvailableAddresses = [Math]::Pow(2, 32 - [int]$subnetPrefix) - 5
+                    if ($AvailableAddresses -lt 0) {
+                        $AvailableAddresses = 0
+                    }
+
+                    if ($AvailableAddresses -eq 0) {
+                        $IPsLeft = 0
+                        $PercentIPsUsed = 100
+                    }
+                    else {
+                        $IPsLeft = $AvailableAddresses - $subnet.properties.ipConfigurations.Count
+                        $PercentIPsUsed = [math]::Round((($subnet.properties.ipConfigurations.Count / $AvailableAddresses) * 100), 1)
+                    }
+                    $usedIPAddressesPercent = "$PercentIPsUsed %"
+
+                    $subnetIPAddressUsageCritical = $false
+                    if ($PercentIPsUsed -gt $NetworkSubnetIPAddressUsageCriticalPercentage) {
+                        $subnetIPAddressUsageCritical = $true
+                    }
+
+                    $subnetmask = ([IPAddress]"$([system.convert]::ToInt64(('1'*$subnetPrefix).PadRight(32,'0'),2))").IPAddressToString
+                    $IPBits = [int[]]$subnetNet.Split('.')
+                    $MaskBits = [int[]]$subnetmask.Split('.')
+                    $NetworkIDBits = 0..3 | ForEach-Object { $IPBits[$_] -band $MaskBits[$_] }
+                    $Broadcast = (0..3 | ForEach-Object { $NetworkIDBits[$_] + ($MaskBits[$_] -bxor 255) }) -join '.'
+                    $Range = "$subnetNet - $Broadcast"
                 }
 
                 #endregion IP address usage
-
-                $subnetPrefix = $AddressPrefix -replace '.*/'
-
-                $subnetmask = ([IPAddress]"$([system.convert]::ToInt64(('1'*$subnetPrefix).PadRight(32,'0'),2))").IPAddressToString
-                $IPBits = [int[]]$subnetNet.Split('.')
-                $MaskBits = [int[]]$subnetmask.Split('.')
-                $NetworkIDBits = 0..3 | ForEach-Object { $IPBits[$_] -band $MaskBits[$_] }
-                $Broadcast = (0..3 | ForEach-Object { $NetworkIDBits[$_] + ($MaskBits[$_] -bxor 255) }) -join '.'
-                $Range = "$subnetNet - $Broadcast"
 
                 $null = $script:arraySubnets.Add([PSCustomObject]@{
                         SubscriptionName                  = $subscriptionName
@@ -440,7 +446,7 @@
                         Range                             = $Range
                         ConnectedDevices                  = $subnet.properties.ipConfigurations.Count
                         AvailableIPAddresses              = $IPsLeft
-                        UsedIPAddressesPercent            = "$PercentIPsUsed %"
+                        UsedIPAddressesPercent            = $usedIPAddressesPercent
                         SubnetIPAddressUsageCritical      = $subnetIPAddressUsageCritical
                         PrivateEndpointNetworkPolicies    = $subnet.properties.privateEndpointNetworkPolicies
                         PrivateLinkServiceNetworkPolicies = $subnet.properties.privateLinkServiceNetworkPolicies

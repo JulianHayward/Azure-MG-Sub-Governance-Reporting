@@ -86,24 +86,28 @@ Azure Architecture Center (Landing zones): [Azure Governance Visualizer deployme
 
 ## Release history
 
+**Changes** (2026-Sep-11 / 6.7.4 Patch)
+
+- new feature "Azure Policy Linter" - custom Policy definitions are analyzed with the [Azure Policy Linter](https://github.com/Azure/azure-policy-linter); findings (severity, rule, description, JSON path and line) are reported in TenantSummary and exported to `*_PolicyLinter.csv`. In Azure DevOps / GitHub Actions the linter (`Microsoft.Azure.Policy.PolicyLinter.Cli`) is installed on the fly, on other hosts an installed `policylinter` is used - if the linter is not available the feature is skipped and the report states why
+- new feature "Model Deployment Insights" for Azure OpenAI and Azure AI Services (Foundry) model deployments including usage metrics; TenantSummary and each management group and subscription scope in ScopeInsights provide an aggregated model view and a detailed model by Cognitive Services account view, plus CSV export `*_ModelDeploymentInsights.csv`. Collection runs by default and can be skipped with `-NoFoundryModelDeployments`, the metrics time range is defined with `-FoundryModelDeploymentsDays` (default=7)
+- the large tables (Policy assignments, Role assignments, Resource Providers detailed) are rendered with [AG Grid](https://www.ag-grid.com/) - row virtualization, per column filters, CSV export respecting the applied filters/column order and 'Pop out grid'
+- parameter `-HtmlTableRowsLimit` is obsolete - it has no effect anymore (AG Grid virtualizes rows); the parameter is kept so that existing pipelines do not break
+- PIM Eligible assignments are collected from ARM (`roleEligibilityScheduleInstances`) instead of the Microsoft Graph beta `privilegedAccess/azureResources` endpoints; scopes no longer need to be 'PIM onboarded' and tenants without a Microsoft Entra ID P2 license no longer fail the run - the report is created without PIM eligibility data
+- PIM Eligible assignments reporting no longer requires to execute Azure Governance Visualizer as ServicePrincipal; the Microsoft Graph application permission `PrivilegedAccess.Read.AzureResources` is replaced by the Azure permission `Microsoft.Authorization/roleEligibilitySchedules/read` (contained in the `Reader` Role), which is validated up front
+- fix; PIM Eligible assignments - builtin Role names were not linked to AzAdvertizer and `RoleDataRelated` / `RoleCanDoRoleAssignments` were always reported as `false` (the Role definition cache was queried with the full Role definition resourceId instead of the Role definition GUID)
+- fix; Role Assignments - PIM managed active (not eligible) assignments were never flagged, `RoleAssignmentPIMRelated`, `RoleAssignmentPIMAssignmentType` and the assignment slot start/end stayed empty; PIM managed assignments are now detected by `assignmentType` 'Activated' respectively a set `endDateTime`
+- fix issue 298; Role Assignments - foreign Principals (e.g. Partner Admins) - Identity Displayname and Identity Type were not resolved for foreign identities; the `directoryObjects/getByIds` request now includes `types` (`user`, `group`, `servicePrincipal`, `device`, `directoryObjectPartnerReference`) and foreign identities are resolved into a `Foreign <objectType>` type with their displayName
+- fix; Subnets - a subnet with an IPv6 address prefix aborted the Network enrichment with `An invalid IP address was specified.`; IPv6 prefixes are now ignored in all cases and subnets without an IPv4 prefix report 'n/a'. In addition single digit subnet masks (e.g. `/8`) were not evaluated at all - the available IP addresses of the previously processed subnet were reported
+- fix; Orphaned resources - Azure Site Recovery (ASR) managed disks were reported as orphaned although an exclusion was in place (operator precedence in the Resource Graph query dismissed it); ASR disks are now excluded by name (`-ASRReplica`, `ms-asr-`, `asrseeddisk-`), by `ActiveSAS` disk state and by ASR / Recovery Services Vault / AKS persistent volume claim tags
+- fix; JSON outputs - `Cannot index into a null array` in case a grouping had no results
+- use environment-aware API version for Microsoft Defender for Cloud security settings (`Microsoft.Security/settings`); new `securitySettings` entry in parameter `APIMappingCloudEnvironment` (AzureChinaCloud requires `2021-06-01`)
+- update parameter `ValidPolicyEffects` add 'auditAction'
+- performance and memory optimizations for the PowerShell processing and the HTML/JSON creation, resulting in a faster run and a smaller HTML output; the JSON outputs (Tenant hierarchy JSON, `*_PolicyAll.json` and the JSON export) are streamed to disk instead of being serialized as a whole (this resolves out of memory aborts on large tenants), garbage collection including Large Object Heap compaction is triggered after the memory intensive phases and repeated lookups in the Role assignment data collection are cached
+- use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.4.2 (previous 1.4.1). Yet, another handle token refresh for OIDC in Azure Devops and GitHub Actions fix
+
 **Changes** (2026-May-18 / 6.7.3 Patch)
 
 - fix issue 294; retirement Classic Administrators
-
-**Changes** (2025-May-21 / 6.7.2 Patch)
-
-- use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.4.1 (previous 1.4.0). Handle token refresh for OIDC in Azure Devops and GitHub Actions fix
-
-**Changes** (2025-May-20 / 6.7.1 Patch)
-
-- use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.4.0 (previous 1.2.4). Handle token refresh for OIDC in Azure Devops and GitHub Actions
-
-**Changes** (2025-May-19 / 6.7.0 Minor)
-
-- New feature "ALZ Policy Assignments Checker" - This new view, will compare the current deployed ALZ hierarchy with the ALZ archetypes definitions and point out the missing policy assignments. It will also reference the missing policy assignments' payloads and [AzAdvertizer](https://www.azadvertizer.net/) links.
-  - New switch-parameter `-ALZPolicyAssignmentsChecker` - Execute the ALZPolicyAssignmentsChecker feature
-  - New Parameter `-ALZManagementGroupsIds` - Provide the Management Group Ids of the deployed ALZ hierarchy (more details: [Parameters](#parameters))
-  - [techcommunity blog post](https://techcommunity.microsoft.com/blog/azuregovernanceandmanagementblog/keep-your-azure-landing-zones-policy-assignments-up-to-date-with-azure-governanc/4292789)
 
 [Full release history](history.md)
 
@@ -171,6 +175,8 @@ Short presentation on Azure Governance Visualizer: [download](slides/AzGovViz_in
       - Parameters used
   - Azure landing zone (ALZ) policy version checker for policy and set definitions. Azure Governance Visualizer will clone the Azure landing zone GitHub repository and collect the Azure landing zone policy and set definitions history. The ALZ data will be compared with the data from your tenant so that you can get lifecycle management recommendations for ALZ policy and set definitions that already exist in your tenant plus a list of ALZ policy and set definitions that do not exist in your tenant. The ALZ policy version checker results will be displayed in the **TenantSummary** and a CSV export `*_ALZPolicyVersionChecker.csv` will be provided.
   - Policy Remediation - list all remediatable policies including relevant information such as assignment and definition data
+  - Azure Policy Linter - custom policy definitions are analyzed with the [Azure Policy Linter](https://github.com/Azure/azure-policy-linter) to point out issues and best practice deviations in the policy definition (severity, rule, description, JSON path and line). The results will be displayed in the **TenantSummary** and a CSV export `*_PolicyLinter.csv` will be provided
+    - &#x1F4A1; Note: in Azure DevOps / GitHub Actions the linter is installed on the fly (requires `dotnet` on the agent), on other hosts install it with `dotnet tool install --global Microsoft.Azure.Policy.PolicyLinter.Cli`. If the linter is not available the feature is skipped
   - Azure landing zone (ALZ) policy assignments checker for policy and set definitions. Azure Governance Visualizer will clone the Azure landing zone library GitHub repository and collect the Azure landing zone policy and set assignments. The ALZ data will be compared with the data from your tenant so that you see the missing assignments for ALZ policy and set definitions that should be assigned for ALZ Management Groups plus a list of ALZ policy and set definitions that are missing in your tenant. The ALZ policy assignment checker results will be displayed in the **TenantSummary**.
 - **Azure role-based access control (RBAC)**
   - Custom role definitions
@@ -198,7 +204,7 @@ Short presentation on Azure Governance Visualizer: [download](slides/AzGovViz_in
       - Determine if the role assignment's role definition is capable to write role assignments
   - PIM (Privileged Identity Management) eligibility for role assignments
     - Get a full report of all PIM eligible role assignments for Management Groups and subscriptions, including resolved user members of Microsoft Entra ID groups that have assigned eligibility
-    - &#x1F4A1; Note: this feature requires you to execute as service principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+    - &#x1F4A1; Note: this feature requires the Azure permission `Microsoft.Authorization/roleEligibilitySchedules/read` (contained in the `Reader` Role) and a Microsoft Entra ID P2 license. If the tenant has no P2 license the report is created without PIM eligibility data
   - Security & best practice analysis
     - Existence of custom role definition that reflect 'Owner' permissions
     - Report all role definitions that are capable to write role assignments, list all role assignments for those role definitions
@@ -260,6 +266,11 @@ Short presentation on Azure Governance Visualizer: [download](slides/AzGovViz_in
   - Subnets
   - Virtual network peerings
   - Private endpoints
+- **Azure AI model deployments (Foundry)**
+  - Model deployments of Azure OpenAI and Azure AI Services (Cognitive Services) accounts including model name/version, SKU, capacity and usage metrics (requests incl. throttled requests, tokens) for the defined time range
+  - **TenantSummary** and each management group and subscription in **ScopeInsights** provide an aggregated view per model and a detailed view per model and Cognitive Services account
+  - CSV export `*_ModelDeploymentInsights.csv`
+  - Collection runs by default, use `-NoFoundryModelDeployments` to skip it and `-FoundryModelDeploymentsDays` to define the metrics time range
 - **Diagnostics**
   - Management Groups diagnostic settings report
     - Management Group, diagnostic setting name, target type (Log Analytics, Storage account, Event Hub), target resource ID, log category status
@@ -389,6 +400,8 @@ These permissions are **mandatory** in each and every scenario!
 | :------- | :------------------------------------------------- |
 | ALL      | '**Reader**' role assignment on _Management Group_ |
 
+PIM (Privileged Identity Management) eligibility reporting additionally requires `Microsoft.Authorization/roleEligibilitySchedules/read` (contained in the '**Reader**' role) and a Microsoft Entra ID P2 license. It works for any account type (user, service principal, managed identity). If the tenant has no P2 license the feature is skipped and the report is created without PIM eligibility data; you can also opt out with the parameter `-NoPIMEligibility`.
+
 ### Required permissions in Microsoft Entra ID
 
 <table>
@@ -430,10 +443,6 @@ These permissions are **mandatory** in each and every scenario!
               <td>Get Microsoft Entra ID<br>SP/App</td>
               <td>Service principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>&#x1F4A1; <a href="https://learn.microsoft.com/graph/api/serviceprincipal-get#permissions" target="_blank">Get servicePrincipal</a>, <a href="https://learn.microsoft.com/graph/api/application-get#permissions" target="_blank">Get application</a></td>
             </tr>
-            <tr>
-              <td>Get PIM eligibility<br>SP/App</td>
-              <td>Service principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / PrivilegedAccess / PrivilegedAccess.Read.AzureResources<br>&#x1F4A1; <a href="https://learn.microsoft.com/graph/api/resources/privilegedaccess" target="_blank">Get privilegedAccess for Azure resources</a><br>If you cannot grant this permission then use parameter <i>-NoPIMEligibility</i></td>
-            </tr>
           </tbody>
         </table>
         Optional: Microsoft Entra ID role 'Directory readers' could be used instead of API permissions (more 'read' than required)
@@ -459,10 +468,6 @@ These permissions are **mandatory** in each and every scenario!
             <tr>
               <td>Get Microsoft Entra ID<br>SP/App</td>
               <td>Azure DevOps service connection's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / Application / Application.Read.All<br>&#x1F4A1; <a href="https://learn.microsoft.com/graph/api/serviceprincipal-get#permissions" target="_blank">Get service principal</a>, <a href="https://learn.microsoft.com/graph/api/application-get#permissions" target="_blank">Get application</a></td>
-            </tr>
-            <tr>
-              <td>Get PIM eligibility<br>SP/App</td>
-              <td>Service principal's <b>App registration</b><br>grant with <b>Microsoft Graph</b> permissions:<br>Application permissions / PrivilegedAccess / PrivilegedAccess.Read.AzureResources<br>&#x1F4A1; <a href="https://learn.microsoft.com/graph/api/resources/privilegedaccess" target="_blank">Get privilegedAccess for Azure resources</a><br>If you cannot grant this permission then use parameter <i>-NoPIMEligibility</i></td>
             </tr>
           </tbody>
         </table>
@@ -534,7 +539,7 @@ Screenshot of Microsoft Graph permissions in the Microsoft Entra admin center
 - `-JsonExportExcludeResourceGroups` - JSON Export will not include ResourceGroups (Policy & Role assignments)
 - `-JsonExportExcludeResources`- JSON Export will not include Resources (Role assignments)
 - `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big. Using this parameter the following parameters will be set: `-PolicyAtScopeOnly`, `-RBACAtScopeOnly`, `-NoResourceProvidersAtAll`, `-NoScopeInsights`
-- `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
+- `-HtmlTableRowsLimit` - **obsolete** - the parameter has no effect anymore. The large tables are rendered with AG Grid, which virtualizes rows and therefore no longer depends on a row limit. The parameter is kept so that existing pipelines do not break.
 - `-AADGroupMembersLimit` - Defines the limit (default=500) of Microsoft Entra group members; For Microsoft Entra ID groups that have more members than the defined limit group members will not be resolved
 - `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability, resource type stats, UserAssigned Identities assigned to Resources is excluded (featured for large tenants)
 - `-StatsOptOut` - Opt out sending [stats](#stats)
@@ -549,14 +554,16 @@ Screenshot of Microsoft Graph permissions in the Microsoft Entra admin center
   - `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
   - `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise). (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule -PSRuleFailedOnly`)
 - PIM (Privileged Identity Management) Eligibility
-  - `-NoPIMEligibility` - Do not report on PIM eligible Role assignments
-  - `-PIMEligibilityIgnoreScope` - By default will only report for PIM Elibility for the scope (`ManagementGroupId`) that was provided. If you use the new switch parameter then PIM Eligibility for all onboarded scopes (Management Groups and Subscriptions) will be reported
+  - `-NoPIMEligibility` - Do not report on PIM eligible Role assignments. Note: in most cases you do not need this parameter anymore - the script determines by itself if PIM eligibility can be collected (Microsoft Entra ID P2 license and permissions) and continues without PIM eligibility data if it cannot. Use the parameter if you want to skip the collection on purpose (e.g. to save execution time)
+  - `-PIMEligibilityIgnoreScope` - By default will only report for PIM Elibility for the scope (`ManagementGroupId`) that was provided. If you use the new switch parameter then PIM Eligibility for all scopes (Management Groups and Subscriptions) will be reported
   - `-NoPIMEligibilityIntegrationRoleAssignmentsAll` - Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
 - ~~`-DefinitionInsightsDedicatedHTML`~~ `-NoDefinitionInsightsDedicatedHTML` - **DefinitionInsights** will be written to a separate HTML file `*_DefinitionInsights.html`. If you want to keep **DefinitionInsights** in the main html file then use this parameter
 - ~~`-NoALZEvergreen`~~ `-NoALZPolicyVersionChecker` - Do not execute the ~~'ALZ EverGreen'~~ 'Azure Landing Zones (ALZ) Policy Version Checker' feature
 - `-NoStorageAccountAccessAnalysis` - Do not execute Storage Account Access Analysis (focus on anonymous access)
 - `-StorageAccountAccessAnalysisSubscriptionTags` - Define Subscription tag names that should be added to the CSV output per Storage Account
 - `-StorageAccountAccessAnalysisStorageAccountTags` - Define Storage Account tag names that should be added to the CSV output per Storage Account
+- `-NoFoundryModelDeployments` - Do not collect Azure OpenAI and Azure AI Services model deployments and usage metrics. The feature runs by default and adds an aggregated model view and a detailed model-by-Cognitive-Services-account view to TenantSummary and to each management group and subscription in ScopeInsights, and exports `*_ModelDeploymentInsights.csv`. Requires `Microsoft.CognitiveServices/accounts/deployments/read` and `Microsoft.Insights/metrics/read` permissions.
+- `-FoundryModelDeploymentsDays` - Number of trailing days included in Model Deployment Insights metrics (default=7, range=1-30).
 - `-NoNetwork` - Do not execute Network analysis / Virtual Network and Virtual Network Peerings
   - `-NetworkSubnetIPAddressUsageCriticalPercentage` - Warning level when certain percentage of IP addresses is used (default = 90%)
 - `-TenantId4AzContext` - Define the Tenant Id to use for AzContext (default is to use the Tenant Id from the current context)
@@ -583,68 +590,70 @@ _example:_
 
 Azure Governance Visualizer polls the following APIs
 
-| Endpoint | API version        | API name                                                                                                                               |
-| -------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| MS Graph | beta               | /groups/`entraGroupId`/transitiveMembers                                                                                               |
-| MS Graph | beta               | /privilegedAccess/azureResources/resources                                                                                             |
-| MS Graph | beta               | /privilegedAccess/azureResources/roleAssignments                                                                                       |
-| MS Graph | v1.0               | /applications                                                                                                                          |
-| MS Graph | v1.0               | /directoryObjects/getByIds                                                                                                             |
-| MS Graph | v1.0               | /users                                                                                                                                 |
-| MS Graph | v1.0               | /groups                                                                                                                                |
-| MS Graph | v1.0               | /servicePrincipals                                                                                                                     |
-| ARM      | 2021-05-01-preview | /`resourceId`/providers/Microsoft.Insights/diagnosticSettingsCategories                                                                |
-| ARM      | 2018-11-01-preview | /`scopeId`/providers/Microsoft.Blueprint/blueprints/`blueprintName`                                                                    |
-| ARM      | 2021-04-01         | /providers                                                                                                                             |
-| ARM      | 2021-06-01         | /providers/Microsoft.Authorization/policyDefinitions                                                                                   |
-| ARM      | 2021-06-01         | /providers/Microsoft.Authorization/policySetDefinitions                                                                                |
-| ARM      | 2020-02-01         | /providers/Microsoft.Management/getEntities                                                                                            |
-| ARM      | 2021-06-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyAssignments               |
-| ARM      | 2021-06-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyDefinitions               |
-| ARM      | 2020-07-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyExemptions                |
-| ARM      | 2021-06-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policySetDefinitions            |
-| ARM      | 2015-07-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignments                 |
-| ARM      | 2020-10-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignmentScheduleInstances |
-| ARM      | 2018-07-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleDefinitions                 |
-| ARM      | 2018-11-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Blueprint/blueprints                          |
-| ARM      | 2024-01-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.CostManagement/query                          |
-| ARM      | 2020-01-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/microsoft.insights/diagnosticSettings                   |
-| ARM      | 2019-10-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.PolicyInsights/policyStates/latest/summarize  |
-| ARM      | 2020-05-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`                                                                   |
-| ARM      | 2023-04-01         | /providers/Microsoft.Management/managementGroups/`tenantId`/settings                                                                   |
-| ARM      | 2020-05-01         | /providers/Microsoft.Management/managementGroups                                                                                       |
-| ARM      | 2022-10-01         | /providers/Microsoft.ResourceGraph/resources                                                                                           |
-| ARM      | 2021-05-01         | /`resourceId`/providers/Microsoft.Insights/metrics                                                                                     |
-| ARM      | 2020-01-01         | /subscriptions/`subscriptionId`/locations                                                                                              |
-| ARM      | 2023-01-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Advisor/advisorScore                                                               |
-| ARM      | 2016-09-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/locks                                                                |
-| ARM      | 2021-06-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyAssignments                                                    |
-| ARM      | 2021-06-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyDefinitions                                                    |
-| ARM      | 2020-07-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyExemptions                                                     |
-| ARM      | 2021-06-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policySetDefinitions                                                 |
-| ARM      | 2015-07-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignments                                                      |
-| ARM      | 2020-10-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentScheduleInstances                                      |
-| ARM      | 2019-08-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics                                          |
-| ARM      | 2023-07-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleDefinitions                                                      |
-| ARM      | 2023-07-01-preview | /providers/Microsoft.Authorization/roleDefinitions                                                                                     |
-| ARM      | 2022-05-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprintAssignments                                                     |
-| ARM      | 2018-11-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprints                                                               |
-| ARM      | 2024-01-01         | /subscriptions/`subscriptionId`/providers/Microsoft.CostManagement/query                                                               |
-| ARM      | 2021-05-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Insights/diagnosticSettings                                                        |
-| ARM      | 2019-10-01         | /subscriptions/`subscriptionId`/providers/Microsoft.PolicyInsights/policyStates/latest/summarize                                       |
-| ARM      | 2022-07-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Network/locations/`location`/availablePrivateEndpointTypes                         |
-| ARM      | 2022-05-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Network/privateEndpoints                                                           |
-| ARM      | 2022-05-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Network/virtualNetworks                                                            |
-| ARM      | 2020-06-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Resources/tags/default                                                             |
-| ARM      | 2024-01-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/pricings                                                                  |
-| ARM      | 2020-01-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securescores                                                              |
-| ARM      | 2020-01-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securityContacts                                                          |
-| ARM      | 2022-05-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/settings                                                                  |
-| ARM      | 2019-10-01         | /subscriptions/`subscriptionId`/providers                                                                                              |
-| ARM      | 2021-04-01         | /subscriptions/`subscriptionId`/resourcegroups                                                                                         |
-| ARM      | 2024-03-01         | /subscriptions/`subscriptionId`/resources                                                                                              |
-| ARM      | 2020-01-01         | /subscriptions                                                                                                                         |
-| ARM      | 2020-01-01         | /tenants                                                                                                                               |
+| Endpoint | API version        | API name                                                                                                                                |
+| -------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| MS Graph | beta               | /groups/`entraGroupId`/transitiveMembers                                                                                                |
+| MS Graph | v1.0               | /applications                                                                                                                           |
+| MS Graph | v1.0               | /directoryObjects/getByIds                                                                                                              |
+| MS Graph | v1.0               | /users                                                                                                                                  |
+| MS Graph | v1.0               | /groups                                                                                                                                 |
+| MS Graph | v1.0               | /servicePrincipals                                                                                                                      |
+| ARM      | 2021-05-01-preview | /`resourceId`/providers/Microsoft.Insights/diagnosticSettingsCategories                                                                 |
+| ARM      | 2018-11-01-preview | /`scopeId`/providers/Microsoft.Blueprint/blueprints/`blueprintName`                                                                     |
+| ARM      | 2021-04-01         | /providers                                                                                                                              |
+| ARM      | 2021-06-01         | /providers/Microsoft.Authorization/policyDefinitions                                                                                    |
+| ARM      | 2021-06-01         | /providers/Microsoft.Authorization/policySetDefinitions                                                                                 |
+| ARM      | 2020-02-01         | /providers/Microsoft.Management/getEntities                                                                                             |
+| ARM      | 2021-06-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyAssignments                |
+| ARM      | 2021-06-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyDefinitions                |
+| ARM      | 2020-07-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyExemptions                 |
+| ARM      | 2021-06-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policySetDefinitions             |
+| ARM      | 2015-07-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignments                  |
+| ARM      | 2020-10-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignmentScheduleInstances  |
+| ARM      | 2020-10-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleEligibilityScheduleInstances |
+| ARM      | 2018-07-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleDefinitions                  |
+| ARM      | 2018-11-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Blueprint/blueprints                           |
+| ARM      | 2024-01-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.CostManagement/query                           |
+| ARM      | 2020-01-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/microsoft.insights/diagnosticSettings                    |
+| ARM      | 2019-10-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.PolicyInsights/policyStates/latest/summarize   |
+| ARM      | 2020-05-01         | /providers/Microsoft.Management/managementGroups/`managementGroupId`                                                                    |
+| ARM      | 2023-04-01         | /providers/Microsoft.Management/managementGroups/`tenantId`/settings                                                                    |
+| ARM      | 2020-05-01         | /providers/Microsoft.Management/managementGroups                                                                                        |
+| ARM      | 2022-10-01         | /providers/Microsoft.ResourceGraph/resources                                                                                            |
+| ARM      | 2021-05-01         | /`resourceId`/providers/Microsoft.Insights/metrics                                                                                      |
+| ARM      | 2024-10-01         | /`cognitiveServicesAccountId`/deployments                                                                                               |
+| ARM      | 2020-01-01         | /subscriptions/`subscriptionId`/locations                                                                                               |
+| ARM      | 2023-01-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Advisor/advisorScore                                                                |
+| ARM      | 2016-09-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/locks                                                                 |
+| ARM      | 2021-06-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyAssignments                                                     |
+| ARM      | 2021-06-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyDefinitions                                                     |
+| ARM      | 2020-07-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyExemptions                                                      |
+| ARM      | 2021-06-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policySetDefinitions                                                  |
+| ARM      | 2015-07-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignments                                                       |
+| ARM      | 2020-10-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentScheduleInstances                                       |
+| ARM      | 2019-08-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics                                           |
+| ARM      | 2023-07-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleDefinitions                                                       |
+| ARM      | 2020-10-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleEligibilityScheduleInstances                                      |
+| ARM      | 2023-07-01-preview | /providers/Microsoft.Authorization/roleDefinitions                                                                                      |
+| ARM      | 2022-05-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprintAssignments                                                      |
+| ARM      | 2018-11-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprints                                                                |
+| ARM      | 2024-10-01         | /subscriptions/`subscriptionId`/providers/Microsoft.CognitiveServices/accounts                                                          |
+| ARM      | 2024-01-01         | /subscriptions/`subscriptionId`/providers/Microsoft.CostManagement/query                                                                |
+| ARM      | 2021-05-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Insights/diagnosticSettings                                                         |
+| ARM      | 2019-10-01         | /subscriptions/`subscriptionId`/providers/Microsoft.PolicyInsights/policyStates/latest/summarize                                        |
+| ARM      | 2022-07-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Network/locations/`location`/availablePrivateEndpointTypes                          |
+| ARM      | 2022-05-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Network/privateEndpoints                                                            |
+| ARM      | 2022-05-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Network/virtualNetworks                                                             |
+| ARM      | 2020-06-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Resources/tags/default                                                              |
+| ARM      | 2024-01-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/pricings                                                                   |
+| ARM      | 2020-01-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securescores                                                               |
+| ARM      | 2020-01-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securityContacts                                                           |
+| ARM      | 2022-05-01         | /subscriptions/`subscriptionId`/providers/Microsoft.Security/settings                                                                   |
+| ARM      | 2019-10-01         | /subscriptions/`subscriptionId`/providers                                                                                               |
+| ARM      | 2021-04-01         | /subscriptions/`subscriptionId`/resourcegroups                                                                                          |
+| ARM      | 2024-03-01         | /subscriptions/`subscriptionId`/resources                                                                                               |
+| ARM      | 2020-01-01         | /subscriptions                                                                                                                          |
+| ARM      | 2020-01-01         | /tenants                                                                                                                                |
 
 ## Integrate with AzOps
 

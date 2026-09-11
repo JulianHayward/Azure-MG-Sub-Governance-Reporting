@@ -21,7 +21,7 @@ schedules:
 
 jobs:
 - job: AzureGovernanceVisualizer
-  timeoutInMinutes: 0
+  timeoutInMinutes: 180
 
   pool:
     vmImage: 'ubuntu-22.04'

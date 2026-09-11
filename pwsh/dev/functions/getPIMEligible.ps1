@@ -1,222 +1,209 @@
-﻿function getPIMEligible {
+function getPIMEligible {
     $start = Get-Date
 
-    $currentTask = 'Get PIM onboarded Subscriptions and Management Groups'
-    Write-Host $currentTask
-    $uriExt = "&`$expand=parent&`$filter=(type eq 'subscription' or type eq 'managementgroup')"
-    $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/privilegedAccess/azureResources/resources?`$select=id,displayName,type,externalId" + $uriExt
-    $res = AzAPICall -AzAPICallConfiguration $azapicallConf -uri $uri -currentTask $currentTask
-    if ($res.Count -gt 0) {
+    Write-Host 'Get PIM Eligible assignments'
 
-        $scopesToIterate = [System.Collections.ArrayList]@()
+    #the ARM API has no equivalent for the retired Graph 'PIM onboarded resources' list, therefore every in scope Management Group and Subscription is queried
+    $scopesToIterate = [System.Collections.ArrayList]@()
+    $scopeLimited = (-not $PIMEligibilityIgnoreScope -and ($azAPICallConf['checkContext']).Tenant.Id -ne $ManagementGroupId)
+
+    foreach ($mgId in $htManagementGroupsMgPath.Keys) {
+        if ($scopeLimited) {
+            #ancestors are included so that 'inherited from' can be reported
+            if ($htManagementGroupsMgPath.($ManagementGroupId).ParentNameChain -notcontains $mgId -and $htManagementGroupsMgPath.($mgId).path -notcontains $ManagementGroupId) {
+                continue
+            }
+        }
+        $null = $scopesToIterate.Add([PSCustomObject]@{
+                type     = 'managementgroup'
+                scopeId  = $mgId
+                armScope = "/providers/Microsoft.Management/managementGroups/$($mgId)"
+            })
+    }
+
+    $relevantSubscriptionIds = $subsToProcessInCustomDataCollection.subscriptionId
+
+    foreach ($subscriptionId in $htSubscriptionsMgPath.Keys) {
+        if ($scopeLimited) {
+            if ($htSubscriptionsMgPath.($subscriptionId).ParentNameChain -notcontains $ManagementGroupId) {
+                continue
+            }
+        }
         if (-not $PIMEligibilityIgnoreScope) {
-            if (($azAPICallConf['checkContext']).Tenant.Id -ne $ManagementGroupId) {
-                foreach ($entry in $res) {
-                    $entryIdGuid = $entry.externalId -replace '.*/'
-                    if ($entry.type -eq 'managementGroup') {
-                        if ($htManagementGroupsMgPath.($ManagementGroupId).ParentNameChain -contains ($entryIdGuid) -or $htManagementGroupsMgPath.($entryIdGuid).path -contains $ManagementGroupId) {
-                            $null = $scopesToIterate.Add($entry)
-                        }
+            if ($htOutOfScopeSubscriptions.($subscriptionId)) {
+                Write-Host "excluding subscription $($subscriptionId) (outOfScopeSubscription -> $($htOutOfScopeSubscriptions.($subscriptionId).outOfScopeReason)) (`$PIMEligibilityIgnoreScope=$PIMEligibilityIgnoreScope)"
+                continue
+            }
+        }
+        if ($subscriptionId -notin $relevantSubscriptionIds) {
+            continue
+        }
+        $null = $scopesToIterate.Add([PSCustomObject]@{
+                type     = 'subscription'
+                scopeId  = $subscriptionId
+                armScope = "/subscriptions/$($subscriptionId)"
+            })
+    }
+
+    $scopesToIterateGrouped = $scopesToIterate | Group-Object -Property type
+    foreach ($entry in $scopesToIterateGrouped) {
+        Write-Host " Processing $($entry.Count) $($entry.Name)s"
+    }
+
+    if ($scopesToIterate.Count -gt 0) {
+
+        $batchSize = [math]::ceiling($scopesToIterate.Count / $ThrottleLimit)
+        Write-Host "Optimal batch size: $($batchSize)"
+        $counterBatch = [PSCustomObject] @{ Value = 0 }
+        $scopesToIterateBatch = ($scopesToIterate) | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
+        Write-Host "Processing data in $($scopesToIterateBatch.Count) batches"
+
+        $scopesToIterateBatch | ForEach-Object -Parallel {
+            $azAPICallConf = $using:azAPICallConf
+            $arrayPIMEligible = $using:arrayPIMEligible
+            $htPrincipals = $using:htPrincipals
+            $htUserTypesGuest = $using:htUserTypesGuest
+            $htServicePrincipals = $using:htServicePrincipals
+            $htManagementGroupsMgPath = $using:htManagementGroupsMgPath
+            $htSubscriptionsMgPath = $using:htSubscriptionsMgPath
+            $function:resolveObjectIds = $using:funcResolveObjectIds
+            $function:testGuid = $using:funcTestGuid
+
+            foreach ($scope in $_.Group) {
+
+                $currentTask = "Get Eligible assignments for Scope $($scope.type): $($scope.scopeId)"
+                #atScope() returns the eligibilities effective at this scope (direct plus inherited from ancestors) and excludes those of child scopes
+                $uri = "$($azAPICallConf['azAPIEndpointUrls'].ARM)$($scope.armScope)/providers/Microsoft.Authorization/roleEligibilityScheduleInstances?api-version=2020-10-01&`$filter=atScope()"
+                $resx = AzAPICall -AzAPICallConfiguration $azapicallConf -currentTask $currentTask -uri $uri
+
+                if ($resx.Count -gt 0) {
+
+                    $users = $resx.where({ $_.properties.principalType -eq 'User' })
+                    if ($users.Count -gt 0) {
+                        ResolveObjectIds -objectIds $users.properties.principalId -showActivity
                     }
-                    if ($entry.type -eq 'subscription') {
-                        if ($htSubscriptionsMgPath.($entryIdGuid).ParentNameChain -contains $ManagementGroupId) {
-                            if ($htOutOfScopeSubscriptions.($entryIdGuid)) {
-                                Write-Host "excluding subscription $($entryIdGuid) (outOfScopeSubscription -> $($htOutOfScopeSubscriptions.($entryIdGuid).outOfScopeReason)) (`$PIMEligibilityIgnoreScope=$PIMEligibilityIgnoreScope)"
+
+                    foreach ($entry in $resx) {
+                        $entryProperties = $entry.properties
+                        $scopeId = $scope.scopeId
+                        if ($scope.type -eq 'managementgroup') {
+                            $ScopeType = 'MG'
+                            $ManagementGroupId = $scopeId
+                            $SubscriptionId = ''
+                            $SubscriptionDisplayName = ''
+                            if ($htManagementGroupsMgPath.($scopeId)) {
+                                $MgDetails = $htManagementGroupsMgPath.($scopeId)
+                                $ManagementGroupDisplayName = $MgDetails.DisplayName
+                                $ScopeDisplayName = $MgDetails.DisplayName
+                                $MgPath = $MgDetails.path
+                                $MgLevel = $MgDetails.level
                             }
                             else {
-                                $null = $scopesToIterate.Add($entry)
+                                $ManagementGroupDisplayName = 'notAccessible'
+                                $ScopeDisplayName = 'notAccessible'
+                                $MgPath = 'notAccessible'
+                                $MgLevel = 'notAccessible'
                             }
                         }
+                        if ($scope.type -eq 'subscription') {
+                            $ScopeType = 'Sub'
+                            $SubscriptionId = $scopeId
+                            if ($htSubscriptionsMgPath.($scopeId)) {
+                                $MgDetails = $htSubscriptionsMgPath.($scopeId)
+                                $SubscriptionDisplayName = $MgDetails.DisplayName
+                                $ScopeDisplayName = $MgDetails.DisplayName
+                                $MgPath = $MgDetails.path
+                                $MgLevel = $MgDetails.level
+                                $ManagementGroupId = $MgDetails.Parent
+                                $ManagementGroupDisplayName = $MgDetails.ParentName
+                            }
+                            else {
+                                $SubscriptionDisplayName = 'notAccessible'
+                                $ScopeDisplayName = 'notAccessible'
+                                $MgPath = 'notAccessible'
+                                $MgLevel = 'notAccessible'
+                            }
+                        }
+
+                        $PIMInheritedFromClear = ''
+                        $PIMInheritedFrom = ''
+                        if ($entryProperties.memberType -eq 'Inherited') {
+                            $inheritedFromScopeId = $entryProperties.expandedProperties.scope.id -replace '.*/'
+                            $PIMInheritedFromClear = $inheritedFromScopeId
+                            if ($htManagementGroupsMgPath.($inheritedFromScopeId)) {
+                                $inheritedFromDetails = $htManagementGroupsMgPath.($inheritedFromScopeId)
+                                $inheritedFromDisplayName = $inheritedFromDetails.DisplayName
+                                $inheritedFromLevel = $inheritedFromDetails.level
+                            }
+                            else {
+                                $inheritedFromDisplayName = 'notAccessible'
+                                $inheritedFromLevel = 'notAccessible'
+                            }
+                            if ($inheritedFromScopeId -eq $inheritedFromDisplayName) {
+                                $PIMInheritedFrom = "$($inheritedFromScopeId) [Level $($inheritedFromLevel)]"
+                            }
+                            else {
+                                $PIMInheritedFrom = "$($inheritedFromDisplayName) ($($inheritedFromScopeId)) [Level $($inheritedFromLevel)]"
+                            }
+                        }
+
+                        $identityDisplayName = $entryProperties.expandedProperties.principal.displayName
+                        $identityPrincipalName = $entryProperties.expandedProperties.principal.email
+                        if ($entryProperties.principalType -eq 'User') {
+                            if ($htPrincipals.($entryProperties.principalId)) {
+                                $userDetail = $htPrincipals.($entryProperties.principalId)
+                                $principalType = "$($userDetail.type) $($userDetail.userType)"
+                                #Microsoft Graph is authoritative for displayName and userPrincipalName
+                                $identityDisplayName = $userDetail.displayName
+                                $identityPrincipalName = $userDetail.signInName
+                            }
+                            else {
+                                $principalType = $entryProperties.principalType
+                            }
+                        }
+                        else {
+                            $principalType = $entryProperties.principalType
+                        }
+
+                        $roleType = 'undefined'
+                        if ($entryProperties.expandedProperties.roleDefinition.type -eq 'BuiltInRole') { $roleType = 'Builtin' }
+                        if ($entryProperties.expandedProperties.roleDefinition.type -eq 'CustomRole') { $roleType = 'Custom' }
+
+                        $null = $script:arrayPIMEligible.Add([PSCustomObject]@{
+                                ScopeType                  = $ScopeType
+                                ScopeId                    = $scopeId
+                                ScopeDisplayName           = $ScopeDisplayName
+                                ManagementGroupId          = $ManagementGroupId
+                                ManagementGroupDisplayName = $ManagementGroupDisplayName
+                                SubscriptionId             = $SubscriptionId
+                                SubscriptionDisplayName    = $SubscriptionDisplayName
+                                MgPath                     = $MgPath
+                                MgLevel                    = $MgLevel
+                                RoleId                     = $entryProperties.roleDefinitionId
+                                RoleIdGuid                 = $entryProperties.roleDefinitionId -replace '.*/'
+                                RoleType                   = $roleType
+                                RoleName                   = $entryProperties.expandedProperties.roleDefinition.displayName
+                                IdentityObjectId           = $entryProperties.principalId
+                                IdentityType               = $principalType
+                                IdentityDisplayName        = $identityDisplayName
+                                IdentityPrincipalName      = $identityPrincipalName
+                                PIMId                      = $entry.name
+                                PIMInheritance             = $entryProperties.memberType
+                                PIMInheritedFromClear      = $PIMInheritedFromClear
+                                PIMInheritedFrom           = $PIMInheritedFrom
+                                PIMStartDateTime           = $entryProperties.startDateTime
+                                PIMEndDateTime             = $entryProperties.endDateTime
+                            })
                     }
                 }
             }
-            else {
-                foreach ($entry in $res) {
-                    $entryIdGuid = $entry.externalId -replace '.*/'
-                    if ($htOutOfScopeSubscriptions.($entryIdGuid)) {
-                        Write-Host "excluding subscription $($entryIdGuid) (outOfScopeSubscription -> $($htOutOfScopeSubscriptions.($entryIdGuid).outOfScopeReason)) (`$PIMEligibilityIgnoreScope=$PIMEligibilityIgnoreScope)"
-                    }
-                    else {
-                        $null = $scopesToIterate.Add($entry)
-                    }
-                }
-            }
-        }
-        else {
-            foreach ($entry in $res) {
-                $null = $scopesToIterate.Add($entry)
-            }
-        }
 
-        $PIMOnboardedGrouped = $scopesToIterate | Group-Object -Property type
-        foreach ($entry in $PIMOnboardedGrouped) {
-            Write-Host " Found $($entry.Count) PIM onboarded $($entry.Name)s"
-        }
+        } -ThrottleLimit $ThrottleLimit
+    }
 
-        $htPIMEligibleDirect = [System.Collections.Hashtable]::Synchronized(@{})
-        $relevantSubscriptionIds = $subsToProcessInCustomDataCollection.subscriptionId
-
-        if ($scopesToIterate.Count -gt 0) {
-
-            $batchSize = [math]::ceiling($scopesToIterate.Count / $ThrottleLimit)
-            Write-Host "Optimal batch size: $($batchSize)"
-            $counterBatch = [PSCustomObject] @{ Value = 0 }
-            $scopesToIterateBatch = ($scopesToIterate) | Group-Object -Property { [math]::Floor($counterBatch.Value++ / $batchSize) }
-            Write-Host "Processing data in $($scopesToIterateBatch.Count) batches"
-
-            $scopesToIterateBatch | ForEach-Object -Parallel {
-                $scope = $_
-                $azAPICallConf = $using:azAPICallConf
-                $arrayPIMEligible = $using:arrayPIMEligible
-                $htPIMEligibleDirect = $using:htPIMEligibleDirect
-                $htPrincipals = $using:htPrincipals
-                $htUserTypesGuest = $using:htUserTypesGuest
-                $htServicePrincipals = $using:htServicePrincipals
-                $relevantSubscriptionIds = $using:relevantSubscriptionIds
-                $function:resolveObjectIds = $using:funcResolveObjectIds
-                $function:testGuid = $using:funcTestGuid
-
-                foreach ($scope in $_.Group) {
-                    if ($scope.type -eq 'managementgroup') { $htManagementGroupsMgPath = $using:htManagementGroupsMgPath }
-                    if ($scope.type -eq 'subscription') { $htSubscriptionsMgPath = $using:htSubscriptionsMgPath }
-
-                    $processThisScope = $true
-                    if ($scope.type -eq 'subscription') {
-                        if (($scope.externalId -replace '.*/') -notin $relevantSubscriptionIds) {
-                            Write-Host "  Non relevant subscriptionId '$(($scope.externalId -replace '.*/'))' /skipping this subscription as it is not contained in the 'Relevant Subscriptions' collection (needs investigation)" -ForegroundColor DarkRed
-                            $processThisScope = $false
-                        }
-                    }
-
-                    if ($processThisScope -eq $true) {
-                        $currentTask = "Get Eligible assignments for Scope $($scope.type): $($scope.externalId -replace '.*/')"
-                        $extUri = "?`$expand=linkedEligibleRoleAssignment,subject,roleDefinition(`$expand=resource)&`$count=true&`$filter=(roleDefinition/resource/id eq '$($scope.id)')+and+(assignmentState eq 'Eligible')&`$top=100"
-                        $uri = "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/beta/privilegedAccess/azureResources/roleAssignments" + $extUri
-                        $resx = AzAPICall -AzAPICallConfiguration $azapicallConf -currentTask $currentTask -uri $uri
-
-                        if ($resx.Count -gt 0) {
-
-                            $users = $resx.where({ $_.subject.type -eq 'user' })
-                            if ($users.Count -gt 0) {
-                                ResolveObjectIds -objectIds $users.subject.id -showActivity
-                            }
-
-                            foreach ($entry in $resx) {
-                                $scopeId = $scope.externalId -replace '.*/'
-                                if ($scope.type -eq 'managementgroup') {
-                                    $ScopeType = 'MG'
-                                    $ManagementGroupId = $scopeId
-                                    $SubscriptionId = ''
-                                    $SubscriptionDisplayName = ''
-                                    if ($htManagementGroupsMgPath.($scopeId)) {
-                                        $MgDetails = $htManagementGroupsMgPath.($scopeId)
-                                        $ManagementGroupDisplayName = $MgDetails.DisplayName
-                                        $ScopeDisplayName = $MgDetails.DisplayName
-                                        $MgPath = $MgDetails.path
-                                        $MgLevel = $MgDetails.level
-                                    }
-                                    else {
-                                        $ManagementGroupDisplayName = 'notAccessible'
-                                        $ScopeDisplayName = 'notAccessible'
-                                        $MgPath = 'notAccessible'
-                                        $MgLevel = 'notAccessible'
-                                    }
-
-                                    if ($entry.memberType -eq 'direct') {
-                                        $script:htPIMEligibleDirect.($entry.id) = @{}
-                                        $script:htPIMEligibleDirect.($entry.id).clear = $scopeId
-                                        if ($scopeId -eq $ManagementGroupDisplayName) {
-                                            $script:htPIMEligibleDirect.($entry.id).enriched = "$($scopeId) [Level $($MgLevel)]"
-                                        }
-                                        else {
-                                            $script:htPIMEligibleDirect.($entry.id).enriched = "$($ManagementGroupDisplayName) ($($scopeId)) [Level $($MgLevel)]"
-                                        }
-                                    }
-                                }
-                                if ($scope.type -eq 'subscription') {
-                                    $ScopeType = 'Sub'
-                                    #$ManagementGroupId = ''
-                                    $SubscriptionId = $scopeId
-                                    if ($htSubscriptionsMgPath.($scopeId)) {
-                                        $MgDetails = $htSubscriptionsMgPath.($scopeId)
-                                        $SubscriptionDisplayName = $MgDetails.DisplayName
-                                        $ScopeDisplayName = $MgDetails.DisplayName
-                                        $MgPath = $MgDetails.path
-                                        $MgLevel = $MgDetails.level
-                                        $ManagementGroupId = $MgDetails.Parent
-                                        $ManagementGroupDisplayName = $MgDetails.ParentName
-                                    }
-                                    else {
-                                        $SubscriptionDisplayName = 'notAccessible'
-                                        $ScopeDisplayName = 'notAccessible'
-                                        $MgPath = 'notAccessible'
-                                        $MgLevel = 'notAccessible'
-                                    }
-                                    #$ManagementGroupDisplayName = ''
-
-                                }
-
-                                if ($entry.subject.type -eq 'user') {
-                                    if ($htPrincipals.($entry.subject.id)) {
-                                        $userDetail = $htPrincipals.($entry.subject.id)
-                                        $principalType = "$($userDetail.type) $($userDetail.userType)"
-                                    }
-                                    else {
-                                        $principalType = $entry.subject.type
-                                    }
-                                }
-                                else {
-                                    $principalType = $entry.subject.type
-                                }
-
-                                $roleType = 'undefined'
-                                if ($entry.roleDefinition.type -eq 'BuiltInRole') { $roleType = 'Builtin' }
-                                if ($entry.roleDefinition.type -eq 'CustomRole') { $roleType = 'Custom' }
-
-                                $null = $script:arrayPIMEligible.Add([PSCustomObject]@{
-                                        ScopeType                  = $ScopeType
-                                        ScopeId                    = $scopeId
-                                        ScopeDisplayName           = $ScopeDisplayName
-                                        ManagementGroupId          = $ManagementGroupId
-                                        ManagementGroupDisplayName = $ManagementGroupDisplayName
-                                        SubscriptionId             = $SubscriptionId
-                                        SubscriptionDisplayName    = $SubscriptionDisplayName
-                                        MgPath                     = $MgPath
-                                        MgLevel                    = $MgLevel
-                                        RoleId                     = $entry.roleDefinition.externalId
-                                        RoleIdGuid                 = $entry.roleDefinition.externalId -replace '.*/'
-                                        RoleType                   = $roleType
-                                        RoleName                   = $entry.roleDefinition.displayName
-                                        IdentityObjectId           = $entry.subject.id
-                                        IdentityType               = $principalType
-                                        IdentityDisplayName        = $entry.subject.displayName
-                                        IdentityPrincipalName      = $entry.subject.principalName
-                                        PIMId                      = $entry.id
-                                        PIMInheritance             = $entry.memberType
-                                        PIMInheritedFromClear      = ''
-                                        PIMInheritedFrom           = ''
-                                        PIMStartDateTime           = $entry.startDateTime
-                                        PIMEndDateTime             = $entry.endDateTime
-                                    })
-                            }
-                        }
-                    }
-                }
-
-            } -ThrottleLimit $ThrottleLimit
-        }
-
-        foreach ($entry in $arrayPIMEligible) {
-            if ($entry.PIMInheritance -eq 'inherited') {
-                $entry.PIMInheritedFromClear = $htPIMEligibleDirect.($entry.PIMId).clear
-                $entry.PIMInheritedFrom = $htPIMEligibleDirect.($entry.PIMId).enriched
-            }
-        }
-
-        $script:arrayPIMEligibleGrouped = $arrayPIMEligible | Group-Object -Property ScopeType
-        foreach ($entry in $arrayPIMEligibleGrouped) {
-            Write-Host " Found $($entry.Count) PIM Eligible assignments for $($entry.Name)s"
-        }
+    $script:arrayPIMEligibleGrouped = $arrayPIMEligible | Group-Object -Property ScopeType
+    foreach ($entry in $arrayPIMEligibleGrouped) {
+        Write-Host " Found $($entry.Count) PIM Eligible assignments for $($entry.Name)s"
     }
 
     $end = Get-Date

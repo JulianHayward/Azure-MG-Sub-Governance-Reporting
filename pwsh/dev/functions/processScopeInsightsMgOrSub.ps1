@@ -12,14 +12,14 @@
         #Resources
         $mgAllChildSubscriptions = [System.Collections.ArrayList]@()
         $mgAllChildSubscriptions = foreach ($entry in $htSubscriptionsMgPath.keys) {
-            if (($htSubscriptionsMgPath.($entry).ParentNameChain) -contains $mgchild) {
+            if (($htSubscriptionsMgPath[$entry].ParentNameChain) -contains $mgchild) {
                 $entry
             }
         }
         if ($azAPICallConf['htParameters'].NoResources -eq $false) {
             $resourcesAllChildSubscriptions = [System.Collections.ArrayList]@()
             foreach ($mgAllChildSubscription in $mgAllChildSubscriptions) {
-                foreach ($resource in ($resourcesAllGroupedBySubcriptionId.where( { $_.name -eq $mgAllChildSubscription } )).group | Sort-Object -Property type, location) {
+                foreach ($resource in $resourcesAllGroupedBySubcriptionIdHt.($mgAllChildSubscription) | Sort-Object -Property type, location) {
                     $null = $resourcesAllChildSubscriptions.Add($resource)
                 }
 
@@ -43,22 +43,22 @@
         #childrenMgInfo
         $mgAllChildMgs = [System.Collections.ArrayList]@()
         $mgAllChildMgs = foreach ($entry in $htManagementGroupsMgPath.keys) {
-            if (($htManagementGroupsMgPath.($entry).path) -contains $mgchild) {
+            if (($htManagementGroupsMgPath[$entry].path) -contains $mgchild) {
                 $entry
             }
         }
 
-        $arrayPolicyAssignmentsEnrichedForThisManagementGroup = ($arrayPolicyAssignmentsEnrichedGroupedByManagementGroup.where( { $_.name -eq $mgChild } )).group
+        $arrayPolicyAssignmentsEnrichedForThisManagementGroup = $htArrayPolicyAssignmentsEnrichedGroupedByManagementGroup[$mgChild].group
         $arrayPolicyAssignmentsEnrichedForThisManagementGroupGroupedByPolicyVariant = $arrayPolicyAssignmentsEnrichedForThisManagementGroup | Group-Object -Property PolicyVariant
         $arrayPolicyAssignmentsEnrichedForThisManagementGroupVariantPolicy = ($arrayPolicyAssignmentsEnrichedForThisManagementGroupGroupedByPolicyVariant.where( { $_.name -eq 'Policy' } )).group
         $arrayPolicyAssignmentsEnrichedForThisManagementGroupVariantPolicySet = ($arrayPolicyAssignmentsEnrichedForThisManagementGroupGroupedByPolicyVariant.where( { $_.name -eq 'PolicySet' } )).group
 
         if ($azAPICallConf['htParameters'].NoMDfCSecureScore -eq $false) {
-            if ([string]::IsNullOrEmpty(($htMgASCSecureScore).($mgChild).SecureScore) -or [string]::IsNullOrWhiteSpace(($htMgASCSecureScore).($mgChild).SecureScore)) {
+            if ([string]::IsNullOrEmpty($htMgASCSecureScore[$mgChild].SecureScore) -or [string]::IsNullOrWhiteSpace($htMgASCSecureScore[$mgChild].SecureScore)) {
                 $managementGroupASCPoints = 'n/a'
             }
             else {
-                $managementGroupASCPoints = ($htMgASCSecureScore).($mgChild).SecureScore
+                $managementGroupASCPoints = $htMgASCSecureScore[$mgChild].SecureScore
             }
         }
         else {
@@ -79,8 +79,8 @@
         $blueprintsScoped = $blueprintReleatedQuery.where( { $_.BlueprintScoped -eq "/subscriptions/$subscriptionId" -and [String]::IsNullOrEmpty($_.BlueprintAssignmentId) } )
         $blueprintsScopedCount = ($blueprintsScoped).count
         #SubscriptionDetails
-        $subPath = $htSubscriptionsMgPath.($subscriptionId).pathDelimited
-        $subscriptionDetailsReleatedQuery = $htSubDetails.($subscriptionId).details
+        $subPath = $htSubscriptionsMgPath[$subscriptionId].pathDelimited
+        $subscriptionDetailsReleatedQuery = $htSubDetails[$subscriptionId].details
         $subscriptionState = ($subscriptionDetailsReleatedQuery).SubscriptionState
         $subscriptionQuotaId = ($subscriptionDetailsReleatedQuery).SubscriptionQuotaId
         $subscriptionResourceGroupsCount = ($resourceGroupsAll.where( { $_.subscriptionId -eq $subscriptionId } )).count_
@@ -92,7 +92,7 @@
         if ($azAPICallConf['htParameters'].NoResources -eq $false) {
             #Resources
             $resourcesSubscription = [System.Collections.ArrayList]@()
-            foreach ($resource in ($resourcesAllGroupedBySubcriptionId.where( { $_.name -eq $subscriptionId } )).group | Sort-Object -Property type, location) {
+            foreach ($resource in $resourcesAllGroupedBySubcriptionIdHt.($subscriptionId) | Sort-Object -Property type, location) {
                 $null = $resourcesSubscription.Add($resource)
             }
 
@@ -102,18 +102,19 @@
             $resourcesSubscriptionLocationCount = (($resourcesSubscription | Sort-Object -Property location -Unique)).count
         }
 
-        $arrayPolicyAssignmentsEnrichedForThisSubscription = ($arrayPolicyAssignmentsEnrichedGroupedBySubscription.where( { $_.name -eq $subscriptionId } )).group
+        $arrayPolicyAssignmentsEnrichedForThisSubscription = $htArrayPolicyAssignmentsEnrichedGroupedBySubscription[$subscriptionId].group
         $arrayPolicyAssignmentsEnrichedForThisSubscriptionGroupedByPolicyVariant = $arrayPolicyAssignmentsEnrichedForThisSubscription | Group-Object -Property PolicyVariant
         $arrayPolicyAssignmentsEnrichedForThisSubscriptionVariantPolicy = ($arrayPolicyAssignmentsEnrichedForThisSubscriptionGroupedByPolicyVariant.where( { $_.name -eq 'Policy' } )).group
         $arrayPolicyAssignmentsEnrichedForThisSubscriptionVariantPolicySet = ($arrayPolicyAssignmentsEnrichedForThisSubscriptionGroupedByPolicyVariant.where( { $_.name -eq 'PolicySet' } )).group
 
         $arrayDefenderPlansSubscription = $defenderPlansGroupedBySub.where( { $_.Name -like "*$($subscriptionId)*" } )
 
-        $arrayUserAssignedIdentities4ResourcesSubscription = $arrayUserAssignedIdentities4Resources.where( { $_.resourceSubscriptionId -eq $subscriptionId -or $_.miSubscriptionId -eq $subscriptionId } )
+        $arrayUserAssignedIdentities4ResourcesSubscription = $htArrayUserAssignedIdentities4ResourcesBySub[$subscriptionId]
+        if (-not $arrayUserAssignedIdentities4ResourcesSubscription) { $arrayUserAssignedIdentities4ResourcesSubscription = @() }
         $arrayUserAssignedIdentities4ResourcesSubscriptionCount = $arrayUserAssignedIdentities4ResourcesSubscription.Count
 
         if ($subFeaturesGroupedBySubscription) {
-            $subscriptionFeatures = $subFeaturesGroupedBySubscription.where({ $_.name -eq $subscriptionId })
+            $subscriptionFeatures = $htSubFeaturesGroupedBySubscription[$subscriptionId]
         }
 
         $cssClass = 'subDetailsTable'
@@ -125,8 +126,8 @@
 
     if ($mgOrSub -eq 'sub') {
 
-        if ($htDefenderEmailContacts.($subscriptionDetailsReleatedQuery.subscriptionId)) {
-            $hlpDefenderEmailContacts = $htDefenderEmailContacts.($subscriptionDetailsReleatedQuery.subscriptionId)
+        if ($htDefenderEmailContacts[$subscriptionDetailsReleatedQuery.subscriptionId]) {
+            $hlpDefenderEmailContacts = $htDefenderEmailContacts[$subscriptionDetailsReleatedQuery.subscriptionId]
             $MDfCEmailNotificationsState = $hlpDefenderEmailContacts.alertNotificationsState
             $MDfCEmailNotificationsSeverity = $hlpDefenderEmailContacts.alertNotificationsminimalSeverity
             $MDfCEmailNotificationsRoles = $hlpDefenderEmailContacts.roles
@@ -336,18 +337,21 @@ tf.init();}}
 <tbody>
 '@)
             $htmlScopeInsightsDiagnosticsSub = $null
-            $htmlScopeInsightsDiagnosticsSub = foreach ($entry in ($htDiagnosticSettingsMgSub).sub.($subscriptionId).keys | Sort-Object) {
-                foreach ($diagset in ($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.keys | Sort-Object) {
+            $htDiagnosticSettingsSub = ($htDiagnosticSettingsMgSub).sub.($subscriptionId)
+            $htmlScopeInsightsDiagnosticsSub = foreach ($entry in $htDiagnosticSettingsSub.keys | Sort-Object) {
+                $htDiagnosticSettingsSubEntry = $htDiagnosticSettingsSub.$entry
+                foreach ($diagset in $htDiagnosticSettingsSubEntry.keys | Sort-Object) {
+                    $diagsetObj = $htDiagnosticSettingsSubEntry.$diagset
                     @"
 <tr>
-<td>$(($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.$diagset.DiagnosticSettingName)</td>
-<td>$(($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.$diagset.DiagnosticTargetType)</td>
-<td>$(($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.$diagset.DiagnosticTargetId)</td>
+<td>$($diagsetObj.DiagnosticSettingName)</td>
+<td>$($diagsetObj.DiagnosticTargetType)</td>
+<td>$($diagsetObj.DiagnosticTargetId)</td>
 "@
                     foreach ($logCategory in $diagnosticSettingsSubCategories) {
-                        if (($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.$diagset.DiagnosticCategoriesHt.($logCategory)) {
+                        if ($diagsetObj.DiagnosticCategoriesHt.($logCategory)) {
                             @"
-<td>$(($htDiagnosticSettingsMgSub).sub.($subscriptionId).$entry.$diagset.DiagnosticCategoriesHt.($logCategory))</td>
+<td>$($diagsetObj.DiagnosticCategoriesHt.($logCategory))</td>
 "@
                         }
                         else {
@@ -471,7 +475,7 @@ tf.init();}}
 <tbody>
 "@)
             $htmlScopeInsightsTags = $null
-            $htmlScopeInsightsTags = foreach ($tag in (($htSubscriptionTags).($subscriptionId)).keys | Sort-Object) {
+            $htmlScopeInsightsTags = foreach ($tag in ($htSubscriptionTags[$subscriptionId]).keys | Sort-Object) {
                 @"
 <tr>
 <td>$tag</td>
@@ -541,12 +545,12 @@ extensions: [{ name: 'sort' }]
         #TagNameUsage
         #region ScopeInsightsTagNameUsage
         $arrayTagListSubscription = [System.Collections.ArrayList]@()
-        foreach ($tagScope in $htSubscriptionTagList.($subscriptionId).keys) {
-            foreach ($tagScopeTagName in $htSubscriptionTagList.($subscriptionId).$tagScope.keys) {
+        foreach ($tagScope in $htSubscriptionTagList[$subscriptionId].keys) {
+            foreach ($tagScopeTagName in $htSubscriptionTagList[$subscriptionId].$tagScope.keys) {
                 $null = $arrayTagListSubscription.Add([PSCustomObject]@{
                         Scope    = $tagScope
                         TagName  = ($tagScopeTagName)
-                        TagCount = $htSubscriptionTagList.($subscriptionId).($tagScope).($tagScopeTagName)
+                        TagCount = $htSubscriptionTagList[$subscriptionId].($tagScope).($tagScopeTagName)
                     })
             }
         }
@@ -650,15 +654,15 @@ extensions: [{ name: 'sort' }]
         #region ScopeInsightsConsumptionSub
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
 
-            if ($htAzureConsumptionSubscriptions.($subscriptionId).ConsumptionData) {
-                $consumptionData = $htAzureConsumptionSubscriptions.($subscriptionId).ConsumptionData
+            if ($htAzureConsumptionSubscriptions[$subscriptionId].ConsumptionData) {
+                $consumptionData = $htAzureConsumptionSubscriptions[$subscriptionId].ConsumptionData
 
                 $arrayTotalCostSummarySub = @()
                 $arrayConsumptionData = [System.Collections.ArrayList]@()
 
                 $totalCost = 0
 
-                $currency = $htAzureConsumptionSubscriptions.($subscriptionId).Currency
+                $currency = $htAzureConsumptionSubscriptions[$subscriptionId].Currency
                 $consumedServiceCount = ($consumptionData.ResourceType | Sort-Object -Unique | Measure-Object).Count
                 $resourceCount = ($consumptionData.ResourceId | Sort-Object -Unique | Measure-Object).Count
                 $subConsumptionDataGrouped = $consumptionData | Group-Object -Property ResourceType, ChargeType, MeterCategory
@@ -682,7 +686,7 @@ extensions: [{ name: 'sort' }]
                             ConsumedServiceCurrency      = $currency
                         })
 
-                    $totalCost = $htAzureConsumptionSubscriptions.($subscriptionId).TotalCost
+                    $totalCost = $htAzureConsumptionSubscriptions[$subscriptionId].TotalCost
 
                 }
                 if ([math]::Round($totalCost, 2) -eq 0) {
@@ -820,8 +824,8 @@ tf.init();}}
         #region ScopeInsightsResourceProvidersDetailed
         if ($azAPICallConf['htParameters'].NoResourceProvidersAtAll -eq $false) {
             if ($azAPICallConf['htParameters'].NoResourceProvidersDetailed -eq $false) {
-                if (($htResourceProvidersAll).($subscriptionId)) {
-                    $tfCount = ($htResourceProvidersAll).($subscriptionId).Providers.Count
+                if ($htResourceProvidersAll[$subscriptionId]) {
+                    $tfCount = $htResourceProvidersAll[$subscriptionId].Providers.Count
                     $htmlTableId = "ScopeInsights_ResourceProvider_$($subscriptionId -replace '-','_')"
                     $randomFunctionName = "func_$htmlTableId"
                     [void]$htmlScopeInsights.AppendLine(@"
@@ -838,7 +842,7 @@ tf.init();}}
 <tbody>
 "@)
                     $htmlScopeInsightsResourceProvidersDetailed = $null
-                    $htmlScopeInsightsResourceProvidersDetailed = foreach ($provider in ($htResourceProvidersAll).($subscriptionId).Providers) {
+                    $htmlScopeInsightsResourceProvidersDetailed = foreach ($provider in $htResourceProvidersAll[$subscriptionId].Providers) {
                         @"
 <tr>
 <td>$($provider.namespace)</td>
@@ -997,17 +1001,17 @@ extensions: [{ name: 'sort' }]
 
         #ResourceLocks
         #region ScopeInsightsResourceLocks
-        if ($htResourceLocks.($subscriptionId)) {
+        if ($htResourceLocks[$subscriptionId]) {
             $tfCount = 6
             $htmlTableId = "ScopeInsights_ResourceLocks_$($subscriptionId -replace '-','_')"
             $randomFunctionName = "func_$htmlTableId"
 
-            $subscriptionLocksCannotDeleteCount = $htResourceLocks.($subscriptionId).SubscriptionLocksCannotDeleteCount
-            $subscriptionLocksReadOnlyCount = $htResourceLocks.($subscriptionId).SubscriptionLocksReadOnlyCount
-            $resourceGroupsLocksCannotDeleteCount = $htResourceLocks.($subscriptionId).ResourceGroupsLocksCannotDeleteCount
-            $resourceGroupsLocksReadOnlyCount = $htResourceLocks.($subscriptionId).ResourceGroupsLocksReadOnlyCount
-            $resourcesLocksCannotDeleteCount = $htResourceLocks.($subscriptionId).ResourcesLocksCannotDeleteCount
-            $resourcesLocksReadOnlyCount = $htResourceLocks.($subscriptionId).ResourcesLocksReadOnlyCount
+            $subscriptionLocksCannotDeleteCount = $htResourceLocks[$subscriptionId].SubscriptionLocksCannotDeleteCount
+            $subscriptionLocksReadOnlyCount = $htResourceLocks[$subscriptionId].SubscriptionLocksReadOnlyCount
+            $resourceGroupsLocksCannotDeleteCount = $htResourceLocks[$subscriptionId].ResourceGroupsLocksCannotDeleteCount
+            $resourceGroupsLocksReadOnlyCount = $htResourceLocks[$subscriptionId].ResourceGroupsLocksReadOnlyCount
+            $resourcesLocksCannotDeleteCount = $htResourceLocks[$subscriptionId].ResourcesLocksCannotDeleteCount
+            $resourcesLocksReadOnlyCount = $htResourceLocks[$subscriptionId].ResourcesLocksReadOnlyCount
 
             [void]$htmlScopeInsights.AppendLine(@"
 <button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible">
@@ -1131,18 +1135,21 @@ extensions: [{ name: 'sort' }]
 <tbody>
 '@)
             $htmlScopeInsightsDiagnosticsMg = $null
-            $htmlScopeInsightsDiagnosticsMg = foreach ($entry in ($htDiagnosticSettingsMgSub).mg.($mgChild).keys | Sort-Object) {
-                foreach ($diagset in ($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.keys | Sort-Object) {
+            $htDiagnosticSettingsMg = ($htDiagnosticSettingsMgSub).mg.($mgChild)
+            $htmlScopeInsightsDiagnosticsMg = foreach ($entry in $htDiagnosticSettingsMg.keys | Sort-Object) {
+                $htDiagnosticSettingsMgEntry = $htDiagnosticSettingsMg.$entry
+                foreach ($diagset in $htDiagnosticSettingsMgEntry.keys | Sort-Object) {
+                    $diagsetObj = $htDiagnosticSettingsMgEntry.$diagset
                     @"
 <tr>
-<td>$(($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.$diagset.DiagnosticSettingName)</td>
-<td>$(($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.$diagset.DiagnosticTargetType)</td>
-<td>$(($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.$diagset.DiagnosticTargetId)</td>
+<td>$($diagsetObj.DiagnosticSettingName)</td>
+<td>$($diagsetObj.DiagnosticTargetType)</td>
+<td>$($diagsetObj.DiagnosticTargetId)</td>
 "@
                     foreach ($logCategory in $diagnosticSettingsMgCategories) {
-                        if (($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.$diagset.DiagnosticCategoriesHt.($logCategory)) {
+                        if ($diagsetObj.DiagnosticCategoriesHt.($logCategory)) {
                             @"
-<td>$(($htDiagnosticSettingsMgSub).mg.($mgChild).$entry.$diagset.DiagnosticCategoriesHt.($logCategory))</td>
+<td>$($diagsetObj.DiagnosticCategoriesHt.($logCategory))</td>
 "@
                         }
                         else {
@@ -1250,7 +1257,7 @@ extensions: [{ name: 'sort' }]
         if ($azAPICallConf['htParameters'].DoAzureConsumption -eq $true) {
             if ($allConsumptionDataCount -gt 0) {
 
-                $consumptionData = $htManagementGroupsCost.($mgchild).consumptionDataSubscriptions
+                $consumptionData = $htManagementGroupsCost[$mgchild].consumptionDataSubscriptions
                 if (($consumptionData | Measure-Object).Count -gt 0) {
                     $arrayTotalCostSummaryMg = @()
                     $arrayConsumptionData = [System.Collections.ArrayList]@()
@@ -1411,6 +1418,146 @@ tf.init();}}
 
     }
     #endregion ScopeInsightsManagementGroups
+
+    #region ScopeInsightsModelDeploymentInsights
+    if (-not $azAPICallConf['htParameters'].NoFoundryModelDeployments) {
+        $scopeModelDeployments = [System.Collections.ArrayList]@()
+        if ($mgOrSub -eq 'sub') {
+            #a scope without deployments has no hashtable entry; @($null) would enumerate one null element
+            foreach ($deployment in @($htModelDeploymentInsightsBySubscription[$subscriptionId]).where({ $null -ne $_ })) {
+                $null = $scopeModelDeployments.Add($deployment)
+            }
+        }
+        else {
+            foreach ($scopeSubscriptionId in $mgAllChildSubscriptions) {
+                foreach ($deployment in @($htModelDeploymentInsightsBySubscription[$scopeSubscriptionId]).where({ $null -ne $_ })) {
+                    $null = $scopeModelDeployments.Add($deployment)
+                }
+            }
+        }
+
+        if ($scopeModelDeployments.Count -gt 0) {
+            $scopeModelSummary = [System.Collections.ArrayList]@()
+            foreach ($modelGroup in ($scopeModelDeployments | Group-Object -Property ModelFormat, ModelName, ModelVersion)) {
+                $firstDeployment = $modelGroup.Group | Select-Object -First 1
+                $null = $scopeModelSummary.Add([PSCustomObject]@{
+                        ModelFormat           = $firstDeployment.ModelFormat
+                        ModelName             = $firstDeployment.ModelName
+                        ModelVersion          = $firstDeployment.ModelVersion
+                        Deployments           = $modelGroup.Count
+                        Accounts              = ($modelGroup.Group.AccountId | Sort-Object -Unique).Count
+                        Subscriptions         = ($modelGroup.Group.SubscriptionId | Sort-Object -Unique).Count
+                        Requests              = ($modelGroup.Group.Requests | Measure-Object -Sum).Sum
+                        ProcessedPromptTokens = ($modelGroup.Group.ProcessedPromptTokens | Measure-Object -Sum).Sum
+                        GeneratedTokens       = ($modelGroup.Group.GeneratedTokens | Measure-Object -Sum).Sum
+                        CacheReadInputTokens  = ($modelGroup.Group.CacheReadInputTokens | Measure-Object -Sum).Sum
+                        Requests429           = ($modelGroup.Group.Requests429 | Measure-Object -Sum).Sum
+                        Requests5xx           = ($modelGroup.Group.Requests5xx | Measure-Object -Sum).Sum
+                    })
+            }
+
+            $scopeModelAccountDetails = [System.Collections.ArrayList]@()
+            foreach ($modelAccountGroup in ($scopeModelDeployments | Group-Object -Property ModelFormat, ModelName, ModelVersion, AccountId)) {
+                $firstDeployment = $modelAccountGroup.Group | Select-Object -First 1
+                $null = $scopeModelAccountDetails.Add([PSCustomObject]@{
+                        ModelFormat           = $firstDeployment.ModelFormat
+                        ModelName             = $firstDeployment.ModelName
+                        ModelVersion          = $firstDeployment.ModelVersion
+                        AccountName           = $firstDeployment.AccountName
+                        AccountKind           = $firstDeployment.AccountKind
+                        AccountSku            = $firstDeployment.AccountSku
+                        SubscriptionName      = $firstDeployment.SubscriptionName
+                        ResourceGroup         = $firstDeployment.ResourceGroup
+                        Location              = $firstDeployment.Location
+                        PublicNetworkAccess   = $firstDeployment.PublicNetworkAccess
+                        Deployments           = $modelAccountGroup.Count
+                        DeploymentNames       = ($modelAccountGroup.Group.DeploymentName | Sort-Object -Unique) -join ', '
+                        DeploymentSkus        = ($modelAccountGroup.Group.DeploymentSku | Sort-Object -Unique) -join ', '
+                        DeploymentCapacity    = ($modelAccountGroup.Group.DeploymentCapacity | Measure-Object -Sum).Sum
+                        DeploymentStates      = ($modelAccountGroup.Group.DeploymentState | Sort-Object -Unique) -join ', '
+                        Requests              = ($modelAccountGroup.Group.Requests | Measure-Object -Sum).Sum
+                        ProcessedPromptTokens = ($modelAccountGroup.Group.ProcessedPromptTokens | Measure-Object -Sum).Sum
+                        GeneratedTokens       = ($modelAccountGroup.Group.GeneratedTokens | Measure-Object -Sum).Sum
+                        CacheReadInputTokens  = ($modelAccountGroup.Group.CacheReadInputTokens | Measure-Object -Sum).Sum
+                        Requests429           = ($modelAccountGroup.Group.Requests429 | Measure-Object -Sum).Sum
+                        Requests5xx           = ($modelAccountGroup.Group.Requests5xx | Measure-Object -Sum).Sum
+                        MetricsStatus         = ($modelAccountGroup.Group.MetricsStatus | Sort-Object -Unique) -join ', '
+                    })
+            }
+
+            $scopeIdForHtml = if ($mgOrSub -eq 'sub') { $subscriptionId } else { $mgChild }
+            $scopeContentClass = if ($mgOrSub -eq 'sub') { 'contentSISub' } else { 'contentSIMG' }
+            $htmlTableId = "ScopeInsights_ModelDeploymentInsights_$($scopeIdForHtml -replace '[^a-zA-Z0-9]', '_')"
+            $scopeModelColumns = @(
+                @{ header = 'Model format'; property = 'ModelFormat'; filter = 'select' }
+                @{ header = 'Model'; property = 'ModelName'; filter = 'select' }
+                @{ header = 'Version'; property = 'ModelVersion'; filter = 'select' }
+                @{ header = 'Deployments'; property = 'Deployments'; filter = 'number' }
+                @{ header = 'Accounts'; property = 'Accounts'; filter = 'number' }
+                @{ header = 'Subscriptions'; property = 'Subscriptions'; filter = 'number' }
+                @{ header = 'Requests'; property = 'Requests'; filter = 'number' }
+                @{ header = 'Input tokens'; property = 'ProcessedPromptTokens'; filter = 'number' }
+                @{ header = 'Output tokens'; property = 'GeneratedTokens'; filter = 'number' }
+                @{ header = 'Cache-read input tokens'; property = 'CacheReadInputTokens'; filter = 'number' }
+                @{ header = 'HTTP 429'; property = 'Requests429'; filter = 'number' }
+                @{ header = 'HTTP 5xx'; property = 'Requests5xx'; filter = 'number' }
+            )
+            $scopeModelAccountColumns = @(
+                @{ header = 'Model format'; property = 'ModelFormat'; filter = 'select' }
+                @{ header = 'Model'; property = 'ModelName'; filter = 'select' }
+                @{ header = 'Version'; property = 'ModelVersion'; filter = 'select' }
+                @{ header = 'Cognitive Services account'; property = 'AccountName'; filter = 'select' }
+                @{ header = 'Account kind'; property = 'AccountKind'; filter = 'select' }
+                @{ header = 'Account SKU'; property = 'AccountSku'; filter = 'select' }
+                @{ header = 'Subscription'; property = 'SubscriptionName'; filter = 'select' }
+                @{ header = 'Resource group'; property = 'ResourceGroup'; filter = 'select' }
+                @{ header = 'Location'; property = 'Location'; filter = 'select' }
+                @{ header = 'Public network access'; property = 'PublicNetworkAccess'; filter = 'select' }
+                @{ header = 'Deployments'; property = 'Deployments'; filter = 'number' }
+                @{ header = 'Deployment names'; property = 'DeploymentNames' }
+                @{ header = 'Deployment SKUs'; property = 'DeploymentSkus'; filter = 'select' }
+                @{ header = 'Total capacity'; property = 'DeploymentCapacity'; filter = 'number' }
+                @{ header = 'Deployment states'; property = 'DeploymentStates'; filter = 'select' }
+                @{ header = 'Requests'; property = 'Requests'; filter = 'number' }
+                @{ header = 'Input tokens'; property = 'ProcessedPromptTokens'; filter = 'number' }
+                @{ header = 'Output tokens'; property = 'GeneratedTokens'; filter = 'number' }
+                @{ header = 'Cache-read input tokens'; property = 'CacheReadInputTokens'; filter = 'number' }
+                @{ header = 'HTTP 429'; property = 'Requests429'; filter = 'number' }
+                @{ header = 'HTTP 5xx'; property = 'Requests5xx'; filter = 'number' }
+                @{ header = 'Metrics status'; property = 'MetricsStatus'; filter = 'select' }
+            )
+
+            $htmlTableIdAccounts = "$($htmlTableId)_Accounts"
+
+            [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadag$($htmlTableId)()" type="button" class="collapsible"><i class="fa fa-cubes" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$($scopeModelSummary.Count) Foundry models ($($scopeModelDeployments.Count) deployments)</span></button>
+<div class="content $scopeContentClass">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableId)(); return false;">Pop out grid</a><br>
+"@)
+            [void]$htmlScopeInsights.AppendLine((buildAgGridScript -HtmlTableId $htmlTableId -PopoutTitle "Azure Governance Visualizer - Foundry models - $scopeIdForHtml" -ColumnDefinitions $scopeModelColumns -Rows @($scopeModelSummary | Sort-Object ModelName, ModelVersion)))
+            [void]$htmlScopeInsights.AppendLine('</div>')
+
+            [void]$htmlScopeInsights.AppendLine(@"
+<button onclick="loadag$($htmlTableIdAccounts)()" type="button" class="collapsible"><i class="fa fa-cubes" aria-hidden="true" style="color: #0078df"></i> <span class="valignMiddle">$($scopeModelAccountDetails.Count) Foundry model / Cognitive Services account combinations</span></button>
+<div class="content $scopeContentClass">
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableIdAccounts)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableIdAccounts)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableIdAccounts)(); return false;">Pop out grid</a><br>
+"@)
+            [void]$htmlScopeInsights.AppendLine((buildAgGridScript -HtmlTableId $htmlTableIdAccounts -PopoutTitle "Azure Governance Visualizer - Foundry model and Cognitive Services account details - $scopeIdForHtml" -ColumnDefinitions $scopeModelAccountColumns -Rows @($scopeModelAccountDetails | Sort-Object ModelName, ModelVersion, SubscriptionName, AccountName)))
+            [void]$htmlScopeInsights.AppendLine(@'
+</div>
+</td></tr>
+<tr><td class="detailstd">
+'@)
+        }
+        else {
+            [void]$htmlScopeInsights.AppendLine(@'
+<i class="fa fa-ban" aria-hidden="true"></i> <span class="valignMiddle">0 Foundry models</span>
+</td></tr>
+<tr><td class="detailstd">
+'@)
+        }
+    }
+    #endregion ScopeInsightsModelDeploymentInsights
 
     #ScopeInsightsResources
     if ($azAPICallConf['htParameters'].NoResources -eq $false) {
@@ -1599,7 +1746,7 @@ extensions: [{ name: 'sort' }]
     if ($azAPICallConf['htParameters'].NoResources -eq $false) {
         #region ScopeInsightsCAFResourceNamingALL
         if ($mgOrSub -eq 'sub') {
-            $resourcesIdsAllCAFNamingRelevantThisSubscription = $resourcesIdsAllCAFNamingRelevantGroupedBySubscription.where({ $_.Name -eq $subscriptionId })
+            $resourcesIdsAllCAFNamingRelevantThisSubscription = $htResourcesIdsAllCAFNamingRelevantGroupedBySubscription[$subscriptionId]
             if ($resourcesIdsAllCAFNamingRelevantThisSubscription) {
                 $resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByType = $resourcesIdsAllCAFNamingRelevantThisSubscription.Group | Group-Object -Property type
                 $resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByTypeCount = ($resourcesIdsAllCAFNamingRelevantThisSubscriptionGroupedByType | Measure-Object).Count
@@ -1739,7 +1886,7 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     #region ScopeInsightsOrphanedResources
     if ($mgOrSub -eq 'sub') {
         if ($arrayOrphanedResourcesGroupedBySubscription) {
-            $orphanedResourcesThisSubscription = $arrayOrphanedResourcesGroupedBySubscription.where({ $_.Name -eq $subscriptionId })
+            $orphanedResourcesThisSubscription = $htArrayOrphanedResourcesGroupedBySubscription[$subscriptionId]
             if ($orphanedResourcesThisSubscription) {
                 $orphanedResourcesThisSubscriptionCount = $orphanedResourcesThisSubscription.Group.count
 
@@ -1893,12 +2040,26 @@ extensions: [{ name: 'sort' }]
         #resourcesDiagnosticsCapable
         #region ScopeInsightsDiagnosticsCapable
         if ($mgOrSub -eq 'mg') {
+            if ($null -eq $script:resourceTypesDiagnosticsArrayGroupedByType) {
+                $script:resourceTypesDiagnosticsArrayGroupedByType = @{}
+                foreach ($resourceTypeDiagnostics in $resourceTypesDiagnosticsArray) {
+                    $script:resourceTypesDiagnosticsArrayGroupedByType[$resourceTypeDiagnostics.ResourceType] = $resourceTypeDiagnostics
+                }
+            }
+            #sum resource counts per type in a single pass instead of re-scanning the whole collection per unique type
+            $resourcesAllChildSubscriptionsGroupedByType = @{}
+            foreach ($resourceAllChildSubscription in $resourcesAllChildSubscriptions) {
+                $resourceAllChildSubscriptionType = $resourceAllChildSubscription.type
+                if (-not $resourcesAllChildSubscriptionsGroupedByType.ContainsKey($resourceAllChildSubscriptionType)) {
+                    $resourcesAllChildSubscriptionsGroupedByType[$resourceAllChildSubscriptionType] = 0
+                }
+                $resourcesAllChildSubscriptionsGroupedByType[$resourceAllChildSubscriptionType] += $resourceAllChildSubscription.count_
+            }
             $resourceTypesUnique = ($resourcesAllChildSubscriptions | Select-Object type -Unique).type
             $resourceTypesSummarizedArray = [System.Collections.ArrayList]@()
             foreach ($resourceTypeUnique in $resourceTypesUnique) {
-                $resourcesTypeCountTotal = 0
-                ($resourcesAllChildSubscriptions.where( { $_.type -eq $resourceTypeUnique } )).count_ | ForEach-Object { $resourcesTypeCountTotal += $_ }
-                $dataFromResourceTypesDiagnosticsArray = $resourceTypesDiagnosticsArray.where( { $_.ResourceType -eq $resourceTypeUnique } )
+                $resourcesTypeCountTotal = $resourcesAllChildSubscriptionsGroupedByType[$resourceTypeUnique]
+                $dataFromResourceTypesDiagnosticsArray = $resourceTypesDiagnosticsArrayGroupedByType[$resourceTypeUnique]
                 if ($dataFromResourceTypesDiagnosticsArray.Metrics -eq $true -or $dataFromResourceTypesDiagnosticsArray.Logs -eq $true) {
                     $resourceDiagnosticscapable = $true
                 }
@@ -2020,12 +2181,26 @@ extensions: [{ name: 'sort' }]
         }
 
         if ($mgOrSub -eq 'sub') {
+            if ($null -eq $script:resourceTypesDiagnosticsArrayGroupedByType) {
+                $script:resourceTypesDiagnosticsArrayGroupedByType = @{}
+                foreach ($resourceTypeDiagnostics in $resourceTypesDiagnosticsArray) {
+                    $script:resourceTypesDiagnosticsArrayGroupedByType[$resourceTypeDiagnostics.ResourceType] = $resourceTypeDiagnostics
+                }
+            }
+            #sum resource counts per type in a single pass instead of re-scanning the whole collection per unique type
+            $resourcesSubscriptionGroupedByType = @{}
+            foreach ($resourceSubscription in $resourcesSubscription) {
+                $resourceSubscriptionType = $resourceSubscription.type
+                if (-not $resourcesSubscriptionGroupedByType.ContainsKey($resourceSubscriptionType)) {
+                    $resourcesSubscriptionGroupedByType[$resourceSubscriptionType] = 0
+                }
+                $resourcesSubscriptionGroupedByType[$resourceSubscriptionType] += $resourceSubscription.count_
+            }
             $resourceTypesUnique = ($resourcesSubscription | Select-Object type -Unique).type
             $resourceTypesSummarizedArray = [System.Collections.ArrayList]@()
             foreach ($resourceTypeUnique in $resourceTypesUnique) {
-                $resourcesTypeCountTotal = 0
-                ($resourcesSubscription.where( { $_.type -eq $resourceTypeUnique } )).count_ | ForEach-Object { $resourcesTypeCountTotal += $_ }
-                $dataFromResourceTypesDiagnosticsArray = $resourceTypesDiagnosticsArray.where( { $_.ResourceType -eq $resourceTypeUnique } )
+                $resourcesTypeCountTotal = $resourcesSubscriptionGroupedByType[$resourceTypeUnique]
+                $dataFromResourceTypesDiagnosticsArray = $resourceTypesDiagnosticsArrayGroupedByType[$resourceTypeUnique]
                 if ($dataFromResourceTypesDiagnosticsArray.Metrics -eq $true -or $dataFromResourceTypesDiagnosticsArray.Logs -eq $true) {
                     $resourceDiagnosticscapable = $true
                 }
@@ -2200,7 +2375,7 @@ extensions: [{ name: 'sort' }]
     <td class="breakwordall">$($miResEntry.miResourceId)</td>
     <td>$($miResEntry.miPrincipalId)</td>
     <td>$($miResEntry.miClientId)</td>
-    <td>$($htUserAssignedIdentitiesAssignedResources.($miResEntry.miPrincipalId).ResourcesCount)</td>
+    <td>$($htUserAssignedIdentitiesAssignedResources[$miResEntry.miPrincipalId].ResourcesCount)</td>
     <td>$($miResEntry.miCrossSubscription)</td>
     <td>$($miResEntry.resourceName)</td>
     <td class="breakwordall">$($miResEntry.resourceType)</td>
@@ -2303,7 +2478,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
                 $allPSRuleResultsUnderThisMg = [system.collections.ArrayList]@()
                 foreach ($mg in $grpPSRuleManagementGroups) {
                     $mgNameIdHlper = $mg.name -replace '.*/'
-                    if ($htManagementGroupsMgPath.($mgNameIdHlper).path -contains $mgchild) {
+                    if ($htManagementGroupsMgPath[$mgNameIdHlper].path -contains $mgchild) {
                         $allPSRuleResultsUnderThisMg.AddRange($mg.Group)
                     }
                 }
@@ -2430,7 +2605,7 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             }
 
             if ($mgOrSub -eq 'sub') {
-                $grpThisSubscription = $grpPSRuleSubscriptions.where({ $_.Name -eq $subscriptionId })
+                $grpThisSubscription = $htGrpPSRuleSubscriptions[$subscriptionId]
                 $grpThisSubscriptionGrouped = $grpThisSubscription.Group | Group-Object -Property resourceType, pillar, category, severity, rule, result
 
                 if ($grpThisSubscriptionGrouped) {
@@ -2573,16 +2748,18 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
             if ([String]::IsNullOrEmpty($policyAssignment.subscriptionId)) {
                 $null = $policiesAssigned.Add($policyAssignment)
                 $policiesCount++
-                if ($policyAssignment.PolicyType -eq 'BuiltIn') {
+                $policyType = $policyAssignment.PolicyType
+                $inheritance = $policyAssignment.Inheritance
+                if ($policyType -eq 'BuiltIn') {
                     $policiesCountBuiltin++
                 }
-                if ($policyAssignment.PolicyType -eq 'Custom') {
+                if ($policyType -eq 'Custom') {
                     $policiesCountCustom++
                 }
-                if ($policyAssignment.Inheritance -like 'this*') {
+                if ($inheritance -like 'this*') {
                     $policiesAssignedAtScope++
                 }
-                if ($policyAssignment.Inheritance -notlike 'this*') {
+                if ($inheritance -notlike 'this*') {
                     $policiesInherited++
                 }
             }
@@ -2601,210 +2778,75 @@ paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_
         foreach ($policyAssignment in $arrayPolicyAssignmentsEnrichedForThisSubscriptionVariantPolicy) {
             $null = $policiesAssigned.Add($policyAssignment)
             $policiesCount++
-            if ($policyAssignment.PolicyType -eq 'BuiltIn') {
+            $policyType = $policyAssignment.PolicyType
+            $inheritance = $policyAssignment.Inheritance
+            if ($policyType -eq 'BuiltIn') {
                 $policiesCountBuiltin++
             }
-            if ($policyAssignment.PolicyType -eq 'Custom') {
+            if ($policyType -eq 'Custom') {
                 $policiesCountCustom++
             }
-            if ($policyAssignment.Inheritance -like 'this*') {
+            if ($inheritance -like 'this*') {
                 $policiesAssignedAtScope++
             }
-            if ($policyAssignment.Inheritance -notlike 'this*') {
+            if ($inheritance -notlike 'this*') {
                 $policiesInherited++
             }
         }
     }
 
     if (($policiesAssigned).count -gt 0) {
-        $tfCount = ($policiesAssigned).count
         $htmlTableId = "ScopeInsights_PolicyAssignments_$($htmlTableIdentifier -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
-        $randomFunctionName = "func_$htmlTableId"
-        $noteOrNot = ''
+
+        #columns feeding the AG Grid; a column that defines an 'htmlProperty' renders that property, sorting/filtering/export use 'property'
+        $scopeInsightsPolicyAssignmentsGridColumnDefinitions = [System.Collections.Generic.List[object]]@(
+            @{ header = 'Inheritance'; property = 'Inheritance' }
+            @{ header = 'ScopeExcluded'; property = 'ExcludedScope'; filter = 'select' }
+            @{ header = 'Exemption applies'; property = 'ExemptionScope'; filter = 'select' }
+            @{ header = 'Policy DisplayName'; property = 'PolicyNameClear'; htmlProperty = 'PolicyName'; htmlValueScript = {
+                    param($policyAssignment)
+                    #the html of a custom Policy displayname is not built by the report, it must not end up unescaped in the grid
+                    if ($policyAssignment.PolicyType -eq 'Custom') { [string]$policyAssignment.PolicyName -replace '<', '&lt;' -replace '>', '&gt;' } else { [string]$policyAssignment.PolicyName }
+                }
+            }
+            @{ header = 'PolicyId'; property = 'PolicyId' }
+            @{ header = 'Type'; property = 'PolicyType'; filter = 'select' }
+            @{ header = 'Category'; property = 'PolicyCategory' }
+            @{ header = 'ALZ'; property = 'PolicyIsALZ'; filter = 'select' }
+            @{ header = 'Effect'; property = 'Effect'; filter = 'select' }
+            @{ header = 'Parameters'; property = 'PolicyAssignmentParameters' }
+            @{ header = 'Enforcement'; property = 'PolicyAssignmentEnforcementMode'; filter = 'select' }
+            @{ header = 'NonCompliance Message'; property = 'PolicyAssignmentNonComplianceMessages' }
+        )
+        if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
+            $scopeInsightsPolicyAssignmentsGridColumnDefinitions.AddRange([object[]]@(
+                    @{ header = 'Policies NonCmplnt'; property = 'NonCompliantPolicies'; filter = 'number' }
+                    @{ header = 'Policies Compliant'; property = 'CompliantPolicies'; filter = 'number' }
+                    @{ header = 'Resources NonCmplnt'; property = 'NonCompliantResources'; filter = 'number' }
+                    @{ header = 'Resources Compliant'; property = 'CompliantResources'; filter = 'number' }
+                    @{ header = 'Resources Conflicting'; property = 'ConflictingResources'; filter = 'number' }
+                ))
+        }
+        $scopeInsightsPolicyAssignmentsGridColumnDefinitions.AddRange([object[]]@(
+                @{ header = 'Role/Assignment'; property = 'RelatedRoleAssignmentsClear'; htmlProperty = 'RelatedRoleAssignments' }
+                @{ header = 'Managed Identity'; property = 'PolicyAssignmentMI' }
+                @{ header = 'Assignment DisplayName'; property = 'PolicyAssignmentDisplayName' }
+                @{ header = 'AssignmentId'; property = 'PolicyAssignmentId' }
+                @{ header = 'AssignedBy'; property = 'AssignedBy' }
+                @{ header = 'CreatedOn'; property = 'CreatedOn'; filter = 'date' }
+                @{ header = 'CreatedBy'; property = 'CreatedBy' }
+                @{ header = 'UpdatedOn'; property = 'UpdatedOn'; filter = 'date' }
+                @{ header = 'UpdatedBy'; property = 'UpdatedBy' }
+            ))
+
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$policiesCount Policy assignments ($policiesAssignedAtScope at scope, $policiesInherited inherited) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom)</span></button>
+<button onclick="loadag$($htmlTableId)()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$policiesCount Policy assignments ($policiesAssignedAtScope at scope, $policiesInherited inherited) (Builtin: $policiesCountBuiltin | Custom: $policiesCountCustom)</span></button>
 <div class="content $SIDivContentClass">
-&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a><br>
-&nbsp;&nbsp;<span class="hintTableSize">*Depending on the number of rows and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
-<table id="$htmlTableId" class="$cssClass">
-<thead>
-<tr>
-<th>Inheritance</th>
-<th>ScopeExcluded</th>
-<th>Exemption applies</th>
-<th>Policy DisplayName</th>
-<th>PolicyId</th>
-<th>Type</th>
-<th>Category</th>
-<th>ALZ</th>
-<th>Effect</th>
-<th>Parameters</th>
-<th>Enforcement</th>
-<th>NonCompliance Message</th>
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableId)(); return false;">Pop out grid</a><br>
+&nbsp;&nbsp;<span class="hintTableSize">*The CSV download respects the filters and the column order applied in the grid</span>
 "@)
-
-        if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
-
-            [void]$htmlScopeInsights.AppendLine(@'
-<th>Policies NonCmplnt</th>
-<th>Policies Compliant</th>
-<th>Resources NonCmplnt</th>
-<th>Resources Compliant</th>
-<th>Resources Conflicting</th>
-'@)
-        }
-
-        [void]$htmlScopeInsights.AppendLine(@"
-<th>Role/Assignment $noteOrNot</th>
-<th>Managed Identity</th>
-<th>Assignment DisplayName</th>
-<th>AssignmentId</th>
-<th>AssignedBy</th>
-<th>CreatedOn</th>
-<th>CreatedBy</th>
-<th>UpdatedOn</th>
-<th>UpdatedBy</th>
-</tr>
-</thead>
-<tbody>
-"@)
-        $htmlScopeInsightsPolicyAssignments = $null
-        $htmlScopeInsightsPolicyAssignments = foreach ($policyAssignment in $policiesAssigned | Sort-Object @{Expression = { $_.Level } }, @{Expression = { $_.MgName } }, @{Expression = { $_.MgId } }, @{Expression = { $_.SubscriptionName } }, @{Expression = { $_.SubscriptionId } }, @{Expression = { $_.PolicyAssignmentId } }) {
-
-            if ($policyAssignment.PolicyType -eq 'Custom') {
-                $policyName = ($policyAssignment.PolicyName -replace '<', '&lt;' -replace '>', '&gt;')
-            }
-            else {
-                $policyName = $policyAssignment.PolicyName
-            }
-            @"
-<tr>
-<td>$($policyAssignment.Inheritance)</td>
-<td>$($policyAssignment.ExcludedScope)</td>
-<td>$($policyAssignment.ExemptionScope)</td>
-<td class="breakwordall">$($policyName)</td>
-<td class="breakwordall">$($policyAssignment.PolicyId)</td>
-<td>$($policyAssignment.PolicyType)</td>
-<td>$($policyAssignment.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td>$($policyAssignment.PolicyIsALZ)</td>
-<td>$($policyAssignment.Effect)</td>
-<td>$($policyAssignment.PolicyAssignmentParameters)</td>
-<td>$($policyAssignment.PolicyAssignmentEnforcementMode)</td>
-<td>$($policyAssignment.PolicyAssignmentNonComplianceMessages)</td>
-"@
-
-            if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
-                @"
-<td>$($policyAssignment.NonCompliantPolicies)</td>
-<td>$($policyAssignment.CompliantPolicies)</td>
-<td>$($policyAssignment.NonCompliantResources)</td>
-<td>$($policyAssignment.CompliantResources)</td>
-<td>$($policyAssignment.ConflictingResources)</td>
-"@
-            }
-
-            @"
-<td class="breakwordall">$($policyAssignment.RelatedRoleAssignments)</td>
-<td>$($policyAssignment.PolicyAssignmentMI)</td>
-<td class="breakwordall">$($policyAssignment.PolicyAssignmentDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td class="breakwordall">$($policyAssignment.PolicyAssignmentId -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td>$($policyAssignment.AssignedBy)</td>
-<td>$($policyAssignment.CreatedOn)</td>
-<td>$($policyAssignment.CreatedBy)</td>
-<td>$($policyAssignment.UpdatedOn)</td>
-<td>$($policyAssignment.UpdatedBy)</td>
-</tr>
-"@
-        }
-        [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsPolicyAssignments)
-        [void]$htmlScopeInsights.AppendLine(@"
-            </tbody>
-        </table>
-    </div>
-    <script>
-        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
-            window.helpertfConfig4$htmlTableId =1;
-            var tfConfig4$htmlTableId = {
-            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
-"@)
-        if ($tfCount -gt 10) {
-            $spectrum = "10, $tfCount"
-            if ($tfCount -gt 50) {
-                $spectrum = "10, 25, 50, $tfCount"
-            }
-            if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, 100, $tfCount"
-            }
-            if ($tfCount -gt 500) {
-                $spectrum = "10, 30, 50, 100, 250, $tfCount"
-            }
-            if ($tfCount -gt 1000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-            }
-            if ($tfCount -gt 2000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-            }
-            if ($tfCount -gt 3000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-            }
-            [void]$htmlScopeInsights.AppendLine(@"
-paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
-"@)
-        }
-        [void]$htmlScopeInsights.AppendLine(@'
-btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-            linked_filters: true,
-            col_1: 'select',
-            col_2: 'select',
-            col_5: 'select',
-            col_7: 'select',
-            col_8: 'select',
-            col_10: 'select',
-            locale: 'en-US',
-            col_types: [
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-'@)
-
-        if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
-
-            [void]$htmlScopeInsights.AppendLine(@'
-
-                'number',
-                'number',
-                'number',
-                'number',
-                'number',
-'@)
-        }
-        [void]$htmlScopeInsights.AppendLine(@"
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'date',
-                'caseinsensitivestring',
-                'date',
-                'caseinsensitivestring'
-            ],
-            watermark: ['try: thisScope'],
-            extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
-        };
-        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();}}
-    </script>
-"@)
+        [void]$htmlScopeInsights.AppendLine((buildAgGridScript -HtmlTableId $htmlTableId -PopoutTitle "Azure Governance Visualizer - Policy assignments - $htmlTableIdentifier" -ColumnDefinitions $scopeInsightsPolicyAssignmentsGridColumnDefinitions -Rows @($policiesAssigned | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, PolicyAssignmentId)))
+        [void]$htmlScopeInsights.AppendLine('</div>')
     }
     else {
         [void]$htmlScopeInsights.AppendLine(@"
@@ -2833,16 +2875,18 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
             if ([String]::IsNullOrEmpty($policySetAssignment.subscriptionId)) {
                 $null = $policySetsAssigned.Add($policySetAssignment)
                 $policySetsCount++
-                if ($policySetAssignment.PolicyType -eq 'BuiltIn') {
+                $policySetType = $policySetAssignment.PolicyType
+                $policySetInheritance = $policySetAssignment.Inheritance
+                if ($policySetType -eq 'BuiltIn') {
                     $policySetsCountBuiltin++
                 }
-                if ($policySetAssignment.PolicyType -eq 'Custom') {
+                if ($policySetType -eq 'Custom') {
                     $policySetsCountCustom++
                 }
-                if ($policySetAssignment.Inheritance -like 'this*') {
+                if ($policySetInheritance -like 'this*') {
                     $policySetsAssignedAtScope++
                 }
-                if ($policySetAssignment.Inheritance -notlike 'this*') {
+                if ($policySetInheritance -notlike 'this*') {
                     $policySetsInherited++
                 }
             }
@@ -2861,196 +2905,73 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
         foreach ($policySetAssignment in $arrayPolicyAssignmentsEnrichedForThisSubscriptionVariantPolicySet) {
             $null = $policySetsAssigned.Add($policySetAssignment)
             $policySetsCount++
-            if ($policySetAssignment.PolicyType -eq 'BuiltIn') {
+            $policySetType = $policySetAssignment.PolicyType
+            $policySetInheritance = $policySetAssignment.Inheritance
+            if ($policySetType -eq 'BuiltIn') {
                 $policySetsCountBuiltin++
             }
-            if ($policySetAssignment.PolicyType -eq 'Custom') {
+            if ($policySetType -eq 'Custom') {
                 $policySetsCountCustom++
             }
-            if ($policySetAssignment.Inheritance -like 'this*') {
+            if ($policySetInheritance -like 'this*') {
                 $policySetsAssignedAtScope++
             }
-            if ($policySetAssignment.Inheritance -notlike 'this*') {
+            if ($policySetInheritance -notlike 'this*') {
                 $policySetsInherited++
             }
         }
     }
 
     if (($policySetsAssigned).count -gt 0) {
-        $tfCount = ($policiesAssigned).count
         $htmlTableId = "ScopeInsights_PolicySetAssignments_$($htmlTableIdentifier -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
-        $randomFunctionName = "func_$htmlTableId"
-        $noteOrNot = ''
+
+        #columns feeding the AG Grid; a column that defines an 'htmlProperty' renders that property, sorting/filtering/export use 'property'
+        $scopeInsightsPolicySetAssignmentsGridColumnDefinitions = [System.Collections.Generic.List[object]]@(
+            @{ header = 'Inheritance'; property = 'Inheritance' }
+            @{ header = 'ScopeExcluded'; property = 'ExcludedScope'; filter = 'select' }
+            @{ header = 'PolicySet DisplayName'; property = 'PolicyNameClear'; htmlProperty = 'PolicyName'; htmlValueScript = {
+                    param($policySetAssignment)
+                    #the html of a custom PolicySet displayname is not built by the report, it must not end up unescaped in the grid
+                    if ($policySetAssignment.PolicyType -eq 'Custom') { [string]$policySetAssignment.PolicyName -replace '<', '&lt;' -replace '>', '&gt;' } else { [string]$policySetAssignment.PolicyName }
+                }
+            }
+            @{ header = 'PolicySetId'; property = 'PolicyId' }
+            @{ header = 'Type'; property = 'PolicyType'; filter = 'select' }
+            @{ header = 'Category'; property = 'PolicyCategory' }
+            @{ header = 'ALZ'; property = 'PolicyIsALZ'; filter = 'select' }
+            @{ header = 'Parameters'; property = 'PolicyAssignmentParameters' }
+            @{ header = 'Enforcement'; property = 'PolicyAssignmentEnforcementMode'; filter = 'select' }
+            @{ header = 'NonCompliance Message'; property = 'PolicyAssignmentNonComplianceMessages' }
+        )
+        if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
+            $scopeInsightsPolicySetAssignmentsGridColumnDefinitions.AddRange([object[]]@(
+                    @{ header = 'Policies NonCmplnt'; property = 'NonCompliantPolicies'; filter = 'number' }
+                    @{ header = 'Policies Compliant'; property = 'CompliantPolicies'; filter = 'number' }
+                    @{ header = 'Resources NonCmplnt'; property = 'NonCompliantResources'; filter = 'number' }
+                    @{ header = 'Resources Compliant'; property = 'CompliantResources'; filter = 'number' }
+                    @{ header = 'Resources Conflicting'; property = 'ConflictingResources'; filter = 'number' }
+                ))
+        }
+        $scopeInsightsPolicySetAssignmentsGridColumnDefinitions.AddRange([object[]]@(
+                @{ header = 'Role/Assignment'; property = 'RelatedRoleAssignmentsClear'; htmlProperty = 'RelatedRoleAssignments' }
+                @{ header = 'Managed Identity'; property = 'PolicyAssignmentMI' }
+                @{ header = 'Assignment DisplayName'; property = 'PolicyAssignmentDisplayName' }
+                @{ header = 'AssignmentId'; property = 'PolicyAssignmentId' }
+                @{ header = 'AssignedBy'; property = 'AssignedBy' }
+                @{ header = 'CreatedOn'; property = 'CreatedOn'; filter = 'date' }
+                @{ header = 'CreatedBy'; property = 'CreatedBy' }
+                @{ header = 'UpdatedOn'; property = 'UpdatedOn'; filter = 'date' }
+                @{ header = 'UpdatedBy'; property = 'UpdatedBy' }
+            ))
+
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$policySetsCount PolicySet assignments ($policySetsAssignedAtScope at scope, $policySetsInherited inherited) (Builtin: $policySetsCountBuiltin | Custom: $policySetsCountCustom)</span></button>
+<button onclick="loadag$($htmlTableId)()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$policySetsCount PolicySet assignments ($policySetsAssignedAtScope at scope, $policySetsInherited inherited) (Builtin: $policySetsCountBuiltin | Custom: $policySetsCountCustom)</span></button>
 <div class="content $SIDivContentClass">
-&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a>
-<table id="$htmlTableId" class="$cssClass">
-<thead>
-<tr>
-<th>Inheritance</th>
-<th>ScopeExcluded</th>
-<th>PolicySet DisplayName</th>
-<th>PolicySetId</th>
-<th>Type</th>
-<th>Category</th>
-<th>ALZ</th>
-<th>Parameters</th>
-<th>Enforcement</th>
-<th>NonCompliance Message</th>
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableId)(); return false;">Pop out grid</a><br>
+&nbsp;&nbsp;<span class="hintTableSize">*The CSV download respects the filters and the column order applied in the grid</span>
 "@)
-
-        if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
-
-            [void]$htmlScopeInsights.AppendLine(@'
-<th>Policies NonCmplnt</th>
-<th>Policies Compliant</th>
-<th>Resources NonCmplnt</th>
-<th>Resources Compliant</th>
-<th>Resources Conflicting</th>
-'@)
-        }
-
-        [void]$htmlScopeInsights.AppendLine(@"
-<th>Role/Assignment $noteOrNot</th>
-<th>Managed Identity</th>
-<th>Assignment DisplayName</th>
-<th>AssignmentId</th>
-<th>AssignedBy</th>
-<th>CreatedOn</th>
-<th>CreatedBy</th>
-<th>UpdatedOn</th>
-<th>UpdatedBy</th>
-</tr>
-</thead>
-<tbody>
-"@)
-        $htmlScopeInsightsPolicySetAssignments = $null
-        $htmlScopeInsightsPolicySetAssignments = foreach ($policyAssignment in $policySetsAssigned | Sort-Object -Property Level, PolicyAssignmentId) {
-            if ($policyAssignment.PolicyType -eq 'Custom') {
-                $policyName = ($policyAssignment.PolicyName -replace '<', '&lt;' -replace '>', '&gt;')
-            }
-            else {
-                $policyName = $policyAssignment.PolicyName
-            }
-            @"
-<tr>
-<td>$($policyAssignment.Inheritance)</td>
-<td>$($policyAssignment.ExcludedScope)</td>
-<td class="breakwordall">$($policyName)</td>
-<td class="breakwordall">$($policyAssignment.PolicyId)</td>
-<td>$($policyAssignment.PolicyType)</td>
-<td>$($policyAssignment.PolicyCategory -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td>$($policyAssignment.PolicyIsALZ)</td>
-<td>$($policyAssignment.PolicyAssignmentParameters)</td>
-<td>$($policyAssignment.PolicyAssignmentEnforcementMode)</td>
-<td>$($policyAssignment.PolicyAssignmentNonComplianceMessages)</td>
-"@
-            if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
-                @"
-<td>$($policyAssignment.NonCompliantPolicies)</td>
-<td>$($policyAssignment.CompliantPolicies)</td>
-<td>$($policyAssignment.NonCompliantResources)</td>
-<td>$($policyAssignment.CompliantResources)</td>
-<td>$($policyAssignment.ConflictingResources)</td>
-"@
-            }
-            @"
-<td class="breakwordall">$($policyAssignment.RelatedRoleAssignments)</td>
-<td>$($policyAssignment.PolicyAssignmentMI)</td>
-<td class="breakwordall">$($policyAssignment.PolicyAssignmentDisplayName -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td class="breakwordall">$($policyAssignment.PolicyAssignmentId -replace '<', '&lt;' -replace '>', '&gt;')</td>
-<td>$($policyAssignment.AssignedBy)</td>
-<td>$($policyAssignment.CreatedOn)</td>
-<td>$($policyAssignment.CreatedBy)</td>
-<td>$($policyAssignment.UpdatedOn)</td>
-<td>$($policyAssignment.UpdatedBy)</td>
-</tr>
-"@
-        }
-        [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsPolicySetAssignments)
-        [void]$htmlScopeInsights.AppendLine(@"
-            </tbody>
-        </table>
-    </div>
-    <script>
-        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
-            window.helpertfConfig4$htmlTableId =1;
-            var tfConfig4$htmlTableId = {
-            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
-"@)
-        if ($tfCount -gt 10) {
-            $spectrum = "10, $tfCount"
-            if ($tfCount -gt 50) {
-                $spectrum = "10, 25, 50, $tfCount"
-            }
-            if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, 100, $tfCount"
-            }
-            if ($tfCount -gt 500) {
-                $spectrum = "10, 30, 50, 100, 250, $tfCount"
-            }
-            if ($tfCount -gt 1000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-            }
-            if ($tfCount -gt 2000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-            }
-            if ($tfCount -gt 3000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-            }
-            [void]$htmlScopeInsights.AppendLine(@"
-paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
-"@)
-        }
-        [void]$htmlScopeInsights.AppendLine(@'
-btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-            linked_filters: true,
-            col_1: 'select',
-            col_4: 'select',
-            col_6: 'select',
-            col_8: 'select',
-            locale: 'en-US',
-            col_types: [
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-'@)
-
-        if ($azAPICallConf['htParameters'].NoPolicyComplianceStates -eq $false) {
-            [void]$htmlScopeInsights.AppendLine(@'
-                'number',
-                'number',
-                'number',
-                'number',
-                'number',
-'@)
-        }
-        [void]$htmlScopeInsights.AppendLine(@"
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'date',
-                'caseinsensitivestring',
-                'date',
-                'caseinsensitivestring'
-            ],
-            watermark: ['try: thisScope'],
-            extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
-        };
-        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();}}
-    </script>
-"@)
+        [void]$htmlScopeInsights.AppendLine((buildAgGridScript -HtmlTableId $htmlTableId -PopoutTitle "Azure Governance Visualizer - PolicySet assignments - $htmlTableIdentifier" -ColumnDefinitions $scopeInsightsPolicySetAssignmentsGridColumnDefinitions -Rows @($policySetsAssigned | Sort-Object -Property Level, PolicyAssignmentId)))
+        [void]$htmlScopeInsights.AppendLine('</div>')
     }
     else {
         [void]$htmlScopeInsights.AppendLine(@"
@@ -3081,10 +3002,10 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
     }
     else {
         if ($mgOrSub -eq 'mg') {
-            $scopePolicyAssignmentsLimit = $policyPolicyBaseQueryScopeInsights.where( { [String]::IsNullOrEmpty($_.SubscriptionId) -and $_.MgId -eq $mgChild } )
+            $scopePolicyAssignmentsLimit = $htPolicyPolicyBaseQueryScopeInsightsByManagementGroup[$mgChild]
         }
         if ($mgOrSub -eq 'sub') {
-            $scopePolicyAssignmentsLimit = $policyPolicyBaseQueryScopeInsights.where( { $_.SubscriptionId -eq $subscriptionId } )
+            $scopePolicyAssignmentsLimit = $htPolicyPolicyBaseQueryScopeInsightsBySubscription[$subscriptionId]
         }
 
         if ($scopePolicyAssignmentsLimit.PolicyAndPolicySetAssignmentAtScopeCount -gt (($limit) * $LimitCriticalPercentage / 100)) {
@@ -3603,7 +3524,7 @@ extensions: [{ name: 'sort' }]
         $roleAssignmentsRelatedToPolicyCount = 0
         $roleSecurityFindingCustomRoleOwner = 0
         $roleSecurityFindingOwnerAssignmentSP = 0
-        $rbacForThisManagementGroup = ($rbacAllGroupedByManagementGroup.where( { $_.name -eq $mgChild } )).group
+        $rbacForThisManagementGroup = $rbacAllGroupedByManagementGroup[$mgChild]
         foreach ($roleAssignment in $rbacForThisManagementGroup) {
             if ([String]::IsNullOrEmpty($roleAssignment.subscriptionId)) {
                 $null = $rolesAssigned.Add($roleAssignment)
@@ -3611,16 +3532,17 @@ extensions: [{ name: 'sort' }]
                 if ($roleAssignment.Scope -notlike 'this*') {
                     $rolesAssignedInheritedCount++
                 }
-                if ($roleAssignment.ObjectType -like 'User*') {
+                $objectType = $roleAssignment.ObjectType
+                if ($objectType -like 'User*') {
                     $rolesAssignedUser++
                 }
-                if ($roleAssignment.ObjectType -eq 'Group') {
+                if ($objectType -eq 'Group') {
                     $rolesAssignedGroup++
                 }
-                if ($roleAssignment.ObjectType -like 'SP*') {
+                if ($objectType -like 'SP*') {
                     $rolesAssignedServicePrincipal++
                 }
-                if ($roleAssignment.ObjectType -eq 'Unknown') {
+                if ($objectType -eq 'Unknown') {
                     $rolesAssignedUnknown++
                 }
                 if ($roleAssignment.RbacRelatedPolicyAssignment -ne 'none') {
@@ -3638,7 +3560,7 @@ extensions: [{ name: 'sort' }]
     if ($mgOrSub -eq 'sub') {
         $SIDivContentClass = 'contentSISub'
         $htmlTableIdentifier = $subscriptionId
-        $LimitRoleAssignmentsScope = $htSubscriptionsRoleAssignmentLimit.($subscriptionId)
+        $LimitRoleAssignmentsScope = $htSubscriptionsRoleAssignmentLimit[$subscriptionId]
 
         $rolesAssigned = [System.Collections.ArrayList]@()
         $rolesAssignedCount = 0
@@ -3650,7 +3572,7 @@ extensions: [{ name: 'sort' }]
         $roleAssignmentsRelatedToPolicyCount = 0
         $roleSecurityFindingCustomRoleOwner = 0
         $roleSecurityFindingOwnerAssignmentSP = 0
-        $rbacForThisSubscription = ($rbacAllGroupedBySubscription.where( { $_.name -eq $subscriptionId } )).group
+        $rbacForThisSubscription = $rbacAllGroupedBySubscription[$subscriptionId]
         $rolesAssigned = foreach ($roleAssignment in $rbacForThisSubscription) {
 
             $roleAssignment
@@ -3658,16 +3580,17 @@ extensions: [{ name: 'sort' }]
             if ($roleAssignment.Scope -notlike 'this*') {
                 $rolesAssignedInheritedCount++
             }
-            if ($roleAssignment.ObjectType -like 'User*') {
+            $objectType = $roleAssignment.ObjectType
+            if ($objectType -like 'User*') {
                 $rolesAssignedUser++
             }
-            if ($roleAssignment.ObjectType -eq 'Group') {
+            if ($objectType -eq 'Group') {
                 $rolesAssignedGroup++
             }
-            if ($roleAssignment.ObjectType -like 'SP*') {
+            if ($objectType -like 'SP*') {
                 $rolesAssignedServicePrincipal++
             }
-            if ($roleAssignment.ObjectType -eq 'Unknown') {
+            if ($objectType -eq 'Unknown') {
                 $rolesAssignedUnknown++
             }
             if ($roleAssignment.RbacRelatedPolicyAssignment -ne 'none') {
@@ -3685,133 +3608,37 @@ extensions: [{ name: 'sort' }]
     $rolesAssignedAtScopeCount = $rolesAssignedCount - $rolesAssignedInheritedCount
 
     if (($rolesAssigned).count -gt 0) {
-        $tfCount = ($rolesAssigned).count
         $htmlTableId = "ScopeInsights_RoleAssignments_$($htmlTableIdentifier -replace '\(','_' -replace '\)','_' -replace '-','_' -replace '\.','_')"
-        $randomFunctionName = "func_$htmlTableId"
-        $noteOrNot = ''
+
+        #columns feeding the AG Grid; a column that defines an 'htmlProperty' renders that property, sorting/filtering/export use 'property'
+        $scopeInsightsRoleAssignmentsGridColumnDefinitions = @(
+            @{ header = 'Scope'; property = 'Scope' }
+            @{ header = 'Role'; property = 'RoleClear'; htmlProperty = 'Role' }
+            @{ header = 'Role Id'; property = 'RoleId' }
+            @{ header = 'Role Type'; property = 'RoleType'; filter = 'select' }
+            @{ header = 'Data'; property = 'RoleDataRelated'; filter = 'select' }
+            @{ header = 'Can do Role assignment'; property = 'RoleCanDoRoleAssignments'; filter = 'select' }
+            @{ header = 'Identity Displayname'; property = 'ObjectDisplayName' }
+            @{ header = 'Identity SignInName'; property = 'ObjectSignInName' }
+            @{ header = 'Identity ObjectId'; property = 'ObjectId' }
+            @{ header = 'Identity Type'; property = 'ObjectType'; filter = 'select' }
+            @{ header = 'Applicability'; property = 'AssignmentType'; filter = 'select' }
+            @{ header = 'Applies through membership'; property = 'AssignmentInheritFrom' }
+            @{ header = 'Group Details'; property = 'GroupMembersCount' }
+            @{ header = 'Role AssignmentId'; property = 'RoleAssignmentId' }
+            @{ header = 'Related Policy Assignment'; property = 'RbacRelatedPolicyAssignmentClear'; htmlProperty = 'RbacRelatedPolicyAssignment' }
+            @{ header = 'CreatedOn'; property = 'CreatedOn'; filter = 'date' }
+            @{ header = 'CreatedBy'; property = 'CreatedBy' }
+        )
+
         [void]$htmlScopeInsights.AppendLine(@"
-<button onclick="loadtf$("func_$htmlTableId")()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$rolesAssignedCount Role assignments ($rolesAssignedInheritedCount inherited) (User: $rolesAssignedUser | Group: $rolesAssignedGroup | ServicePrincipal: $rolesAssignedServicePrincipal | Orphaned: $rolesAssignedUnknown) ($($roleSecurityFindingCustomRoleOwnerImg)CustomRoleOwner: $roleSecurityFindingCustomRoleOwner, $($RoleSecurityFindingOwnerAssignmentSPImg)OwnerAssignmentSP: $roleSecurityFindingOwnerAssignmentSP) (Policy related: $roleAssignmentsRelatedToPolicyCount) | Limit: ($rolesAssignedAtScopeCount/$LimitRoleAssignmentsScope)</span></button>
+<button onclick="loadag$($htmlTableId)()" type="button" class="collapsible"><i class="fa fa-check-circle blue" aria-hidden="true"></i> <span class="valignMiddle">$rolesAssignedCount Role assignments ($rolesAssignedInheritedCount inherited) (User: $rolesAssignedUser | Group: $rolesAssignedGroup | ServicePrincipal: $rolesAssignedServicePrincipal | Orphaned: $rolesAssignedUnknown) ($($roleSecurityFindingCustomRoleOwnerImg)CustomRoleOwner: $roleSecurityFindingCustomRoleOwner, $($RoleSecurityFindingOwnerAssignmentSPImg)OwnerAssignmentSP: $roleSecurityFindingOwnerAssignmentSP) (Policy related: $roleAssignmentsRelatedToPolicyCount) | Limit: ($rolesAssignedAtScopeCount/$LimitRoleAssignmentsScope)</span></button>
 <div class="content $SIDivContentClass">
-&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="download_table_as_csv_semicolon('$htmlTableId');">semicolon</a> | <a class="externallink" href="#" onclick="download_table_as_csv_comma('$htmlTableId');">comma</a><br>
-&nbsp;&nbsp;<span class="hintTableSize">*Depending on the number of rows and your computer´s performance the table may respond with delay, download the csv for better filtering experience</span>
-<table id="$htmlTableId" class="$cssClass">
-<thead>
-<tr>
-<th>Scope</th>
-<th>Role</th>
-<th>RoleId</th>
-<th>Role Type</th>
-<th>Data</th>
-<th>Can do Role assignment</th>
-<th>Identity Displayname</th>
-<th>Identity SignInName</th>
-<th>Identity ObjectId</th>
-<th>Identity Type</th>
-<th>Applicability</th>
-<th>Applies through membership <abbr title="Note: the identity might not be a direct member of the group it could also be member of a nested group"><i class="fa fa-question-circle" aria-hidden="true"></i></abbr></th>
-<th>Group Details</th>
-<th>Role AssignmentId</th>
-<th>Related Policy Assignment $noteOrNot</th>
-<th>CreatedOn</th>
-<th>CreatedBy</th>
-</tr>
-</thead>
-<tbody>
+&nbsp;&nbsp;<i class="fa fa-table" aria-hidden="true"></i> Download CSV <a class="externallink" href="#" onclick="exportag$($htmlTableId)(';'); return false;">semicolon</a> | <a class="externallink" href="#" onclick="exportag$($htmlTableId)(','); return false;">comma</a> &nbsp;<i class="fa fa-external-link" aria-hidden="true"></i> <a class="externallink" href="#" onclick="popoutag$($htmlTableId)(); return false;">Pop out grid</a><br>
+&nbsp;&nbsp;<span class="hintTableSize">*The CSV download respects the filters and the column order applied in the grid</span>
 "@)
-        $htmlScopeInsightsRoleAssignments = $null
-        $htmlScopeInsightsRoleAssignments = foreach ($roleAssignment in ($rolesAssigned | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, Scope, Role, RoleId, ObjectId, RoleAssignmentId)) {
-            @"
-<tr>
-<td>$($roleAssignment.Scope)</td>
-<td>$($roleAssignment.Role)</td>
-<td>$($roleAssignment.RoleId)</td>
-<td>$($roleAssignment.RoleType)</td>
-<td>$($roleAssignment.RoleDataRelated)</td>
-<td>$($roleAssignment.RoleCanDoRoleAssignments)</td>
-<td class="breakwordall">$($roleAssignment.ObjectDisplayName)</td>
-<td class="breakwordall">$($roleAssignment.ObjectSignInName)</td>
-<td class="breakwordall">$($roleAssignment.ObjectId)</td>
-<td style="width:76px" class="breakwordnone">$($roleAssignment.ObjectType)</td>
-<td>$($roleAssignment.AssignmentType)</td>
-<td>$($roleAssignment.AssignmentInheritFrom)</td>
-<td>$($roleAssignment.GroupMembersCount)</td>
-<td class="breakwordall">$($roleAssignment.RoleAssignmentId)</td>
-<td class="breakwordall">$($roleAssignment.rbacRelatedPolicyAssignment)</td>
-<td>$($roleAssignment.CreatedOn)</td>
-<td>$($roleAssignment.CreatedBy)</td>
-</tr>
-"@
-        }
-        [void]$htmlScopeInsights.AppendLine($htmlScopeInsightsRoleAssignments)
-        [void]$htmlScopeInsights.AppendLine(@"
-            </tbody>
-        </table>
-    </div>
-    <script>
-        function loadtf$("func_$htmlTableId")() { if (window.helpertfConfig4$htmlTableId !== 1) {
-            window.helpertfConfig4$htmlTableId =1;
-            var tfConfig4$htmlTableId = {
-            base_path: 'https://www.azadvertizer.net/azgovvizv4/tablefilter/', rows_counter: true,
-"@)
-        if ($tfCount -gt 10) {
-            $spectrum = "10, $tfCount"
-            if ($tfCount -gt 50) {
-                $spectrum = "10, 25, 50, $tfCount"
-            }
-            if ($tfCount -gt 100) {
-                $spectrum = "10, 30, 50, 100, $tfCount"
-            }
-            if ($tfCount -gt 500) {
-                $spectrum = "10, 30, 50, 100, 250, $tfCount"
-            }
-            if ($tfCount -gt 1000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, $tfCount"
-            }
-            if ($tfCount -gt 2000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, $tfCount"
-            }
-            if ($tfCount -gt 3000) {
-                $spectrum = "10, 30, 50, 100, 250, 500, 750, 1000, 1500, 3000, $tfCount"
-            }
-            [void]$htmlScopeInsights.AppendLine(@"
-paging: {results_per_page: ['Records: ', [$spectrum]]},/*state: {types: ['local_storage'], filters: true, page_number: true, page_length: true, sort: true},*/
-"@)
-        }
-        [void]$htmlScopeInsights.AppendLine(@"
-btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { delay: 1100 }, no_results_message: true,
-            linked_filters: true,
-            col_3: 'select',
-            col_4: 'select',
-            col_5: 'select',
-            col_9: 'multiple',
-            col_10: 'select',
-            locale: 'en-US',
-            col_types: [
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'caseinsensitivestring',
-                'date',
-                'caseinsensitivestring'
-            ],
-            watermark: ['', 'try owner||reader', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-            extensions: [{ name: 'colsVisibility', text: 'Columns: ', enable_tick_all: true },{ name: 'sort' }]
-        };
-        var tf = new TableFilter('$htmlTableId', tfConfig4$htmlTableId);
-        tf.init();}}
-    </script>
-"@)
+        [void]$htmlScopeInsights.AppendLine((buildAgGridScript -HtmlTableId $htmlTableId -PopoutTitle "Azure Governance Visualizer - Role assignments - $htmlTableIdentifier" -ColumnDefinitions $scopeInsightsRoleAssignmentsGridColumnDefinitions -Rows @($rolesAssigned | Sort-Object -Property Level, MgName, MgId, SubscriptionName, SubscriptionId, Scope, Role, RoleId, ObjectId, RoleAssignmentId)))
+        [void]$htmlScopeInsights.AppendLine('</div>')
     }
     else {
         [void]$htmlScopeInsights.AppendLine(@"
@@ -3827,29 +3654,26 @@ btn_reset: true, highlight_keywords: true, alternate_rows: true, auto_filter: { 
 
 
     if (-not $NoScopeInsights) {
-        $script:html += $htmlScopeInsights
+        #$script:html is a plain string, letting it accumulate means every append copies the whole buffer
+        $htmlFilePath = "$($outputPath)$($DirectorySeparatorChar)$($fileName).html"
+        if ($script:html) {
+            $script:html | Add-Content -Path $htmlFilePath -Encoding utf8 -Force
+            $script:html = $null
+        }
+        $htmlScopeInsights | Add-Content -Path $htmlFilePath -Encoding utf8 -Force
     }
 
     if (-not $NoSingleSubscriptionOutput) {
         if ($mgOrSub -eq 'sub') {
-            $htmlThisSubSingleOutput = $htmlSubscriptionOnlyStart
-            $htmlThisSubSingleOutput += $htmlScopeInsights
-            $htmlThisSubSingleOutput += $htmlSubscriptionOnlyEnd
-            $htmlThisSubSingleOutput | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($HTMLPath)$($DirectorySeparatorChar)$($fileName)_$($subscriptionId).html" -Encoding utf8 -Force
-            $htmlThisSubSingleOutput = $null
-        }
-    }
-
-    if (-not $NoScopeInsights) {
-        if ($scopescnter % 50 -eq 0) {
-            $script:scopescnter = 0
-            $addContentDurationInSeconds = (Measure-Command { $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force }).TotalSeconds
-            Write-Host "   append file duration: $addContentDurationInSeconds seconds"
-            $script:html = $null
+            $htmlThisSubSingleOutputPath = "$($outputPath)$($DirectorySeparatorChar)$($HTMLPath)$($DirectorySeparatorChar)$($fileName)_$($subscriptionId).html"
+            $htmlSubscriptionOnlyStart | Set-Content -Path $htmlThisSubSingleOutputPath -Encoding utf8 -Force
+            $htmlScopeInsights | Add-Content -Path $htmlThisSubSingleOutputPath -Encoding utf8 -Force
+            $htmlSubscriptionOnlyEnd | Add-Content -Path $htmlThisSubSingleOutputPath -Encoding utf8 -Force
         }
     }
 
     if ($scopescnter % 50 -eq 0) {
+        $script:scopescnter = 0
         showMemoryUsage
     }
 

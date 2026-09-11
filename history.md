@@ -4,6 +4,25 @@
 
 ### Azure Governance Visualizer version 6
 
+**Changes** (2026-Sep-11 / 6.7.4 Patch)
+
+- new feature "Azure Policy Linter" - custom Policy definitions are analyzed with the [Azure Policy Linter](https://github.com/Azure/azure-policy-linter); findings (severity, rule, description, JSON path and line) are reported in TenantSummary and exported to `*_PolicyLinter.csv`. In Azure DevOps / GitHub Actions the linter (`Microsoft.Azure.Policy.PolicyLinter.Cli`) is installed on the fly, on other hosts an installed `policylinter` is used - if the linter is not available the feature is skipped and the report states why
+- new feature "Model Deployment Insights" for Azure OpenAI and Azure AI Services (Foundry) model deployments including usage metrics; TenantSummary and each management group and subscription scope in ScopeInsights provide an aggregated model view and a detailed model by Cognitive Services account view, plus CSV export `*_ModelDeploymentInsights.csv`. Collection runs by default and can be skipped with `-NoFoundryModelDeployments`, the metrics time range is defined with `-FoundryModelDeploymentsDays` (default=7)
+- the large tables (Policy assignments, Role assignments, Resource Providers detailed) are rendered with [AG Grid](https://www.ag-grid.com/) - row virtualization, per column filters, CSV export respecting the applied filters/column order and 'Pop out grid'
+- parameter `-HtmlTableRowsLimit` is obsolete - it has no effect anymore (AG Grid virtualizes rows); the parameter is kept so that existing pipelines do not break
+- PIM Eligible assignments are collected from ARM (`roleEligibilityScheduleInstances`) instead of the Microsoft Graph beta `privilegedAccess/azureResources` endpoints; scopes no longer need to be 'PIM onboarded' and tenants without a Microsoft Entra ID P2 license no longer fail the run - the report is created without PIM eligibility data
+- PIM Eligible assignments reporting no longer requires to execute Azure Governance Visualizer as ServicePrincipal; the Microsoft Graph application permission `PrivilegedAccess.Read.AzureResources` is replaced by the Azure permission `Microsoft.Authorization/roleEligibilitySchedules/read` (contained in the `Reader` Role), which is validated up front
+- fix; PIM Eligible assignments - builtin Role names were not linked to AzAdvertizer and `RoleDataRelated` / `RoleCanDoRoleAssignments` were always reported as `false` (the Role definition cache was queried with the full Role definition resourceId instead of the Role definition GUID)
+- fix; Role Assignments - PIM managed active (not eligible) assignments were never flagged, `RoleAssignmentPIMRelated`, `RoleAssignmentPIMAssignmentType` and the assignment slot start/end stayed empty; PIM managed assignments are now detected by `assignmentType` 'Activated' respectively a set `endDateTime`
+- fix issue 298; Role Assignments - foreign Principals (e.g. Partner Admins) - Identity Displayname and Identity Type were not resolved for foreign identities; the `directoryObjects/getByIds` request now includes `types` (`user`, `group`, `servicePrincipal`, `device`, `directoryObjectPartnerReference`) and foreign identities are resolved into a `Foreign <objectType>` type with their displayName
+- fix; Subnets - a subnet with an IPv6 address prefix aborted the Network enrichment with `An invalid IP address was specified.`; IPv6 prefixes are now ignored in all cases and subnets without an IPv4 prefix report 'n/a'. In addition single digit subnet masks (e.g. `/8`) were not evaluated at all - the available IP addresses of the previously processed subnet were reported
+- fix; Orphaned resources - Azure Site Recovery (ASR) managed disks were reported as orphaned although an exclusion was in place (operator precedence in the Resource Graph query dismissed it); ASR disks are now excluded by name (`-ASRReplica`, `ms-asr-`, `asrseeddisk-`), by `ActiveSAS` disk state and by ASR / Recovery Services Vault / AKS persistent volume claim tags
+- fix; JSON outputs - `Cannot index into a null array` in case a grouping had no results
+- use environment-aware API version for Microsoft Defender for Cloud security settings (`Microsoft.Security/settings`); new `securitySettings` entry in parameter `APIMappingCloudEnvironment` (AzureChinaCloud requires `2021-06-01`)
+- update parameter `ValidPolicyEffects` add 'auditAction'
+- performance and memory optimizations for the PowerShell processing and the HTML/JSON creation, resulting in a faster run and a smaller HTML output; the JSON outputs (Tenant hierarchy JSON, `*_PolicyAll.json` and the JSON export) are streamed to disk instead of being serialized as a whole (this resolves out of memory aborts on large tenants), garbage collection including Large Object Heap compaction is triggered after the memory intensive phases and repeated lookups in the Role assignment data collection are cached
+- use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.4.2 (previous 1.4.1). Yet, another handle token refresh for OIDC in Azure Devops and GitHub Actions fix
+
 **Changes** (2026-May-18 / 6.7.3 Patch)
 
 - fix issue 294; retirement Classic Administrators

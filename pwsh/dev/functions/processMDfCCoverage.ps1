@@ -4,7 +4,12 @@
 
     $htDefenderProps = @{}
     $htDefenderExtensions = @{}
+    $htDefenderPlansByName = @{}
     foreach ($x in $arrayDefenderPlans) {
+        if (-not $htDefenderPlansByName.ContainsKey($x.defenderPlan)) {
+            $htDefenderPlansByName[$x.defenderPlan] = [System.Collections.Generic.List[object]]::new()
+        }
+        $htDefenderPlansByName[$x.defenderPlan].Add($x)
         if (-not $htDefenderProps.($x.defenderPlan)) {
             $htDefenderProps.($x.defenderPlan) = [System.Collections.ArrayList]@()
         }
@@ -25,10 +30,10 @@
         }
     }
 
-    $arrayDefenderPlansNamesUnique = $arrayDefenderPlans.defenderPlan | Sort-Object -Unique
+    $arrayDefenderPlansNamesUnique = $htDefenderPlansByName.Keys | Sort-Object
     $script:arrayDefenderPlansCoverage = [System.Collections.ArrayList]@()
     foreach ($defenderPlanName in $arrayDefenderPlansNamesUnique) {
-        foreach ($defenderPlanEntry in $arrayDefenderPlans.where({ $_.defenderPlan -eq $defenderPlanName })) {
+        foreach ($defenderPlanEntry in $htDefenderPlansByName[$defenderPlanName]) {
             $objDefenderPlan = [ordered]@{
                 plan               = $defenderPlanEntry.defenderPlan
                 subscriptionId     = $defenderPlanEntry.subscriptionId
@@ -87,32 +92,33 @@
     # $tstsmp = Get-Date -Format 'yyyyMMdd_HHmmss'
     # $arrayDefenderPlansCoverage | ConvertTo-Json -Depth 99 > "c:\temp\defenderCoverage_Final_$($tstsmp).json"
 
-    $arrayDefenderPlanSpecificProperties = [System.Collections.ArrayList]@()
+    $htDefenderPlanSpecificProperties = @{}
     $arrayDefenderPlanCommonProperties = @('plan', 'subscriptionId', 'subscriptionName', 'subscriptionMgPath', 'pricingTier', 'freeTrialRemainingTime')
     foreach ($plan in $arrayDefenderPlansCoverage) {
-        $plan.Keys | ForEach-Object {
-            if ($_ -notin $arrayDefenderPlanCommonProperties) {
-                $null = $arrayDefenderPlanSpecificProperties.Add("$($plan.plan)_$($_)")
+        foreach ($key in $plan.Keys) {
+            if ($key -notin $arrayDefenderPlanCommonProperties) {
+                $htDefenderPlanSpecificProperties["$($plan.plan)_$($key)"] = $true
             }
         }
     }
-    $arrayDefenderPlanSpecificPropertiesUnique = $arrayDefenderPlanSpecificProperties | Sort-Object -Unique
+    $arrayDefenderPlanSpecificPropertiesUnique = $htDefenderPlanSpecificProperties.Keys | Sort-Object
 
     $arrayDefenderPlansCoverageAll = [System.Collections.ArrayList]@()
     foreach ($entry in $arrayDefenderPlansCoverage) {
-        $obj = [PSCustomObject]@{}
+        $planPrefix = "$($entry.plan)_"
+        $obj = [ordered]@{}
         foreach ($cprop in $arrayDefenderPlanCommonProperties) {
-            $obj | Add-Member -MemberType NoteProperty -Name $cprop -Value $entry.($cprop)
+            $obj[$cprop] = $entry.($cprop)
         }
         foreach ($sprop in $arrayDefenderPlanSpecificPropertiesUnique) {
-            if ($sprop -like "$($entry.plan)_*") {
-                $obj | Add-Member -MemberType NoteProperty -Name $sprop -Value $entry.($sprop -replace "$($entry.plan)_", '' )
+            if ($sprop.StartsWith($planPrefix)) {
+                $obj[$sprop] = $entry[$sprop.Substring($planPrefix.Length)]
             }
             else {
-                $obj | Add-Member -MemberType NoteProperty -Name $sprop -Value $null
+                $obj[$sprop] = $null
             }
         }
-        $null = $arrayDefenderPlansCoverageAll.Add($obj)
+        $null = $arrayDefenderPlansCoverageAll.Add([PSCustomObject]$obj)
     }
 
     if (-not $NoCsvExport) {

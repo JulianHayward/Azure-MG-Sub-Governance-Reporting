@@ -142,7 +142,8 @@
     Single Scope Insights output per Subscription should not be created
 
 .PARAMETER HtmlTableRowsLimit
-    Although the parameter -LargeTenant was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
+    #obsolete
+    The parameter has no effect anymore. The large tables (Policy assignments, Role assignments, Resource Providers detailed) are rendered with AG Grid, which virtualizes rows and therefore no longer depends on a row limit.
 
 .PARAMETER ManagementGroupsOnly
     Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
@@ -152,11 +153,11 @@
 
 .PARAMETER NoPIMEligibility
     Do not report on PIM (Privileged Identity Management) eligible Role assignments
-    Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+    Note: this feature requires the Azure permission `Microsoft.Authorization/roleEligibilitySchedules/read` (contained in the `Reader` Role) and a Microsoft Entra ID P2 license
 
 .PARAMETER PIMEligibilityIgnoreScope
     Ignore the current scope (ManagementGrouId) and get all PIM (Privileged Identity Management) eligible Role assignments
-    By default will only report for PIM Elibility for the scope (ManagementGroupId) that was provided. If you use the new switch parameter then PIM Eligibility for all onboarded scopes (Management Groups and Subscriptions) will be reported
+    By default will only report for PIM Elibility for the scope (ManagementGroupId) that was provided. If you use the new switch parameter then PIM Eligibility for all accessible scopes (Management Groups and Subscriptions) will be reported
 
 .PARAMETER NoPIMEligibilityIntegrationRoleAssignmentsAll
     Prevent integration of PIM eligible assignments with RoleAssignmentsAll (HTML, CSV)
@@ -204,6 +205,15 @@
 .PARAMETER StorageAccountAccessAnalysisStorageAccountTags
     If the Storage Account Access Analysis feature is executed with this parameter you can define the Storage Account (resource) tags that should be added to the CSV output
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
+
+.PARAMETER NoFoundryModelDeployments
+    Azure OpenAI and Azure AI Services model deployments and usage metrics are collected by default for TenantSummary, ScopeInsights and CSV export. Use this parameter to skip the feature.
+    Requires Microsoft.CognitiveServices/accounts/deployments/read and Microsoft.Insights/metrics/read permissions.
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoFoundryModelDeployments
+
+.PARAMETER FoundryModelDeploymentsDays
+    Number of trailing days included in Model Deployment Insights metrics (default=7, range=1-30).
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -FoundryModelDeploymentsDays 14
 
 .PARAMETER NoNetwork
     Network analysis / Virtual Network, Subnets, Virtual Network Peerings and Private Endpoints
@@ -341,7 +351,7 @@
     Will not create a single Scope Insights output per Subscription
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoSingleSubscriptionOutput
 
-    Although the parameter -LargeTenant was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
+    #obsolete - the parameter has no effect anymore (AG Grid virtualizes rows)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -HtmlTableRowsLimit 23077
 
     Define if data should be collected for Management Groups only (Subscription data such as e.g. Policy assignments etc. will not be collected)
@@ -350,10 +360,10 @@
     Define Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -ExcludedResourceTypesDiagnosticsCapable @('microsoft.web/certificates')
 
-    Define if report on PIM (Privileged Identity Management) eligible Role assignments should be created. Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+    Define if report on PIM (Privileged Identity Management) eligible Role assignments should be created. Note: this feature requires the Azure permission `Microsoft.Authorization/roleEligibilitySchedules/read` (contained in the `Reader` Role) and a Microsoft Entra ID P2 license
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoPIMEligibility
 
-    Define if the current scope (ManagementGroupId) should be ignored and therefore and get all PIM (Privileged Identity Management) eligible Role assignments. Note: this feature requires you to execute as Service Principal with `Application` API permission `PrivilegedAccess.Read.AzureResources`
+    Define if the current scope (ManagementGroupId) should be ignored and therefore and get all PIM (Privileged Identity Management) eligible Role assignments. Note: this feature requires the Azure permission `Microsoft.Authorization/roleEligibilitySchedules/read` (contained in the `Reader` Role) and a Microsoft Entra ID P2 license
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -PIMEligibilityIgnoreScope
 
     Define if PIM Eligible assignments should not be integrated with RoleAssignmentsAll outputs (HTML, CSV)
@@ -384,6 +394,9 @@
     Additionally you can define Subscription and/or Storage Account Tag names that should be added to the CSV output per Storage Account
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> --StorageAccountAccessAnalysisSubscriptionTags @('Responsible', 'TeamEmail') -StorageAccountAccessAnalysisStorageAccountTags @('SAResponsible', 'DataOfficer')
 
+    Execute Model Deployment Insights using a trailing 14-day metrics window
+    PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -FoundryModelDeploymentsDays 14
+
     Define if Network analysis / Virtual Network and Virtual Network Peerings should not be executed
     PS C:\>.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id> -NoNetwork
 
@@ -400,13 +413,13 @@
 #>
 
 [CmdletBinding()]
-Param
+param
 (
     [string]
     $Product = 'AzGovViz',
 
     [string]
-    $ProductVersion = '6.7.3',
+    $ProductVersion = '6.7.4',
 
     [string]
     $GithubRepository = 'aka.ms/AzGovViz',
@@ -416,7 +429,7 @@ Param
     [ValidateSet('AzAPICall', 'AzAPICallBeta')]$AzAPICallModuleName = 'AzAPICall',
 
     [string]
-    $AzAPICallVersion = '1.4.1',
+    $AzAPICallVersion = '1.4.2',
 
     [switch]
     $DebugAzAPICall,
@@ -514,7 +527,7 @@ Param
     $DoTranscript,
 
     [int]
-    $HtmlTableRowsLimit = 20000, #HTML TenantSummary may become unresponsive depending on client device performance. A recommendation will be shown to use the CSV file instead of opening the TF table
+    $HtmlTableRowsLimit = 20000, #obsolete - kept for compatibility with existing pipelines, the parameter has no effect anymore
 
     [int]
     $ThrottleLimit = 10,
@@ -634,6 +647,13 @@ Param
     $StorageAccountAccessAnalysisStorageAccountTags = @('undefined'),
 
     [switch]
+    $NoFoundryModelDeployments,
+
+    [ValidateRange(1, 30)]
+    [int]
+    $FoundryModelDeploymentsDays = 7,
+
+    [switch]
     $GitHubActionsOIDC,
 
     [switch]
@@ -691,7 +711,7 @@ Param
     $MSTenantIds = @('2f4a9838-26b7-47ee-be60-ccc1fdec5953', '33e01921-4d64-4f8c-a055-5bdaffd5e33d'),
 
     [array]
-    $ValidPolicyEffects = @('addToNetworkGroup', 'append', 'audit', 'auditIfNotExists', 'deny', 'denyAction', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting', 'mutate'),
+    $ValidPolicyEffects = @('addToNetworkGroup', 'append', 'audit', 'auditAction', 'auditIfNotExists', 'deny', 'denyAction', 'deployIfNotExists', 'modify', 'manual', 'disabled', 'EnforceRegoPolicy', 'enforceSetting', 'mutate'),
 
     [hashtable]
     $APIMappingCloudEnvironment = @{
@@ -710,6 +730,11 @@ Param
             AzureUSGovernment = '2023-01-01'
             AzureChinaCloud   = '2023-01-01'
         }
+        securitySettings    = @{
+            AzureCloud        = '2022-05-01'
+            AzureUSGovernment = '2022-05-01'
+            AzureChinaCloud   = '2021-06-01'
+        }
     },
 
     [array]
@@ -721,6 +746,34 @@ $ErrorActionPreference = 'Stop'
 #removeNoise
 $ProgressPreference = 'SilentlyContinue'
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings 'true'
+
+#unhandled terminating errors end up here; the details are written to the information stream because the caller may not capture the error stream
+trap {
+    $errorRecord = $_
+    $errorInvocation = $errorRecord.InvocationInfo
+    Write-Host ''
+    Write-Host '--------------------'
+    Write-Host "Azure Governance Visualizer ($ProductVersion) failed" -ForegroundColor DarkRed
+    Write-Host "Message: $($errorRecord.Exception.Message)" -ForegroundColor DarkRed
+    Write-Host "Exception: $($errorRecord.Exception.GetType().FullName)" -ForegroundColor DarkRed
+    Write-Host "ErrorId: $($errorRecord.FullyQualifiedErrorId)" -ForegroundColor DarkRed
+    if ($errorInvocation) {
+        Write-Host "Script: $($errorInvocation.ScriptName)" -ForegroundColor DarkRed
+        Write-Host "Line: $($errorInvocation.ScriptLineNumber) Column: $($errorInvocation.OffsetInLine)" -ForegroundColor DarkRed
+        if (-not [string]::IsNullOrWhiteSpace($errorInvocation.Line)) {
+            Write-Host "Statement: $($errorInvocation.Line.Trim())" -ForegroundColor DarkRed
+        }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($errorRecord.ScriptStackTrace)) {
+        Write-Host 'ScriptStackTrace:' -ForegroundColor DarkRed
+        Write-Host $errorRecord.ScriptStackTrace -ForegroundColor DarkRed
+    }
+    Write-Host '--------------------'
+    if ($DoTranscript) {
+        try { $null = Stop-Transcript } catch { <# no transcript running #> }
+    }
+    break
+}
 
 #start
 $startAzGovViz = Get-Date
@@ -745,8 +798,10 @@ if ($ManagementGroupId -match ' ') {
 . ".\$($ScriptPath)\functions\processPrivateEndpoints.ps1"
 . ".\$($ScriptPath)\functions\processNetwork.ps1"
 . ".\$($ScriptPath)\functions\processStorageAccountAnalysis.ps1"
+. ".\$($ScriptPath)\functions\processModelDeploymentInsights.ps1"
 . ".\$($ScriptPath)\functions\processALZPolicyVersionChecker.ps1"
 . ".\$($ScriptPath)\functions\processALZPolicyAssignmentsChecker.ps1"
+. ".\$($ScriptPath)\functions\processPolicyLinter.ps1"
 . ".\$($ScriptPath)\functions\getPIMEligible.ps1"
 . ".\$($ScriptPath)\functions\testGuid.ps1"
 . ".\$($ScriptPath)\functions\apiCallTracking.ps1"
@@ -790,6 +845,7 @@ if ($ManagementGroupId -match ' ') {
 . ".\$($ScriptPath)\functions\buildTree.ps1"
 . ".\$($ScriptPath)\functions\buildJSON.ps1"
 . ".\$($ScriptPath)\functions\buildPolicyAllJSON.ps1"
+. ".\$($ScriptPath)\functions\writeJsonFile.ps1"
 . ".\$($ScriptPath)\functions\stats.ps1"
 #Region dataCollectionFunctions
 . ".\$($ScriptPath)\functions\dataCollection\dataCollectionFunctions.ps1"
@@ -955,23 +1011,6 @@ if (-not $HierarchyMapOnly) {
     }
     #endregion recommendPSRule
     #>
-
-    #region hintPIMEligibility
-    if ($azAPICallConf['htParameters'].accountType -eq 'User') {
-        if (-not $NoPIMEligibility) {
-            Write-Host ''
-            Write-Host ' * * * HINT: PIM (Privileged Identity Management) Eligibility reporting * * *' -ForegroundColor DarkBlue
-            Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
-            Write-Host "Executing principal accountType: '$($azAPICallConf['htParameters'].accountType)'"
-            Write-Host "PIM Eligibility reporting requires to execute the script as ServicePrincipal. API Permission 'PrivilegedAccess.Read.AzureResources' is required"
-            Write-Host "For this run we switch the parameter -NoPIMEligibility from '$NoPIMEligibility' to 'True'"
-            $NoPIMEligibility = $true
-            Write-Host "Parameter -NoPIMEligibility == '$NoPIMEligibility'"
-            Write-Host ' * * * * * * * * * * * * * * * * * * * * * *' -ForegroundColor DarkBlue
-            Pause
-        }
-    }
-    #endregion hintPIMEligibility
 }
 
 #region delimiterOpposite
@@ -1113,6 +1152,9 @@ if (-not $HierarchyMapOnly) {
     $htDoARMRoleAssignmentScheduleInstances.Do = $true
     $storageAccounts = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayStorageAccountAnalysisResults = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayModelDeploymentAccounts = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayModelDeployments = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    $arrayModelDeploymentInsights = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $htDefenderEmailContacts = [System.Collections.Hashtable]::Synchronized(@{})
     $arrayVNets = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $arrayPrivateEndPoints = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
@@ -1126,6 +1168,13 @@ if (-not $HierarchyMapOnly) {
     $arrayCustomBuiltInPolicyParity = [System.Collections.ArrayList]@()
     $arrayRemediatable = [System.Collections.ArrayList]@()
     $ALZPolicyAssignmentsDifferences = @{}
+    $arrayPolicyLinterFindings = [System.Collections.ArrayList]@()
+    $policyLinterStatus = @{
+        executed            = $false
+        reason              = 'not executed'
+        recommendation      = ''
+        policiesLintedCount = 0
+    }
 }
 
 if (-not $HierarchyMapOnly) {
@@ -1143,7 +1192,7 @@ if (-not $HierarchyMapOnly) {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
                 processALZPolicyVersionChecker
             }
-            Default {
+            default {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Version Checker' feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
                 Write-Host "Setting parameter -NoALZPolicyVersionChecker to 'true'"
                 $NoALZPolicyVersionChecker = $true
@@ -1259,6 +1308,11 @@ if (-not $HierarchyMapOnly) {
 
     processDataCollection -mgId $ManagementGroupId
 
+    if (-not $azAPICallConf['htParameters'].NoFoundryModelDeployments -and -not $ManagementGroupsOnly) {
+        processModelDeploymentInsights
+        showMemoryUsage
+    }
+
     if (-not $ManagementGroupsOnly) {
         exportResourceLocks
     }
@@ -1342,7 +1396,7 @@ if (-not $HierarchyMapOnly) {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Assignments Checker' feature supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
                 processALZPolicyAssignmentsChecker
             }
-            Default {
+            default {
                 Write-Host "'Azure Landing Zones (ALZ) Policy Assignments Checker' feature NOT supported for Cloud environment '$($azAPICallConf['checkContext'].Environment.Name)'"
                 Write-Host "Setting parameter -ALZPolicyAssignmentsChecker to 'false'"
                 $ALZPolicyAssignmentsChecker = $false
@@ -1378,43 +1432,27 @@ if (-not $HierarchyMapOnly) {
     $tenantAllPolicySetsCount = ($tenantAllPolicySets).count
     if ($tenantAllPolicySetsCount -gt 0) {
         foreach ($policySet in $tenantAllPolicySets) {
-            $PolicySetPolicyIds = $policySet.PolicySetPolicyIds
-            foreach ($PolicySetPolicyId in $PolicySetPolicyIds) {
-
-                if ($policySet.LinkToAzAdvertizer) {
-                    $hlperDisplayNameWithOrWithoutLinkToAzAdvertizer = "$($policySet.LinkToAzAdvertizer) ($($policySet.PolicyDefinitionId))"
+            $policySetPolicyDefinitionId = $policySet.PolicyDefinitionId
+            if ($policySet.LinkToAzAdvertizer) {
+                $hlperDisplayNameWithOrWithoutLinkToAzAdvertizer = "$($policySet.LinkToAzAdvertizer) ($policySetPolicyDefinitionId)"
+            }
+            else {
+                $hlperDisplayNameWithOrWithoutLinkToAzAdvertizer = "$($policySet.DisplayName) ($policySetPolicyDefinitionId)"
+            }
+            $hlper4CSVOutput = "$($policySet.DisplayName) ($policySetPolicyDefinitionId)"
+            foreach ($PolicySetPolicyId in $policySet.PolicySetPolicyIds) {
+                $htPoliciesUsedInPolicySetsEntry = $htPoliciesUsedInPolicySets[$PolicySetPolicyId]
+                if (-not $htPoliciesUsedInPolicySetsEntry) {
+                    $htPoliciesUsedInPolicySetsEntry = @{
+                        policySet       = [System.Collections.ArrayList]@()
+                        policySet4CSV   = [System.Collections.ArrayList]@()
+                        policySetIdOnly = [System.Collections.ArrayList]@()
+                    }
+                    $htPoliciesUsedInPolicySets[$PolicySetPolicyId] = $htPoliciesUsedInPolicySetsEntry
                 }
-                else {
-                    $hlperDisplayNameWithOrWithoutLinkToAzAdvertizer = "$($policySet.DisplayName) ($($policySet.PolicyDefinitionId))"
-                }
-                $hlper4CSVOutput = "$($policySet.DisplayName) ($($policySet.PolicyDefinitionId))"
-                if (-not $htPoliciesUsedInPolicySets.($PolicySetPolicyId)) {
-                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId) = @{}
-                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet = [array]$hlperDisplayNameWithOrWithoutLinkToAzAdvertizer
-                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV = [array]$hlper4CSVOutput
-                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly = [array]($policySet.PolicyDefinitionId)
-                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet = [System.Collections.ArrayList]@()
-                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet.Add($hlperDisplayNameWithOrWithoutLinkToAzAdvertizer)
-                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV = [System.Collections.ArrayList]@()
-                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV.Add($hlper4CSVOutput)
-                    $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly = [System.Collections.ArrayList]@()
-                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly.Add($policySet.PolicyDefinitionId)
-                }
-                else {
-                    # $array = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet
-                    # $array += $hlperDisplayNameWithOrWithoutLinkToAzAdvertizer
-                    # $arrayCSV = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV
-                    # $arrayCSV += $hlper4CSVOutput
-                    # $arrayIdOnly = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly
-                    # $arrayIdOnly += $policySet.PolicyDefinitionId
-                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet = $array
-                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV = $arrayCSV
-                    # $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly = $arrayIdOnly
-
-                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet.Add($hlperDisplayNameWithOrWithoutLinkToAzAdvertizer)
-                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySet4CSV.Add($hlper4CSVOutput)
-                    $null = $htPoliciesUsedInPolicySets.($PolicySetPolicyId).policySetIdOnly.Add($policySet.PolicyDefinitionId)
-                }
+                $null = $htPoliciesUsedInPolicySetsEntry.policySet.Add($hlperDisplayNameWithOrWithoutLinkToAzAdvertizer)
+                $null = $htPoliciesUsedInPolicySetsEntry.policySet4CSV.Add($hlper4CSVOutput)
+                $null = $htPoliciesUsedInPolicySetsEntry.policySetIdOnly.Add($policySetPolicyDefinitionId)
             }
         }
     }
@@ -1434,6 +1472,17 @@ if (-not $HierarchyMapOnly) {
     $policyBaseQuerySubscriptions = $policyBaseQuery.where({ -not [String]::IsNullOrEmpty($_.SubscriptionId) } )
     $policyBaseQueryManagementGroups = $policyBaseQuery.where({ [String]::IsNullOrEmpty($_.SubscriptionId) } )
     $policyPolicyBaseQueryScopeInsights = ($policyBaseQuery | Select-Object Mg*, Subscription*, PolicyAssignmentAtScopeCount, PolicySetAssignmentAtScopeCount, PolicyAndPolicySetAssignmentAtScopeCount, PolicyAssignmentLimit -Unique)
+    #lookup hashtables so ScopeInsights (called per scope) can do O(1) lookups instead of per-scope .where() scans (rows are unique per scope)
+    $script:htPolicyPolicyBaseQueryScopeInsightsBySubscription = @{}
+    $script:htPolicyPolicyBaseQueryScopeInsightsByManagementGroup = @{}
+    foreach ($psiEntry in $policyPolicyBaseQueryScopeInsights) {
+        if ([String]::IsNullOrEmpty($psiEntry.SubscriptionId)) {
+            $script:htPolicyPolicyBaseQueryScopeInsightsByManagementGroup[$psiEntry.MgId] = $psiEntry
+        }
+        else {
+            $script:htPolicyPolicyBaseQueryScopeInsightsBySubscription[$psiEntry.SubscriptionId] = $psiEntry
+        }
+    }
     $policyBaseQueryUniqueAssignments = $policyBaseQuery | Sort-Object -Property PolicyAssignmentId -Unique | Select-Object -Property Policy*
     $policyAssignmentsOrphaned = $policyBaseQuery.where({ $_.PolicyAvailability -eq 'na' } ) | Sort-Object -Property PolicyAssignmentId -Unique
     $policyAssignmentsOrphanedCount = $policyAssignmentsOrphaned.Count
@@ -1442,14 +1491,14 @@ if (-not $HierarchyMapOnly) {
     $htPolicyWithAssignmentsBase = @{}
     foreach ($policyAssignment in $policyBaseQueryUniqueAssignments) {
         if ($policyAssignment.PolicyVariant -eq 'Policy') {
-            if (-not $htPolicyWithAssignmentsBase.($policyAssignment.PolicyDefinitionId)) {
-                $htPolicyWithAssignmentsBase.($policyAssignment.PolicyDefinitionId) = @{}
-                $htPolicyWithAssignmentsBase.($policyAssignment.PolicyDefinitionId).Assignments = [array]$policyAssignment.PolicyAssignmentId
+            if (-not $htPolicyWithAssignmentsBase[$policyAssignment.PolicyDefinitionId]) {
+                $htPolicyWithAssignmentsBase[$policyAssignment.PolicyDefinitionId] = @{}
+                $htPolicyWithAssignmentsBase[$policyAssignment.PolicyDefinitionId].Assignments = [array]$policyAssignment.PolicyAssignmentId
             }
             else {
-                $usedInAssignments = $htPolicyWithAssignmentsBase.($policyAssignment.PolicyDefinitionId).Assignments
+                $usedInAssignments = $htPolicyWithAssignmentsBase[$policyAssignment.PolicyDefinitionId].Assignments
                 $usedInAssignments += $policyAssignment.PolicyAssignmentId
-                $htPolicyWithAssignmentsBase.($policyAssignment.PolicyDefinitionId).Assignments = $usedInAssignments
+                $htPolicyWithAssignmentsBase[$policyAssignment.PolicyDefinitionId].Assignments = $usedInAssignments
             }
         }
     }
@@ -1472,25 +1521,25 @@ if (-not $HierarchyMapOnly) {
     $startRoleDefinitionsUsedInPolicyDefinitions = Get-Date
     $htRoleDefinitionIdsUsedInPolicy = @{}
     foreach ($policyDefinitionId in $htCacheDefinitionsPolicy.Keys) {
-        if (-not [string]::IsNullOrWhiteSpace($htCacheDefinitionsPolicy.($policyDefinitionId).Json.properties.policyRule.then.details.roleDefinitionIds)) {
-            foreach ($roledefinitionId in $htCacheDefinitionsPolicy.($policyDefinitionId).Json.properties.policyRule.then.details.roleDefinitionIds) {
+        if (-not [string]::IsNullOrWhiteSpace($htCacheDefinitionsPolicy[$policyDefinitionId].Json.properties.policyRule.then.details.roleDefinitionIds)) {
+            foreach ($roledefinitionId in $htCacheDefinitionsPolicy[$policyDefinitionId].Json.properties.policyRule.then.details.roleDefinitionIds) {
                 if (-not [string]::IsNullOrWhitespace($roledefinitionId)) {
                     $roleDefinitionIdGuid = $roledefinitionId -replace '.*/'
-                    if (-not $htCacheDefinitionsRole.($roleDefinitionIdGuid)) {
+                    if (-not $htCacheDefinitionsRole[$roleDefinitionIdGuid]) {
                         Write-Host "Finding: policyDefinitionId '$($policyDefinitionId)' has unknown roleDefinitionId '$roledefinitionId' in policyRule.then.details.roleDefinitionIds" -ForegroundColor DarkRed
                     }
                     else {
-                        if (-not $htRoleDefinitionIdsUsedInPolicy.($roleDefinitionIdGuid)) {
-                            $htRoleDefinitionIdsUsedInPolicy.($roleDefinitionIdGuid) = [System.Collections.ArrayList]@()
+                        if (-not $htRoleDefinitionIdsUsedInPolicy[$roleDefinitionIdGuid]) {
+                            $htRoleDefinitionIdsUsedInPolicy[$roleDefinitionIdGuid] = [System.Collections.ArrayList]@()
                         }
                         try {
-                            $null = $htRoleDefinitionIdsUsedInPolicy.($roleDefinitionIdGuid).Add($policyDefinitionId)
+                            $null = $htRoleDefinitionIdsUsedInPolicy[$roleDefinitionIdGuid].Add($policyDefinitionId)
                         }
                         catch {
                             Write-Host "policyDefinitionId '$($policyDefinitionId)' JSON:"
-                            $htCacheDefinitionsPolicy.($policyDefinitionId).Json | ConvertTo-Json -Depth 99
+                            $htCacheDefinitionsPolicy[$policyDefinitionId].Json | ConvertTo-Json -Depth 99
                             Write-Host '--->'
-                            Throw "Failed: `$policyDefinitionId: '$($policyDefinitionId)' trying to add `$roledefinitionId: '$roledefinitionId' from policyRule.then.details.roleDefinitionIds to `$htRoleDefinitionIdsUsedInPolicy.(`$roledefinitionId).UsedInPolicies"
+                            throw "Failed: `$policyDefinitionId: '$($policyDefinitionId)' trying to add `$roledefinitionId: '$roledefinitionId' from policyRule.then.details.roleDefinitionIds to `$htRoleDefinitionIdsUsedInPolicy.(`$roledefinitionId).UsedInPolicies"
                         }
                     }
                 }
@@ -1509,14 +1558,14 @@ if (-not $HierarchyMapOnly) {
     $startPolicyCustomBuiltInParity = Get-Date
     foreach ($customPolicy in $tenantCustomPolicies) {
         $policyRuleHash = getPolicyHash -json ($customPolicy.Json.properties.policyRule | ConvertTo-Json -Depth 99)
-        if ($htHashesBuiltInPolicy.($policyRuleHash)) {
+        if ($htHashesBuiltInPolicy[$policyRuleHash]) {
             $null = $arrayCustomBuiltInPolicyParity.Add([PSCustomObject]@{
                     CustomPolicyName        = $customPolicy.Name
                     CustomPolicyDisplayName = $customPolicy.DisplayName
                     CustomPolicyCategory    = $customPolicy.Category
                     CustomPolicyId          = $customPolicy.Id
-                    MatchBuiltinPolicyCount = $htHashesBuiltInPolicy.($policyRuleHash).Policies.Count
-                    BuiltInPolicyId         = ($htHashesBuiltInPolicy.($policyRuleHash).Policies | Sort-Object) -join "$CsvDelimiterOpposite "
+                    MatchBuiltinPolicyCount = $htHashesBuiltInPolicy[$policyRuleHash].Policies.Count
+                    BuiltInPolicyId         = ($htHashesBuiltInPolicy[$policyRuleHash].Policies | Sort-Object) -join "$CsvDelimiterOpposite "
                 })
         }
     }
@@ -1532,6 +1581,8 @@ if (-not $HierarchyMapOnly) {
     }
     $endPolicyCustomBuiltInParity = Get-Date
     Write-Host " Policy custom/built-In parity check duration: $((New-TimeSpan -Start $startPolicyCustomBuiltInParity -End $endPolicyCustomBuiltInParity).TotalMinutes) minutes ($((New-TimeSpan -Start $startPolicyCustomBuiltInParity -End $endPolicyCustomBuiltInParity).TotalSeconds) seconds)"
+
+    processPolicyLinter
     #endregion create array Policy definitions
 
     #region create array PolicySet definitions
@@ -1552,9 +1603,9 @@ if (-not $HierarchyMapOnly) {
     $roleAssignmentsForServicePrincipals = (($roleAssignmentsUniqueById.where({ $_.RoleAssignmentIdentityObjectType -eq 'ServicePrincipal' })))
     $htRoleAssignmentsForServicePrincipals = @{}
     foreach ($spWithRoleAssignment in $roleAssignmentsForServicePrincipals | Group-Object -Property RoleAssignmentIdentityObjectId) {
-        if (-not $htRoleAssignmentsForServicePrincipals.($spWithRoleAssignment.Name)) {
-            $htRoleAssignmentsForServicePrincipals.($spWithRoleAssignment.Name) = @{}
-            $htRoleAssignmentsForServicePrincipals.($spWithRoleAssignment.Name).RoleAssignments = $spWithRoleAssignment.group
+        if (-not $htRoleAssignmentsForServicePrincipals[$spWithRoleAssignment.Name]) {
+            $htRoleAssignmentsForServicePrincipals[$spWithRoleAssignment.Name] = @{}
+            $htRoleAssignmentsForServicePrincipals[$spWithRoleAssignment.Name].RoleAssignments = $spWithRoleAssignment.group
         }
     }
 
@@ -1562,14 +1613,14 @@ if (-not $HierarchyMapOnly) {
     $htPoliciesWithAssignmentOnRgRes = @{}
     foreach ($policyAssignmentRgRes in ($htCacheAssignmentsPolicyOnResourceGroupsAndResources).values | Sort-Object -Property id -Unique) {
         $hlperPolDefId = (($policyAssignmentRgRes.properties.policyDefinitionId).ToLower())
-        if (-not $htPoliciesWithAssignmentOnRgRes.($hlperPolDefId)) {
+        if (-not $htPoliciesWithAssignmentOnRgRes[$hlperPolDefId]) {
             $pscustomObj = [System.Collections.ArrayList]@()
             $null = $pscustomObj.Add([PSCustomObject]@{
                     PolicyAssignmentId          = ($policyAssignmentRgRes.Id).ToLower()
                     PolicyAssignmentDisplayName = $policyAssignmentRgRes.properties.displayName
                 })
-            $htPoliciesWithAssignmentOnRgRes.($hlperPolDefId) = @{}
-            $htPoliciesWithAssignmentOnRgRes.($hlperPolDefId).Assignments = [array](($pscustomObj))
+            $htPoliciesWithAssignmentOnRgRes[$hlperPolDefId] = @{}
+            $htPoliciesWithAssignmentOnRgRes[$hlperPolDefId].Assignments = [array](($pscustomObj))
         }
         else {
             $pscustomObj = [System.Collections.ArrayList]@()
@@ -1578,9 +1629,9 @@ if (-not $HierarchyMapOnly) {
                     PolicyAssignmentDisplayName = $policyAssignmentRgRes.properties.displayName
                 })
             $array = @()
-            $array += $htPoliciesWithAssignmentOnRgRes.($hlperPolDefId).Assignments
+            $array += $htPoliciesWithAssignmentOnRgRes[$hlperPolDefId].Assignments
             $array += (($pscustomObj))
-            $htPoliciesWithAssignmentOnRgRes.($hlperPolDefId).Assignments = $array
+            $htPoliciesWithAssignmentOnRgRes[$hlperPolDefId].Assignments = $array
         }
     }
     #endregion assignmentRgRes
@@ -1613,36 +1664,43 @@ if (-not $HierarchyMapOnly) {
     $diagnosticSettingsMgGrouped = $diagnosticSettingsMg | Group-Object -Property ScopeId
     $diagnosticSettingsMgManagementGroupsCount = ($diagnosticSettingsMgGrouped | Measure-Object).Count
 
+    $htDiagnosticSettingsMg = ($htDiagnosticSettingsMgSub).mg
     foreach ($entry in $diagnosticSettingsMgGrouped) {
         $dsgrouped = $entry.group | Group-Object -Property DiagnosticSettingName
 
+        $entryNode = $htDiagnosticSettingsMg.($entry.Name)
+        if (-not $entryNode) {
+            $entryNode = @{}
+            $htDiagnosticSettingsMg.($entry.Name) = $entryNode
+        }
         foreach ($ds in $dsgrouped) {
             $targetTypegrouped = $ds.group | Group-Object -Property DiagnosticTargetType
+            $dsNode = $entryNode.($ds.Name)
+            if (-not $dsNode) {
+                $dsNode = @{}
+                $entryNode.($ds.Name) = $dsNode
+            }
             foreach ($tt in $targetTypegrouped) {
-                if (-not ($htDiagnosticSettingsMgSub).mg.($entry.Name)) {
-                ($htDiagnosticSettingsMgSub).mg.($entry.Name) = @{}
-                }
-                if (-not ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name)) {
-                ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name) = @{}
-                }
-                if (-not ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name).($tt.Name)) {
-                ($htDiagnosticSettingsMgSub).mg.($entry.Name).($ds.Name).($tt.Name) = $tt.group
+                if (-not $dsNode.($tt.Name)) {
+                    $dsNode.($tt.Name) = $tt.group
                 }
             }
         }
     }
 
     foreach ($mg in $htManagementGroupsMgPath.Values) {
-        foreach ($mgWithDiag in ($htDiagnosticSettingsMgSub).mg.keys) {
+        foreach ($mgWithDiag in $htDiagnosticSettingsMg.keys) {
             if ($mg.ParentNameChain -contains $mgWithDiag) {
-                foreach ($diagSet in ($htDiagnosticSettingsMgSub).mg.($mgWithDiag).keys) {
-                    foreach ($tt in ($htDiagnosticSettingsMgSub).mg.($mgWithDiag).($diagset).keys) {
-                        foreach ($tid in ($htDiagnosticSettingsMgSub).mg.($mgWithDiag).($diagset).($tt)) {
+                $mgWithDiagNode = $htDiagnosticSettingsMg.($mgWithDiag)
+                foreach ($diagSet in $mgWithDiagNode.keys) {
+                    $diagSetNode = $mgWithDiagNode.($diagSet)
+                    foreach ($tt in $diagSetNode.keys) {
+                        foreach ($tid in $diagSetNode.($tt)) {
                             $null = $script:diagnosticSettingsMg.Add([PSCustomObject]@{
                                     Scope                     = 'Mg'
                                     ScopeName                 = $mg.displayName
                                     ScopeId                   = $mg.Id
-                                    ScopeMgPath               = $htManagementGroupsMgPath.($mg.Id).pathDelimited
+                                    ScopeMgPath               = $htManagementGroupsMgPath[$mg.Id].pathDelimited
                                     DiagnosticsInheritedOrnot = $true
                                     DiagnosticsInheritedFrom  = $mgWithDiag
                                     DiagnosticsPresent        = 'true'
@@ -1680,20 +1738,25 @@ if (-not $HierarchyMapOnly) {
     $diagnosticSettingsSubGrouped = $diagnosticSettingsSub | Group-Object -Property ScopeId
     $diagnosticSettingsSubSubscriptionsCount = ($diagnosticSettingsSubGrouped | Measure-Object).Count
 
+    $htDiagnosticSettingsSub = ($htDiagnosticSettingsMgSub).sub
     foreach ($entry in $diagnosticSettingsSubGrouped) {
         $dsgrouped = $entry.group | Group-Object -Property DiagnosticSettingName
 
+        $entryNode = $htDiagnosticSettingsSub.($entry.Name)
+        if (-not $entryNode) {
+            $entryNode = @{}
+            $htDiagnosticSettingsSub.($entry.Name) = $entryNode
+        }
         foreach ($ds in $dsgrouped) {
             $targetTypegrouped = $ds.group | Group-Object -Property DiagnosticTargetType
+            $dsNode = $entryNode.($ds.Name)
+            if (-not $dsNode) {
+                $dsNode = @{}
+                $entryNode.($ds.Name) = $dsNode
+            }
             foreach ($tt in $targetTypegrouped) {
-                if (-not ($htDiagnosticSettingsMgSub).sub.($entry.Name)) {
-                ($htDiagnosticSettingsMgSub).sub.($entry.Name) = @{}
-                }
-                if (-not ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name)) {
-                ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name) = @{}
-                }
-                if (-not ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name).($tt.Name)) {
-                ($htDiagnosticSettingsMgSub).sub.($entry.Name).($ds.Name).($tt.Name) = $tt.group
+                if (-not $dsNode.($tt.Name)) {
+                    $dsNode.($tt.Name) = $tt.group
                 }
             }
         }
@@ -1755,12 +1818,16 @@ if (-not $HierarchyMapOnly) {
     }
 
     $totalRoleAssignmentsCount = (($htCacheAssignmentsRole).keys).count
-    $totalRoleAssignmentsCountTen = (($htCacheAssignmentsRole).keys.where({ ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq 'Tenant' } )).count
-    $totalRoleAssignmentsCountMG = (($htCacheAssignmentsRole).keys.where({ ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq 'MG' } )).count
-    $totalRoleAssignmentsCountSub = (($htCacheAssignmentsRole).keys.where({ ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq 'Sub' } )).count
+    $roleAssignmentScopeCounts = @{}
+    foreach ($roleAssignmentCacheEntry in ($htCacheAssignmentsRole).Values) {
+        $roleAssignmentScopeCounts[$roleAssignmentCacheEntry.AssignmentScopeTenMgSubRgRes]++
+    }
+    $totalRoleAssignmentsCountTen = [int]$roleAssignmentScopeCounts['Tenant']
+    $totalRoleAssignmentsCountMG = [int]$roleAssignmentScopeCounts['MG']
+    $totalRoleAssignmentsCountSub = [int]$roleAssignmentScopeCounts['Sub']
     if (-not $azAPICallConf['htParameters'].DoNotIncludeResourceGroupsAndResourcesOnRBAC) {
-        $totalRoleAssignmentsCountRG = (($htCacheAssignmentsRole).keys.where({ ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq 'RG' } )).count
-        $totalRoleAssignmentsCountRes = (($htCacheAssignmentsRole).keys.where({ ($htCacheAssignmentsRole).($_).AssignmentScopeTenMgSubRgRes -eq 'Res' } )).count
+        $totalRoleAssignmentsCountRG = [int]$roleAssignmentScopeCounts['RG']
+        $totalRoleAssignmentsCountRes = [int]$roleAssignmentScopeCounts['Res']
         $totalRoleAssignmentsResourceGroupsAndResourcesCount = $totalRoleAssignmentsCountRG + $totalRoleAssignmentsCountRes
     }
     else {
@@ -1768,7 +1835,7 @@ if (-not $HierarchyMapOnly) {
         $totalRoleAssignmentsCount = $totalRoleAssignmentsCount + $totalRoleAssignmentsResourceGroupsAndResourcesCount
     }
 
-    $totalRoleDefinitionsCustomCount = ((($htCacheDefinitionsRole).keys.where({ ($htCacheDefinitionsRole).($_).IsCustom -eq $True } ))).count
+    $totalRoleDefinitionsCustomCount = ((($htCacheDefinitionsRole).keys.where({ $htCacheDefinitionsRole[$_].IsCustom -eq $True } ))).count
     $totalBlueprintDefinitionsCount = ((($htCacheDefinitionsBlueprint).keys)).count
     $totalBlueprintAssignmentsCount = (($htCacheAssignmentsBlueprint).keys).count
     $totalResourceTypesCount = ($resourceTypesDiagnosticsArray).Count
@@ -1865,7 +1932,7 @@ if (-not $HierarchyMapOnly) {
 
     if ($htMgASCSecureScore.Keys.Count -gt 0) {
         foreach ($mgASCSecureScore in $htMgASCSecureScore.Keys) {
-            $htDailySummary."MDfCSecureScore_$($mgASCSecureScore)" = $htMgASCSecureScore.($mgASCSecureScore).SecureScore
+            $htDailySummary."MDfCSecureScore_$($mgASCSecureScore)" = $htMgASCSecureScore[$mgASCSecureScore].SecureScore
         }
     }
 
@@ -1874,6 +1941,333 @@ if (-not $HierarchyMapOnly) {
     showMemoryUsage
     #endregion summarizeDataCollectionResults
 }
+
+#shared AG Grid helpers (filter match highlighting, date filter/sort); single quoted here-string so the JavaScript does not need PowerShell escaping
+$agGridSupportScript = @'
+    /* ---------- text filter match highlighting ----------
+       Every text filter condition of a column gets its own color slot and its matches are wrapped
+       in <mark class="filter-match fm-N"> by the column cell renderers. */
+    var agvFilterHighlightPalette = [
+        { bg: '#FFF59D', fg: '#B71C1C' },
+        { bg: '#BBDEFB', fg: '#0D3B66' },
+        { bg: '#C8E6C9', fg: '#1B5E20' },
+        { bg: '#FFE0B2', fg: '#5D2E00' },
+        { bg: '#F8BBD0', fg: '#880E4F' },
+        { bg: '#B2EBF2', fg: '#004D40' },
+        { bg: '#E1BEE7', fg: '#4A148C' },
+        { bg: '#E0E0E0', fg: '#212121' }
+    ];
+
+    function agvEscapeRegex(text) {
+        return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function agvEscapeHtml(text) {
+        return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function agvTagRanges(text) {
+        var ranges = [];
+        var re = /<[^>]*>/g;
+        var m;
+        while ((m = re.exec(text)) !== null) {
+            ranges.push([m.index, m.index + m[0].length]);
+        }
+        return ranges;
+    }
+
+    function agvOverlapsTag(ranges, start, end) {
+        for (var i = 0; i < ranges.length; i++) {
+            if (start < ranges[i][1] && end > ranges[i][0]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function agvBuildHighlighted(text, entry, isHtml) {
+        var emit = function (chunk) { return isHtml ? chunk : agvEscapeHtml(chunk); };
+        if (!entry || !entry.slots.length) {
+            return emit(text);
+        }
+        //matches must not land inside the markup produced by a cell renderer
+        var tagRanges = isHtml ? agvTagRanges(text) : null;
+        var matches = [];
+        for (var i = 0; i < entry.slots.length; i++) {
+            var re = entry.slots[i].re;
+            re.lastIndex = 0;
+            var m;
+            while ((m = re.exec(text)) !== null) {
+                if (m[0].length === 0) { re.lastIndex++; continue; }
+                var start = m.index;
+                var end = m.index + m[0].length;
+                if (tagRanges && agvOverlapsTag(tagRanges, start, end)) { continue; }
+                matches.push({ start: start, end: end, idx: entry.slots[i].idx, order: i });
+            }
+        }
+        if (!matches.length) {
+            return emit(text);
+        }
+        //earliest position wins, ties are resolved by condition order so colors stay stable
+        matches.sort(function (a, b) { return a.start - b.start || a.order - b.order; });
+        var out = '';
+        var pos = 0;
+        for (var k = 0; k < matches.length; k++) {
+            var match = matches[k];
+            if (match.start < pos) { continue; }
+            out += emit(text.slice(pos, match.start));
+            out += '<mark class="filter-match fm-' + match.idx + '">' + emit(text.slice(match.start, match.end)) + '</mark>';
+            pos = match.end;
+        }
+        out += emit(text.slice(pos));
+        return out;
+    }
+
+    /* The dictionaries repeat the same markup (e.g. the AzAdvertizer link) for thousands of values, the emitter
+       therefore replaces those fragments with a single private use character indexing into 'fragments'. */
+    function agvExpandDictionaries(encoded) {
+        var fragments = encoded.fragments;
+        if (!fragments || !fragments.length) { return encoded; }
+        var expand = function (token) {
+            var index = token.charCodeAt(0) - 0xE000;
+            return index < fragments.length ? fragments[index] : token;
+        };
+        for (var columnIndex = 0; columnIndex < encoded.dictionaries.length; columnIndex++) {
+            var dictionary = encoded.dictionaries[columnIndex];
+            for (var valueIndex = 0; valueIndex < dictionary.length; valueIndex++) {
+                dictionary[valueIndex] = dictionary[valueIndex].replace(/[\uE000-\uE0FF]/g, expand);
+            }
+        }
+        return encoded;
+    }
+
+    /* Dictionary encoded row data: a row is an array of integers, each one an index into the dictionary of its column.
+       This keeps the payload small and avoids materializing one object per row. */
+    function agvColumnValueGetter(encoded, columnIndex) {
+        var dictionary = encoded.dictionaries[columnIndex];
+        return function (params) {
+            return params.data ? dictionary[params.data[columnIndex]] : undefined;
+        };
+    }
+
+    //renders an html column (the sortable/filterable plain text lives in a separate column)
+    function agvColumnHtmlRenderer(encoded, columnIndex, highlighter) {
+        var dictionary = encoded.dictionaries[columnIndex];
+        return function (params) {
+            return highlighter.html(dictionary[params.data[columnIndex]], params.column.getColId());
+        };
+    }
+
+    //numeric column; values that are no numbers (e.g. 'skipped') do not participate in sorting and number filtering
+    function agvColumnNumberValueGetter(encoded, columnIndex) {
+        var dictionary = encoded.dictionaries[columnIndex];
+        return function (params) {
+            if (!params.data) { return undefined; }
+            var value = dictionary[params.data[columnIndex]];
+            if (value === null || value === undefined || value === '') { return null; }
+            var number = Number(value);
+            return isNaN(number) ? null : number;
+        };
+    }
+
+    //renders the dictionary value of a column instead of the cell value, keeps non numeric values of number columns visible
+    function agvColumnTextRenderer(encoded, columnIndex, highlighter) {
+        var dictionary = encoded.dictionaries[columnIndex];
+        return function (params) {
+            return highlighter.text(dictionary[params.data[columnIndex]], params.column.getColId());
+        };
+    }
+
+    function agvCreateHighlighter() {
+        var byField = Object.create(null);
+
+        function collectTerm(condition, out) {
+            if (!condition) { return; }
+            var type = condition.type;
+            //negative and blank conditions have nothing to highlight
+            if (type === 'notEqual' || type === 'notContains' || type === 'blank' || type === 'notBlank') { return; }
+            if (condition.filter === null || condition.filter === undefined || condition.filter === '') { return; }
+            out.push(String(condition.filter));
+        }
+
+        function extractTerms(entry) {
+            var out = [];
+            if (!entry) { return out; }
+            if (entry.conditions && entry.conditions.length) {
+                for (var i = 0; i < entry.conditions.length; i++) {
+                    var tmp = [];
+                    collectTerm(entry.conditions[i], tmp);
+                    if (tmp.length) { out.push(tmp[0]); }
+                }
+                return out;
+            }
+            collectTerm(entry, out);
+            return out;
+        }
+
+        return {
+            //returns the fields whose terms changed so that only those columns need to be refreshed
+            update: function (model) {
+                var changed = [];
+                var seen = Object.create(null);
+                if (model) {
+                    for (var field in model) {
+                        seen[field] = true;
+                        var terms = extractTerms(model[field]);
+                        var sig = terms.join('\u0001');
+                        var prev = byField[field];
+                        if (prev && prev.sig === sig) { continue; }
+                        if (!terms.length) {
+                            if (prev) {
+                                byField[field] = null;
+                                changed.push(field);
+                            }
+                            continue;
+                        }
+                        var slots = [];
+                        for (var ti = 0; ti < terms.length; ti++) {
+                            slots.push({ re: new RegExp(agvEscapeRegex(terms[ti]), 'ig'), idx: ti % agvFilterHighlightPalette.length });
+                        }
+                        byField[field] = { sig: sig, slots: slots };
+                        changed.push(field);
+                    }
+                }
+                for (var prevField in byField) {
+                    if (seen[prevField] || !byField[prevField]) { continue; }
+                    byField[prevField] = null;
+                    changed.push(prevField);
+                }
+                return changed;
+            },
+            //plain cell value, the result is html encoded
+            text: function (value, field) {
+                return agvBuildHighlighted((value === null || value === undefined) ? '' : String(value), byField[field], false);
+            },
+            //cell value that already is an html fragment
+            html: function (value, field) {
+                return agvBuildHighlighted((value === null || value === undefined) ? '' : String(value), byField[field], true);
+            }
+        };
+    }
+
+    (function injectAgvHighlightStyles() {
+        if (document.getElementById('agv-filter-match-style')) { return; }
+        var rules = ['mark.filter-match { font-weight: bold; padding: 0; border-radius: 2px; }'];
+        for (var i = 0; i < agvFilterHighlightPalette.length; i++) {
+            rules.push('mark.filter-match.fm-' + i + ' { background-color: ' + agvFilterHighlightPalette[i].bg + '; color: ' + agvFilterHighlightPalette[i].fg + '; }');
+        }
+        var style = document.createElement('style');
+        style.id = 'agv-filter-match-style';
+        style.textContent = rules.join('\n');
+        document.head.appendChild(style);
+    })();
+
+    /* ---------- date column support ----------
+       Date values are rendered by the report as invariant culture strings ('MM/dd/yyyy HH:mm:ss'). */
+    function agvParseGridDate(value) {
+        if (value === null || value === undefined || value === '') { return null; }
+        var m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/.exec(String(value));
+        if (m) {
+            return new Date(Number(m[3]), Number(m[1]) - 1, Number(m[2]), Number(m[4] || 0), Number(m[5] || 0), Number(m[6] || 0));
+        }
+        var parsed = new Date(String(value));
+        return isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    var agvDateFilterParams = {
+        browserDatePicker: true,
+        comparator: function (filterLocalDateAtMidnight, cellValue) {
+            var cellDate = agvParseGridDate(cellValue);
+            if (cellDate === null) { return -1; }
+            var cellMidnight = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
+            if (cellMidnight < filterLocalDateAtMidnight) { return -1; }
+            if (cellMidnight > filterLocalDateAtMidnight) { return 1; }
+            return 0;
+        }
+    };
+
+    function agvDateSortComparator(valueA, valueB) {
+        var dateA = agvParseGridDate(valueA);
+        var dateB = agvParseGridDate(valueB);
+        if (dateA === null && dateB === null) { return 0; }
+        if (dateA === null) { return -1; }
+        if (dateB === null) { return 1; }
+        return dateA.getTime() - dateB.getTime();
+    }
+
+    /* ---------- toolbar actions ---------- */
+    /* AG Grid Community has no status bar, so the reset button is placed into the paging panel. */
+    function agvAddResetFiltersButton(api, rootElement) {
+        var panel = rootElement.querySelector('.ag-paging-panel');
+        if (!panel || panel.querySelector('.agvResetFiltersButton')) { return; }
+        var button = rootElement.ownerDocument.createElement('button');
+        button.type = 'button';
+        button.className = 'agvResetFiltersButton';
+        button.title = 'Clear all column filters';
+        button.addEventListener('click', function () { api.setFilterModel(null); });
+        var sync = function () {
+            var model = api.getFilterModel();
+            var count = model ? Object.keys(model).length : 0;
+            button.disabled = count === 0;
+            button.textContent = count === 0 ? 'Reset filters' : 'Reset filters (' + count + ')';
+        };
+        api.addEventListener('filterChanged', sync);
+        sync();
+        panel.insertBefore(button, panel.firstChild);
+    }
+
+    var agvPopoutWatchers = Object.create(null);
+
+    /* Opens the grid on its own in a new window. The window is a standalone document that reuses the
+       AG Grid assets and the grid definition of this report; only the row data is read from the opener. */
+    function agvPopoutGrid(title, gridDefScriptId, optionsFactoryName, rowDataName) {
+        var popout = window.open('', 'agvPopout_' + gridDefScriptId, 'width=1600,height=900,resizable=yes,scrollbars=yes');
+        if (!popout) {
+            alert('The browser blocked the pop out window - please allow pop ups for this page.');
+            return;
+        }
+
+        var render = function () {
+            var assets = '';
+            document.querySelectorAll('link[href*="ag-grid"], script[src*="ag-grid"]').forEach(function (element) {
+                assets += element.outerHTML;
+            });
+            ['agvAgGridStyle', 'agvAgGridSelectFilter', 'agvAgGridSupport', gridDefScriptId].forEach(function (id) {
+                var element = document.getElementById(id);
+                if (element) { assets += element.outerHTML; }
+            });
+            var bootstrap = 'var agvEl = document.getElementById("agvPopoutGrid");'
+                + ' agGrid.createGrid(agvEl, ' + optionsFactoryName + '(agvCreateHighlighter(), window.opener.' + rowDataName + ', agvEl));';
+            var doc = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>' + agvEscapeHtml(title) + '</title>'
+                + assets
+                + '<style>html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; } #agvPopoutGrid { height: 100%; width: 100%; }</style>'
+                + '</head><body><div id="agvPopoutGrid" class="ag-theme-quartz"></div>'
+                + '<script>' + bootstrap + '<\/script></body></html>';
+            popout.document.open();
+            popout.document.write(doc);
+            popout.document.close();
+        };
+
+        render();
+        popout.focus();
+
+        //the pop out content is written by this document, so a reload of the pop out would leave it empty
+        if (agvPopoutWatchers[gridDefScriptId]) { clearInterval(agvPopoutWatchers[gridDefScriptId]); }
+        agvPopoutWatchers[gridDefScriptId] = setInterval(function () {
+            try {
+                if (popout.closed) {
+                    clearInterval(agvPopoutWatchers[gridDefScriptId]);
+                    delete agvPopoutWatchers[gridDefScriptId];
+                    return;
+                }
+                if (popout.document.readyState === 'complete' && !popout.document.getElementById('agvPopoutGrid')) {
+                    render();
+                }
+            }
+            catch (e) { /* the pop out is navigating, retry on the next tick */ }
+        }, 500);
+    }
+'@
 
 $html = @"
 <!doctype html>
@@ -1904,6 +2298,147 @@ $html = @"
     <!--<script src="https://www.azadvertizer.net/azgovvizv4/tablefilter/tablefilter.js"></script>-->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tablefilter/0.7.3/tablefilter.js" integrity="sha512-HDzCUKAvjWV4XogiGFmF59gZGeNUd7X/peY+4zRQQRlqjwYngxA2haFABelr9AEhnnq65CPM/yIgdi2ffpXxcw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tablefilter/0.7.3/tf-1-2aa33b10e0e549020c12.min.js" integrity="sha512-KEstgdRK/uzfufHDzCmFIcjBN20mv8joRQdiQR71s0V+sP3j3mmgedDmK8i12INhG4wEWoDJHSKOpGxpAZ48qw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-grid.css" integrity="sha512-LtYrwl3RjIutCHf9yb6EG09zr4k2htQlyIeD2nJMld66jKYcfWF2RrgxEKZK7TkX9wTFz3/c0Bur1SY+S4Fv8A==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-theme-quartz.css" integrity="sha512-ISUqCKJU9IOqpwVnp8tlLooD0Tjj6DNW4tFi6KymnYiidM60i16F7l6J5aFZGmajxVVruN/dcB7WM3Pn+Qr45Q==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js" integrity="sha512-fD9MUUcwwAe0W4Qj+wis2c6GNIAIAgxkGiVNYa3ZZH+7uKdjPIU+VZ7wXffl4eLda4rVAIfxEqeO2Q0+4+w/Kw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style id="agvAgGridStyle">
+        /* azgovvizmain.css applies 'div { float: left }' globally which collapses the AG Grid layout */
+        .ag-theme-quartz,
+        .ag-theme-quartz div {
+            float: none;
+        }
+
+        /* match the typography of the report (.summary) */
+        .ag-theme-quartz {
+            --ag-font-family: "Segoe UI", "SegoeUI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            --ag-font-size: 10px;
+            --ag-row-height: 22px;
+            --ag-header-height: 26px;
+            --ag-list-item-height: 20px;
+            --ag-cell-horizontal-padding: 8px;
+        }
+
+        .ag-theme-quartz .agvSelectFloatingFilter {
+            width: 100%;
+            height: 20px;
+            font-family: inherit;
+            font-size: inherit;
+        }
+
+        /* sits in the paging panel, 'margin-right: auto' keeps the paging controls on the right */
+        .ag-theme-quartz .agvResetFiltersButton {
+            float: none;
+            margin-right: auto;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: 16px;
+            padding: 2px 8px;
+            cursor: pointer;
+            color: inherit;
+            background-color: #ffffff;
+            border: 1px solid #babfc7;
+            border-radius: 4px;
+        }
+
+        .ag-theme-quartz .agvResetFiltersButton:hover:not(:disabled) {
+            background-color: #f1f1f1;
+        }
+
+        .ag-theme-quartz .agvResetFiltersButton:disabled {
+            opacity: 0.45;
+            cursor: default;
+        }
+
+        /* wrapped cell content must start at the top of the row */
+        .ag-theme-quartz .ag-cell-wrap-text {
+            word-break: break-word;
+            line-height: 14px;
+            padding-top: 3px;
+            padding-bottom: 3px;
+        }
+
+        /* azgovvizmain.css styles every hovered <span> like a link; AG Grid renders cell and header
+           text in spans, so cell values must not be turned into link lookalikes.
+           The selector is more specific than the one in azgovvizmain.css but does not use !important,
+           so inline colors set by cell renderers still win. */
+        .ag-theme-quartz .ag-root-wrapper span:hover {
+            font-weight: inherit;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        /* real links keep the link affordance */
+        .ag-theme-quartz .ag-root-wrapper a:hover,
+        .ag-theme-quartz .ag-root-wrapper a:hover span {
+            text-decoration: underline;
+        }
+    </style>
+    <script id="agvAgGridSelectFilter">
+    /* AG Grid Community has no set filter; this floating filter renders a <select> (like the TableFilter 'select' columns)
+       and drives the column's text filter with an 'equals' match. The options are the distinct values of the column. */
+    class agvSelectFloatingFilter {
+        init(params) {
+            this.params = params;
+            this.eGui = document.createElement('select');
+            this.eGui.className = 'ag-floating-filter-input agvSelectFloatingFilter';
+            this.eGui.addEventListener('change', () => {
+                const value = this.eGui.value;
+                this.params.parentFilterInstance((instance) => {
+                    if (value === '') {
+                        instance.onFloatingFilterChanged(null, null);
+                    }
+                    else {
+                        instance.onFloatingFilterChanged('equals', value);
+                    }
+                });
+            });
+            this.populate();
+            if (!this.params.values && this.eGui.options.length <= 1) {
+                //the row data may not be available yet when the grid builds its floating filters
+                this.onFirstDataRendered = () => this.populate();
+                params.api.addEventListener('firstDataRendered', this.onFirstDataRendered);
+            }
+        }
+        populate() {
+            const values = new Set();
+            if (this.params.values) {
+                //dictionary encoded column, the dictionary already is the set of distinct values
+                this.params.values.forEach((value) => values.add(String(value)));
+            }
+            else {
+                const colId = this.params.column.getColId();
+                this.params.api.forEachNode((node) => {
+                    const value = node.data ? node.data[colId] : null;
+                    if (value !== null && value !== undefined) {
+                        values.add(String(value));
+                    }
+                });
+            }
+            values.delete('');
+            const selected = this.eGui.value;
+            this.eGui.replaceChildren(new Option('', ''));
+            Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })).forEach((value) => {
+                this.eGui.appendChild(new Option(value, value));
+            });
+            this.eGui.value = selected;
+        }
+        onParentModelChanged(parentModel) {
+            //keep the dropdown in sync when the filter is set or cleared elsewhere
+            this.eGui.value = (parentModel && parentModel.type === 'equals' && parentModel.filter != null) ? parentModel.filter : '';
+        }
+        getGui() {
+            return this.eGui;
+        }
+        destroy() {
+            if (this.onFirstDataRendered) {
+                this.params.api.removeEventListener('firstDataRendered', this.onFirstDataRendered);
+            }
+        }
+    }
+    </script>
+    <script id="agvAgGridSupport">
+$agGridSupportScript
+    </script>
     <link rel="stylesheet" href="https://www.azadvertizer.net/azgovvizv4/css/highlight-10.5.0.min.css">
     <!--<script src="https://www.azadvertizer.net/azgovvizv4/js/highlight-10.5.0.min.js"></script>-->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js" integrity="sha512-9GIHU4rPKUMvNOHFOer5Zm2zHnZOjayOO3lZpokhhCtgt8FNlNiW/bb7kl0R5ZXfCDVPcQ8S4oBdNs92p5Nm2w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -2281,7 +2816,7 @@ else {
     $policySetsMgScoped = ($htCacheDefinitionsPolicySet).values.where({ $_.ScopeMgSub -eq 'Mg' })
     $roleAssignmentsMg = (($htCacheAssignmentsRole).values.where({ $_.AssignmentScopeTenMgSubRgRes -eq 'Mg' }))
 
-    foreach ($parentMgId in $htManagementGroupsMgPath.($ManagementGroupId).ParentNameChain) {
+    foreach ($parentMgId in $htManagementGroupsMgPath[$ManagementGroupId].ParentNameChain) {
         if ($parentMgId -eq $defaultManagementGroupId) {
             $classdefaultMG = 'defaultMG'
         }
@@ -2373,7 +2908,11 @@ else {
 $starthierarchyMap = Get-Date
 Write-Host ' Building HierarchyMap'
 
+#the map is emitted by a recursion over all Management Groups, a plain string would be copied on every single append
+$script:htmlHierarchyMap = [System.Text.StringBuilder]::new()
 HierarchyMgHTML -mgChild $ManagementGroupId
+$html += $script:htmlHierarchyMap.ToString()
+$script:htmlHierarchyMap = $null
 showMemoryUsage
 
 $endhierarchyMap = Get-Date
@@ -2429,7 +2968,7 @@ if (-not $HierarchyMapOnly) {
         foreach ($entry in $htDailySummary.keys | Sort-Object) {
             $null = $dailySummary4ExportToCSV.Add([PSCustomObject]@{
                     capability = $entry
-                    count      = $htDailySummary.($entry)
+                    count      = $htDailySummary[$entry]
                 })
         }
         Write-Host " Exporting DailySummary CSV '$($outputPath)$($DirectorySeparatorChar)$($fileName)_DailySummary.csv'"
@@ -2452,7 +2991,7 @@ if (-not $HierarchyMapOnly) {
     $html = $null
 
     processDefinitionInsights
-    showMemoryUsage
+    showMemoryUsage -collect
 
     $html += @'
     </div><!--definitionInsights-->
@@ -2477,15 +3016,52 @@ if (-not $HierarchyMapOnly) {
             if ($azAPICallConf['htParameters'].DoPSRule -eq $true) {
                 $grpPSRuleSubscriptions = $arrayPsRule | Group-Object -Property subscriptionId
                 $grpPSRuleManagementGroups = $arrayPsRule | Group-Object -Property mgPath
+                #lookup hashtable so ScopeInsights (called per scope) can do O(1) lookups instead of per-scope .where() scans
+                $script:htGrpPSRuleSubscriptions = @{}
+                foreach ($grpEntry in $grpPSRuleSubscriptions) {
+                    $script:htGrpPSRuleSubscriptions[$grpEntry.Name] = $grpEntry
+                }
             }
         }
         if ($arrayFeaturesAll.Count -gt 0) {
             $script:subFeaturesGroupedBySubscription = $arrayFeaturesAll | Group-Object -Property subscriptionId
+            #lookup hashtable so ScopeInsights (called per scope) can do O(1) lookups instead of per-scope .where() scans
+            $script:htSubFeaturesGroupedBySubscription = @{}
+            foreach ($grpEntry in $script:subFeaturesGroupedBySubscription) {
+                $script:htSubFeaturesGroupedBySubscription[$grpEntry.Name] = $grpEntry
+            }
+        }
+        if (-not $azAPICallConf['htParameters'].NoFoundryModelDeployments) {
+            $script:htModelDeploymentInsightsBySubscription = @{}
+            foreach ($grpEntry in ($arrayModelDeploymentInsights | Group-Object -Property SubscriptionId)) {
+                $script:htModelDeploymentInsightsBySubscription[$grpEntry.Name] = $grpEntry.Group
+            }
+        }
+        #lookup hashtable for user assigned identities (matches either resourceSubscriptionId or miSubscriptionId); preserves source order per key
+        $script:htArrayUserAssignedIdentities4ResourcesBySub = @{}
+        foreach ($uamiEntry in $arrayUserAssignedIdentities4Resources) {
+            foreach ($uamiSubKey in (@($uamiEntry.resourceSubscriptionId, $uamiEntry.miSubscriptionId) | Select-Object -Unique)) {
+                if ([string]::IsNullOrEmpty($uamiSubKey)) { continue }
+                if (-not $script:htArrayUserAssignedIdentities4ResourcesBySub[$uamiSubKey]) {
+                    $script:htArrayUserAssignedIdentities4ResourcesBySub[$uamiSubKey] = [System.Collections.ArrayList]@()
+                }
+                $null = $script:htArrayUserAssignedIdentities4ResourcesBySub[$uamiSubKey].Add($uamiEntry)
+            }
         }
         if ($arrayOrphanedResourcesSlim.Count -gt 0) {
             $arrayOrphanedResourcesGroupedBySubscription = $arrayOrphanedResourcesSlim | Group-Object subscriptionId
+            #lookup hashtable so ScopeInsights (called per scope) can do O(1) lookups instead of per-scope .where() scans
+            $script:htArrayOrphanedResourcesGroupedBySubscription = @{}
+            foreach ($grpEntry in $arrayOrphanedResourcesGroupedBySubscription) {
+                $script:htArrayOrphanedResourcesGroupedBySubscription[$grpEntry.Name] = $grpEntry
+            }
         }
         $resourcesIdsAllCAFNamingRelevantGroupedBySubscription = $resourcesIdsAllCAFNamingRelevant | Group-Object -Property subscriptionId
+        #lookup hashtable so ScopeInsights (called per scope) can do O(1) lookups instead of per-scope .where() scans
+        $script:htResourcesIdsAllCAFNamingRelevantGroupedBySubscription = @{}
+        foreach ($grpEntry in $resourcesIdsAllCAFNamingRelevantGroupedBySubscription) {
+            $script:htResourcesIdsAllCAFNamingRelevantGroupedBySubscription[$grpEntry.Name] = $grpEntry
+        }
 
         processScopeInsights -mgChild $ManagementGroupId -mgChildOf $getMgParentId
         showMemoryUsage
@@ -2589,11 +3165,21 @@ showMemoryUsage
 
 if (-not $azAPICallConf['htParameters'].NoJsonExport) {
     buildJSON
-    showMemoryUsage
+    showMemoryUsage -collect
 }
+
+#not referenced beyond this point - buildPolicyAllJSON only needs $tenantPoliciesDetailed, $tenantPolicySetsDetailed and $htCacheAssignmentsPolicy
+$htCacheDefinitionsPolicy = $null
+$htCacheDefinitionsPolicySet = $null
+$htCacheDefinitionsRole = $null
+$optimizedTableForPathQuery = $null
+$rbacAll = $null
+$newTable = $null
+showMemoryUsage
 
 if (-not $HierarchyMapOnly) {
     buildPolicyAllJSON
+    showMemoryUsage
 }
 
 #endregion createoutputs

@@ -39,6 +39,8 @@
         ALZPolicyAssignmentsChecker                  = [bool]$ALZPolicyAssignmentsChecker
         ALZManagementGroupsIds                       = $ALZManagementGroupsIds
         NoStorageAccountAccessAnalysis               = [bool]$NoStorageAccountAccessAnalysis
+        NoFoundryModelDeployments                    = [bool]$NoFoundryModelDeployments
+        FoundryModelDeploymentsDays                  = $FoundryModelDeploymentsDays
         GitHubActionsOIDC                            = [bool]$GitHubActionsOIDC
         NoNetwork                                    = [bool]$NoNetwork
         ThrottleLimit                                = $ThrottleLimit

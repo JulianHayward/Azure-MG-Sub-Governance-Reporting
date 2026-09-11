@@ -5,6 +5,15 @@
     $SHA256 = New-Object -TypeName System.Security.Cryptography.SHA256CryptoServiceProvider
     $utf8 = New-Object -TypeName System.Text.UTF8Encoding
 
+    #the sections below are flushed to this file as they complete, so the builder never has to hold the whole document
+    if ($NoDefinitionInsightsDedicatedHTML) {
+        $definitionInsightsPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName).html"
+    }
+    else {
+        $definitionInsightsPath = "$($outputPath)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html"
+        $htmlDefinitionInsightsDedicatedStart | Set-Content -Path $definitionInsightsPath -Encoding utf8 -Force
+    }
+
     #region definitionInsightsAzurePolicy
     $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
     [void]$htmlDefinitionInsights.AppendLine( @'
@@ -207,6 +216,7 @@
 
     $cnter = 0
     $htmlDefinitionInsightshlp = $null
+    $htPWAPolicy = $htPolicyWithAssignments.policy
     $htmlDefinitionInsightshlp = foreach ($policy in (($htCacheDefinitionsPolicy).Values | Sort-Object @{Expression = { $_.DisplayName } }, @{Expression = { $_.PolicyDefinitionId } })) {
 
         $cnter++
@@ -219,9 +229,10 @@
         $assignmentsCount = 0
         $assignmentsDetailed = 'n/a'
 
-        if (($htPolicyWithAssignments).policy.($policy.PolicyDefinitionId)) {
+        $policyWithAssignmentsEntry = $htPWAPolicy[$policy.PolicyDefinitionId]
+        if ($policyWithAssignmentsEntry) {
             $hasAssignments = 'true'
-            $assignments = ($htPolicyWithAssignments).policy.($policy.PolicyDefinitionId).Assignments
+            $assignments = $policyWithAssignmentsEntry.Assignments
             $assignmentsCount = $assignments.Count
 
             if ($assignmentsCount -gt 0) {
@@ -249,7 +260,7 @@
                     "'INVALID RoleDefId!' ($($roleDefIdOnly))"
                 }
                 else {
-                    $roleDefHlp = ($htCacheDefinitionsRole).($roleDefIdOnly)
+                    $roleDefHlp = ($htCacheDefinitionsRole)[$roleDefIdOnly]
                     "'$($roleDefHlp.Name)' ($($roleDefHlp.Id))"
                 }
             }
@@ -261,17 +272,18 @@
             if ([string]::IsNullOrEmpty($policy.ScopeId)) {
                 Write-Host "unexpected IsNullOrEmpty - processing: $($policy | ConvertTo-Json -Depth 99)"
             }
-            $scopeDetails = "$($policy.ScopeId) ($($htEntities.($policy.ScopeId).DisplayName))"
+            $scopeDetails = "$($policy.ScopeId) ($($htEntities[$policy.ScopeId].DisplayName))"
         }
 
         $usedInPolicySet = 'false'
         $usedInPolicySetCount = 0
         $usedInPolicySets = 'n/a'
 
-        if ($htPoliciesUsedInPolicySets.($policy.PolicyDefinitionId)) {
+        $policyUsedInPolicySetsEntry = $htPoliciesUsedInPolicySets[$policy.PolicyDefinitionId]
+        if ($policyUsedInPolicySetsEntry) {
             $usedInPolicySet = 'true'
-            $usedInPolicySetCount = ($htPoliciesUsedInPolicySets.($policy.PolicyDefinitionId).policySet).Count
-            $usedInPolicySets = ($htPoliciesUsedInPolicySets.($policy.PolicyDefinitionId).policySet | Sort-Object) -join "$CsvDelimiterOpposite "
+            $usedInPolicySetCount = ($policyUsedInPolicySetsEntry.policySet).Count
+            $usedInPolicySets = ($policyUsedInPolicySetsEntry.policySet | Sort-Object) -join "$CsvDelimiterOpposite "
         }
 
         $json = $($policy.Json | ConvertTo-Json -Depth 99)
@@ -328,10 +340,8 @@
 "@
     }
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    if ($NoDefinitionInsightsDedicatedHTML) {
-        $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-        $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
-    }
+    $htmlDefinitionInsights | Add-Content -Path $definitionInsightsPath -Encoding utf8 -Force
+    $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
     [void]$htmlDefinitionInsights.AppendLine( @"
     </tbody>
 </table>
@@ -534,14 +544,16 @@ tf.init();}}
 <tbody>
 "@)
     $htmlDefinitionInsightshlp = $null
+    $htPWAPolicySet = $htPolicyWithAssignments.policySet
     $htmlDefinitionInsightshlp = foreach ($policySet in ($tenantAllPolicySets | Sort-Object @{Expression = { $_.DisplayName } }, @{Expression = { $_.PolicyDefinitionId } })) {
         $hasAssignments = 'false'
         $assignmentsCount = 0
         $assignmentsDetailed = 'n/a'
 
-        if (($htPolicyWithAssignments).policySet.($policySet.PolicyDefinitionId)) {
+        $policySetWithAssignmentsEntry = $htPWAPolicySet[$policySet.PolicyDefinitionId]
+        if ($policySetWithAssignmentsEntry) {
             $hasAssignments = 'true'
-            $assignments = ($htPolicyWithAssignments).policySet.($policySet.PolicyDefinitionId).Assignments
+            $assignments = $policySetWithAssignmentsEntry.Assignments
             $assignmentsCount = ($assignments | Measure-Object).Count
 
             if ($assignmentsCount -gt 0) {
@@ -561,7 +573,7 @@ tf.init();}}
 
         $scopeDetails = 'n/a'
         if ($policySet.ScopeId -ne 'n/a') {
-            $scopeDetails = "$($policySet.ScopeId) ($($htEntities.($policySet.ScopeId).DisplayName))"
+            $scopeDetails = "$($policySet.ScopeId) ($($htEntities[$policySet.ScopeId].DisplayName))"
         }
         $json = $($policySet.Json | ConvertTo-Json -Depth 99)
         $guid = ([System.BitConverter]::ToString($SHA256.ComputeHash($utf8.GetBytes($policySet.PolicyDefinitionId)))) -replace '-'
@@ -612,10 +624,8 @@ tf.init();}}
 "@
     }
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    if ($NoDefinitionInsightsDedicatedHTML) {
-        $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-        $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
-    }
+    $htmlDefinitionInsights | Add-Content -Path $definitionInsightsPath -Encoding utf8 -Force
+    $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
     [void]$htmlDefinitionInsights.AppendLine( @"
     </tbody>
 </table>
@@ -829,9 +839,10 @@ tf.init();}}
         $hasAssignments = 'false'
         $assignmentsCount = 0
         $assignmentsDetailed = 'n/a'
-        if (($htRoleWithAssignments).($role.Id)) {
+        $roleWithAssignmentsEntry = $htRoleWithAssignments[$role.Id]
+        if ($roleWithAssignmentsEntry) {
             $hasAssignments = 'true'
-            $assignments = ($htRoleWithAssignments).($role.Id).Assignments
+            $assignments = $roleWithAssignmentsEntry.Assignments
             $assignmentsCount = ($assignments).Count
             if ($assignmentsCount -gt 0) {
                 $arrayAssignmentDetails = @()
@@ -917,10 +928,8 @@ tf.init();}}
     #endregion exportCSV
 
     [void]$htmlDefinitionInsights.AppendLine($htmlDefinitionInsightshlp)
-    if ($NoDefinitionInsightsDedicatedHTML) {
-        $htmlDefinitionInsights | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-        $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
-    }
+    $htmlDefinitionInsights | Add-Content -Path $definitionInsightsPath -Encoding utf8 -Force
+    $htmlDefinitionInsights = [System.Text.StringBuilder]::new()
     [void]$htmlDefinitionInsights.AppendLine( @"
     </tbody>
 </table>
@@ -1021,32 +1030,23 @@ tf.init();}}
     #endregion definitionInsightsAzureRBAC
 
     Write-Host "   NoDefinitionInsightsDedicatedHTML: $NoDefinitionInsightsDedicatedHTML"
+    $htmlDefinitionInsights | Add-Content -Path $definitionInsightsPath -Encoding utf8 -Force
+    $htmlDefinitionInsights = $null
+
     if ($NoDefinitionInsightsDedicatedHTML) {
         Write-Host '   Appending DefinitionInsights to HTML'
-        $script:html += $htmlDefinitionInsights
-        $htmlDefinitionInsights = $null
-        $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-        $script:html = $null
     }
     else {
-        Write-Host "   Creating dedicated DefinitionInsights HTML ($($outputPath)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html)"
-        $htmlDefinitionInsightsDedicated = $null
-        $htmlDefinitionInsightsDedicated += $htmlDefinitionInsightsDedicatedStart
-        $htmlDefinitionInsightsDedicated += $htmlDefinitionInsights
-        $htmlDefinitionInsightsDedicated += $htmlDefinitionInsightsDedicatedEnd
-        #$htmlDefinitionInsights = $null
-        $htmlDefinitionInsightsDedicated | Set-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html" -Encoding utf8 -Force
-        #$script:htmlDefinitionInsightsDedicated = $null
+        Write-Host "   Creating dedicated DefinitionInsights HTML ($($definitionInsightsPath))"
+        $htmlDefinitionInsightsDedicatedEnd | Add-Content -Path $definitionInsightsPath -Encoding utf8 -Force
 
-        $htmlDefinitionInsightsNo = @"
+        $script:html += @"
         <span>DefinitionInsights has been saved to dedicated HTML file '<i>$($outputPathGiven)$($DirectorySeparatorChar)$($fileName)_DefinitionInsights.html</i>' (parameter -NoDefinitionInsightsDedicatedHTML = $($NoDefinitionInsightsDedicatedHTML))</span><br>
         Open <a class="externallink" href="$($fileName)_DefinitionInsights.html" target="blank">DefinitionInsights <i class="fa fa-external-link" aria-hidden="true"></i></a>
 "@
-        $script:html += $htmlDefinitionInsightsNo
-        #$htmlDefinitionInsightsNo = $null
-        $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
-        $script:html = $null
     }
+    $script:html | Add-Content -Path "$($outputPath)$($DirectorySeparatorChar)$($fileName).html" -Encoding utf8 -Force
+    $script:html = $null
 
 
     $endDefinitionInsights = Get-Date
